@@ -1,0 +1,38 @@
+{
+  "artifact": {
+    "artifact_id": "slice1-artifact-0419f3befa341a87a152016c49375df0",
+    "artifact_revision": 1,
+    "commit_performed": false,
+    "dependency_artifact_ids": [],
+    "dependency_set_sha256": "f9a6b03c46a03f77a09269e1db3625f651bcd41333d3b6092e4242bda3cc1e95",
+    "formal_event_contract_sha256": "55a5b2b47210d3b6106f7b985d35f888be348ad7aacfd4a6dcc4222c62fc2f70",
+    "formal_event_id": "EV-3D3AE01E",
+    "formal_event_ordinal": 0,
+    "freeze_state": "FROZEN",
+    "narrative": "Rain needles the abandoned lockhouse while floodwater shoulders the iron gate below. Inside, a cracked pressure dial jitters toward red. Mara reaches the handwheel first and tells her rival, Iven, to leave by the upper catwalk before the swollen canal tears the chamber open. He hears the strain beneath her clipped courtesy and refuses: she has never surrendered an advantage without hiding a blade in it.\n\nMara offers terms instead of an explanation. If Iven crosses now, she will release the gate and destroy the ledger chained beneath the winch—the evidence she came to claim and the only leverage that could restore her standing. “Consider it an unusually expensive professional courtesy.” Iven asks why his life has become her expense. She studies the dial rather than answer.\n\nThe wheel will not turn under the water load. Its brake can be released only from the lower platform, where a waist-high tide already churns around exposed gears. Mara orders Iven onto the catwalk, descends, and wedges her iron document case into the brake teeth. The case buckles; the ledger inside begins soaking through. Freed, the wheel kicks backward. Iven catches it, but now leaving would abandon Mara below.\n\nThey work against each other’s instincts: she calls precise counts through clenched teeth; he ignores her command to run and lashes his belt around the wheel for purchase. The rising water tears the case loose. Mara could snatch the ledger or seize the brake lever before the mechanism resets. She lets the pages vanish into the gears and holds the lever, taking its edge across her palm. Iven turns the wheel on her count. The gate opens, and the pressure dial falls from red.\n\nOn the upper landing, Iven binds her bleeding hand with the ruined belt. He asks once more what she is paying for. Mara answers, “Your continued inconvenience. Do try to make it worthwhile.” He does not forgive her, but he gives her the dry side of the rail and says he will hear one honest sentence when they are clear. She accepts without bargaining him down. Behind them, black water carries the pulped ledger through the open gate while they leave together, one careful step apart.",
+    "parent_authority_sha256": "5271869c41776bc7f8f3023729246899dd76b1bc19c22cb98854a5a976dafada",
+    "payload_sha256": "e756fc7f078f1a4f8b5314d45e7a21ea1d5c31695a29d57711c2c723e969e0af",
+    "predecessor_boundary_sha256": "76a68bbed1248ae022a28653d63d27cef26c0810683a610c74cf1bb4ebef4360",
+    "promotion_eligible": false,
+    "provenance": {
+      "contract_identity": "planning_event_realization_shadow_v1@1",
+      "producer_kind": "future_model_shadow",
+      "source_candidate_sha256": "46fc68a09bd33a1c3e82fc93ae464cca1df5225139abe8416dcb9f6724952441"
+    },
+    "schema": "EventRealizationArtifactV1",
+    "scope_id": "slice1-scope-42008bf8685584e41c985df99da36b16",
+    "segment_ordinal": 0,
+    "shadow_only": true,
+    "stage": "event_realization_unit_shadow_v1",
+    "title": "The Counterweight Bargain",
+    "validation_receipt_sha256": "140c5a2fc65a45ba76ac7f935feeab6c6c9221b334b76e4d3dc738f607e4da5a",
+    "validation_status": "PASS",
+    "version": 1
+  },
+  "cohort_id": "skill-v2-bounded-repeated-ab-character-heavy-v2-b-launcher-v3-disabled-001",
+  "conversion_audit_sha256": "59206c76095bf10479644121ac123604790dd2484c379aead3a9a74aafc33396",
+  "production_authority": false,
+  "schema": "SkillV2Pair1CorrectedBV3GeneratedArtifactV1",
+  "skill_arm": "RESTORED_SKILL_V2",
+  "version": 1
+}

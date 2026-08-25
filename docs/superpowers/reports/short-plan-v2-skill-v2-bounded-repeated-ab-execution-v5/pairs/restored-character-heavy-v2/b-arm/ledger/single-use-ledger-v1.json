@@ -1,0 +1,12 @@
+{
+  "cohort_id": "skill-v2-bounded-repeated-ab-character-heavy-v2-b-launcher-v3-disabled-001",
+  "http_post_attempts": 1,
+  "model_logical_calls": 1,
+  "network_request_attempts": 1,
+  "nonce_sha256": "37e3ba3a9122e69d3be39891c227ade73fc188ee1ebc281c2be501cdf21ce265",
+  "packet_sha256": "6190409613b8ba3cff8ae5fba6216a2c4885f0d1d37245367ce5eea63288b37a",
+  "real_provider_request_attempts": 1,
+  "schema": "SkillV2Pair1CorrectedBV3NonceLedgerV1",
+  "usage_status": "consumed",
+  "version": 1
+}

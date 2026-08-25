@@ -1,0 +1,14 @@
+{
+  "authorization_text_sha256": "5699528b6a0ffff0a6fd222b235e0f88e6e83ac29d9266938aaebc127043882e",
+  "credentials": true,
+  "data_egress": true,
+  "network": true,
+  "observed_at_utc": "2026-08-25T15:16:59Z",
+  "packet_sha256": "6190409613b8ba3cff8ae5fba6216a2c4885f0d1d37245367ce5eea63288b37a",
+  "paid_provider": true,
+  "schema": "CurrentChatExternalPermissionReceiptV1",
+  "scope": "SKILL_V2_BOUNDED_REPEATED_AB_CHARACTER_HEAVY_V2_B_ARM_SINGLE_DISPATCH_ONLY",
+  "signed_approval_sha256": "afefc6d145e0d11bf5a6ab541880a116747d0d6975beebeab33adf2a894c1b38",
+  "source": "current_user_chat_message",
+  "version": 1
+}

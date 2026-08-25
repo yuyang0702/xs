@@ -1,0 +1,12 @@
+{
+  "canonical_ledger_path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-execution-v5/pairs/restored-character-heavy-v2/b-arm/ledger/single-use-ledger-v1.json",
+  "canonical_ledger_sha256": "8eb388171fe3baa9bf195ee663c88646d0188e2dc5f10261ca7a664bf5d806e2",
+  "cohort_id": "skill-v2-bounded-repeated-ab-character-heavy-v2-b-launcher-v3-disabled-001",
+  "nonce_raw_value_persisted_here": false,
+  "nonce_reusable": false,
+  "nonce_sha256": "37e3ba3a9122e69d3be39891c227ade73fc188ee1ebc281c2be501cdf21ce265",
+  "nonce_status": "CONSUMED",
+  "packet_sha256": "6190409613b8ba3cff8ae5fba6216a2c4885f0d1d37245367ce5eea63288b37a",
+  "schema": "SkillV2Pair1CorrectedBV3NonceConsumptionV1",
+  "version": 1
+}

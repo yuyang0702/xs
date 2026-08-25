@@ -1,0 +1,20 @@
+{
+  "absolute_machine_path_count": 0,
+  "authorization_header_count": 0,
+  "credential_value_count": 0,
+  "files_scanned": 15,
+  "isolated_model_artifact_allowed": true,
+  "isolated_model_artifact_count": 1,
+  "matches": [],
+  "overall_status": "exact",
+  "privacy_match_count": 0,
+  "raw_prompt_field_count": 0,
+  "raw_provider_content_count": 0,
+  "raw_reasoning_content_count": 0,
+  "raw_tool_argument_count": 0,
+  "runtime_database_committed": false,
+  "runtime_database_sha256": "f8d89510daf14b6a80a628b54170de6aa422ee1f482ee881c669c41508dd3009",
+  "schema": "SkillV2Pair1CorrectedBV3ExecutionPrivacyScanV1",
+  "secret_provider_url_count": 0,
+  "version": 1
+}

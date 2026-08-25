@@ -1,0 +1,15 @@
+{
+  "finish_reason": "UNKNOWN_NOT_PERSISTED",
+  "observation_scope": "ONLY_FACTS_PROVEN_BY_SUCCESSFUL_LOCAL_TAIL",
+  "provider_protocol": "anthropic",
+  "provider_return_received": true,
+  "raw_provider_content_persisted": false,
+  "raw_provider_shape": "UNKNOWN_NOT_PERSISTED",
+  "reasoning_shape": "UNKNOWN_NOT_PERSISTED",
+  "route_binding_sha256": "c3b9bef17be892c4de4107707f2a5dc03f4dce8438bb74a0452c095a7e87f621",
+  "route_fingerprint": "30e9cbaf86fbb4b89b43614d71cc11b359ad41e7411e8ebda5d3ce4199879bf0",
+  "schema": "SkillV2Pair1CorrectedBV3ProviderObservationV1",
+  "tool_shape": "UNKNOWN_NOT_PERSISTED",
+  "version": 1,
+  "visible_final_text_reached_converter": true
+}

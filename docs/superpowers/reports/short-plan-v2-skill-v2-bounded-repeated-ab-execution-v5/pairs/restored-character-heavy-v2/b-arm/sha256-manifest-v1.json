@@ -1,0 +1,96 @@
+{
+  "canonical_line_ending": "LF",
+  "coverage": "exact",
+  "coverage_root": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-execution-v5/pairs/restored-character-heavy-v2/b-arm",
+  "entry_count": 16,
+  "evidence_encoding": "UTF-8",
+  "execution_start_head": "12ffabc96449e3ab9e3e57c0b66feba5e9c4db4d",
+  "files": [
+    {
+      "bytes": 14,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-execution-v5/pairs/restored-character-heavy-v2/b-arm/.gitattributes",
+      "sha256": "a79691a93b46e49ce460c26ef22afcc03d6eca1e63bf2edbc20e96159510f6c9"
+    },
+    {
+      "bytes": 514,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-execution-v5/pairs/restored-character-heavy-v2/b-arm/README.md",
+      "sha256": "2889a2272075df6f452deb5abae80e21d462a32747ac268e59b9a01b680a93b9"
+    },
+    {
+      "bytes": 3998,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-execution-v5/pairs/restored-character-heavy-v2/b-arm/artifact/generated-event-realization-v1.json",
+      "sha256": "1dd0e31dcf01bc369cf8cee1865ae1fffdb4ad890bb1d726482048755037dc69"
+    },
+    {
+      "bytes": 776,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-execution-v5/pairs/restored-character-heavy-v2/b-arm/attempt-accounting-v1.json",
+      "sha256": "5514eb69b18a9519d73a329983dd6c3b6f2bce58ff729a3032fec06212712885"
+    },
+    {
+      "bytes": 720,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-execution-v5/pairs/restored-character-heavy-v2/b-arm/campaign-state-receipt-v1.json",
+      "sha256": "6cf0070d7b667d5be55f632dd5067bae30ad7c1b76e7c2209562a87279ab21f5"
+    },
+    {
+      "bytes": 620,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-execution-v5/pairs/restored-character-heavy-v2/b-arm/current-chat-external-permission-receipt-v1.json",
+      "sha256": "bec109e4fea0fe147de3bb4b336813e6c336f8d4629a8e3f65514520edeaee7d"
+    },
+    {
+      "bytes": 1667,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-execution-v5/pairs/restored-character-heavy-v2/b-arm/execution-identity-binding-v1.json",
+      "sha256": "e97b542adfffc6bdc80f65e4970323f8c27bfc529772e6f93ff4cbbc9c573b9d"
+    },
+    {
+      "bytes": 457,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-execution-v5/pairs/restored-character-heavy-v2/b-arm/execution-receipt-v1.json",
+      "sha256": "4598570a2f1fc7641c48ee18c26c48d721f3c122dec6ce70cd227acd18d1013d"
+    },
+    {
+      "bytes": 3155,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-execution-v5/pairs/restored-character-heavy-v2/b-arm/final-report-v1.md",
+      "sha256": "efa0059b01248c8341e71f86fa8d2e31ef539425d0f98b7154f6b4d1dcdacbeb"
+    },
+    {
+      "bytes": 495,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-execution-v5/pairs/restored-character-heavy-v2/b-arm/ledger/single-use-ledger-v1.json",
+      "sha256": "8eb388171fe3baa9bf195ee663c88646d0188e2dc5f10261ca7a664bf5d806e2"
+    },
+    {
+      "bytes": 615,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-execution-v5/pairs/restored-character-heavy-v2/b-arm/manifest-definition-v1.json",
+      "sha256": "27a32e2b0c5f7071db389de78d3a66897133d285253b37d7ccf9155f88665202"
+    },
+    {
+      "bytes": 724,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-execution-v5/pairs/restored-character-heavy-v2/b-arm/nonce-consumption-v1.json",
+      "sha256": "816f7f5aa6036e4c8404fbfccc40522479856a4204c839feb463468c4a629f79"
+    },
+    {
+      "bytes": 854,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-execution-v5/pairs/restored-character-heavy-v2/b-arm/output-isolation-v1.json",
+      "sha256": "8b15fa975d7f521e5b04ee40a58b2d32c0ab848ddd55b009538caa3ac13a30f7"
+    },
+    {
+      "bytes": 665,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-execution-v5/pairs/restored-character-heavy-v2/b-arm/privacy-scan-v1.json",
+      "sha256": "e17e0ebde85fc8e9f9ce59b4e018ea0b2a753c0b13628a5f34af320a2a2f9499"
+    },
+    {
+      "bytes": 677,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-execution-v5/pairs/restored-character-heavy-v2/b-arm/provider-observation-v1.json",
+      "sha256": "9152e7978775f8ec56c9e5c6650e78f87ee5865b8ce100e72943f0721e54f9a6"
+    },
+    {
+      "bytes": 888,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-execution-v5/pairs/restored-character-heavy-v2/b-arm/validation-result-v1.json",
+      "sha256": "efdee137578598a3ec0659803a8c1ac2ee39c5dbdb73a7f5cbbb1a3858884fd2"
+    }
+  ],
+  "manifest_definition_sha256": "3edd73fa9562b3a48c73fb221829f73a833c62cc94d1665f639d134b200954ee",
+  "overall_status": "exact",
+  "runtime_database_excluded": true,
+  "schema": "SkillV2Pair1CorrectedBV3ExecutionSHA256ManifestV1",
+  "self_excluded": true,
+  "version": 1
+}
