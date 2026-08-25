@@ -204,11 +204,12 @@ def test_fresh_evidence_is_deterministic_complete_and_private() -> None:
     )
     assert first == second
     assert first_result == second_result
-    assert len(first) == 20
+    assert len(first) == 21
     privacy = json.loads(first[f"{pair1a.FRESH_STOP_FIX_ROOT}/privacy-scan-v1.json"])
     manifest = json.loads(first[f"{pair1a.FRESH_STOP_FIX_ROOT}/sha256-manifest-v1.json"])
     assert privacy["overall_status"] == "exact"
     assert privacy["privacy_match_count"] == 0
-    assert manifest["entry_count"] == 19
+    assert manifest["entry_count"] == 20
+    assert first[f"{pair1a.FRESH_STOP_FIX_ROOT}/.gitattributes"] == b"* text eol=lf\n"
     assert first_result["approval_ready_v3"] is True
     assert first_result["execution_authorized"] is False

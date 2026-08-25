@@ -1724,6 +1724,7 @@ def build_fresh_stop_state_fix_documents(
     documents: dict[str, bytes] = {}
     def add(name: str, value: Any) -> None:
         documents[f"{FRESH_STOP_FIX_ROOT}/{name}"] = value if isinstance(value, bytes) else _json_bytes(value)
+    add(".gitattributes", b"* text eol=lf\n")
     add("README.md", b"# Pair 1 A fresh stop-state signed-preflight fix\n\nOffline two-phase stop-state validator evidence and disabled successor v3. No approval, nonce, credential, network, Provider, model, execution, cutover, or Full Short.\n")
     add("failure-root-cause-v1.json", {
         "schema": "SkillV2Pair1AFreshStopStateFailureRootCauseV1", "version": 1,
@@ -1868,7 +1869,7 @@ def build_fresh_stop_state_fix_documents(
 36. Strict L3: `{validation.get('strict_l3', 'PENDING_FINAL_SEAL')}`
 37. Full suite: `{validation.get('full_suite', 'PENDING_FINAL_SEAL')}`
 38. Manifest definition/file SHA: recorded in sealed manifest/final handoff
-39. Manifest coverage: all 19 non-manifest evidence files; UTF-8/LF; reproducible x2 `PASS`
+39. Manifest coverage: all 20 non-manifest evidence files, including root-local LF policy; UTF-8/LF; reproducible x2 `PASS`
 40. Privacy: exact; raw Provider/reasoning/credentials/signed approval/nonce absent
 41. External counters: credential/client/request/HTTP/network/model/paid all `0`
 42. Exact next gate: `SKILL_V2_BOUNDED_REPEATED_AB_PAIR_1_A_ARM_FRESH_USER_APPROVAL_V3`
