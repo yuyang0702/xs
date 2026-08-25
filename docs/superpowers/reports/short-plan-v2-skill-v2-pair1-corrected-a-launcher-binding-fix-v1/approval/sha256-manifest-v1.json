@@ -1,0 +1,125 @@
+{
+  "coverage": "all approval evidence files except manifest itself",
+  "coverage_root": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-corrected-a-launcher-binding-fix-v1/approval",
+  "entry_count": 21,
+  "external_actions": {
+    "credential_lookup_count": 0,
+    "http_post_attempts": 0,
+    "model_calls": 0,
+    "network_calls": 0,
+    "paid_calls": 0,
+    "real_provider_client_creation_count": 0,
+    "real_provider_request_attempts": 0
+  },
+  "files": [
+    {
+      "bytes": 200,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-corrected-a-launcher-binding-fix-v1/approval/README.md",
+      "sha256": "c7fa553668d2bda0357ca27c13cb50be8ac326004820ba13ee9f9acb87bf1bdd"
+    },
+    {
+      "bytes": 1074,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-corrected-a-launcher-binding-fix-v1/approval/approval-binding-v1.json",
+      "sha256": "507b4d4986a68ba8bc21f4778c1a0e7b87f783fff6fbe7899d1cfcd038b87871"
+    },
+    {
+      "bytes": 1184,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-corrected-a-launcher-binding-fix-v1/approval/approval-identity-v1.json",
+      "sha256": "532c190faf40e13679456bd721ea278c8269071fa9b5b2cdaaa7d9cc336575b1"
+    },
+    {
+      "bytes": 6689,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-corrected-a-launcher-binding-fix-v1/approval/approval-time-stop-state-receipt-v1.json",
+      "sha256": "a42d5c4acdcd67c3b88938aa68b2fc4b9a0a01d1571afb4f3ce521cdf1cae125"
+    },
+    {
+      "bytes": 506,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-corrected-a-launcher-binding-fix-v1/approval/campaign-stop-signals-v1.json",
+      "sha256": "9c46a4352d9a0279029f8c26ca88347c35940574a5a8ec85ab39ba0604b57629"
+    },
+    {
+      "bytes": 729,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-corrected-a-launcher-binding-fix-v1/approval/execution-entry-launcher-binding-v1.json",
+      "sha256": "dbe6bf79aecf16a06b9f6bd326b574a787d381a9bbd120ddffb05e9d0e2da614"
+    },
+    {
+      "bytes": 6470,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-corrected-a-launcher-binding-fix-v1/approval/final-report-v1.md",
+      "sha256": "36c78789f3a160ada1e5ec924e149786bd25208b625df8e205cfbaab87000842"
+    },
+    {
+      "bytes": 283,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-corrected-a-launcher-binding-fix-v1/approval/historical-v3-nonreuse-v1.json",
+      "sha256": "27e43d58760062deb1bf169251171cf9c9b4845b2aca5eee3cfdd4bfcab4e725"
+    },
+    {
+      "bytes": 13755,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-corrected-a-launcher-binding-fix-v1/approval/negative-matrix-v1.json",
+      "sha256": "8fd6558c8ff5cf41e7c1c2e02ebd0fdfbd75f66c86edf7af5e517d3487cf5849"
+    },
+    {
+      "bytes": 666,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-corrected-a-launcher-binding-fix-v1/approval/nonce-binding-v1.json",
+      "sha256": "b32b54ee777dfbf764a0b63edbb98955626f9a02c01b3cfeb0246ff90f94a811"
+    },
+    {
+      "bytes": 418,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-corrected-a-launcher-binding-fix-v1/approval/offline-test-receipt-v1.json",
+      "sha256": "4f0c4d52cb0f350462a2d4c9a8e829291eb921ff9fd37805cb8290e634f6be44"
+    },
+    {
+      "bytes": 586,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-corrected-a-launcher-binding-fix-v1/approval/outer-permission-binding-v1.json",
+      "sha256": "01fa65417b2ae0dab4d15a1589b78dcd420f78cf7e5745a38ec7573ec3a785f8"
+    },
+    {
+      "bytes": 201,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-corrected-a-launcher-binding-fix-v1/approval/pair2-to-5-block-proof-v1.json",
+      "sha256": "414341c7d5a5de338b6b374aac621df49b841efe092aa6735301331457c9e507"
+    },
+    {
+      "bytes": 4907,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-corrected-a-launcher-binding-fix-v1/approval/phase-a-pre-approval-readiness-v1.json",
+      "sha256": "9b67602f7317cf927060868ffd28c11e5af1d9c743c18ae2314535fab0ea3bbc"
+    },
+    {
+      "bytes": 385,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-corrected-a-launcher-binding-fix-v1/approval/post-seal-validation-contract-v1.json",
+      "sha256": "531402386cf5d45a6b61b4b943398ed73a4ba1b1684e02f5e40534cfa4141b9b"
+    },
+    {
+      "bytes": 714,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-corrected-a-launcher-binding-fix-v1/approval/privacy-scan-v1.json",
+      "sha256": "22eb69d35f6d3b89643be59d4c4be7e1f91a354b768cdf935996cc88c0caef5b"
+    },
+    {
+      "bytes": 8525,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-corrected-a-launcher-binding-fix-v1/approval/sealed-packet-bindings-v1.json",
+      "sha256": "d9eab31e9ab9c504484ddd83ea42daf76458d4db1a7ebe2c0f7aa7e78d37fa83"
+    },
+    {
+      "bytes": 12533,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-corrected-a-launcher-binding-fix-v1/approval/signed-approval-v4.json",
+      "sha256": "676263c41436b9d238214a14347ab45b9122b7f5e5e552c094a71939b7b60f5b"
+    },
+    {
+      "bytes": 1776,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-corrected-a-launcher-binding-fix-v1/approval/signed-preflight-receipt-v1.json",
+      "sha256": "df3bd50677db356157ba76a1619963d6b669cfde1a653ce59a2221a4e741cd19"
+    },
+    {
+      "bytes": 145,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-corrected-a-launcher-binding-fix-v1/approval/strict-l3-receipt-v1.json",
+      "sha256": "3dcb38b96528ee195e5a736306bd5b7e9575a0c88ed17ec89510e2ee554f66ea"
+    },
+    {
+      "bytes": 945,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-corrected-a-launcher-binding-fix-v1/approval/user-approval-receipt-v1.json",
+      "sha256": "14cfeeb1fc68e2fd82a2a0d98800a28e6577ca6391d0689b61b75b7e1b1180e0"
+    }
+  ],
+  "overall_status": "exact",
+  "schema": "SkillV2Pair1CorrectedAApprovalV4SHA256ManifestV1",
+  "self_excluded": true,
+  "version": 1
+}

@@ -1,0 +1,10 @@
+{
+  "actual_post_seal_validation": "PERFORM_AFTER_EVIDENCE_COMMIT",
+  "baml_src_diff_required": 0,
+  "current_head_relation_required": "SEALED_APPROVAL_EVIDENCE_ONLY_SUCCESSOR",
+  "post_seal_focused_matrix_required": "PASS",
+  "post_seal_phase_b_stop_state_required": "PASS",
+  "post_seal_signed_preflight_required": "exact",
+  "src_diff_required": 0,
+  "worktree_required": "clean"
+}

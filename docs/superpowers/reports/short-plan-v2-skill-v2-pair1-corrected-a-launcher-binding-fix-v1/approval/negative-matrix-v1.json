@@ -1,0 +1,458 @@
+{
+  "all_fail_closed_before_credential_network_action": true,
+  "case_count": 63,
+  "external_actions": {
+    "credential_lookup_count": 0,
+    "http_post_attempts": 0,
+    "model_calls": 0,
+    "network_calls": 0,
+    "paid_calls": 0,
+    "real_provider_client_creation_count": 0,
+    "real_provider_request_attempts": 0
+  },
+  "results": [
+    {
+      "case": "missing_signed_approval",
+      "credential_lookup_count": 0,
+      "network_calls": 0,
+      "reason": "signed_approval_schema_mismatch",
+      "status": "REJECTED_BEFORE_CREDENTIAL_LOOKUP"
+    },
+    {
+      "case": "v3_packet_reuse",
+      "credential_lookup_count": 0,
+      "network_calls": 0,
+      "reason": "packet_mismatch:schema",
+      "status": "REJECTED_BEFORE_CREDENTIAL_LOOKUP"
+    },
+    {
+      "case": "v3_approval_reuse",
+      "credential_lookup_count": 0,
+      "network_calls": 0,
+      "reason": "signed_approval_schema_mismatch",
+      "status": "REJECTED_BEFORE_CREDENTIAL_LOOKUP"
+    },
+    {
+      "case": "v3_nonce_reuse",
+      "credential_lookup_count": 0,
+      "network_calls": 0,
+      "reason": "signed_approval_sha_mismatch",
+      "status": "REJECTED_BEFORE_CREDENTIAL_LOOKUP"
+    },
+    {
+      "case": "wrong_v4_packet",
+      "credential_lookup_count": 0,
+      "network_calls": 0,
+      "reason": "packet_sha_mismatch",
+      "status": "REJECTED_BEFORE_CREDENTIAL_LOOKUP"
+    },
+    {
+      "case": "missing_execution_entry",
+      "credential_lookup_count": 0,
+      "network_calls": 0,
+      "reason": "packet_mismatch:execution_entry_point_present",
+      "status": "REJECTED_BEFORE_CREDENTIAL_LOOKUP"
+    },
+    {
+      "case": "false_execution_entry",
+      "credential_lookup_count": 0,
+      "network_calls": 0,
+      "reason": "packet_mismatch:execution_entry_point_present",
+      "status": "REJECTED_BEFORE_CREDENTIAL_LOOKUP"
+    },
+    {
+      "case": "wrong_entry_point_id",
+      "credential_lookup_count": 0,
+      "network_calls": 0,
+      "reason": "packet_mismatch:execution_entry_point_id",
+      "status": "REJECTED_BEFORE_CREDENTIAL_LOOKUP"
+    },
+    {
+      "case": "wrong_entry_source",
+      "credential_lookup_count": 0,
+      "network_calls": 0,
+      "reason": "packet_mismatch:execution_entry_point_source_sha256",
+      "status": "REJECTED_BEFORE_CREDENTIAL_LOOKUP"
+    },
+    {
+      "case": "wrong_launcher_binding",
+      "credential_lookup_count": 0,
+      "network_calls": 0,
+      "reason": "packet_sha_mismatch",
+      "status": "REJECTED_BEFORE_CREDENTIAL_LOOKUP"
+    },
+    {
+      "case": "wrong_approval_parent",
+      "credential_lookup_count": 0,
+      "network_calls": 0,
+      "reason": "packet_sha_mismatch",
+      "status": "REJECTED_BEFORE_CREDENTIAL_LOOKUP"
+    },
+    {
+      "case": "materialization_parent_substituted",
+      "credential_lookup_count": 0,
+      "network_calls": 0,
+      "reason": "packet_sha_mismatch",
+      "status": "REJECTED_BEFORE_CREDENTIAL_LOOKUP"
+    },
+    {
+      "case": "wrong_corrected_fixture",
+      "credential_lookup_count": 0,
+      "network_calls": 0,
+      "reason": "packet_sha_mismatch",
+      "status": "REJECTED_BEFORE_CREDENTIAL_LOOKUP"
+    },
+    {
+      "case": "wrong_ab_lock",
+      "credential_lookup_count": 0,
+      "network_calls": 0,
+      "reason": "packet_mismatch:pair_lock_sha256",
+      "status": "REJECTED_BEFORE_CREDENTIAL_LOOKUP"
+    },
+    {
+      "case": "missing_transport_guard",
+      "credential_lookup_count": 0,
+      "network_calls": 0,
+      "reason": "packet_sha_mismatch",
+      "status": "REJECTED_BEFORE_CREDENTIAL_LOOKUP"
+    },
+    {
+      "case": "missing_network_cap",
+      "credential_lookup_count": 0,
+      "network_calls": 0,
+      "reason": "packet_mismatch:hard_max_network_request_attempts",
+      "status": "REJECTED_BEFORE_CREDENTIAL_LOOKUP"
+    },
+    {
+      "case": "wrong_network_cap",
+      "credential_lookup_count": 0,
+      "network_calls": 0,
+      "reason": "packet_mismatch:hard_max_network_request_attempts",
+      "status": "REJECTED_BEFORE_CREDENTIAL_LOOKUP"
+    },
+    {
+      "case": "missing_unknown_fail_close",
+      "credential_lookup_count": 0,
+      "network_calls": 0,
+      "reason": "packet_mismatch:unknown_guard_state_fails_closed",
+      "status": "REJECTED_BEFORE_CREDENTIAL_LOOKUP"
+    },
+    {
+      "case": "missing_attempt_accounting",
+      "credential_lookup_count": 0,
+      "network_calls": 0,
+      "reason": "packet_sha_mismatch",
+      "status": "REJECTED_BEFORE_CREDENTIAL_LOOKUP"
+    },
+    {
+      "case": "missing_budget",
+      "credential_lookup_count": 0,
+      "network_calls": 0,
+      "reason": "packet_sha_mismatch",
+      "status": "REJECTED_BEFORE_CREDENTIAL_LOOKUP"
+    },
+    {
+      "case": "missing_campaign_plan",
+      "credential_lookup_count": 0,
+      "network_calls": 0,
+      "reason": "packet_sha_mismatch",
+      "status": "REJECTED_BEFORE_CREDENTIAL_LOOKUP"
+    },
+    {
+      "case": "missing_decision_rule",
+      "credential_lookup_count": 0,
+      "network_calls": 0,
+      "reason": "packet_sha_mismatch",
+      "status": "REJECTED_BEFORE_CREDENTIAL_LOOKUP"
+    },
+    {
+      "case": "missing_manifest",
+      "credential_lookup_count": 0,
+      "network_calls": 0,
+      "reason": "packet_sha_mismatch",
+      "status": "REJECTED_BEFORE_CREDENTIAL_LOOKUP"
+    },
+    {
+      "case": "wrong_manifest",
+      "credential_lookup_count": 0,
+      "network_calls": 0,
+      "reason": "packet_sha_mismatch",
+      "status": "REJECTED_BEFORE_CREDENTIAL_LOOKUP"
+    },
+    {
+      "case": "missing_privacy",
+      "credential_lookup_count": 0,
+      "network_calls": 0,
+      "reason": "packet_sha_mismatch",
+      "status": "REJECTED_BEFORE_CREDENTIAL_LOOKUP"
+    },
+    {
+      "case": "wrong_privacy",
+      "credential_lookup_count": 0,
+      "network_calls": 0,
+      "reason": "packet_sha_mismatch",
+      "status": "REJECTED_BEFORE_CREDENTIAL_LOOKUP"
+    },
+    {
+      "case": "missing_signed_preflight",
+      "credential_lookup_count": 0,
+      "network_calls": 0,
+      "reason": "packet_sha_mismatch",
+      "status": "REJECTED_BEFORE_CREDENTIAL_LOOKUP"
+    },
+    {
+      "case": "missing_head_successor",
+      "credential_lookup_count": 0,
+      "network_calls": 0,
+      "reason": "packet_sha_mismatch",
+      "status": "REJECTED_BEFORE_CREDENTIAL_LOOKUP"
+    },
+    {
+      "case": "missing_stop_state",
+      "credential_lookup_count": 0,
+      "network_calls": 0,
+      "reason": "packet_sha_mismatch",
+      "status": "REJECTED_BEFORE_CREDENTIAL_LOOKUP"
+    },
+    {
+      "case": "missing_authority_normalization",
+      "credential_lookup_count": 0,
+      "network_calls": 0,
+      "reason": "packet_sha_mismatch",
+      "status": "REJECTED_BEFORE_CREDENTIAL_LOOKUP"
+    },
+    {
+      "case": "missing_audit_serialization",
+      "credential_lookup_count": 0,
+      "network_calls": 0,
+      "reason": "packet_sha_mismatch",
+      "status": "REJECTED_BEFORE_CREDENTIAL_LOOKUP"
+    },
+    {
+      "case": "missing_local_success_tail",
+      "credential_lookup_count": 0,
+      "network_calls": 0,
+      "reason": "packet_sha_mismatch",
+      "status": "REJECTED_BEFORE_CREDENTIAL_LOOKUP"
+    },
+    {
+      "case": "missing_execution_evidence_writer",
+      "credential_lookup_count": 0,
+      "network_calls": 0,
+      "reason": "packet_sha_mismatch",
+      "status": "REJECTED_BEFORE_CREDENTIAL_LOOKUP"
+    },
+    {
+      "case": "wrong_pair",
+      "credential_lookup_count": 0,
+      "network_calls": 0,
+      "reason": "packet_mismatch:pair_case_id",
+      "status": "REJECTED_BEFORE_CREDENTIAL_LOOKUP"
+    },
+    {
+      "case": "wrong_arm",
+      "credential_lookup_count": 0,
+      "network_calls": 0,
+      "reason": "packet_mismatch:arm_role",
+      "status": "REJECTED_BEFORE_CREDENTIAL_LOOKUP"
+    },
+    {
+      "case": "wrong_skill",
+      "credential_lookup_count": 0,
+      "network_calls": 0,
+      "reason": "packet_mismatch:skill_arm",
+      "status": "REJECTED_BEFORE_CREDENTIAL_LOOKUP"
+    },
+    {
+      "case": "b_context_in_a",
+      "credential_lookup_count": 0,
+      "network_calls": 0,
+      "reason": "packet_sha_mismatch",
+      "status": "REJECTED_BEFORE_CREDENTIAL_LOOKUP"
+    },
+    {
+      "case": "route_model_drift",
+      "credential_lookup_count": 0,
+      "network_calls": 0,
+      "reason": "packet_sha_mismatch",
+      "status": "REJECTED_BEFORE_CREDENTIAL_LOOKUP"
+    },
+    {
+      "case": "model_drift",
+      "credential_lookup_count": 0,
+      "network_calls": 0,
+      "reason": "packet_sha_mismatch",
+      "status": "REJECTED_BEFORE_CREDENTIAL_LOOKUP"
+    },
+    {
+      "case": "output_cap_drift",
+      "credential_lookup_count": 0,
+      "network_calls": 0,
+      "reason": "packet_sha_mismatch",
+      "status": "REJECTED_BEFORE_CREDENTIAL_LOOKUP"
+    },
+    {
+      "case": "retry_enabled",
+      "credential_lookup_count": 0,
+      "network_calls": 0,
+      "reason": "packet_mismatch:sdk_retries_disabled",
+      "status": "REJECTED_BEFORE_CREDENTIAL_LOOKUP"
+    },
+    {
+      "case": "fallback_enabled",
+      "credential_lookup_count": 0,
+      "network_calls": 0,
+      "reason": "packet_mismatch:route_fallback_after_dispatch_allowed",
+      "status": "REJECTED_BEFORE_CREDENTIAL_LOOKUP"
+    },
+    {
+      "case": "more_than_one_request",
+      "credential_lookup_count": 0,
+      "network_calls": 0,
+      "reason": "packet_mismatch:hard_max_real_provider_request_attempts",
+      "status": "REJECTED_BEFORE_CREDENTIAL_LOOKUP"
+    },
+    {
+      "case": "more_than_one_http_post",
+      "credential_lookup_count": 0,
+      "network_calls": 0,
+      "reason": "packet_mismatch:hard_max_http_post_attempts",
+      "status": "REJECTED_BEFORE_CREDENTIAL_LOOKUP"
+    },
+    {
+      "case": "more_than_one_network_attempt",
+      "credential_lookup_count": 0,
+      "network_calls": 0,
+      "reason": "packet_mismatch:hard_max_network_request_attempts",
+      "status": "REJECTED_BEFORE_CREDENTIAL_LOOKUP"
+    },
+    {
+      "case": "old_phase_a_receipt",
+      "credential_lookup_count": 0,
+      "network_calls": 0,
+      "reason": "phase_b_schema_mismatch",
+      "status": "REJECTED_BEFORE_CREDENTIAL_LOOKUP"
+    },
+    {
+      "case": "stale_phase_b_receipt",
+      "credential_lookup_count": 0,
+      "network_calls": 0,
+      "reason": "phase_b_state_stale",
+      "status": "REJECTED_BEFORE_CREDENTIAL_LOOKUP"
+    },
+    {
+      "case": "forged_phase_b_receipt",
+      "credential_lookup_count": 0,
+      "network_calls": 0,
+      "reason": "phase_b_state_stale",
+      "status": "REJECTED_BEFORE_CREDENTIAL_LOOKUP"
+    },
+    {
+      "case": "duplicate_v4_approval",
+      "credential_lookup_count": 0,
+      "network_calls": 0,
+      "reason": "phase_b_state_stale",
+      "status": "REJECTED_BEFORE_CREDENTIAL_LOOKUP"
+    },
+    {
+      "case": "corrected_b_approval",
+      "credential_lookup_count": 0,
+      "network_calls": 0,
+      "reason": "phase_b_state_stale",
+      "status": "REJECTED_BEFORE_CREDENTIAL_LOOKUP"
+    },
+    {
+      "case": "pair2_plus_approval",
+      "credential_lookup_count": 0,
+      "network_calls": 0,
+      "reason": "phase_b_state_stale",
+      "status": "REJECTED_BEFORE_CREDENTIAL_LOOKUP"
+    },
+    {
+      "case": "pair2_plus_execution",
+      "credential_lookup_count": 0,
+      "network_calls": 0,
+      "reason": "phase_b_state_stale",
+      "status": "REJECTED_BEFORE_CREDENTIAL_LOOKUP"
+    },
+    {
+      "case": "arbitrary_historical_root",
+      "credential_lookup_count": 0,
+      "network_calls": 0,
+      "reason": "packet_sha_mismatch",
+      "status": "REJECTED_BEFORE_CREDENTIAL_LOOKUP"
+    },
+    {
+      "case": "blanket_campaign_approval",
+      "credential_lookup_count": 0,
+      "network_calls": 0,
+      "reason": "signed_approval_sha_mismatch",
+      "status": "REJECTED_BEFORE_CREDENTIAL_LOOKUP"
+    },
+    {
+      "case": "missing_nonce",
+      "credential_lookup_count": 0,
+      "network_calls": 0,
+      "reason": "signed_approval_sha_mismatch",
+      "status": "REJECTED_BEFORE_CREDENTIAL_LOOKUP"
+    },
+    {
+      "case": "reused_nonce",
+      "credential_lookup_count": 0,
+      "network_calls": 0,
+      "reason": "signed_approval_sha_mismatch",
+      "status": "REJECTED_BEFORE_CREDENTIAL_LOOKUP"
+    },
+    {
+      "case": "reserved_nonce",
+      "credential_lookup_count": 0,
+      "network_calls": 0,
+      "reason": "signed_approval_sha_mismatch",
+      "status": "REJECTED_BEFORE_CREDENTIAL_LOOKUP"
+    },
+    {
+      "case": "consumed_nonce",
+      "credential_lookup_count": 0,
+      "network_calls": 0,
+      "reason": "signed_approval_sha_mismatch",
+      "status": "REJECTED_BEFORE_CREDENTIAL_LOOKUP"
+    },
+    {
+      "case": "nonce_hash_mismatch",
+      "credential_lookup_count": 0,
+      "network_calls": 0,
+      "reason": "signed_approval_sha_mismatch",
+      "status": "REJECTED_BEFORE_CREDENTIAL_LOOKUP"
+    },
+    {
+      "case": "wrong_approval_identity",
+      "credential_lookup_count": 0,
+      "network_calls": 0,
+      "reason": "signed_approval_sha_mismatch",
+      "status": "REJECTED_BEFORE_CREDENTIAL_LOOKUP"
+    },
+    {
+      "case": "missing_outer_permission_requirement",
+      "credential_lookup_count": 0,
+      "network_calls": 0,
+      "reason": "signed_approval_sha_mismatch",
+      "status": "REJECTED_BEFORE_CREDENTIAL_LOOKUP"
+    },
+    {
+      "case": "outer_permission_after_nonce",
+      "credential_lookup_count": 0,
+      "network_calls": 0,
+      "reason": "signed_approval_sha_mismatch",
+      "status": "REJECTED_BEFORE_CREDENTIAL_LOOKUP"
+    },
+    {
+      "case": "cohort_reuse",
+      "credential_lookup_count": 0,
+      "network_calls": 0,
+      "reason": "signed_approval_sha_mismatch",
+      "status": "REJECTED_BEFORE_CREDENTIAL_LOOKUP"
+    }
+  ],
+  "schema": "SkillV2Pair1CorrectedAApprovalV4NegativeMatrixV1",
+  "version": 1
+}

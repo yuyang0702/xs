@@ -1,0 +1,20 @@
+{
+  "approval_cohort_reuse_allowed": false,
+  "approval_evidence_root": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-corrected-a-launcher-binding-fix-v1/approval",
+  "approval_id": "skill-v2-pair1-corrected-a-v4-approval-20260825t105054z-be6cac9b",
+  "approval_identity_sha256": "9ae26a365fdf129c7368fbccc111a8dce6afa42436f042e0ad0732c851d4061e",
+  "approval_parent_head": "5be3e64af69e279309c385edc4f61ae67c0ec9d6",
+  "approval_reuse_allowed": false,
+  "approval_transaction_id": "skill-v2-pair1-corrected-a-v4-transaction-20260825t105054z-52400b98",
+  "arm_role": "A_ARM",
+  "cohort_id": "skill-v2-bounded-repeated-ab-character-heavy-v2-a-launcher-v4-disabled-001",
+  "materialization_parent_head": "1b4675694ac4b8e64f868f86a85373d30b74d0de",
+  "named_approver": "USER_PROJECT_OWNER",
+  "one_approval_per_real_request": true,
+  "packet_sha256": "39a46e38d9c11f8afd5fd1cf633443b31ae6fb1c97c4b93d404f950781f19356",
+  "pair_case_id": "restored-character-heavy-v2",
+  "schema": "SkillV2Pair1CorrectedAUnsignedApprovalIdentityV4",
+  "scope": "SKILL_V2_BOUNDED_REPEATED_AB_CHARACTER_HEAVY_V2_A_ARM_SINGLE_DISPATCH_ONLY",
+  "skill_arm": "CURRENT_RUNTIME_SKILL",
+  "version": 4
+}

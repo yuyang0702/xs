@@ -1,0 +1,70 @@
+{
+  "approval_parent_head": "5be3e64af69e279309c385edc4f61ae67c0ec9d6",
+  "corrected_pair1_a_v4_approval_exists": false,
+  "corrected_pair1_a_v4_execution_exists": false,
+  "corrected_pair1_a_v4_is_next_arm": true,
+  "corrected_pair1_a_v4_result_exists": false,
+  "corrected_pair1_b_approval_exists": false,
+  "discovered_state_set_sha256": "3e71330df6d064476aeff8fbe50f8b947ef650718b30397b054acbca10de06b7",
+  "external_actions": {
+    "credential_lookup_count": 0,
+    "http_post_attempts": 0,
+    "model_calls": 0,
+    "network_calls": 0,
+    "paid_calls": 0,
+    "real_provider_client_creation_count": 0,
+    "real_provider_request_attempts": 0
+  },
+  "packet_sha256": "39a46e38d9c11f8afd5fd1cf633443b31ae6fb1c97c4b93d404f950781f19356",
+  "pair2_or_later_approval_exists": false,
+  "phase_a_pre_approval_readiness": "PASS",
+  "phase_a_receipt_sha256": "25ef16e78a2f687511ed0c80fa9f5db888f97456edddcfda9fd1240568da45ec",
+  "receipt_type": "PRE_APPROVAL_READINESS_STOP_STATE",
+  "schema": "SkillV2Pair1CorrectedAV4PhaseAPreApprovalReadinessV1",
+  "state": {
+    "a_b_lock_failure_active": false,
+    "canonical_locations": {
+      "corrected_pair1_a_v4_execution_root": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-execution-v4/pairs/restored-character-heavy-v2/a-arm",
+      "corrected_pair1_a_v4_result_root": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-execution-v4/pairs/restored-character-heavy-v2/a-arm",
+      "corrected_pair1_b_approval_root": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-fixture-narrow-fix-v1/corrected-pair1/b-arm/approval",
+      "corrected_pair1_b_result_root": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-execution-v2/pairs/restored-character-heavy-v2/b-arm",
+      "current_approval_root": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-corrected-a-launcher-binding-fix-v1/approval",
+      "pair2_or_later_approval_roots": [
+        "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-v1/pairs/restored-world-heavy-v1/a-arm/approval",
+        "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-v1/pairs/restored-world-heavy-v1/b-arm/approval",
+        "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-v1/pairs/restored-conflict-pacing-heavy-v1/a-arm/approval",
+        "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-v1/pairs/restored-conflict-pacing-heavy-v1/b-arm/approval",
+        "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-v1/pairs/restored-setup-payoff-heavy-v1/a-arm/approval",
+        "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-v1/pairs/restored-setup-payoff-heavy-v1/b-arm/approval",
+        "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-v1/pairs/restored-mixed-v1/a-arm/approval",
+        "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-v1/pairs/restored-mixed-v1/b-arm/approval"
+      ],
+      "pair2_or_later_result_roots": [
+        "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-execution-v1/pairs/restored-world-heavy-v1/a-arm",
+        "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-execution-v1/pairs/restored-world-heavy-v1/b-arm",
+        "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-execution-v1/pairs/restored-conflict-pacing-heavy-v1/a-arm",
+        "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-execution-v1/pairs/restored-conflict-pacing-heavy-v1/b-arm",
+        "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-execution-v1/pairs/restored-setup-payoff-heavy-v1/a-arm",
+        "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-execution-v1/pairs/restored-setup-payoff-heavy-v1/b-arm",
+        "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-execution-v1/pairs/restored-mixed-v1/a-arm",
+        "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-execution-v1/pairs/restored-mixed-v1/b-arm"
+      ]
+    },
+    "corrected_pair1_a_v4_approval_count": 0,
+    "corrected_pair1_a_v4_approval_exists": false,
+    "corrected_pair1_a_v4_approval_id_matches": false,
+    "corrected_pair1_a_v4_approval_identity_hashes": [],
+    "corrected_pair1_a_v4_canonical_identity_present": false,
+    "corrected_pair1_a_v4_execution_exists": false,
+    "corrected_pair1_a_v4_result_exists": false,
+    "corrected_pair1_b_approval_exists": false,
+    "corrected_pair1_b_result_exists": false,
+    "critical_quality_regression_active": false,
+    "discovered_state_set_sha256": "3e71330df6d064476aeff8fbe50f8b947ef650718b30397b054acbca10de06b7",
+    "engineering_hard_failure_active": false,
+    "pair2_or_later_approval_exists": false,
+    "pair2_or_later_result_exists": false
+  },
+  "valid_for_signed_preflight": false,
+  "version": 1
+}

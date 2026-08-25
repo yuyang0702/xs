@@ -1,0 +1,16 @@
+{
+  "approval_negative_matrix": "63/63 PASS",
+  "focused": "30 passed",
+  "full_suite": "NOT_REQUIRED_EVIDENCE_ONLY",
+  "real_external_actions": {
+    "credential_lookup_count": 0,
+    "http_post_attempts": 0,
+    "model_calls": 0,
+    "network_calls": 0,
+    "paid_calls": 0,
+    "real_provider_client_creation_count": 0,
+    "real_provider_request_attempts": 0
+  },
+  "related": "20 passed",
+  "strict_l3": "PASS"
+}

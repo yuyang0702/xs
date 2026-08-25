@@ -1,0 +1,11 @@
+{
+  "arbitrary_entry_point_selection_allowed": false,
+  "execution_entry_point_binding_sha256": "283007f285827a1b757ae7cdde971ce3e7c12b66d4fbebdfd86cf818331784a8",
+  "execution_entry_point_id": "tools.canary.skill_v2_pair1_corrected_a_launcher_binding:execute_authorized_once_v4",
+  "execution_entry_point_resolution": "PASS",
+  "execution_entry_point_source_sha256": "4ff499598dfddfc251501feb87ed91603e4313091523ba363c71bb86f6dea576",
+  "launcher_binding_sha256": "283007f285827a1b757ae7cdde971ce3e7c12b66d4fbebdfd86cf818331784a8",
+  "launcher_source_sha256": "4ff499598dfddfc251501feb87ed91603e4313091523ba363c71bb86f6dea576",
+  "old_pair1_executor_alias_allowed": false,
+  "runtime_dynamic_launcher_assembly_allowed": false
+}

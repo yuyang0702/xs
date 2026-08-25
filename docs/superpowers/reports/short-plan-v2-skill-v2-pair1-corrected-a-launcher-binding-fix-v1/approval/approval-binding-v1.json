@@ -1,0 +1,16 @@
+{
+  "approval_binding_sha256": "f6b2a6ffef8ca26450544ee1b6e9629ac69738f6334a22b61e4e3e50a846b9f7",
+  "approval_domain_sha256": "e022c580d3a10425e8c978f0dd168b9b375134a3ecfa19e2fb9e0e718e3ddf37",
+  "approval_id": "skill-v2-pair1-corrected-a-v4-approval-20260825t105054z-be6cac9b",
+  "approval_identity_sha256": "9ae26a365fdf129c7368fbccc111a8dce6afa42436f042e0ad0732c851d4061e",
+  "approval_parent_head": "5be3e64af69e279309c385edc4f61ae67c0ec9d6",
+  "approval_transaction_id": "skill-v2-pair1-corrected-a-v4-transaction-20260825t105054z-52400b98",
+  "execution_authorized": true,
+  "named_approver": "USER_PROJECT_OWNER",
+  "packet_sha256": "39a46e38d9c11f8afd5fd1cf633443b31ae6fb1c97c4b93d404f950781f19356",
+  "phase_b_receipt_sha256": "dffc81ee03f4405670774b861d2788304cb2409ac9efc2a74843f6431d3afbc9",
+  "schema": "SkillV2Pair1CorrectedAApprovalBindingV4",
+  "signed_approval_file_sha256": "676263c41436b9d238214a14347ab45b9122b7f5e5e552c094a71939b7b60f5b",
+  "signed_approval_sha256": "9976b699551cb0940040c413f5f66b4698be79ac401ef7f95099a54ee1c7b042",
+  "version": 4
+}

@@ -1,0 +1,22 @@
+{
+  "approval_id": "skill-v2-pair1-corrected-a-v4-approval-20260825t105054z-be6cac9b",
+  "approval_only": true,
+  "current_task_external_action_authorized": false,
+  "external_actions": {
+    "credential_lookup_count": 0,
+    "http_post_attempts": 0,
+    "model_calls": 0,
+    "network_calls": 0,
+    "paid_calls": 0,
+    "real_provider_client_creation_count": 0,
+    "real_provider_request_attempts": 0
+  },
+  "named_approver": "USER_PROJECT_OWNER",
+  "packet_sha256": "39a46e38d9c11f8afd5fd1cf633443b31ae6fb1c97c4b93d404f950781f19356",
+  "real_execution_authorized_for_future_once": true,
+  "request_sha256": "c5ea65696d021a7c7bd6333d4fb02e2e64c4b1ff3d31107f4f135e391770cd1e",
+  "schema": "SkillV2Pair1CorrectedAUserApprovalReceiptV4",
+  "task": "SKILL_V2_BOUNDED_REPEATED_AB_PAIR_1_CORRECTED_A_ARM_FRESH_USER_APPROVAL_V4",
+  "user_approval_receipt_sha256": "2d22e82b703076349f39f3af813e9cc8a65107f92a1e84fcc20b8c672e44a3a9",
+  "version": 4
+}

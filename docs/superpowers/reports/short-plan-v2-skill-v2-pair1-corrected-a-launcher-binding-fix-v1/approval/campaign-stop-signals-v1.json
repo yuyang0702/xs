@@ -1,0 +1,10 @@
+{
+  "a_b_lock_failure_active": false,
+  "campaign_decision_rule_sha256": "2ed92dba7950363ef3ab9a7106c28ada60ebd2135317e18d34f9d193860044bd",
+  "campaign_plan_sha256": "fd6180ced062270241c5ed5039833556a87d51768a42c37ee605688e5866cbe7",
+  "campaign_stop_signals_sha256": "1acc0f6c48c441943a9d17d8fdaa7aa4381aa803046d7377f41217098cbb2648",
+  "critical_quality_regression_active": false,
+  "engineering_hard_failure_active": false,
+  "schema": "SkillV2Pair1CorrectedAV4CampaignStopSignalsV1",
+  "version": 1
+}

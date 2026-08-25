@@ -1,0 +1,21 @@
+{
+  "external_actions": {
+    "credential_lookup_count": 0,
+    "http_post_attempts": 0,
+    "model_calls": 0,
+    "network_calls": 0,
+    "paid_calls": 0,
+    "real_provider_client_creation_count": 0,
+    "real_provider_request_attempts": 0
+  },
+  "outer_current_chat_permission_required": true,
+  "outer_permission_check_before_nonce_reservation": true,
+  "permission_present_for_current_approval_task": false,
+  "pre_nonce_external_permission_abort_required_if_missing": true,
+  "required_components": [
+    "credentials",
+    "network",
+    "paid_provider",
+    "data_egress"
+  ]
+}
