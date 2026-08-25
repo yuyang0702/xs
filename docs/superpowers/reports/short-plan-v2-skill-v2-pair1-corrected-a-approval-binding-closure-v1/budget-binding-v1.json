@@ -1,0 +1,7 @@
+{
+  "binding_sha256": "956c5a630aa49de12438cbf7a80791ef1eeb4512fce400e99e68f76b2d0326b4",
+  "budget_sha256": "3c449122b2efc918972799fd8e787bf45bff86452b4a68a32482cd972820fadb",
+  "call_budget": 1,
+  "monetary_budget": "NOT_FABRICATED_USE_SEALED_POLICY_ONLY",
+  "output_cap": 4624
+}

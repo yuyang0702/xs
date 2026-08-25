@@ -1,0 +1,15 @@
+{
+  "binding_explicit": true,
+  "binding_sha256": "1bec81ed288d573a2caf279c70b12ccd7de7d9e1b11b6107e10822f2debc3b9c",
+  "functions": [
+    "validate_signed_preflight_transaction_v1",
+    "validate_signed_launch"
+  ],
+  "schema": "SkillV2Pair1CorrectedASignedPreflightValidatorBindingV1",
+  "source": {
+    "bytes": 110148,
+    "path": "tools/canary/skill_v2_bounded_repeated_ab_pair1_a.py",
+    "sha256": "9d39a208967b46355af2fabf0c058da42e70942e28a4e47fc53b1a2aa37475d8"
+  },
+  "version": 1
+}

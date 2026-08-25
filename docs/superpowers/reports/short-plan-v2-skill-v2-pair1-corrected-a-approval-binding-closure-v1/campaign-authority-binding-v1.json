@@ -1,0 +1,19 @@
+{
+  "binding_sha256": "680c9dcf54bbf62d8390129d01468accd8f63345dde6a1be60354139fc16c190",
+  "blanket_approval": false,
+  "campaign_decision_rule": {
+    "bytes": 510,
+    "path": "docs/superpowers/reports/short-plan-v2-skill-v2-creative-restoration-v1/future-ab-decision-rule-v1.json",
+    "sha256": "2ed92dba7950363ef3ab9a7106c28ada60ebd2135317e18d34f9d193860044bd"
+  },
+  "campaign_decision_rule_sha256": "2ed92dba7950363ef3ab9a7106c28ada60ebd2135317e18d34f9d193860044bd",
+  "campaign_plan": {
+    "bytes": 1602,
+    "path": "docs/superpowers/reports/short-plan-v2-skill-v2-quality-regression-root-cause-v1/bounded-repeated-ab-plan-v1.json",
+    "sha256": "fd6180ced062270241c5ed5039833556a87d51768a42c37ee605688e5866cbe7"
+  },
+  "campaign_plan_sha256": "fd6180ced062270241c5ed5039833556a87d51768a42c37ee605688e5866cbe7",
+  "corrected_pair1_a_only_next_approvable": true,
+  "corrected_pair1_b_blocked_until_a_pass": true,
+  "pair2_to_5_blocked_fixture_id_incompatibility": true
+}

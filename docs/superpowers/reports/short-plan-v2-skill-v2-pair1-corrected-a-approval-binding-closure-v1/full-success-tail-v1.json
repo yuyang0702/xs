@@ -1,0 +1,27 @@
+{
+  "artifact_freeze_simulation": "PASS",
+  "audit_serialization": "PASS",
+  "authority_normalization": "PASS",
+  "event_realization_validator": "PASS",
+  "external_actions": {
+    "credential_lookup_count": 0,
+    "http_post_attempts": 0,
+    "model_calls": 0,
+    "network_calls": 0,
+    "paid_calls": 0,
+    "real_provider_client_creation_count": 0,
+    "real_provider_request_attempts": 0
+  },
+  "formal_event_id_compatibility": "PASS",
+  "full_success_tail_offline": "PASS",
+  "full_success_tail_receipt_sha256": "09d58df5e6feefdcac739f16d45195c67c4c38f8ebbe513e408a4c05504d1a80",
+  "no_canon_mutation": true,
+  "no_ready_mutation": true,
+  "no_storystate_mutation": true,
+  "packet_validation": "PASS",
+  "persistence_simulation": "PASS",
+  "raw_candidate_persisted": false,
+  "schema": "SkillV2Pair1CorrectedAFullSuccessTailV1",
+  "synthetic_candidate_parse_conversion": "PASS",
+  "version": 1
+}

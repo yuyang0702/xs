@@ -1,0 +1,16 @@
+{
+  "attempt_accounting_sha256": "381d20e6dba5c9e254c0c176fc71db0e0ec003a04afb2b1b943642a2dd985dc8",
+  "binding_sha256": "19d6c681e12678f48fdc1bfe7714b2106096052ac4adb41aba2d65b22661a594",
+  "fallback": 0,
+  "http_post": 1,
+  "logical_model_call": 1,
+  "network_attempt": 1,
+  "provider_request": 1,
+  "retry": 0,
+  "second_dispatch": 0,
+  "source": {
+    "bytes": 951,
+    "path": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-skill-v2-materialization-v4/skill-v2-b-arm-attempt-accounting-v1.json",
+    "sha256": "bc36d186e962b84b7132c3fa2b461c98a07506ad9771af6f670cfae53fdd395c"
+  }
+}

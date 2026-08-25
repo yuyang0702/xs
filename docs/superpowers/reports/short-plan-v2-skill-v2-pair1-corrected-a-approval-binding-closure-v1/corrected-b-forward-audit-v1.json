@@ -1,0 +1,27 @@
+{
+  "authorized": false,
+  "corrected_b_approval_binding_complete": false,
+  "corrected_b_missing_bindings": [
+    "approval_parent_head",
+    "arm_role",
+    "attempt_accounting_binding_sha256",
+    "audit_serialization_binding_sha256",
+    "authority_normalization_binding_sha256",
+    "budget_policy_sha256",
+    "campaign_decision_rule_sha256",
+    "campaign_plan_sha256",
+    "full_success_tail_receipt_sha256",
+    "head_successor_validator_binding_sha256",
+    "network_attempt_cap_binding_sha256",
+    "packet_manifest_definition_sha256",
+    "packet_manifest_file_sha256",
+    "privacy_receipt_sha256",
+    "signed_preflight_validator_binding_sha256",
+    "stop_state_binding_sha256",
+    "transport_guard_binding_sha256",
+    "transport_policy_binding_sha256",
+    "unknown_state_fail_closed_binding_sha256"
+  ],
+  "corrected_b_packet_sha256": "46953023632e8dcbebba452b9a60c550689778985bf3ed2a210f2674b7e3f0f7",
+  "modified": false
+}

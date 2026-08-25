@@ -1,0 +1,177 @@
+{
+  "case_count": 32,
+  "external_actions": {
+    "credential_lookup_count": 0,
+    "http_post_attempts": 0,
+    "model_calls": 0,
+    "network_calls": 0,
+    "paid_calls": 0,
+    "real_provider_client_creation_count": 0,
+    "real_provider_request_attempts": 0
+  },
+  "negative_matrix_all_fail_closed": true,
+  "results": [
+    {
+      "case": "approval_parent_head_missing",
+      "reason": "approval_binding_missing",
+      "status": "REJECTED_BEFORE_EXTERNAL_ACTION"
+    },
+    {
+      "case": "materialization_parent_substituted",
+      "reason": "tamper_accepted:materialization_parent_substituted",
+      "status": "REJECTED_BEFORE_EXTERNAL_ACTION"
+    },
+    {
+      "case": "wrong_arm_role",
+      "reason": "packet_mismatch:arm_role",
+      "status": "REJECTED_BEFORE_EXTERNAL_ACTION"
+    },
+    {
+      "case": "missing_transport_guard",
+      "reason": "approval_binding_missing",
+      "status": "REJECTED_BEFORE_EXTERNAL_ACTION"
+    },
+    {
+      "case": "wrong_network_attempt_cap",
+      "reason": "packet_mismatch:hard_max_network_request_attempts",
+      "status": "REJECTED_BEFORE_EXTERNAL_ACTION"
+    },
+    {
+      "case": "missing_unknown_fail_close",
+      "reason": "approval_binding_missing",
+      "status": "REJECTED_BEFORE_EXTERNAL_ACTION"
+    },
+    {
+      "case": "missing_attempt_accounting",
+      "reason": "approval_binding_missing",
+      "status": "REJECTED_BEFORE_EXTERNAL_ACTION"
+    },
+    {
+      "case": "missing_budget",
+      "reason": "approval_binding_missing",
+      "status": "REJECTED_BEFORE_EXTERNAL_ACTION"
+    },
+    {
+      "case": "missing_campaign_plan",
+      "reason": "approval_binding_missing",
+      "status": "REJECTED_BEFORE_EXTERNAL_ACTION"
+    },
+    {
+      "case": "missing_decision_rule",
+      "reason": "approval_binding_missing",
+      "status": "REJECTED_BEFORE_EXTERNAL_ACTION"
+    },
+    {
+      "case": "missing_manifest",
+      "reason": "approval_binding_missing",
+      "status": "REJECTED_BEFORE_EXTERNAL_ACTION"
+    },
+    {
+      "case": "manifest_mismatch",
+      "reason": "tamper_accepted:manifest_mismatch",
+      "status": "REJECTED_BEFORE_EXTERNAL_ACTION"
+    },
+    {
+      "case": "missing_privacy_receipt",
+      "reason": "approval_binding_missing",
+      "status": "REJECTED_BEFORE_EXTERNAL_ACTION"
+    },
+    {
+      "case": "privacy_mismatch",
+      "reason": "tamper_accepted:privacy_mismatch",
+      "status": "REJECTED_BEFORE_EXTERNAL_ACTION"
+    },
+    {
+      "case": "missing_signed_preflight",
+      "reason": "approval_binding_missing",
+      "status": "REJECTED_BEFORE_EXTERNAL_ACTION"
+    },
+    {
+      "case": "wrong_signed_preflight_source",
+      "reason": "tamper_accepted:wrong_signed_preflight_source",
+      "status": "REJECTED_BEFORE_EXTERNAL_ACTION"
+    },
+    {
+      "case": "missing_head_successor",
+      "reason": "approval_binding_missing",
+      "status": "REJECTED_BEFORE_EXTERNAL_ACTION"
+    },
+    {
+      "case": "wrong_head_successor_source",
+      "reason": "tamper_accepted:wrong_head_successor_source",
+      "status": "REJECTED_BEFORE_EXTERNAL_ACTION"
+    },
+    {
+      "case": "missing_stop_state",
+      "reason": "approval_binding_missing",
+      "status": "REJECTED_BEFORE_EXTERNAL_ACTION"
+    },
+    {
+      "case": "phase_a_receipt_for_signed_preflight",
+      "reason": "tamper_accepted:phase_a_receipt_for_signed_preflight",
+      "status": "REJECTED_BEFORE_EXTERNAL_ACTION"
+    },
+    {
+      "case": "missing_authority_normalization",
+      "reason": "approval_binding_missing",
+      "status": "REJECTED_BEFORE_EXTERNAL_ACTION"
+    },
+    {
+      "case": "missing_audit_serialization",
+      "reason": "approval_binding_missing",
+      "status": "REJECTED_BEFORE_EXTERNAL_ACTION"
+    },
+    {
+      "case": "missing_full_success_tail",
+      "reason": "approval_binding_missing",
+      "status": "REJECTED_BEFORE_EXTERNAL_ACTION"
+    },
+    {
+      "case": "old_invalid_packet",
+      "reason": "tamper_accepted:old_invalid_packet",
+      "status": "REJECTED_BEFORE_EXTERNAL_ACTION"
+    },
+    {
+      "case": "old_approval",
+      "reason": "old_approval_reuse",
+      "status": "REJECTED_BEFORE_EXTERNAL_ACTION"
+    },
+    {
+      "case": "old_consumed_nonce",
+      "reason": "old_nonce_reuse",
+      "status": "REJECTED_BEFORE_EXTERNAL_ACTION"
+    },
+    {
+      "case": "wrong_corrected_event_id",
+      "reason": "packet_mismatch:corrected_formal_event_id",
+      "status": "REJECTED_BEFORE_EXTERNAL_ACTION"
+    },
+    {
+      "case": "wrong_authority_story",
+      "reason": "packet_mismatch:authority_input_sha256",
+      "status": "REJECTED_BEFORE_EXTERNAL_ACTION"
+    },
+    {
+      "case": "wrong_ab_lock",
+      "reason": "packet_mismatch:pair_lock_sha256",
+      "status": "REJECTED_BEFORE_EXTERNAL_ACTION"
+    },
+    {
+      "case": "pair1_b_authorization",
+      "reason": "packet_mismatch:pair1_b_authorized",
+      "status": "REJECTED_BEFORE_EXTERNAL_ACTION"
+    },
+    {
+      "case": "pair2_authorization",
+      "reason": "packet_mismatch:pair2_or_later_authorized",
+      "status": "REJECTED_BEFORE_EXTERNAL_ACTION"
+    },
+    {
+      "case": "arbitrary_historical_root",
+      "reason": "tamper_accepted:arbitrary_historical_root",
+      "status": "REJECTED_BEFORE_EXTERNAL_ACTION"
+    }
+  ],
+  "schema": "SkillV2Pair1CorrectedAApprovalNegativeMatrixV1",
+  "version": 1
+}

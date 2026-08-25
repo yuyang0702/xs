@@ -1,0 +1,69 @@
+{
+  "coverage": "all immutable packet inputs and all authority-critical source owners; successor packet and self excluded to avoid hash cycles",
+  "entries": [
+    {
+      "bytes": 4260,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-fixture-narrow-fix-v1/corrected-pair1/a-arm/disabled-packet-v2.json",
+      "sha256": "fba38289186758d23c8d12b9eb54569e6b550418bc02b683062af5e6a7792d33"
+    },
+    {
+      "bytes": 1485,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-fixture-narrow-fix-v1/corrected-pair1/a-arm/launcher-binding-v2.json",
+      "sha256": "aa165c315f704deb47b54b67b3092efa2ca0bd258befd7ee1b7ed55b0374638c"
+    },
+    {
+      "bytes": 3179,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-fixture-narrow-fix-v1/corrected-pair1/sanitized-fixture-v2.json",
+      "sha256": "1f4a1efcde47a03d9190db60d31395f140444bb632034edde8b4e20b0bbe05a4"
+    },
+    {
+      "bytes": 2901,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-fixture-narrow-fix-v1/corrected-pair1/pair-ab-lock-v2.json",
+      "sha256": "20c1fb91ea52f538e78d1bb808daab98d8b874725348b6abb3cbc07742696e65"
+    },
+    {
+      "bytes": 1925,
+      "path": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-skill-v2-materialization-v4/skill-v2-b-arm-transport-guard-binding-v1.json",
+      "sha256": "e05905afe7c726febb86c7df1abd88821359a47158203c2828de1df55e176b11"
+    },
+    {
+      "bytes": 951,
+      "path": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-skill-v2-materialization-v4/skill-v2-b-arm-attempt-accounting-v1.json",
+      "sha256": "bc36d186e962b84b7132c3fa2b461c98a07506ad9771af6f670cfae53fdd395c"
+    },
+    {
+      "bytes": 1602,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-quality-regression-root-cause-v1/bounded-repeated-ab-plan-v1.json",
+      "sha256": "fd6180ced062270241c5ed5039833556a87d51768a42c37ee605688e5866cbe7"
+    },
+    {
+      "bytes": 510,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-creative-restoration-v1/future-ab-decision-rule-v1.json",
+      "sha256": "2ed92dba7950363ef3ab9a7106c28ada60ebd2135317e18d34f9d193860044bd"
+    },
+    {
+      "bytes": 110148,
+      "path": "tools/canary/skill_v2_bounded_repeated_ab_pair1_a.py",
+      "sha256": "9d39a208967b46355af2fabf0c058da42e70942e28a4e47fc53b1a2aa37475d8"
+    },
+    {
+      "bytes": 47758,
+      "path": "src/novel_flywheel/planning_v2_slice1.py",
+      "sha256": "28bd1656f2452bea03bbe8c0778847e973d5f3dca807121e028f17af747ce201"
+    },
+    {
+      "bytes": 60775,
+      "path": "tools/canary/slice1_phase_b_current_skill.py",
+      "sha256": "0b1607c53123aa000781010a8e21ca5f816d7fffd720d874227681ee65755a54"
+    },
+    {
+      "bytes": 40011,
+      "path": "tools/canary/skill_v2_pair1_corrected_a_approval_binding_closure.py",
+      "sha256": "02a648d4e2830987c3e2763229eb0c73bf98c10f55d767b75984f93f86b6284b"
+    }
+  ],
+  "entry_count": 12,
+  "packet_manifest_definition_sha256": "f6cde071b0ec6c2627edc17a28e38d74cba214f654a3ea39b38af62050e625a8",
+  "schema": "SkillV2Pair1CorrectedAV3PacketManifestV1",
+  "version": 1
+}

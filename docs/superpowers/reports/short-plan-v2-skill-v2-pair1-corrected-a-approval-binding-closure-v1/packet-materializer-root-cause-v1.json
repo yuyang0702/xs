@@ -1,0 +1,14 @@
+{
+  "missing_binding_root_cause": "fixture-only packet_body serialized indirect source SHAs but omitted explicit approval authority fields",
+  "packet_materializer": {
+    "bytes": 52007,
+    "path": "tools/canary/skill_v2_pair1_fixture_narrow_fix.py",
+    "sha256": "6b245f96c9894152d7b93720cc51c7d244a24a6b4d2f5db8163e030eb61aae05"
+  },
+  "packet_schema_or_model_path": "tools/canary/skill_v2_pair1_fixture_narrow_fix.py",
+  "v3_materializer": {
+    "bytes": 40011,
+    "path": "tools/canary/skill_v2_pair1_corrected_a_approval_binding_closure.py",
+    "sha256": "02a648d4e2830987c3e2763229eb0c73bf98c10f55d767b75984f93f86b6284b"
+  }
+}

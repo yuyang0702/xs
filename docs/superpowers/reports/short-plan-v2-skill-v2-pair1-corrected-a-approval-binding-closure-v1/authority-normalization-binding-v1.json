@@ -1,0 +1,14 @@
+{
+  "binding_explicit": true,
+  "binding_sha256": "3f6c78f68dab784c7e400340a33c85d641e863c454de33749b305c7b4cd55bb7",
+  "functions": [
+    "normalize_event_realization_input_authority_v1"
+  ],
+  "schema": "SkillV2Pair1CorrectedAAuthorityNormalizationBindingV1",
+  "source": {
+    "bytes": 47758,
+    "path": "src/novel_flywheel/planning_v2_slice1.py",
+    "sha256": "28bd1656f2452bea03bbe8c0778847e973d5f3dca807121e028f17af747ce201"
+  },
+  "version": 1
+}

@@ -1,0 +1,15 @@
+{
+  "binding_explicit": true,
+  "binding_sha256": "259435d9fb7fad885d8836d20191107579a6df1453d4ad508a2cc72068d04019",
+  "functions": [
+    "approval_readiness_dry_run",
+    "synthetic_approval_transaction"
+  ],
+  "schema": "SkillV2Pair1CorrectedATwoPhaseStopStateBindingV1",
+  "source": {
+    "bytes": 40011,
+    "path": "tools/canary/skill_v2_pair1_corrected_a_approval_binding_closure.py",
+    "sha256": "02a648d4e2830987c3e2763229eb0c73bf98c10f55d767b75984f93f86b6284b"
+  },
+  "version": 1
+}

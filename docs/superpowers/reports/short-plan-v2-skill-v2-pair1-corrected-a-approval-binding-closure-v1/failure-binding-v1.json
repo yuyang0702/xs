@@ -1,0 +1,5 @@
+{
+  "first_blocker": "APPROVAL_PARENT_HEAD_MISSING",
+  "gate": "SKILL_V2_BOUNDED_REPEATED_AB_PAIR_1_CORRECTED_A_ARM_FRESH_USER_APPROVAL_NO_GO",
+  "root_cause": "fixture-only v2 builder omitted the approval authority graph"
+}

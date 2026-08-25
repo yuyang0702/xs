@@ -1,0 +1,12 @@
+{
+  "credentials_persisted": false,
+  "files_scanned": 8,
+  "matches": [],
+  "overall_status": "exact",
+  "privacy_match_count": 0,
+  "privacy_receipt_definition_sha256": "900eecbcab8e8dfd9b74bc18f3ceb00a5f6b3df29c0725cce52e1848e988a319",
+  "raw_prompt_persisted": false,
+  "scan_scope": "immutable JSON packet inputs; source files are hash-bound but excluded because detector literals self-match",
+  "schema": "SkillV2Pair1CorrectedAV3PrivacyReceiptV1",
+  "version": 1
+}

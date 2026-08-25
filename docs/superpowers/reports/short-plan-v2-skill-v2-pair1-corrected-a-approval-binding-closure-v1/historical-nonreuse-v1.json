@@ -1,0 +1,9 @@
+{
+  "old_a_output_reuse_allowed": false,
+  "old_a_sample_valid_for_ab_comparison": false,
+  "old_approval_reuse_allowed": false,
+  "old_invalid_pair1_a_execution_status": "TERMINAL_VALIDATION_REJECTED",
+  "old_nonce_consumed": true,
+  "old_nonce_reuse_allowed": false,
+  "old_packet_reuse_allowed": false
+}

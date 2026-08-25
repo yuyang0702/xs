@@ -1,0 +1,15 @@
+{
+  "adjacent": "26 passed",
+  "external_actions": {
+    "credential_lookup_count": 0,
+    "http_post_attempts": 0,
+    "model_calls": 0,
+    "network_calls": 0,
+    "paid_calls": 0,
+    "real_provider_client_creation_count": 0,
+    "real_provider_request_attempts": 0
+  },
+  "focused": "5 passed",
+  "full_suite": "INTERRUPTED_AT_7_PERCENT_AFTER_PREEXISTING_HISTORICAL_STATE_FAILURE",
+  "strict_l3": "PASS warnings=0 blockers=0"
+}

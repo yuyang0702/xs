@@ -1,0 +1,10 @@
+{
+  "approval_parent_head": "b2d105e944cf99925835961941eaf04fdf3a1a18",
+  "changed_paths": [
+    "tests/canary/test_skill_v2_pair1_corrected_a_approval_binding_closure.py",
+    "tools/canary/skill_v2_pair1_corrected_a_approval_binding_closure.py"
+  ],
+  "current_head_inferred": false,
+  "source_policy": "explicit caller-supplied implementation successor of frozen baseline; exact diff is the v3 materializer and its focused test only",
+  "status": "PASS"
+}

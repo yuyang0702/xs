@@ -1,0 +1,15 @@
+{
+  "binding_explicit": true,
+  "binding_sha256": "4ca855a102f05dee7a62540eb3b993786babe38aa2fdcbafa3ca78687fdb31f0",
+  "functions": [
+    "_json_safe",
+    "execute_authorized_once_v5"
+  ],
+  "schema": "SkillV2Pair1CorrectedAAuditSerializationBindingV1",
+  "source": {
+    "bytes": 60775,
+    "path": "tools/canary/slice1_phase_b_current_skill.py",
+    "sha256": "0b1607c53123aa000781010a8e21ca5f816d7fffd720d874227681ee65755a54"
+  },
+  "version": 1
+}

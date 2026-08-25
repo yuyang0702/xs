@@ -1,0 +1,19 @@
+{
+  "application_second_dispatch_allowed": false,
+  "binding_sha256": "a2658c27416eb7287e2da2d57da15943f0b355ef14cc6c332dba78a8871a0c98",
+  "hard_max_http_post_attempts": 1,
+  "hard_max_model_calls": 1,
+  "hard_max_network_request_attempts": 1,
+  "hard_max_real_provider_request_attempts": 1,
+  "route_fallback_after_dispatch_allowed": false,
+  "sdk_retries_disabled": true,
+  "source": {
+    "bytes": 1925,
+    "path": "docs/superpowers/reports/short-plan-v2-slice1-phase-b-skill-v2-materialization-v4/skill-v2-b-arm-transport-guard-binding-v1.json",
+    "sha256": "e05905afe7c726febb86c7df1abd88821359a47158203c2828de1df55e176b11"
+  },
+  "transport_guard_sha256": "9b40e09f83a130eab8ac410ff705d020b7923748e423c440912ffd7d74fa829d",
+  "transport_policy_definition_sha256": "c5d6166cfd262d86e9a7efa854d8c27ff4274f50fee7061833361435d103735d",
+  "transport_request_retries_disabled": true,
+  "unknown_guard_state_fails_closed": true
+}
