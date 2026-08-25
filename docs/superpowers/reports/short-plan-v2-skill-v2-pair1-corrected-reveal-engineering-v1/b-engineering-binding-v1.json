@@ -1,0 +1,55 @@
+{
+  "schema": "SkillV2Pair1ArmEngineeringBindingV1",
+  "version": 1,
+  "arm": "B",
+  "skill_identity": "RESTORED_SKILL_V2",
+  "execution_evidence_head": "214cd27e6e8c06b1a1190678edf43bb44d60016c",
+  "execution_manifest_file_sha256": "7368eafdb07a9b2d07fdd1abe95de60b8cba0da0520ba5214f31e621508b8a58",
+  "execution_manifest_definition_sha256": "3edd73fa9562b3a48c73fb221829f73a833c62cc94d1665f639d134b200954ee",
+  "execution_manifest_status": "exact",
+  "artifact_sha256": "1dd0e31dcf01bc369cf8cee1865ae1fffdb4ad890bb1d726482048755037dc69",
+  "pair_lock_sha256": "31ed7f57374c99b90a5271b44655489661a4bbc70f0ed6363c154f4d55163d80",
+  "execution_integrity": {
+    "model_logical_calls": 1,
+    "real_provider_request_attempts": 1,
+    "http_post_attempts": 1,
+    "network_request_attempts": 1,
+    "retry_attempts": 0,
+    "fallback_attempts": 0,
+    "route_switch_attempts": 0,
+    "resume_attempts": 0,
+    "second_dispatch_attempts": 0,
+    "single_dispatch_transport_guard": "PASS"
+  },
+  "local_success_tail": {
+    "parse_conversion": "PASS",
+    "authority_normalization": "PASS",
+    "event_realization_validation": "PASS",
+    "artifact_schema_validation": "PASS",
+    "artifact_frozen": true,
+    "audit_serialization": "PASS",
+    "output_isolation": "PASS",
+    "artifact_persistence": "PASS"
+  },
+  "authority_mutation": {
+    "story_state_mutations": 0,
+    "canon_mutations": 0,
+    "ready_mutations": 0,
+    "production_authority": false
+  },
+  "provider_runtime": {
+    "finish_reason": "UNKNOWN_NOT_PERSISTED",
+    "requested_output_cap": 4624,
+    "effective_output_cap": "UNKNOWN_NOT_PERSISTED",
+    "provider_input_tokens": "UNKNOWN_NOT_PERSISTED",
+    "provider_output_tokens": "UNKNOWN_NOT_PERSISTED",
+    "elapsed_time": "UNKNOWN_NOT_PERSISTED",
+    "actual_cost": "UNKNOWN_NOT_PERSISTED",
+    "route_fingerprint": "30e9cbaf86fbb4b89b43614d71cc11b359ad41e7411e8ebda5d3ce4199879bf0"
+  },
+  "context_input": {
+    "skill_context_char_count": 2742,
+    "skill_context_sha256": "e7828db2dc18eceabe06b9d1068b2683d117617fb0bd1257a26e7747fbe02772",
+    "estimated_model_input_tokens": "UNKNOWN_NO_EXACT_SEALED_EXECUTION_VALUE"
+  }
+}

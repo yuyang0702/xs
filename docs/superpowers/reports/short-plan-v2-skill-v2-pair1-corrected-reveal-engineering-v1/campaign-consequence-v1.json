@@ -1,0 +1,15 @@
+{
+  "schema": "SkillV2Pair1CampaignConsequenceV1",
+  "version": 1,
+  "pair1_complete": true,
+  "pair1_pass": false,
+  "campaign_continue": "NO",
+  "campaign_stop_reason": "PAIR_NO_GO_QUALITY_REGRESSION",
+  "pair2_to_5_remain_blocked": true,
+  "pair2_to_5_execution_allowed": false,
+  "skill_v2_production_cutover_authorized": false,
+  "planning_v2_production_cutover_authorized": false,
+  "full_short_canary": "NOT_EXECUTED",
+  "generalized_production_non_inferiority": "NOT_YET_PROVEN",
+  "exact_next_gate": "SKILL_V2_BOUNDED_REPEATED_AB_PAIR_1_CORRECTED_QUALITY_REGRESSION_ROOT_CAUSE"
+}

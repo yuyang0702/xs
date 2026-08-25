@@ -1,0 +1,33 @@
+{
+  "schema": "SkillV2Pair1RevealEngineeringChangeContractV1",
+  "version": 1,
+  "requested_outcome": "Reveal the already-sealed X/Y mapping after blind freeze, mechanically translate the frozen judgments, evaluate sealed engineering evidence, and emit the corrected Pair 1 disposition.",
+  "scope_classification": "closed_world",
+  "authorization": "implementation_evidence_only",
+  "operational_definition": "One deterministic transform and comparison over the exact sealed Pair 1 artifacts, frozen blind judgment, criticality policy, mapping, and engineering receipts.",
+  "forbidden_narrowing": "No literary re-scoring, no evidence mutation, no real call, no Pair 2-5 execution, and no production cutover.",
+  "allowed_changes": [
+    "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-corrected-reveal-engineering-v1/**"
+  ],
+  "protected_unchanged_behavior": [
+    "src/**",
+    "baml_src/**",
+    "A and B artifacts",
+    "frozen blind judgment files",
+    "Current Skill",
+    "Restored Skill V2",
+    "Prompt, fixture, validator, launcher",
+    "Pair 2-5 state"
+  ],
+  "authority_impact": "read_only",
+  "rollback_path": "Revert the single evidence-only commit; all sealed parent evidence and production behavior remain unchanged.",
+  "focused_tests": [
+    "blind manifest and SHA verification",
+    "pure mapping transform verification",
+    "A/B engineering manifest verification",
+    "post-reveal freeze hash verification"
+  ],
+  "full_suite_requirement": "NOT_APPLICABLE_DOCS_ONLY_NO_SOURCE_OR_RUNTIME_CHANGE",
+  "resolution_status": "case_fixed",
+  "unresolved_user_decisions": []
+}

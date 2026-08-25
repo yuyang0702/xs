@@ -1,0 +1,12 @@
+{
+  "schema": "SkillV2Pair1RevealEngineeringManifestDefinitionV1",
+  "version": 1,
+  "hash_algorithm": "SHA-256",
+  "encoding": "UTF-8",
+  "canonical_line_ending": "LF",
+  "coverage_root": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-corrected-reveal-engineering-v1",
+  "path_basis": "RELATIVE_TO_COVERAGE_ROOT_WITH_FORWARD_SLASHES",
+  "self_excluded": true,
+  "runtime_database_excluded": true,
+  "coverage_rule": "ALL_REGULAR_FILES_UNDER_COVERAGE_ROOT_EXCEPT_SHA256_MANIFEST_ITSELF"
+}

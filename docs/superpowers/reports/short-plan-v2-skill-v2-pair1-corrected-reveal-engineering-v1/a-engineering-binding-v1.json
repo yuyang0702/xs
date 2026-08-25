@@ -1,0 +1,55 @@
+{
+  "schema": "SkillV2Pair1ArmEngineeringBindingV1",
+  "version": 1,
+  "arm": "A",
+  "skill_identity": "CURRENT_RUNTIME_SKILL",
+  "execution_evidence_head": "2d97d2a47e80ef5289ee066fac592deaa896590d",
+  "execution_manifest_file_sha256": "d210322f8e0314ae5a9841300faf0e5ea492732f08e21eb516c1f8ff32567796",
+  "execution_manifest_definition_sha256": "aa35d22c71bf833883e239863cd1bbcd217adadcbcc8d4be54c219c571182489",
+  "execution_manifest_status": "exact",
+  "artifact_sha256": "f6aa5c49d64f38aefe71b01fc9eb0abf2ea3a08faba6f5bc3dbcb38c665e3f8f",
+  "pair_lock_sha256": "31ed7f57374c99b90a5271b44655489661a4bbc70f0ed6363c154f4d55163d80",
+  "execution_integrity": {
+    "model_logical_calls": 1,
+    "real_provider_request_attempts": 1,
+    "http_post_attempts": 1,
+    "network_request_attempts": 1,
+    "retry_attempts": 0,
+    "fallback_attempts": 0,
+    "route_switch_attempts": "UNKNOWN_NOT_PERSISTED",
+    "resume_attempts": 0,
+    "second_dispatch_attempts": 0,
+    "single_dispatch_transport_guard": "PASS"
+  },
+  "local_success_tail": {
+    "parse_conversion": "PASS",
+    "authority_normalization": "PASS",
+    "event_realization_validation": "PASS",
+    "artifact_schema_validation": "PASS",
+    "artifact_frozen": true,
+    "audit_serialization": "PASS",
+    "output_isolation": "PASS",
+    "artifact_persistence": "PASS"
+  },
+  "authority_mutation": {
+    "story_state_mutations": 0,
+    "canon_mutations": 0,
+    "ready_mutations": 0,
+    "production_authority": false
+  },
+  "provider_runtime": {
+    "finish_reason": "UNKNOWN_NOT_PERSISTED",
+    "requested_output_cap": 4624,
+    "effective_output_cap": "UNKNOWN_NOT_PERSISTED",
+    "provider_input_tokens": "UNKNOWN_NOT_PERSISTED",
+    "provider_output_tokens": "UNKNOWN_NOT_PERSISTED",
+    "elapsed_time": "UNKNOWN_NOT_PERSISTED",
+    "actual_cost": "UNKNOWN_NOT_PERSISTED",
+    "route_fingerprint": "30e9cbaf86fbb4b89b43614d71cc11b359ad41e7411e8ebda5d3ce4199879bf0"
+  },
+  "context_input": {
+    "skill_context_char_count": 8927,
+    "skill_context_sha256": "c7916de36e67f380f2e10f30f169bcdbe04440cc8bd01bbf2626d26a7cdf49b7",
+    "estimated_model_input_tokens": "UNKNOWN_NO_EXACT_SEALED_EXECUTION_VALUE"
+  }
+}

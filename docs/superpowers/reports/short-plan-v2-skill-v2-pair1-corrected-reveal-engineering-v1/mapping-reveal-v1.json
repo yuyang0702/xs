@@ -1,0 +1,17 @@
+{
+  "schema": "SkillV2Pair1BlindMappingRevealV1",
+  "version": 1,
+  "x_identity": {
+    "arm": "A",
+    "skill_identity": "CURRENT_RUNTIME_SKILL",
+    "artifact_sha256": "f6aa5c49d64f38aefe71b01fc9eb0abf2ea3a08faba6f5bc3dbcb38c665e3f8f"
+  },
+  "y_identity": {
+    "arm": "B",
+    "skill_identity": "RESTORED_SKILL_V2",
+    "artifact_sha256": "1dd0e31dcf01bc369cf8cee1865ae1fffdb4ad890bb1d726482048755037dc69"
+  },
+  "x_not_equal_y": true,
+  "mapping_revealed_after_blind_judgment_freeze": true,
+  "post_reveal_narrative_rescoring": false
+}

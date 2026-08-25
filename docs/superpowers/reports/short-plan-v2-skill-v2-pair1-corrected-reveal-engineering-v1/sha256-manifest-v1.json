@@ -1,0 +1,31 @@
+{
+  "schema": "SkillV2Pair1RevealEngineeringSha256ManifestV1",
+  "version": 1,
+  "manifest_definition_sha256": "05430ea9169aa4ada9f05eb9b9ee9faf443d182d936f129eba2c7f1ad4b1da1a",
+  "hash_algorithm": "SHA-256",
+  "canonical_line_ending": "LF",
+  "self_excluded": true,
+  "entry_count": 18,
+  "files": [
+    {"path": ".gitattributes", "bytes": 14, "sha256": "a79691a93b46e49ce460c26ef22afcc03d6eca1e63bf2edbc20e96159510f6c9"},
+    {"path": "README.md", "bytes": 636, "sha256": "b22545cf8b284a650ce3378d91f92d05b0deee83f07a901d672acfdcb5da9d8b"},
+    {"path": "a-engineering-binding-v1.json", "bytes": 2174, "sha256": "2473b20bbc239f227ccad03f64bcafc6551604617e2747ab4d1395e75846e0d6"},
+    {"path": "b-engineering-binding-v1.json", "bytes": 2148, "sha256": "e737e70b12027227426994c4294351fa070930bb93118cc1e7b7778eac5c678c"},
+    {"path": "blind-freeze-binding-v1.json", "bytes": 1224, "sha256": "67be4ce73b03f93e7e73d80b612f87d86f199acfbc220f4013b1e479c26b5922"},
+    {"path": "campaign-consequence-v1.json", "bytes": 589, "sha256": "cc5ac7e5cf0589ede3bd026f24fb48ebf5485874cea59fe5a290fa256fe90e9c"},
+    {"path": "change-contract-v1.json", "bytes": 1603, "sha256": "384f5cf264c0af33d413c789a829bdb6cbd5be87399b29c63fb00db23129e67d"},
+    {"path": "criticality-policy-binding-v1.json", "bytes": 1209, "sha256": "1fc7854796a29246a6ed0122eae0f71dbcab25221c44ae3be3c8bd8296b84cf2"},
+    {"path": "engineering-comparison-v1.json", "bytes": 1311, "sha256": "6f518d263bdb8ea9519b6488951a9837b4e6f1ea0b35bdc8e429a5b1cb614a04"},
+    {"path": "final-report-v1.md", "bytes": 4609, "sha256": "11415f87dc845b215cee9267dd3017ddbca42f47f0415926672dc57d52c1132c"},
+    {"path": "manifest-definition-v1.json", "bytes": 497, "sha256": "05430ea9169aa4ada9f05eb9b9ee9faf443d182d936f129eba2c7f1ad4b1da1a"},
+    {"path": "mapping-reveal-v1.json", "bytes": 540, "sha256": "0051d65726937637bdd9de91f21b31616b42b655813eadf5eb57fa6a2a93df09"},
+    {"path": "narrative-dimension-comparison-revealed-v1.json", "bytes": 4381, "sha256": "38ea56efd6f2f8c1ef7f98254d9534b14535605ead885683ed42732d1bae6e62"},
+    {"path": "narrative-non-inferiority-revealed-v1.json", "bytes": 697, "sha256": "63ba8c703def11e83e59185092b4043660f9bc996420007b3f4cae9fcb7bc866"},
+    {"path": "pair-disposition-v1.json", "bytes": 603, "sha256": "dc351584cb487805b8f11cc9f93aedf6352f4e6c77a64dc9482d367db8307e5f"},
+    {"path": "post-reveal-freeze-integrity-v1.json", "bytes": 910, "sha256": "51eacef5d2ea3cebb6274fcca6354f0dd7ecac5cce3545cd9e4c30ea5bb1d0d2"},
+    {"path": "privacy-scan-v1.json", "bytes": 448, "sha256": "30c613b5ad90ed3a701779f8efb640560a24ed7b0ad2f242ac6870a1f17fa9e1"},
+    {"path": "private-mapping-binding-v1.json", "bytes": 714, "sha256": "5fb8930d5e833283e715bb66764694bb64617a79e6b433cca994faf242b2860b"}
+  ],
+  "coverage": "exact",
+  "overall_status": "exact"
+}

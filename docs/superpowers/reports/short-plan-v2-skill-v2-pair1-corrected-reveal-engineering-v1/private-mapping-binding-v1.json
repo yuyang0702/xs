@@ -1,0 +1,13 @@
+{
+  "schema": "SkillV2Pair1PrivateMappingBindingV1",
+  "version": 1,
+  "private_mapping_file_sha256": "3b92163362e00b6f6f12c2e0cf5c51fb3add89de188c5cf7ee976ae4b57f52f9",
+  "mapping_derivation_file_sha256": "2ca52b8f4df86542ba9135eb92b44e9243a672b78582de8ae9c2d7470b0734d3",
+  "a_artifact_sha256": "f6aa5c49d64f38aefe71b01fc9eb0abf2ea3a08faba6f5bc3dbcb38c665e3f8f",
+  "b_artifact_sha256": "1dd0e31dcf01bc369cf8cee1865ae1fffdb4ad890bb1d726482048755037dc69",
+  "mapping_derivation_digest_sha256": "17bd5633d4a27c55c1ee2f1d85063cc85c1b39fb8fbdcac76b9de2d1e6133480",
+  "mapping_bit": 0,
+  "mapping_derivation": "PASS",
+  "mapping_source_artifacts_match": true,
+  "mapping_read_only_after_blind_freeze_verified": true
+}

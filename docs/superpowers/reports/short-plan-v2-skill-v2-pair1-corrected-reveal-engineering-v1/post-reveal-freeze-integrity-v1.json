@@ -1,0 +1,18 @@
+{
+  "schema": "SkillV2Pair1PostRevealFreezeIntegrityV1",
+  "version": 1,
+  "pre_reveal": {
+    "blind_dimension_judgments_sha256": "9685e0fea67b21ff84c937146fea123ff8682728125e9adbb1e4d6c8ff72d917",
+    "blind_review_summary_sha256": "bd22b261ebe84638fd3864c8cd6195c43a03bbabe458a030ab4d4fc930acef22",
+    "blind_freeze_receipt_sha256": "7154adab7bde0970aee5a16d764c4269496039b9c8e23542c55de547198d884f"
+  },
+  "post_reveal": {
+    "blind_dimension_judgments_sha256": "9685e0fea67b21ff84c937146fea123ff8682728125e9adbb1e4d6c8ff72d917",
+    "blind_review_summary_sha256": "bd22b261ebe84638fd3864c8cd6195c43a03bbabe458a030ab4d4fc930acef22",
+    "blind_freeze_receipt_sha256": "7154adab7bde0970aee5a16d764c4269496039b9c8e23542c55de547198d884f"
+  },
+  "blind_output_git_diff_count": 0,
+  "blind_judgment_files_mutated_after_reveal": false,
+  "post_reveal_narrative_rescoring": false,
+  "overall_status": "exact"
+}

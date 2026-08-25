@@ -1,0 +1,34 @@
+{
+  "schema": "SkillV2Pair1CriticalityPolicyBindingV1",
+  "version": 1,
+  "pair_case_id": "restored-character-heavy-v2",
+  "creative_demand_class": "character-heavy",
+  "policy_commit": "d0a5287fc1d7a1b0d78390d92a53594a7c2af2e4",
+  "criticality_policy_file_sha256": "46a90e5e60cc8977eff96d822122ddecd80ef1fe455973cc6bc745ac5625403b",
+  "pair1_resolution_file_sha256": "1771121f38882dbc3693e717c13cb17b366d02e63b14e0dfb02c2ffeacff0b0e",
+  "narrative_non_inferiority_rule_file_sha256": "cbd8fee2d2be718b2abd40b31fee523efb12c7a4a10a5592e4e26163623c71ec",
+  "dimension_count": 16,
+  "critical_dimensions": [
+    "event_causal_fidelity",
+    "character_motivation",
+    "character_voice",
+    "relationship_logic",
+    "subtext_dramatization",
+    "draft_intent_handoff",
+    "template_flattening_risk",
+    "authority_correctness",
+    "untargeted_creative_mutation"
+  ],
+  "noncritical_dimensions": [
+    "world_specificity",
+    "sensory_realization",
+    "conflict_pacing",
+    "setup_payoff_dependency",
+    "pov",
+    "tense",
+    "tone_genre"
+  ],
+  "criticality_policy_derived_from_pair1_outcome": false,
+  "policy_sealed_before_blind_view_materialization": true,
+  "policy_modified_after_reveal": false
+}

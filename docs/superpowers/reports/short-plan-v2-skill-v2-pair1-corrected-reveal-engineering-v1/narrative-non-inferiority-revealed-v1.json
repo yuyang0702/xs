@@ -1,0 +1,19 @@
+{
+  "schema": "SkillV2Pair1NarrativeNonInferiorityRevealedV1",
+  "version": 1,
+  "treatment_arm": "B",
+  "reference_arm": "A",
+  "sealed_rule_file_sha256": "cbd8fee2d2be718b2abd40b31fee523efb12c7a4a10a5592e4e26163623c71ec",
+  "b_critical_regression_count": 6,
+  "b_noncritical_regression_count": 4,
+  "b_critical_better_count": 1,
+  "b_noncritical_better_count": 1,
+  "equivalent_count": 4,
+  "critical_inconclusive_count": 0,
+  "noncritical_inconclusive_count": 0,
+  "decision_path": "ANY_APPLICABLE_CRITICAL_DIMENSION_IS_A_BETTER",
+  "narrative_non_inferior": "NO",
+  "scalar_score_used": false,
+  "token_or_context_efficiency_override_used": false,
+  "post_reveal_narrative_rescoring": false
+}

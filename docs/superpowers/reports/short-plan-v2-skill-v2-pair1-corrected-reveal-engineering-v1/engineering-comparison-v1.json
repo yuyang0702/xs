@@ -1,0 +1,31 @@
+{
+  "schema": "SkillV2Pair1EngineeringComparisonV1",
+  "version": 1,
+  "engineering_policy_file_sha256": "6bc62e72e1eddc2a962abbae608c5f99b5dfc1b4faf80d6bd90c1bc8a6e7926f",
+  "engineering_rubric_identity": "f33e782e51e0bf46a6a6285df7010502e7d9d11ebc45ec8d4757b7b1dc1dacf4",
+  "ab_lock_result": "exact",
+  "hard_contract_comparison": {
+    "single_dispatch": "EQUIVALENT_PASS",
+    "retry_fallback_resume_second_dispatch": "EQUIVALENT_PASS",
+    "parse_conversion": "EQUIVALENT_PASS",
+    "authority_normalization": "EQUIVALENT_PASS",
+    "event_realization_validation": "EQUIVALENT_PASS",
+    "artifact_schema_freeze_persistence": "EQUIVALENT_PASS",
+    "audit_and_output_isolation": "EQUIVALENT_PASS",
+    "story_state_canon_ready_mutation": "EQUIVALENT_ZERO",
+    "production_authority": "EQUIVALENT_FALSE"
+  },
+  "descriptive_efficiency": {
+    "a_skill_context_char_count": 8927,
+    "b_skill_context_char_count": 2742,
+    "context_char_delta_b_minus_a": -6185,
+    "efficiency_is_required_win": false,
+    "provider_input_tokens": "UNKNOWN_BOTH_ARMS",
+    "provider_output_tokens": "UNKNOWN_BOTH_ARMS",
+    "elapsed_time": "UNKNOWN_BOTH_ARMS",
+    "actual_cost": "UNKNOWN_BOTH_ARMS"
+  },
+  "b_hard_regression_count": 0,
+  "engineering_non_inferior": "YES",
+  "unknown_values_preserved_as_unknown": true
+}

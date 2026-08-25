@@ -1,0 +1,22 @@
+{
+  "schema": "SkillV2Pair1BlindFreezeBindingV1",
+  "version": 1,
+  "baseline_head": "2a356544b1cbc5dc3b1f374334aa80c60a9fadef",
+  "blind_evaluation_commit": "2a356544b1cbc5dc3b1f374334aa80c60a9fadef",
+  "blind_judgment_frozen": true,
+  "mapping_read_before_freeze": false,
+  "private_mapping_read_before_freeze": false,
+  "engineering_metrics_read_before_freeze": false,
+  "repository_outside_bundle_read_before_freeze": false,
+  "a_b_identity_revealed_before_freeze": false,
+  "blind_output_identity_leak_count": 0,
+  "blind_dimension_judgments_sha256": "9685e0fea67b21ff84c937146fea123ff8682728125e9adbb1e4d6c8ff72d917",
+  "blind_review_summary_sha256": "bd22b261ebe84638fd3864c8cd6195c43a03bbabe458a030ab4d4fc930acef22",
+  "blind_freeze_receipt_sha256": "7154adab7bde0970aee5a16d764c4269496039b9c8e23542c55de547198d884f",
+  "blind_manifest_file_sha256": "7df90cde95d541eb2ee51b0ed0ea560bccab90841a82f6d2cddee8e527a4d51d",
+  "x_view_sha256": "4a121357cf1e0dab60efd6e87cb3b631edadfc3ead1eead688d6c19c7e0ca622",
+  "y_view_sha256": "ad8a4e348542dc5cc25e4daac153c8226ece5b91d13eb2e4a75e07bcfa5328d2",
+  "policy_before_bundle": true,
+  "bundle_before_blind_freeze": true,
+  "freeze_integrity_before_mapping_reveal": "exact"
+}

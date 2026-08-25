@@ -1,0 +1,15 @@
+{
+  "schema": "SkillV2Pair1RevealEngineeringPrivacyScanV1",
+  "version": 1,
+  "credential_value_count": 0,
+  "authorization_header_count": 0,
+  "secret_provider_url_count": 0,
+  "raw_provider_payload_count": 0,
+  "raw_provider_reasoning_count": 0,
+  "raw_prompt_count": 0,
+  "duplicated_full_a_b_prose_count": 0,
+  "absolute_machine_path_count": 0,
+  "privacy_match_count": 0,
+  "historical_evidence_rewrite_count": 0,
+  "overall_status": "PASS"
+}
