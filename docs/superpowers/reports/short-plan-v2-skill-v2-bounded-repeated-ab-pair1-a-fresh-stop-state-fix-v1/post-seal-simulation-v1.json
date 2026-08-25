@@ -1,0 +1,9 @@
+{
+  "campaign_decision_after": "CONTINUE_ALLOWED",
+  "post_seal_evidence_only_successor_check_required": true,
+  "post_seal_final_head_equal_receipt_head_required": false,
+  "post_seal_signed_preflight_with_fresh_receipt": "PASS",
+  "pre_seal_signed_preflight": "PASS",
+  "schema": "SkillV2Pair1APostSealSimulationV1",
+  "version": 1
+}

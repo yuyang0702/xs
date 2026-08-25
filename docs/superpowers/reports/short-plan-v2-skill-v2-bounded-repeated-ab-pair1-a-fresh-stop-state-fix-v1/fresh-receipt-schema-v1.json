@@ -1,0 +1,22 @@
+{
+  "arbitrary_receipt_path_allowed": false,
+  "canonical_receipt_path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-pair1-a-fresh-stop-state-fix-v1/approval/approval-time-stop-state-receipt-v1.json",
+  "receipt_schema": "SkillV2Pair1AApprovalTimeSignedPreflightStopStateV1",
+  "recomputed_not_trusted": true,
+  "required_bindings": [
+    "approval_id",
+    "approval_parent_head",
+    "approval_evidence_root",
+    "successor_packet_sha256",
+    "pair_case_id",
+    "arm_role",
+    "scope",
+    "cohort_id",
+    "campaign_plan_sha256",
+    "campaign_decision_rule_sha256",
+    "stop_state_evaluator_source_sha256",
+    "discovered_campaign_state_set_sha256"
+  ],
+  "schema": "SkillV2Pair1AFreshReceiptSchemaV1",
+  "version": 1
+}

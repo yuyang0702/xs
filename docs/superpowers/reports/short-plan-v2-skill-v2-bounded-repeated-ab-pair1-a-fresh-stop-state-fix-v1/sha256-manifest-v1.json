@@ -1,0 +1,112 @@
+{
+  "coverage": "all files except manifest itself",
+  "coverage_root": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-pair1-a-fresh-stop-state-fix-v1",
+  "definition_sha256": "6a2daf084a99823c8b513645a2cba35d4fbb61ef7d7947aa383844128c67961d",
+  "entry_count": 20,
+  "files": [
+    {
+      "bytes": 14,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-pair1-a-fresh-stop-state-fix-v1/.gitattributes",
+      "sha256": "a79691a93b46e49ce460c26ef22afcc03d6eca1e63bf2edbc20e96159510f6c9"
+    },
+    {
+      "bytes": 218,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-pair1-a-fresh-stop-state-fix-v1/README.md",
+      "sha256": "91ded87841ad347bee34c6654c71b62d48fc6b687ec3fcdea5318dd4ca3daa3c"
+    },
+    {
+      "bytes": 718,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-pair1-a-fresh-stop-state-fix-v1/approval-readiness-dry-run-v3.json",
+      "sha256": "4f0e80dd94f63053f6c3e2dffe297fb917666c1739610ae9689631b4432c9b61"
+    },
+    {
+      "bytes": 763,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-pair1-a-fresh-stop-state-fix-v1/approval-receipt-binding-dag-v1.json",
+      "sha256": "9911460de97a1a10aad75f01b573da6d0cdf57b64416d466c4756bc83b6706b4"
+    },
+    {
+      "bytes": 389,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-pair1-a-fresh-stop-state-fix-v1/current-validation-graph-v1.json",
+      "sha256": "6a94e1bd8826e51b5fe66a1811dd368660fc841e1248832b6277567bf495dec0"
+    },
+    {
+      "bytes": 510,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-pair1-a-fresh-stop-state-fix-v1/failure-root-cause-v1.json",
+      "sha256": "635f41d86415584c4c38ab8a59a65525ede0a7e276686abae72142724136fb7b"
+    },
+    {
+      "bytes": 4998,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-pair1-a-fresh-stop-state-fix-v1/final-report-v1.md",
+      "sha256": "1d531442dad5660d619ccbce5a33f00dbade5f7b4694189df1ae9660f9e297fb"
+    },
+    {
+      "bytes": 755,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-pair1-a-fresh-stop-state-fix-v1/fresh-receipt-schema-v1.json",
+      "sha256": "7afb8a73fe3a4726a512c1cd80609a79aa88dd75a7635cb99e4df182d4aba1cf"
+    },
+    {
+      "bytes": 1587,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-pair1-a-fresh-stop-state-fix-v1/head-successor-parity-v1.json",
+      "sha256": "7883e3de994ea0170f9bc5b233ddf1867efe9501d3f4fd6a0f6c7dac4bc945bd"
+    },
+    {
+      "bytes": 986,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-pair1-a-fresh-stop-state-fix-v1/historical-root-parity-v1.json",
+      "sha256": "a514da530956de07e35b80361546fe564136f72189dcf04ecdcfc50f3738ee64"
+    },
+    {
+      "bytes": 3124,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-pair1-a-fresh-stop-state-fix-v1/negative-matrix-v1.json",
+      "sha256": "4661ffc8461ec121cc04129412c1a37c7e3a3817bd2c952fd47d054ce834cd98"
+    },
+    {
+      "bytes": 1356,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-pair1-a-fresh-stop-state-fix-v1/pair1-a-successor-ab-lock-v1.json",
+      "sha256": "72bde2a7c4f03aa7be6421018933e405b5f8b24bd2761506b4aa4fdf32189c75"
+    },
+    {
+      "bytes": 7748,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-pair1-a-fresh-stop-state-fix-v1/pair1-a-successor-packet-v3.json",
+      "sha256": "2bcd326b1a88d8c93154fbc412dfe62d41cc8f2ec13282c70bd082c1e056386a"
+    },
+    {
+      "bytes": 629,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-pair1-a-fresh-stop-state-fix-v1/positive-transaction-test-v1.json",
+      "sha256": "1e769a5c97d6e151291bfc73c535ae39c465eca874d1a9d4ab9260ba1c082f0c"
+    },
+    {
+      "bytes": 336,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-pair1-a-fresh-stop-state-fix-v1/post-seal-simulation-v1.json",
+      "sha256": "d1596347bac2a3a160e3dfdb14686fa5957449c419b076bc802a91e5bb0ec106"
+    },
+    {
+      "bytes": 563,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-pair1-a-fresh-stop-state-fix-v1/privacy-scan-v1.json",
+      "sha256": "e7c0718c7e9d2940bf37dee1d4f310b30d9f89e375057fee15de9f2c0c1e9867"
+    },
+    {
+      "bytes": 387,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-pair1-a-fresh-stop-state-fix-v1/source-diff-scope-v1.json",
+      "sha256": "6eeb435634acf9b036015ce420edfd431cb0707693c46236227468ba2828380c"
+    },
+    {
+      "bytes": 1465,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-pair1-a-fresh-stop-state-fix-v1/stop-state-evaluator-binding-v1.json",
+      "sha256": "c7be8bea5ccc735936f2680753cbcc757e8a16fc0149e2895c2703c5f25b935b"
+    },
+    {
+      "bytes": 476,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-pair1-a-fresh-stop-state-fix-v1/two-phase-stop-state-contract-v1.json",
+      "sha256": "8f108c8ad9cbac359e80da64865743ca552e0d3655de7f7d4addaa3e22efd424"
+    },
+    {
+      "bytes": 1595,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-pair1-a-fresh-stop-state-fix-v1/validator-source-binding-v1.json",
+      "sha256": "ee677d93df89204b5155c98a5dc711a8f1043c3b258e82304c0328c814239b9d"
+    }
+  ],
+  "overall_status": "exact",
+  "schema": "SkillV2Pair1AFreshStopStateSHA256ManifestV1",
+  "self_excluded": true,
+  "version": 1
+}

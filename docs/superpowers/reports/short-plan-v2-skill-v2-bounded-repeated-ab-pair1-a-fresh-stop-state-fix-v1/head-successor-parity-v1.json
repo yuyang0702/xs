@@ -1,0 +1,27 @@
+{
+  "arbitrary_roots_rejected": true,
+  "binding": {
+    "ancestry_failure_terminates_immediately": true,
+    "binding_explicit": true,
+    "credential_capable_imports_after_validator": true,
+    "git_diff_after_ancestry_failure": false,
+    "head_successor_validator_binding_explicit": true,
+    "head_successor_validator_binding_sha256": "11b6ed623c4036d7ad0c76da610643f7c43e24a05465c3d4a6f0bb71be1119e9",
+    "head_successor_validator_path": "tools/canary/skill_v2_bounded_repeated_ab_pair1_a.py",
+    "head_successor_validator_source_sha256": "9d39a208967b46355af2fabf0c058da42e70942e28a4e47fc53b1a2aa37475d8",
+    "raw_subprocess_error_leaked": false,
+    "schema": "SkillV2Pair1AHeadSuccessorValidatorBindingV1",
+    "validation_contract": "SKILL_V2_BOUNDED_REPEATED_AB_PAIR1_A_HEAD_SUCCESSOR_V1",
+    "validator_binding_sha256": "11b6ed623c4036d7ad0c76da610643f7c43e24a05465c3d4a6f0bb71be1119e9",
+    "validator_function": "validate_approval_head_successor",
+    "validator_path": "tools/canary/skill_v2_bounded_repeated_ab_pair1_a.py",
+    "validator_source_sha256": "9d39a208967b46355af2fabf0c058da42e70942e28a4e47fc53b1a2aa37475d8",
+    "version": 1
+  },
+  "fresh_approval_root": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-pair1-a-fresh-stop-state-fix-v1/approval",
+  "fresh_materialization_root": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-pair1-a-fresh-stop-state-fix-v1",
+  "no_git_diff_after_ancestry_failure": true,
+  "schema": "SkillV2Pair1AHeadSuccessorParityV1",
+  "typed_ancestry_fail_close": true,
+  "version": 1
+}

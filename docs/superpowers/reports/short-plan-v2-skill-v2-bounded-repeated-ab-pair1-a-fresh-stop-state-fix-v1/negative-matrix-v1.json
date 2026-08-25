@@ -1,0 +1,118 @@
+{
+  "all_rejected_before_external_action": true,
+  "case_count": 25,
+  "cases": [
+    {
+      "case": "old_phase_a_receipt",
+      "status": "REJECTED_BEFORE_NONCE_OR_EXTERNAL_ACTION"
+    },
+    {
+      "case": "missing_fresh_receipt",
+      "status": "REJECTED_BEFORE_NONCE_OR_EXTERNAL_ACTION"
+    },
+    {
+      "case": "wrong_receipt_sha",
+      "status": "REJECTED_BEFORE_NONCE_OR_EXTERNAL_ACTION"
+    },
+    {
+      "case": "forged_continue",
+      "status": "REJECTED_BEFORE_NONCE_OR_EXTERNAL_ACTION"
+    },
+    {
+      "case": "wrong_evaluator",
+      "status": "REJECTED_BEFORE_NONCE_OR_EXTERNAL_ACTION"
+    },
+    {
+      "case": "wrong_pair",
+      "status": "REJECTED_BEFORE_NONCE_OR_EXTERNAL_ACTION"
+    },
+    {
+      "case": "wrong_arm",
+      "status": "REJECTED_BEFORE_NONCE_OR_EXTERNAL_ACTION"
+    },
+    {
+      "case": "wrong_approval_id",
+      "status": "REJECTED_BEFORE_NONCE_OR_EXTERNAL_ACTION"
+    },
+    {
+      "case": "wrong_approval_parent",
+      "status": "REJECTED_BEFORE_NONCE_OR_EXTERNAL_ACTION"
+    },
+    {
+      "case": "wrong_successor",
+      "status": "REJECTED_BEFORE_NONCE_OR_EXTERNAL_ACTION"
+    },
+    {
+      "case": "stale_state_set",
+      "status": "REJECTED_BEFORE_NONCE_OR_EXTERNAL_ACTION"
+    },
+    {
+      "case": "two_current_approvals",
+      "status": "REJECTED_BEFORE_NONCE_OR_EXTERNAL_ACTION"
+    },
+    {
+      "case": "pair1_b_approval",
+      "status": "REJECTED_BEFORE_NONCE_OR_EXTERNAL_ACTION"
+    },
+    {
+      "case": "later_approval",
+      "status": "REJECTED_BEFORE_NONCE_OR_EXTERNAL_ACTION"
+    },
+    {
+      "case": "pair1_a_result",
+      "status": "REJECTED_BEFORE_NONCE_OR_EXTERNAL_ACTION"
+    },
+    {
+      "case": "execution_root_exists",
+      "status": "REJECTED_BEFORE_NONCE_OR_EXTERNAL_ACTION"
+    },
+    {
+      "case": "critical_quality_stop",
+      "status": "REJECTED_BEFORE_NONCE_OR_EXTERNAL_ACTION"
+    },
+    {
+      "case": "engineering_stop",
+      "status": "REJECTED_BEFORE_NONCE_OR_EXTERNAL_ACTION"
+    },
+    {
+      "case": "ab_lock_stop",
+      "status": "REJECTED_BEFORE_NONCE_OR_EXTERNAL_ACTION"
+    },
+    {
+      "case": "arbitrary_receipt_root",
+      "status": "REJECTED_BEFORE_NONCE_OR_EXTERNAL_ACTION"
+    },
+    {
+      "case": "noncanonical_authority",
+      "status": "REJECTED_BEFORE_NONCE_OR_EXTERNAL_ACTION"
+    },
+    {
+      "case": "malformed_receipt",
+      "status": "REJECTED_BEFORE_NONCE_OR_EXTERNAL_ACTION"
+    },
+    {
+      "case": "missing_campaign_plan",
+      "status": "REJECTED_BEFORE_NONCE_OR_EXTERNAL_ACTION"
+    },
+    {
+      "case": "wrong_decision_rule",
+      "status": "REJECTED_BEFORE_NONCE_OR_EXTERNAL_ACTION"
+    },
+    {
+      "case": "after_nonce_reservation",
+      "status": "REJECTED_BEFORE_NONCE_OR_EXTERNAL_ACTION"
+    }
+  ],
+  "external_actions": {
+    "credential_lookup_count": 0,
+    "http_post_attempts": 0,
+    "model_calls": 0,
+    "network_calls": 0,
+    "paid_calls": 0,
+    "real_provider_client_creation_count": 0,
+    "real_provider_request_attempts": 0
+  },
+  "pytest_evidence": "32 passed",
+  "schema": "SkillV2Pair1AFreshStopStateNegativeMatrixV1",
+  "version": 1
+}

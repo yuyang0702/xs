@@ -1,0 +1,14 @@
+{
+  "allowed_source_paths": [
+    "tools/canary/skill_v2_bounded_repeated_ab_pair1_a.py"
+  ],
+  "baml_src_diff_count": 0,
+  "forbidden_domains_changed": [],
+  "production_src_diff_count": 0,
+  "r0f_successor": "NOT_REQUIRED",
+  "schema": "SkillV2Pair1AFreshStopStateSourceDiffScopeV1",
+  "test_paths": [
+    "tests/canary/test_skill_v2_pair1_a_fresh_stop_state.py"
+  ],
+  "version": 1
+}
