@@ -1,0 +1,23 @@
+{
+  "binding": {
+    "approval_time_receipt_recomputed": true,
+    "binding_explicit": true,
+    "campaign_stop_state_evaluator_binding_sha256": "dfc4f69a98bd10ed574e75117bc8cbb79ad772d91eebb3b9c9e611817c1c940c",
+    "campaign_stop_state_evaluator_path": "tools/canary/skill_v2_bounded_repeated_ab_pair1_a.py",
+    "campaign_stop_state_evaluator_source_sha256": "c9a24e87cf13f763f3ae91954eeb138cc3df1a723b9ca0e10b4ae9ae587bdd2c",
+    "credential_capable_imports_after_validator": true,
+    "schema": "SkillV2Pair1AFreshStopStateEvaluatorBindingV1",
+    "stop_state_receipt_builder_function": "build_approval_time_stop_state_receipt_v1",
+    "validation_contract": "SKILL_V2_PAIR1_A_TWO_PHASE_STOP_STATE_V1",
+    "validator_binding_sha256": "dfc4f69a98bd10ed574e75117bc8cbb79ad772d91eebb3b9c9e611817c1c940c",
+    "validator_function": "build_approval_time_stop_state_receipt_v1",
+    "validator_path": "tools/canary/skill_v2_bounded_repeated_ab_pair1_a.py",
+    "validator_source_sha256": "c9a24e87cf13f763f3ae91954eeb138cc3df1a723b9ca0e10b4ae9ae587bdd2c",
+    "version": 1
+  },
+  "new_evaluator_source_sha256": "c9a24e87cf13f763f3ae91954eeb138cc3df1a723b9ca0e10b4ae9ae587bdd2c",
+  "new_receipt_builder_source_sha256": "c9a24e87cf13f763f3ae91954eeb138cc3df1a723b9ca0e10b4ae9ae587bdd2c",
+  "old_evaluator_source_sha256": "a388ba5e3ff3842cb7d2301087f97fba06e507004bd4e54011453037209630d5",
+  "schema": "SkillV2Pair1AFreshStopStateEvaluatorBindingV1",
+  "version": 1
+}

@@ -1,0 +1,22 @@
+{
+  "approval_created": false,
+  "approval_ready_v3": true,
+  "external_actions": {
+    "credential_lookup_count": 0,
+    "http_post_attempts": 0,
+    "model_calls": 0,
+    "network_calls": 0,
+    "paid_calls": 0,
+    "real_provider_client_creation_count": 0,
+    "real_provider_request_attempts": 0
+  },
+  "nonce_created": false,
+  "old_pre_approval_receipt_rejected": "PASS",
+  "phase_a_receipt": "CONTINUE_ALLOWED_APPROVAL_ABSENT",
+  "phase_b_synthetic_receipt": "CONTINUE_ALLOWED_EXACT_APPROVAL_PRESENT",
+  "post_seal_evidence_only_successor": "PASS",
+  "pre_nonce_safety": "PASS",
+  "schema": "SkillV2Pair1AApprovalReadinessDryRunV3",
+  "signed_preflight_accepts_explicit_fresh_receipt": "PASS",
+  "version": 3
+}

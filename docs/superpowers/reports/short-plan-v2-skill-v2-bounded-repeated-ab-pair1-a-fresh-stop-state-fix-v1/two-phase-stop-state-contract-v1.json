@@ -1,0 +1,12 @@
+{
+  "contract_id": "SKILL_V2_PAIR1_A_TWO_PHASE_STOP_STATE_V1",
+  "phase_a": "PRE_APPROVAL_READINESS_STOP_STATE",
+  "phase_a_current_arm_approval_exists": false,
+  "phase_a_valid_for_signed_preflight": false,
+  "phase_b": "APPROVAL_TIME_SIGNED_PREFLIGHT_STOP_STATE",
+  "phase_b_current_arm_approval_exists": true,
+  "phase_b_required_for_signed_preflight": true,
+  "schema": "SkillV2Pair1ATwoPhaseStopStateContractV1",
+  "semantic_stop_rules_weakened": false,
+  "version": 1
+}
