@@ -1,0 +1,38 @@
+{
+  "schema": "SkillV2BoundedRepeatedABNarrativeNonInferiorityRuleV1",
+  "version": 1,
+  "ordered_rules": [
+    {
+      "priority": 1,
+      "condition": "ANY_APPLICABLE_CRITICAL_DIMENSION_IS_A_BETTER",
+      "result": "NO"
+    },
+    {
+      "priority": 2,
+      "condition": "NO_CRITICAL_A_BETTER_AND_ANY_APPLICABLE_CRITICAL_DIMENSION_IS_INCOMPARABLE_OR_INSUFFICIENT",
+      "result": "INCONCLUSIVE"
+    },
+    {
+      "priority": 3,
+      "condition": "NO_CRITICAL_REGRESSION_AND_ANY_NONCRITICAL_DIMENSION_IS_A_BETTER",
+      "result": "INCONCLUSIVE"
+    },
+    {
+      "priority": 4,
+      "condition": "NONE_OF_THE_ABOVE",
+      "result": "YES"
+    }
+  ],
+  "allowed_dimension_judgments": [
+    "X_BETTER",
+    "Y_BETTER",
+    "EQUIVALENT",
+    "INCOMPARABLE",
+    "INSUFFICIENT_EVIDENCE",
+    "NOT_APPLICABLE"
+  ],
+  "not_applicable_neutral_only_when_supported": true,
+  "scalar_score_allowed": false,
+  "averaging_allowed": false,
+  "token_efficiency_override_allowed": false
+}

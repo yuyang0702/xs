@@ -1,0 +1,33 @@
+{
+  "schema": "SkillV2BoundedRepeatedABPairDispositionPriorityV1",
+  "version": 1,
+  "ordered_dispositions": [
+    {
+      "priority": 1,
+      "condition": "INVALID_AB_LOCK",
+      "disposition": "PAIR_NO_GO_AB_LOCK_INVALID"
+    },
+    {
+      "priority": 2,
+      "condition": "HARD_ENGINEERING_REGRESSION",
+      "disposition": "PAIR_NO_GO_ENGINEERING_REGRESSION"
+    },
+    {
+      "priority": 3,
+      "condition": "NARRATIVE_NON_INFERIORITY_NO",
+      "disposition": "PAIR_NO_GO_QUALITY_REGRESSION"
+    },
+    {
+      "priority": 4,
+      "condition": "NARRATIVE_NON_INFERIORITY_INCONCLUSIVE",
+      "disposition": "PAIR_INCONCLUSIVE"
+    },
+    {
+      "priority": 5,
+      "condition": "NARRATIVE_NON_INFERIORITY_YES_AND_ENGINEERING_NON_INFERIORITY_YES",
+      "disposition": "PAIR_PASS_NON_INFERIOR"
+    }
+  ],
+  "generalized_production_non_inferiority_after_pair_1": "NOT_YET_PROVEN",
+  "pair_2_through_pair_5_required_before_generalization": true
+}

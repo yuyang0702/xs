@@ -1,0 +1,59 @@
+{
+  "schema": "SkillV2BoundedRepeatedABPairCriticalityResolutionV1",
+  "version": 1,
+  "pair_case_id": "restored-character-heavy-v2",
+  "creative_demand_class": "character-heavy",
+  "resolution_performed_before_artifact_reading_in_this_task": true,
+  "contract_applicability": {
+    "pov": "NOT_EXPLICITLY_CONSTRAINED",
+    "tense": "NOT_EXPLICITLY_CONSTRAINED",
+    "tone_genre": "NOT_EXPLICITLY_CONSTRAINED"
+  },
+  "contract_applicability_basis": {
+    "authority_contract_fields": [
+      "formal_event_id",
+      "formal_event_contract_sha256",
+      "parent_authority_sha256",
+      "predecessor_boundary_sha256",
+      "formal_event_ids",
+      "segment_event_ids",
+      "dependency_artifact_ids",
+      "context_projection_sha256",
+      "required_obligation_ids"
+    ],
+    "task_contract_fields": [
+      "contract_identity",
+      "stage",
+      "candidate_owned_fields",
+      "expected_output_characters",
+      "shadow_only",
+      "production_authority"
+    ],
+    "explicit_pov_constraint_present": false,
+    "explicit_tense_constraint_present": false,
+    "explicit_tone_genre_constraint_present": false
+  },
+  "critical_dimensions": [
+    "event_causal_fidelity",
+    "character_motivation",
+    "character_voice",
+    "relationship_logic",
+    "subtext_dramatization",
+    "draft_intent_handoff",
+    "template_flattening_risk",
+    "authority_correctness",
+    "untargeted_creative_mutation"
+  ],
+  "noncritical_dimensions": [
+    "world_specificity",
+    "sensory_realization",
+    "conflict_pacing",
+    "setup_payoff_dependency",
+    "pov",
+    "tense",
+    "tone_genre"
+  ],
+  "dimension_partition_complete": true,
+  "dimension_partition_disjoint": true,
+  "outcome_derived": false
+}

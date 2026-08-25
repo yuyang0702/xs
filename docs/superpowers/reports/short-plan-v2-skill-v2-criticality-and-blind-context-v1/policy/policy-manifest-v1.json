@@ -1,0 +1,50 @@
+{
+  "schema": "SkillV2BoundedRepeatedABCriticalityPolicyManifestV1",
+  "version": 1,
+  "manifest_scope": "POLICY_FILES_ONLY",
+  "self_excluded": true,
+  "entry_count": 8,
+  "files": [
+    {
+      "path": ".gitattributes",
+      "bytes": 14,
+      "sha256": "a79691a93b46e49ce460c26ef22afcc03d6eca1e63bf2edbc20e96159510f6c9"
+    },
+    {
+      "path": "criticality-policy-v1.json",
+      "bytes": 1507,
+      "sha256": "46a90e5e60cc8977eff96d822122ddecd80ef1fe455973cc6bc745ac5625403b"
+    },
+    {
+      "path": "demand-criticality-map-v1.json",
+      "bytes": 872,
+      "sha256": "f68666c0587c8150d17bcebb3738dd4e7770643d5513e8d6015b696242d2585f"
+    },
+    {
+      "path": "narrative-non-inferiority-rule-v1.json",
+      "bytes": 985,
+      "sha256": "cbd8fee2d2be718b2abd40b31fee523efb12c7a4a10a5592e4e26163623c71ec"
+    },
+    {
+      "path": "pair-disposition-priority-v1.json",
+      "bytes": 960,
+      "sha256": "668366d89685cd1c2dc0f17d6f2e601fad529e162a91ec2869fe179671806eba"
+    },
+    {
+      "path": "pair1-criticality-resolution-v1.json",
+      "bytes": 1709,
+      "sha256": "1771121f38882dbc3693e717c13cb17b366d02e63b14e0dfb02c2ffeacff0b0e"
+    },
+    {
+      "path": "policy-provenance-v1.json",
+      "bytes": 1078,
+      "sha256": "e7f90f0302e363c5cf2b4858b8416459c57baa13d878791ed10d687581c9a9e2"
+    },
+    {
+      "path": "README.md",
+      "bytes": 587,
+      "sha256": "f67174ac306fc2a82ac80b6b719a5f2c9409b62d9b0fc5a71a06437bc21ac349"
+    }
+  ],
+  "overall_status": "exact"
+}

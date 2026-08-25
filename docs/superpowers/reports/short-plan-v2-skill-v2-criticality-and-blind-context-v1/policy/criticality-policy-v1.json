@@ -1,0 +1,42 @@
+{
+  "schema": "SkillV2BoundedRepeatedABNarrativeCriticalityPolicyV1",
+  "version": 1,
+  "policy_timing": "PROSPECTIVE_BEFORE_PAIR_1_ARTIFACT_READING_IN_THIS_TASK",
+  "derivation_from_pair_1_outcome": false,
+  "dimension_universe": [
+    "event_causal_fidelity",
+    "character_motivation",
+    "character_voice",
+    "relationship_logic",
+    "world_specificity",
+    "sensory_realization",
+    "conflict_pacing",
+    "setup_payoff_dependency",
+    "pov",
+    "tense",
+    "tone_genre",
+    "subtext_dramatization",
+    "draft_intent_handoff",
+    "template_flattening_risk",
+    "authority_correctness",
+    "untargeted_creative_mutation"
+  ],
+  "always_critical": [
+    "event_causal_fidelity",
+    "draft_intent_handoff",
+    "template_flattening_risk",
+    "authority_correctness",
+    "untargeted_creative_mutation"
+  ],
+  "contract_critical_if_applicable": [
+    "pov",
+    "tense",
+    "tone_genre"
+  ],
+  "demand_critical_source": "demand-criticality-map-v1.json",
+  "classification_rule": "A dimension is critical for a pair if it is always-critical, is explicitly constrained by that pair's sealed contract, or is mapped to the pair's creative-demand class. Every other dimension is noncritical for that pair.",
+  "not_applicable_rule": "NOT_APPLICABLE is neutral only when the sealed pair context genuinely makes the dimension inapplicable.",
+  "scalar_aggregation_allowed": false,
+  "critical_regression_may_be_averaged_away": false,
+  "token_efficiency_may_override_narrative_quality": false
+}
