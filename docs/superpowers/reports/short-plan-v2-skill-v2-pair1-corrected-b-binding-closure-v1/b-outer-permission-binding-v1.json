@@ -1,0 +1,16 @@
+{
+  "before_nonce_reservation": true,
+  "components": [
+    "credentials",
+    "network",
+    "paid_provider",
+    "data_egress"
+  ],
+  "missing_credential_lookup_count": 0,
+  "missing_network_calls": 0,
+  "missing_nonce_state": "unreserved_unconsumed",
+  "missing_result": "PRE_NONCE_EXTERNAL_PERMISSION_ABORT",
+  "required": true,
+  "schema": "SkillV2Pair1CorrectedBOuterPermissionBindingV1",
+  "version": 1
+}

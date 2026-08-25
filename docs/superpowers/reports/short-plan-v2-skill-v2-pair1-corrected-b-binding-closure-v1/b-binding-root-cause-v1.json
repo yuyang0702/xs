@@ -1,0 +1,7 @@
+{
+  "approval_gap_count": 19,
+  "execution_gap_count": 10,
+  "root_cause": "E.MULTI_FACTOR_WITH_PRIMARY_A_SHARED_CORRECTED_FIXTURE_MATERIALIZER_OMITTED_APPROVAL_AND_EXECUTION_BINDINGS",
+  "schema": "SkillV2Pair1CorrectedBBindingRootCauseV1",
+  "version": 1
+}

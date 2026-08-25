@@ -1,0 +1,171 @@
+{
+  "coverage": "exact",
+  "entry_count": 32,
+  "files": [
+    {
+      "bytes": 14,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-corrected-b-binding-closure-v1/.gitattributes",
+      "sha256": "a79691a93b46e49ce460c26ef22afcc03d6eca1e63bf2edbc20e96159510f6c9"
+    },
+    {
+      "bytes": 217,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-corrected-b-binding-closure-v1/README.md",
+      "sha256": "8a9b12122b3f6aeba1aeb374e2efb6c00a454bf92998cdb9c3e4c134e37e5c3b"
+    },
+    {
+      "bytes": 1028,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-corrected-b-binding-closure-v1/a-control-binding-v1.json",
+      "sha256": "9d048b90bb266fe13e0eb1b897983265df4a6ae2ac60f23dc1ef3c9d5ff38924"
+    },
+    {
+      "bytes": 2294,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-corrected-b-binding-closure-v1/b-approval-authority-binding-v1.json",
+      "sha256": "2180a05335c05076c6b8536518fcbcbfba5f486bb3a96d477cf2ccc8b3ed7b9f"
+    },
+    {
+      "bytes": 467,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-corrected-b-binding-closure-v1/b-approval-parent-head-binding-v1.json",
+      "sha256": "7430ff33c61280f9f3461194440f2252ae1eb80b1f5b6e1d0cca91a740495dfb"
+    },
+    {
+      "bytes": 947,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-corrected-b-binding-closure-v1/b-approval-readiness-dry-run-v1.json",
+      "sha256": "a7a5722d00d8f13bf1a03f488f2f4920ba0b199f0c0146875a20c889014e73ae"
+    },
+    {
+      "bytes": 449,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-corrected-b-binding-closure-v1/b-audit-serialization-binding-v1.json",
+      "sha256": "1ba0e4bd3d600389655fa50e57dcfa31f288c51be54d4f91dc0272396ee8a8d0"
+    },
+    {
+      "bytes": 452,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-corrected-b-binding-closure-v1/b-authority-normalization-binding-v1.json",
+      "sha256": "949135e10abf9df6089d3f89522c2dd7eafa1f87c20c65b695fcf07ab9e6d2ce"
+    },
+    {
+      "bytes": 259,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-corrected-b-binding-closure-v1/b-binding-root-cause-v1.json",
+      "sha256": "9f703a41cb80cc3d979c8bd59b681ee79a511669f804294d52fbe3d0e3f54919"
+    },
+    {
+      "bytes": 609,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-corrected-b-binding-closure-v1/b-execution-entry-binding-v1.json",
+      "sha256": "3145b2251a19aa7a5b4c8f72aab62a931d6f4fcaaabc2614dee6f861ed4bd275"
+    },
+    {
+      "bytes": 1047,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-corrected-b-binding-closure-v1/b-execution-entry-dry-run-v1.json",
+      "sha256": "71df70f37f4a8c15f75053576885f5687ba9694dfa14c7cd8542896d057017ac"
+    },
+    {
+      "bytes": 455,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-corrected-b-binding-closure-v1/b-execution-evidence-writer-binding-v1.json",
+      "sha256": "a95c750818055fe71904fe7846be16de01f638c23c477dbb5c902b2df365e14c"
+    },
+    {
+      "bytes": 796,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-corrected-b-binding-closure-v1/b-execution-order-contract-v1.json",
+      "sha256": "1b3ed454fe4f9adcdaa8463ce6a9eda1f216e6dd505905c3330c3c8f46cfa8ac"
+    },
+    {
+      "bytes": 2043,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-corrected-b-binding-closure-v1/b-forward-audit-merge-v1.json",
+      "sha256": "bf24d27e1756b5b2656014d6ee1cc9d4ddb4d2a32eb2363bc8fac9492130f13a"
+    },
+    {
+      "bytes": 9602,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-corrected-b-binding-closure-v1/b-launcher-source-binding-v1.json",
+      "sha256": "988a2990c1bac12082d2f0f7d3385c0868613677bacbb759b391727f2f98e220"
+    },
+    {
+      "bytes": 445,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-corrected-b-binding-closure-v1/b-local-success-tail-binding-v1.json",
+      "sha256": "f8b75fc0b7c385ab53c3b19e73761183df92f72630248f99b18c9cb3d230229d"
+    },
+    {
+      "bytes": 281,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-corrected-b-binding-closure-v1/b-nonce-lifecycle-binding-v1.json",
+      "sha256": "dbd98649d03cddefef03717fd7053491bd2c82f6b94a1440d78d4d58b27213a5"
+    },
+    {
+      "bytes": 412,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-corrected-b-binding-closure-v1/b-outer-permission-binding-v1.json",
+      "sha256": "84e0b7a16031350d0c62aee6ba40845588eda3b2a723849208895cde98529a5a"
+    },
+    {
+      "bytes": 2294,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-corrected-b-binding-closure-v1/b-packet-manifest-binding-v1.json",
+      "sha256": "c3e5ed35ee2a3d34125afba32465f553c1120e71dcf4430a3c08bd62131bb98c"
+    },
+    {
+      "bytes": 3996,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-corrected-b-binding-closure-v1/b-post-dispatch-single-attempt-matrix-v1.json",
+      "sha256": "279aa8f5b1c479a59880119710c9175858a81641618b6e1195c1edcf83941dc6"
+    },
+    {
+      "bytes": 8076,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-corrected-b-binding-closure-v1/b-pre-credential-negative-matrix-v1.json",
+      "sha256": "768ea09f947cabc07adf778cdfea9f5ba975e699b869579e9a8e6566ccab382f"
+    },
+    {
+      "bytes": 455,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-corrected-b-binding-closure-v1/b-single-dispatch-binding-v1.json",
+      "sha256": "4d98423bb39b5637c40ec2729319302dfa1256d3cc9652de9cf15ef475ddcf39"
+    },
+    {
+      "bytes": 506,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-corrected-b-binding-closure-v1/b-skill-context-binding-v1.json",
+      "sha256": "84994f585cc4be57fddaff1f0537bf5d3ff32c1b0d24ade2074ff8d9502146e7"
+    },
+    {
+      "bytes": 9310,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-corrected-b-binding-closure-v1/b-successor-packet-v3.json",
+      "sha256": "476dd69ccbb39ec632b9be779e6291ec280597ae66af7e9dbcc442787a75eae4"
+    },
+    {
+      "bytes": 401,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-corrected-b-binding-closure-v1/b-v2-packet-binding-v1.json",
+      "sha256": "8a8be0f08bf4c533e1080b0afcfea1942c7b4925385052e8ab719d9703183efc"
+    },
+    {
+      "bytes": 2089,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-corrected-b-binding-closure-v1/final-report-v1.md",
+      "sha256": "c31ed81fc078eb0c018668351eedce5446e3ed831239d774d2ca930b955ee471"
+    },
+    {
+      "bytes": 3462,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-corrected-b-binding-closure-v1/forward-risk-report-v2.json",
+      "sha256": "5348b86814fa65ad88f38fa207eb0f031c7a7ece75cab0048f745cf2093cccaa"
+    },
+    {
+      "bytes": 626,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-corrected-b-binding-closure-v1/historical-root-binding-v1.json",
+      "sha256": "2f541cd1d4cdded81952e4f0fb4a828f897481a7d1a6eed17d5062aaf96fc56e"
+    },
+    {
+      "bytes": 685,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-corrected-b-binding-closure-v1/offline-test-receipt-v1.json",
+      "sha256": "76b90aee2725c975d0eb7f6432bb563f3651a931d3b2b72212d5415cd289ee33"
+    },
+    {
+      "bytes": 483,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-corrected-b-binding-closure-v1/pair-evaluation-isolation-v1.json",
+      "sha256": "5bd60830e3e9b4ae5fc8676b097f9310a7f60019b9c6d954084e180a6aa8cd17"
+    },
+    {
+      "bytes": 210,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-corrected-b-binding-closure-v1/pair2-5-block-binding-v1.json",
+      "sha256": "b28ad8a8f9aacf07898f111beec321d408d8b9e2b4cf9f425011c2ef1100d2df"
+    },
+    {
+      "bytes": 274,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-corrected-b-binding-closure-v1/privacy-scan-v1.json",
+      "sha256": "cb9bf0edec521b01d2a816c3b380d6d07b3f3a1424d0b43cbc3b1cdcfa08911d"
+    }
+  ],
+  "manifest_definition_sha256": "d4fc1188428f0796901d93d8c2b9cb9f5a9954b7543b51f70eeef55acef866a8",
+  "overall_status": "exact",
+  "schema": "SkillV2Pair1CorrectedBBindingClosureSHA256ManifestV1",
+  "self_excluded": true,
+  "version": 1
+}

@@ -1,0 +1,12 @@
+{
+  "binding_kind": "AUDIT_SERIALIZATION",
+  "binding_sha256": "a4a6eb0edb0fe94c0c9572632b8be8ce56d6ada15165d46d94edf02f27d9d90d",
+  "closed_world_b_arm": true,
+  "functions": [
+    "persist_local_success_tail_v1"
+  ],
+  "schema": "SkillV2Pair1CorrectedBBindingV1",
+  "source_path": "tools/canary/skill_v2_pair1_corrected_b_binding_closure.py",
+  "source_sha256": "83359d1c3ca61c1687b8f810aba8adbbd80aeaf5f03a35fcfede285245b59233",
+  "version": 1
+}

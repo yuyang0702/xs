@@ -1,0 +1,10 @@
+{
+  "approval_parent_head": "3af307c6289487bce157b6ce222d15fb336c4e3c",
+  "approval_parent_head_explicit": true,
+  "approval_parent_head_source_policy": "explicit implementation commit containing only the corrected-B closed-world launcher and focused tests",
+  "approval_parent_head_validation": "PASS",
+  "changed_paths": [
+    "tests/canary/test_skill_v2_pair1_corrected_b_binding_closure.py",
+    "tools/canary/skill_v2_pair1_corrected_b_binding_closure.py"
+  ]
+}

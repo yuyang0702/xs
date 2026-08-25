@@ -1,0 +1,11 @@
+{
+  "a_artifact_not_visible_to_b_model": true,
+  "a_control_artifact_sha_bound": "f6aa5c49d64f38aefe71b01fc9eb0abf2ea3a08faba6f5bc3dbcb38c665e3f8f",
+  "b_result_sha": "UNAVAILABLE_UNTIL_EXECUTION",
+  "blind_comparison_not_started": true,
+  "engineering_metrics_not_in_b_model_input": true,
+  "pair_level_evaluation_allowed_only_after_b_pass_sealed": true,
+  "primary_changed_variable": "SKILL_CONTEXT",
+  "schema": "SkillV2Pair1CorrectedBPairEvaluationIsolationV1",
+  "version": 1
+}

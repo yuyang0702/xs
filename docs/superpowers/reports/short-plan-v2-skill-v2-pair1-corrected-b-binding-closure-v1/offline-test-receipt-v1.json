@@ -1,0 +1,17 @@
+{
+  "focused": "39 passed in 35.55s",
+  "full_suite": "3531 passed, 41 skipped, 6 xfailed, 33 failed, 72 errors in 1845.85s; non-green historical sealed-state/live-parity/oracle gates",
+  "real_external_actions": {
+    "credential_lookup_count": 0,
+    "http_post_attempts": 0,
+    "model_calls": 0,
+    "network_calls": 0,
+    "paid_calls": 0,
+    "real_provider_client_creation_count": 0,
+    "real_provider_request_attempts": 0
+  },
+  "related": "20 passed in 5.25s; broader adjacency 116 passed with historical consumed-state failures excluded from authority",
+  "schema": "SkillV2Pair1CorrectedBOfflineTestReceiptV1",
+  "strict_l3": "PASS warnings=0 blockers=0",
+  "version": 1
+}

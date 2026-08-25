@@ -1,0 +1,27 @@
+{
+  "a_control_check_before_external_permission": true,
+  "nonce_reservation_before_credential_lookup": true,
+  "ordered_steps": [
+    "packet_validation",
+    "signed_approval_validation",
+    "sealed_a_control_check",
+    "current_b_campaign_stop_state",
+    "current_chat_permission",
+    "nonce_state_check",
+    "nonce_reservation",
+    "credential_lookup",
+    "provider_client",
+    "one_logical_b_call",
+    "max_one_provider_request",
+    "max_one_http_post",
+    "max_one_network_attempt",
+    "parse_conversion",
+    "event_realization_validation",
+    "freeze_audit_isolation_persistence",
+    "b_execution_evidence"
+  ],
+  "permission_before_nonce_reservation": true,
+  "schema": "SkillV2Pair1CorrectedBExecutionOrderContractV1",
+  "second_dispatch_allowed": false,
+  "version": 1
+}

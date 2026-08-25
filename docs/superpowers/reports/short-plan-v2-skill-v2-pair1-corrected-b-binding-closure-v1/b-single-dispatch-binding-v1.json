@@ -1,0 +1,13 @@
+{
+  "application_second_dispatch_allowed": false,
+  "hard_max_http_post_attempts": 1,
+  "hard_max_model_calls": 1,
+  "hard_max_network_request_attempts": 1,
+  "hard_max_real_provider_request_attempts": 1,
+  "route_fallback_after_dispatch_allowed": false,
+  "schema": "SkillV2Pair1CorrectedBSingleDispatchBindingV1",
+  "sdk_retries_disabled": true,
+  "transport_request_retries_disabled": true,
+  "unknown_guard_state_fails_closed": true,
+  "version": 1
+}

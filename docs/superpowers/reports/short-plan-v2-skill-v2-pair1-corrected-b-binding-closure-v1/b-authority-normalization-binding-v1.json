@@ -1,0 +1,12 @@
+{
+  "binding_kind": "AUTHORITY_NORMALIZATION",
+  "binding_sha256": "5bdf5a77e5ebb8ed5b16ffba2ba44d822b65a482c520953a67c6ff068b0648cb",
+  "closed_world_b_arm": true,
+  "functions": [
+    "normalize_event_realization_input_authority_v1"
+  ],
+  "schema": "SkillV2Pair1CorrectedBBindingV1",
+  "source_path": "src/novel_flywheel/planning_v2_slice1.py",
+  "source_sha256": "28bd1656f2452bea03bbe8c0778847e973d5f3dca807121e028f17af747ce201",
+  "version": 1
+}

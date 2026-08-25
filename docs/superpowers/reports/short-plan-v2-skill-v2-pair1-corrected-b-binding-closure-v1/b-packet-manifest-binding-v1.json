@@ -1,0 +1,48 @@
+{
+  "coverage": "exact",
+  "definition": {
+    "a_control_sequence_only": true,
+    "hash_algorithm": "SHA-256",
+    "historical_b_v2_immutable": true,
+    "inputs": [
+      "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-fixture-narrow-fix-v1/corrected-pair1/b-arm/disabled-packet-v2.json",
+      "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-corrected-a-launcher-binding-fix-v1/v4-successor-packet.json",
+      "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-execution-v4/pairs/restored-character-heavy-v2/a-arm/sha256-manifest-v1.json",
+      "tools/canary/skill_v2_pair1_corrected_b_binding_closure.py",
+      "tests/canary/test_skill_v2_pair1_corrected_b_binding_closure.py"
+    ],
+    "schema": "SkillV2Pair1CorrectedBPacketManifestDefinitionV1",
+    "version": 1
+  },
+  "inputs": [
+    {
+      "bytes": 4255,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-fixture-narrow-fix-v1/corrected-pair1/b-arm/disabled-packet-v2.json",
+      "sha256": "70972485a8bff8733d90fe1948a8c0376c4955712fc9a73b800cf42d2e77694f"
+    },
+    {
+      "bytes": 12864,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-corrected-a-launcher-binding-fix-v1/v4-successor-packet.json",
+      "sha256": "1a810f24eca56f43afc6338481d003133e76edeaff794f8558aa1f7be308a914"
+    },
+    {
+      "bytes": 5125,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-execution-v4/pairs/restored-character-heavy-v2/a-arm/sha256-manifest-v1.json",
+      "sha256": "d210322f8e0314ae5a9841300faf0e5ea492732f08e21eb516c1f8ff32567796"
+    },
+    {
+      "bytes": 72019,
+      "path": "tools/canary/skill_v2_pair1_corrected_b_binding_closure.py",
+      "sha256": "83359d1c3ca61c1687b8f810aba8adbbd80aeaf5f03a35fcfede285245b59233"
+    },
+    {
+      "bytes": 10065,
+      "path": "tests/canary/test_skill_v2_pair1_corrected_b_binding_closure.py",
+      "sha256": "75cca2673563a1202175ffc0028660faa0242428f47d84f96b92216fa40970f4"
+    }
+  ],
+  "packet_manifest_definition_sha256": "122d9fbf603b0c4060af6f35b4fd2a5da41a532bd9da24f11a2c65155d3b9a34",
+  "packet_manifest_file_sha256": "a029b2a12e4f0c440ccdb682eb929a214dadaf1fd0340e871da44fa69a2215c6",
+  "schema": "SkillV2Pair1CorrectedBPacketManifestBindingV1",
+  "version": 1
+}

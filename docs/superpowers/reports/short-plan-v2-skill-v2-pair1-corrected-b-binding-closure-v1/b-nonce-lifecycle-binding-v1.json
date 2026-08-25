@@ -1,0 +1,10 @@
+{
+  "a_nonce_valid_for_b": false,
+  "fresh_nonce_required": true,
+  "old_b_nonce_valid_for_successor": false,
+  "real_nonce_present": false,
+  "reservation_at_most_once": true,
+  "reuse_allowed": false,
+  "schema": "SkillV2Pair1CorrectedBNonceLifecycleBindingV1",
+  "version": 1
+}

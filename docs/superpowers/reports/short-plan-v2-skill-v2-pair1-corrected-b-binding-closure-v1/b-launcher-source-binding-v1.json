@@ -1,0 +1,235 @@
+{
+  "arbitrary_entry_point_selection_allowed": false,
+  "bindings": {
+    "attempt_accounting": {
+      "binding_kind": "ATTEMPT_ACCOUNTING",
+      "binding_sha256": "f19816e695598101f20a486a5e7e84e1fcfb08d9058c9dfb6b9c13ab3a0bb3d0",
+      "closed_world_b_arm": true,
+      "functions": [
+        "attempt_snapshot_v1"
+      ],
+      "schema": "SkillV2Pair1CorrectedBBindingV1",
+      "source_path": "tools/canary/skill_v2_pair1_corrected_b_binding_closure.py",
+      "source_sha256": "83359d1c3ca61c1687b8f810aba8adbbd80aeaf5f03a35fcfede285245b59233",
+      "version": 1
+    },
+    "audit_serialization": {
+      "binding_kind": "AUDIT_SERIALIZATION",
+      "binding_sha256": "a4a6eb0edb0fe94c0c9572632b8be8ce56d6ada15165d46d94edf02f27d9d90d",
+      "closed_world_b_arm": true,
+      "functions": [
+        "persist_local_success_tail_v1"
+      ],
+      "schema": "SkillV2Pair1CorrectedBBindingV1",
+      "source_path": "tools/canary/skill_v2_pair1_corrected_b_binding_closure.py",
+      "source_sha256": "83359d1c3ca61c1687b8f810aba8adbbd80aeaf5f03a35fcfede285245b59233",
+      "version": 1
+    },
+    "authority_normalization": {
+      "binding_kind": "AUTHORITY_NORMALIZATION",
+      "binding_sha256": "5bdf5a77e5ebb8ed5b16ffba2ba44d822b65a482c520953a67c6ff068b0648cb",
+      "closed_world_b_arm": true,
+      "functions": [
+        "normalize_event_realization_input_authority_v1"
+      ],
+      "schema": "SkillV2Pair1CorrectedBBindingV1",
+      "source_path": "src/novel_flywheel/planning_v2_slice1.py",
+      "source_sha256": "28bd1656f2452bea03bbe8c0778847e973d5f3dca807121e028f17af747ce201",
+      "version": 1
+    },
+    "credential_lookup": {
+      "binding_kind": "CREDENTIAL_LOOKUP",
+      "binding_sha256": "fffe25040a0b32e09763df9301ac0c8fb6d6ad7f71181bd171622fc9374725b8",
+      "closed_world_b_arm": true,
+      "functions": [
+        "execute_authorized_once_v3"
+      ],
+      "schema": "SkillV2Pair1CorrectedBBindingV1",
+      "source_path": "tools/canary/skill_v2_pair1_corrected_b_binding_closure.py",
+      "source_sha256": "83359d1c3ca61c1687b8f810aba8adbbd80aeaf5f03a35fcfede285245b59233",
+      "version": 1
+    },
+    "freeze": {
+      "binding_kind": "ARTIFACT_FREEZE",
+      "binding_sha256": "6e8453be911c8226d79e3e2905d839c80d4e621244af7cfbec7c6d271bf33abc",
+      "closed_world_b_arm": true,
+      "functions": [
+        "freeze_validated_artifact"
+      ],
+      "schema": "SkillV2Pair1CorrectedBBindingV1",
+      "source_path": "src/novel_flywheel/planning_v2_slice1.py",
+      "source_sha256": "28bd1656f2452bea03bbe8c0778847e973d5f3dca807121e028f17af747ce201",
+      "version": 1
+    },
+    "head_successor": {
+      "binding_kind": "HEAD_SUCCESSOR",
+      "binding_sha256": "e0c5d61717ae6f6cadbc7437c3ac95b80ce868f76530e1c458388851e806dafa",
+      "closed_world_b_arm": true,
+      "functions": [
+        "validate_head_successor_v3"
+      ],
+      "schema": "SkillV2Pair1CorrectedBBindingV1",
+      "source_path": "tools/canary/skill_v2_pair1_corrected_b_binding_closure.py",
+      "source_sha256": "83359d1c3ca61c1687b8f810aba8adbbd80aeaf5f03a35fcfede285245b59233",
+      "version": 1
+    },
+    "launcher": {
+      "binding_kind": "B_LAUNCHER",
+      "binding_sha256": "92ebb939b387e307a82063ca93d5fc8934f6759547d4fd8a2441c5452b33c114",
+      "closed_world_b_arm": true,
+      "functions": [
+        "execute_authorized_once_v3"
+      ],
+      "schema": "SkillV2Pair1CorrectedBBindingV1",
+      "source_path": "tools/canary/skill_v2_pair1_corrected_b_binding_closure.py",
+      "source_sha256": "83359d1c3ca61c1687b8f810aba8adbbd80aeaf5f03a35fcfede285245b59233",
+      "version": 1
+    },
+    "nonce": {
+      "binding_kind": "NONCE_LIFECYCLE",
+      "binding_sha256": "20e78f6bcfebfae9eb183be0f287d3b8cf1b62df4a90e35ba6284e283e7b7713",
+      "closed_world_b_arm": true,
+      "functions": [
+        "reserve_nonce_exclusive_v1",
+        "_write_nonce_reservation_v1"
+      ],
+      "schema": "SkillV2Pair1CorrectedBBindingV1",
+      "source_path": "tools/canary/skill_v2_pair1_corrected_b_binding_closure.py",
+      "source_sha256": "83359d1c3ca61c1687b8f810aba8adbbd80aeaf5f03a35fcfede285245b59233",
+      "version": 1
+    },
+    "outer_permission": {
+      "binding_kind": "OUTER_PERMISSION",
+      "binding_sha256": "4a6e00cb1cdd8ecf3cec09b7449b3c241cd6ce0414538aedbe1a622312ee7590",
+      "closed_world_b_arm": true,
+      "functions": [
+        "validate_outer_permission_v1"
+      ],
+      "schema": "SkillV2Pair1CorrectedBBindingV1",
+      "source_path": "tools/canary/skill_v2_pair1_corrected_b_binding_closure.py",
+      "source_sha256": "83359d1c3ca61c1687b8f810aba8adbbd80aeaf5f03a35fcfede285245b59233",
+      "version": 1
+    },
+    "output_isolation": {
+      "binding_kind": "OUTPUT_ISOLATION",
+      "binding_sha256": "65339685c020ee6c492129e20d9989a09a1a335362d330f4c2d9764984315c3e",
+      "closed_world_b_arm": true,
+      "functions": [
+        "persist_local_success_tail_v1"
+      ],
+      "schema": "SkillV2Pair1CorrectedBBindingV1",
+      "source_path": "tools/canary/skill_v2_pair1_corrected_b_binding_closure.py",
+      "source_sha256": "83359d1c3ca61c1687b8f810aba8adbbd80aeaf5f03a35fcfede285245b59233",
+      "version": 1
+    },
+    "parse_conversion": {
+      "binding_kind": "PARSE_CONVERSION",
+      "binding_sha256": "3a5c132cff084cc9fe44628d81612e36234f4c582fd0a28721eb82dd8b5e0745",
+      "closed_world_b_arm": true,
+      "functions": [
+        "convert_event_realization_candidate"
+      ],
+      "schema": "SkillV2Pair1CorrectedBBindingV1",
+      "source_path": "src/novel_flywheel/planning_v2_slice1.py",
+      "source_sha256": "28bd1656f2452bea03bbe8c0778847e973d5f3dca807121e028f17af747ce201",
+      "version": 1
+    },
+    "persistence": {
+      "binding_kind": "EXECUTION_EVIDENCE_WRITER",
+      "binding_sha256": "0215bb5c8942ea787a97bef094e2822d4c31d12d292929f9323c728c0e1ffeac",
+      "closed_world_b_arm": true,
+      "functions": [
+        "persist_local_success_tail_v1"
+      ],
+      "schema": "SkillV2Pair1CorrectedBBindingV1",
+      "source_path": "tools/canary/skill_v2_pair1_corrected_b_binding_closure.py",
+      "source_sha256": "83359d1c3ca61c1687b8f810aba8adbbd80aeaf5f03a35fcfede285245b59233",
+      "version": 1
+    },
+    "provider_client": {
+      "binding_kind": "PROVIDER_CLIENT",
+      "binding_sha256": "1843a59d847a7de262b2fdfb9f19d73f229afa145975d4e71ab15fc4f77a3efd",
+      "closed_world_b_arm": true,
+      "functions": [
+        "execute_authorized_once_v3"
+      ],
+      "schema": "SkillV2Pair1CorrectedBBindingV1",
+      "source_path": "tools/canary/skill_v2_pair1_corrected_b_binding_closure.py",
+      "source_sha256": "83359d1c3ca61c1687b8f810aba8adbbd80aeaf5f03a35fcfede285245b59233",
+      "version": 1
+    },
+    "signed_preflight": {
+      "binding_kind": "SIGNED_PREFLIGHT",
+      "binding_sha256": "85d74f054414b00f72125db6799f118ffdcbee3d370da83a4e6cc8f6bfdfaf6d",
+      "closed_world_b_arm": true,
+      "functions": [
+        "validate_signed_approval_v3",
+        "validate_precredential_gate_v3"
+      ],
+      "schema": "SkillV2Pair1CorrectedBBindingV1",
+      "source_path": "tools/canary/skill_v2_pair1_corrected_b_binding_closure.py",
+      "source_sha256": "83359d1c3ca61c1687b8f810aba8adbbd80aeaf5f03a35fcfede285245b59233",
+      "version": 1
+    },
+    "stop_state": {
+      "binding_kind": "TWO_PHASE_STOP_STATE",
+      "binding_sha256": "867d3c949adf7f21118b8041185e9781ad7f5f47a1c219ef94e979efd3559a58",
+      "closed_world_b_arm": true,
+      "functions": [
+        "current_campaign_state_v1",
+        "validate_phase_receipt_v3"
+      ],
+      "schema": "SkillV2Pair1CorrectedBBindingV1",
+      "source_path": "tools/canary/skill_v2_pair1_corrected_b_binding_closure.py",
+      "source_sha256": "83359d1c3ca61c1687b8f810aba8adbbd80aeaf5f03a35fcfede285245b59233",
+      "version": 1
+    },
+    "transport_guard": {
+      "binding_kind": "SINGLE_DISPATCH_GUARD",
+      "binding_sha256": "c33f21e818a661c70cd8c85f70249050207f9cb021799f5e0f62f4fd0a60171e",
+      "closed_world_b_arm": true,
+      "functions": [
+        "execute_authorized_once_v3"
+      ],
+      "schema": "SkillV2Pair1CorrectedBBindingV1",
+      "source_path": "tools/canary/skill_v2_pair1_corrected_b_binding_closure.py",
+      "source_sha256": "83359d1c3ca61c1687b8f810aba8adbbd80aeaf5f03a35fcfede285245b59233",
+      "version": 1
+    },
+    "validator": {
+      "binding_kind": "EVENT_REALIZATION_VALIDATOR",
+      "binding_sha256": "af2de3a48265d371a99b3259cb0627c12a1427687f4d43cc462c8681c9405685",
+      "closed_world_b_arm": true,
+      "functions": [
+        "validate_event_realization_artifact"
+      ],
+      "schema": "SkillV2Pair1CorrectedBBindingV1",
+      "source_path": "src/novel_flywheel/planning_v2_slice1.py",
+      "source_sha256": "28bd1656f2452bea03bbe8c0778847e973d5f3dca807121e028f17af747ce201",
+      "version": 1
+    }
+  },
+  "call_graph_sha256": "7df709876d4dc8a61aae7dff153e618f46218568a0cf6327ffa70bb49944d2b8",
+  "dynamic_a_b_arm_switch_allowed": false,
+  "execution_order": [
+    "packet_validation",
+    "signed_approval_validation",
+    "sealed_a_control_check",
+    "current_b_campaign_stop_state",
+    "current_chat_permission",
+    "nonce_state_check",
+    "nonce_reservation",
+    "credential_lookup",
+    "provider_client",
+    "one_logical_b_call",
+    "max_one_provider_request",
+    "max_one_http_post",
+    "max_one_network_attempt",
+    "parse_conversion",
+    "event_realization_validation",
+    "freeze_audit_isolation_persistence",
+    "b_execution_evidence"
+  ],
+  "schema": "SkillV2Pair1CorrectedBAuthorityExecutionCallGraphV1",
+  "version": 1
+}

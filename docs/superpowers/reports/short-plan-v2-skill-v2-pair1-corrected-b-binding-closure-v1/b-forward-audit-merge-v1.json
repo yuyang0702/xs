@@ -1,0 +1,54 @@
+{
+  "corrected_b_approval_binding_complete_before_fix": false,
+  "corrected_b_execution_entry_point_present_before_fix": false,
+  "corrected_b_launcher_binding_complete_before_fix": false,
+  "corrected_b_missing_approval_bindings": [
+    "approval_parent_head",
+    "arm_role",
+    "attempt_accounting_binding_sha256",
+    "audit_serialization_binding_sha256",
+    "authority_normalization_binding_sha256",
+    "budget_policy_sha256",
+    "campaign_decision_rule_sha256",
+    "campaign_plan_sha256",
+    "full_success_tail_receipt_sha256",
+    "head_successor_validator_binding_sha256",
+    "network_attempt_cap_binding_sha256",
+    "packet_manifest_definition_sha256",
+    "packet_manifest_file_sha256",
+    "privacy_receipt_sha256",
+    "signed_preflight_validator_binding_sha256",
+    "stop_state_binding_sha256",
+    "transport_guard_binding_sha256",
+    "transport_policy_binding_sha256",
+    "unknown_state_fail_closed_binding_sha256"
+  ],
+  "corrected_b_missing_execution_bindings": [
+    "attempt_accounting_binding",
+    "credential_lookup_binding",
+    "execution_entry_point_id",
+    "execution_entry_point_source_path",
+    "execution_entry_point_source_sha256",
+    "execution_evidence_writer_binding",
+    "local_success_tail_binding",
+    "nonce_reservation_binding",
+    "outer_permission_check_binding",
+    "provider_client_binding"
+  ],
+  "full_gap_list_closed_by_successor": true,
+  "known_gap_count": 29,
+  "schema": "SkillV2Pair1CorrectedBForwardAuditMergeV1",
+  "source_audits": [
+    {
+      "bytes": 985,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-corrected-a-launcher-binding-fix-v1/corrected-b-forward-audit-v1.json",
+      "sha256": "3697205cbb1a782edc505fe1873cc937267ae2d3a67bae815bea8050a5f49271"
+    },
+    {
+      "bytes": 944,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-corrected-a-approval-binding-closure-v1/corrected-b-forward-audit-v1.json",
+      "sha256": "13bf53e384966188585b40559ff0a3e5e57df9e5fc57e926fb4a854f1faca607"
+    }
+  ],
+  "version": 1
+}

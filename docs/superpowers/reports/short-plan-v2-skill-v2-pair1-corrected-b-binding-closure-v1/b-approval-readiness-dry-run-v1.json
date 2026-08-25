@@ -1,0 +1,29 @@
+{
+  "a_control_sequence_binding": "PASS",
+  "b_approval_dry_run_result": "READY",
+  "b_approval_parent_head_binding": "PASS",
+  "b_campaign_authority_binding": "PASS",
+  "b_execution_entry_binding": "PASS",
+  "b_execution_entry_dry_run": "PASS",
+  "b_launcher_binding": "PASS",
+  "b_packet_binding": "PASS",
+  "b_phase_a_pre_approval_readiness": "PASS",
+  "b_phase_b_approval_time_stop_state": "PASS",
+  "b_post_seal_signed_preflight": "PASS",
+  "b_signed_preflight": "PASS",
+  "b_skill_context_binding": "PASS",
+  "external_actions": {
+    "credential_lookup_count": 0,
+    "http_post_attempts": 0,
+    "model_calls": 0,
+    "network_calls": 0,
+    "paid_calls": 0,
+    "real_provider_client_creation_count": 0,
+    "real_provider_request_attempts": 0
+  },
+  "schema": "SkillV2Pair1CorrectedBApprovalReadinessDryRunV1",
+  "signed_approval": "ABSENT",
+  "single_use_nonce": "ABSENT",
+  "synthetic_b_approval_transaction": "PASS",
+  "version": 1
+}

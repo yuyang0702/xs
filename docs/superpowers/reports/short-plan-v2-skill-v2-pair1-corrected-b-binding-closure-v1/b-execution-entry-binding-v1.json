@@ -1,0 +1,13 @@
+{
+  "arbitrary_selection_allowed": false,
+  "arm_role": "B_ARM",
+  "binding_sha256": "92ebb939b387e307a82063ca93d5fc8934f6759547d4fd8a2441c5452b33c114",
+  "dynamic_a_b_switch_allowed": false,
+  "entry_point_id": "tools.canary.skill_v2_pair1_corrected_b_binding_closure:execute_authorized_once_v3",
+  "entry_point_present": true,
+  "schema": "SkillV2Pair1CorrectedBExecutionEntryBindingV1",
+  "skill_arm": "RESTORED_SKILL_V2",
+  "source_path": "tools/canary/skill_v2_pair1_corrected_b_binding_closure.py",
+  "source_sha256": "83359d1c3ca61c1687b8f810aba8adbbd80aeaf5f03a35fcfede285245b59233",
+  "version": 1
+}

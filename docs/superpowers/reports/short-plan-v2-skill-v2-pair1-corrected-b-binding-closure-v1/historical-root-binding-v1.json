@@ -1,0 +1,12 @@
+{
+  "accepted_roots": [
+    "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-fixture-narrow-fix-v1/corrected-pair1/b-arm",
+    "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-corrected-b-binding-closure-v1",
+    "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-execution-v4/pairs/restored-character-heavy-v2/a-arm"
+  ],
+  "arbitrary_report_root_accepted": false,
+  "corrected_b_successor_root_accepted_for_future_approval": true,
+  "corrected_b_v2_root_accepted_as_historical": true,
+  "historical_root_policy": "CLOSED_WORLD",
+  "sealed_a_execution_root_accepted_as_control_evidence": true
+}

@@ -1,0 +1,84 @@
+{
+  "closed_world_justification": "The only authorized target is corrected Pair 1 B at one frozen event, authority tuple, story slice, pair lock, route, model, schema, and Restored Skill V2 context; every sibling arm and pair fails closed.",
+  "constraint_traceability": [
+    {
+      "evidence": "a-control-binding-v1.json",
+      "implementation": "tools/canary/skill_v2_pair1_corrected_b_binding_closure.py",
+      "requirement": "A control sequence only",
+      "test_paths": [
+        "tests/canary/test_skill_v2_pair1_corrected_b_binding_closure.py"
+      ]
+    },
+    {
+      "evidence": "b-execution-entry-dry-run-v1.json",
+      "implementation": "tools/canary/skill_v2_pair1_corrected_b_binding_closure.py",
+      "requirement": "B closed-world single dispatch",
+      "test_paths": [
+        "tests/canary/test_skill_v2_pair1_corrected_b_binding_closure.py"
+      ]
+    },
+    {
+      "evidence": "offline-test-receipt-v1.json",
+      "implementation": "tools/canary/skill_v2_pair1_corrected_b_binding_closure.py",
+      "requirement": "no external actions",
+      "test_paths": [
+        "tests/canary/test_skill_v2_pair1_corrected_b_binding_closure.py"
+      ]
+    }
+  ],
+  "forbidden_narrowing": [
+    "No partial first-gap fix",
+    "Close both approval and execution binding lists",
+    "Do not widen to Pair2-5 or production workflows"
+  ],
+  "historical_incident_families_checked": [
+    "stale approval parent",
+    "nonce replay",
+    "hidden retry/fallback",
+    "authority tuple drift",
+    "post-response audit serialization",
+    "fixture event-id mismatch",
+    "A artifact leakage"
+  ],
+  "model_output_boundary_changed": false,
+  "model_output_not_applicable_evidence": "The existing EventRealization converter/validator is imported unchanged; only B launcher authority reachability is added.",
+  "next_authoritative_boundary_tests": [
+    "tests/canary/test_skill_v2_pair1_corrected_b_binding_closure.py"
+  ],
+  "operational_definition": "One explicit B-only packet, launcher, preflight and fake single-dispatch tail bound to sealed A control.",
+  "original_requirement": "Close corrected Pair 1 B approval/execution bindings offline without changing A/B experiment semantics.",
+  "production_shaped_tests": [
+    "tests/canary/test_skill_v2_pair1_corrected_b_binding_closure.py"
+  ],
+  "projected_failure_mechanisms": [
+    "stale authority",
+    "transport retry",
+    "partial persistence",
+    "pair-order violation"
+  ],
+  "remaining_risks": [
+    "Real B Provider behavior remains unexecuted and requires fresh single-use approval."
+  ],
+  "resolution_status": "case_fixed",
+  "schema": "NovelDevCouncilForwardRiskReportV2",
+  "scope_classification": "closed_world",
+  "sibling_boundaries": [
+    {
+      "boundary": "corrected A",
+      "disposition": "tested_not_susceptible",
+      "evidence": "sealed A source and artifact hashes plus sequence-only A-control regression"
+    },
+    {
+      "boundary": "Pair2-5",
+      "disposition": "tested_not_susceptible",
+      "evidence": "pair2-5-block binding and closed-world resolver regression"
+    },
+    {
+      "boundary": "production workflow",
+      "disposition": "not_applicable",
+      "evidence": "disabled successor, shadow-only artifact, and no production entry reachability"
+    }
+  ],
+  "version": 2,
+  "why_previous_tests_missed": "The v2 fixture materializer created inert packet metadata but no arm-specific executable B entry and incomplete approval bindings."
+}

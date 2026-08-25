@@ -1,0 +1,12 @@
+{
+  "binding_kind": "EXECUTION_EVIDENCE_WRITER",
+  "binding_sha256": "0215bb5c8942ea787a97bef094e2822d4c31d12d292929f9323c728c0e1ffeac",
+  "closed_world_b_arm": true,
+  "functions": [
+    "persist_local_success_tail_v1"
+  ],
+  "schema": "SkillV2Pair1CorrectedBBindingV1",
+  "source_path": "tools/canary/skill_v2_pair1_corrected_b_binding_closure.py",
+  "source_sha256": "83359d1c3ca61c1687b8f810aba8adbbd80aeaf5f03a35fcfede285245b59233",
+  "version": 1
+}

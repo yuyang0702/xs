@@ -1,0 +1,12 @@
+{
+  "binding_kind": "EVENT_REALIZATION_VALIDATOR",
+  "binding_sha256": "af2de3a48265d371a99b3259cb0627c12a1427687f4d43cc462c8681c9405685",
+  "closed_world_b_arm": true,
+  "functions": [
+    "validate_event_realization_artifact"
+  ],
+  "schema": "SkillV2Pair1CorrectedBBindingV1",
+  "source_path": "src/novel_flywheel/planning_v2_slice1.py",
+  "source_sha256": "28bd1656f2452bea03bbe8c0778847e973d5f3dca807121e028f17af747ce201",
+  "version": 1
+}

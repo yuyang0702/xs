@@ -1,0 +1,8 @@
+{
+  "file_sha256": "70972485a8bff8733d90fe1948a8c0376c4955712fc9a73b800cf42d2e77694f",
+  "mutated": false,
+  "packet_sha256": "46953023632e8dcbebba452b9a60c550689778985bf3ed2a210f2674b7e3f0f7",
+  "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-fixture-narrow-fix-v1/corrected-pair1/b-arm/disabled-packet-v2.json",
+  "schema": "SkillV2Pair1CorrectedBV2PacketBindingV1",
+  "version": 1
+}

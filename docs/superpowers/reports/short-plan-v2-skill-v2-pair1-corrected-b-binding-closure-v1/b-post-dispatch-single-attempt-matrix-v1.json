@@ -1,0 +1,139 @@
+{
+  "case_count": 6,
+  "cases": [
+    {
+      "case": "connect_error",
+      "fake_http_posts": 1,
+      "fake_model_calls": 1,
+      "fake_network_attempts": 1,
+      "fake_provider_requests": 1,
+      "fallback_attempts": 0,
+      "real_external_actions": {
+        "credential_lookup_count": 0,
+        "http_post_attempts": 0,
+        "model_calls": 0,
+        "network_calls": 0,
+        "paid_calls": 0,
+        "real_provider_client_creation_count": 0,
+        "real_provider_request_attempts": 0
+      },
+      "resume_second_request": 0,
+      "retry_attempts": 0,
+      "second_dispatch_attempts": 0
+    },
+    {
+      "case": "http_failure",
+      "fake_http_posts": 1,
+      "fake_model_calls": 1,
+      "fake_network_attempts": 1,
+      "fake_provider_requests": 1,
+      "fallback_attempts": 0,
+      "real_external_actions": {
+        "credential_lookup_count": 0,
+        "http_post_attempts": 0,
+        "model_calls": 0,
+        "network_calls": 0,
+        "paid_calls": 0,
+        "real_provider_client_creation_count": 0,
+        "real_provider_request_attempts": 0
+      },
+      "resume_second_request": 0,
+      "retry_attempts": 0,
+      "second_dispatch_attempts": 0
+    },
+    {
+      "case": "malformed_response",
+      "fake_http_posts": 1,
+      "fake_model_calls": 1,
+      "fake_network_attempts": 1,
+      "fake_provider_requests": 1,
+      "fallback_attempts": 0,
+      "real_external_actions": {
+        "credential_lookup_count": 0,
+        "http_post_attempts": 0,
+        "model_calls": 0,
+        "network_calls": 0,
+        "paid_calls": 0,
+        "real_provider_client_creation_count": 0,
+        "real_provider_request_attempts": 0
+      },
+      "resume_second_request": 0,
+      "retry_attempts": 0,
+      "second_dispatch_attempts": 0
+    },
+    {
+      "case": "parse_failure",
+      "fake_http_posts": 1,
+      "fake_model_calls": 1,
+      "fake_network_attempts": 1,
+      "fake_provider_requests": 1,
+      "fallback_attempts": 0,
+      "real_external_actions": {
+        "credential_lookup_count": 0,
+        "http_post_attempts": 0,
+        "model_calls": 0,
+        "network_calls": 0,
+        "paid_calls": 0,
+        "real_provider_client_creation_count": 0,
+        "real_provider_request_attempts": 0
+      },
+      "resume_second_request": 0,
+      "retry_attempts": 0,
+      "second_dispatch_attempts": 0
+    },
+    {
+      "case": "validator_rejection",
+      "fake_http_posts": 1,
+      "fake_model_calls": 1,
+      "fake_network_attempts": 1,
+      "fake_provider_requests": 1,
+      "fallback_attempts": 0,
+      "real_external_actions": {
+        "credential_lookup_count": 0,
+        "http_post_attempts": 0,
+        "model_calls": 0,
+        "network_calls": 0,
+        "paid_calls": 0,
+        "real_provider_client_creation_count": 0,
+        "real_provider_request_attempts": 0
+      },
+      "resume_second_request": 0,
+      "retry_attempts": 0,
+      "second_dispatch_attempts": 0
+    },
+    {
+      "case": "persistence_failure",
+      "fake_http_posts": 1,
+      "fake_model_calls": 1,
+      "fake_network_attempts": 1,
+      "fake_provider_requests": 1,
+      "fallback_attempts": 0,
+      "real_external_actions": {
+        "credential_lookup_count": 0,
+        "http_post_attempts": 0,
+        "model_calls": 0,
+        "network_calls": 0,
+        "paid_calls": 0,
+        "real_provider_client_creation_count": 0,
+        "real_provider_request_attempts": 0
+      },
+      "resume_second_request": 0,
+      "retry_attempts": 0,
+      "second_dispatch_attempts": 0
+    }
+  ],
+  "external_actions": {
+    "credential_lookup_count": 0,
+    "http_post_attempts": 0,
+    "model_calls": 0,
+    "network_calls": 0,
+    "paid_calls": 0,
+    "real_provider_client_creation_count": 0,
+    "real_provider_request_attempts": 0
+  },
+  "max_fake_http_posts_per_case": 1,
+  "max_fake_network_attempts_per_case": 1,
+  "max_fake_provider_requests_per_case": 1,
+  "schema": "SkillV2Pair1CorrectedBPostdispatchMatrixV1",
+  "version": 1
+}

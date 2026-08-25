@@ -1,0 +1,22 @@
+{
+  "a_artifact_content_visible_to_b_model": false,
+  "a_artifact_hash_in_b_prompt": false,
+  "a_artifact_sha256": "f6aa5c49d64f38aefe71b01fc9eb0abf2ea3a08faba6f5bc3dbcb38c665e3f8f",
+  "a_canon_mutations": 0,
+  "a_control_sample_valid": true,
+  "a_execution_evidence_root": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-execution-v4/pairs/restored-character-heavy-v2/a-arm",
+  "a_execution_evidence_seal_head": "2d97d2a47e80ef5289ee066fac592deaa896590d",
+  "a_fallback_attempts": 0,
+  "a_nonce_status": "CONSUMED",
+  "a_packet_sha256": "39a46e38d9c11f8afd5fd1cf633443b31ae6fb1c97c4b93d404f950781f19356",
+  "a_production_authority": false,
+  "a_ready_mutations": 0,
+  "a_result_used_only_as_sequence_control_evidence": true,
+  "a_retry_attempts": 0,
+  "a_second_dispatch_attempts": 0,
+  "a_status": "PASS_SEALED",
+  "a_story_state_mutations": 0,
+  "binding_sha256": "89bac9135d329cdef8e7feb00bd2a16f2de5aab2917270c493634e5c49559408",
+  "schema": "SkillV2Pair1CorrectedBAControlBindingV1",
+  "version": 1
+}

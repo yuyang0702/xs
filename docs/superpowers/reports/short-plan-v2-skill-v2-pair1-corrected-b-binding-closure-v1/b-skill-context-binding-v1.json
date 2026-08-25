@@ -1,0 +1,13 @@
+{
+  "actionable_creative_capability_gate": "PASS",
+  "context_char_count": 2742,
+  "context_hard_ceiling": 3000,
+  "context_sha256": "e7828db2dc18eceabe06b9d1068b2683d117617fb0bd1257a26e7747fbe02772",
+  "operational_bookkeeping_leak_count": 0,
+  "profile_sha256": "c4ca606bd76359514e15cd60a2edcecbd9bc530690abb86be7313f2bd38999c5",
+  "restoration_items_present": "8/8",
+  "schema": "SkillV2Pair1CorrectedBSkillContextBindingV1",
+  "skill_arm": "RESTORED_SKILL_V2",
+  "truncation": "NONE",
+  "version": 1
+}
