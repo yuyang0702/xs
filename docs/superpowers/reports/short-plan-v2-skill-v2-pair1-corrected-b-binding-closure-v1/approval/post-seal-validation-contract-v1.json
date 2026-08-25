@@ -1,0 +1,12 @@
+{
+  "baml_src_diff_required": 0,
+  "baseline_head": "5592308a8dea9cca9a00d8f48055abcb80fe814f",
+  "current_head_relation_required": "SEALED_APPROVAL_EVIDENCE_ONLY_SUCCESSOR",
+  "post_seal_focused_matrix_required": "PASS",
+  "post_seal_phase_b_stop_state_required": "PASS",
+  "post_seal_signed_preflight_required": "exact",
+  "schema": "SkillV2Pair1CorrectedBApprovalV3PostSealContractV1",
+  "src_diff_required": 0,
+  "version": 1,
+  "worktree_required": "clean"
+}

@@ -1,0 +1,12 @@
+{
+  "entry_point_binding_sha256": "92ebb939b387e307a82063ca93d5fc8934f6759547d4fd8a2441c5452b33c114",
+  "entry_point_id": "tools.canary.skill_v2_pair1_corrected_b_binding_closure:execute_authorized_once_v3",
+  "entry_point_source_path": "tools/canary/skill_v2_pair1_corrected_b_binding_closure.py",
+  "entry_point_source_sha256": "83359d1c3ca61c1687b8f810aba8adbbd80aeaf5f03a35fcfede285245b59233",
+  "launcher_binding_sha256": "92ebb939b387e307a82063ca93d5fc8934f6759547d4fd8a2441c5452b33c114",
+  "launcher_source_path": "tools/canary/skill_v2_pair1_corrected_b_binding_closure.py",
+  "launcher_source_sha256": "83359d1c3ca61c1687b8f810aba8adbbd80aeaf5f03a35fcfede285245b59233",
+  "schema": "SkillV2Pair1CorrectedBExecutionEntryLauncherBindingV3",
+  "status": "exact",
+  "version": 3
+}

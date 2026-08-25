@@ -1,0 +1,12 @@
+{
+  "credential_value_count": 0,
+  "files_scanned": 23,
+  "matches": [],
+  "overall_status": "exact",
+  "privacy_match_count": 0,
+  "raw_a_artifact_content_count": 0,
+  "raw_prompt_count": 0,
+  "raw_story_count": 0,
+  "schema": "SkillV2Pair1CorrectedBApprovalV3PrivacyScanV1",
+  "version": 1
+}

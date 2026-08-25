@@ -1,0 +1,20 @@
+{
+  "blockers": 0,
+  "declared_level": "L3",
+  "evidence_only": true,
+  "external_actions": {
+    "credential_lookup_count": 0,
+    "http_post_attempts": 0,
+    "model_calls": 0,
+    "network_calls": 0,
+    "paid_calls": 0,
+    "real_provider_client_creation_count": 0,
+    "real_provider_request_attempts": 0
+  },
+  "forward_risk_report": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-corrected-b-binding-closure-v1/approval/forward-risk-report-v2.json",
+  "schema": "SkillV2Pair1CorrectedBApprovalV3StrictL3ReceiptV1",
+  "source_changes": 0,
+  "status": "PASS",
+  "version": 1,
+  "warnings": 0
+}

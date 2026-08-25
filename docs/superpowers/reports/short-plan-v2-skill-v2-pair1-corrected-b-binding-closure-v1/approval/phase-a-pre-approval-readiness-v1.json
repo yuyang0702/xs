@@ -1,0 +1,21 @@
+{
+  "campaign_state": "CONTINUE_ALLOWED_FOR_CORRECTED_PAIR1_B_ONLY",
+  "current_state": {
+    "active_campaign_stop": false,
+    "approval_id": null,
+    "pair1_a_pass_sealed": true,
+    "pair1_b_approval_exists": false,
+    "pair1_b_execution_exists": false,
+    "pair1_b_is_next_arm": true,
+    "pair1_b_result_exists": false,
+    "pair2_or_later_approval_exists": false,
+    "pair2_or_later_result_exists": false,
+    "state_sha256": "50833c1abea3d7108b1edfeea721464d5d98618fa9d3b3e89fa7fe9b2ad89b51"
+  },
+  "pair2_to_5_blocked": true,
+  "phase": "PHASE_A",
+  "schema": "SkillV2Pair1CorrectedBTwoPhaseStopStateV3",
+  "stop_state_receipt_sha256": "b008906064025472dfe66b671a2d5a325dc4b8dffaebaf119248a540e9d5b7ce",
+  "synthetic": false,
+  "version": 3
+}

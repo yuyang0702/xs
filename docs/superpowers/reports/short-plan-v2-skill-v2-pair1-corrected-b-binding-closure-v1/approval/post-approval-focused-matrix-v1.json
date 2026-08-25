@@ -1,0 +1,35 @@
+{
+  "checks": {
+    "approval_count": 1,
+    "approval_exists": true,
+    "approval_id_matches": true,
+    "execution_absent": true,
+    "external_actions_zero": true,
+    "missing_outer_permission_aborts_before_nonce": true,
+    "negative_matrix_32_of_32": "PASS",
+    "nonce_unconsumed": true,
+    "nonce_unreserved": true,
+    "pair2_or_later_approval_absent": true,
+    "pair2_or_later_result_absent": true,
+    "phase_b_stop_state": "PASS",
+    "result_absent": true,
+    "signed_approval": "exact"
+  },
+  "external_actions": {
+    "credential_lookup_count": 0,
+    "http_post_attempts": 0,
+    "model_calls": 0,
+    "network_calls": 0,
+    "paid_calls": 0,
+    "real_provider_client_creation_count": 0,
+    "real_provider_request_attempts": 0
+  },
+  "preapproval_closure_suite": {
+    "applicable_subset": "37 passed, 2 deselected in 40.24s",
+    "lifecycle_note": "Two preapproval-only oracles require approval absence and are intentionally inapplicable after the authorized Phase A to Phase B transition.",
+    "source_or_test_modified": false
+  },
+  "schema": "SkillV2Pair1CorrectedBApprovalV3PostApprovalFocusedMatrixV1",
+  "status": "PASS",
+  "version": 1
+}

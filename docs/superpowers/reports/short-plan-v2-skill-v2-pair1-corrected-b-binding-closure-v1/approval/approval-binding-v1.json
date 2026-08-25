@@ -1,0 +1,13 @@
+{
+  "approval_binding_sha256": "690e2aedef91104b4ce30c5efd3f77cbad824004e732a255ea79b517850f785d",
+  "approval_id": "skill-v2-pair1-corrected-b-v3-approval-20260825t150352z-ae850dc3",
+  "approval_identity_sha256": "7d1272a54bb52c32c3111019684f6949e7d2445dbb6afc768fb4cef51df5b2c6",
+  "approval_parent_head": "3af307c6289487bce157b6ce222d15fb336c4e3c",
+  "execution_authorized": true,
+  "packet_sha256": "6190409613b8ba3cff8ae5fba6216a2c4885f0d1d37245367ce5eea63288b37a",
+  "phase_b_receipt_sha256": "cb4fa79cad38e03bfab3b7add6aa313319d221d6babf6df37fbefce962da5e84",
+  "schema": "SkillV2Pair1CorrectedBApprovalBindingV3",
+  "signed_approval_file_sha256": "2dadafeb0598677ea0b1c9ab68f11a7b9b6e3d71e0c28283dcda7cb694325473",
+  "signed_approval_sha256": "afefc6d145e0d11bf5a6ab541880a116747d0d6975beebeab33adf2a894c1b38",
+  "version": 3
+}

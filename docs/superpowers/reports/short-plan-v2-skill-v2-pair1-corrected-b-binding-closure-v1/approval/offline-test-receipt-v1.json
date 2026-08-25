@@ -1,0 +1,25 @@
+{
+  "baml_src_diff": 0,
+  "closure_preapproval_applicable_subset": "37 passed, 2 deselected in 40.24s",
+  "external_actions": {
+    "credential_lookup_count": 0,
+    "http_post_attempts": 0,
+    "model_calls": 0,
+    "network_calls": 0,
+    "paid_calls": 0,
+    "real_provider_client_creation_count": 0,
+    "real_provider_request_attempts": 0
+  },
+  "focused": "POST_APPROVAL_FOCUSED_MATRIX=PASS; 32/32 negative cases",
+  "full_suite": "REUSED_EXACT_UNCHANGED_SOURCE_TREE: 3531 passed, 41 skipped, 6 xfailed, 33 failed, 72 errors in 1845.85s; non-green historical sealed-state/live-parity/oracle gates",
+  "negative_matrix_case_count": 32,
+  "phase_a": "PASS",
+  "phase_b": "PASS",
+  "post_approval_focused_matrix": "PASS",
+  "related": "20 passed in 5.87s",
+  "schema": "SkillV2Pair1CorrectedBApprovalV3OfflineTestReceiptV1",
+  "signed_preflight": "exact",
+  "source_diff": 0,
+  "strict_l3": "PASS warnings=0 blockers=0",
+  "version": 1
+}

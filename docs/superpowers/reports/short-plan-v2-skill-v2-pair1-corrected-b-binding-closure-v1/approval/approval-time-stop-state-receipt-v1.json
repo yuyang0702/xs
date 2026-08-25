@@ -1,0 +1,21 @@
+{
+  "campaign_state": "CONTINUE_ALLOWED_FOR_CORRECTED_PAIR1_B_ONLY",
+  "current_state": {
+    "active_campaign_stop": false,
+    "approval_id": "skill-v2-pair1-corrected-b-v3-approval-20260825t150352z-ae850dc3",
+    "pair1_a_pass_sealed": true,
+    "pair1_b_approval_exists": true,
+    "pair1_b_execution_exists": false,
+    "pair1_b_is_next_arm": true,
+    "pair1_b_result_exists": false,
+    "pair2_or_later_approval_exists": false,
+    "pair2_or_later_result_exists": false,
+    "state_sha256": "eb136bb3a137336827a11e0f66493c3b172a41ed6895984087caf1c3a43f1b93"
+  },
+  "pair2_to_5_blocked": true,
+  "phase": "PHASE_B",
+  "schema": "SkillV2Pair1CorrectedBTwoPhaseStopStateV3",
+  "stop_state_receipt_sha256": "cb4fa79cad38e03bfab3b7add6aa313319d221d6babf6df37fbefce962da5e84",
+  "synthetic": false,
+  "version": 3
+}

@@ -1,0 +1,14 @@
+{
+  "pair1_a_pass_sealed": true,
+  "pair1_b_approval_count": 1,
+  "pair1_b_execution_exists": false,
+  "pair1_b_is_next_arm": true,
+  "pair1_b_result_exists": false,
+  "pair2_or_later_approval_exists": false,
+  "pair2_or_later_result_exists": false,
+  "pair2_to_5_blocked": true,
+  "phase_a": "PASS",
+  "phase_b": "PASS",
+  "schema": "SkillV2Pair1CorrectedBCampaignStopSignalsV3",
+  "version": 3
+}

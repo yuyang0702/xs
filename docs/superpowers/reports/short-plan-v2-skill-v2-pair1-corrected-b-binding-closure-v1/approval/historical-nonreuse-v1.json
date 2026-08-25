@@ -1,0 +1,21 @@
+{
+  "a_nonce_valid_for_b": false,
+  "approval_reuse_allowed": false,
+  "historical_b_v2_packet_sha256": "46953023632e8dcbebba452b9a60c550689778985bf3ed2a210f2674b7e3f0f7",
+  "historical_b_v2_reused": false,
+  "historical_root_policy": {
+    "accepted_roots": [
+      "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-fixture-narrow-fix-v1/corrected-pair1/b-arm",
+      "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-corrected-b-binding-closure-v1",
+      "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-execution-v4/pairs/restored-character-heavy-v2/a-arm"
+    ],
+    "arbitrary_report_root_accepted": false,
+    "corrected_b_successor_root_accepted_for_future_approval": true,
+    "corrected_b_v2_root_accepted_as_historical": true,
+    "historical_root_policy": "CLOSED_WORLD",
+    "sealed_a_execution_root_accepted_as_control_evidence": true
+  },
+  "old_b_nonce_valid_for_successor": false,
+  "schema": "SkillV2Pair1CorrectedBHistoricalNonreuseV3",
+  "version": 3
+}

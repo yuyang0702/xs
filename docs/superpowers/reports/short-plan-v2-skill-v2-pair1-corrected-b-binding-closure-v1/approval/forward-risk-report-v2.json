@@ -1,0 +1,84 @@
+{
+  "closed_world_justification": "The approval is bound to one content-addressed packet, pair, B arm, Restored Skill V2 context, entry point, route/client binding, single-dispatch cap, approval identity, and nonce.",
+  "constraint_traceability": [
+    {
+      "evidence": "sealed-packet-bindings-v1.json",
+      "implementation": "evidence-only approval transaction",
+      "requirement": "exact packet binding",
+      "test_paths": [
+        "tests/canary/test_skill_v2_pair1_corrected_b_binding_closure.py"
+      ]
+    },
+    {
+      "evidence": "signed-preflight-receipt-v1.json",
+      "implementation": "signed approval plus nonce binding",
+      "requirement": "single-use approval and nonce",
+      "test_paths": [
+        "tests/canary/test_skill_v2_pair1_corrected_b_binding_closure.py"
+      ]
+    },
+    {
+      "evidence": "offline-test-receipt-v1.json",
+      "implementation": "approval-only boundary",
+      "requirement": "zero external actions",
+      "test_paths": [
+        "tests/canary/test_skill_v2_pair1_corrected_b_binding_closure.py"
+      ]
+    }
+  ],
+  "forbidden_narrowing": [
+    "No packet substitution",
+    "No A artifact exposure",
+    "No Pair2-5 authority",
+    "No current-task external action"
+  ],
+  "historical_incident_families_checked": [
+    "stale approval parent",
+    "nonce replay",
+    "hidden retry/fallback",
+    "authority drift",
+    "A artifact leakage",
+    "Pair2 premature progression"
+  ],
+  "model_output_boundary_changed": false,
+  "model_output_not_applicable_evidence": "No model output is produced, parsed, converted, validated, or persisted in this approval-only transaction.",
+  "next_authoritative_boundary_tests": [
+    "tests/canary/test_skill_v2_pair1_corrected_b_binding_closure.py"
+  ],
+  "operational_definition": "One signed approval and one unreserved/unconsumed B-only nonce for the sealed corrected Pair 1 B V3 packet.",
+  "original_requirement": "Approve exactly one future corrected Pair 1 B V3 dispatch without executing it.",
+  "production_shaped_tests": [
+    "tests/canary/test_skill_v2_pair1_corrected_b_binding_closure.py"
+  ],
+  "projected_failure_mechanisms": [
+    "packet substitution",
+    "stale stop state",
+    "nonce reuse",
+    "approval scope widening"
+  ],
+  "remaining_risks": [
+    "Future real B execution still requires fresh current-chat permission before nonce reservation."
+  ],
+  "resolution_status": "case_fixed",
+  "schema": "NovelDevCouncilForwardRiskReportV2",
+  "scope_classification": "closed_world",
+  "sibling_boundaries": [
+    {
+      "boundary": "sealed A control",
+      "disposition": "tested_not_susceptible",
+      "evidence": "A remains sequence-only and its artifact is absent from B model input"
+    },
+    {
+      "boundary": "Pair2-5",
+      "disposition": "tested_not_susceptible",
+      "evidence": "block proof and negative matrix"
+    },
+    {
+      "boundary": "production workflow",
+      "disposition": "not_applicable",
+      "evidence": "approval-only task performs no dispatch or formal mutation"
+    }
+  ],
+  "version": 2,
+  "why_previous_tests_missed": "The prior task intentionally materialized only a disabled packet and synthetic approval readiness; no real approval identity or nonce existed."
+}
