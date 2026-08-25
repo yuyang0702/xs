@@ -1,0 +1,12 @@
+{
+  "artifact_frozen": false,
+  "artifact_persisted": false,
+  "candidate_conversion_reached": true,
+  "failure_reason_code": "slice1_generated_candidate_rejected",
+  "first_failing_boundary": "EventRealizationArtifact semantic validation",
+  "provider_returned_visible_final_text": true,
+  "schema": "SkillV2BoundedRepeatedABPair1AValidationResultV1",
+  "status": "REJECTED",
+  "terminal_classification": "PAIR_1_A_NO_GO_LOCAL_SEMANTIC_VALIDATION",
+  "version": 1
+}

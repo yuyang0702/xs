@@ -1,0 +1,13 @@
+{
+  "artifact_root": "artifact",
+  "artifact_written": false,
+  "canon_mutation_count": 0,
+  "formal_manuscript_mutation_count": 0,
+  "isolated_database_committed": false,
+  "production_database_mutation_count": 0,
+  "raw_provider_content_persisted": false,
+  "ready_authority_mutation_count": 0,
+  "schema": "SkillV2BoundedRepeatedABPair1AOutputIsolationV1",
+  "story_state_mutation_count": 0,
+  "version": 1
+}

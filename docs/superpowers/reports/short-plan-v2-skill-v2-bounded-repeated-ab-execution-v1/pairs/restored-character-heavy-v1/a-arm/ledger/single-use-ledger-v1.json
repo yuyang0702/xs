@@ -1,0 +1,16 @@
+{
+  "application_second_dispatch_allowed": false,
+  "cohort_id": "skill-v2-bounded-repeated-ab-character-heavy-a-v1-20260824t162103z-001",
+  "guard_active": true,
+  "http_post_attempts": 1,
+  "max_http_post_attempts": 1,
+  "model_logical_calls": 1,
+  "network_request_attempts": 1,
+  "nonce_sha256": "69e52be21fb9448083a1ae02a6bb9e3daf747a1f79602435b22fdf5145949f80",
+  "real_provider_request_attempts": 1,
+  "schema": "SkillV2BoundedRepeatedABPair1ANonceLedgerV1",
+  "sdk_retries_disabled": true,
+  "transport_request_retries_disabled": true,
+  "usage_status": "consumed",
+  "version": 1
+}

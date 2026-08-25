@@ -1,0 +1,33 @@
+{
+  "approval_id": "skill-v2-pair1-a-v3-approval-20260825t014416z-001",
+  "approval_scope": "SKILL_V2_BOUNDED_REPEATED_AB_CHARACTER_HEAVY_A_ARM_SINGLE_DISPATCH_V1_ONLY",
+  "approval_valid_at_dispatch": true,
+  "artifact_persisted": false,
+  "attempts": {
+    "http_post_attempts": 1,
+    "model_logical_calls": 1,
+    "network_request_attempts": 1,
+    "real_provider_request_attempts": 1
+  },
+  "cohort_id": "skill-v2-bounded-repeated-ab-character-heavy-a-v1-20260824t162103z-001",
+  "execution_parent_head": "0f6ccc5cfa77adc4c06ce83696ce5f4a6ad2af3a",
+  "fallback_attempted": false,
+  "first_failing_invariant": "slice1_generated_candidate_rejected",
+  "full_short_canary": "NOT_EXECUTED",
+  "nonce_final_state": "consumed_spent",
+  "outer_permission": "EXPLICIT_CURRENT_CHAT_DESTINATION_BOUND_CONFIRMATION",
+  "pair_1_b_arm_authorized": false,
+  "provider_destination": "lingsuan.org",
+  "provider_protocol": "anthropic",
+  "provider_return_status": "NORMAL_RETURN_WITH_VISIBLE_FINAL_TEXT",
+  "resume_attempted": false,
+  "retry_attempted": false,
+  "route_fingerprint": "30e9cbaf86fbb4b89b43614d71cc11b359ad41e7411e8ebda5d3ce4199879bf0",
+  "schema": "SkillV2BoundedRepeatedABPair1AExecutionReceiptV1",
+  "second_dispatch_occurred": false,
+  "shadow_only": true,
+  "skill_arm": "CURRENT_RUNTIME_SKILL",
+  "terminal_classification": "PAIR_1_A_NO_GO_LOCAL_SEMANTIC_VALIDATION",
+  "validator_status": "REJECTED",
+  "version": 1
+}

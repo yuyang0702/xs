@@ -1,0 +1,21 @@
+{
+  "comparison_completeness": "partial",
+  "final_text_absent": false,
+  "finish_reason_max_tokens": false,
+  "guard_reached": true,
+  "guard_triggered": false,
+  "negative_capability_write_status": "NOT_REQUIRED",
+  "normalized_shape_fingerprint": "d7bc765e23b9dabdb6d2076370ae7367339b2c727fa758a0b53cca915b1ac6c6",
+  "normalized_visible_chars_zero": false,
+  "ptr9_recovery_status": "NORMAL_RETURN",
+  "raw_shape_fingerprint": "9dfc28f7365afd76cccccd769c95e6446c538fa2b029b68f04f9e08b98c4a184",
+  "raw_visible_chars_zero": false,
+  "reasoning_block_exists": true,
+  "representation_changed": "YES",
+  "route_fingerprint": "30e9cbaf86fbb4b89b43614d71cc11b359ad41e7411e8ebda5d3ce4199879bf0",
+  "schema": "SkillV2BoundedRepeatedABPair1AProviderObservationV1",
+  "tool_call_absent": true,
+  "transport_complete": true,
+  "unknown_block_absent": true,
+  "version": 1
+}

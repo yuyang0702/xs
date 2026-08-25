@@ -1,0 +1,14 @@
+{
+  "absolute_machine_path_count": 0,
+  "credential_value_count": 0,
+  "isolated_database_persisted": false,
+  "nonce_value_count": 0,
+  "overall_status": "exact",
+  "raw_prompt_count": 0,
+  "raw_provider_content_count": 0,
+  "raw_reasoning_content_count": 0,
+  "raw_story_count": 0,
+  "raw_tool_argument_count": 0,
+  "schema": "SkillV2BoundedRepeatedABPair1APrivacyScanV1",
+  "version": 1
+}
