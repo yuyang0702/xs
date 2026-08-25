@@ -1,0 +1,15 @@
+{
+  "missing_permission_credential_lookup_count": 0,
+  "missing_permission_network_calls": 0,
+  "missing_permission_nonce_state": "unreserved_unconsumed",
+  "missing_permission_result": "PRE_NONCE_EXTERNAL_PERMISSION_ABORT",
+  "outer_current_chat_permission_required": true,
+  "outer_permission_check_before_nonce_reservation": true,
+  "permission_components_required": [
+    "credentials",
+    "network",
+    "paid_provider",
+    "data_egress"
+  ],
+  "real_permission_receipt_materialized": false
+}

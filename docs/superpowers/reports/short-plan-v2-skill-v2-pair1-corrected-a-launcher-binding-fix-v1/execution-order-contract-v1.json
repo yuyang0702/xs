@@ -1,0 +1,27 @@
+{
+  "credential_lookup_before_provider_client": true,
+  "execution_order_contract_sha256": "70f192d888349a44d33f0126442f35880373d57132509bd41aa218906a8fa105",
+  "nonce_reservation_before_credential_lookup": true,
+  "permission_before_nonce_reservation": true,
+  "preflight_before_permission": true,
+  "schema": "SkillV2Pair1CorrectedAExecutionOrderContractV1",
+  "second_dispatch_allowed": false,
+  "steps": [
+    "packet_validation",
+    "signed_approval_validation",
+    "current_phase_b_stop_state_recomputation",
+    "current_chat_external_permission",
+    "nonce_state_check",
+    "exclusive_nonce_reservation",
+    "credential_lookup",
+    "provider_client_creation",
+    "one_logical_model_call",
+    "at_most_one_provider_request",
+    "at_most_one_http_post",
+    "at_most_one_network_attempt",
+    "local_parse_conversion_validation",
+    "freeze_audit_persistence",
+    "result_evidence_seal"
+  ],
+  "version": 1
+}

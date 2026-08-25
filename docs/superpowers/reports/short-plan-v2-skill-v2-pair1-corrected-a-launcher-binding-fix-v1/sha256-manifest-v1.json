@@ -1,0 +1,130 @@
+{
+  "coverage": "all materialized evidence files except manifest itself",
+  "entry_count": 24,
+  "files": [
+    {
+      "bytes": 120,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-corrected-a-launcher-binding-fix-v1/README.md",
+      "sha256": "a920c777754fee0b355c0ccade762d289020d5baf67a8cae2db166813b79760a"
+    },
+    {
+      "bytes": 985,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-corrected-a-launcher-binding-fix-v1/corrected-b-forward-audit-v1.json",
+      "sha256": "3697205cbb1a782edc505fe1873cc937267ae2d3a67bae815bea8050a5f49271"
+    },
+    {
+      "bytes": 1206,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-corrected-a-launcher-binding-fix-v1/execution-entry-dry-run-v1.json",
+      "sha256": "e03660ba2ace42087da2d4554459f6513e03b29a49a13b33366de64e42fc6881"
+    },
+    {
+      "bytes": 797,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-corrected-a-launcher-binding-fix-v1/execution-entry-point-binding-v1.json",
+      "sha256": "a8710da56374d863b706b859908f539323e2a5382b1e8b2bf359994d54a8f760"
+    },
+    {
+      "bytes": 926,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-corrected-a-launcher-binding-fix-v1/execution-order-contract-v1.json",
+      "sha256": "8bc2fa25dfac9824d1ef6807ff5fed2bec2880c905d8faf8d925bb4237d2a58a"
+    },
+    {
+      "bytes": 444,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-corrected-a-launcher-binding-fix-v1/failure-binding-v1.json",
+      "sha256": "90a81fa10c90242ecaf1c666a24c7c99802341aad00680aed22baa5a800fde63"
+    },
+    {
+      "bytes": 2453,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-corrected-a-launcher-binding-fix-v1/final-report-v1.md",
+      "sha256": "c876af2fd0db451e3403d8f5139f3652da4b56245142d20c08f00e26b2500382"
+    },
+    {
+      "bytes": 902,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-corrected-a-launcher-binding-fix-v1/forward-risk-report-v2.json",
+      "sha256": "43dd60770b654f11ab74066df23d97f3d0eefa8fd841eeedf9f157ea7070a139"
+    },
+    {
+      "bytes": 386,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-corrected-a-launcher-binding-fix-v1/historical-root-binding-v1.json",
+      "sha256": "47a4f0376a9fd2449ec160315e83e224a61af0917f63d9391c7bf61719518cc5"
+    },
+    {
+      "bytes": 6798,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-corrected-a-launcher-binding-fix-v1/launcher-architecture-v1.json",
+      "sha256": "47702f1fdf46886665d74e50c600f802d599ab8fef7c4dfafd6e92ad8f0496c5"
+    },
+    {
+      "bytes": 325,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-corrected-a-launcher-binding-fix-v1/launcher-root-cause-v1.json",
+      "sha256": "e1a9b59c68944d8af8ec6146c2f2b192d3683c2bee06a5b3598a892727bd5a16"
+    },
+    {
+      "bytes": 2876,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-corrected-a-launcher-binding-fix-v1/launcher-source-binding-v1.json",
+      "sha256": "ee6e1a79d0a78a63a757de789db66c78f4bf46aa88d7a2eb5b4b49dd08a50097"
+    },
+    {
+      "bytes": 233,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-corrected-a-launcher-binding-fix-v1/nonce-lifecycle-binding-v1.json",
+      "sha256": "f93383b1658f015dde910920eebd591d199d4f9367402a7e9106a4c5d0f1f0c9"
+    },
+    {
+      "bytes": 558,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-corrected-a-launcher-binding-fix-v1/offline-test-receipt-v1.json",
+      "sha256": "7ddd3ba6be7b0442ec2479fa11ef24a708d5840aebc6e22c7291e3ba26dac334"
+    },
+    {
+      "bytes": 500,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-corrected-a-launcher-binding-fix-v1/outer-permission-binding-v1.json",
+      "sha256": "55f257912705791feea337a707f8841567589d4e0e355260d353da3648e09786"
+    },
+    {
+      "bytes": 4002,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-corrected-a-launcher-binding-fix-v1/post-dispatch-single-attempt-matrix-v1.json",
+      "sha256": "9d2de66592e4f1f46ac45c39eeceded4bfb15534667615641e973190ae218d19"
+    },
+    {
+      "bytes": 6507,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-corrected-a-launcher-binding-fix-v1/pre-credential-negative-matrix-v1.json",
+      "sha256": "9b9749729453921666158d2d7ce5c02e0b830f7d5d9463243b867026dfeed67a"
+    },
+    {
+      "bytes": 178,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-corrected-a-launcher-binding-fix-v1/privacy-scan-v1.json",
+      "sha256": "35c8a88289e785dfa43bdfa576afb0ecabe8a094be23ff2b4123cf42ebc13034"
+    },
+    {
+      "bytes": 459,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-corrected-a-launcher-binding-fix-v1/single-dispatch-binding-v1.json",
+      "sha256": "12f515ead1c95b98ba9c6129c57efd527596a9979653b12b2f19c4c0ef21c57c"
+    },
+    {
+      "bytes": 704,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-corrected-a-launcher-binding-fix-v1/v3-approval-nonreuse-v1.json",
+      "sha256": "3f575315744a79c284b4bd4d2461ecebf813e423cac3f7d811963300ceab1583"
+    },
+    {
+      "bytes": 2029,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-corrected-a-launcher-binding-fix-v1/v3-authority-parity-v1.json",
+      "sha256": "c9e2eaece2b9121871324672205bc06522c3f0405326bfb812fba38cb547d60e"
+    },
+    {
+      "bytes": 960,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-corrected-a-launcher-binding-fix-v1/v4-approval-readiness-dry-run-v1.json",
+      "sha256": "044aa3233924b7cc2c850127459c052ef90624d3fd9dbff04bf9276603d71f8a"
+    },
+    {
+      "bytes": 3999,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-corrected-a-launcher-binding-fix-v1/v4-packet-manifest-binding-v1.json",
+      "sha256": "375d34e13aa73c415066d5a183a3eff596e0b9da0e4d080e746edbfd159d73b1"
+    },
+    {
+      "bytes": 12864,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-corrected-a-launcher-binding-fix-v1/v4-successor-packet.json",
+      "sha256": "1a810f24eca56f43afc6338481d003133e76edeaff794f8558aa1f7be308a914"
+    }
+  ],
+  "overall_status": "exact",
+  "schema": "SkillV2Pair1CorrectedALauncherFixSha256ManifestV1",
+  "self_excluded": true,
+  "version": 1
+}

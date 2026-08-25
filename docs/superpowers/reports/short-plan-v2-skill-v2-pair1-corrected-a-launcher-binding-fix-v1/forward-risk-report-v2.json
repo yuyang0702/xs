@@ -1,0 +1,26 @@
+{
+  "model_output_boundary_changed": false,
+  "next_authoritative_boundary_tests": [
+    "future v4 signed preflight",
+    "future single-dispatch execution"
+  ],
+  "production_shaped_tests": [
+    "tests/canary/test_skill_v2_pair1_corrected_a_launcher_binding.py"
+  ],
+  "projected_incident_families": [
+    "stale authority approval",
+    "nonce replay",
+    "hidden retry or fallback",
+    "transport-attempt undercount",
+    "provider diagnostic privacy",
+    "partial persistence after terminal error",
+    "incorrect B-arm progression"
+  ],
+  "reason": "launcher reachability only; prompt, current skill, route/model/output cap, converter, validator, PTR9 and PTR12 are byte-bound unchanged",
+  "remaining_risks": [
+    "real Provider behavior remains untested in this offline task",
+    "corrected B still lacks an execution entry point"
+  ],
+  "schema": "ForwardRiskReportV2",
+  "version": 2
+}

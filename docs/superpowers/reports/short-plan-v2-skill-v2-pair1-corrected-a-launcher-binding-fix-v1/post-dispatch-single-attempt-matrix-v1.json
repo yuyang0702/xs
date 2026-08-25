@@ -1,0 +1,139 @@
+{
+  "case_count": 6,
+  "maximum_fake_http_posts_per_case": 1,
+  "maximum_fake_network_attempts_per_case": 1,
+  "maximum_fake_provider_requests_per_case": 1,
+  "real_external_actions": {
+    "credential_lookup_count": 0,
+    "http_post_attempts": 0,
+    "model_calls": 0,
+    "network_calls": 0,
+    "paid_calls": 0,
+    "real_provider_client_creation_count": 0,
+    "real_provider_request_attempts": 0
+  },
+  "results": [
+    {
+      "case": "connect_error",
+      "fake_http_posts": 1,
+      "fake_network_attempts": 1,
+      "fake_provider_requests": 1,
+      "fallback": 0,
+      "real_external_actions": {
+        "credential_lookup_count": 0,
+        "http_post_attempts": 0,
+        "model_calls": 0,
+        "network_calls": 0,
+        "paid_calls": 0,
+        "real_provider_client_creation_count": 0,
+        "real_provider_request_attempts": 0
+      },
+      "resume_second_request": 0,
+      "retry": 0,
+      "second_dispatch": 0,
+      "terminal_status": "connect_error"
+    },
+    {
+      "case": "http_failure",
+      "fake_http_posts": 1,
+      "fake_network_attempts": 1,
+      "fake_provider_requests": 1,
+      "fallback": 0,
+      "real_external_actions": {
+        "credential_lookup_count": 0,
+        "http_post_attempts": 0,
+        "model_calls": 0,
+        "network_calls": 0,
+        "paid_calls": 0,
+        "real_provider_client_creation_count": 0,
+        "real_provider_request_attempts": 0
+      },
+      "resume_second_request": 0,
+      "retry": 0,
+      "second_dispatch": 0,
+      "terminal_status": "http_failure"
+    },
+    {
+      "case": "malformed_provider_response",
+      "fake_http_posts": 1,
+      "fake_network_attempts": 1,
+      "fake_provider_requests": 1,
+      "fallback": 0,
+      "real_external_actions": {
+        "credential_lookup_count": 0,
+        "http_post_attempts": 0,
+        "model_calls": 0,
+        "network_calls": 0,
+        "paid_calls": 0,
+        "real_provider_client_creation_count": 0,
+        "real_provider_request_attempts": 0
+      },
+      "resume_second_request": 0,
+      "retry": 0,
+      "second_dispatch": 0,
+      "terminal_status": "malformed_provider_response"
+    },
+    {
+      "case": "local_parse_failure",
+      "fake_http_posts": 1,
+      "fake_network_attempts": 1,
+      "fake_provider_requests": 1,
+      "fallback": 0,
+      "real_external_actions": {
+        "credential_lookup_count": 0,
+        "http_post_attempts": 0,
+        "model_calls": 0,
+        "network_calls": 0,
+        "paid_calls": 0,
+        "real_provider_client_creation_count": 0,
+        "real_provider_request_attempts": 0
+      },
+      "resume_second_request": 0,
+      "retry": 0,
+      "second_dispatch": 0,
+      "terminal_status": "local_parse_failure"
+    },
+    {
+      "case": "local_validator_rejection",
+      "fake_http_posts": 1,
+      "fake_network_attempts": 1,
+      "fake_provider_requests": 1,
+      "fallback": 0,
+      "real_external_actions": {
+        "credential_lookup_count": 0,
+        "http_post_attempts": 0,
+        "model_calls": 0,
+        "network_calls": 0,
+        "paid_calls": 0,
+        "real_provider_client_creation_count": 0,
+        "real_provider_request_attempts": 0
+      },
+      "resume_second_request": 0,
+      "retry": 0,
+      "second_dispatch": 0,
+      "terminal_status": "local_validator_rejection"
+    },
+    {
+      "case": "persistence_failure",
+      "fake_http_posts": 1,
+      "fake_network_attempts": 1,
+      "fake_provider_requests": 1,
+      "fallback": 0,
+      "real_external_actions": {
+        "credential_lookup_count": 0,
+        "http_post_attempts": 0,
+        "model_calls": 0,
+        "network_calls": 0,
+        "paid_calls": 0,
+        "real_provider_client_creation_count": 0,
+        "real_provider_request_attempts": 0
+      },
+      "resume_second_request": 0,
+      "retry": 0,
+      "second_dispatch": 0,
+      "terminal_status": "persistence_failure"
+    }
+  ],
+  "schema": "SkillV2Pair1CorrectedAPostdispatchSingleAttemptMatrixV1",
+  "version": 1
+}

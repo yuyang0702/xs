@@ -1,0 +1,12 @@
+{
+  "application_second_dispatch_allowed": false,
+  "binding": "6fbf586bfcbf926b89e3eee26f8ab0b7a3d20f874bf975591bde954d69001250",
+  "hard_max_http_post_attempts": 1,
+  "hard_max_model_calls": 1,
+  "hard_max_network_request_attempts": 1,
+  "hard_max_real_provider_request_attempts": 1,
+  "route_fallback_after_dispatch_allowed": false,
+  "sdk_retries_disabled": true,
+  "transport_request_retries_disabled": true,
+  "unknown_guard_state_fails_closed": true
+}

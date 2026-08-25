@@ -1,0 +1,21 @@
+{
+  "external_actions": {
+    "credential_lookup_count": 0,
+    "http_post_attempts": 0,
+    "model_calls": 0,
+    "network_calls": 0,
+    "paid_calls": 0,
+    "real_provider_client_creation_count": 0,
+    "real_provider_request_attempts": 0
+  },
+  "schema": "SkillV2Pair1CorrectedAV3ApprovalNonreuseV1",
+  "v3_approval_launcher_binding_match_v4": false,
+  "v3_approval_reuse_fails_before_credential_lookup": true,
+  "v3_approval_valid_for_v4_packet": false,
+  "v3_nonce_reused": false,
+  "v3_nonce_valid_for_v4_packet": false,
+  "v3_packet_mutated": false,
+  "v3_packet_sha256": "d7c31f05ecefdbd971df16966840f72ff4bc568c79f6633228ec4e43a5811aa7",
+  "v3_signed_approval_mutated": false,
+  "version": 1
+}

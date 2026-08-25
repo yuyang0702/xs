@@ -1,0 +1,10 @@
+{
+  "arbitrary_report_root_accepted": false,
+  "historical_root_policy": "CLOSED_WORLD",
+  "r0f_reason": "no src, baml_src, or protected production source change",
+  "r0f_result": "NOT_REQUIRED",
+  "schema": "SkillV2Pair1CorrectedALauncherHistoricalRootBindingV1",
+  "v3_packet_root_accepted_as_historical": true,
+  "v4_packet_root_accepted_for_future_approval": true,
+  "version": 1
+}

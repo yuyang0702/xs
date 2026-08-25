@@ -1,0 +1,14 @@
+{
+  "blocked_gate": "PRE_CREDENTIAL_FAIL_CLOSED",
+  "external_actions": {
+    "credential_lookup_count": 0,
+    "http_post_attempts": 0,
+    "model_calls": 0,
+    "network_calls": 0,
+    "paid_calls": 0,
+    "real_provider_client_creation_count": 0,
+    "real_provider_request_attempts": 0
+  },
+  "first_blocker": "execution_entry_point_present=false",
+  "v3_packet_sha256": "d7c31f05ecefdbd971df16966840f72ff4bc568c79f6633228ec4e43a5811aa7"
+}

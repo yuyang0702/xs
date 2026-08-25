@@ -1,0 +1,176 @@
+{
+  "arbitrary_entry_point_selection_allowed": false,
+  "components": {
+    "attempt_accounting": {
+      "binding_explicit": true,
+      "binding_sha256": "12a5068cc452561d3d06700510f94db9de2ac0f7ea5bc6b4755206578f0e88c0",
+      "functions": [
+        "attempt_snapshot_v1"
+      ],
+      "kind": "attempt_accounting",
+      "schema": "SkillV2Pair1CorrectedAExplicitComponentBindingV1",
+      "source": {
+        "bytes": 67262,
+        "path": "tools/canary/skill_v2_pair1_corrected_a_launcher_binding.py",
+        "sha256": "4ff499598dfddfc251501feb87ed91603e4313091523ba363c71bb86f6dea576"
+      },
+      "version": 1
+    },
+    "credential_lookup": {
+      "binding_explicit": true,
+      "binding_sha256": "9f87824f494caa05fe2f35ea11cafabedd1c84220fbc328d531879a9dc5ee1ec",
+      "functions": [
+        "execute_authorized_once_v4"
+      ],
+      "kind": "credential_lookup",
+      "schema": "SkillV2Pair1CorrectedAExplicitComponentBindingV1",
+      "source": {
+        "bytes": 67262,
+        "path": "tools/canary/skill_v2_pair1_corrected_a_launcher_binding.py",
+        "sha256": "4ff499598dfddfc251501feb87ed91603e4313091523ba363c71bb86f6dea576"
+      },
+      "version": 1
+    },
+    "execution_entry_point_registry_resolver": {
+      "binding_explicit": true,
+      "binding_sha256": "1e60b07bd61e3fe0cbf9508bd0265bebd59446b851dc880f01446ed0622011c0",
+      "functions": [
+        "resolve_execution_entry_point"
+      ],
+      "kind": "execution_entry_point_registry_resolver",
+      "schema": "SkillV2Pair1CorrectedAExplicitComponentBindingV1",
+      "source": {
+        "bytes": 67262,
+        "path": "tools/canary/skill_v2_pair1_corrected_a_launcher_binding.py",
+        "sha256": "4ff499598dfddfc251501feb87ed91603e4313091523ba363c71bb86f6dea576"
+      },
+      "version": 1
+    },
+    "execution_evidence_writer": {
+      "binding_explicit": true,
+      "binding_sha256": "0d0e5b2a7616c1f3623a7f3a8e921f81bed0102fedfd15b629eb79477ff8bd71",
+      "functions": [
+        "persist_local_success_tail_v1"
+      ],
+      "kind": "execution_evidence_writer",
+      "schema": "SkillV2Pair1CorrectedAExplicitComponentBindingV1",
+      "source": {
+        "bytes": 67262,
+        "path": "tools/canary/skill_v2_pair1_corrected_a_launcher_binding.py",
+        "sha256": "4ff499598dfddfc251501feb87ed91603e4313091523ba363c71bb86f6dea576"
+      },
+      "version": 1
+    },
+    "launcher_source": {
+      "binding_explicit": true,
+      "binding_sha256": "495201bd6277625325c5d44ae9dbb29b483b61d82a4c0b58b39d191f86257c23",
+      "functions": [
+        "execute_authorized_once_v4"
+      ],
+      "kind": "launcher_source",
+      "schema": "SkillV2Pair1CorrectedAExplicitComponentBindingV1",
+      "source": {
+        "bytes": 67262,
+        "path": "tools/canary/skill_v2_pair1_corrected_a_launcher_binding.py",
+        "sha256": "4ff499598dfddfc251501feb87ed91603e4313091523ba363c71bb86f6dea576"
+      },
+      "version": 1
+    },
+    "local_success_tail": {
+      "binding_explicit": true,
+      "binding_sha256": "abe0e28204a6ea09b9523abf5e927148c63694e72a2262b24834f1acab3e501c",
+      "functions": [
+        "persist_local_success_tail_v1"
+      ],
+      "kind": "local_success_tail",
+      "schema": "SkillV2Pair1CorrectedAExplicitComponentBindingV1",
+      "source": {
+        "bytes": 67262,
+        "path": "tools/canary/skill_v2_pair1_corrected_a_launcher_binding.py",
+        "sha256": "4ff499598dfddfc251501feb87ed91603e4313091523ba363c71bb86f6dea576"
+      },
+      "version": 1
+    },
+    "nonce_reservation": {
+      "binding_explicit": true,
+      "binding_sha256": "d7cc5e3c10570d4af63c54ee7ccf8e100b33560c0937d9436687f3671f23ddbb",
+      "functions": [
+        "reserve_nonce_exclusive_v1"
+      ],
+      "kind": "nonce_reservation",
+      "schema": "SkillV2Pair1CorrectedAExplicitComponentBindingV1",
+      "source": {
+        "bytes": 67262,
+        "path": "tools/canary/skill_v2_pair1_corrected_a_launcher_binding.py",
+        "sha256": "4ff499598dfddfc251501feb87ed91603e4313091523ba363c71bb86f6dea576"
+      },
+      "version": 1
+    },
+    "outer_current_chat_permission_check": {
+      "binding_explicit": true,
+      "binding_sha256": "5113583ba4e4d5dd8b243236907a340edc5d6c0a74c598ff33a505e6307dd67e",
+      "functions": [
+        "validate_outer_permission_v1"
+      ],
+      "kind": "outer_current_chat_permission_check",
+      "schema": "SkillV2Pair1CorrectedAExplicitComponentBindingV1",
+      "source": {
+        "bytes": 67262,
+        "path": "tools/canary/skill_v2_pair1_corrected_a_launcher_binding.py",
+        "sha256": "4ff499598dfddfc251501feb87ed91603e4313091523ba363c71bb86f6dea576"
+      },
+      "version": 1
+    },
+    "provider_client_creation": {
+      "binding_explicit": true,
+      "binding_sha256": "8a1414e083e3d58e87b63f06239e8836b99f0d988ead0d670507800cfc676d8f",
+      "functions": [
+        "execute_authorized_once_v4"
+      ],
+      "kind": "provider_client_creation",
+      "schema": "SkillV2Pair1CorrectedAExplicitComponentBindingV1",
+      "source": {
+        "bytes": 67262,
+        "path": "tools/canary/skill_v2_pair1_corrected_a_launcher_binding.py",
+        "sha256": "4ff499598dfddfc251501feb87ed91603e4313091523ba363c71bb86f6dea576"
+      },
+      "version": 1
+    },
+    "signed_preflight_invocation": {
+      "binding_explicit": true,
+      "binding_sha256": "32911d83c2c18605345357cd91877a8c65011451fa3b04f4822d4ca29bd8e785",
+      "functions": [
+        "validate_precredential_gate_v4"
+      ],
+      "kind": "signed_preflight_invocation",
+      "schema": "SkillV2Pair1CorrectedAExplicitComponentBindingV1",
+      "source": {
+        "bytes": 67262,
+        "path": "tools/canary/skill_v2_pair1_corrected_a_launcher_binding.py",
+        "sha256": "4ff499598dfddfc251501feb87ed91603e4313091523ba363c71bb86f6dea576"
+      },
+      "version": 1
+    },
+    "single_dispatch_transport_guard": {
+      "binding_explicit": true,
+      "binding_sha256": "6fbf586bfcbf926b89e3eee26f8ab0b7a3d20f874bf975591bde954d69001250",
+      "functions": [
+        "SingleDispatchTransportPolicyV1.phase_b"
+      ],
+      "kind": "single_dispatch_transport_guard",
+      "schema": "SkillV2Pair1CorrectedAExplicitComponentBindingV1",
+      "source": {
+        "bytes": 9667,
+        "path": "src/novel_flywheel/providers/http.py",
+        "sha256": "f8ad414ff4a30b1725aa8a2ae2d0dec0300d530460ef5d5622b7ef2a5dfcbc73"
+      },
+      "version": 1
+    }
+  },
+  "entry_point_id": "tools.canary.skill_v2_pair1_corrected_a_launcher_binding:execute_authorized_once_v4",
+  "launcher_architecture_sha256": "fbb2294343de9ff8f283df138487a2793ce74323d08bdcfd20e059fabbee06fc",
+  "old_pair1_executor_alias_allowed": false,
+  "runtime_dynamic_launcher_assembly_allowed": false,
+  "schema": "SkillV2Pair1CorrectedALauncherArchitectureV1",
+  "version": 1
+}

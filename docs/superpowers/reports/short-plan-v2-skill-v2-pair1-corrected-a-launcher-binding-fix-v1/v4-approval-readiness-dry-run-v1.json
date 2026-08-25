@@ -1,0 +1,29 @@
+{
+  "all_v3_authority_bindings_preserved": "PASS",
+  "approval_dry_run_result": "READY",
+  "approval_parent_head_binding": "PASS",
+  "execution_entry_dry_run": "PASS",
+  "execution_entry_point_binding": "PASS",
+  "external_actions": {
+    "credential_lookup_count": 0,
+    "http_post_attempts": 0,
+    "model_calls": 0,
+    "network_calls": 0,
+    "paid_calls": 0,
+    "real_provider_client_creation_count": 0,
+    "real_provider_request_attempts": 0
+  },
+  "launcher_source_binding": "PASS",
+  "packet_binding": "PASS",
+  "phase_a_pre_approval_readiness": "PASS",
+  "phase_b_approval_time_stop_state": "PASS",
+  "post_seal_signed_preflight": "PASS",
+  "postdispatch_single_attempt_case_count": 6,
+  "precredential_negative_case_count": 14,
+  "schema": "SkillV2Pair1CorrectedAV4ApprovalReadinessDryRunV1",
+  "signed_approval": "ABSENT",
+  "signed_preflight": "PASS",
+  "single_use_nonce": "ABSENT",
+  "synthetic_approval_transaction": "PASS",
+  "version": 1
+}

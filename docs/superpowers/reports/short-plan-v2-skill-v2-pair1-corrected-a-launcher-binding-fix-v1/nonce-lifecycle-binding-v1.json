@@ -1,0 +1,8 @@
+{
+  "new_nonce_materialized": false,
+  "new_packet_requires_fresh_nonce": true,
+  "nonce_reservation_at_most_once": true,
+  "nonce_reservation_count": 0,
+  "nonce_reuse_allowed": false,
+  "old_v3_nonce_valid_for_new_packet": false
+}

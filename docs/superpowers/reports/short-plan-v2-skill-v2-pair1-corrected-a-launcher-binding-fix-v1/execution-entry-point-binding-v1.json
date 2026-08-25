@@ -1,0 +1,17 @@
+{
+  "arbitrary_entry_point_selection_allowed": false,
+  "arm_role": "A_ARM",
+  "corrected_formal_event_id": "EV-3D3AE01E",
+  "execution_entry_point_binding_sha256": "283007f285827a1b757ae7cdde971ce3e7c12b66d4fbebdfd86cf818331784a8",
+  "execution_entry_point_id": "tools.canary.skill_v2_pair1_corrected_a_launcher_binding:execute_authorized_once_v4",
+  "execution_entry_point_present": true,
+  "execution_entry_point_source": {
+    "bytes": 67262,
+    "path": "tools/canary/skill_v2_pair1_corrected_a_launcher_binding.py",
+    "sha256": "4ff499598dfddfc251501feb87ed91603e4313091523ba363c71bb86f6dea576"
+  },
+  "old_pair1_executor_alias_allowed": false,
+  "pair_case_id": "restored-character-heavy-v2",
+  "runtime_dynamic_launcher_assembly_allowed": false,
+  "skill_arm": "CURRENT_RUNTIME_SKILL"
+}

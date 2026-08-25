@@ -1,0 +1,30 @@
+{
+  "corrected_b_authorized": false,
+  "corrected_b_execution_entry_point_present": false,
+  "corrected_b_launcher_binding_complete": false,
+  "corrected_b_missing_execution_bindings": [
+    "execution_entry_point_id",
+    "execution_entry_point_source_path",
+    "execution_entry_point_source_sha256",
+    "outer_permission_check_binding",
+    "nonce_reservation_binding",
+    "credential_lookup_binding",
+    "provider_client_binding",
+    "attempt_accounting_binding",
+    "local_success_tail_binding",
+    "execution_evidence_writer_binding"
+  ],
+  "corrected_b_packet_sha256": "46953023632e8dcbebba452b9a60c550689778985bf3ed2a210f2674b7e3f0f7",
+  "external_actions": {
+    "credential_lookup_count": 0,
+    "http_post_attempts": 0,
+    "model_calls": 0,
+    "network_calls": 0,
+    "paid_calls": 0,
+    "real_provider_client_creation_count": 0,
+    "real_provider_request_attempts": 0
+  },
+  "modified": false,
+  "schema": "SkillV2Pair1CorrectedBForwardAuditV1",
+  "version": 1
+}
