@@ -1,0 +1,15 @@
+{
+  "approval_id": "skill-v2-pair1-a-v3-approval-20260825t014416z-001",
+  "consumed": false,
+  "nonce_binding_sha256": "a2b67d5ba1fe253a0bb70abdcafc77e30c3370382a468b69bf205b6c2ccacc70",
+  "nonce_id": "skill-v2-pair1-a-v3-nonce-20260825t014416z-001",
+  "nonce_sha256": "69e52be21fb9448083a1ae02a6bb9e3daf747a1f79602435b22fdf5145949f80",
+  "raw_nonce_persisted_in_this_file": false,
+  "reservation_status": "unreserved",
+  "reserved": false,
+  "reuse_allowed": false,
+  "schema": "SkillV2Pair1AApprovalV3NonceBindingV1",
+  "successor_packet_sha256": "ad40fd487f9c27a87b5bd8dc13f2cba454c0106408147cce9bb844cab46a1105",
+  "usage_status": "unused",
+  "version": 1
+}

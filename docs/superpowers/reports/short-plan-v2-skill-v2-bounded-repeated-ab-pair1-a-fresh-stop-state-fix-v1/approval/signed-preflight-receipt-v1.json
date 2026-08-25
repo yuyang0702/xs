@@ -1,0 +1,25 @@
+{
+  "approval_head_successor_binding": "PASS",
+  "approval_launcher_source_binding": "PASS",
+  "approval_nonce_state": "unreserved_unconsumed",
+  "approval_packet_binding": "PASS",
+  "approval_parent_head_binding": "PASS",
+  "approval_scope_binding": "PASS",
+  "approval_single_dispatch_binding": "PASS",
+  "exact_launch_status": "exact",
+  "external_actions": {
+    "credential_lookup_count": 0,
+    "http_post_attempts": 0,
+    "model_calls": 0,
+    "network_calls": 0,
+    "paid_calls": 0,
+    "real_provider_client_creation_count": 0,
+    "real_provider_request_attempts": 0
+  },
+  "fresh_stop_state_receipt": "PASS",
+  "pair_1_b_non_authorization": "PASS",
+  "pair_2_plus_non_authorization": "PASS",
+  "schema": "SkillV2Pair1ASignedPreflightReceiptV3",
+  "status": "exact",
+  "version": 3
+}

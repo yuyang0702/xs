@@ -1,0 +1,16 @@
+{
+  "approval_cohort_reuse_allowed": false,
+  "approval_evidence_root": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-pair1-a-fresh-stop-state-fix-v1/approval",
+  "approval_id": "skill-v2-pair1-a-v3-approval-20260825t014416z-001",
+  "approval_parent_head": "072a999bb9a02947f6ad7552185c7c35fbeb5b2b",
+  "approval_reuse_allowed": false,
+  "arm_role": "A_ARM",
+  "cohort_id": "skill-v2-bounded-repeated-ab-character-heavy-a-v1-20260824t162103z-001",
+  "one_approval_per_real_request": true,
+  "pair_case_id": "restored-character-heavy-v1",
+  "schema": "SkillV2Pair1AUnsignedApprovalIdentityV1",
+  "scope": "SKILL_V2_BOUNDED_REPEATED_AB_CHARACTER_HEAVY_A_ARM_SINGLE_DISPATCH_V1_ONLY",
+  "skill_arm": "CURRENT_RUNTIME_SKILL",
+  "successor_packet_sha256": "ad40fd487f9c27a87b5bd8dc13f2cba454c0106408147cce9bb844cab46a1105",
+  "version": 1
+}

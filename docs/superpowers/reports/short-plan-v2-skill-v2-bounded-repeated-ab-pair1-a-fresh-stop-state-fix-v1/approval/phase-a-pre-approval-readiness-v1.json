@@ -1,0 +1,80 @@
+{
+  "discovered_state": {
+    "a_b_lock_failure_active": false,
+    "canonical_locations": {
+      "current_approval_root": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-pair1-a-fresh-stop-state-fix-v1/approval",
+      "later_approval_roots": [
+        "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-v1/pairs/restored-world-heavy-v1/a-arm/approval",
+        "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-v1/pairs/restored-world-heavy-v1/b-arm/approval",
+        "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-v1/pairs/restored-conflict-pacing-heavy-v1/a-arm/approval",
+        "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-v1/pairs/restored-conflict-pacing-heavy-v1/b-arm/approval",
+        "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-v1/pairs/restored-setup-payoff-heavy-v1/a-arm/approval",
+        "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-v1/pairs/restored-setup-payoff-heavy-v1/b-arm/approval",
+        "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-v1/pairs/restored-mixed-v1/a-arm/approval",
+        "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-v1/pairs/restored-mixed-v1/b-arm/approval"
+      ],
+      "later_result_roots": [
+        "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-execution-v1/pairs/restored-world-heavy-v1/a-arm",
+        "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-execution-v1/pairs/restored-world-heavy-v1/b-arm",
+        "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-execution-v1/pairs/restored-conflict-pacing-heavy-v1/a-arm",
+        "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-execution-v1/pairs/restored-conflict-pacing-heavy-v1/b-arm",
+        "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-execution-v1/pairs/restored-setup-payoff-heavy-v1/a-arm",
+        "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-execution-v1/pairs/restored-setup-payoff-heavy-v1/b-arm",
+        "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-execution-v1/pairs/restored-mixed-v1/a-arm",
+        "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-execution-v1/pairs/restored-mixed-v1/b-arm"
+      ],
+      "pair1_a_execution_root": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-execution-v1/pairs/restored-character-heavy-v1/a-arm",
+      "pair1_a_result_root": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-execution-v1/pairs/restored-character-heavy-v1/a-arm",
+      "pair1_b_approval_root": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-v1/pairs/restored-character-heavy-v1/b-arm/approval",
+      "pair1_b_result_root": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-execution-v1/pairs/restored-character-heavy-v1/b-arm"
+    },
+    "critical_quality_regression_active": false,
+    "current_arm_approval_count": 0,
+    "current_arm_approval_exists": false,
+    "current_arm_approval_id_matches": false,
+    "current_arm_approval_identity_hashes": [],
+    "current_arm_canonical_identity_present": false,
+    "discovered_campaign_state_set_sha256": "a3245e0bb64f627fb5ffb02bbc758a0629473933257f273d9b225b56264a77d3",
+    "engineering_hard_failure_active": false,
+    "pair_1_a_execution_exists": false,
+    "pair_1_a_result_exists": false,
+    "pair_1_b_approval_exists": false,
+    "pair_1_b_result_exists": false,
+    "pair_2_or_later_approval_exists": false,
+    "pair_2_or_later_result_exists": false
+  },
+  "external_actions": {
+    "credential_lookup_count": 0,
+    "http_post_attempts": 0,
+    "model_calls": 0,
+    "network_calls": 0,
+    "paid_calls": 0,
+    "real_provider_client_creation_count": 0,
+    "real_provider_request_attempts": 0
+  },
+  "receipt": {
+    "campaign_stop_state": "CONTINUE_ALLOWED",
+    "campaign_stop_state_receipt_sha256": "522a1551dc542252731ab18869ab89756006d29b9d9bf1f65269eea584035b19",
+    "current_arm_approval_count": 0,
+    "current_arm_approval_exists": false,
+    "discovered_campaign_state_set_sha256": "a3245e0bb64f627fb5ffb02bbc758a0629473933257f273d9b225b56264a77d3",
+    "external_actions": {
+      "credential_lookup_count": 0,
+      "http_post_attempts": 0,
+      "model_calls": 0,
+      "network_calls": 0,
+      "paid_calls": 0,
+      "real_provider_client_creation_count": 0,
+      "real_provider_request_attempts": 0
+    },
+    "receipt_type": "PRE_APPROVAL_READINESS_STOP_STATE",
+    "schema": "SkillV2Pair1APreApprovalReadinessStopStateV1",
+    "successor_packet_sha256": "ad40fd487f9c27a87b5bd8dc13f2cba454c0106408147cce9bb844cab46a1105",
+    "two_phase_contract_id": "SKILL_V2_PAIR1_A_TWO_PHASE_STOP_STATE_V1",
+    "valid_for_signed_preflight": false,
+    "version": 1
+  },
+  "result": "PASS",
+  "schema": "SkillV2Pair1APhaseAApprovalReadinessV1",
+  "version": 1
+}

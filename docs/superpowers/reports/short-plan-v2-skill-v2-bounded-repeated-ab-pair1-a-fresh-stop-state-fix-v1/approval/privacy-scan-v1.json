@@ -1,0 +1,20 @@
+{
+  "external_actions": {
+    "credential_lookup_count": 0,
+    "http_post_attempts": 0,
+    "model_calls": 0,
+    "network_calls": 0,
+    "paid_calls": 0,
+    "real_provider_client_creation_count": 0,
+    "real_provider_request_attempts": 0
+  },
+  "matches": [],
+  "overall_status": "exact",
+  "privacy_match_count": 0,
+  "raw_nonce_disclosed_in_reports": false,
+  "raw_nonce_file_count": 1,
+  "raw_nonce_persisted_only_in_canonical_signed_approval": true,
+  "raw_prompt_story_provider_content_persisted": false,
+  "schema": "SkillV2Pair1AApprovalV3PrivacyScanV1",
+  "version": 1
+}

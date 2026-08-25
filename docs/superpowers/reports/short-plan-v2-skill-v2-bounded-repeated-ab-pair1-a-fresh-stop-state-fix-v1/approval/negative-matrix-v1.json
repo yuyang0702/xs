@@ -1,0 +1,223 @@
+{
+  "all_before_nonce_reservation_or_external_action": true,
+  "all_fail_closed": true,
+  "case_count": 41,
+  "external_actions": {
+    "credential_lookup_count": 0,
+    "http_post_attempts": 0,
+    "model_calls": 0,
+    "network_calls": 0,
+    "paid_calls": 0,
+    "real_provider_client_creation_count": 0,
+    "real_provider_request_attempts": 0
+  },
+  "results": [
+    {
+      "case": "v1_packet_reuse",
+      "reason_code": "approval_packet_not_v3",
+      "status": "REJECTED_BEFORE_NONCE_OR_EXTERNAL_ACTION"
+    },
+    {
+      "case": "v2_packet_reuse",
+      "reason_code": "approval_packet_version",
+      "status": "REJECTED_BEFORE_NONCE_OR_EXTERNAL_ACTION"
+    },
+    {
+      "case": "wrong_v3_sha",
+      "reason_code": "approval_packet_sha",
+      "status": "REJECTED_BEFORE_NONCE_OR_EXTERNAL_ACTION"
+    },
+    {
+      "case": "old_phase_a_receipt",
+      "reason_code": "fresh_receipt_schema_mismatch",
+      "status": "REJECTED_BEFORE_NONCE_OR_EXTERNAL_ACTION"
+    },
+    {
+      "case": "missing_phase_b_receipt",
+      "reason_code": "fresh_receipt_schema_mismatch",
+      "status": "REJECTED_BEFORE_NONCE_OR_EXTERNAL_ACTION"
+    },
+    {
+      "case": "forged_phase_b_receipt",
+      "reason_code": "fresh_receipt_recomputation_mismatch",
+      "status": "REJECTED_BEFORE_NONCE_OR_EXTERNAL_ACTION"
+    },
+    {
+      "case": "stale_phase_b_receipt",
+      "reason_code": "fresh_receipt_recomputation_mismatch",
+      "status": "REJECTED_BEFORE_NONCE_OR_EXTERNAL_ACTION"
+    },
+    {
+      "case": "wrong_approval_id",
+      "reason_code": "fresh_receipt_approval_id_mismatch",
+      "status": "REJECTED_BEFORE_NONCE_OR_EXTERNAL_ACTION"
+    },
+    {
+      "case": "wrong_approval_parent",
+      "reason_code": "fresh_receipt_approval_parent_mismatch",
+      "status": "REJECTED_BEFORE_NONCE_OR_EXTERNAL_ACTION"
+    },
+    {
+      "case": "wrong_pair",
+      "reason_code": "signed_pair",
+      "status": "REJECTED_BEFORE_NONCE_OR_EXTERNAL_ACTION"
+    },
+    {
+      "case": "wrong_arm",
+      "reason_code": "signed_arm",
+      "status": "REJECTED_BEFORE_NONCE_OR_EXTERNAL_ACTION"
+    },
+    {
+      "case": "wrong_skill",
+      "reason_code": "signed_skill",
+      "status": "REJECTED_BEFORE_NONCE_OR_EXTERNAL_ACTION"
+    },
+    {
+      "case": "wrong_scope",
+      "reason_code": "signed_scope",
+      "status": "REJECTED_BEFORE_NONCE_OR_EXTERNAL_ACTION"
+    },
+    {
+      "case": "wrong_cohort",
+      "reason_code": "signed_cohort",
+      "status": "REJECTED_BEFORE_NONCE_OR_EXTERNAL_ACTION"
+    },
+    {
+      "case": "wrong_approval_root",
+      "reason_code": "signed_root",
+      "status": "REJECTED_BEFORE_NONCE_OR_EXTERNAL_ACTION"
+    },
+    {
+      "case": "b_context_in_a",
+      "reason_code": "sealed_packet_bindings_mismatch",
+      "status": "REJECTED_BEFORE_NONCE_OR_EXTERNAL_ACTION"
+    },
+    {
+      "case": "prompt_drift",
+      "reason_code": "sealed_packet_bindings_mismatch",
+      "status": "REJECTED_BEFORE_NONCE_OR_EXTERNAL_ACTION"
+    },
+    {
+      "case": "story_drift",
+      "reason_code": "sealed_packet_bindings_mismatch",
+      "status": "REJECTED_BEFORE_NONCE_OR_EXTERNAL_ACTION"
+    },
+    {
+      "case": "authority_drift",
+      "reason_code": "sealed_packet_bindings_mismatch",
+      "status": "REJECTED_BEFORE_NONCE_OR_EXTERNAL_ACTION"
+    },
+    {
+      "case": "task_drift",
+      "reason_code": "sealed_packet_bindings_mismatch",
+      "status": "REJECTED_BEFORE_NONCE_OR_EXTERNAL_ACTION"
+    },
+    {
+      "case": "model_route_drift",
+      "reason_code": "sealed_packet_bindings_mismatch",
+      "status": "REJECTED_BEFORE_NONCE_OR_EXTERNAL_ACTION"
+    },
+    {
+      "case": "output_cap_drift",
+      "reason_code": "sealed_packet_bindings_mismatch",
+      "status": "REJECTED_BEFORE_NONCE_OR_EXTERNAL_ACTION"
+    },
+    {
+      "case": "retry_allowed",
+      "reason_code": "sealed_packet_bindings_mismatch",
+      "status": "REJECTED_BEFORE_NONCE_OR_EXTERNAL_ACTION"
+    },
+    {
+      "case": "more_than_one_request",
+      "reason_code": "sealed_packet_bindings_mismatch",
+      "status": "REJECTED_BEFORE_NONCE_OR_EXTERNAL_ACTION"
+    },
+    {
+      "case": "wrong_validator",
+      "reason_code": "sealed_packet_bindings_mismatch",
+      "status": "REJECTED_BEFORE_NONCE_OR_EXTERNAL_ACTION"
+    },
+    {
+      "case": "wrong_ptr12",
+      "reason_code": "sealed_packet_bindings_mismatch",
+      "status": "REJECTED_BEFORE_NONCE_OR_EXTERNAL_ACTION"
+    },
+    {
+      "case": "wrong_quality_rubric",
+      "reason_code": "sealed_packet_bindings_mismatch",
+      "status": "REJECTED_BEFORE_NONCE_OR_EXTERNAL_ACTION"
+    },
+    {
+      "case": "wrong_engineering_rubric",
+      "reason_code": "sealed_packet_bindings_mismatch",
+      "status": "REJECTED_BEFORE_NONCE_OR_EXTERNAL_ACTION"
+    },
+    {
+      "case": "duplicate_pair1_a_approval",
+      "reason_code": "fresh_receipt_recomputation_mismatch",
+      "status": "REJECTED_BEFORE_NONCE_OR_EXTERNAL_ACTION"
+    },
+    {
+      "case": "pair1_b_approval",
+      "reason_code": "fresh_receipt_recomputation_mismatch",
+      "status": "REJECTED_BEFORE_NONCE_OR_EXTERNAL_ACTION"
+    },
+    {
+      "case": "pair2_plus_approval",
+      "reason_code": "fresh_receipt_recomputation_mismatch",
+      "status": "REJECTED_BEFORE_NONCE_OR_EXTERNAL_ACTION"
+    },
+    {
+      "case": "pair1_a_result",
+      "reason_code": "fresh_receipt_recomputation_mismatch",
+      "status": "REJECTED_BEFORE_NONCE_OR_EXTERNAL_ACTION"
+    },
+    {
+      "case": "pair1_a_execution",
+      "reason_code": "fresh_receipt_recomputation_mismatch",
+      "status": "REJECTED_BEFORE_NONCE_OR_EXTERNAL_ACTION"
+    },
+    {
+      "case": "active_campaign_stop",
+      "reason_code": "fresh_receipt_recomputation_mismatch",
+      "status": "REJECTED_BEFORE_NONCE_OR_EXTERNAL_ACTION"
+    },
+    {
+      "case": "arbitrary_historical_root",
+      "reason_code": "fresh_stop_state_successor_packet_mismatch",
+      "status": "REJECTED_BEFORE_NONCE_OR_EXTERNAL_ACTION"
+    },
+    {
+      "case": "campaign_wildcard_approval",
+      "reason_code": "signed_scope",
+      "status": "REJECTED_BEFORE_NONCE_OR_EXTERNAL_ACTION"
+    },
+    {
+      "case": "missing_nonce",
+      "reason_code": "nonce_missing",
+      "status": "REJECTED_BEFORE_NONCE_OR_EXTERNAL_ACTION"
+    },
+    {
+      "case": "wrong_nonce_hash",
+      "reason_code": "nonce_hash_mismatch",
+      "status": "REJECTED_BEFORE_NONCE_OR_EXTERNAL_ACTION"
+    },
+    {
+      "case": "nonce_reuse_allowed",
+      "reason_code": "nonce_reuse_forbidden",
+      "status": "REJECTED_BEFORE_NONCE_OR_EXTERNAL_ACTION"
+    },
+    {
+      "case": "nonce_reserved",
+      "reason_code": "nonce_reserved",
+      "status": "REJECTED_BEFORE_NONCE_OR_EXTERNAL_ACTION"
+    },
+    {
+      "case": "nonce_consumed",
+      "reason_code": "nonce_consumed",
+      "status": "REJECTED_BEFORE_NONCE_OR_EXTERNAL_ACTION"
+    }
+  ],
+  "schema": "SkillV2Pair1AApprovalV3NegativeMatrixV1",
+  "version": 1
+}

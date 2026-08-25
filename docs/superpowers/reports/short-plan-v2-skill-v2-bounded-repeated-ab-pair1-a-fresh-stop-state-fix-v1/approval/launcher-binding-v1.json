@@ -1,0 +1,7 @@
+{
+  "launcher_binding_sha256": "396d943afd0f45337294ad58979314fbf730c3a95b5b7cf23c4b65435f557be5",
+  "launcher_source_path": "tools/canary/skill_v2_bounded_repeated_ab_pair1_a.py",
+  "launcher_source_sha256": "9d39a208967b46355af2fabf0c058da42e70942e28a4e47fc53b1a2aa37475d8",
+  "schema": "SkillV2Pair1AApprovalLauncherBindingV1",
+  "version": 1
+}

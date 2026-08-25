@@ -1,0 +1,17 @@
+{
+  "binding_explicit": true,
+  "credential_capable_imports_after_validator": true,
+  "missing_fresh_receipt_fails_closed": true,
+  "old_pre_approval_receipt_hardwire_removed": true,
+  "schema": "SkillV2Pair1AFreshSignedPreflightValidatorBindingV1",
+  "signed_preflight_accepts_explicit_approval_time_stop_state_receipt": true,
+  "signed_preflight_validator_binding_sha256": "2d5b483bccad43c45893a2b7dee0bf7207502e43d81a611f6ac9bd0399246364",
+  "signed_preflight_validator_path": "tools/canary/skill_v2_bounded_repeated_ab_pair1_a.py",
+  "signed_preflight_validator_source_sha256": "9d39a208967b46355af2fabf0c058da42e70942e28a4e47fc53b1a2aa37475d8",
+  "validation_contract": "SKILL_V2_PAIR1_A_SIGNED_PREFLIGHT_FRESH_STOP_STATE_V1",
+  "validator_binding_sha256": "2d5b483bccad43c45893a2b7dee0bf7207502e43d81a611f6ac9bd0399246364",
+  "validator_function": "validate_signed_launch",
+  "validator_path": "tools/canary/skill_v2_bounded_repeated_ab_pair1_a.py",
+  "validator_source_sha256": "9d39a208967b46355af2fabf0c058da42e70942e28a4e47fc53b1a2aa37475d8",
+  "version": 1
+}
