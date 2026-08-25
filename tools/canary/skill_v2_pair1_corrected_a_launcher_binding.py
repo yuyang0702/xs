@@ -745,6 +745,13 @@ def validate_precredential_gate_v4(
 def reserve_nonce_exclusive_v1(run_root: Path, packet: Mapping[str, Any], signed: Mapping[str, Any]) -> Path:
     _require(run_root.as_posix().endswith(EXECUTION_ROOT), "execution_root_mismatch")
     _require(not run_root.exists(), "single_use_run_namespace_already_exists")
+    return _write_nonce_reservation_v1(run_root, packet, signed)
+
+
+def _write_nonce_reservation_v1(
+    run_root: Path, packet: Mapping[str, Any], signed: Mapping[str, Any],
+) -> Path:
+    """Shared exclusive-create primitive; callers own canonical-root checks."""
     ledger_root = run_root / "ledger"
     ledger_root.mkdir(parents=True)
     ledger = ledger_root / "single-use-ledger-v1.json"
@@ -890,7 +897,11 @@ def offline_execution_entry_dry_run_v1(repo: Path, packet: Mapping[str, Any], ru
         phase_b_receipt=phase_b, permission_receipt=permission,
         allow_synthetic=True,
     )
-    run_root.mkdir(parents=True)
+    # Exercise the same exclusive-create nonce reservation at an isolated path
+    # whose suffix is the sealed execution root.  No synthetic reservation is
+    # allowed to persist in the repository.
+    isolated_execution_root = run_root / "execution"
+    _write_nonce_reservation_v1(isolated_execution_root, packet, signed)
     fixture, authority_value, _ = fixture_fix._fixture_v2()
     del fixture
     authority = EventRealizationInputAuthorityV1.model_validate(authority_value)
@@ -905,7 +916,7 @@ def offline_execution_entry_dry_run_v1(repo: Path, packet: Mapping[str, Any], ru
     frozen = freeze_validated_artifact(artifact, validation)
     dumped = frozen.model_dump(mode="json", by_alias=True)
     artifact_bytes = _json_bytes(dumped)
-    (run_root / "artifact.json").write_bytes(artifact_bytes)
+    (isolated_execution_root / "artifact.json").write_bytes(artifact_bytes)
     receipt = {
         "schema": "SkillV2Pair1CorrectedAOfflineExecutionEntryDryRunV1", "version": 1,
         "execution_entry_point_resolution": "PASS", "signed_preflight": "PASS",
@@ -921,7 +932,7 @@ def offline_execution_entry_dry_run_v1(repo: Path, packet: Mapping[str, Any], ru
         "story_state_mutations": 0, "canon_mutations": 0, "ready_mutations": 0,
         "real_external_actions": dict(ZERO),
     }
-    (run_root / "receipt.json").write_bytes(_json_bytes(receipt))
+    (isolated_execution_root / "receipt.json").write_bytes(_json_bytes(receipt))
     return receipt
 
 

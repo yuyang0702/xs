@@ -113,8 +113,12 @@ def test_full_offline_entry_dry_run(tmp_path: Path) -> None:
     assert receipt["audit_serialization"] == "PASS"
     assert receipt["persistence"] == "PASS"
     assert set(receipt["real_external_actions"].values()) == {0}
-    persisted = json.loads((tmp_path / "isolated-run" / "receipt.json").read_text("utf-8"))
+    persisted = json.loads(
+        (tmp_path / "isolated-run" / "execution" / "receipt.json").read_text("utf-8")
+    )
     assert "narrative" not in json.dumps(persisted)
+    ledger = tmp_path / "isolated-run" / "execution" / "ledger" / "single-use-ledger-v1.json"
+    assert json.loads(ledger.read_text("utf-8"))["usage_status"] == "reserved"
 
 
 def test_v3_approval_and_nonce_cannot_authorize_v4() -> None:
