@@ -1,0 +1,13 @@
+{
+  "schema": "SkillV2Pair1BlindMappingDerivationV1",
+  "version": 1,
+  "domain": "skill-v2-pair1-corrected-blind-map-v1",
+  "concatenation_encoding": "UTF-8_WITHOUT_SEPARATORS",
+  "a_artifact_sha256": "f6aa5c49d64f38aefe71b01fc9eb0abf2ea3a08faba6f5bc3dbcb38c665e3f8f",
+  "b_artifact_sha256": "1dd0e31dcf01bc369cf8cee1865ae1fffdb4ad890bb1d726482048755037dc69",
+  "derivation_digest_sha256": "17bd5633d4a27c55c1ee2f1d85063cc85c1b39fb8fbdcac76b9de2d1e6133480",
+  "first_bit_interpretation": "MOST_SIGNIFICANT_BIT_OF_FIRST_DIGEST_BYTE",
+  "mapping_bit": 0,
+  "rule": "BIT_0_X_EQUALS_A_Y_EQUALS_B_BIT_1_X_EQUALS_B_Y_EQUALS_A",
+  "derivation_status": "EXACT"
+}

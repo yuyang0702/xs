@@ -1,0 +1,20 @@
+{
+  "schema": "FreshBlindEvaluatorIdentityLeakScanV1",
+  "version": 1,
+  "scan_scope": "EVALUATOR_CONTENT_FILES_EXCLUDING_THIS_SCAN_AND_MANIFEST",
+  "source_arm_identity_count": 0,
+  "skill_profile_identity_count": 0,
+  "artifact_identity_hash_count": 0,
+  "packet_identity_count": 0,
+  "approval_identity_count": 0,
+  "source_path_count": 0,
+  "execution_root_count": 0,
+  "provider_identity_count": 0,
+  "route_identity_count": 0,
+  "model_identity_count": 0,
+  "token_metric_count": 0,
+  "context_metric_count": 0,
+  "engineering_counter_count": 0,
+  "private_mapping_count": 0,
+  "overall_status": "PASS"
+}

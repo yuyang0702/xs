@@ -1,0 +1,21 @@
+{
+  "schema": "SkillV2Pair1CorrectedABLockVerificationV1",
+  "version": 1,
+  "pair_case_id": "restored-character-heavy-v2",
+  "a_artifact_file_sha256": "f6aa5c49d64f38aefe71b01fc9eb0abf2ea3a08faba6f5bc3dbcb38c665e3f8f",
+  "b_artifact_file_sha256": "1dd0e31dcf01bc369cf8cee1865ae1fffdb4ad890bb1d726482048755037dc69",
+  "ab_lock_sha256": "31ed7f57374c99b90a5271b44655489661a4bbc70f0ed6363c154f4d55163d80",
+  "shared_binding_field_count": 19,
+  "shared_binding_missing_count": 0,
+  "shared_binding_difference_count": 0,
+  "only_changed_variable": "SKILL_CONTEXT",
+  "a_artifact_injected_into_b_input": false,
+  "a_validation_status": "PASS_SEALED",
+  "b_validation_status": "PASS_SEALED",
+  "a_single_dispatch": true,
+  "b_single_dispatch": true,
+  "story_state_mutations": 0,
+  "canon_mutations": 0,
+  "ready_mutations": 0,
+  "overall_status": "exact"
+}

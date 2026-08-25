@@ -1,0 +1,11 @@
+{
+  "schema": "SkillV2Pair1PrivateBlindMappingV1",
+  "version": 1,
+  "visibility": "PRIVATE_UNTIL_NARRATIVE_JUDGMENT_FROZEN",
+  "mapping": {
+    "X": "A",
+    "Y": "B"
+  },
+  "mapping_bit": 0,
+  "must_not_be_supplied_to_fresh_evaluator": true
+}

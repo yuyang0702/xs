@@ -1,0 +1,24 @@
+{
+  "schema": "SkillV2Pair1FreshContextRequirementV1",
+  "version": 1,
+  "current_context_eligible_as_blind_evaluator": false,
+  "reason": "CURRENT_CONTEXT_HAS_SEEN_SOURCE_IDENTITIES_AND_B_ARTIFACT_CONTENT",
+  "required_next_context": "BRAND_NEW_CODEX_CONTEXT",
+  "allowed_input_to_next_context": [
+    "fresh evaluator task",
+    "fresh-evaluator-bundle root or path"
+  ],
+  "forbidden_input_to_next_context_before_judgment_freeze": [
+    "private mapping",
+    "source-arm identities",
+    "repository history",
+    "engineering evidence",
+    "execution metadata",
+    "token or context metrics"
+  ],
+  "offline_only": true,
+  "network_allowed": false,
+  "model_calls_allowed": false,
+  "pair_disposition_allowed": false,
+  "next_gate": "SKILL_V2_BOUNDED_REPEATED_AB_PAIR_1_FRESH_CONTEXT_OFFLINE_BLIND_EVALUATION"
+}

@@ -1,0 +1,18 @@
+{
+  "schema": "SkillV2Pair1CriticalityAndBlindContextPrivacyScanV1",
+  "version": 1,
+  "scope": "short-plan-v2-skill-v2-criticality-and-blind-context-v1",
+  "credential_count": 0,
+  "secret_count": 0,
+  "private_user_data_count": 0,
+  "raw_prompt_count": 0,
+  "raw_provider_content_count": 0,
+  "raw_tool_argument_count": 0,
+  "blind_artifact_narrative_count": 2,
+  "blind_artifact_narratives_authorized_as_evaluator_content": true,
+  "evaluator_bundle_source_identity_leak_count": 0,
+  "evaluator_bundle_private_mapping_leak_count": 0,
+  "historical_evidence_rewrite_count": 0,
+  "external_action_count": 0,
+  "overall_status": "PASS"
+}

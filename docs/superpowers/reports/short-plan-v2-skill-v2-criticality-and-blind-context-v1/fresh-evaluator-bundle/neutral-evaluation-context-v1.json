@@ -1,0 +1,56 @@
+{
+  "schema": "FreshBlindEvaluationContextV1",
+  "version": 1,
+  "candidate_labels": [
+    "X",
+    "Y"
+  ],
+  "creative_demand_class": "character-heavy",
+  "event_context": {
+    "entry_state": "Mara distrusts Iven after an old betrayal and hides that she still needs his help.",
+    "required_change": "Mara pays a personal cost to protect Iven, shifting distrust into conditional cooperation without resolving the betrayal.",
+    "exit_state": "Iven recognizes the costly protection but misreads Mara's concealed apology as leverage.",
+    "required_obligations": [
+      "Mara protects her rival without confessing guilt.",
+      "Mara's voice uses restrained irony under fear.",
+      "A costly choice creates conditional trust without resolving the betrayal.",
+      "The concealed apology is dramatized as a bargain."
+    ]
+  },
+  "task_contract": {
+    "candidate_owned_fields": [
+      "title",
+      "narrative"
+    ],
+    "required_output_kind": "event realization",
+    "shadow_only": true,
+    "production_authority": false,
+    "explicit_pov_constraint": null,
+    "explicit_tense_constraint": null,
+    "explicit_tone_genre_constraint": null
+  },
+  "dimension_policy": {
+    "critical": [
+      "event_causal_fidelity",
+      "character_motivation",
+      "character_voice",
+      "relationship_logic",
+      "subtext_dramatization",
+      "draft_intent_handoff",
+      "template_flattening_risk",
+      "authority_correctness",
+      "untargeted_creative_mutation"
+    ],
+    "noncritical": [
+      "world_specificity",
+      "sensory_realization",
+      "conflict_pacing",
+      "setup_payoff_dependency",
+      "pov",
+      "tense",
+      "tone_genre"
+    ]
+  },
+  "engineering_evidence_visible": false,
+  "source_identity_visible": false
+}

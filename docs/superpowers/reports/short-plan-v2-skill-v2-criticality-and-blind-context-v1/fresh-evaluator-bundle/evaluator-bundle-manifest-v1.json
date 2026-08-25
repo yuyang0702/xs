@@ -1,0 +1,38 @@
+{
+  "schema": "FreshBlindEvaluatorBundleManifestV1",
+  "version": 1,
+  "manifest_scope": "FRESH_EVALUATOR_BUNDLE_ONLY",
+  "self_excluded": true,
+  "entry_count": 5,
+  "files": [
+    {
+      "path": "blind-evaluation-instructions-v1.md",
+      "bytes": 1942,
+      "sha256": "07883c37d1367a1a1e25d7b8c985253a1aac6d422920aafb5ae91dee6a3c7cd3"
+    },
+    {
+      "path": "identity-leak-scan-v1.json",
+      "bytes": 611,
+      "sha256": "9ace67eed59f99aac2ac64f7ce199b2309b6f7c8db53a764044c8b90893eb66a"
+    },
+    {
+      "path": "neutral-evaluation-context-v1.json",
+      "bytes": 1759,
+      "sha256": "b3ccbdaf29fba1cda9c139eee9eaf54f17eb75241381117ed0203d28ba3afa63"
+    },
+    {
+      "path": "X/artifact-view-v1.json",
+      "bytes": 2326,
+      "sha256": "4a121357cf1e0dab60efd6e87cb3b631edadfc3ead1eead688d6c19c7e0ca622"
+    },
+    {
+      "path": "Y/artifact-view-v1.json",
+      "bytes": 2329,
+      "sha256": "ad8a4e348542dc5cc25e4daac153c8226ece5b91d13eb2e4a75e07bcfa5328d2"
+    }
+  ],
+  "identity_leak_scan": "PASS",
+  "mapping_present": false,
+  "engineering_evidence_present": false,
+  "overall_status": "exact"
+}
