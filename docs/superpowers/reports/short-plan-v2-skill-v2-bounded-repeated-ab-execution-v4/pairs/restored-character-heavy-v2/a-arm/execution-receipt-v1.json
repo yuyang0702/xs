@@ -1,0 +1,13 @@
+{
+  "artifact_file_sha256": "f6aa5c49d64f38aefe71b01fc9eb0abf2ea3a08faba6f5bc3dbcb38c665e3f8f",
+  "canon_mutations": 0,
+  "full_short_canary": "NOT_EXECUTED",
+  "http_post_attempts": 1,
+  "model_logical_calls": 1,
+  "network_request_attempts": 1,
+  "packet_sha256": "39a46e38d9c11f8afd5fd1cf633443b31ae6fb1c97c4b93d404f950781f19356",
+  "ready_mutations": 0,
+  "real_provider_request_attempts": 1,
+  "status": "executed_once",
+  "story_state_mutations": 0
+}

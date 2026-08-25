@@ -1,0 +1,15 @@
+{
+  "campaign_stop_state": "STOPPED_PENDING_CORRECTED_B_BINDING_CLOSURE",
+  "exact_next_gate": "SKILL_V2_BOUNDED_REPEATED_AB_PAIR_1_CORRECTED_B_ARM_EXECUTION_AND_APPROVAL_BINDING_SUCCESSOR_CLOSURE",
+  "pair1_corrected_a_control_sample_valid": true,
+  "pair1_corrected_a_status": "PASS_SEALED",
+  "pair1_corrected_b_authorized": false,
+  "pair1_corrected_b_executed": false,
+  "pair1_corrected_b_fresh_approval_ready": false,
+  "pair1_corrected_b_next_in_pair": true,
+  "pair1_corrected_b_requires_binding_closure": true,
+  "pair2_to_5_remain_blocked": true,
+  "pair_case_id": "restored-character-heavy-v2",
+  "schema": "SkillV2Pair1CorrectedAV4CampaignStateReceiptV1",
+  "version": 1
+}

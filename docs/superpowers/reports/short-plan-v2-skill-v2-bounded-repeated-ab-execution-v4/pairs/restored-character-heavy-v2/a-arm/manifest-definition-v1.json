@@ -1,0 +1,13 @@
+{
+  "canonical_line_ending": "LF",
+  "coverage": "all sealed execution evidence files except sha256-manifest-v1.json itself",
+  "coverage_root": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-execution-v4/pairs/restored-character-heavy-v2/a-arm",
+  "entry_order": "path_ascending",
+  "evidence_encoding": "UTF-8",
+  "hash_algorithm": "SHA-256",
+  "manifest_definition_sha256": "aa35d22c71bf833883e239863cd1bbcd217adadcbcc8d4be54c219c571182489",
+  "runtime_database_excluded": true,
+  "schema": "SkillV2Pair1CorrectedAV4ExecutionManifestDefinitionV1",
+  "self_excluded": true,
+  "version": 1
+}

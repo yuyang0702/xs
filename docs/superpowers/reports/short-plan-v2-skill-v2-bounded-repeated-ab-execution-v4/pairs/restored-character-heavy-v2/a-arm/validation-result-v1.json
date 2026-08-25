@@ -1,0 +1,23 @@
+{
+  "artifact_frozen": true,
+  "artifact_persistence": "PASS",
+  "artifact_schema": "EventRealizationArtifactV1",
+  "artifact_schema_validation": "PASS",
+  "artifact_validation_receipt_sha256": "140c5a2fc65a45ba76ac7f935feeab6c6c9221b334b76e4d3dc738f607e4da5a",
+  "audit_serialization": "PASS",
+  "authority_normalization": "PASS",
+  "deferred_global_invariant_ids": [
+    "actor_world_global_closure",
+    "whole_plan_time_causal_closure",
+    "setup_payoff_ending_closure",
+    "draft_executability"
+  ],
+  "event_realization_validation": "PASS",
+  "generated_artifact_present": true,
+  "generated_artifact_sha256": "f6aa5c49d64f38aefe71b01fc9eb0abf2ea3a08faba6f5bc3dbcb38c665e3f8f",
+  "local_parse_or_conversion": "PASS",
+  "pair1_corrected_a_control_sample_valid": true,
+  "provider_return_received": true,
+  "schema": "SkillV2Pair1CorrectedAV4ValidationResultV1",
+  "version": 1
+}

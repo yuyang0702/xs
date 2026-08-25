@@ -1,0 +1,20 @@
+{
+  "artifact_root": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-execution-v4/pairs/restored-character-heavy-v2/a-arm/artifact",
+  "canon_mutations": 0,
+  "draft_executed": false,
+  "final_review_executed": false,
+  "formal_manuscript_mutations": 0,
+  "full_short_canary": "NOT_EXECUTED",
+  "isolated_model_artifact_allowed": true,
+  "isolated_model_artifact_count": 1,
+  "maintenance_executed": false,
+  "output_isolation": "PASS",
+  "production_authority": false,
+  "ready_mutations": 0,
+  "runtime_database_committed": false,
+  "runtime_database_quarantine_required": true,
+  "runtime_database_sha256": "fdfe0df4ca4475e05cd81a4d3b2d1468ac42e4bfbed28f716b7c840fae012a29",
+  "schema": "SkillV2Pair1CorrectedAV4OutputIsolationV1",
+  "story_state_mutations": 0,
+  "version": 1
+}

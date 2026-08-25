@@ -1,0 +1,38 @@
+{
+  "artifact": {
+    "artifact_id": "slice1-artifact-0419f3befa341a87a152016c49375df0",
+    "artifact_revision": 1,
+    "commit_performed": false,
+    "dependency_artifact_ids": [],
+    "dependency_set_sha256": "f9a6b03c46a03f77a09269e1db3625f651bcd41333d3b6092e4242bda3cc1e95",
+    "formal_event_contract_sha256": "55a5b2b47210d3b6106f7b985d35f888be348ad7aacfd4a6dcc4222c62fc2f70",
+    "formal_event_id": "EV-3D3AE01E",
+    "formal_event_ordinal": 0,
+    "freeze_state": "FROZEN",
+    "narrative": "The patrol lanterns appeared above the canal stairs, six pale blurs in the rain. Mara heard the hounds before Iven did—the scrape of claws on wet stone, the eager choking at their leads. He was still kneeling beside the jammed floodgate, one hand pressed to the blood soaking his coat.\n\n“They’ve improved the welcoming committee,” she said. Her voice remained level, though the crank handle trembled against her palm.\n\nIven looked toward the only open passage, then at the oilskin packet inside Mara’s coat. The forged transit seals had cost her a year’s favors. With them, she could cross the northern checkpoint before dawn. Without them, the city would close around her.\n\n“Go,” he said. “They want me.”\n\nThey wanted him because Mara had given the magistrate his name, expecting an interrogation, not a hanging. The explanation crowded behind her teeth. She swallowed it.\n\n“I have a counteroffer.” She pulled out the packet. “You stop bleeding on my machinery, and I cancel your debt.”\n\n“I don’t owe you.”\n\n“Then this is unusually generous accounting.”\n\nThe hounds rounded the upper landing. Mara struck flint to the seals. Blue flame crawled across the wax, releasing the sharp stink of resin. She tossed the burning packet into a sluice basket and kicked the brake free. The current carried the fire beneath the eastern grate, bright enough to draw every lantern after it. As the patrol shouted and split toward the false escape route, Mara hauled the crank. The floodgate lifted a handspan, spilling black water through the maintenance culvert.\n\nHer northern passage was gone. Iven understood; she saw it in the way his suspicion changed shape without disappearing.\n\nHe caught the gate before her strength failed. Together they forced it high enough to crawl under.\n\n“This buys nothing,” he said as the iron teeth shuddered over their backs.\n\n“Of course not.” Mara tasted rain and rust. “It merely revises the price.”\n\nOn the far side, Iven tore his scarf in two and bound her bleeding palms before his own wound. It was not forgiveness. But when they entered the dark culvert, he let her choose the way.",
+    "parent_authority_sha256": "5271869c41776bc7f8f3023729246899dd76b1bc19c22cb98854a5a976dafada",
+    "payload_sha256": "e580a61cf234e4b235f67757eba20d8b878a4a57dd15d4ed59b9548bc6095554",
+    "predecessor_boundary_sha256": "76a68bbed1248ae022a28653d63d27cef26c0810683a610c74cf1bb4ebef4360",
+    "promotion_eligible": false,
+    "provenance": {
+      "contract_identity": "planning_event_realization_shadow_v1@1",
+      "producer_kind": "future_model_shadow",
+      "source_candidate_sha256": "6df9d05039ac286221c3e9c481ed192585ec875c6925b5fa7112c2034e3e9531"
+    },
+    "schema": "EventRealizationArtifactV1",
+    "scope_id": "slice1-scope-42008bf8685584e41c985df99da36b16",
+    "segment_ordinal": 0,
+    "shadow_only": true,
+    "stage": "event_realization_unit_shadow_v1",
+    "title": "Terms at the Floodgate",
+    "validation_receipt_sha256": "140c5a2fc65a45ba76ac7f935feeab6c6c9221b334b76e4d3dc738f607e4da5a",
+    "validation_status": "PASS",
+    "version": 1
+  },
+  "cohort_id": "skill-v2-bounded-repeated-ab-character-heavy-v2-a-launcher-v4-disabled-001",
+  "conversion_audit_sha256": "732cbb26b0154eb0bab649caebf8f50db927f2249cbd0870f32e8551b8610f88",
+  "production_authority": false,
+  "schema": "SkillV2Pair1CorrectedAV4GeneratedArtifactV1",
+  "skill_arm": "CURRENT_RUNTIME_SKILL",
+  "version": 1
+}
