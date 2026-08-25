@@ -1,0 +1,23 @@
+{
+  "dependent_reference_paths": [
+    "/authority_input/formal_event_id",
+    "/authority_input/formal_event_ids/0",
+    "/authority_input/segment_event_ids/0/0",
+    "/story_slice/formal_event_id"
+  ],
+  "fixture_materializer": {
+    "bytes": 52007,
+    "path": "tools/canary/skill_v2_pair1_fixture_narrow_fix.py",
+    "sha256": "6b245f96c9894152d7b93720cc51c7d244a24a6b4d2f5db8163e030eb61aae05"
+  },
+  "formal_event_id_field_path": "CASE_DEFINITIONS[0].event_id",
+  "historical_materializer_function": "tools.diagnostics.skill_v2_bounded_repeated_ab._case_fixture",
+  "pair1_fixture_source": {
+    "bytes": 59389,
+    "path": "tools/diagnostics/skill_v2_bounded_repeated_ab.py",
+    "sha256": "859bab4e8de71f1169c1cc4211c2404c857f39e14378070d97779822e0ac59d4"
+  },
+  "schema": "SkillV2Pair1FixtureSourceBindingV1",
+  "successor_materializer_function": "tools.canary.skill_v2_pair1_fixture_narrow_fix.build_documents",
+  "version": 1
+}

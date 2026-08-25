@@ -1,0 +1,13 @@
+{
+  "absolute_machine_path_persisted": false,
+  "credentials_persisted": false,
+  "files_scanned": 31,
+  "matches": [],
+  "overall_status": "exact",
+  "privacy_match_count": 0,
+  "raw_failed_provider_output_persisted": false,
+  "raw_prompt_persisted": false,
+  "raw_reasoning_persisted": false,
+  "schema": "SkillV2Pair1FixtureNarrowFixPrivacyScanV1",
+  "version": 1
+}

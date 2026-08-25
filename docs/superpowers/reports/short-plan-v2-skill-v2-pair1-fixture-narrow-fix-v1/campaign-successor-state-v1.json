@@ -1,0 +1,14 @@
+{
+  "campaign_real_execution_resumed": false,
+  "old_pair1_a_invalid_sample_sealed": true,
+  "pair1_corrected_a_requires_fresh_approval": true,
+  "pair1_corrected_b_approval_allowed": false,
+  "pair1_corrected_b_gate": "NO_UNTIL_CORRECTED_A_PASS",
+  "pair1_corrected_packets_materialized": true,
+  "pair2_or_later_allowed": false,
+  "pair2_or_later_gate": "NO_UNTIL_PAIR1_CORRECTED_EVALUATION",
+  "root_cause_fixed_offline": true,
+  "schema": "SkillV2Pair1CampaignSuccessorStateV1",
+  "state": "READY_FOR_PAIR1_CORRECTED_A_FRESH_APPROVAL",
+  "version": 1
+}

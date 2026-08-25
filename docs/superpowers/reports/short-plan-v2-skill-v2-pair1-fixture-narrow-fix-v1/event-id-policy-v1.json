@@ -1,0 +1,12 @@
+{
+  "collision_free_within_campaign": true,
+  "deterministic": true,
+  "matches_regex": true,
+  "new_formal_event_id": "EV-3D3AE01E",
+  "old_formal_event_id": "AB-CHARACTER-0001",
+  "schema": "SkillV2Pair1FixtureEventIdPolicyV1",
+  "semantic_identity_sha256": "3d3ae01e2bae137521516f147b4cebc48fdb96d0ec498b868b90e58973399ac2",
+  "source_policy": "canonical-json-sha256(semantic-fixture-identity)[:8].upper()",
+  "time_or_randomness_used": false,
+  "version": 1
+}

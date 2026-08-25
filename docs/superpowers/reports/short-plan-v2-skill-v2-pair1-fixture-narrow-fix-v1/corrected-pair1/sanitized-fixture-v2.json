@@ -1,0 +1,78 @@
+{
+  "authority_input": {
+    "context_projection_sha256": "7134e84052d6e15bdd0f3bbb75de41a45c9e8c083d09e896004f8228b71c47c7",
+    "dependency_artifact_ids": [],
+    "formal_event_contract_sha256": "55a5b2b47210d3b6106f7b985d35f888be348ad7aacfd4a6dcc4222c62fc2f70",
+    "formal_event_id": "EV-3D3AE01E",
+    "formal_event_ids": [
+      "EV-3D3AE01E"
+    ],
+    "parent_authority_sha256": "5271869c41776bc7f8f3023729246899dd76b1bc19c22cb98854a5a976dafada",
+    "predecessor_boundary_sha256": "76a68bbed1248ae022a28653d63d27cef26c0810683a610c74cf1bb4ebef4360",
+    "required_obligation_ids": [
+      "motivation:protect-rival-without-confessing-guilt",
+      "voice:restrained-irony-under-fear",
+      "relationship:costly-choice-creates-conditional-trust",
+      "subtext:apology-concealed-as-bargain"
+    ],
+    "segment_event_ids": [
+      [
+        "EV-3D3AE01E"
+      ]
+    ]
+  },
+  "authority_input_sha256": "91e5fe89ae741233b983f344bb0aa517974a4341dab56c8341669a5233c2e3d4",
+  "corrected_fixture_version": 2,
+  "corrected_formal_event_id": "EV-3D3AE01E",
+  "creative_demand_class": "character-heavy",
+  "fixture_successor_explicit": true,
+  "historical_fixture_mutated": false,
+  "logical_pair_case_id": "restored-character-heavy-v1",
+  "model_generated_output_authoritative": false,
+  "original_fixture_version": 1,
+  "original_formal_event_id": "AB-CHARACTER-0001",
+  "pair_case_id": "restored-character-heavy-v2",
+  "primary_dimensions": [
+    "motivation",
+    "voice",
+    "relationship",
+    "subtext"
+  ],
+  "private_user_data": false,
+  "raw_provider_content": false,
+  "repository_owned_sanitized_fixture": true,
+  "root_cause_evidence_head": "ffbeef39c90d45a0f43c295ba0ed3dd6b4fa4874",
+  "schema": "SkillV2BoundedRepeatedABSanitizedFixtureV2",
+  "story_slice": {
+    "confirmed_outcome_locked": true,
+    "creative_demand_class": "character-heavy",
+    "entry_state": "Mara distrusts Iven after an old betrayal and hides that she still needs his help.",
+    "exit_state": "Iven recognizes the costly protection but misreads Mara's concealed apology as leverage.",
+    "formal_event_id": "EV-3D3AE01E",
+    "pair_case_id": "restored-character-heavy-v2",
+    "required_change": "Mara pays a personal cost to protect Iven, shifting distrust into conditional cooperation without resolving the betrayal.",
+    "required_obligation_ids": [
+      "motivation:protect-rival-without-confessing-guilt",
+      "voice:restrained-irony-under-fear",
+      "relationship:costly-choice-creates-conditional-trust",
+      "subtext:apology-concealed-as-bargain"
+    ],
+    "schema": "SkillV2BoundedRepeatedABStorySliceV1",
+    "synthetic": true,
+    "version": 1
+  },
+  "story_slice_sha256": "7134e84052d6e15bdd0f3bbb75de41a45c9e8c083d09e896004f8228b71c47c7",
+  "task_contract": {
+    "candidate_owned_fields": [
+      "title",
+      "narrative"
+    ],
+    "contract_identity": "planning_event_realization_shadow_v1@1",
+    "expected_output_characters": 1600,
+    "production_authority": false,
+    "shadow_only": true,
+    "stage": "event_realization_unit_shadow_v1"
+  },
+  "task_contract_sha256": "84bed63082c9b4abd588790f9292d29aa466ee14e8b085c403ebb47ded2ab0ad",
+  "version": 2
+}

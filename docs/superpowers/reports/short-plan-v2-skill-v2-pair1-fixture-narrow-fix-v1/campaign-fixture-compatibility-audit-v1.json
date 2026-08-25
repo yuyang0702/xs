@@ -1,0 +1,52 @@
+{
+  "affected_pair_case_ids": [
+    "restored-character-heavy-v1",
+    "restored-world-heavy-v1",
+    "restored-conflict-pacing-heavy-v1",
+    "restored-setup-payoff-heavy-v1",
+    "restored-mixed-v1"
+  ],
+  "affected_pair_count": 5,
+  "broad_mutation_performed": false,
+  "campaign_wide_fixture_id_defect_detected": true,
+  "pair2_through_pair5_audit_only": true,
+  "pairs": [
+    {
+      "downstream_adapter_compatible": false,
+      "formal_event_id": "AB-CHARACTER-0001",
+      "matches_ev_regex": false,
+      "mutation_performed": false,
+      "pair_case_id": "restored-character-heavy-v1"
+    },
+    {
+      "downstream_adapter_compatible": false,
+      "formal_event_id": "AB-WORLD-0001",
+      "matches_ev_regex": false,
+      "mutation_performed": false,
+      "pair_case_id": "restored-world-heavy-v1"
+    },
+    {
+      "downstream_adapter_compatible": false,
+      "formal_event_id": "AB-CONFLICT-0001",
+      "matches_ev_regex": false,
+      "mutation_performed": false,
+      "pair_case_id": "restored-conflict-pacing-heavy-v1"
+    },
+    {
+      "downstream_adapter_compatible": false,
+      "formal_event_id": "AB-PAYOFF-0001",
+      "matches_ev_regex": false,
+      "mutation_performed": false,
+      "pair_case_id": "restored-setup-payoff-heavy-v1"
+    },
+    {
+      "downstream_adapter_compatible": false,
+      "formal_event_id": "AB-MIXED-0001",
+      "matches_ev_regex": false,
+      "mutation_performed": false,
+      "pair_case_id": "restored-mixed-v1"
+    }
+  ],
+  "schema": "SkillV2Pair1CampaignFixtureCompatibilityAuditV1",
+  "version": 1
+}

@@ -1,0 +1,12 @@
+{
+  "all_ids_resolve": true,
+  "authority_copy_fields_valid": true,
+  "dependency_references_valid": true,
+  "formal_event_id_format": "PASS",
+  "no_contradictory_required_forbidden_conditions": true,
+  "no_unsatisfiable_authority_constraint": true,
+  "obligation_references_valid": true,
+  "pair1_fixture_self_consistent": true,
+  "schema": "SkillV2Pair1FixtureSelfConsistencyV1",
+  "version": 1
+}

@@ -1,0 +1,21 @@
+{
+  "baseline_head": "ffbeef39c90d45a0f43c295ba0ed3dd6b4fa4874",
+  "evidence_decision": "AUTHORITY_OR_FIXTURE_INCONSISTENCY",
+  "failed_authority_field": "formal_event_id",
+  "failed_rule_id": "SLICE1_EVENT_REALIZATION_INVALID",
+  "invalid_formal_event_id": "AB-CHARACTER-0001",
+  "pair1_a_sample_valid_for_ab_comparison": false,
+  "primary_root_cause_class": "AUTHORITY_OR_FIXTURE_INCONSISTENCY",
+  "required_format": "EV-[0-9A-F]{8}",
+  "root_cause_confidence": "HIGH",
+  "schema": "SkillV2Pair1FixtureRootCauseBindingV1",
+  "sealed_root_cause_decision_sha256": "2bafdce1f1bc559b20838f1025b035c43584480926befb6ab1624bc7bae06855",
+  "sealed_root_cause_manifest": {
+    "bytes": 5248,
+    "entry_count": 21,
+    "overall_status": "exact",
+    "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-a-validation-root-cause-v1/sha256-manifest-v1.json",
+    "sha256": "0354afecf0d87b82a6fe2237c85e89c6e647d597d3ef3105da5c4663c3673513"
+  },
+  "version": 1
+}

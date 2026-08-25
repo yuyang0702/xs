@@ -1,0 +1,17 @@
+{
+  "historical_execution_manifest": {
+    "bytes": 3127,
+    "entry_count": 9,
+    "overall_status": "exact",
+    "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-execution-v1/pairs/restored-character-heavy-v1/a-arm/sha256-manifest-v1.json",
+    "sha256": "7d9041e927a75be6d65c50e62be473a7f93e195472ac869489670ee0c4583f33"
+  },
+  "old_a_output_reuse_for_new_pair": false,
+  "old_nonce_consumed": true,
+  "old_nonce_reusable": false,
+  "old_pair1_a_execution_status": "TERMINAL_VALIDATION_REJECTED",
+  "old_pair1_a_sample_valid_for_ab_comparison": false,
+  "old_real_request_count": 1,
+  "schema": "SkillV2Pair1HistoricalSampleNonreuseV1",
+  "version": 1
+}

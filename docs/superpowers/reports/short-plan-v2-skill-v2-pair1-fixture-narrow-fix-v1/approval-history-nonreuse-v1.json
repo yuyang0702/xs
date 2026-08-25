@@ -1,0 +1,21 @@
+{
+  "approval_created_now": false,
+  "corrected_a_requires_new_approval": true,
+  "corrected_a_requires_new_nonce": true,
+  "corrected_b_requires_new_approval": true,
+  "corrected_b_requires_new_nonce": true,
+  "mismatch_dimensions": [
+    "pair_case_id",
+    "scope",
+    "cohort_id",
+    "packet_sha256"
+  ],
+  "nonce_created_now": false,
+  "old_a_output_reuse_for_new_pair": false,
+  "old_approval_reuse_allowed": false,
+  "old_nonce_consumed": true,
+  "old_nonce_reuse_allowed": false,
+  "old_packet_reuse_allowed": false,
+  "schema": "SkillV2Pair1ApprovalHistoryNonreuseV1",
+  "version": 1
+}

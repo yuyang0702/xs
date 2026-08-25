@@ -1,0 +1,25 @@
+{
+  "a_b_lock_binding": "PASS",
+  "approval_dry_run_result": "READY",
+  "corrected_fixture_binding": "PASS",
+  "external_actions": {
+    "credential_lookup_count": 0,
+    "http_post_attempts": 0,
+    "model_calls": 0,
+    "network_calls": 0,
+    "paid_calls": 0,
+    "real_provider_client_creation_count": 0,
+    "real_provider_request_attempts": 0
+  },
+  "formal_event_id_compatibility": "PASS",
+  "head_successor_binding": "PASS",
+  "launcher_source_binding": "PASS",
+  "phase_a_pre_approval_readiness": "PASS",
+  "schema": "SkillV2Pair1CorrectedApprovalReadinessV1",
+  "signed_approval": "ABSENT",
+  "signed_preflight_validator_binding": "PASS",
+  "single_dispatch_binding": "PASS",
+  "single_use_nonce": "ABSENT",
+  "stop_state_authority_binding": "PASS",
+  "version": 1
+}

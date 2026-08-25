@@ -1,0 +1,14 @@
+{
+  "cohort_id": "skill-v2-bounded-repeated-ab-character-heavy-v2-a-disabled-001",
+  "ledger_entry_count": 0,
+  "nonce_executable": false,
+  "nonce_policy_sha256": "654ff287da39a08c801f4ea104fb46c58789e23272b5cd35e6689e5802322b70",
+  "nonce_present": false,
+  "nonce_reuse_allowed": false,
+  "old_nonce_reuse_allowed": false,
+  "pair_case_id": "restored-character-heavy-v2",
+  "schema": "SkillV2Pair1CorrectedNoncePolicyV2",
+  "scope": "SKILL_V2_BOUNDED_REPEATED_AB_CHARACTER_HEAVY_V2_A_ARM_SINGLE_DISPATCH_ONLY",
+  "skill_arm": "CURRENT_RUNTIME_SKILL",
+  "version": 2
+}

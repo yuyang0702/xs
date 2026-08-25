@@ -1,0 +1,171 @@
+{
+  "coverage": "all materialized files except the manifest itself",
+  "entry_count": 32,
+  "files": [
+    {
+      "bytes": 14,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-fixture-narrow-fix-v1/.gitattributes",
+      "sha256": "a79691a93b46e49ce460c26ef22afcc03d6eca1e63bf2edbc20e96159510f6c9"
+    },
+    {
+      "bytes": 299,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-fixture-narrow-fix-v1/README.md",
+      "sha256": "164dae15eed0c0a4410529b77211a3e3fc680a45ea9af429906deb25018bccf5"
+    },
+    {
+      "bytes": 597,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-fixture-narrow-fix-v1/approval-history-nonreuse-v1.json",
+      "sha256": "18951190e61ebf1f9e9c2f3beda97cf820b3a74cfce33c8769edd16db398fa73"
+    },
+    {
+      "bytes": 777,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-fixture-narrow-fix-v1/approval-readiness-dry-run-v1.json",
+      "sha256": "eebfa48a8b79f8ccf024536bfae12d17bf8704568d28985f7dee25b9101a543b"
+    },
+    {
+      "bytes": 1570,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-fixture-narrow-fix-v1/campaign-fixture-compatibility-audit-v1.json",
+      "sha256": "77f7a9eed3cf2d97897d9aa3a8d5b7ada3104d8331bb8b975e80383d423f44c1"
+    },
+    {
+      "bytes": 557,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-fixture-narrow-fix-v1/campaign-successor-state-v1.json",
+      "sha256": "ded081c53dde653dd38d3eaafa192d9ea4d0a3f8b24cee5b971c344d596e381c"
+    },
+    {
+      "bytes": 1033,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-fixture-narrow-fix-v1/clean-room-review-v1.json",
+      "sha256": "8f73ed76d26ec8210cd3290f0681b3ed6e0cd6165cbcf326d1f814c92677feb8"
+    },
+    {
+      "bytes": 428,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-fixture-narrow-fix-v1/corrected-pair1-ab-lock-v1.json",
+      "sha256": "ee8bedb938d3b4cda35b9a1698e2c695124be98e350697607b3fa87005c2d211"
+    },
+    {
+      "bytes": 1518,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-fixture-narrow-fix-v1/corrected-pair1-packet-index-v1.json",
+      "sha256": "54f53369ae35a5a36aa7e80d7b566e39845df0ba55cfd45d62bf1c324cdfab9f"
+    },
+    {
+      "bytes": 1234,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-fixture-narrow-fix-v1/corrected-pair1/a-arm/approval-template-v2.json",
+      "sha256": "37a6ef5ccf668c41797cd53f75dbae2c99f8f099e96807e5d23ce65bc1d82e4d"
+    },
+    {
+      "bytes": 4260,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-fixture-narrow-fix-v1/corrected-pair1/a-arm/disabled-packet-v2.json",
+      "sha256": "fba38289186758d23c8d12b9eb54569e6b550418bc02b683062af5e6a7792d33"
+    },
+    {
+      "bytes": 1485,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-fixture-narrow-fix-v1/corrected-pair1/a-arm/launcher-binding-v2.json",
+      "sha256": "aa165c315f704deb47b54b67b3092efa2ca0bd258befd7ee1b7ed55b0374638c"
+    },
+    {
+      "bytes": 571,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-fixture-narrow-fix-v1/corrected-pair1/a-arm/nonce-policy-v2.json",
+      "sha256": "bf570695a1629b0d9cebdc1304a98f1497f74e891603939e57933569e54e9fb5"
+    },
+    {
+      "bytes": 1229,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-fixture-narrow-fix-v1/corrected-pair1/b-arm/approval-template-v2.json",
+      "sha256": "d62f7c6d5b1661dbfd58e752220df1e47544324e5bf986c321ca02a1ceafc7ac"
+    },
+    {
+      "bytes": 4255,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-fixture-narrow-fix-v1/corrected-pair1/b-arm/disabled-packet-v2.json",
+      "sha256": "70972485a8bff8733d90fe1948a8c0376c4955712fc9a73b800cf42d2e77694f"
+    },
+    {
+      "bytes": 1481,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-fixture-narrow-fix-v1/corrected-pair1/b-arm/launcher-binding-v2.json",
+      "sha256": "0024a260a5fea78f3b8f71b28123a8ed46c4cc13ff8395e360dcb51b72ed13d3"
+    },
+    {
+      "bytes": 567,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-fixture-narrow-fix-v1/corrected-pair1/b-arm/nonce-policy-v2.json",
+      "sha256": "fd97b8b1cbb8e0595c044ff073bdfb446b1378d75332c40348a71b170ea1c868"
+    },
+    {
+      "bytes": 2901,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-fixture-narrow-fix-v1/corrected-pair1/pair-ab-lock-v2.json",
+      "sha256": "20c1fb91ea52f538e78d1bb808daab98d8b874725348b6abb3cbc07742696e65"
+    },
+    {
+      "bytes": 3179,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-fixture-narrow-fix-v1/corrected-pair1/sanitized-fixture-v2.json",
+      "sha256": "1f4a1efcde47a03d9190db60d31395f140444bb632034edde8b4e20b0bbe05a4"
+    },
+    {
+      "bytes": 401,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-fixture-narrow-fix-v1/dependent-reference-rewrite-v1.json",
+      "sha256": "c765c83565b9586218839a7a8cd41d0b01b06a4e2bc1bb8ad058ccecd816a161"
+    },
+    {
+      "bytes": 464,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-fixture-narrow-fix-v1/event-id-policy-v1.json",
+      "sha256": "2d804d88d22de3f6702dde84196dbd71ca3b4ab8661ec0d278d3d18a99bac2db"
+    },
+    {
+      "bytes": 4729,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-fixture-narrow-fix-v1/final-report-v1.md",
+      "sha256": "4ef2d59da1d8204c2f13ad17865a3daa2249da24fc31e587db77d681e1a26540"
+    },
+    {
+      "bytes": 399,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-fixture-narrow-fix-v1/fixture-self-consistency-v1.json",
+      "sha256": "41483d92de332474ca0b066b7a9b04b12926466f6c68ee9d164f8918e87ca621"
+    },
+    {
+      "bytes": 938,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-fixture-narrow-fix-v1/fixture-source-binding-v1.json",
+      "sha256": "5c9c6a365d4df3e274211e269c3a379c4787bb8a1a325f7d0c995bb0ac07b7f7"
+    },
+    {
+      "bytes": 5558,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-fixture-narrow-fix-v1/forward-risk-report-v2.json",
+      "sha256": "b9a121bdb3e79ee2f22031adc11da20f90f3fecd164029ec3a27236980b74325"
+    },
+    {
+      "bytes": 998,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-fixture-narrow-fix-v1/historical-root-binding-v1.json",
+      "sha256": "2fa83f439fbf4a18d0562a0621a423641dca74ccb511fa8a1e9be1fa0f55633b"
+    },
+    {
+      "bytes": 685,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-fixture-narrow-fix-v1/historical-sample-nonreuse-v1.json",
+      "sha256": "04ef30116d476eeeb06062f599eeae527e86c46ebfc7369d2469a554e7bc0029"
+    },
+    {
+      "bytes": 655,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-fixture-narrow-fix-v1/offline-test-receipt-v1.json",
+      "sha256": "9b719b5a7468b4d53ccbfac37aef632526fd2e284c01195f579ead2198406614"
+    },
+    {
+      "bytes": 590,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-fixture-narrow-fix-v1/old-vs-new-fixture-diff-v1.json",
+      "sha256": "dd743ba55c39b01a5b873cab24cf4010faff75c7728126a381e3b3cd2b18c47c"
+    },
+    {
+      "bytes": 369,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-fixture-narrow-fix-v1/privacy-scan-v1.json",
+      "sha256": "f55dbd53f35bec9b8590f3163188fb992aedf233a4c051c2541254b8d19cf9a7"
+    },
+    {
+      "bytes": 962,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-fixture-narrow-fix-v1/root-cause-binding-v1.json",
+      "sha256": "5eb88cb1c8b15ffd0a7cb6674c354780d7046e81d8a3fe0805441521259776d7"
+    },
+    {
+      "bytes": 634,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-fixture-narrow-fix-v1/validator-reproduction-v1.json",
+      "sha256": "fb3bef28fd32dd18f1c0828f227799c3854d5abc74c2a82499922049b572947a"
+    }
+  ],
+  "manifest_definition_sha256": "dd0004ee6138d421485c92014c3a95d4fa1c672e9fd47496fb5cfe28aff32956",
+  "overall_status": "exact",
+  "schema": "SkillV2Pair1FixtureNarrowFixSha256ManifestV1",
+  "self_excluded": true,
+  "version": 1
+}

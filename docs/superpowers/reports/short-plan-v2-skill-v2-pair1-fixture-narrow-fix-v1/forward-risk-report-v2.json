@@ -1,0 +1,102 @@
+{
+  "closed_world_justification": "The user named Pair 1 and required Pair 2-5 to be read-only audited. The successor is a fixture/canary-only module and does not alter the shared historical CASE_DEFINITIONS table.",
+  "constraint_traceability": [
+    {
+      "evidence": "event-id-policy-v1.json and validator-reproduction-v1.json",
+      "implementation": "canonical_fixture_event_id_v2 hashes the stable semantic fixture identity and corrected_pair1_case_v2 applies it only to Pair 1 v2.",
+      "requirement": "Canonical deterministic compatible event identity",
+      "test_paths": [
+        "tests/canary/test_skill_v2_pair1_fixture_narrow_fix.py"
+      ]
+    },
+    {
+      "evidence": "corrected-pair1/pair-ab-lock-v2.json",
+      "implementation": "build_documents derives both arms from one corrected authority and retains every historical AB_EQUALITY_FIELDS invariant.",
+      "requirement": "A/B experimental lock remains Skill Context only",
+      "test_paths": [
+        "tests/canary/test_skill_v2_pair1_fixture_narrow_fix.py",
+        "tests/test_skill_v2_bounded_repeated_ab.py"
+      ]
+    },
+    {
+      "evidence": "approval-history-nonreuse-v1.json and campaign-successor-state-v1.json",
+      "implementation": "validate_old_approval_nonreuse_v1 requires four exact mismatches; campaign-successor-state blocks B and later pairs.",
+      "requirement": "Old authority is non-reusable and progression fails closed",
+      "test_paths": [
+        "tests/canary/test_skill_v2_pair1_fixture_narrow_fix.py"
+      ]
+    },
+    {
+      "evidence": "corrected-pair1-packet-index-v1.json and privacy-scan-v1.json",
+      "implementation": "The module has no execution entry point; both packets are disabled, unused, unreserved, approval-free, nonce-free, and external counters are zero.",
+      "requirement": "Offline-only disabled materialization",
+      "test_paths": [
+        "tests/canary/test_skill_v2_pair1_fixture_narrow_fix.py"
+      ]
+    }
+  ],
+  "forbidden_narrowing": [
+    "Do not patch only a derived packet while leaving the successor authority inconsistent.",
+    "Do not weaken the Planning validator or adapter.",
+    "Do not silently broaden the mutation to Pair 2-5.",
+    "Do not reuse the old approval, consumed nonce, packet, or Provider output."
+  ],
+  "historical_incident_families_checked": [
+    "Pair 1 terminal local semantic validation rejection",
+    "Pair 1 authority/fixture inconsistency",
+    "approval-parent and historical-root stale-binding failures",
+    "single-dispatch and consumed-nonce nonreuse controls"
+  ],
+  "model_output_boundary_changed": false,
+  "model_output_not_applicable_evidence": "The final diff changes only tools/canary fixture materialization, its tests, and evidence. src/novel_flywheel model parsing, Provider adapters, Planning validator behavior, Prompt, route, and baml_src are byte-unchanged.",
+  "next_authoritative_boundary_tests": [
+    "tests/canary/test_skill_v2_pair1_fixture_narrow_fix.py"
+  ],
+  "operational_definition": "The repository-owned restored-character-heavy Pair 1 successor must use one deterministic EV-[0-9A-F]{8} identity in every active authority copy; historical evidence and Pair 2-5 remain immutable.",
+  "original_requirement": "Fix only the invalid Pair 1 fixture authority, preserve A/B isolation, and rematerialize fresh disabled Pair 1 A/B packets offline.",
+  "production_shaped_tests": [
+    "tests/canary/test_skill_v2_pair1_fixture_narrow_fix.py",
+    "tests/test_skill_v2_bounded_repeated_ab.py"
+  ],
+  "projected_failure_mechanisms": [
+    "invalid formal_event_id copied into authority and story slice",
+    "partial dependent-reference rewrite",
+    "stale A/B packet or approval binding after authority hash change",
+    "premature B or later-pair progression"
+  ],
+  "remaining_risks": [
+    "Pair 2-5 have the same historical ID class and require separate authorized successors before execution.",
+    "Corrected Pair 1 A still requires a fresh single-use user approval and nonce before any real request."
+  ],
+  "resolution_status": "case_fixed",
+  "scope_classification": "closed_world",
+  "sibling_boundaries": [
+    {
+      "boundary": "Pair 1 authority and story-slice materialization",
+      "disposition": "fixed_and_tested",
+      "evidence": "Four active ID references are rebuilt from one corrected case and asserted exact."
+    },
+    {
+      "boundary": "Pair 2-5 campaign fixtures",
+      "disposition": "not_applicable",
+      "evidence": "All four are reported affected by the read-only audit, but the closed-world task forbids mutating them and blocks their future execution."
+    },
+    {
+      "boundary": "Pair 1 corrected A approval readiness",
+      "disposition": "fixed_and_tested",
+      "evidence": "Unsigned dry-run validates fixture, lock, launcher, successor, stop-state, and dispatch bindings."
+    },
+    {
+      "boundary": "Pair 1 B and later-pair progression",
+      "disposition": "fixed_and_tested",
+      "evidence": "Successor state remains blocked until corrected A PASS and Pair 1 evaluation."
+    },
+    {
+      "boundary": "Provider response parsing and production workflow promotion",
+      "disposition": "not_applicable",
+      "evidence": "No src, baml_src, Provider, Draft, Final Review, StoryState, Canon, or READY path changes."
+    }
+  ],
+  "version": 2,
+  "why_previous_tests_missed": "Historical campaign materialization tested A/B hash isolation but did not pass each synthetic event ID through the downstream Planning compiler compatibility rule before a real arm was approved."
+}

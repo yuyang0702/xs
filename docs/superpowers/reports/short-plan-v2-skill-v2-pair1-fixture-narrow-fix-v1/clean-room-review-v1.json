@@ -1,0 +1,31 @@
+{
+  "authority_critical_checks": [
+    "canonical event identity",
+    "dependent authority copies",
+    "A/B lock",
+    "old approval and nonce nonreuse",
+    "closed-world roots",
+    "disabled packet state"
+  ],
+  "context_sources": [
+    "raw_user_request",
+    "task_baseline",
+    "final_diff",
+    "raw_test_output",
+    "forward_risk_report"
+  ],
+  "focused_test_output": "15 passed in 1.39s",
+  "forward_risk_report": "forward-risk-report-v2.json",
+  "full_suite_output": "3460 passed, 41 skipped, 6 xfailed, 29 failed, 72 errors in 1798.91s; non-green paths are pre-existing sealed-gate/oracle/live-parity families and not task-local",
+  "hard_issue_count": 0,
+  "independence_claimed": false,
+  "mode": "single_agent_clean_room",
+  "related_test_output": "54 passed in 3.71s",
+  "reviewed_paths": [
+    "tools/canary/skill_v2_pair1_fixture_narrow_fix.py",
+    "tests/canary/test_skill_v2_pair1_fixture_narrow_fix.py"
+  ],
+  "schema": "SkillV2Pair1FixtureNarrowFixCleanRoomReviewV1",
+  "status": "passed",
+  "version": 1
+}

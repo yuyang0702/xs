@@ -1,0 +1,18 @@
+{
+  "accepted_roots": [
+    "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-a-validation-root-cause-v1",
+    "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-v1",
+    "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-execution-v1/pairs/restored-character-heavy-v1/a-arm",
+    "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-fixture-narrow-fix-v1",
+    "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-fixture-narrow-fix-v1/corrected-pair1/a-arm",
+    "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-fixture-narrow-fix-v1/corrected-pair1/b-arm"
+  ],
+  "arbitrary_report_root_accepted": false,
+  "corrected_pair1_packet_roots_accepted": true,
+  "failed_pair1_execution_root_accepted_as_historical": true,
+  "historical_root_policy": "CLOSED_WORLD",
+  "r0f_successor": "NOT_REQUIRED",
+  "reason": "fixture/canary-only source; no protected production source changed",
+  "schema": "SkillV2Pair1HistoricalRootBindingV1",
+  "version": 1
+}

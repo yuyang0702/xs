@@ -1,0 +1,28 @@
+{
+  "application_second_dispatch_allowed": false,
+  "cohort_id": "skill-v2-bounded-repeated-ab-character-heavy-v2-a-disabled-001",
+  "execution_entry_point_present": false,
+  "execution_root": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-execution-v2/pairs/restored-character-heavy-v2/a-arm",
+  "hard_max_http_post_attempts": 1,
+  "hard_max_model_calls": 1,
+  "hard_max_real_provider_request_attempts": 1,
+  "head_successor_validator": "validate_head_successor_v1",
+  "historical_root_policy": "CLOSED_WORLD",
+  "launcher_binding_sha256": "5d6d0e3d04f29ac95f8cb7a0a10dcbb179ab6eab61eb9de6b2bc9662a844b399",
+  "launcher_source": {
+    "bytes": 52007,
+    "path": "tools/canary/skill_v2_pair1_fixture_narrow_fix.py",
+    "sha256": "6b245f96c9894152d7b93720cc51c7d244a24a6b4d2f5db8163e030eb61aae05"
+  },
+  "materialization_root": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-fixture-narrow-fix-v1/corrected-pair1/a-arm",
+  "pair_case_id": "restored-character-heavy-v2",
+  "route_fallback_after_dispatch_allowed": false,
+  "schema": "SkillV2Pair1CorrectedLauncherBindingV2",
+  "scope": "SKILL_V2_BOUNDED_REPEATED_AB_CHARACTER_HEAVY_V2_A_ARM_SINGLE_DISPATCH_ONLY",
+  "sdk_retries_disabled": true,
+  "signed_preflight_validator": "validate_corrected_signed_preflight_v1",
+  "skill_arm": "CURRENT_RUNTIME_SKILL",
+  "transport_request_retries_disabled": true,
+  "two_phase_stop_state_contract": "PAIR1_CORRECTED_A_PASS_BEFORE_B_APPROVAL_V1",
+  "version": 2
+}

@@ -1,0 +1,14 @@
+{
+  "historical_sealed_reference_mutation_count": 0,
+  "paths": [
+    "/authority_input/formal_event_id",
+    "/authority_input/formal_event_ids/0",
+    "/authority_input/segment_event_ids/0/0",
+    "/story_slice/formal_event_id"
+  ],
+  "referential_integrity": "PASS",
+  "rewrite_count": 4,
+  "schema": "SkillV2Pair1DependentReferenceRewriteV1",
+  "stale_active_reference_count": 0,
+  "version": 1
+}

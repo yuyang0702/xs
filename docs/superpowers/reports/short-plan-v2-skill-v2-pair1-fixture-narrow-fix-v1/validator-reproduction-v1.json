@@ -1,0 +1,24 @@
+{
+  "candidate_semantics_identical": true,
+  "candidate_semantics_sha256": "a955c0c2a82b7efebd66f75e90c00b2a473938688472fc59f14d54ce09bf9678",
+  "new_fixture": {
+    "finding_paths": [],
+    "formal_event_id": "EV-3D3AE01E",
+    "rule_codes": [],
+    "status": "PASS"
+  },
+  "old_fixture": {
+    "finding_paths": [
+      "/narrative"
+    ],
+    "formal_event_id": "AB-CHARACTER-0001",
+    "rule_codes": [
+      "SLICE1_EVENT_REALIZATION_INVALID"
+    ],
+    "status": "REJECTED"
+  },
+  "raw_candidate_persisted": false,
+  "schema": "SkillV2Pair1FixtureValidatorReproductionV1",
+  "validator_semantics_changed": false,
+  "version": 1
+}

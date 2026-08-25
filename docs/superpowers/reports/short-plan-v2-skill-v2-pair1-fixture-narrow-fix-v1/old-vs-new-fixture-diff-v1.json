@@ -1,0 +1,19 @@
+{
+  "current_skill_unchanged": true,
+  "dependent_reference_rewrites_only": true,
+  "intended_authority_delta": {
+    "formal_event_id": {
+      "new": "EV-3D3AE01E",
+      "old": "AB-CHARACTER-0001"
+    }
+  },
+  "logical_case_identity_unchanged": "restored-character-heavy-v1",
+  "obligations_unchanged": true,
+  "restored_skill_v2_unchanged": true,
+  "schema": "SkillV2Pair1FixtureDiffV1",
+  "story_content_semantics_unchanged": true,
+  "successor_case_identity": "restored-character-heavy-v2",
+  "task_contract_unchanged": true,
+  "validator_semantics_unchanged": true,
+  "version": 1
+}

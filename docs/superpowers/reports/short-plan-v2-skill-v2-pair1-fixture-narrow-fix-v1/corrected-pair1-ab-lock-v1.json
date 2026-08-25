@@ -1,0 +1,9 @@
+{
+  "all_equality_fields_exact": true,
+  "pair_case_id": "restored-character-heavy-v2",
+  "pair_lock_path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-fixture-narrow-fix-v1/corrected-pair1/pair-ab-lock-v2.json",
+  "pair_lock_sha256": "31ed7f57374c99b90a5271b44655489661a4bbc70f0ed6363c154f4d55163d80",
+  "primary_changed_variable": "SKILL_CONTEXT",
+  "schema": "SkillV2Pair1CorrectedABLockIndexV1",
+  "version": 1
+}

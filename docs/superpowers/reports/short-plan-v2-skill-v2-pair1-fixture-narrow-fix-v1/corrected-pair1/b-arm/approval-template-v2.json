@@ -1,0 +1,22 @@
+{
+  "approval_template_sha256": "56227495b36eec4157c09178b875bc4c36b61e4c8d391aa3b03a81772f3acbb7",
+  "cohort_id": "skill-v2-bounded-repeated-ab-character-heavy-v2-b-disabled-001",
+  "execution_authorized": false,
+  "execution_root": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-execution-v2/pairs/restored-character-heavy-v2/b-arm",
+  "launcher_binding_sha256": "971b64d3c6a16a40ca5e12cfc9d7c156a302ad88c860f280555ce77b690ded5c",
+  "matching_corrected_a_pass_required": true,
+  "materialization_root": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-fixture-narrow-fix-v1/corrected-pair1/b-arm",
+  "named_approver": null,
+  "packet_sha256": "46953023632e8dcbebba452b9a60c550689778985bf3ed2a210f2674b7e3f0f7",
+  "pair_case_id": "restored-character-heavy-v2",
+  "pair_lock_sha256": "31ed7f57374c99b90a5271b44655489661a4bbc70f0ed6363c154f4d55163d80",
+  "reservation_status": "unreserved",
+  "schema": "SkillV2Pair1CorrectedApprovalTemplateV2",
+  "scope": "SKILL_V2_BOUNDED_REPEATED_AB_CHARACTER_HEAVY_V2_B_ARM_SINGLE_DISPATCH_ONLY",
+  "signed_approval": "ABSENT",
+  "single_use_nonce": null,
+  "skill_arm": "RESTORED_SKILL_V2",
+  "usage_status": "unused",
+  "validity_window": null,
+  "version": 2
+}
