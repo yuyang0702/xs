@@ -1,0 +1,41 @@
+{
+  "schema": "FreshContextBlindEvaluationSha256ManifestV1",
+  "version": 1,
+  "manifest_scope": "BLIND_EVALUATION_OUTPUT_ONLY",
+  "self_excluded": true,
+  "entry_count": 4,
+  "files": [
+    {
+      "path": "blind-dimension-judgments-v1.json",
+      "bytes": 13088,
+      "sha256": "9685e0fea67b21ff84c937146fea123ff8682728125e9adbb1e4d6c8ff72d917",
+      "frozen": true
+    },
+    {
+      "path": "blind-review-summary-v1.json",
+      "bytes": 1099,
+      "sha256": "bd22b261ebe84638fd3864c8cd6195c43a03bbabe458a030ab4d4fc930acef22",
+      "frozen": true
+    },
+    {
+      "path": "blind-freeze-receipt-v1.json",
+      "bytes": 1347,
+      "sha256": "7154adab7bde0970aee5a16d764c4269496039b9c8e23542c55de547198d884f",
+      "frozen": true
+    },
+    {
+      "path": "blind-evaluator-final-report-v1.md",
+      "bytes": 6101,
+      "sha256": "b29ce1e32265ac62097ff24d32c015c0d88a97a0ae33717bcfa1d1f13da514ec",
+      "frozen": true
+    }
+  ],
+  "BLIND_OUTPUT_IDENTITY_LEAK_COUNT": 0,
+  "PRIVATE_MAPPING_READ": "NO",
+  "A_B_IDENTITY_REVEALED": "NO",
+  "ENGINEERING_METRICS_READ": "NO",
+  "NETWORK_CALLS": 0,
+  "EXTERNAL_MODEL_CALLS": 0,
+  "PROVIDER_CALLS": 0,
+  "PAIR_DISPOSITION": "NOT_EMITTED"
+}

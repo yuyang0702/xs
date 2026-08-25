@@ -1,0 +1,201 @@
+{
+  "schema": "FreshContextBlindDimensionJudgmentsV1",
+  "version": 1,
+  "evaluator_bundle_root": "C:\\小说\\novel-flywheel-console\\docs\\superpowers\\reports\\short-plan-v2-skill-v2-criticality-and-blind-context-v1\\fresh-evaluator-bundle",
+  "fresh_context_assertion": true,
+  "pair_creative_demand_class": "character-heavy",
+  "dimension_count": 16,
+  "pair_critical_dimension_set": [
+    "event_causal_fidelity",
+    "character_motivation",
+    "character_voice",
+    "relationship_logic",
+    "subtext_dramatization",
+    "draft_intent_handoff",
+    "template_flattening_risk",
+    "authority_correctness",
+    "untargeted_creative_mutation"
+  ],
+  "pair_noncritical_dimension_set": [
+    "world_specificity",
+    "sensory_realization",
+    "conflict_pacing",
+    "setup_payoff_dependency",
+    "pov",
+    "tense",
+    "tone_genre"
+  ],
+  "pairwise_judgment_enum": [
+    "X_BETTER",
+    "Y_BETTER",
+    "EQUIVALENT",
+    "INCOMPARABLE",
+    "INSUFFICIENT_EVIDENCE",
+    "NOT_APPLICABLE"
+  ],
+  "enum_translation": "NONE",
+  "narrative_decision_policy_reference": "blind-evaluation-instructions-v1.md",
+  "scalar_literary_score_created": false,
+  "judgments": [
+    {
+      "dimension": "event_causal_fidelity",
+      "criticality": "CRITICAL",
+      "blind_judgment": "X_BETTER",
+      "concise_evidence_from_x": "The patrol wants Iven because Mara gave the magistrate his name; she burns transit seals worth a year's favors to divert pursuit, and Iven reads the act through the language of buying and price.",
+      "concise_evidence_from_y": "Mara sacrifices the ledger that could restore her standing, opens the gate with Iven, and accepts his condition that she eventually give one honest sentence.",
+      "why_difference_matters_or_equivalent": "Both realize costly protection and unresolved conditional cooperation, but X ties the immediate threat directly to Mara's prior betrayal and makes the concealed apology-as-bargain chain more explicit.",
+      "confidence": "HIGH",
+      "evidence_sufficiency": "SUFFICIENT"
+    },
+    {
+      "dimension": "character_motivation",
+      "criticality": "CRITICAL",
+      "blind_judgment": "X_BETTER",
+      "concise_evidence_from_x": "Mara can preserve her escape route or destroy it to save the man endangered by her own disclosure; the unsaid explanation makes guilt, fear, self-preservation, and need compete in one choice.",
+      "concise_evidence_from_y": "Mara risks status and loses the ledger while telling Iven to leave, then chooses the brake over reclaiming the pages.",
+      "why_difference_matters_or_equivalent": "Y gives Mara a legible sacrifice, but X more tightly joins her conflicting wants to the old betrayal and to the irreversible choice that follows.",
+      "confidence": "HIGH",
+      "evidence_sufficiency": "SUFFICIENT"
+    },
+    {
+      "dimension": "character_voice",
+      "criticality": "CRITICAL",
+      "blind_judgment": "X_BETTER",
+      "concise_evidence_from_x": "Mara's level delivery contrasts with a trembling crank, while 'welcoming committee,' 'generous accounting,' and 'revises the price' sustain restrained irony under fear.",
+      "concise_evidence_from_y": "Her clipped courtesy appears in 'expensive professional courtesy' and 'continued inconvenience,' with fear displaced into attention to the dial and precise counts.",
+      "why_difference_matters_or_equivalent": "Both meet the requested voice, but X differentiates Mara through a more continuous pattern of diction, rhythm, evasions, and bodily contradiction rather than explanatory labeling.",
+      "confidence": "HIGH",
+      "evidence_sufficiency": "SUFFICIENT"
+    },
+    {
+      "dimension": "relationship_logic",
+      "criticality": "CRITICAL",
+      "blind_judgment": "Y_BETTER",
+      "concise_evidence_from_x": "Iven's suspicion changes shape after the burned seals; he helps with the gate, binds Mara's palms before his own wound, and lets her choose their route while denying that the act buys anything.",
+      "concise_evidence_from_y": "Distrust makes Iven refuse Mara's order to leave, their positions force reciprocal action, and he converts the recognized sacrifice into a condition for one honest sentence; they depart together but one step apart.",
+      "why_difference_matters_or_equivalent": "X clearly marks the trust shift, while Y more fully lets relationship pressure alter each available action and embodies conditional cooperation in a specific unresolved demand.",
+      "confidence": "MEDIUM",
+      "evidence_sufficiency": "SUFFICIENT"
+    },
+    {
+      "dimension": "subtext_dramatization",
+      "criticality": "CRITICAL",
+      "blind_judgment": "X_BETTER",
+      "concise_evidence_from_x": "The explanation crowds behind Mara's teeth and is swallowed; guilt is rerouted through debt, accounting, buying, and price while gesture carries the changing trust.",
+      "concise_evidence_from_y": "Mara studies the dial instead of answering why Iven's life is her expense, and later accepts his demand without bargaining it down.",
+      "why_difference_matters_or_equivalent": "Y contains effective evasions, but X relies more consistently on dialogue, choice, and reaction; Y more often explains the strain or the characters' instincts in summary.",
+      "confidence": "HIGH",
+      "evidence_sufficiency": "SUFFICIENT"
+    },
+    {
+      "dimension": "draft_intent_handoff",
+      "criticality": "CRITICAL",
+      "blind_judgment": "X_BETTER",
+      "concise_evidence_from_x": "The scene supplies a clean threat clock, irreversible prop sacrifice, tactical diversion, joint physical obstacle, and a final relational beat, each rendered as action and reaction.",
+      "concise_evidence_from_y": "The lockhouse sequence offers sceneable machinery, a ledger-or-lever choice, joint wheel work, and an explicit post-crisis condition.",
+      "why_difference_matters_or_equivalent": "Both are draftable, but X hands off a more continuous causal scene with less explanatory compression and clearer beat-to-beat staging.",
+      "confidence": "MEDIUM",
+      "evidence_sufficiency": "SUFFICIENT"
+    },
+    {
+      "dimension": "template_flattening_risk",
+      "criticality": "CRITICAL",
+      "blind_judgment": "X_BETTER",
+      "concise_evidence_from_x": "Character state emerges through idiosyncratic images, bargaining diction, tactical improvisation, and small reversals without naming the intended relationship pattern.",
+      "concise_evidence_from_y": "Specific mechanical action resists genericity, but phrases such as 'the strain beneath her clipped courtesy' and 'They work against each other's instincts' classify dynamics the scene also demonstrates.",
+      "why_difference_matters_or_equivalent": "X more fully avoids taxonomy-like explanation and lets the demanded traits remain embedded in behavior.",
+      "confidence": "HIGH",
+      "evidence_sufficiency": "SUFFICIENT"
+    },
+    {
+      "dimension": "authority_correctness",
+      "criticality": "CRITICAL",
+      "blind_judgment": "EQUIVALENT",
+      "concise_evidence_from_x": "The evaluator-visible candidate contribution is confined to a title and narrative event realization.",
+      "concise_evidence_from_y": "The evaluator-visible candidate contribution is likewise confined to a title and narrative event realization.",
+      "why_difference_matters_or_equivalent": "Both stay within the neutral contract's candidate-owned fields and offer no evidence of production-authority action.",
+      "confidence": "HIGH",
+      "evidence_sufficiency": "SUFFICIENT"
+    },
+    {
+      "dimension": "untargeted_creative_mutation",
+      "criticality": "CRITICAL",
+      "blind_judgment": "EQUIVALENT",
+      "concise_evidence_from_x": "Its new patrol, transit-seal, and floodgate details serve the required event realization and remain inside title/narrative scope.",
+      "concise_evidence_from_y": "Its ledger, lockhouse, and pressure mechanism details also serve the required event realization and remain inside title/narrative scope.",
+      "why_difference_matters_or_equivalent": "The neutral authority context identifies no forbidden field change or unrelated mutation by either candidate.",
+      "confidence": "HIGH",
+      "evidence_sufficiency": "SUFFICIENT"
+    },
+    {
+      "dimension": "world_specificity",
+      "criticality": "NONCRITICAL",
+      "blind_judgment": "X_BETTER",
+      "concise_evidence_from_x": "Magistrate, forged transit seals, northern checkpoint, canal stairs, sluice basket, resin flame, maintenance culvert, and patrol hounds form a connected civic world.",
+      "concise_evidence_from_y": "The abandoned lockhouse, ledger, pressure dial, exposed gears, and iron document case establish a coherent industrial canal setting.",
+      "why_difference_matters_or_equivalent": "X's details imply more social and infrastructural context while remaining causal to the scene.",
+      "confidence": "HIGH",
+      "evidence_sufficiency": "SUFFICIENT"
+    },
+    {
+      "dimension": "sensory_realization",
+      "criticality": "NONCRITICAL",
+      "blind_judgment": "X_BETTER",
+      "concise_evidence_from_x": "It layers rain-blurred lanterns, claws on wet stone, choking hounds, blood, trembling metal, resin stink, black water, and the taste of rain and rust.",
+      "concise_evidence_from_y": "It offers needling rain, shouldering floodwater, a jittering dial, churning exposed gears, buckling metal, and pulped paper.",
+      "why_difference_matters_or_equivalent": "Both are concrete, but X engages more sensory channels and couples sensation more closely to fear and bodily effort.",
+      "confidence": "HIGH",
+      "evidence_sufficiency": "SUFFICIENT"
+    },
+    {
+      "dimension": "conflict_pacing",
+      "criticality": "NONCRITICAL",
+      "blind_judgment": "EQUIVALENT",
+      "concise_evidence_from_x": "Approaching hounds provide a visible clock; the burned seals, false route, difficult crank, and crawl under the gate escalate without slack.",
+      "concise_evidence_from_y": "The red dial, loaded wheel, lower platform, brake release, kickback, torn case, and ledger-or-lever decision create repeated resistance and reversal.",
+      "why_difference_matters_or_equivalent": "X is sharper as pursuit, while Y has denser mechanical reversals; each sustains an effective escalating sequence by a different method.",
+      "confidence": "MEDIUM",
+      "evidence_sufficiency": "SUFFICIENT"
+    },
+    {
+      "dimension": "setup_payoff_dependency",
+      "criticality": "NONCRITICAL",
+      "blind_judgment": "Y_BETTER",
+      "concise_evidence_from_x": "The costly seals become the decoy, the crank tremor becomes bleeding palms, and Iven's wound informs the closing act of care.",
+      "concise_evidence_from_y": "The ledger's leverage is paid off in its destruction; the case first releases the brake and then fails; the belt first aids the wheel and then binds Mara's hand; the red dial resolves after the gate opens.",
+      "why_difference_matters_or_equivalent": "Y interlocks more introduced objects and states with later tactical and relational payoffs.",
+      "confidence": "HIGH",
+      "evidence_sufficiency": "SUFFICIENT"
+    },
+    {
+      "dimension": "pov",
+      "criticality": "NONCRITICAL",
+      "blind_judgment": "X_BETTER",
+      "concise_evidence_from_x": "The narration remains closely anchored to Mara's perceptions, withheld explanation, bodily sensations, and reading of Iven's visible reactions.",
+      "concise_evidence_from_y": "The narration is broadly Mara-centered but directly states what Iven hears and why he refuses before returning to her behavior.",
+      "why_difference_matters_or_equivalent": "No POV was contract-fixed, but X maintains a more controlled and immersive focal distance.",
+      "confidence": "MEDIUM",
+      "evidence_sufficiency": "SUFFICIENT"
+    },
+    {
+      "dimension": "tense",
+      "criticality": "NONCRITICAL",
+      "blind_judgment": "EQUIVALENT",
+      "concise_evidence_from_x": "X uses past tense consistently across narration and action.",
+      "concise_evidence_from_y": "Y uses present tense consistently across narration and action.",
+      "why_difference_matters_or_equivalent": "The contract fixes no tense, and neither candidate's internally consistent choice creates a material advantage.",
+      "confidence": "HIGH",
+      "evidence_sufficiency": "SUFFICIENT"
+    },
+    {
+      "dimension": "tone_genre",
+      "criticality": "NONCRITICAL",
+      "blind_judgment": "X_BETTER",
+      "concise_evidence_from_x": "Its canal pursuit, civic threat, wry bargaining, tactile danger, and compressed closing gestures sustain a distinctive grim intrigue tone.",
+      "concise_evidence_from_y": "Its flooded machinery, ruined evidence, clipped courtesy, and careful exit sustain a coherent industrial intrigue tone.",
+      "why_difference_matters_or_equivalent": "No tone or genre was contract-fixed; both cohere, but X integrates atmosphere and character irony more distinctively across the full scene.",
+      "confidence": "MEDIUM",
+      "evidence_sufficiency": "SUFFICIENT"
+    }
+  ]
+}
