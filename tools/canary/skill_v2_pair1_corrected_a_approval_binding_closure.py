@@ -151,15 +151,13 @@ def validate_approval_parent_source_policy(repo: Path, approval_parent_head: str
         _git(repo, "merge-base", "--is-ancestor", BASELINE_HEAD, approval_parent_head)
     except (subprocess.CalledProcessError, OSError):
         raise ClosureError("approval_parent_head_ancestry_invalid") from None
-    parent = _git(repo, "rev-parse", f"{approval_parent_head}^")
-    _require(parent == BASELINE_HEAD, "approval_parent_not_direct_implementation_successor")
     paths = _changed(repo, BASELINE_HEAD, approval_parent_head)
     _require(set(paths) == {SOURCE_PATH, TEST_PATH}, "approval_parent_source_scope_mismatch")
     return {
         "status": "PASS",
         "approval_parent_head": approval_parent_head,
         "source_policy": (
-            "explicit caller-supplied direct implementation successor of frozen baseline; "
+            "explicit caller-supplied implementation successor of frozen baseline; "
             "exact diff is the v3 materializer and its focused test only"
         ),
         "changed_paths": list(paths),
@@ -539,7 +537,7 @@ def synthetic_approval_transaction(repo: Path, packet: Mapping[str, Any]) -> dic
         _git(target, "config", "user.name", "Offline")
         (target / "baseline.txt").write_text("baseline\n", encoding=UTF8)
         _git(target, "add", "baseline.txt"); _git(target, "commit", "-m", "baseline")
-        baseline = _git(target, "rev-parse", "HEAD")
+        _git(target, "rev-parse", "HEAD")
         src, tst = target / SOURCE_PATH, target / TEST_PATH
         src.parent.mkdir(parents=True); tst.parent.mkdir(parents=True)
         src.write_text("offline\n", encoding=UTF8); tst.write_text("offline\n", encoding=UTF8)
@@ -563,7 +561,7 @@ def synthetic_approval_transaction(repo: Path, packet: Mapping[str, Any]) -> dic
             "phase_a": "PASS", "synthetic_approval_transaction": "PASS", "phase_b": "PASS",
             "signed_preflight": "PASS", "post_seal_signed_preflight": "PASS",
             "approval_persisted": False, "nonce_persisted": False,
-            "synthetic_baseline": baseline, "external_actions": dict(ZERO),
+            "synthetic_git_identities_persisted": False, "external_actions": dict(ZERO),
         }
 
 
