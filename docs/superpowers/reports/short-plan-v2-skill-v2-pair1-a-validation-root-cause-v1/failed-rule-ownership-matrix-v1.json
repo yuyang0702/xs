@@ -1,0 +1,19 @@
+{
+  "schema": "SkillV2Pair1AFailedRuleOwnershipMatrixV1",
+  "version": 1,
+  "rows": [
+    {
+      "rule_code": "SLICE1_EVENT_REALIZATION_INVALID",
+      "reported_field_path": "/narrative",
+      "reported_field_owner": "MODEL_OWNED",
+      "root_causing_value": "formal_event_id",
+      "root_causing_owner": "FIXTURE_OWNED_AND_AUTHORITY_COPY_OWNED",
+      "root_causing_value_metadata": "AB-prefixed identity; non-sensitive scalar identifier",
+      "expected_constraint": "must normalize under planning event topology identity grammar EV-[0-9A-F]{8}",
+      "actual_constraint_result": "NO_MATCH",
+      "model_at_fault": false,
+      "diagnostic_attribution_exact": false,
+      "reason": "The validator's broad TypeError/ValueError catch maps compiler identity failures to narrative even when narrative is contract-minimal."
+    }
+  ]
+}

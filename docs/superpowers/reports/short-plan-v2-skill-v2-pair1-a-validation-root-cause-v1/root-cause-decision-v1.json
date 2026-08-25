@@ -1,0 +1,26 @@
+{
+  "schema": "SkillV2Pair1ARootCauseDecisionV1",
+  "version": 1,
+  "primary_root_cause_class": "AUTHORITY_OR_FIXTURE_INCONSISTENCY",
+  "root_cause_confidence": "HIGH",
+  "mechanism": "The sealed Pair 1 authority uses AB-CHARACTER-0001. The Planning event topology adapter rejects any expected identity not matching EV-[0-9A-F]{8}; validate_event_realization_artifact catches that compiler ValueError and reports SLICE1_EVENT_REALIZATION_INVALID at /narrative, then the launcher reduces the receipt to slice1_generated_candidate_rejected.",
+  "secondary_causes": [
+    "CAMPAIGN_CASE_DESIGN_DEFECT: fixture generator created an identity outside the downstream contract",
+    "LOCAL_VALIDATOR_DIAGNOSTIC_OVERBROADNESS: compiler identity errors are attributed to /narrative",
+    "OBSERVABILITY_GAP: launcher did not persist the validation receipt, although closed-world reconstruction still identifies this root cause"
+  ],
+  "class_evaluation": {
+    "TRUE_MODEL_SEMANTIC_FAILURE": "DISPROVED_AS_PRIMARY_CAUSE",
+    "CURRENT_SKILL_PROMPT_CONTRACT_GAP": "DISPROVED_AS_PRIMARY_CAUSE",
+    "LOCAL_VALIDATOR_FALSE_POSITIVE_OR_OVERCONSTRAINT": "SECONDARY_DIAGNOSTIC_ATTRIBUTION_ONLY",
+    "AUTHORITY_OR_FIXTURE_INCONSISTENCY": "PROVEN_PRIMARY",
+    "PARSER_OR_CONVERSION_SEMANTIC_DRIFT": "INCONCLUSIVE_FOR_CONTENT_BUT_CAUSALLY_DISPROVED",
+    "LOCAL_DERIVATION_OR_STAGE_ORDER_BUG": "DISPROVED",
+    "CAMPAIGN_CASE_DESIGN_DEFECT": "PROVEN_SECONDARY_FORM_OF_PRIMARY",
+    "OBSERVABILITY_GAP": "PRESENT_BUT_NOT_BLOCKING_IDENTIFICATION"
+  },
+  "pair_1_a_sample_valid_for_ab_comparison": "NO",
+  "reason_sample_invalid": "The control arm never reached the campaign's required valid frozen artifact state because the shared fixture is incompatible with the validator/compiler contract.",
+  "pair_1_b_arm_authorized": false,
+  "campaign_continue": false
+}

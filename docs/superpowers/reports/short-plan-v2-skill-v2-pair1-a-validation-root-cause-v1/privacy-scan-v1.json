@@ -1,0 +1,15 @@
+{
+  "schema": "SkillV2Pair1AValidationRootCausePrivacyScanV1",
+  "version": 1,
+  "overall_status": "exact",
+  "privacy_match_count": 0,
+  "scan_scope": "all non-manifest files in this evidence root",
+  "forbidden_classes": ["raw Prompt", "raw story", "raw Provider payload", "reasoning", "credentials", "authorization headers", "secret Provider URL", "full rejected prose"],
+  "persisted_content_classes": ["hashes", "typed statuses", "source paths", "rule IDs", "field paths", "bounded counters", "non-sensitive synthetic event identifier", "contract grammar"],
+  "raw_prompt_persisted": false,
+  "raw_story_persisted": false,
+  "raw_provider_payload_persisted": false,
+  "raw_reasoning_persisted": false,
+  "credentials_persisted": false,
+  "rejected_candidate_content_persisted": false
+}

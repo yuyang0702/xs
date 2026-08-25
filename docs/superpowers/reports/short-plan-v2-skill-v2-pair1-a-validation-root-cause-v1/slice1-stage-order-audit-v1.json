@@ -1,0 +1,17 @@
+{
+  "schema": "SkillV2Pair1ASlice1StageOrderAuditV1",
+  "version": 1,
+  "candidate_validated": "AFTER_LOCAL_DERIVATION_FOR_ARTIFACT_VALIDATION",
+  "order": [
+    "authority tuple normalization and strict validation",
+    "provider candidate conversion and strict candidate schema validation",
+    "local artifact derivation from authority plus candidate",
+    "referential and authority validation",
+    "local semantic/compiler validation",
+    "freeze only after exact PASS"
+  ],
+  "validation_stage_order_matches_slice1_design": "YES",
+  "local_derived_field_absent_at_validation": false,
+  "local_derivation_or_stage_order_bug": "DISPROVED",
+  "note": "The defect is the incompatible authority identity supplied to both builder and compiler, not validation-before-derivation."
+}

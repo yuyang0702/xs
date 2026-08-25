@@ -1,0 +1,12 @@
+{
+  "schema": "SkillV2Pair1ACampaignCaseCoverageAuditV1",
+  "version": 1,
+  "pair1_case_shape_previously_covered": "PARTIAL",
+  "offline_replay_corpus": {"case_count":20,"all_expected_outcomes_matched":true},
+  "covered_dimensions": ["closed title/narrative candidate", "valid conversion envelopes", "short narrative rejection", "referential ordinal drift", "authority echo rejection", "local derivation and freeze"],
+  "new_uncovered_dimensions": ["authority accepted non-EV event ID", "AB-prefixed synthetic campaign event identity", "cross-contract identity compatibility between EventRealizationInputAuthorityV1 and planning_event_realizations adapter"],
+  "campaign_case_design_defect": "YES",
+  "exact_defect": "Campaign fixture construction emits AB-CHARACTER-0001 while the downstream event adapter recognizes only EV-[0-9A-F]{8} identities.",
+  "new_dimension_is_not_defect_by_novelty_alone": true,
+  "defect_proof": "deterministic minimal candidate reproduction"
+}

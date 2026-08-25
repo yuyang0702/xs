@@ -1,0 +1,25 @@
+{
+  "schema": "SkillV2Pair1AParserConversionAuditV1",
+  "version": 1,
+  "parser_conversion_semantic_drift": "INCONCLUSIVE_FOR_ACTUAL_CONTENT",
+  "actual_normalized_provider_final": "ABSENT",
+  "actual_parsed_object": "ABSENT",
+  "actual_converted_candidate": "ABSENT",
+  "safe_candidate_hash": "ABSENT",
+  "control_flow_proves": [
+    "GeneratedArtifactGateway conversion returned",
+    "EventRealizationCandidateV1 strict validation returned",
+    "artifact construction returned",
+    "validation receipt was produced"
+  ],
+  "transformations_assessed": {
+    "dropped_fields": "UNKNOWN",
+    "renamed_fields": "UNKNOWN",
+    "empty_string_coercion": "DISPROVED_BY_SCHEMA_PASS",
+    "list_tuple_conversion": "AUTHORITY_ONLY_AND_PASS",
+    "default_insertion": "LOCAL_ARTIFACT_ONLY",
+    "unicode_or_whitespace_change": "UNKNOWN",
+    "authority_field_overwrite": "DISPROVED_BY_CLOSED_CANDIDATE_AND_LOCAL_BUILD"
+  },
+  "causal_relevance": "DISPROVED_AS_PRIMARY_CAUSE_BECAUSE_INVALID_FIXTURE_ID_FAILS_FOR_EVERY_SCHEMA_VALID_CANDIDATE"
+}

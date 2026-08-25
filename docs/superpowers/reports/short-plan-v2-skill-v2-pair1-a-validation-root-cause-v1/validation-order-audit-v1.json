@@ -1,0 +1,12 @@
+{
+  "schema": "SkillV2Pair1AValidationOrderAuditV1",
+  "version": 1,
+  "validator_fails_fast": "NO",
+  "only_first_finding_persisted": "NO_ZERO_CHILD_FINDINGS_PERSISTED",
+  "additional_findings_computed_but_not_persisted": "NO_FOR_THIS_EXECUTION",
+  "all_findings_computed_count": 1,
+  "all_findings_persisted_count": 0,
+  "first_failure_can_mask_root_cause": "YES",
+  "masking_boundary": "launcher _require(validation.status == PASS, slice1_generated_candidate_rejected)",
+  "detail": "The validator accumulates referential, authority and semantic findings, but the launcher discards the receipt and raises only an aggregate string. The broad compiler exception mapping also attributes identity rejection to /narrative."
+}

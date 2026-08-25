@@ -1,0 +1,26 @@
+{
+  "schema": "SkillV2Pair1AValidationObservabilityClosureDesignV1",
+  "version": 1,
+  "required_to_identify_current_root_cause": false,
+  "recommended_for_future_rejections": true,
+  "implementation_status": "DESIGN_ONLY_NOT_IMPLEMENTED",
+  "receipt_fields": [
+    "validator rule code",
+    "field path",
+    "ownership class",
+    "expected constraint identifier",
+    "safe scalar type and cardinality metadata",
+    "domain-separated actual-value hash",
+    "parser/conversion stage",
+    "candidate schema version",
+    "domain-separated candidate hash",
+    "authority/task/fixture hashes",
+    "validator source SHA256",
+    "local derivation stage",
+    "first finding rule and all-findings count",
+    "failed field model-owned boolean"
+  ],
+  "forbidden_fields": ["raw narrative", "raw Provider payload", "reasoning", "credentials", "authorization headers", "secret Provider URL"],
+  "persistence_point": "Before launcher converts a REJECTED Slice1ValidationReceiptV1 to the aggregate closure error.",
+  "privacy_posture": "hash-only for content-bearing values"
+}

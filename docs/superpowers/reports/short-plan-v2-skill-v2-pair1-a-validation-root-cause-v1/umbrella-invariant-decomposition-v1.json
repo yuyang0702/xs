@@ -1,0 +1,23 @@
+{
+  "schema": "SkillV2Pair1AUmbrellaInvariantDecompositionV1",
+  "version": 1,
+  "umbrella": "slice1_generated_candidate_rejected",
+  "classification": "aggregate wrapper over one or more validation findings",
+  "not_a_direct_semantic_rule": true,
+  "real_execution_closed_world_result": {
+    "underlying_finding_count": 1,
+    "underlying_rule_codes": ["SLICE1_EVENT_REALIZATION_INVALID"],
+    "underlying_field_paths": ["/narrative"],
+    "underlying_invariants": ["runtime_event_compiler_accepts_realization"],
+    "first_underlying_finding_rule": "SLICE1_EVENT_REALIZATION_INVALID",
+    "finding_instance_id": "UNKNOWN_CONTENT_DEPENDENT_HASH_NOT_PERSISTED"
+  },
+  "proof": [
+    "conversion success proves strict candidate schema and >=12 meaningful characters",
+    "artifact builder derives every referential and authority field from the same validated authority",
+    "therefore all referential and authority comparisons are equal",
+    "the sealed AB-prefixed event identity deterministically raises in the event topology adapter",
+    "the validator catches that ValueError and appends exactly one local-semantic finding"
+  ],
+  "observability_limitation": "The launcher persisted only the umbrella string and discarded the validation receipt."
+}

@@ -1,0 +1,23 @@
+{
+  "schema": "SkillV2Pair1AValidatorKnownGoodAuditV1",
+  "version": 1,
+  "validator_known_good_behavior": "PASS_WITH_FIXTURE_SPECIFIC_CONTRACT_GAP_FOUND",
+  "focused_command": ".venv/Scripts/python.exe -m pytest -q tests/test_planning_v2_slice1.py tests/test_short_plan_v2_slice1_replay.py tests/test_short_plan_v2_slice1_provenance.py",
+  "focused_result": {"passed":41,"failed":0,"duration_seconds":2.57},
+  "existing_replay_corpus": {"case_count":20,"expected_matches":20,"event_identity_family":"EV-00000001 and EV-00000002"},
+  "deterministic_pair1_minimal_candidate_audit": {
+    "literary_quality_claimed": false,
+    "candidate_content_persisted": false,
+    "candidate_schema": "PASS",
+    "artifact_build": "PASS",
+    "validation_status": "REJECTED",
+    "finding_count": 1,
+    "rule_codes": ["SLICE1_EVENT_REALIZATION_INVALID"],
+    "field_paths": ["/narrative"],
+    "invariants": ["runtime_event_compiler_accepts_realization"]
+  },
+  "known_good_canonical_identity": "PASS",
+  "false_positive_for_valid_canonical_contract": false,
+  "pair1_failure_reproduced_without_model_or_network": true,
+  "external_actions": {"credential_lookup":0,"provider_client":0,"provider_request":0,"network":0,"model":0,"paid":0}
+}

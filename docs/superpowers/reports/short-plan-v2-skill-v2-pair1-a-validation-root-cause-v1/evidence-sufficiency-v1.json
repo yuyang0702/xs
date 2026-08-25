@@ -1,0 +1,23 @@
+{
+  "schema": "SkillV2Pair1AValidationEvidenceSufficiencyV1",
+  "version": 1,
+  "persisted_evidence_only": {
+    "actual_rejected_candidate_content_available": "NO",
+    "actual_rejected_candidate_structural_fields_available": "NO",
+    "exact_validator_finding_available": "NO",
+    "exact_failed_rule_id_available": "NO",
+    "exact_failed_field_path_available": "NO",
+    "expected_value_or_constraint_available": "YES_FROM_EXACT_SOURCE",
+    "actual_value_or_safe_digest_available": "NO"
+  },
+  "closed_world_reconstruction": {
+    "available": true,
+    "basis": "execution-time source blobs equal current source blobs; sealed fixture identity is available; conversion success excludes candidate-schema failure",
+    "exact_rule_code_recovered": "SLICE1_EVENT_REALIZATION_INVALID",
+    "exact_field_path_recovered": "/narrative",
+    "exact_finding_count_recovered": 1,
+    "finding_instance_id_recovered": "NO_CONTENT_DEPENDENT_HASH_ABSENT"
+  },
+  "root_cause_identifiable_without_candidate_content": true,
+  "reason": "The invalid authority event identity deterministically fails before narrative content is semantically inspected by the Planning event topology adapter."
+}

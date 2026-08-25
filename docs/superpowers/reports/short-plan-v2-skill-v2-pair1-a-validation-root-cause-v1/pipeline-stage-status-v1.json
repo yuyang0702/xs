@@ -1,0 +1,18 @@
+{
+  "schema": "SkillV2Pair1APipelineStageStatusV1",
+  "version": 1,
+  "stages": [
+    {"stage":"PROVIDER_RETURN","status":"PASS","basis":"PERSISTED"},
+    {"stage":"VISIBLE_FINAL_PRESENT","status":"YES","basis":"PERSISTED"},
+    {"stage":"NORMALIZATION","status":"PASS","basis":"PERSISTED_OBSERVER_PLUS_CONTROL_FLOW"},
+    {"stage":"JSON_OR_STRUCTURED_PARSE","status":"PASS","basis":"EXCLUSIVE_CONTROL_FLOW"},
+    {"stage":"ARTIFACT_CONVERSION","status":"PASS","basis":"EXCLUSIVE_CONTROL_FLOW"},
+    {"stage":"CANDIDATE_SCHEMA_VALIDATION","status":"PASS","basis":"EXCLUSIVE_CONTROL_FLOW"},
+    {"stage":"AUTHORITY_TUPLE_NORMALIZATION","status":"PASS","basis":"EXCLUSIVE_CONTROL_FLOW"},
+    {"stage":"REFERENTIAL_VALIDATION","status":"PASS","basis":"DETERMINISTIC_BUILDER_EQUALITY"},
+    {"stage":"EVENT_REALIZATION_SEMANTIC_VALIDATION","status":"FAIL","basis":"DETERMINISTIC_REPRODUCTION"},
+    {"stage":"FREEZE","status":"NOT_REACHED","basis":"SOURCE_AND_PERSISTED_ARTIFACT_ABSENCE"}
+  ],
+  "last_confirmed_successful_stage": "REFERENTIAL_VALIDATION",
+  "first_failed_stage": "RUNTIME_EVENT_COMPILER_ACCEPTANCE_WITHIN_EVENT_REALIZATION_SEMANTIC_VALIDATION"
+}

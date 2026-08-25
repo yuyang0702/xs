@@ -1,0 +1,22 @@
+{
+  "schema": "SkillV2Pair1AValidationRootCauseOfflineTestReceiptV1",
+  "version": 1,
+  "run_at_utc": "2026-08-25T04:12:33Z",
+  "baseline_head": "1a38c976d34207dcbae4f2879b088945bcd7c35b",
+  "focused_tests": {
+    "command": ".venv/Scripts/python.exe -m pytest -q tests/test_planning_v2_slice1.py tests/test_short_plan_v2_slice1_replay.py tests/test_short_plan_v2_slice1_provenance.py",
+    "status": "PASS",
+    "passed": 41,
+    "failed": 0,
+    "duration_seconds": 2.57
+  },
+  "pair1_minimal_deterministic_reproduction": {
+    "status": "PASS_REPRODUCED_EXPECTED_FAILURE",
+    "finding_count": 1,
+    "rule": "SLICE1_EVENT_REALIZATION_INVALID",
+    "field_path": "/narrative",
+    "invariant": "runtime_event_compiler_accepts_realization"
+  },
+  "source_blob_parity_execution_parent_to_baseline": "6/6 EXACT",
+  "external_actions": {"credential_lookup":0,"provider_client_creation":0,"real_provider_request":0,"http_post":0,"network":0,"model":0,"paid":0}
+}

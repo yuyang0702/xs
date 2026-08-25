@@ -1,0 +1,16 @@
+{
+  "schema": "SkillV2Pair1AMinimumNextActionV1",
+  "version": 1,
+  "next_gate": "SKILL_V2_BOUNDED_REPEATED_AB_PAIR_1_FIXTURE_NARROW_FIX",
+  "selected_for_root_cause_class": "AUTHORITY_OR_FIXTURE_INCONSISTENCY",
+  "scope": "Design and implement only a canonical event-identity compatibility fix for the Pair 1 fixture/materialization chain, preserving the A/B equality lock.",
+  "must_not": [
+    "weaken validator identity checks",
+    "change Current Skill or Restored Skill V2",
+    "change Prompt, model, route, output cap, retry, fallback or rubrics",
+    "reuse the consumed approval, nonce, cohort or execution root",
+    "automatically rerun Pair 1 A or authorize Pair 1 B"
+  ],
+  "future_execution_requirement": "Fresh materialization and fresh single-use user approval after an independently validated and sealed fix.",
+  "automatic_execution": false
+}

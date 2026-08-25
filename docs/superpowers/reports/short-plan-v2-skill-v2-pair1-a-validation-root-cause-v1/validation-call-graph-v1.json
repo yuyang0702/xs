@@ -1,0 +1,28 @@
+{
+  "schema": "SkillV2Pair1AValidationCallGraphV1",
+  "version": 1,
+  "source_execution_parity": "EXACT",
+  "sources": [
+    {"path":"tools/canary/skill_v2_bounded_repeated_ab_pair1_a.py","sha256":"9d39a208967b46355af2fabf0c058da42e70942e28a4e47fc53b1a2aa37475d8","execution_blob":"77b0e16f3002abd3e3b286698ec754582be375e7"},
+    {"path":"tools/canary/slice1_phase_b_current_skill.py","sha256":"0b1607c53123aa000781010a8e21ca5f816d7fffd720d874227681ee65755a54","execution_blob":"0375f23a9640e7ae01ac9269fbb2d4a315d099fb"},
+    {"path":"tools/diagnostics/skill_v2_bounded_repeated_ab.py","sha256":"859bab4e8de71f1169c1cc4211c2404c857f39e14378070d97779822e0ac59d4","execution_blob":"947236eba913809adaaa579244d7ed934d726ea0"},
+    {"path":"src/novel_flywheel/planning_v2_slice1.py","sha256":"28bd1656f2452bea03bbe8c0778847e973d5f3dca807121e028f17af747ce201","execution_blob":"4140934351655bde452120c768981f8db219b6b2"},
+    {"path":"src/novel_flywheel/generated_artifacts.py","sha256":"7f3d191b18507bcc7c9b0ae40cec9b9146d0348b1abdc3c8764c678626249acb","execution_blob":"79cffa5e10b0100ed52754355f2028e497df4e63"},
+    {"path":"src/novel_flywheel/planning_compiler.py","sha256":"4cf83bb47ffcfdc0e1f1156fd43eb420fd4365a56211b96555005949427619ef","execution_blob":"24612b1f5982691bfa3cbd91401a3085a7476311"}
+  ],
+  "steps": [
+    {"ordinal":1,"call":"ModelGateway.complete_route","owner":"tools/canary/skill_v2_bounded_repeated_ab_pair1_a.py:2017","result":"normal visible text"},
+    {"ordinal":2,"call":"convert_event_realization_candidate","owner":"src/novel_flywheel/planning_v2_slice1.py:675","result":"PASS_BY_EXCLUSIVE_CONTROL_FLOW"},
+    {"ordinal":3,"call":"GeneratedArtifactGateway.convert_object + normalize_slice1_candidate","owner":"src/novel_flywheel/generated_artifacts.py:2207 and src/novel_flywheel/planning_v2_slice1.py:617","result":"PASS_BY_EXCLUSIVE_CONTROL_FLOW"},
+    {"ordinal":4,"call":"EventRealizationCandidateV1.model_validate","owner":"src/novel_flywheel/planning_v2_slice1.py:692","result":"PASS_BY_EXCLUSIVE_CONTROL_FLOW"},
+    {"ordinal":5,"call":"build_event_realization_artifact","owner":"tools/canary/skill_v2_bounded_repeated_ab_pair1_a.py:2045","result":"local metadata derived"},
+    {"ordinal":6,"call":"validate_event_realization_artifact","owner":"src/novel_flywheel/planning_v2_slice1.py:721","result":"REJECTED"},
+    {"ordinal":7,"call":"compile_planning_event_artifact","owner":"src/novel_flywheel/planning_compiler.py:1228","result":"ValueError from invalid expected event identity"},
+    {"ordinal":8,"call":"_adapt_planning_event_topology","owner":"src/novel_flywheel/generated_artifacts.py:1573","result":"AB-CHARACTER-0001 does not normalize to EV-[0-9A-F]{8}"},
+    {"ordinal":9,"call":"_require(validation.status == PASS)","owner":"tools/canary/skill_v2_bounded_repeated_ab_pair1_a.py:2047","result":"slice1_generated_candidate_rejected"},
+    {"ordinal":10,"call":"freeze_validated_artifact","owner":"src/novel_flywheel/planning_v2_slice1.py:830","result":"NOT_REACHED"}
+  ],
+  "validator_check_order": ["referential metadata", "authority binding", "narrative meaningful-character guard", "runtime event compiler acceptance"],
+  "validator_fails_fast": false,
+  "launcher_fails_closed_after_aggregate_receipt": true
+}

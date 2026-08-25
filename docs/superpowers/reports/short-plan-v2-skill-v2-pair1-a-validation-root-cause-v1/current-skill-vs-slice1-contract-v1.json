@@ -1,0 +1,15 @@
+{
+  "schema": "SkillV2Pair1ACurrentSkillVsSlice1ContractMatrixV1",
+  "version": 1,
+  "current_skill_context_sha256": "c7916de36e67f380f2e10f30f169bcdbe04440cc8bd01bbf2626d26a7cdf49b7",
+  "non_skill_prompt_sha256": "26c789b6bc96e406337ef6a545818eeaec48165adcde9adb2310c5b047c31e85",
+  "task_contract_sha256": "84bed63082c9b4abd588790f9292d29aa466ee14e8b085c403ebb47ded2ab0ad",
+  "rows": [
+    {"validator_requires":"one closed title/narrative object","current_skill_explicitly_instructs":"YES","main_prompt_explicitly_instructs":"YES","task_contract_explicitly_instructs":"YES","local_derivation_supplies":"NO","potential_instruction_contract_gap":"NO"},
+    {"validator_requires":"non-empty exact title and narrative","current_skill_explicitly_instructs":"PARTIAL","main_prompt_explicitly_instructs":"YES","task_contract_explicitly_instructs":"YES","local_derivation_supplies":"NO","potential_instruction_contract_gap":"NO_FOR_OBSERVED_FAILURE"},
+    {"validator_requires":"meaningful event realization","current_skill_explicitly_instructs":"YES","main_prompt_explicitly_instructs":"YES","task_contract_explicitly_instructs":"PARTIAL","local_derivation_supplies":"NO","potential_instruction_contract_gap":"NO_FOR_OBSERVED_FAILURE"},
+    {"validator_requires":"canonical compiler-compatible event identity","current_skill_explicitly_instructs":"NO_AND_MUST_NOT_OWN","main_prompt_explicitly_instructs":"NO_AND_FORBIDS_ID_MUTATION","task_contract_explicitly_instructs":"NO_AND_MODEL_DOES_NOT_OWN","local_derivation_supplies":"AUTHORITY_COPY","potential_instruction_contract_gap":"NO_FIXTURE_CONTRACT_GAP_INSTEAD"},
+    {"validator_requires":"exact authority and derived metadata","current_skill_explicitly_instructs":"NOT_APPLICABLE","main_prompt_explicitly_instructs":"FORBIDS_MODEL_MUTATION","task_contract_explicitly_instructs":"MODEL_OWNS_ONLY_TITLE_NARRATIVE","local_derivation_supplies":"YES","potential_instruction_contract_gap":"NO"}
+  ],
+  "conclusion": "CURRENT_SKILL_PROMPT_CONTRACT_GAP_DISPROVED_AS_PRIMARY_CAUSE"
+}

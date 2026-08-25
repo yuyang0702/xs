@@ -1,0 +1,25 @@
+{
+  "schema": "SkillV2Pair1AFixtureConsistencyV1",
+  "version": 1,
+  "pair_case_id": "restored-character-heavy-v1",
+  "fixture_sha256": "d5cc3cd9ca720173dd68205a28a820b5f853271474d140dc356576fe0b94b3cf",
+  "pair1_fixture_self_consistent": "NO",
+  "checks": {
+    "authority_model_validation": "PASS",
+    "story_slice_internal_coherence": "PASS",
+    "required_obligations_representable_in_narrative": "PASS",
+    "dependency_set": "PASS_EMPTY_ALLOWED",
+    "all_authority_ids_resolve_locally": "PASS",
+    "candidate_schema_can_represent_model_owned_fields": "PASS",
+    "forbidden_mutation_conflict": "NONE",
+    "downstream_event_identity_grammar": "FAIL"
+  },
+  "exact_contradiction": {
+    "authority_accepts": "any exact non-empty formal_event_id up to 160 characters",
+    "fixture_supplies": "AB-CHARACTER-0001",
+    "downstream_compiler_requires": "identity normalizable to EV-[0-9A-F]{8}",
+    "failure_location": "generated_artifacts._adapt_planning_event_topology",
+    "effect": "compile_planning_event_artifact raises ValueError for every schema-valid candidate"
+  },
+  "fixture_modified": false
+}

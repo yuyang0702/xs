@@ -1,0 +1,85 @@
+{
+  "schema": "SkillV2Pair1ASealedExecutionFactIndexV1",
+  "version": 1,
+  "baseline_head": "1a38c976d34207dcbae4f2879b088945bcd7c35b",
+  "execution_parent_head": "0f6ccc5cfa77adc4c06ce83696ce5f4a6ad2af3a",
+  "sealed_execution_root": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-execution-v1/pairs/restored-character-heavy-v1/a-arm",
+  "sealed_manifest": {
+    "entry_count": 9,
+    "exact_count": 9,
+    "definition_sha256": "11f51c1151e4d3499c537b1724dafd1d60ab7f76dc5cce2e271a3536ad2837fd",
+    "file_sha256": "7d9041e927a75be6d65c50e62be473a7f93e195472ac869489670ee0c4583f33"
+  },
+  "identity": {
+    "pair_case_id": "restored-character-heavy-v1",
+    "arm": "A_ARM",
+    "skill": "CURRENT_RUNTIME_SKILL",
+    "cohort_id": "skill-v2-bounded-repeated-ab-character-heavy-a-v1-20260824t162103z-001"
+  },
+  "provider_return": {
+    "status": "NORMAL_RETURN_WITH_VISIBLE_FINAL_TEXT",
+    "raw_shape": "TEXT_PLUS_REASONING",
+    "finish_reason": "NORMAL_NON_MAX_TOKENS",
+    "visible_final_present": true,
+    "tool_call_present": false,
+    "raw_provider_payload": "ABSENT",
+    "raw_reasoning": "ABSENT",
+    "raw_final_text": "ABSENT",
+    "actual_cost": "UNKNOWN"
+  },
+  "conversion_and_candidate": {
+    "candidate_conversion_reached": true,
+    "conversion_audit": "ABSENT",
+    "candidate_content": "ABSENT",
+    "candidate_structural_fields": "ABSENT",
+    "candidate_sha256": "ABSENT",
+    "candidate_schema_version": "ABSENT",
+    "artifact_content": "ABSENT",
+    "artifact_sha256": "ABSENT",
+    "artifact_persisted": false
+  },
+  "validation": {
+    "status": "REJECTED",
+    "first_failing_invariant": "slice1_generated_candidate_rejected",
+    "terminal_classification": "PAIR_1_A_NO_GO_LOCAL_SEMANTIC_VALIDATION",
+    "underlying_findings": "ABSENT",
+    "exact_finding_instance_id": "ABSENT",
+    "exact_rule_id": "ABSENT",
+    "exact_field_path": "ABSENT",
+    "expected_constraint": "ABSENT",
+    "actual_value_or_safe_digest": "ABSENT",
+    "artifact_frozen": false
+  },
+  "sealed_bindings": {
+    "authority_input_sha256": "95884073e86a9cf3de1107e3dec9852d76085b22d368fdfce9171e4d6d499389",
+    "story_slice_sha256": "f44bf142f19ff0f8ebe305adbc1466273bb07dbc24a4dd3b5558fae98a2f274c",
+    "task_contract_sha256": "84bed63082c9b4abd588790f9292d29aa466ee14e8b085c403ebb47ded2ab0ad",
+    "non_skill_prompt_sha256": "26c789b6bc96e406337ef6a545818eeaec48165adcde9adb2310c5b047c31e85",
+    "current_skill_context_sha256": "c7916de36e67f380f2e10f30f169bcdbe04440cc8bd01bbf2626d26a7cdf49b7",
+    "current_skill_profile_sha256": "4a9fd1d20c248ed3dae1815eb99605b094842d1e953e96d31d6ba7d1a4bf52c6",
+    "route_model_client_sha256": "c3b9bef17be892c4de4107707f2a5dc03f4dce8438bb74a0452c095a7e87f621",
+    "validator_policy_sha256": "062dd052fd34949dd8b2369c0c5d5488e100d71ff4d905d9524711f5d14039e7",
+    "output_cap": 4624,
+    "runtime_version": "ABSENT",
+    "validator_source_sha256": "ABSENT_IN_EXECUTION_RECEIPT"
+  },
+  "mutations": {
+    "story_state": 0,
+    "canon": 0,
+    "ready": 0,
+    "production_database": 0
+  },
+  "counters": {
+    "real_provider_requests": 1,
+    "http_post_attempts": 1,
+    "network_calls": 1,
+    "model_calls": 1,
+    "paid_calls": 1,
+    "retry_attempts": 0,
+    "fallback_attempts": 0,
+    "second_dispatch": 0
+  },
+  "nonce": "CONSUMED_NON_REUSABLE",
+  "pair_1_b_authorized": false,
+  "campaign_state": "STOPPED_PENDING_ROOT_CAUSE"
+}
