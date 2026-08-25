@@ -1,0 +1,11 @@
+{
+  "schema": "SkillV2Pair1RestorationDiagnosisV1",
+  "version": 1,
+  "allowed_enum": ["INSUFFICIENT_DEPTH","WRONG_SUBCAPABILITIES","WRONG_PRIORITY","INTERNAL_CONFLICT","MOSTLY_STOCHASTIC","MULTI_FACTOR","INCONCLUSIVE"],
+  "diagnosis": "INSUFFICIENT_DEPTH",
+  "reason": "All eight intended cores and all twelve advisory rules are present, ordered, and untruncated. The frozen outcome improves the two dimensions with the most concrete decomposition while regressing character/dramatization dimensions whose instructions remain ingredient lists rather than continuous execution constraints.",
+  "wrong_subcapabilities": false,
+  "wrong_priority": false,
+  "internal_conflict_primary": false,
+  "mostly_stochastic": false
+}

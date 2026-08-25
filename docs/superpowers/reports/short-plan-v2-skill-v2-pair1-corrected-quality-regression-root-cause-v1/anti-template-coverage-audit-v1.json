@@ -1,0 +1,12 @@
+{
+  "schema": "SkillV2Pair1AntiTemplateCoverageAuditV1",
+  "version": 1,
+  "current_rule": "Use capability labels only for reasoning; never emit labels such as external want, internal need, or local state change as explanatory prose.",
+  "covered": ["external want","internal need","local state change","explicit capability labels"],
+  "not_covered": ["interpretive relationship labels","instinct classification","named emotional strain","summary of motive already demonstrated","generic explanation that avoids exact forbidden words"],
+  "artifact_match": ["the strain beneath her clipped courtesy","They work against each other's instincts"],
+  "finding": "The guard is lexically illustrative, not semantically transformational.",
+  "required_depth": "In artifact prose, replace interpretive abstractions with choice, dialogue, evasion, gesture, or consequence.",
+  "validator_can_replace": false,
+  "reason": "A validator can detect selected phrases but cannot author the context-sensitive dramatic substitute."
+}

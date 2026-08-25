@@ -1,0 +1,40 @@
+{
+  "schema": "SkillV2Pair1CorrectedInstructionSemanticDiffV1",
+  "version": 1,
+  "method": "Exact A context was deterministically reconstructed twice and matched its sealed hash. The prior 66-unit A decomposition is incorporated by content address; each of the 20 restored B lines is then mapped as one semantic instruction unit against that corpus.",
+  "a_context": {"characters": 8927, "sha256": "c7916de36e67f380f2e10f30f169bcdbe04440cc8bd01bbf2626d26a7cdf49b7", "truncated": false},
+  "b_context": {"characters": 2742, "sha256": "e7828db2dc18eceabe06b9d1068b2683d117617fb0bd1257a26e7747fbe02772", "truncated": false},
+  "a_unit_corpus": {"unit_count": 66, "path": "docs/superpowers/reports/short-plan-v2-skill-v2-quality-regression-root-cause-v1/a-vs-b-skill-context-semantic-diff-v1.json", "sha256": "6ecfc73ba157686bab43a2cfd78369381d1790ba34406a417e656c68d236ecd9", "incorporation": "EXACT_BY_CONTENT_ADDRESS"},
+  "equality_classes": ["A_AND_B_EQUIVALENT", "A_ONLY", "B_ONLY", "SAME_CAPABILITY_DIFFERENT_DECOMPOSITION", "SAME_CAPABILITY_DIFFERENT_PRIORITY", "SAME_CAPABILITY_DIFFERENT_EXAMPLE_OR_HEURISTIC", "UNKNOWN"],
+  "ownership_classes": ["CREATIVE_SEMANTIC", "LITERARY_TECHNIQUE", "STORY_REASONING", "AUTHORITY_CORRECTNESS", "OPERATIONAL_RUNTIME", "OUTPUT_PROTOCOL", "REDUNDANT", "UNKNOWN"],
+  "b_units": [
+    {"id":"MOTIVE_ACTION","a_units":["A037","A038","A039"],"equality":"SAME_CAPABILITY_DIFFERENT_DECOMPOSITION","ownership":"CREATIVE_SEMANTIC","finding":"B externalizes wants/needs, but A retains biography/formative-pressure discovery as a separate semantic step; B does not bind that pressure into a next-beat causal microchain."},
+    {"id":"VOICE_RELATION","a_units":["A039","A059"],"equality":"SAME_CAPABILITY_DIFFERENT_DECOMPOSITION","ownership":"LITERARY_TECHNIQUE","finding":"B is more explicit locally, but supplies one instruction rather than a sustained exchange-level voice/subtext discipline."},
+    {"id":"CAUSAL_AFFORDANCE","a_units":["A049","A050","A053","A061","A064"],"equality":"SAME_CAPABILITY_DIFFERENT_DECOMPOSITION","ownership":"STORY_REASONING","finding":"B selects causal affordances; A distributes physical form, interaction, constraint, ownership/history, and current risk across multiple construction steps."},
+    {"id":"PRESSURE_BEATS","a_units":["A021","A022","A026","A028","A032"],"equality":"SAME_CAPABILITY_DIFFERENT_DECOMPOSITION","ownership":"LITERARY_TECHNIQUE","finding":"B has the desired beat nouns but not a continuity rule tying each reaction to the next changed tactic."},
+    {"id":"SETUP_PAYOFF","a_units":["A025","A026","A029","A030","A034"],"equality":"SAME_CAPABILITY_DIFFERENT_DECOMPOSITION","ownership":"STORY_REASONING","finding":"B is stronger and more direct for bounded-event dependency; the frozen B artifact wins this dimension."},
+    {"id":"FRAME_BRIDGE","a_units":["A003","A004","A005","A007","A008","A009","A012"],"equality":"SAME_CAPABILITY_DIFFERENT_DECOMPOSITION","ownership":"CREATIVE_SEMANTIC","finding":"B safely bridges confirmed values but the exact profile has all values unspecified; A still carries richer genre/theme/voice discovery heuristics."},
+    {"id":"DRAFT_SCENE","a_units":["A005","A022","A026","A038","A049","A053","A061","A064"],"equality":"SAME_CAPABILITY_DIFFERENT_DECOMPOSITION","ownership":"LITERARY_TECHNIQUE","finding":"B names sceneable components but does not require an unbroken stimulus-action-reaction-consequence chain or replacement of interpretive summary."},
+    {"id":"ANTI_TAXONOMY","a_units":["A012","A039","A052"],"equality":"B_ONLY","ownership":"LITERARY_TECHNIQUE","finding":"The explicit guard is B-only and useful, but its narrow list does not cover interpretive labels such as instincts, strain, or relationship classification."},
+    {"id":"PLOT_CAUSAL_ESCALATION","a_units":["A021","A022","A026","A028","A032"],"equality":"SAME_CAPABILITY_DIFFERENT_DECOMPOSITION","ownership":"STORY_REASONING","finding":"Equivalent causal intent; A decomposes more surrounding arc/timeline consequences."},
+    {"id":"PLOT_SETUP_PAYOFF_INTENT","a_units":["A025","A029","A030","A034"],"equality":"A_AND_B_EQUIVALENT","ownership":"STORY_REASONING","finding":"Preserved; together with SETUP_PAYOFF it plausibly explains B's setup/payoff win."},
+    {"id":"PLOT_PACING_INTENT","a_units":["A021","A022","A032"],"equality":"SAME_CAPABILITY_DIFFERENT_DECOMPOSITION","ownership":"STORY_REASONING","finding":"Preserved at intent level; pressure-beat continuity remains shallower."},
+    {"id":"CHARACTER_MOTIVATION","a_units":["A037","A038","A039"],"equality":"A_AND_B_EQUIVALENT","ownership":"CREATIVE_SEMANTIC","finding":"Category coverage is equivalent; realization depth is not."},
+    {"id":"CHARACTER_VOICE","a_units":["A012","A039"],"equality":"B_ONLY","ownership":"LITERARY_TECHNIQUE","finding":"Explicit voice taxonomy is B-only, disproving simple omission as the cause of B's voice loss."},
+    {"id":"CHARACTER_ARC","a_units":["A037","A038","A039"],"equality":"A_AND_B_EQUIVALENT","ownership":"STORY_REASONING","finding":"State/turning-point coverage preserved; not the deciding Pair 1 dimension."},
+    {"id":"CHARACTER_RELATIONSHIP_NUANCE","a_units":["A039","A059"],"equality":"SAME_CAPABILITY_DIFFERENT_DECOMPOSITION","ownership":"CREATIVE_SEMANTIC","finding":"B gives relationship pressure higher direct priority and wins relationship logic."},
+    {"id":"WORLD_SENSORY_SPECIFICITY","a_units":["A049","A050","A053","A061"],"equality":"SAME_CAPABILITY_DIFFERENT_DECOMPOSITION","ownership":"CREATIVE_SEMANTIC","finding":"B preserves selection intent but not A's multiple construction facets or cross-sensory density."},
+    {"id":"WORLD_COST_AND_LIMIT","a_units":["A053","A056"],"equality":"A_AND_B_EQUIVALENT","ownership":"STORY_REASONING","finding":"Preserved and not implicated by the frozen demand class."},
+    {"id":"WORLD_FACTION_PRESSURE","a_units":["A057","A058","A059"],"equality":"SAME_CAPABILITY_DIFFERENT_DECOMPOSITION","ownership":"STORY_REASONING","finding":"B compresses ideology/resources/territory/conflict facets into one rule."},
+    {"id":"WORLD_CURRENT_STATE","a_units":["A049","A053"],"equality":"A_AND_B_EQUIVALENT","ownership":"STORY_REASONING","finding":"Preserved."},
+    {"id":"WORLD_ARTIFACT_DETAIL","a_units":["A061","A064"],"equality":"SAME_CAPABILITY_DIFFERENT_DECOMPOSITION","ownership":"CREATIVE_SEMANTIC","finding":"B retains form/function/history/risk and is adequate for the tested ledger mechanism."}
+  ],
+  "material_a_only_residuals": [
+    {"a_units":["A003","A004","A005","A006","A007","A008","A009","A012"],"ownership":"CREATIVE_SEMANTIC","disposition":"OPTIONAL_CREATIVE","meaning":"narrative-frame discovery and derived tone/voice scaffolding"},
+    {"a_units":["A037","A038","A039"],"ownership":"CREATIVE_SEMANTIC","disposition":"MUST_RESTORE_CREATIVE","meaning":"biography/formative pressure to present motive and arc construction depth"},
+    {"a_units":["A048","A049","A050","A052","A053","A057","A058","A061","A064"],"ownership":"STORY_REASONING","disposition":"OPTIONAL_CREATIVE","meaning":"multi-facet world/location/faction/artifact construction"}
+  ],
+  "operational_a_only_units": {"disposition":"KEEP_LOCAL_OPERATIONAL", "finding":"File, CLI, registry, cross-link, and maintenance instructions must not be restored to model context."},
+  "unknown_unit_count": 0,
+  "overall_status": "EXACT"
+}

@@ -1,0 +1,12 @@
+{
+  "schema": "SkillV2Pair1CorrectedRootCausePrivacyScanV1",
+  "version": 1,
+  "scope": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-corrected-quality-regression-root-cause-v1",
+  "prohibited_patterns": ["credential","api_key_value","authorization_header","raw_provider_payload","raw_model_reasoning","private_mapping_secret"],
+  "match_count": 0,
+  "raw_prompt_persisted": false,
+  "raw_provider_content_persisted": false,
+  "raw_model_reasoning_persisted": false,
+  "artifact_quotes": "bounded frozen narrative excerpts only; no provider envelope",
+  "status": "PASS"
+}

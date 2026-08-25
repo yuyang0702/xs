@@ -1,0 +1,11 @@
+{
+  "schema": "SkillV2Pair1BInternalTradeoffAuditV1",
+  "version": 1,
+  "tradeoffs": [
+    {"id":"relationship_explicitness_vs_subtext","observed":"B improves relationship logic but sometimes narrates the relationship interpretation directly.","mechanism":"VOICE_RELATION and CHARACTER_RELATIONSHIP_NUANCE reward legible relationship consequences without a behavior-before-explanation guard.","resolution":"Preserve consequence-changing relationship pressure; strengthen evasion/gesture and observable reaction."},
+    {"id":"setup_density_vs_character_causal_history","observed":"B strongly interlocks props while the prior-betrayal cause is thinner.","mechanism":"SETUP_PAYOFF and CAUSAL_AFFORDANCE are highly actionable; biography-to-present causality is less decomposed.","resolution":"Do not weaken setup/payoff; enrich MOTIVE_ACTION only."},
+    {"id":"schema_legibility_vs_template_flattening","observed":"B remains structurally precise but uses interpretive labels.","mechanism":"Compact instruction nouns are easy to echo.","resolution":"Transform labels into observable behavior in artifact prose, without changing schema or validation."}
+  ],
+  "internal_conflict_is_primary": false,
+  "gains_can_be_preserved_with_narrow_enrichment": true
+}

@@ -1,0 +1,16 @@
+{
+  "schema": "SkillV2Pair1ResidualOvercompressionAuditV1",
+  "version": 1,
+  "dimensions": {
+    "A_taxonomy_replacing_mechanism": {"status":"PARTIAL","evidence":"Restored labels include mechanisms, but several are still component lists rather than continuity constraints."},
+    "B_discovery_scaffold_loss": {"status":"PRESENT","evidence":"A carries biography, formative event, arc, genre/theme, location, faction, and artifact construction steps; B keeps compact results only."},
+    "C_cross_domain_bridge_loss": {"status":"PARTIAL","evidence":"B has FRAME_BRIDGE and causal affordances but no exact character-heavy bridge when confirmed frame fields are unspecified."},
+    "D_action_reaction_continuity_loss": {"status":"PRIMARY","evidence":"No B rule requires every interpretive claim to be grounded in a complete observable microchain."},
+    "E_anti_template_semantic_coverage": {"status":"PARTIAL","evidence":"Named taxonomy is blocked, semantic equivalents remain allowed."},
+    "F_demand_specific_depth": {"status":"PRIMARY","evidence":"One fixed 20-rule context serves all demand classes; character-heavy receives no deterministic extra depth."},
+    "G_budget_or_truncation": {"status":"DISPROVED","evidence":"2742/3000 characters, excluded_rule_count=0, truncation=NONE."}
+  },
+  "general_overcompression_is_primary": false,
+  "residual_overcompression_is_secondary": true,
+  "primary_scope": "character-heavy creative core depth"
+}

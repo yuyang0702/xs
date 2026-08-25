@@ -1,0 +1,16 @@
+{
+  "schema": "SkillV2Pair1ContextCompressionValueAuditV1",
+  "version": 1,
+  "a_context_characters": 8927,
+  "b_context_characters": 2742,
+  "classification_rows": [
+    {"category":"MUST_RESTORE_CREATIVE","content":"formative pressure -> present want/need -> opposed tactic -> costly choice -> reaction -> next consequence","reason":"Primary critical regression cluster; model-owned generation semantics."},
+    {"category":"MUST_RESTORE_CREATIVE","content":"sustained voice/evasion and behavior-before-interpretation discipline","reason":"Voice, subtext, anti-template, and handoff regressions share this missing depth."},
+    {"category":"OPTIONAL_CREATIVE","content":"genre/theme/tone/POV/tense discovery questions and rich world construction facets","reason":"Useful but exact values were unspecified and Pair 1 demand was character-heavy."},
+    {"category":"KEEP_LOCAL_OPERATIONAL","content":"file creation, registry updates, bidirectional links, CLI maintenance, validation commands","reason":"Deterministic runtime/local ownership; must not consume model context."},
+    {"category":"REDUNDANT_SAFE_TO_OMIT","content":"repeated prerequisites, index maintenance, filename conventions, tool-routing prose","reason":"No creative output ownership."},
+    {"category":"UNKNOWN","content":"none","reason":"All material A units are classified by the content-addressed 66-unit corpus."}
+  ],
+  "compression_value_judgment": "B's 69.3% context reduction is an engineering benefit, but it cannot offset critical narrative regression.",
+  "token_reduction_can_override_quality": false
+}

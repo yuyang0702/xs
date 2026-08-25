@@ -1,0 +1,17 @@
+{
+  "schema": "SkillV2Pair1CharacterCreativeCoreGapV1",
+  "version": 1,
+  "demand_class": "character-heavy",
+  "existing_strengths": ["wants/needs externalization","distinctive voice vocabulary/rhythm/evasion","relationship pressure changes action","arc states","subtext named","anti-taxonomy examples"],
+  "missing_depth": [
+    "formative pressure explicitly causes the present want and concealed need",
+    "opposed tactics expose that conflict before explanation",
+    "one costly choice produces an observable reaction and the next beat",
+    "voice pattern is sustained across exchanges rather than sampled locally",
+    "withheld explanation and gesture precede interpretive narration",
+    "semantic anti-template behavior covers synonyms, not only listed labels"
+  ],
+  "why_relationship_still_won": "The existing relationship rule has a concrete operational consequence: pressure changes available actions.",
+  "why_motivation_voice_subtext_still_lost": "Their rules name useful ingredients but do not impose the same complete causal/performative chain.",
+  "primary_gap": "CHARACTER_HEAVY_CREATIVE_CORE_INSUFFICIENT_DEPTH"
+}

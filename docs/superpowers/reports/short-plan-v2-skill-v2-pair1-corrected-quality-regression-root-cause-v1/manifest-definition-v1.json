@@ -1,0 +1,9 @@
+{
+  "schema": "SkillV2Pair1CorrectedRootCauseManifestDefinitionV1",
+  "version": 1,
+  "algorithm": "SHA-256",
+  "path_format": "repository-relative POSIX",
+  "entry_order": "ordinal ascending; manifest excludes itself",
+  "canonical_json": "UTF-8, LF, two-space indentation, trailing newline",
+  "historical_evidence_rewritten": false
+}

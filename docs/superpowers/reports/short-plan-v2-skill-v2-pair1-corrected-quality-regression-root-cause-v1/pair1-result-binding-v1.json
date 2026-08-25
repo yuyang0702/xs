@@ -1,0 +1,29 @@
+{
+  "schema": "SkillV2Pair1CorrectedResultBindingV1",
+  "version": 1,
+  "branch": "r1-ptr3/planning-repair-finding-propagation-20260817",
+  "baseline_head": "ea3dedab7ff770894985f06a6df5716105ffbe23",
+  "pair_id": "restored-character-heavy-v2",
+  "creative_demand_class": "character-heavy",
+  "a_arm": "CURRENT_RUNTIME_SKILL",
+  "b_arm": "RESTORED_SKILL_V2",
+  "a_artifact_sha256": "f6aa5c49d64f38aefe71b01fc9eb0abf2ea3a08faba6f5bc3dbcb38c665e3f8f",
+  "b_artifact_sha256": "1dd0e31dcf01bc369cf8cee1865ae1fffdb4ad890bb1d726482048755037dc69",
+  "ab_lock_sha256": "31ed7f57374c99b90a5271b44655489661a4bbc70f0ed6363c154f4d55163d80",
+  "blind_judgments_file_sha256": "9685e0fea67b21ff84c937146fea123ff8682728125e9adbb1e4d6c8ff72d917",
+  "mapping": {"X": "A", "Y": "B"},
+  "frozen_counts": {
+    "b_critical_regression_count": 6,
+    "b_noncritical_regression_count": 4,
+    "b_critical_better_count": 1,
+    "b_noncritical_better_count": 1,
+    "equivalent_count": 4
+  },
+  "frozen_disposition": "PAIR_NO_GO_QUALITY_REGRESSION",
+  "narrative_non_inferior": "NO",
+  "engineering_non_inferior": "YES",
+  "post_reveal_rescoring_performed": false,
+  "parent_manifest_validation": "EXACT",
+  "worktree_at_gate": "CLEAN",
+  "external_actions": {"credential": 0, "network": 0, "model": 0, "paid": 0}
+}

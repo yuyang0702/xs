@@ -1,0 +1,10 @@
+{
+  "schema": "SkillV2Pair1BImprovementAttributionV1",
+  "version": 1,
+  "rows": [
+    {"dimension":"relationship_logic","criticality":"CRITICAL","b_better":true,"supporting_rules":["VOICE_RELATION","CHARACTER_RELATIONSHIP_NUANCE","MOTIVE_ACTION"],"artifact_mechanism":"Distrust changes Iven's departure decision, joint action creates reciprocal exposure, and the sacrifice becomes a specific unresolved demand for one honest sentence.","attribution":"The restored profile directly elevates relationship pressure as an action constraint.","confidence":"MEDIUM","must_preserve":true},
+    {"dimension":"setup_payoff_dependency","criticality":"NONCRITICAL","b_better":true,"supporting_rules":["SETUP_PAYOFF","PLOT_SETUP_PAYOFF_INTENT","CAUSAL_AFFORDANCE"],"artifact_mechanism":"Ledger, case, belt, dial, and gate each receive later tactical or relational payoff.","attribution":"Concrete plant/dependency/payoff wording is sufficiently decomposed and mutually reinforced.","confidence":"HIGH","must_preserve":true}
+  ],
+  "preservation_constraints": ["Do not weaken relationship-pressure-changes-actions semantics.","Do not remove or demote SETUP_PAYOFF.","Do not trade these gains for shorter context."],
+  "preserve_b_gains": "YES"
+}

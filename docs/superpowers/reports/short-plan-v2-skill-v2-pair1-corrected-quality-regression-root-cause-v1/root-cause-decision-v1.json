@@ -1,0 +1,13 @@
+{
+  "schema": "SkillV2Pair1CorrectedRootCauseDecisionV1",
+  "version": 1,
+  "candidate_classes_evaluated": ["RESIDUAL_OVERCOMPRESSION","CHARACTER_HEAVY_UNDERSPECIFICATION","DRAFT_HANDOFF_DRAMATIZATION_UNDERSPECIFICATION","ANTI_TEMPLATE_SHALLOW","CAUSAL_MICROCHAIN_UNDERSPECIFIED","FRAME_BRIDGE_ABSTRACT","PRIORITY_ORDER_DILUTION","INTERNAL_TRADEOFF","STOCHASTIC_DOMINANT","MULTI_FACTOR_WITH_PRIMARY_CHARACTER_HEAVY_UNDERSPECIFICATION"],
+  "primary_root_cause_class": "MULTI_FACTOR_WITH_PRIMARY_CHARACTER_HEAVY_UNDERSPECIFICATION",
+  "primary_mechanism": "The restored B profile contains the right capability headings, but for character-heavy demand it does not require a complete formative-pressure -> present want/need -> opposed tactic -> costly choice -> observable reaction -> next-beat consequence chain, nor sustained behavior-first voice/subtext execution. Component presence therefore remains weaker than A's distributed creative scaffolding.",
+  "secondary_causes": ["DRAFT_HANDOFF_DRAMATIZATION_UNDERSPECIFICATION","ANTI_TEMPLATE_SEMANTIC_COVERAGE_SHALLOW","FRAME_BRIDGE_ABSTRACT_WHEN_UNSPECIFIED","SINGLE_PAIR_STOCHASTIC_VARIANCE"],
+  "disproved_primary_hypotheses": ["MISSING_RESTORATION_ITEMS","TRUNCATION_OR_BUDGET_CLIPPING","TAIL_POSITION_OR_OVERWRITE","GENERAL_RESOLVER_FALSE_NEGATIVE","AUTHORITY_OR_SCHEMA_DRIFT","STOCHASTIC_VARIANCE_DOMINANT","GENERAL_OVERCOMPRESSION_AS_SOLE_CAUSE"],
+  "causality_confidence": "MEDIUM",
+  "mechanically_supported": true,
+  "generalized_production_causality_proven": false,
+  "exact_next_gate": "SKILL_V2_PROFILE_DEMAND_AWARE_CREATIVE_CORE_NARROW_FIX"
+}

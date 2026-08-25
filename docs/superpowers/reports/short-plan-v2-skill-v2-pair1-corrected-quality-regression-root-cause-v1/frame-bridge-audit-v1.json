@@ -1,0 +1,14 @@
+{
+  "schema": "SkillV2Pair1CorrectedFrameBridgeAuditV1",
+  "version": 1,
+  "frame_bridge_rule_present": true,
+  "exact_profile_values": {"premise":"unspecified","theme":"unspecified","tone":"unspecified","genre":"unspecified","pov":"unspecified","tense":"unspecified"},
+  "guess_count": 0,
+  "question_count": 0,
+  "safe_unspecified_behavior": "PASS",
+  "frozen_results": {"pov":"A_BETTER","tone_genre":"A_BETTER","tense":"EQUIVALENT"},
+  "finding": "The rule correctly avoids invention but contributes little creative selection when all confirmed values are unspecified. A retains broader discovery/derivation heuristics.",
+  "causal_role": "SECONDARY",
+  "why_not_primary": "It cannot explain motivation, voice, subtext, handoff, and anti-template regressions by itself; B also has explicit voice and scene rules.",
+  "v2_disposition": "Do not expand global frame discovery in this narrow fix; evaluate demand-aware focal/tone heuristics after the critical character core is repaired."
+}

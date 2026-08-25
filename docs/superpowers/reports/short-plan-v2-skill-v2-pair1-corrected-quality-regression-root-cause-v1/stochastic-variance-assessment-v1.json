@@ -1,0 +1,12 @@
+{
+  "schema": "SkillV2Pair1CorrectedStochasticVarianceAssessmentV1",
+  "version": 1,
+  "pair_count": 1,
+  "profile_causality_confidence": "MEDIUM",
+  "evidence_for_profile_causality": ["A/B semantic lock is exact; Skill context is the only creative variable.","Six critical regressions cluster around one under-decomposed character/dramatization mechanism.","B's interpretive labels align with uncovered anti-template semantics.","B wins precisely where instructions are concrete: relationship action consequence and setup/payoff dependency."],
+  "evidence_for_stochastic_contribution": ["Only one corrected pair exists.","B contains explicit rules for every regressed critical dimension.","Both artifacts are valid and strong; several differences are degree judgments.","POV/tone were not contract-fixed."],
+  "stochastic_variance_dominant": false,
+  "generalized_causality_proven": false,
+  "classification": "MECHANISM_SUPPORTED_SINGLE_PAIR_MEDIUM_CONFIDENCE",
+  "confirmation_required": "Fresh corrected Pair 1 only after a narrow V2 profile fix and new approval; Pair 2-5 remain deferred."
+}

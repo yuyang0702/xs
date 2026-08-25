@@ -1,0 +1,17 @@
+{
+  "schema": "SkillV2Pair1CorrectedRootCauseParentEvidenceValidationV1",
+  "version": 1,
+  "baseline_head": "ea3dedab7ff770894985f06a6df5716105ffbe23",
+  "worktree_at_gate": "CLEAN",
+  "roots": [
+    {"id":"corrected_a_execution_v4","manifest_file_sha256":"d210322f8e0314ae5a9841300faf0e5ea492732f08e21eb516c1f8ff32567796","entry_count":16,"mismatch_count":0,"status":"EXACT"},
+    {"id":"corrected_b_execution_v5","manifest_file_sha256":"7368eafdb07a9b2d07fdd1abe95de60b8cba0da0520ba5214f31e621508b8a58","entry_count":16,"mismatch_count":0,"status":"EXACT"},
+    {"id":"criticality_and_fresh_blind_context","manifest_file_sha256":"e0accde2f409688a7b46b44342de464649c277d132fc7d635b7da3bffe04424e","entry_count":24,"mismatch_count":0,"status":"EXACT"},
+    {"id":"mapping_reveal_and_engineering","manifest_file_sha256":"658b9cba97d63da4972aab9fa619b4ebabfc670864818b86bb36af33844664d8","entry_count":18,"mismatch_count":0,"status":"EXACT"},
+    {"id":"prior_quality_root_cause","manifest_file_sha256":"02cb6c62c8b3c3f546f93160970f9b257ed17c056ce0df43f1d8960f88fc47c8","entry_count":17,"mismatch_count":0,"status":"EXACT"},
+    {"id":"creative_restoration_v1","manifest_file_sha256":"362cdfb53fa3a4c3848978e674e25d2a63c1fef1ec8c26870ebe235db0012bd4","entry_count":18,"mismatch_count":0,"status":"EXACT"}
+  ],
+  "nested_blind_output_manifest": {"entry_count":4,"mismatch_count":0,"status":"EXACT"},
+  "all_exact": true,
+  "historical_evidence_rewritten": false
+}

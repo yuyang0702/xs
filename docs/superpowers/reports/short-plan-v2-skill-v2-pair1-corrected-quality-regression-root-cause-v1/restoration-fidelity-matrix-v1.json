@@ -1,0 +1,17 @@
+{
+  "schema": "SkillV2Pair1RestorationFidelityMatrixV1",
+  "version": 1,
+  "rows": [
+    {"id":"MOTIVE_ACTION","presence":"EXACT","depth":"PARTIAL","priority":"HIGH","frozen_outcome":"REGRESSED_CHARACTER_MOTIVATION","diagnosis":"Missing formative-pressure-to-next-beat causal microchain."},
+    {"id":"VOICE_RELATION","presence":"EXACT","depth":"PARTIAL","priority":"HIGH","frozen_outcome":"VOICE_REGRESSED_RELATIONSHIP_IMPROVED","diagnosis":"Relationship consequence is effective; sustained voice/evasion discipline is not deep enough."},
+    {"id":"CAUSAL_AFFORDANCE","presence":"EXACT","depth":"PARTIAL","priority":"HIGH","frozen_outcome":"WORLD_AND_SENSORY_REGRESSED","diagnosis":"Selection rule is present but density and social/infrastructural linkage are under-specified."},
+    {"id":"PRESSURE_BEATS","presence":"EXACT","depth":"PARTIAL","priority":"HIGH","frozen_outcome":"CONFLICT_PACING_EQUIVALENT","diagnosis":"Adequate for pacing, insufficient as a character-causal continuity rule."},
+    {"id":"SETUP_PAYOFF","presence":"EXACT","depth":"STRONG","priority":"HIGH","frozen_outcome":"B_BETTER","diagnosis":"Concrete plant/dependency/payoff semantics transferred successfully."},
+    {"id":"FRAME_BRIDGE","presence":"EXACT","depth":"PARTIAL_WHEN_VALUES_UNSPECIFIED","priority":"HIGH","frozen_outcome":"POV_AND_TONE_REGRESSED_TENSE_EQUIVALENT","diagnosis":"Safe behavior works, but no demand-specific focal/tone heuristic remains when exact values are unspecified."},
+    {"id":"DRAFT_SCENE","presence":"EXACT","depth":"PARTIAL","priority":"HIGH","frozen_outcome":"REGRESSED_DRAFT_HANDOFF","diagnosis":"Component list does not enforce continuous causal staging or suppress interpretive compression."},
+    {"id":"ANTI_TAXONOMY","presence":"EXACT","depth":"PARTIAL","priority":"HIGH","frozen_outcome":"REGRESSED_TEMPLATE_FLATTENING","diagnosis":"Explicit example list blocks named taxonomy but not adjacent interpretive classification language."}
+  ],
+  "presence_gate_false_positive": "NO: presence was measured correctly",
+  "quality_sufficiency_false_positive": "YES: presence was previously treated as sufficient evidence of depth",
+  "overall_diagnosis": "INSUFFICIENT_DEPTH"
+}

@@ -1,0 +1,13 @@
+{
+  "schema": "SkillV2Pair2To5DefermentV1",
+  "version": 1,
+  "pair1_only": true,
+  "pair2_5_executed": false,
+  "pair2_5_materialized": false,
+  "fixture_closure_advanced": false,
+  "reason": "Pair 1 has a frozen critical narrative NO-GO. Campaign policy requires root-cause closure and a corrected character-heavy control comparison before other demand classes are exposed to real calls.",
+  "blocked_pairs": [2,3,4,5],
+  "a_control_reuse_decision": "REUSE_SEALED_CORRECTED_PAIR1_A_CONTROL_IF_AND_ONLY_IF_CAMPAIGN_POLICY_AND_EXACT_NON_SKILL_LOCK_REMAIN_VALID",
+  "a_control_reuse_reason": "A is the sealed control and no A input changes are proposed. Reuse is policy-bound, not a convenience shortcut; any fixture, prompt, authority, route/model, schema, or rubric drift requires a fresh A.",
+  "new_real_call_authorization_required": true
+}

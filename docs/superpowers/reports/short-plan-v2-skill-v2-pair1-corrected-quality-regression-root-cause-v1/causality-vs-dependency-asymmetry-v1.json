@@ -1,0 +1,10 @@
+{
+  "schema": "SkillV2Pair1CausalityDependencyAsymmetryV1",
+  "version": 1,
+  "observation": "B wins setup/payoff dependency while losing event causal fidelity.",
+  "dependency_strength": "SETUP_PAYOFF explicitly requires plant, preserved dependency, and later action payoff; the B artifact realizes multiple object/state dependencies.",
+  "causality_weakness": "PLOT_CAUSAL_ESCALATION preserves event action and local state change, but character history/formative pressure is not required to cause the present costly choice and next relational beat.",
+  "not_a_contradiction": true,
+  "distinction": "Object dependency closure and character-causal motivation are separate capabilities.",
+  "fix_implication": "Preserve setup/payoff unchanged; deepen MOTIVE_ACTION and DRAFT_SCENE rather than altering plot dependency rules."
+}

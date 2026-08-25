@@ -1,0 +1,22 @@
+{
+  "schema": "SkillV2Pair1CorrectedRootCauseSingleAgentCleanRoomReviewV1",
+  "version": 1,
+  "mode": "single_agent_clean_room",
+  "independence_claimed": false,
+  "reviewer": "primary-agent",
+  "review_scope": "Final evidence-only diff against ea3dedab7ff770894985f06a6df5716105ffbe23",
+  "context_sources": ["raw_user_request","task_baseline","final_diff","raw_test_output","strict_l3_output","parent_manifest_validation"],
+  "checks": [
+    {"id":"frozen_result_not_rescored","status":"PASS"},
+    {"id":"all_ten_regressions_bound","status":"PASS"},
+    {"id":"both_b_gains_explained_and_preserved","status":"PASS"},
+    {"id":"root_class_and_diagnosis_supported","status":"PASS"},
+    {"id":"single_pair_uncertainty_preserved","status":"PASS"},
+    {"id":"v2_design_fits_context_ceiling","status":"PASS"},
+    {"id":"pair2_5_and_next_gate_not_started","status":"PASS"},
+    {"id":"production_source_diff_zero","status":"PASS"},
+    {"id":"privacy_and_external_action_zero","status":"PASS"}
+  ],
+  "hard_issue_count": 0,
+  "status": "PASS"
+}

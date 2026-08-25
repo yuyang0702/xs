@@ -1,0 +1,19 @@
+{
+  "schema": "SkillV2Pair1NextValidationStrategyV1",
+  "version": 1,
+  "status": "NOT_STARTED",
+  "sequence": [
+    "Implement the four-rule character-heavy conditional rewrite only under a new narrow-fix task.",
+    "Prove rendered context is deterministic, 2925 characters, untruncated, and all non-target B rules byte-exact.",
+    "Run offline semantic presence/depth, anti-overcompression, demand resolver, AB lock, privacy, and full synthetic success-tail tests.",
+    "Materialize a fresh corrected Pair 1 B packet; keep A control reuse conditional on exact campaign lock.",
+    "Obtain fresh single-use approval before any provider request.",
+    "Execute at most one B request and repeat fresh blind evaluation before mapping reveal.",
+    "Require zero critical B regression, preserve relationship/setup-payoff gains, and maintain engineering non-inferiority.",
+    "Only then decide whether Pair 2 may materialize."
+  ],
+  "fresh_real_calls_in_this_task": 0,
+  "pair2_5_authorized": false,
+  "cutover_authorized": false,
+  "exact_next_gate": "SKILL_V2_PROFILE_DEMAND_AWARE_CREATIVE_CORE_NARROW_FIX"
+}

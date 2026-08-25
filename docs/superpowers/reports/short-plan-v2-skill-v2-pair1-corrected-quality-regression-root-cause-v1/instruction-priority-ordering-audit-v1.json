@@ -1,0 +1,13 @@
+{
+  "schema": "SkillV2Pair1InstructionPriorityOrderingAuditV1",
+  "version": 1,
+  "system_message_position": "A and B both occupy the same final Skill-context suffix; the user payload follows separately and is byte-identical.",
+  "b_order": ["MOTIVE_ACTION","VOICE_RELATION","CAUSAL_AFFORDANCE","PRESSURE_BEATS","SETUP_PAYOFF","FRAME_BRIDGE","DRAFT_SCENE","ANTI_TAXONOMY","PLOT_CAUSAL_ESCALATION","PLOT_SETUP_PAYOFF_INTENT","PLOT_PACING_INTENT","CHARACTER_MOTIVATION","CHARACTER_VOICE","CHARACTER_ARC","CHARACTER_RELATIONSHIP_NUANCE","WORLD_SENSORY_SPECIFICITY","WORLD_COST_AND_LIMIT","WORLD_FACTION_PRESSURE","WORLD_CURRENT_STATE","WORLD_ARTIFACT_DETAIL"],
+  "mandatory_before_advisory": true,
+  "character_rules_early": true,
+  "truncation": "NONE",
+  "reordering_or_overwrite": false,
+  "priority_dilution_as_primary": false,
+  "secondary_finding": "The resolver is demand-agnostic: all eight mandatory cores and all twelve advisories retain equal profile membership even for character-heavy demand. This is a selection/depth issue, not textual tail-position loss.",
+  "recommended_ordering": "Keep MOTIVE_ACTION and VOICE_RELATION first; enrich them in place. Preserve SETUP_PAYOFF and relationship rules. No global priority redesign is needed."
+}

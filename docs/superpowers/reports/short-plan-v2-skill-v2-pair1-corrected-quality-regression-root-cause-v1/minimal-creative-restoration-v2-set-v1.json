@@ -1,0 +1,23 @@
+{
+  "schema": "SkillV2Pair1MinimalCreativeRestorationV2SetV1",
+  "version": 1,
+  "status": "DESIGN_ONLY_NOT_IMPLEMENTED",
+  "strategy": "Rewrite four existing mandatory rules in place for the character-heavy profile; add no fifth rule and leave SETUP_PAYOFF/relationship advisory semantics intact.",
+  "baseline_context_characters": 2742,
+  "estimated_context_delta_characters": 183,
+  "estimated_new_context_characters": 2925,
+  "hard_ceiling_characters": 3000,
+  "estimated_headroom_characters": 75,
+  "items": [
+    {"id":"MOTIVE_ACTION_V2","targets":["event_causal_fidelity","character_motivation"],"source_a_capability":"biography/formative pressure + motivations + arc","exact_missing_semantic":"Link formative pressure to present want and concealed need; externalize conflict through opposed tactics, costly choice, observable reaction, and next-beat consequence; never name labels.","target_b_section":"character-creative/core/MOTIVE_ACTION","load_mode":"CHARACTER_HEAVY_DEMAND_CONDITIONAL_REWRITE","why_model_owned":"The model must invent the context-specific choice/reaction chain; a validator cannot supply it.","old_line_characters":140,"new_line_characters":203,"delta_characters":63,"risk":"medium constraint density","preserve_relationship_gain":true,"preserve_setup_payoff_gain":true},
+    {"id":"VOICE_RELATION_V2","targets":["character_voice","relationship_logic","subtext_dramatization"],"source_a_capability":"derived voice/tone + character motivation/relationship discovery","exact_missing_semantic":"Sustain distinct voice through diction, rhythm, evasion, gesture, and withheld explanation; make relationship pressure change tactics, costs, trust, and available action.","target_b_section":"character-creative/core/VOICE_RELATION","load_mode":"CHARACTER_HEAVY_DEMAND_CONDITIONAL_REWRITE","why_model_owned":"Distinctive diction and evasive behavior are generative choices.","old_line_characters":144,"new_line_characters":187,"delta_characters":43,"risk":"low; preserves existing action-changing relationship clause","preserve_relationship_gain":true,"preserve_setup_payoff_gain":true},
+    {"id":"DRAFT_SCENE_V2","targets":["draft_intent_handoff","event_causal_fidelity","subtext_dramatization"],"source_a_capability":"distributed spatial/action/reaction construction","exact_missing_semantic":"Build a continuous Draft-usable microchain: spatial stimulus, opposed action, reaction, resistance, reversal, costly choice, and terminal image; replace interpretive summary with behavior.","target_b_section":"event-realization/dramatization-core/DRAFT_SCENE","load_mode":"CHARACTER_HEAVY_DEMAND_CONDITIONAL_REWRITE","why_model_owned":"Only generation can realize a coherent microchain and dramatic substitute.","old_line_characters":147,"new_line_characters":202,"delta_characters":55,"risk":"medium; avoid rigid beat counting in tests","preserve_relationship_gain":true,"preserve_setup_payoff_gain":true},
+    {"id":"ANTI_TAXONOMY_V2","targets":["template_flattening_risk","subtext_dramatization"],"source_a_capability":"behavioral realization without category leakage","exact_missing_semantic":"Keep labels in reasoning only; replace abstractions about wants, needs, instincts, strain, or local change with choice, dialogue, evasion, gesture, or consequence.","target_b_section":"event-realization/dramatization-core/ANTI_TAXONOMY","load_mode":"CHARACTER_HEAVY_DEMAND_CONDITIONAL_REWRITE","why_model_owned":"The substitute must preserve scene meaning and cannot be produced by phrase rejection.","old_line_characters":157,"new_line_characters":179,"delta_characters":22,"risk":"low","preserve_relationship_gain":true,"preserve_setup_payoff_gain":true}
+  ],
+  "item_count": 4,
+  "preserve_b_gains": "YES",
+  "validator_change_required": false,
+  "prompt_change_required": false,
+  "fixture_change_required": false,
+  "implemented": false
+}

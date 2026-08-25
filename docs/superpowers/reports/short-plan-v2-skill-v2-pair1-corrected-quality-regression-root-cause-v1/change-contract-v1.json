@@ -1,0 +1,12 @@
+{
+  "schema": "SkillV2Pair1CorrectedRootCauseChangeContractV1",
+  "version": 1,
+  "scope": "EVIDENCE_ONLY_ROOT_CAUSE_INVESTIGATION",
+  "allowed_changes": ["docs/superpowers/reports/short-plan-v2-skill-v2-pair1-corrected-quality-regression-root-cause-v1/**"],
+  "forbidden_changes": ["src/**","baml_src/**","tools/**","tests/**","Prompt","Skill source/profile","fixture","validator","launcher","A/B artifacts","blind judgments"],
+  "production_diff_expected": 0,
+  "external_actions_expected": 0,
+  "real_model_calls_expected": 0,
+  "pair2_5_expected": "NOT_EXECUTED",
+  "automatic_next_gate": false
+}

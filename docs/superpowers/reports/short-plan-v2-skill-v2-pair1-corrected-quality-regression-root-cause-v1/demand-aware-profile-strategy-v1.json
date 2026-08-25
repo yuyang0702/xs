@@ -1,0 +1,13 @@
+{
+  "schema": "SkillV2Pair1DemandAwareProfileStrategyV1",
+  "version": 1,
+  "status": "DESIGN_ONLY",
+  "resolver": "Deterministic sealed demand-class lookup; no LLM classification and no inference from generated prose.",
+  "input": "pair_creative_demand_class",
+  "known_mapping": {"character-heavy":"RESTORED_SKILL_V2_CHARACTER_CORE_V2","world-heavy":"UNCHANGED_PENDING_PAIR2","conflict-pacing-heavy":"UNCHANGED_PENDING_PAIR3","setup-payoff-heavy":"UNCHANGED_PENDING_PAIR4","mixed":"UNCHANGED_PENDING_PAIR5"},
+  "unknown_demand_behavior": "FAIL_CLOSED_NO_PROFILE_SUBSTITUTION",
+  "character_heavy_action": "Rewrite only MOTIVE_ACTION, VOICE_RELATION, DRAFT_SCENE, and ANTI_TAXONOMY with the V2 semantics; preserve every other rule byte-for-byte.",
+  "why_demand_aware": "The frozen regression cluster is character-specific; loading more global context would reintroduce the overcompression problem and pre-judge Pair 2-5.",
+  "profile_budget": {"estimated_characters":2925,"maximum_characters":3000,"fits":true},
+  "production_cutover_authorized": false
+}
