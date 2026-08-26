@@ -1,0 +1,24 @@
+{
+  "candidate_file_sha256": "3b6af32af70ab0b785e97cb1ca001ac251b2d3c81399687315fd4edd8e9ead0a",
+  "candidate_sha256": "97adb8c54eacbc02314871b2beeb146dae96758e6dc541571605a403537cbaf5",
+  "context_characters": 2925,
+  "context_sha256": "7d0f6309ede2261f2f6a1098d394937948bf5b50eb9248266ab350fd91da9adc",
+  "execution_authorized": false,
+  "external_actions": {
+    "credential_lookup_count": 0,
+    "http_post_attempts": 0,
+    "model_calls": 0,
+    "network_calls": 0,
+    "paid_calls": 0,
+    "real_provider_client_creation_count": 0,
+    "real_provider_request_attempts": 0
+  },
+  "manifest_file_sha256": "4d54c0517bd903392cdba7c2dc068ff1cefb02fa347da5a7f530928e25f6311b",
+  "manifest_status": "EXACT",
+  "nonce_reserved": false,
+  "profile_sha256": "109bb50e2e649c5841bd7c83513100caa0d93cf3c1bb5db845e489b5ae10856d",
+  "schema": "SkillV2Pair1DemandAwareBOnlyCandidateBindingV1",
+  "signed_approval": "ABSENT",
+  "successor_ab_lock_sha256": "5ace834e214ea25d4206b92d63e830ad7f51b3629072ea58107249e2457303a1",
+  "version": 1
+}

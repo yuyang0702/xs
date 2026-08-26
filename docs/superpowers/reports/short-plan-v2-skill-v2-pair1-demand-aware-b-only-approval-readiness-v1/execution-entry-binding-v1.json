@@ -1,0 +1,13 @@
+{
+  "arbitrary_selection_allowed": false,
+  "arm_role": "B_ARM",
+  "binding_sha256": "5036b34c24d9d6e1e1e6b40f8464a954a6d28f4bbbb9a0e7015ae5a1ac114b0b",
+  "entry_point_id": "tools.canary.skill_v2_pair1_demand_aware_b_revalidation:execute_authorized_once_v1",
+  "pair_case_id": "restored-character-heavy-v2-demand-aware-core-v2",
+  "schema": "SkillV2Pair1DemandAwareBOnlyExecutionEntryBindingV1",
+  "skill_arm": "RESTORED_SKILL_V2_CHARACTER_CORE_V2",
+  "source_path": "tools/canary/skill_v2_pair1_demand_aware_b_revalidation.py",
+  "source_sha256": "e4af41e92467f6ade69bd76505be1d9638cce051e7d88309c0eb1b20f142d633",
+  "status": "PASS",
+  "version": 1
+}

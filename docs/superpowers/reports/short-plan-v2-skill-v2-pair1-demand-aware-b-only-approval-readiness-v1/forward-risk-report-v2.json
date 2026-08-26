@@ -1,0 +1,84 @@
+{
+  "closed_world_justification": "One candidate, profile, context, A control, pair lock, route, model, client, output cap, validator and future execution root are frozen.",
+  "constraint_traceability": [
+    {
+      "evidence": "candidate-binding-v1.json and a-control-reuse-binding-v1.json",
+      "implementation": "tools/canary/skill_v2_pair1_demand_aware_b_revalidation.py",
+      "requirement": "exact candidate and A-control reuse lock",
+      "test_paths": [
+        "tests/canary/test_skill_v2_pair1_demand_aware_b_revalidation.py"
+      ]
+    },
+    {
+      "evidence": "execution-entry-binding-v1.json and single-dispatch-contract-v1.json",
+      "implementation": "tools/canary/skill_v2_pair1_demand_aware_b_revalidation.py",
+      "requirement": "one-shot execution entry and signed preflight",
+      "test_paths": [
+        "tests/canary/test_skill_v2_pair1_demand_aware_b_revalidation.py"
+      ]
+    },
+    {
+      "evidence": "phase-a-preapproval-readiness-v1.json and future-permission-before-nonce-v1.json",
+      "implementation": "tools/canary/skill_v2_pair1_demand_aware_b_revalidation.py",
+      "requirement": "approval absent and permission before nonce",
+      "test_paths": [
+        "tests/canary/test_skill_v2_pair1_demand_aware_b_revalidation.py"
+      ]
+    }
+  ],
+  "forbidden_narrowing": [
+    "Do not reuse historical failed B as treatment.",
+    "Do not weaken the single-dispatch or terminal local pipeline.",
+    "Do not create approval, nonce, Provider call, Pair2-5 or production cutover."
+  ],
+  "historical_incident_families_checked": [
+    "stale approval parent and launcher identity",
+    "authority tuple normalization drift",
+    "audit serialization post-response failure",
+    "single-dispatch transport retry leakage",
+    "consumed nonce and second-dispatch replay",
+    "historical B treatment reuse"
+  ],
+  "model_output_boundary_changed": false,
+  "model_output_not_applicable_evidence": "The launcher reuses unchanged EventRealizationCandidateV1 conversion, artifact validator and freeze functions; it adds only offline binding.",
+  "next_authoritative_boundary_tests": [
+    "tests/canary/test_skill_v2_pair1_demand_aware_b_revalidation.py"
+  ],
+  "operational_definition": "A disabled hash-bound approval-readiness packet plus closed-world one-shot launcher, Phase A stop state and offline fake local tail.",
+  "original_requirement": "Make the exact disabled demand-aware Pair 1 B-only candidate mechanically ready for a later fresh approval and one real request.",
+  "production_shaped_tests": [
+    "tests/canary/test_skill_v2_pair1_demand_aware_b_revalidation.py"
+  ],
+  "projected_failure_mechanisms": [
+    "binding drift",
+    "approval/preflight staleness",
+    "nonce replay",
+    "hidden retry/fallback",
+    "authority mutation",
+    "historical sample leakage"
+  ],
+  "remaining_risks": [
+    "Literary non-inferiority remains unproven until separately approved B execution and fresh blind evaluation."
+  ],
+  "resolution_status": "case_fixed",
+  "scope_classification": "closed_world",
+  "sibling_boundaries": [
+    {
+      "boundary": "production runtime",
+      "disposition": "not_applicable",
+      "evidence": "new owner is tools/canary only; src and baml are unchanged"
+    },
+    {
+      "boundary": "Pair2-5",
+      "disposition": "tested_not_susceptible",
+      "evidence": "closed entry identity and negative pair identity test"
+    },
+    {
+      "boundary": "StoryState Canon READY",
+      "disposition": "tested_not_susceptible",
+      "evidence": "signed approval mutation flags are fixed false and tested"
+    }
+  ],
+  "version": 2,
+  "why_previous_tests_missed": "The parent narrow-fix intentionally stopped at a disabled candidate without a candidate-specific launcher or approval-time contract."
+}

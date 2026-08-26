@@ -1,0 +1,27 @@
+{
+  "adjacent": "137 passed, 8 failed, 26 errors in 49.05s; all non-green cases are pre-existing sealed/consumed approval, execution-root, or historical campaign stop-state expectations; no owning-source regression",
+  "external_actions": {
+    "credential_lookup_count": 0,
+    "http_post_attempts": 0,
+    "model_calls": 0,
+    "network_calls": 0,
+    "paid_calls": 0,
+    "real_provider_client_creation_count": 0,
+    "real_provider_request_attempts": 0
+  },
+  "focused": "47 passed in 93.34s",
+  "full_suite": "3582 passed, 44 failed, 72 errors, 41 skipped, 6 xfailed, 1 warning in 2092.49s; no failure or error belongs to tests/canary/test_skill_v2_pair1_demand_aware_b_revalidation.py",
+  "historical_non_green_classification": [
+    "historical PTR4 and Short materialization gates no longer match the current repository state",
+    "historical Pair 1 approval, nonce, execution-root, and terminal campaign-state tests observe legitimately sealed or consumed state",
+    "Planning Skill quality/oracle fixtures retain fixed historical source and evidence assumptions",
+    "R0E live-parity and creative-restoration tests retain fixed historical hashes or implementation HEAD bindings",
+    "none of the 44 failures or 72 errors is in the new owning test module"
+  ],
+  "new_owning_source_regression_count": 0,
+  "schema": "SkillV2Pair1DemandAwareBOnlyApprovalReadinessTestReceiptV1",
+  "strict_l3": "PASS",
+  "strict_l3_blockers": 0,
+  "strict_l3_warnings": 0,
+  "version": 1
+}

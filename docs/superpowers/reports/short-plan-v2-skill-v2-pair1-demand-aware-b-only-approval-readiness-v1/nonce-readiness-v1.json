@@ -1,0 +1,12 @@
+{
+  "nonce_absence_authorizes_execution": false,
+  "nonce_consumed": false,
+  "nonce_creation_phase": "AFTER_FRESH_USER_APPROVAL_BEFORE_SIGNED_PREFLIGHT",
+  "nonce_domain": "skill-v2-pair1-demand-aware-b-only-single-use-nonce-v1",
+  "nonce_domain_defined": true,
+  "nonce_id": "NOT_YET_CREATED_BY_DESIGN",
+  "nonce_reserved": false,
+  "nonce_reuse_allowed": false,
+  "schema": "SkillV2Pair1DemandAwareBOnlyNonceReadinessV1",
+  "version": 1
+}

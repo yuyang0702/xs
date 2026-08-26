@@ -1,0 +1,11 @@
+{
+  "coverage_status": "exact",
+  "covered_payload_count_before_receipt": 23,
+  "exclusion_reason": "avoid self-reference while final response binds the Git seal",
+  "manifest_excludes": [
+    "sha256-manifest-v1.json",
+    "final-report-v1.md"
+  ],
+  "schema": "SkillV2Pair1DemandAwareBOnlyManifestCoverageReceiptV1",
+  "version": 1
+}

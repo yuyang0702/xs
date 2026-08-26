@@ -1,0 +1,38 @@
+{
+  "approval_readiness_packet_sha256": "762e98d2f83e919523aaced3131f29ef762773f496ffc0a3706a3c9c9f553e7b",
+  "candidate_sha256": "97adb8c54eacbc02314871b2beeb146dae96758e6dc541571605a403537cbaf5",
+  "current_state": {
+    "active_campaign_stop": false,
+    "approval_id": null,
+    "candidate_exact": true,
+    "demand_aware_b_approval_exists": false,
+    "demand_aware_b_execution_exists": false,
+    "demand_aware_b_is_next_real_arm": true,
+    "historical_failed_b_exists": true,
+    "historical_failed_b_is_treatment": false,
+    "pair2_or_later_approval_exists": false,
+    "pair2_or_later_result_exists": false,
+    "sealed_a_control_pass": true,
+    "state_sha256": "d995418e3dc1baf15041da631544d7b8c2ee330bd9654c25fd2cd83d062f553b"
+  },
+  "execution_authorized": false,
+  "external_actions": {
+    "credential_lookup_count": 0,
+    "http_post_attempts": 0,
+    "model_calls": 0,
+    "network_calls": 0,
+    "paid_calls": 0,
+    "real_provider_client_creation_count": 0,
+    "real_provider_request_attempts": 0
+  },
+  "nonce_consumed": false,
+  "nonce_id": "NOT_YET_CREATED_BY_DESIGN",
+  "nonce_reserved": false,
+  "phase": "PRE_APPROVAL_READINESS",
+  "phase_a_receipt_sha256": "0e9bbb382090bea5d400939fd7fbc1adb8bf75305cd3d500595a42df69207f98",
+  "schema": "SkillV2Pair1DemandAwareBOnlyPhaseAPreapprovalReadinessV1",
+  "semantic_stop_state": "CONTINUE_ALLOWED_FOR_LATER_APPROVAL_CREATION_ONLY",
+  "signed_approval_present": false,
+  "status": "PASS",
+  "version": 1
+}

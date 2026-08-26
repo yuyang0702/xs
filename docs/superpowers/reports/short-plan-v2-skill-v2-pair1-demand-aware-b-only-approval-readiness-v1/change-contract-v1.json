@@ -1,0 +1,38 @@
+{
+  "allowed_changes": [
+    "tools/canary/skill_v2_pair1_demand_aware_b_revalidation.py",
+    "tests/canary/test_skill_v2_pair1_demand_aware_b_revalidation.py",
+    "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-demand-aware-b-only-approval-readiness-v1/**"
+  ],
+  "authority_impact": {
+    "checkpoints_resume_rollback": "not_involved",
+    "confirmed_planning_authority": "read_only",
+    "credential_private_source_handling": "no_access",
+    "current_candidate": "read_only",
+    "formal_manuscript": "not_involved",
+    "project_files": "evidence_only",
+    "protected_best_candidate": "not_involved",
+    "provider_model_bindings": "read_only",
+    "runtime_skill_context": "read_only_shadow_binding",
+    "sqlite_rows": "read_only",
+    "story_state": "read_only"
+  },
+  "authorization": "implementation_offline_only",
+  "protected_unchanged_behavior": [
+    "src/**",
+    "baml_src/**",
+    "Prompt",
+    "Route/Model/client/output cap",
+    "validator",
+    "StoryState/Canon/READY",
+    "Pair2-5",
+    "production cutovers"
+  ],
+  "requested_outcome": "Make the exact disabled Pair 1 demand-aware B-only candidate mechanically ready for later approval and one real request.",
+  "resolution_status": "case_fixed",
+  "rollback": "revert the implementation and readiness evidence commits",
+  "schema": "SkillV2Pair1DemandAwareBOnlyApprovalReadinessChangeContractV1",
+  "scope_classification": "closed_world",
+  "smallest_safe_scope": "one revalidation-specific canary launcher, focused tests and evidence",
+  "version": 1
+}

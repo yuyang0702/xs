@@ -1,0 +1,42 @@
+{
+  "approval_parent": {
+    "approval_parent_head": "205860bce9c68186c63af06592c045ed6db94e41",
+    "approval_parent_head_explicit": true,
+    "approval_parent_head_validation": "PASS",
+    "changed_paths": [
+      "tests/canary/test_skill_v2_pair1_demand_aware_b_revalidation.py",
+      "tools/canary/skill_v2_pair1_demand_aware_b_revalidation.py"
+    ],
+    "materialization_parent_head": "4ecc4903e07b415309d0f6ed694afc37d8126fc1",
+    "schema": "SkillV2Pair1DemandAwareBOnlyApprovalParentBindingV1",
+    "version": 1
+  },
+  "launcher_binding_sha256": "264eea0a8ef3a806942690ab25e0191ca0873e91e00fe99eb0831cbffe314a75",
+  "launcher_source_path": "tools/canary/skill_v2_pair1_demand_aware_b_revalidation.py",
+  "launcher_source_sha256": "e4af41e92467f6ade69bd76505be1d9638cce051e7d88309c0eb1b20f142d633",
+  "request_binding": {
+    "a_artifact_prose_injection_match_count": 0,
+    "client": "AnthropicAdapter",
+    "context_sha256": "7d0f6309ede2261f2f6a1098d394937948bf5b50eb9248266ab350fd91da9adc",
+    "historical_b_prose_injection_match_count": 0,
+    "model_binding_sha256": "5fd92d58fb34146b854ecf816dfe7622e24c233480149dfab9e327cff7f6b1ff",
+    "output_cap": 4624,
+    "profile_sha256": "109bb50e2e649c5841bd7c83513100caa0d93cf3c1bb5db845e489b5ae10856d",
+    "protocol": "anthropic",
+    "provider_descriptor_sha256": "121cc6b0b4f77b0b08697f2782e0f67a29007183d65a2780b2051048da3a600f",
+    "raw_prompt_persisted": false,
+    "raw_provider_payload_persisted": false,
+    "raw_story_persisted": false,
+    "route_fingerprint": "30e9cbaf86fbb4b89b43614d71cc11b359ad41e7411e8ebda5d3ce4199879bf0",
+    "route_kind": "primary",
+    "route_model_client_sha256": "c3b9bef17be892c4de4107707f2a5dc03f4dce8438bb74a0452c095a7e87f621",
+    "schema": "SkillV2Pair1DemandAwareBOnlyRequestBindingV1",
+    "system_sha256": "1d768ea99869dfbc8ebe5c0f35a458cc9e98a8a42dcc9fb9ca5d60a00f407062",
+    "user_sha256": "015096c5ce7ac69323377efa87b2730b1bf23bc7e5fc33d4e7b0703fd2513ac9",
+    "version": 1,
+    "wire_input_sha256": "1913c8d276f3c7a60a69d48ab74237f7b8a6eae74b1ea394a211e7beb8f38ad2"
+  },
+  "schema": "SkillV2Pair1DemandAwareBOnlyLauncherBindingV1",
+  "status": "PASS",
+  "version": 1
+}

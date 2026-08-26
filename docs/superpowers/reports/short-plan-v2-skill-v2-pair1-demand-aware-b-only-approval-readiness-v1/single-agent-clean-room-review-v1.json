@@ -1,0 +1,20 @@
+{
+  "authority_mutation_boundary": "PASS",
+  "candidate_inertness": "PASS",
+  "context_sources": [
+    "raw_user_request",
+    "task_baseline",
+    "final_diff",
+    "raw_test_output",
+    "forward_risk_report"
+  ],
+  "hard_issue_count": 0,
+  "historical_sample_isolation": "PASS",
+  "independence_claimed": false,
+  "mode": "single_agent_clean_room",
+  "schema": "SkillV2Pair1DemandAwareBOnlyCleanRoomReviewV1",
+  "single_dispatch_sequence": "PASS",
+  "status": "PASS",
+  "team_review_requested": false,
+  "version": 1
+}

@@ -1,0 +1,10 @@
+{
+  "algorithm": "SHA-256",
+  "canonical_json": "UTF-8 LF two-space indentation trailing newline",
+  "coverage": "all evidence payload files except manifest and final report",
+  "entry_order": "path ascending",
+  "historical_evidence_rewritten": false,
+  "path_format": "repository-relative POSIX",
+  "schema": "SkillV2Pair1DemandAwareBOnlyManifestDefinitionV1",
+  "version": 1
+}

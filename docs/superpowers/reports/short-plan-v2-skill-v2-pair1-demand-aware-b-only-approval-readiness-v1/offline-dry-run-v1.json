@@ -1,0 +1,30 @@
+{
+  "approval_missing_real_boundary_blocked": true,
+  "candidate_load": "PASS",
+  "canon_mutations": 0,
+  "credentials_read": 0,
+  "external_actions": {
+    "credential_lookup_count": 0,
+    "http_post_attempts": 0,
+    "model_calls": 0,
+    "network_calls": 0,
+    "paid_calls": 0,
+    "real_provider_client_creation_count": 0,
+    "real_provider_request_attempts": 0
+  },
+  "historical_b_isolation": "PASS",
+  "local_fake_success_tail": "PASS",
+  "local_tail_receipt_sha256": "8eb1eebe5ba22264e3d859abe9e58f10c21b1d0736794f8b3f49b1c1803bfbf3",
+  "new_profile_context_load": "PASS",
+  "nonce_consumed": false,
+  "nonce_reserved": false,
+  "phase_a_preapproval_readiness": "PASS",
+  "provider_client_created": 0,
+  "ready_mutations": 0,
+  "real_boundary_reached": false,
+  "schema": "SkillV2Pair1DemandAwareBOnlyOfflineDryRunV1",
+  "sealed_a_control_binding": "PASS_EVIDENCE_ONLY",
+  "single_dispatch_guard_armed": true,
+  "story_state_mutations": 0,
+  "version": 1
+}
