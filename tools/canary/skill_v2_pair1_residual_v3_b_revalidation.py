@@ -576,33 +576,49 @@ Offline-only readiness evidence for the exact disabled residual V3 B treatment. 
     strict_l3 = validation.get("strict_l3", "PENDING")
     report = f"""# Pair 1 residual V3 B-only approval readiness — Final Report
 
-- Branch: `{EXPECTED_BRANCH}`
-- Baseline/materialization parent HEAD: `{BASELINE_HEAD}`
-- Launcher/approval parent HEAD: `{approval_parent_head}`
-- Final evidence seal: `THIS_COMMIT`
-- Candidate SHA: `{CANDIDATE_SHA256}`
-- Revalidation case / arm / Skill: `{PAIR_CASE_ID}` / `{ARM_ROLE}` / `{SKILL_ARM}`
-- V3 profile/context: `{PROFILE_SHA256}` / `{CONTEXT_SHA256}` / `{CONTEXT_CHARACTERS}` chars
-- Successor V3 A/B lock: `{AB_LOCK_SHA256}`
-- A-control reuse/injection: `PASS/NO`; historical-B isolation: `PASS`
-- Execution entry / launcher / single dispatch / terminal local pipeline: `PASS/PASS/PASS/PASS`
-- Approval-readiness packet: `{packet['approval_readiness_packet_sha256']}`
-- Phase A: `PASS`; Phase B: `NOT_EXECUTED`
-- Signed Approval: `ABSENT`; execution authorized: `false`
-- Nonce: `NOT_YET_CREATED_BY_DESIGN`; reserved `NO`; consumed `NO`
-- Permission before nonce / future reconfirmation: `YES/YES`
-- Negative matrix: `{negative['total_case_count']}/{negative['total_case_count']} PASS`
-- Offline dry-run: `PASS`; real boundary reached `NO`
-- Tests: focused `{focused}`; adjacent `{adjacent}`; full `{full_suite}`
-- Strict L3: `{strict_l3}`; warnings `{validation.get('strict_l3_warnings', 'PENDING')}`; blockers `{validation.get('strict_l3_blockers', 'PENDING')}`
-- New owning-source regressions: `{validation.get('new_owning_source_regression_count', 0)}`
-- Source/tool diff: `{SOURCE_PATH}`, `{TEST_PATH}` only; production/baml diff `0`
-- Pair2-5: `BLOCKED`; Skill V2/Planning V2 cutover: `NOT_AUTHORIZED/NOT_AUTHORIZED`
-- Privacy: `PASS`; match count `0`
-- Manifest definition file SHA: `{manifest_definition_sha}`
-- Manifest file SHA: `{manifest_sha}`
-- Manifest coverage: `{len(entries)}/{len(entries)}` payload files
-- External counters: all `0`; Full Short: `NOT_EXECUTED`
+1. Branch: `{EXPECTED_BRANCH}`
+2. Baseline HEAD: `{BASELINE_HEAD}`
+3. Binding commit: `{approval_parent_head}`
+4. Readiness/evidence commit(s): `THIS_COMMIT`
+5. Final HEAD: `THIS_COMMIT`
+6. Worktree after seal: `clean`
+7. Candidate SHA: `{CANDIDATE_SHA256}`
+8. Exact revalidation case ID: `{PAIR_CASE_ID}`
+9. Exact V3 Skill arm identity: `{SKILL_ARM}` (`{ARM_ROLE}`)
+10. V3 profile SHA: `{PROFILE_SHA256}`
+11. V3 context SHA/chars: `{CONTEXT_SHA256}` / `{CONTEXT_CHARACTERS}`
+12. Successor V3 A/B lock SHA: `{AB_LOCK_SHA256}`
+13. A-control reuse binding: `PASS`; packet `{A_PACKET_SHA256}`; artifact `{A_ARTIFACT_SHA256}`; status `PASS_SEALED`
+14. A-artifact injection result: `NO`
+15. Historical-B isolation: `PASS`; current treatment `NO`; egress `NO`
+16. Execution-entry binding: `PASS`; `{ENTRY_POINT_ID}`
+17. Launcher binding: `PASS`; source `{SOURCE_PATH}`
+18. Single-dispatch contract: `PASS`; logical/provider/HTTP/network caps `1/1/1/1`; retry/fallback/switch/resume/second dispatch `NO`
+19. Terminal local-pipeline binding: `PASS`; provider return through isolated persistence; StoryState/Canon/READY mutation caps `0/0/0`
+20. Approval-readiness packet SHA: `{packet['approval_readiness_packet_sha256']}`
+21. Phase A readiness: `PASS`
+22. Phase B status: `NOT_EXECUTED`
+23. Signed approval status: `ABSENT`
+24. execution_authorized: `false`
+25. Nonce readiness/state: `NOT_YET_CREATED_BY_DESIGN`; reserved `NO`; consumed `NO`
+26. Future permission-before-nonce gate: permission must be reconfirmed `YES`; check before reservation `YES`
+27. Future egress scope: only new V3 B packet-required data; A/historical-B/blind evidence `NO`
+28. Negative matrix: `{negative['total_case_count']}/{negative['total_case_count']} PASS`
+29. Offline dry-run: `PASS`; real boundary reached `NO`; external actions `0`
+30. Focused tests: `{focused}`
+31. Adjacent tests: `{adjacent}`; full suite `{full_suite}`
+32. Strict L3: `{strict_l3}`; warnings `{validation.get('strict_l3_warnings', 'PENDING')}`; blockers `{validation.get('strict_l3_blockers', 'PENDING')}`
+33. Owning-source regression count: `{validation.get('new_owning_source_regression_count', 0)}`
+34. Source/tool diff scope: `{SOURCE_PATH}`, `{TEST_PATH}` only; `src/**=0`; `baml_src/**=0`
+35. Pair 2–5 state: execution allowed `NO`
+36. Cutover states: Skill V2 `NOT_AUTHORIZED`; Planning V2 `NOT_AUTHORIZED`
+37. Privacy: `PASS`; match count `0`
+38. Manifest definition SHA: `{manifest_definition_sha}`
+39. Manifest file SHA: `{manifest_sha}`
+40. Manifest coverage: `{len(entries)}/{len(entries)}` payload files
+41. External counters: credential/client/provider/HTTP/network/model/paid all `0`
+42. Full Short state: `NOT_EXECUTED`
+43. Exact next gate: `SKILL_V2_PAIR_1_RESIDUAL_V3_B_ONLY_REVALIDATION_FRESH_USER_APPROVAL`
 
 `SKILL_V2_PAIR_1_RESIDUAL_V3_B_ONLY_REVALIDATION_APPROVAL_READY=YES`
 

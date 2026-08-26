@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import re
 from pathlib import Path
 
 import pytest
@@ -153,3 +154,5 @@ def test_materialized_documents_cover_required_v3_evidence(tmp_path: Path) -> No
     assert result["privacy_match_count"] == 0
     assert result["manifest_coverage"] == "exact"
     assert result["external_actions"] == readiness.ZERO_EXTERNAL_ACTIONS
+    report = documents[f"{readiness.EVIDENCE_ROOT}/final-report-v1.md"].decode("utf-8")
+    assert [int(value) for value in re.findall(r"(?m)^(\d+)\. ", report)] == list(range(1, 44))
