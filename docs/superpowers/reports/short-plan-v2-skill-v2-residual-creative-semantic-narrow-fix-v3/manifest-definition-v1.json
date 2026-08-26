@@ -1,0 +1,12 @@
+{
+  "algorithm": "SHA-256",
+  "canonical_json": "UTF-8, LF, two-space indentation, sorted keys, trailing newline",
+  "coverage": "all evidence files except sha256-manifest-v1.json and final-report-v1.md",
+  "entry_order": "path ascending",
+  "final_report_excluded_to_avoid_manifest_cycle": true,
+  "historical_evidence_rewritten": false,
+  "path_format": "evidence-root-relative POSIX",
+  "schema": "SkillV2ResidualV3ManifestDefinitionV1",
+  "self_excluded": true,
+  "version": 1
+}

@@ -1,0 +1,11 @@
+{
+  "coverage_status": "exact",
+  "covered_payload_count_before_receipt": 22,
+  "exclusion_reason": "avoid manifest self-reference and final-report/manifest hash cycle",
+  "manifest_excludes": [
+    "sha256-manifest-v1.json",
+    "final-report-v1.md"
+  ],
+  "schema": "SkillV2ResidualV3ManifestCoverageReceiptV1",
+  "version": 1
+}

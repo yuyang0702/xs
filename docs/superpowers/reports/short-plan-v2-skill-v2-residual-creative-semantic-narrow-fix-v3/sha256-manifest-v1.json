@@ -1,0 +1,128 @@
+{
+  "algorithm": "SHA-256",
+  "coverage": "all evidence files except manifest and final report",
+  "definition_sha256": "6f9437221b08055285fbec9732c76dbf2486b784215419566448a9cad9a674a4",
+  "entry_count": 23,
+  "files": [
+    {
+      "bytes": 14,
+      "path": ".gitattributes",
+      "sha256": "a79691a93b46e49ce460c26ef22afcc03d6eca1e63bf2edbc20e96159510f6c9"
+    },
+    {
+      "bytes": 214,
+      "path": "README.md",
+      "sha256": "58b183e75f7cd8063e976e2b8c2b157dfda5d033e5715f5ce341454bfd57526a"
+    },
+    {
+      "bytes": 3091,
+      "path": "a-control-reuse-v3-binding-v1.json",
+      "sha256": "d3c7219929030d8a791e18a1598b5ff37971079b13b15d6cc2b8af4c29c25f96"
+    },
+    {
+      "bytes": 387,
+      "path": "anti-overconstraint-validation-v1.json",
+      "sha256": "80e26692d8db759b20c43a13ef779d504ae541c59590f21111813d9d0f8580c4"
+    },
+    {
+      "bytes": 488,
+      "path": "anti-template-specificity-validation-v1.json",
+      "sha256": "a0dbe5fb564f98263e0ce0af9e94641cf71f86ed0b98e3a831b4a4016634205f"
+    },
+    {
+      "bytes": 786,
+      "path": "context-size-receipt-v1.json",
+      "sha256": "365117c70b27f59e962075efafa5ded5d138c19dd34df23e7d6336236513aa36"
+    },
+    {
+      "bytes": 7530,
+      "path": "forward-risk-report-v2.json",
+      "sha256": "4b29937b2778f62ef3c730a3b75a71cef240c528ee306188517910c24e5a59b5"
+    },
+    {
+      "bytes": 1498,
+      "path": "historical-matrix-classification-v1.json",
+      "sha256": "7c4eaeceec76c60f1fb38bfb05019a83332f89cd2f05eff53d0959c65104315e"
+    },
+    {
+      "bytes": 331,
+      "path": "manifest-coverage-receipt-v1.json",
+      "sha256": "8865fb6d9dea79cc308d677bbfc0d422bfac9131d33d72a50244a28dc59a627a"
+    },
+    {
+      "bytes": 483,
+      "path": "manifest-definition-v1.json",
+      "sha256": "e18193f7694f09212a66009481a022421f8418bbabf57af7d55535d97d6c6a87"
+    },
+    {
+      "bytes": 934,
+      "path": "offline-quality-validation-v1.json",
+      "sha256": "b91132f95277bc9684dfdece501543b577d5ec3e8e338cefdcc368a7c3d190c1"
+    },
+    {
+      "bytes": 509,
+      "path": "privacy-scan-v1.json",
+      "sha256": "c4c5e438cea3aebcb46096165e7c1b8f856f17487b3db26819279675c34fe49e"
+    },
+    {
+      "bytes": 754,
+      "path": "profile-identity-v1.json",
+      "sha256": "ac87a8b3d87241e97567b6e6831be140048022b3c93d8ab014321f1457acafbb"
+    },
+    {
+      "bytes": 615,
+      "path": "proven-gain-preservation-v1.json",
+      "sha256": "ca7c74b11f2fe6b0588c8ee2e5a69c7de5d482915fb4ec7e24a7878a75ff0fa8"
+    },
+    {
+      "bytes": 1748,
+      "path": "residual-root-cause-binding-v1.json",
+      "sha256": "4f56f5e49ce468022cb289f8288255f8a04ec6bbb2f4d84b5695cca36de11f8c"
+    },
+    {
+      "bytes": 3975,
+      "path": "revalidation-candidate-v1.json",
+      "sha256": "ef151e474f5784759d2dbcfb7703179f5c9f750269a68c81b751984374f95068"
+    },
+    {
+      "bytes": 841,
+      "path": "sealed-v3-restoration-set-binding-v1.json",
+      "sha256": "12995ebe0e5f0356c9ed2323fccd9455a11deb549f683dded80699f16fece147"
+    },
+    {
+      "bytes": 801,
+      "path": "source-diff-scope-v1.json",
+      "sha256": "69260282a06265bf70ce1036f538cb57b367e648cf855065db32e95a5321a6d1"
+    },
+    {
+      "bytes": 564,
+      "path": "subtext-dramatization-validation-v1.json",
+      "sha256": "540f38a55a71672df774c2f5a6d3bb58bf24dd43f3b3e36f12124135d09ffac3"
+    },
+    {
+      "bytes": 3405,
+      "path": "successor-v3-ab-lock-v1.json",
+      "sha256": "aade50e9c25c5af22d5dba6c9540b65f41ab0c8df98b60a932f2eed1d5c5008b"
+    },
+    {
+      "bytes": 1085,
+      "path": "test-receipt-v1.json",
+      "sha256": "b4eba30661ee103b89931cd3b339550199fe39918f5d6fa383a3a4f3898941bd"
+    },
+    {
+      "bytes": 765,
+      "path": "v2-to-v3-semantic-diff-v1.json",
+      "sha256": "b6b3c91dd767166795c156d94e61241faa8f142699c3b920eaca1acc732c9747"
+    },
+    {
+      "bytes": 1664,
+      "path": "v3-restoration-implementation-matrix-v1.json",
+      "sha256": "e78308ad321176bd68d1770c809a03ad62e2a78e44355f688dacf780d68da6d2"
+    }
+  ],
+  "manifest_definition_file_sha256": "e18193f7694f09212a66009481a022421f8418bbabf57af7d55535d97d6c6a87",
+  "overall_status": "exact",
+  "schema": "SkillV2ResidualV3SHA256ManifestV1",
+  "self_excluded": true,
+  "version": 1
+}

@@ -1,0 +1,20 @@
+{
+  "credentials_included": false,
+  "files_scanned": 21,
+  "hidden_reasoning_included": false,
+  "overall_status": "PASS",
+  "pattern_counts": {
+    "anthropic_key": 0,
+    "api_key_assignment": 0,
+    "authorization_bearer": 0,
+    "private_key": 0,
+    "x_api_key_header": 0
+  },
+  "privacy_match_count": 0,
+  "raw_a_artifact_included": false,
+  "raw_b_artifact_included": false,
+  "raw_prompt_included": false,
+  "raw_story_included": false,
+  "schema": "SkillV2ResidualV3PrivacyScanV1",
+  "version": 1
+}
