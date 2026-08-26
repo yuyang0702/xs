@@ -1,0 +1,15 @@
+{
+  "schema": "SkillV3BudgetPolicyValidationV1",
+  "status": "PASS",
+  "formula": "floor(0.75*safe_context_window)-output_reserve-non_skill_input-wrapper_margin",
+  "safe_context_window_tokens": 32768,
+  "output_reserve_tokens": 4624,
+  "wrapper_and_estimator_margin_tokens": 1024,
+  "capacity_by_scenario": {
+    "character-heavy": "PASS",
+    "world-heavy": "PASS",
+    "conflict-pacing-heavy": "PASS",
+    "setup-payoff-heavy": "PASS",
+    "mixed": "PASS"
+  }
+}

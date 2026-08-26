@@ -1,0 +1,19 @@
+{
+  "schema": "SkillV3ShadowFullSuiteClassificationV1",
+  "result": "3645 passed, 41 skipped, 6 xfailed, 52 failed, 72 errors in 2063.08s; failures are historical Canary/materialization, Planning Skill oracle, R0E/R0F fixed-hash, and Skill V2 sealed-evidence gates",
+  "passed": 3645,
+  "skipped": 41,
+  "xfailed": 6,
+  "failed": 52,
+  "errors": 72,
+  "new_owning_source_regression_count": 0,
+  "failure_families": [
+    "historical Canary/materialization parent or fixed-hash gates",
+    "historical Planning Skill profile shadow/quality oracle gates",
+    "R0E/R0F live-parity and successor fixed-hash gates",
+    "historical Skill V2 sealed-evidence self-validation gates"
+  ],
+  "historical_expectations_rewritten": false,
+  "authorization_or_live_state_renewed": false,
+  "classification_basis": "full pytest summary plus separately green focused and adjacent owning-source matrices"
+}

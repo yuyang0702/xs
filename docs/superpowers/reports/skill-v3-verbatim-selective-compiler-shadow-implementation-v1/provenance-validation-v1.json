@@ -1,0 +1,7 @@
+{
+  "schema": "SkillV3ProvenanceValidationV1",
+  "status": "PASS",
+  "rendered_context_reconstructible_from_receipt": true,
+  "scenario_receipt_count": 5,
+  "raw_story_or_prompt_persisted": false
+}

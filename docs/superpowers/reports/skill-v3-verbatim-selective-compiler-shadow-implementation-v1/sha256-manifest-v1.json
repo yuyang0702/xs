@@ -1,0 +1,178 @@
+{
+  "schema": "SkillV3ShadowImplementationSha256ManifestV1",
+  "coverage_policy": "all files in evidence root except manifest itself",
+  "entry_count": 34,
+  "entries": [
+    {
+      "path": "budget-policy-validation-v1.json",
+      "sha256": "4a788f4e79291d93559bb2643c335b681b8159117201af7c4bd3a767d47bc6ce",
+      "bytes": 480
+    },
+    {
+      "path": "cache-key-validation-v1.json",
+      "sha256": "2795e00570d73a8db3947a0eed9b26f06c19b716e50bd0bc7eb90bf7ed115e15",
+      "bytes": 366
+    },
+    {
+      "path": "conflict-audit-v1.json",
+      "sha256": "31adf1709b6fcab349f0f1dd71993c02202ab94cf5bcaeafb07d99ce3ea02013",
+      "bytes": 267
+    },
+    {
+      "path": "dependency-closure-validation-v1.json",
+      "sha256": "d68133c80994b783cf3c424f1d213d4958f0df3f97f5caaa1a86a1a4d4af49b3",
+      "bytes": 285
+    },
+    {
+      "path": "duplicate-audit-v1.json",
+      "sha256": "6b486efbf189a345e73d560f1104d8050ac69309ead2180af56ca6f60a2a7e9d",
+      "bytes": 315
+    },
+    {
+      "path": "final-report-v1.md",
+      "sha256": "246872850b0f59091e7b4bc6e590aa08264e69a847ebbec048fe80447d19600f",
+      "bytes": 6176
+    },
+    {
+      "path": "forward-risk-report-v2.json",
+      "sha256": "3d5b9b2e3d02afc44e3bcd0f636b43714795b94efbb2e452e2435c2585e3b810",
+      "bytes": 9759
+    },
+    {
+      "path": "full-suite-classification-v1.json",
+      "sha256": "adbeb649c56f74f53a2f5d0f496abf3c44ff7d7c6d28e5e68046542cda92d982",
+      "bytes": 910
+    },
+    {
+      "path": "full-verbatim-baseline-reconfirmation-v1.json",
+      "sha256": "38dab244c8955e3d2842e7ab1d0cc95e1a738c4b88d63516c1ed6e34c29bad2d",
+      "bytes": 480
+    },
+    {
+      "path": "multi-sample-pilot-policy-binding-v1.json",
+      "sha256": "274396d4687aabdf13010321d18d6d87a31c0a5b8bd8cab57ba1852925f9c081",
+      "bytes": 825
+    },
+    {
+      "path": "offline-semantic-coverage-matrix-v1.json",
+      "sha256": "9af015ab1fe2e21c8c59dad1d2be18358b99d524fc25d5f089603d8ef24afd2d",
+      "bytes": 4862
+    },
+    {
+      "path": "offline-shadow-readiness-v1.json",
+      "sha256": "587388a2120af077049957b454fd4a77475696e1f894d93e858fc43cf81c0575",
+      "bytes": 560
+    },
+    {
+      "path": "ordering-determinism-v1.json",
+      "sha256": "2c9a74f507d5b3840822ffc7a1b94c074dd22c993ecb7e35657a914b1a6f8c7b",
+      "bytes": 304
+    },
+    {
+      "path": "overflow-policy-validation-v1.json",
+      "sha256": "1ee33fad7b7c838befaffb0cd9d80e99105d15622ea2343cd8fda998bcf05020",
+      "bytes": 314
+    },
+    {
+      "path": "ownership-audit-v1.json",
+      "sha256": "b73fbcf0dbfacf323a2b0798c8a4bdf61cd10acd0bfa97184c015c06e83a1247",
+      "bytes": 994
+    },
+    {
+      "path": "privacy-scan-v1.json",
+      "sha256": "7e0aa34404607872590894f03b5779200b0f45e0d7ea5400f0ad43a784a204e4",
+      "bytes": 353
+    },
+    {
+      "path": "provenance-validation-v1.json",
+      "sha256": "b3f6a3d8e3ddadd603483a8259119ea914d70471726e11c88dafb2d83535f31e",
+      "bytes": 205
+    },
+    {
+      "path": "README.md",
+      "sha256": "7387a19fc0e1ae556a1d44aaba45303176b9f46932634d8001aa5a7e905a43f1",
+      "bytes": 672
+    },
+    {
+      "path": "scenario-character-heavy-v1.json",
+      "sha256": "0302780eba21b464053083a641dd88bd56a39bcf1c224b6988849e2a007f8fcc",
+      "bytes": 7119
+    },
+    {
+      "path": "scenario-conflict-pacing-heavy-v1.json",
+      "sha256": "1a7c3398a534ed4c8d40610bb99bf9f5c57f58a4084820160ac5994566ae96fa",
+      "bytes": 5626
+    },
+    {
+      "path": "scenario-mixed-v1.json",
+      "sha256": "540886f4b645b6fb552f95090884c62fda26d76f4d8381dd722b47007f2aa77e",
+      "bytes": 7120
+    },
+    {
+      "path": "scenario-setup-payoff-heavy-v1.json",
+      "sha256": "ff3b25348d423dc83deff5288b8e36ac41e42dfd0284a7984f69b299839e9aac",
+      "bytes": 7028
+    },
+    {
+      "path": "scenario-world-heavy-v1.json",
+      "sha256": "b27e14a6e6e25af01a68a69a525d3d5aef494094355d4fc803af927971172d16",
+      "bytes": 7779
+    },
+    {
+      "path": "section-index-identity-v1.json",
+      "sha256": "e2ecd784a82e7fbe92449a883827c2916a03b8bfe8a33d46828a2da10ff6d876",
+      "bytes": 590
+    },
+    {
+      "path": "selector-implementation-contract-v1.json",
+      "sha256": "64dd2fe6e0d6770c533b1925521ecd63d133b60b65179784e7b868c06710ea85",
+      "bytes": 623
+    },
+    {
+      "path": "shadow-integration-isolation-v1.json",
+      "sha256": "bca314c733834711912c484c7ed00188b20711bc51f8e82132a34a923a79bbd5",
+      "bytes": 647
+    },
+    {
+      "path": "short-skill-catalog-coverage-v1.json",
+      "sha256": "b03c87f687fdc247acfc5ca958229d7d0d9e038becf45d97d72c46d830b1278d",
+      "bytes": 503
+    },
+    {
+      "path": "source-diff-scope-v1.json",
+      "sha256": "f1e1b0f1dad0a9793d8ea56027b2664088cf29244ee446b488f416944cd26753",
+      "bytes": 1336
+    },
+    {
+      "path": "stage-ownership-filter-validation-v1.json",
+      "sha256": "bd7b99203d3a49c4247fbb8487e66ccb962e48a0a95669af8b6ea97111f723c8",
+      "bytes": 564
+    },
+    {
+      "path": "strategy-design-binding-v1.json",
+      "sha256": "d78c6e88ca532b3a8a09c1ca77fb772704c256503b6e7fc8ed9f8e665ff0d45b",
+      "bytes": 393
+    },
+    {
+      "path": "strict-l3-receipt-v1.json",
+      "sha256": "f76dd7d08733b3a9a8e9c05d08a1df3b226cc0d0b6d1d5c6402a2386257c634b",
+      "bytes": 475
+    },
+    {
+      "path": "test-receipt-v1.json",
+      "sha256": "7836b48bdf281d448193def4d971c2d322cdd8a743757249f2aa07ddb0f59596",
+      "bytes": 614
+    },
+    {
+      "path": "verbatim-fidelity-v1.json",
+      "sha256": "e48b4d5c260f419fd04efb86b6233ed3fa58d5965047c08dd85d7f3fae4a561a",
+      "bytes": 221
+    },
+    {
+      "path": "verbatim-rendering-validation-v1.json",
+      "sha256": "e827ed3697be5cb804bcdfcab2cf40bc11ab1b402a5f471eaa9c4ee754282404",
+      "bytes": 341
+    }
+  ],
+  "definition_sha256": "f189e47cce39d0798e6716982c6e25b53b7cd99a2dcf8c587643e7e97a21aad8"
+}

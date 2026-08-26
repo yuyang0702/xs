@@ -1,0 +1,8 @@
+{
+  "schema": "SkillV3ShadowStrategyDesignBindingV1",
+  "design_root": "docs/superpowers/reports/skill-v3-verbatim-selective-compiler-strategy-pivot-v1",
+  "design_manifest_file_sha256": "72ec6e3bab934b4834017ab70c74ef3ecaa818f5c3bc999ed03d40836e95efda",
+  "design_manifest_exact": true,
+  "architecture": "SELECTIVE_VERBATIM_SECTIONS",
+  "full_verbatim_was_priority_baseline": true
+}

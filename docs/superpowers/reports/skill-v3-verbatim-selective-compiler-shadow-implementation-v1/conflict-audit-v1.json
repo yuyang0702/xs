@@ -1,0 +1,8 @@
+{
+  "schema": "SelectedSectionConflictAuditV1",
+  "status": "PASS_WITH_REVIEW_BOUNDARY",
+  "explicit_metadata_conflict_count": 0,
+  "semantic_conflict_status": "UNKNOWN_REVIEW_REQUIRED",
+  "runtime_auto_rewrite": false,
+  "llm_semantic_adjudication": false
+}

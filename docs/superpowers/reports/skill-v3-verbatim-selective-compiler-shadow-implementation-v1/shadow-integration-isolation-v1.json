@@ -1,0 +1,14 @@
+{
+  "schema": "SkillV3ShadowIntegrationIsolationV1",
+  "status": "PASS",
+  "call_site": "src/novel_flywheel/workflows.py:WorkflowService._stage after SkillGate and before SkillPromptCompactor",
+  "disabled_by_default": true,
+  "observer_failure_mode": "FAIL_OPEN_PRODUCTION_UNCHANGED",
+  "shadow_output_used_by_model": false,
+  "shadow_output_used_by_validator": false,
+  "shadow_output_used_by_authority": false,
+  "shadow_output_used_by_router": false,
+  "shadow_output_used_by_retry": false,
+  "production_prompt_sha_before_after": "IDENTICAL_IN_FAKE_TEST",
+  "production_model_input_sha_before_after": "IDENTICAL_IN_FAKE_TEST"
+}

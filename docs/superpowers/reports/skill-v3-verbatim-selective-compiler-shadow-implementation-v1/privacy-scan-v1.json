@@ -1,0 +1,12 @@
+{
+  "schema": "SkillV3ShadowPrivacyScanV1",
+  "status": "PASS",
+  "privacy_match_count": 0,
+  "credentials": 0,
+  "authorization_headers": 0,
+  "secret_provider_urls": 0,
+  "raw_provider_payloads": 0,
+  "hidden_reasoning": 0,
+  "raw_story_or_prompt": 0,
+  "scan_scope": "new implementation/evidence paths plus bounded hash-only artifacts"
+}

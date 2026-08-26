@@ -1,0 +1,12 @@
+{
+  "schema": "SkillV3ShadowTestReceiptV1",
+  "focused": "15 passed in 5.95s",
+  "adjacent": "279 passed; 1 historical sealed check-only gate blocked by intentional successor owning-source diff",
+  "full_suite": "3645 passed, 41 skipped, 6 xfailed, 52 failed, 72 errors in 2063.08s; failures are historical Canary/materialization, Planning Skill oracle, R0E/R0F fixed-hash, and Skill V2 sealed-evidence gates",
+  "strict_l3": "PASS; warnings=0; blockers=0",
+  "new_owning_source_regression_count": 0,
+  "real_provider_request_attempts": 0,
+  "network_calls": 0,
+  "model_calls": 0,
+  "paid_calls": 0
+}

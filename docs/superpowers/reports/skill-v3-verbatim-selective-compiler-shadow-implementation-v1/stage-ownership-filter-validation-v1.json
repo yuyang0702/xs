@@ -1,0 +1,13 @@
+{
+  "schema": "SkillV3StageOwnershipFilterValidationV1",
+  "status": "PASS",
+  "known_wrong_layer_section_count": 18,
+  "known_wrong_layer_selected_count_before_exception": 0,
+  "known_wrong_layer_selected_ids_before_exception": [],
+  "justified_shared_subset_exception_ids": [
+    "sv3-7633ad6f5c90db5e"
+  ],
+  "exception_reason": "sealed classifier false-positive: `Climax` contains substring `cli`; exact reference section is shared creative core",
+  "known_wrong_layer_selected_count_after_exception": 0,
+  "unknown_ownership_selected_count": 0
+}

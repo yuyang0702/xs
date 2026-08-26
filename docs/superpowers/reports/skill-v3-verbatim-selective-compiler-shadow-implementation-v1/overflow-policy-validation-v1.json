@@ -1,0 +1,9 @@
+{
+  "schema": "SkillV3OverflowPolicyValidationV1",
+  "status": "PASS",
+  "auto_summarize_to_fit": false,
+  "silent_truncation": false,
+  "optional_support_removed_first": true,
+  "mandatory_overflow": "STAGE_SPLIT_REQUIRED_IF_CONTRACTED_ELSE_FAIL_CLOSED",
+  "mandatory_or_dependency_silent_drop": false
+}

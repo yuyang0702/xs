@@ -1,0 +1,10 @@
+{
+  "schema": "SkillV3CacheKeyValidationV1",
+  "status": "PASS",
+  "skill_source_edit_invalidates_cache": true,
+  "selector_input_change_invalidates_cache": true,
+  "stage_change_invalidates_cache": true,
+  "demand_class_change_invalidates_cache": true,
+  "task_contract_change_invalidates_cache": true,
+  "authority_fact_change_invalidates_cache": true
+}

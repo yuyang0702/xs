@@ -1,0 +1,8 @@
+{
+  "schema": "SkillV3VerbatimFidelityV1",
+  "status": "PASS",
+  "selected_section_source_sha_match": true,
+  "rendered_section_content_match": true,
+  "verbatim_section_mismatch_count": 0,
+  "mismatch_ids": []
+}

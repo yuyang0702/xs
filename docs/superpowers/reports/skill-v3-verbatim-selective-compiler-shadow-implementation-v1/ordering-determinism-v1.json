@@ -1,0 +1,8 @@
+{
+  "schema": "SkillV3OrderingDeterminismV1",
+  "status": "PASS",
+  "ordering": "selection-class, resolver skill rank, source path, explicit section order, opaque section id",
+  "filesystem_traversal_order_used": false,
+  "same_input_same_rendered_sha": true,
+  "shuffled_catalog_tested": true
+}

@@ -1,0 +1,150 @@
+{
+  "schema": "SkillV3SelectiveCompilerShadowForwardRiskV2",
+  "version": 2,
+  "original_requirement": "Implement and offline-validate a deterministic source-faithful selective-verbatim Skill compiler in shadow only, with five demand scenarios, exact provenance, fail-closed budget handling, and byte-identical production Prompt/model input.",
+  "scope_classification": "closed_world",
+  "closed_world_justification": "The implementation is limited to one checked-in index containing exactly 11 Short Skills and 413 exact sections, one Planning/Event Realization stage/substage, five enumerated demand classes, one explicit selector/render/budget/provenance policy family, five sealed fixtures, and a disabled-by-default observer seam. Production cutover and model execution are excluded.",
+  "operational_definition": "Validate the exact section index against current repo Skill bytes, select stage-owned reference sections from the existing resolver's four Planning Skill identities using only local hashed facts, close dependencies, render bodies verbatim with neutral delimiters, enforce a conservative semantic token budget without summarization or truncation, emit reconstructible hash-only receipts, and prove observer off/on/failure leaves the production gateway call tuple identical.",
+  "forbidden_narrowing": [
+    "Do not treat the Selective Compiler as a predetermined mandatory architecture; full verbatim remains allowed when capacity, safety, duplication, and stage ownership all pass.",
+    "Do not paraphrase, summarize, substring-truncate, or silently drop mandatory/dependency sections.",
+    "Do not inspect generated prose, prior quality outcomes, Provider responses, randomness, credentials, or hidden reasoning.",
+    "Do not use shadow output for production Prompt, model input, validator, authority, route, retry, fallback, or budget decisions.",
+    "Do not classify the old Climax substring false-positive silently; bind the one exact shared-core exception.",
+    "Do not update historical sealed expectations to hide current-source or HEAD drift."
+  ],
+  "resolution_status": "systemically_resolved",
+  "constraint_traceability": [
+    {
+      "requirement": "stable exact section identity and complete Short catalog",
+      "implementation": "SkillSectionIndexV1.load plus vendor/novel-skills/skill-section-index-v1.json",
+      "test_paths": [
+        "tests/test_selective_skill_compiler.py"
+      ],
+      "evidence": "definition hash, file hash, section hash, heading/span/order, 11-Skill/413-section coverage, and stale-source rejection"
+    },
+    {
+      "requirement": "deterministic selector, dependency closure, and ownership filtering",
+      "implementation": "SelectiveSkillCompilerV1.select",
+      "test_paths": [
+        "tests/test_selective_skill_compiler.py"
+      ],
+      "evidence": "repeatability, shuffled-catalog invariance, missing dependency, cycle, five demand classes, and exact shared-subset exception tests"
+    },
+    {
+      "requirement": "verbatim rendering and semantic budget fail-close",
+      "implementation": "SelectiveSkillCompilerV1.render/materialize",
+      "test_paths": [
+        "tests/test_selective_skill_compiler.py"
+      ],
+      "evidence": "body hash/offset equality, optional-only shedding, no summarization/truncation, typed mandatory overflow"
+    },
+    {
+      "requirement": "reconstructible provenance and semantic cache invalidation",
+      "implementation": "SkillContextReceiptV1, _cache_key_payload, reconstruct",
+      "test_paths": [
+        "tests/test_selective_skill_compiler.py"
+      ],
+      "evidence": "rendered SHA reconstruction and demand/contract/authority cache-key mutation tests"
+    },
+    {
+      "requirement": "production isolation and observational fail-open",
+      "implementation": "WorkflowService optional skill_context_shadow_observer seam and SelectiveSkillShadowObserverV1",
+      "test_paths": [
+        "tests/test_selective_skill_compiler.py",
+        "tests/test_phase05_evidence_closure.py"
+      ],
+      "evidence": "observer off/on/failure gateway call tuples are exact; projection contains hashes/counts only"
+    },
+    {
+      "requirement": "five reproducible offline demand scenarios and no external action",
+      "implementation": "tools/diagnostics/materialize_skill_v3_shadow_evidence.py",
+      "test_paths": [
+        "tests/test_selective_skill_compiler.py"
+      ],
+      "evidence": "two identical materializations for all five sealed fixtures; local-only imports and zero dispatch surface"
+    }
+  ],
+  "historical_incident_families_checked": [
+    "stale source or manifest hash",
+    "cross-platform line-ending provenance drift",
+    "selector nondeterminism from filesystem/catalog order",
+    "missing or cyclic dependency",
+    "wrong-layer runtime or project-mutation instruction leakage",
+    "substring classifier false-positive",
+    "semantic budget overflow and silent truncation",
+    "stale cache across demand/contract/authority changes",
+    "observer exception replacing production execution",
+    "raw Prompt/story/Provider payload persistence",
+    "production model-input or route/retry mutation",
+    "historical sealed evidence drift"
+  ],
+  "projected_failure_mechanisms": [
+    "Skill edit leaves a stale section span/hash",
+    "new demand enum reaches a selector without explicit policy",
+    "selected section pulls an unresolved or wrong-layer dependency",
+    "optional content competes with mandatory content under a smaller route budget",
+    "different authority or contract identity reuses a stale cache entry",
+    "observer receives malformed metadata or structured-contract identity",
+    "shadow materialization failure accidentally mutates the production request",
+    "semantically similar guidance is deduplicated without explicit authority",
+    "future source changes remove the full-verbatim safety objection"
+  ],
+  "why_previous_tests_missed": "Existing tests covered compressed Skill profiles, the production compactor, and historical offline profile evidence, but no checked-in immutable per-section identity, exact verbatim renderer, dependency-aware selector, semantic cache key, or WorkflowService shadow-isolation seam existed. Historical check-only tools also intentionally reject any later owning-source change rather than validating this new successor.",
+  "sibling_boundaries": [
+    {
+      "boundary": "story initialization",
+      "disposition": "tested_not_susceptible",
+      "evidence": "selector rejects every stage/substage except planning/event_realization; production Skill registry unchanged"
+    },
+    {
+      "boundary": "Planning V1 production compaction and context packet",
+      "disposition": "tested_not_susceptible",
+      "evidence": "observer runs before SkillPromptCompactor but its return value is discarded; fake gateway call tuple exact off/on/failure"
+    },
+    {
+      "boundary": "Planning V2 Event Realization shadow",
+      "disposition": "fixed_and_tested",
+      "evidence": "five enumerated demand scenarios, exact contract/schema identity, section selection, capacity, and provenance receipts"
+    },
+    {
+      "boundary": "causal chain and execution manifest",
+      "disposition": "tested_not_susceptible",
+      "evidence": "shadow projection is neither authority nor model/validator input; no manifest writer imported"
+    },
+    {
+      "boundary": "draft, polish, review, revision plan, and final review",
+      "disposition": "tested_not_susceptible",
+      "evidence": "WorkflowService condition is stage == planning; adjacent Skill/context/workflow matrix passed"
+    },
+    {
+      "boundary": "maintenance and formal promotion",
+      "disposition": "tested_not_susceptible",
+      "evidence": "maintenance remains local Skill execution; no StoryState, Canon, READY, checkpoint, or promotion owner changed"
+    },
+    {
+      "boundary": "Provider route, retry/fallback, budget, parser, and validator",
+      "disposition": "tested_not_susceptible",
+      "evidence": "observer payload is built from already-local facts and its result is ignored; PTR9/PTR12 adjacent tests pass"
+    }
+  ],
+  "model_output_boundary_changed": false,
+  "model_output_not_applicable_evidence": "The new compiler consumes only checked-in Skill text, exact metadata, local contract/authority hashes, and capacity integers. WorkflowService sends the same existing production system/user/max-output tuple to the fake gateway when the observer is disabled, enabled, or throws. No model output, adapter, parser, schema validator, route, retry, fallback, or Provider client boundary is changed.",
+  "production_shaped_tests": [
+    "tests/test_selective_skill_compiler.py",
+    "tests/test_phase05_evidence_closure.py",
+    "tests/test_final_artifact_guard.py",
+    "tests/test_r1_ptr12_provider_output_observer.py"
+  ],
+  "next_authoritative_boundary_tests": [
+    "tests/test_selective_skill_compiler.py",
+    "tests/test_planning_v2_slice1.py",
+    "tests/test_phase05_evidence_closure.py"
+  ],
+  "remaining_risks": [
+    "Semantic similarity and contradiction remain UNKNOWN_REVIEW_REQUIRED because this offline compiler deliberately performs no LLM adjudication or creative rewriting.",
+    "The checked-in repo Skill bundle remains production-inactive; this task proves shadow readiness, not model-backed quality or cutover readiness.",
+    "The exact Climax shared-core exception must be revisited if the source section or ownership classifier changes.",
+    "Full-verbatim architecture should be reconsidered if future source edits make all four decision gates pass."
+  ]
+}

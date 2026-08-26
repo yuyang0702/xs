@@ -1,0 +1,186 @@
+{
+  "schema": "SelectiveSkillShadowScenarioV1",
+  "demand_class": "character-heavy",
+  "fixture_path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-v1/pairs/restored-character-heavy-v1/sanitized-fixture-v1.json",
+  "fixture_sha256": "d5cc3cd9ca720173dd68205a28a820b5f853271474d140dc356576fe0b94b3cf",
+  "fixture_token_estimate": 708,
+  "selected_skills": [
+    "plot-structure",
+    "character-management"
+  ],
+  "selected_section_ids": [
+    "sv3-70a527462c32e7b6",
+    "sv3-faecc1466817d8aa",
+    "sv3-7633ad6f5c90db5e",
+    "sv3-3fb51ac3fed35bc0",
+    "sv3-4c6b004ecdd2077f",
+    "sv3-10e4ba0c5b7509b4",
+    "sv3-8e321726b4ebdcec",
+    "sv3-8afeb5229a4fe841",
+    "sv3-e92f0f3584d44b87"
+  ],
+  "selected_section_headings": [
+    [
+      "Arc Template",
+      "Setup"
+    ],
+    [
+      "Arc Template",
+      "Rising Action"
+    ],
+    [
+      "Arc Template",
+      "Climax"
+    ],
+    [
+      "Arc Template",
+      "Resolution"
+    ],
+    [
+      "Character Template",
+      "Backstory"
+    ],
+    [
+      "Character Template",
+      "Motivations & Goals"
+    ],
+    [
+      "Character Template",
+      "Character Arc"
+    ],
+    [
+      "Relationship Types Reference",
+      "Social"
+    ],
+    [
+      "Relationship Types Reference",
+      "Story Role"
+    ]
+  ],
+  "dependency_closure": "PASS",
+  "missing_required_dependency_count": 0,
+  "excluded_wrong_layer_sections": [
+    "sv3-33b095f515080bad",
+    "sv3-40facfcb85f73424",
+    "sv3-4704e93432b9fdc2",
+    "sv3-4ae4f3fefa8c26db",
+    "sv3-5dee9d2fc58594d3",
+    "sv3-63fdcf9593c78873",
+    "sv3-6faf8dafed9ca421",
+    "sv3-76ba02adce162293",
+    "sv3-8e1133b68df847e4",
+    "sv3-9528d6c4b2b57eb4",
+    "sv3-9fb27539151c30df",
+    "sv3-9fea823351166907",
+    "sv3-ac725871cafdecc8",
+    "sv3-b1c6dff222515560",
+    "sv3-d3294cde968201ab",
+    "sv3-d3d2dc003456ac84",
+    "sv3-da24f76c7d1ce202",
+    "sv3-e9171611b98c26ef"
+  ],
+  "known_wrong_layer_selected_ids_before_exception": [],
+  "justified_shared_subset_exceptions": [],
+  "wrong_layer_selected_count_after_exception": 0,
+  "unknown_ownership_selected_count": 0,
+  "excluded_duplicate_sections": [],
+  "exact_duplicate_body_count": 0,
+  "raw_source_chars": 1597,
+  "rendered_context_chars": 2556,
+  "token_estimate": 639,
+  "available_skill_budget": 18220,
+  "capacity_status": "PASS",
+  "overflow_status": "NONE",
+  "rendered_context_sha256": "c830681f79526c44d9bd83430019d75cb886bde0affcad86714ee1fc1f41aedd",
+  "full_verbatim_selected_skills_chars": 21491,
+  "current_compressed_profile_chars": 2925,
+  "current_compressed_profile_token_estimate": 732,
+  "current_compressed_profile_sha256": "7d0f6309ede2261f2f6a1098d394937948bf5b50eb9248266ab350fd91da9adc",
+  "selective_verbatim_shadow_chars": 2556,
+  "receipt": {
+    "compiler_version": "verbatim-selective-skill-compiler-shadow-v1",
+    "stage": "planning",
+    "substage": "event_realization",
+    "task_id_or_case_id": "character-heavy",
+    "task_contract_id": "planning_event_realization_shadow_v1@1",
+    "task_contract_schema_sha256": "62aaa63cc39a5baaec5657a889e3e77cf32abecbbfa582795620e34bf4877bee",
+    "resolver_version": "existing-stage-skill-resolver-v1",
+    "section_index_version": 1,
+    "selector_policy_version": "selective-section-selector-v1",
+    "render_policy_version": "verbatim-section-renderer-v1",
+    "budget_policy_version": "semantic-budget-v1",
+    "creative_demand_class": "character-heavy",
+    "selected_skill_ids": [
+      "plot-structure",
+      "character-management"
+    ],
+    "selected_section_ids": [
+      "sv3-70a527462c32e7b6",
+      "sv3-faecc1466817d8aa",
+      "sv3-7633ad6f5c90db5e",
+      "sv3-3fb51ac3fed35bc0",
+      "sv3-4c6b004ecdd2077f",
+      "sv3-10e4ba0c5b7509b4",
+      "sv3-8e321726b4ebdcec",
+      "sv3-8afeb5229a4fe841",
+      "sv3-e92f0f3584d44b87"
+    ],
+    "source_file_sha256": {
+      "sv3-70a527462c32e7b6": "c7d5922c3a39eda28ac1e6c027e1cf9fe79e47ede850fcd6610cf1dd127c2560",
+      "sv3-faecc1466817d8aa": "c7d5922c3a39eda28ac1e6c027e1cf9fe79e47ede850fcd6610cf1dd127c2560",
+      "sv3-7633ad6f5c90db5e": "c7d5922c3a39eda28ac1e6c027e1cf9fe79e47ede850fcd6610cf1dd127c2560",
+      "sv3-3fb51ac3fed35bc0": "c7d5922c3a39eda28ac1e6c027e1cf9fe79e47ede850fcd6610cf1dd127c2560",
+      "sv3-4c6b004ecdd2077f": "522739455fe7dfbc2bfc60e364e3106cd100d422898dbf53c67f4a62e5c42746",
+      "sv3-10e4ba0c5b7509b4": "522739455fe7dfbc2bfc60e364e3106cd100d422898dbf53c67f4a62e5c42746",
+      "sv3-8e321726b4ebdcec": "522739455fe7dfbc2bfc60e364e3106cd100d422898dbf53c67f4a62e5c42746",
+      "sv3-8afeb5229a4fe841": "c43761d100598a4651999fccd078c499b6df9aae05786250c02e31a40493ad56",
+      "sv3-e92f0f3584d44b87": "c43761d100598a4651999fccd078c499b6df9aae05786250c02e31a40493ad56"
+    },
+    "section_content_sha256": {
+      "sv3-70a527462c32e7b6": "f9d070a8b08fd62d02c97c20f71cf091a1414657d94524125693472998a530a0",
+      "sv3-faecc1466817d8aa": "ac802425007fdb56b8a1c835d3557607ca70537439ae082d8cecaf64a8d2fece",
+      "sv3-7633ad6f5c90db5e": "e7655b22821ec2d7cefc4ddd6ad8bad7518b1cc0a2900b4fb3377bd6566f57d8",
+      "sv3-3fb51ac3fed35bc0": "64c7922b0e7732ef54dd6ba1e7af1578849ed42418430d7bb183dbd45399acaa",
+      "sv3-4c6b004ecdd2077f": "d4511d12ba4a597051146baa1ed25a9776872ec91a0a16aec73d2930506133e3",
+      "sv3-10e4ba0c5b7509b4": "798c073d3b85fe59b34e26f99236059fb30315a17f3a8d8173c3ce0d608e6fcf",
+      "sv3-8e321726b4ebdcec": "fd55b33019a46b72b1e92d64f7d0f84967996307f60247e844608e214b51c6ae",
+      "sv3-8afeb5229a4fe841": "4739809792c7332bd0cda20ca3f755bc63f8aaac614b9ad7074db2b34f60996a",
+      "sv3-e92f0f3584d44b87": "8142de9c9898b1d2c03c8172203783a2a508211685a5c1ca73244d823bee0ce1"
+    },
+    "section_order": {
+      "sv3-70a527462c32e7b6": 1,
+      "sv3-faecc1466817d8aa": 2,
+      "sv3-7633ad6f5c90db5e": 3,
+      "sv3-3fb51ac3fed35bc0": 4,
+      "sv3-4c6b004ecdd2077f": 3,
+      "sv3-10e4ba0c5b7509b4": 4,
+      "sv3-8e321726b4ebdcec": 7,
+      "sv3-8afeb5229a4fe841": 2,
+      "sv3-e92f0f3584d44b87": 3
+    },
+    "omitted_section_ids": [],
+    "omission_reason": {},
+    "rendered_context_sha256": "c830681f79526c44d9bd83430019d75cb886bde0affcad86714ee1fc1f41aedd",
+    "rendered_context_chars": 2556,
+    "token_estimate": 639,
+    "budget": {
+      "safe_context_window_tokens": 32768,
+      "maximum_total_input_tokens": 24576,
+      "output_reserve_tokens": 4624,
+      "non_skill_input_tokens": 708,
+      "wrapper_and_estimator_margin_tokens": 1024,
+      "available_skill_tokens": 18220,
+      "stage_split_available": false
+    },
+    "capacity_status": "PASS",
+    "overflow_decision": "NONE",
+    "cache_key_sha256": "c916cff46ba03c170ad343790400238c5732cb83209445b73b894d43dbc165f7",
+    "authority_fact_hashes": {
+      "sanitized_fixture": "d5cc3cd9ca720173dd68205a28a820b5f853271474d140dc356576fe0b94b3cf"
+    },
+    "reconstructible": true,
+    "shadow_only": true
+  },
+  "source_excerpt_persisted": false,
+  "literary_quality_claimed": false
+}

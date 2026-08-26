@@ -1,0 +1,16 @@
+{
+  "schema": "FullVerbatimBaselineReconfirmationV1",
+  "current_source_hashes_exact": true,
+  "raw_chars": 21339,
+  "rendered_context_chars": 21491,
+  "token_estimate": 5373,
+  "gates": {
+    "capacity": "PASS",
+    "safety": "FAIL",
+    "duplicate": "FAIL",
+    "stage_ownership": "FAIL"
+  },
+  "full_verbatim_selected_skills_preferred": false,
+  "selective_verbatim_sections_preferred": true,
+  "selective_compiler_predetermined_required_architecture": false
+}

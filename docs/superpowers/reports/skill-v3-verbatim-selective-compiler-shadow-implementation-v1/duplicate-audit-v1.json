@@ -1,0 +1,10 @@
+{
+  "schema": "SelectedVerbatimDuplicateAuditV1",
+  "status": "PASS",
+  "exact_duplicate_section_count": 0,
+  "exact_duplicate_body_count": 0,
+  "exact_duplicate_groups": {},
+  "dedupe_actions": [],
+  "semantic_similarity_only_count": "UNKNOWN_REVIEW_REQUIRED",
+  "unauthorized_semantic_dedup_count": 0
+}

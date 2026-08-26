@@ -1,0 +1,21 @@
+{
+  "schema": "SkillV3ShortSkillCatalogCoverageV1",
+  "status": "COMPLETE",
+  "short_used_skill_count": 11,
+  "cataloged_short_used_skill_count": 11,
+  "uncataloged_short_used_skill_count": 0,
+  "skill_ids": [
+    "story-init",
+    "plot-structure",
+    "character-management",
+    "worldbuilding",
+    "revision-continuity",
+    "chapter-writing",
+    "novel-writing",
+    "dialogue",
+    "humanizer-zh",
+    "story-maintenance",
+    "better-writing"
+  ],
+  "section_count": 413
+}

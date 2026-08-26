@@ -1,0 +1,9 @@
+{
+  "schema": "SkillV3VerbatimRenderingValidationV1",
+  "status": "PASS",
+  "selected_creative_section_body_byte_equivalence": "CANONICAL_NORMALIZED_EXACT",
+  "creative_semantic_reauthoring_count": 0,
+  "runtime_generated_creative_sentence_count": 0,
+  "wrapper_creative_summary_count": 0,
+  "wrapper_runtime_metadata_only": true
+}

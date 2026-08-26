@@ -1,0 +1,26 @@
+{
+  "schema": "SkillV3ShadowSourceDiffScopeV1",
+  "baseline_head": "c661ff4d5af8e557a18e7013d37219b3e76c8de5",
+  "implementation_commit": "5d0b47e1dbbe52f17cec9a2e839a4c122bdf5229",
+  "implementation_commits": [
+    "b51d815c326c0cc6b81f738f1fb8a3cf7d6d1f9d Implement stable selective Skill section compiler",
+    "cc02049491056886899cf242ab31013c692e9dca Add fail-open Skill compiler shadow integration",
+    "e21f3277b04b6410b96c492fe86c1842d47b4487 Validate selective Skill compiler shadow",
+    "f8c1b206ff698f0bb123b6329edcaf1c9d8a9f05 Record auditable Skill V3 validation evidence",
+    "2c989a032654f4ea023b30c1a043f471a9cd61f0 Make Strict replay receipt head-relative",
+    "c7c54ea39fd84772d97de0388582ec6e1f03d8ec Bind all Skill V3 implementation commits",
+    "5d0b47e1dbbe52f17cec9a2e839a4c122bdf5229 Report zero external Skill V3 actions"
+  ],
+  "changed_paths": [
+    "docs/maintenance.md",
+    "src/novel_flywheel/selective_skill_compiler.py",
+    "src/novel_flywheel/workflows.py",
+    "tests/test_selective_skill_compiler.py",
+    "tools/diagnostics/build_skill_section_index.py",
+    "tools/diagnostics/materialize_skill_v3_shadow_evidence.py",
+    "vendor/novel-skills/skill-section-index-v1.json"
+  ],
+  "unexpected_path_count": 0,
+  "unexpected_paths": [],
+  "production_cutover": false
+}

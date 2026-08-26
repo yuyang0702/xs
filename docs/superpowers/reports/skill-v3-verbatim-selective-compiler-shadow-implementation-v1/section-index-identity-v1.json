@@ -1,0 +1,14 @@
+{
+  "schema": "SkillV3SectionIndexIdentityValidationV1",
+  "status": "PASS",
+  "index_path": "vendor/novel-skills/skill-section-index-v1.json",
+  "index_file_sha256": "06d341862bf644f5aaed6624ccc47dd0ea93a5a2bb62c83a464acde21d31ac6c",
+  "index_definition_sha256": "d5f6f5def4281045ef7f291f3407e5bbe73a686ff2f2bee4c8922dc8a7745399",
+  "section_count": 413,
+  "section_id_stable": true,
+  "section_content_hash_bound": true,
+  "source_file_hash_bound": true,
+  "line_number_only_identity": false,
+  "fuzzy_heading_only_identity": false,
+  "source_bytes_reconstructible": true
+}

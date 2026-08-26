@@ -1,0 +1,19 @@
+{
+  "schema": "SkillV3SelectorImplementationContractV1",
+  "selector_deterministic_local": true,
+  "selector_model_calls": 0,
+  "selector_randomness": 0,
+  "selector_generated_prose_inspection": false,
+  "selector_quality_result_feedback": false,
+  "allowed_inputs": [
+    "resolved_skill_ids_and_exact_source_hashes",
+    "stage_and_substage",
+    "task_contract_id_and_schema_hash",
+    "creative_demand_class_enum",
+    "authority_presence_facts_counts_and_hashes",
+    "section_index_version",
+    "selector_policy_version",
+    "budget_policy_version"
+  ],
+  "unknown_demand": "TYPED_FAIL_CLOSED"
+}

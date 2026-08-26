@@ -1,0 +1,188 @@
+{
+  "schema": "SelectiveSkillShadowScenarioV1",
+  "demand_class": "mixed",
+  "fixture_path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-v1/pairs/restored-mixed-v1/sanitized-fixture-v1.json",
+  "fixture_sha256": "3b9e87cdfee19f27a492ef0e5bd1717cc97115da75fa087f94cae92469b05c70",
+  "fixture_token_estimate": 799,
+  "selected_skills": [
+    "plot-structure",
+    "character-management",
+    "worldbuilding"
+  ],
+  "selected_section_ids": [
+    "sv3-70a527462c32e7b6",
+    "sv3-faecc1466817d8aa",
+    "sv3-7633ad6f5c90db5e",
+    "sv3-3fb51ac3fed35bc0",
+    "sv3-82ca2fdf9c28183b",
+    "sv3-10e4ba0c5b7509b4",
+    "sv3-8e321726b4ebdcec",
+    "sv3-e92f0f3584d44b87",
+    "sv3-5f738df332e0919f"
+  ],
+  "selected_section_headings": [
+    [
+      "Arc Template",
+      "Setup"
+    ],
+    [
+      "Arc Template",
+      "Rising Action"
+    ],
+    [
+      "Arc Template",
+      "Climax"
+    ],
+    [
+      "Arc Template",
+      "Resolution"
+    ],
+    [
+      "Promise Template",
+      "Payoff"
+    ],
+    [
+      "Character Template",
+      "Motivations & Goals"
+    ],
+    [
+      "Character Template",
+      "Character Arc"
+    ],
+    [
+      "Relationship Types Reference",
+      "Story Role"
+    ],
+    [
+      "System Template",
+      "Rules & Limitations"
+    ]
+  ],
+  "dependency_closure": "PASS",
+  "missing_required_dependency_count": 0,
+  "excluded_wrong_layer_sections": [
+    "sv3-33b095f515080bad",
+    "sv3-40facfcb85f73424",
+    "sv3-4704e93432b9fdc2",
+    "sv3-4ae4f3fefa8c26db",
+    "sv3-5dee9d2fc58594d3",
+    "sv3-63fdcf9593c78873",
+    "sv3-6faf8dafed9ca421",
+    "sv3-76ba02adce162293",
+    "sv3-8e1133b68df847e4",
+    "sv3-9528d6c4b2b57eb4",
+    "sv3-9fb27539151c30df",
+    "sv3-9fea823351166907",
+    "sv3-ac725871cafdecc8",
+    "sv3-b1c6dff222515560",
+    "sv3-d3294cde968201ab",
+    "sv3-d3d2dc003456ac84",
+    "sv3-da24f76c7d1ce202",
+    "sv3-e9171611b98c26ef"
+  ],
+  "known_wrong_layer_selected_ids_before_exception": [],
+  "justified_shared_subset_exceptions": [],
+  "wrong_layer_selected_count_after_exception": 0,
+  "unknown_ownership_selected_count": 0,
+  "excluded_duplicate_sections": [],
+  "exact_duplicate_body_count": 0,
+  "raw_source_chars": 1344,
+  "rendered_context_chars": 2285,
+  "token_estimate": 572,
+  "available_skill_budget": 18129,
+  "capacity_status": "PASS",
+  "overflow_status": "NONE",
+  "rendered_context_sha256": "2d88f401bb4ea70cecd0002382db6648d1055eeaeb5ec1cc78f459925963a2a7",
+  "full_verbatim_selected_skills_chars": 21491,
+  "current_compressed_profile_chars": 2742,
+  "current_compressed_profile_token_estimate": 686,
+  "current_compressed_profile_sha256": "e7828db2dc18eceabe06b9d1068b2683d117617fb0bd1257a26e7747fbe02772",
+  "selective_verbatim_shadow_chars": 2285,
+  "receipt": {
+    "compiler_version": "verbatim-selective-skill-compiler-shadow-v1",
+    "stage": "planning",
+    "substage": "event_realization",
+    "task_id_or_case_id": "mixed",
+    "task_contract_id": "planning_event_realization_shadow_v1@1",
+    "task_contract_schema_sha256": "62aaa63cc39a5baaec5657a889e3e77cf32abecbbfa582795620e34bf4877bee",
+    "resolver_version": "existing-stage-skill-resolver-v1",
+    "section_index_version": 1,
+    "selector_policy_version": "selective-section-selector-v1",
+    "render_policy_version": "verbatim-section-renderer-v1",
+    "budget_policy_version": "semantic-budget-v1",
+    "creative_demand_class": "mixed",
+    "selected_skill_ids": [
+      "plot-structure",
+      "character-management",
+      "worldbuilding"
+    ],
+    "selected_section_ids": [
+      "sv3-70a527462c32e7b6",
+      "sv3-faecc1466817d8aa",
+      "sv3-7633ad6f5c90db5e",
+      "sv3-3fb51ac3fed35bc0",
+      "sv3-82ca2fdf9c28183b",
+      "sv3-10e4ba0c5b7509b4",
+      "sv3-8e321726b4ebdcec",
+      "sv3-e92f0f3584d44b87",
+      "sv3-5f738df332e0919f"
+    ],
+    "source_file_sha256": {
+      "sv3-70a527462c32e7b6": "c7d5922c3a39eda28ac1e6c027e1cf9fe79e47ede850fcd6610cf1dd127c2560",
+      "sv3-faecc1466817d8aa": "c7d5922c3a39eda28ac1e6c027e1cf9fe79e47ede850fcd6610cf1dd127c2560",
+      "sv3-7633ad6f5c90db5e": "c7d5922c3a39eda28ac1e6c027e1cf9fe79e47ede850fcd6610cf1dd127c2560",
+      "sv3-3fb51ac3fed35bc0": "c7d5922c3a39eda28ac1e6c027e1cf9fe79e47ede850fcd6610cf1dd127c2560",
+      "sv3-82ca2fdf9c28183b": "ca34c4eba78e253cd0f6b315999c596750bbe872279e52007cc8d078caec98d1",
+      "sv3-10e4ba0c5b7509b4": "522739455fe7dfbc2bfc60e364e3106cd100d422898dbf53c67f4a62e5c42746",
+      "sv3-8e321726b4ebdcec": "522739455fe7dfbc2bfc60e364e3106cd100d422898dbf53c67f4a62e5c42746",
+      "sv3-e92f0f3584d44b87": "c43761d100598a4651999fccd078c499b6df9aae05786250c02e31a40493ad56",
+      "sv3-5f738df332e0919f": "39086414c53352a10661f7554d21c362df1a5e7d1aa205ad8548ae932f99474b"
+    },
+    "section_content_sha256": {
+      "sv3-70a527462c32e7b6": "f9d070a8b08fd62d02c97c20f71cf091a1414657d94524125693472998a530a0",
+      "sv3-faecc1466817d8aa": "ac802425007fdb56b8a1c835d3557607ca70537439ae082d8cecaf64a8d2fece",
+      "sv3-7633ad6f5c90db5e": "e7655b22821ec2d7cefc4ddd6ad8bad7518b1cc0a2900b4fb3377bd6566f57d8",
+      "sv3-3fb51ac3fed35bc0": "64c7922b0e7732ef54dd6ba1e7af1578849ed42418430d7bb183dbd45399acaa",
+      "sv3-82ca2fdf9c28183b": "0fa3af2eb8e48d88855a740fd829235839d2cb20c39eb8979da9ef5cbd005483",
+      "sv3-10e4ba0c5b7509b4": "798c073d3b85fe59b34e26f99236059fb30315a17f3a8d8173c3ce0d608e6fcf",
+      "sv3-8e321726b4ebdcec": "fd55b33019a46b72b1e92d64f7d0f84967996307f60247e844608e214b51c6ae",
+      "sv3-e92f0f3584d44b87": "8142de9c9898b1d2c03c8172203783a2a508211685a5c1ca73244d823bee0ce1",
+      "sv3-5f738df332e0919f": "adf59ba8ee504efb755dee11f2ac4264c7ce806f7777ac0e3d39aec16048a406"
+    },
+    "section_order": {
+      "sv3-70a527462c32e7b6": 1,
+      "sv3-faecc1466817d8aa": 2,
+      "sv3-7633ad6f5c90db5e": 3,
+      "sv3-3fb51ac3fed35bc0": 4,
+      "sv3-82ca2fdf9c28183b": 2,
+      "sv3-10e4ba0c5b7509b4": 4,
+      "sv3-8e321726b4ebdcec": 7,
+      "sv3-e92f0f3584d44b87": 3,
+      "sv3-5f738df332e0919f": 2
+    },
+    "omitted_section_ids": [],
+    "omission_reason": {},
+    "rendered_context_sha256": "2d88f401bb4ea70cecd0002382db6648d1055eeaeb5ec1cc78f459925963a2a7",
+    "rendered_context_chars": 2285,
+    "token_estimate": 572,
+    "budget": {
+      "safe_context_window_tokens": 32768,
+      "maximum_total_input_tokens": 24576,
+      "output_reserve_tokens": 4624,
+      "non_skill_input_tokens": 799,
+      "wrapper_and_estimator_margin_tokens": 1024,
+      "available_skill_tokens": 18129,
+      "stage_split_available": false
+    },
+    "capacity_status": "PASS",
+    "overflow_decision": "NONE",
+    "cache_key_sha256": "36ec1b2a60e7b644b07bc8fbf461ca0d74eb8f7a5d4f54d0b02e56472943e57a",
+    "authority_fact_hashes": {
+      "sanitized_fixture": "3b9e87cdfee19f27a492ef0e5bd1717cc97115da75fa087f94cae92469b05c70"
+    },
+    "reconstructible": true,
+    "shadow_only": true
+  },
+  "source_excerpt_persisted": false,
+  "literary_quality_claimed": false
+}

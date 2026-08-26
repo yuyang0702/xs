@@ -1,0 +1,19 @@
+{
+  "schema": "SkillV3MultiSamplePilotPolicyBindingV1",
+  "pilot_creative_demand_class": "character-heavy",
+  "samples_per_arm": 3,
+  "max_real_calls": 6,
+  "blinding_protocol": "opaque sample IDs; two fresh evaluator contexts before mapping reveal",
+  "stop_conditions": [
+    "any authority mutation",
+    "dispatch bound breach",
+    "privacy breach",
+    "contract-invalid output",
+    "critical safety regression",
+    "route/model parity mismatch"
+  ],
+  "non_inferiority_aggregation": "per dimension, take the median ordinal relation only when both evaluators agree on direction or at least 4 of 6 evaluator-by-batch votes support it; otherwise INCONCLUSIVE",
+  "single_sample_prompt_hill_climbing_deprecated": true,
+  "approval_or_nonce_materialized": false,
+  "real_execution_authorized": false
+}

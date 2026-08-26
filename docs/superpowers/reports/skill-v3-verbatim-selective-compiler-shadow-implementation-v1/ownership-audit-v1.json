@@ -1,0 +1,36 @@
+{
+  "schema": "SkillV3OwnershipAuditV1",
+  "status": "PASS",
+  "scenarios": [
+    {
+      "demand_class": "character-heavy",
+      "wrong_layer_selected_count": 0,
+      "shared_core_selected_count": 4,
+      "unknown_ownership_selected_count": 0
+    },
+    {
+      "demand_class": "world-heavy",
+      "wrong_layer_selected_count": 0,
+      "shared_core_selected_count": 4,
+      "unknown_ownership_selected_count": 0
+    },
+    {
+      "demand_class": "conflict-pacing-heavy",
+      "wrong_layer_selected_count": 0,
+      "shared_core_selected_count": 4,
+      "unknown_ownership_selected_count": 0
+    },
+    {
+      "demand_class": "setup-payoff-heavy",
+      "wrong_layer_selected_count": 0,
+      "shared_core_selected_count": 4,
+      "unknown_ownership_selected_count": 0
+    },
+    {
+      "demand_class": "mixed",
+      "wrong_layer_selected_count": 0,
+      "shared_core_selected_count": 4,
+      "unknown_ownership_selected_count": 0
+    }
+  ]
+}

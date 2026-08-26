@@ -1,0 +1,204 @@
+{
+  "schema": "SelectiveSkillShadowScenarioV1",
+  "demand_class": "world-heavy",
+  "fixture_path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-v1/pairs/restored-world-heavy-v1/sanitized-fixture-v1.json",
+  "fixture_sha256": "0f10b95f373e83b84129232ccdbf7c98cb92124a985934991a68728b0a19cd20",
+  "fixture_token_estimate": 725,
+  "selected_skills": [
+    "plot-structure",
+    "worldbuilding"
+  ],
+  "selected_section_ids": [
+    "sv3-70a527462c32e7b6",
+    "sv3-faecc1466817d8aa",
+    "sv3-7633ad6f5c90db5e",
+    "sv3-3fb51ac3fed35bc0",
+    "sv3-6073d485d6a384b0",
+    "sv3-7e6d87ef69c95cfd",
+    "sv3-f998823d27d7086b",
+    "sv3-2985467b5f2bf929",
+    "sv3-60d4bee497e4c0dc",
+    "sv3-5f738df332e0919f",
+    "sv3-b4eb9bc24027f33c"
+  ],
+  "selected_section_headings": [
+    [
+      "Arc Template",
+      "Setup"
+    ],
+    [
+      "Arc Template",
+      "Rising Action"
+    ],
+    [
+      "Arc Template",
+      "Climax"
+    ],
+    [
+      "Arc Template",
+      "Resolution"
+    ],
+    [
+      "Faction Template",
+      "Purpose"
+    ],
+    [
+      "Faction Template",
+      "Power Base"
+    ],
+    [
+      "Faction Template",
+      "Conflicts"
+    ],
+    [
+      "Location Template",
+      "Description"
+    ],
+    [
+      "Location Template",
+      "Notable Features"
+    ],
+    [
+      "System Template",
+      "Rules & Limitations"
+    ],
+    [
+      "System Template",
+      "Impact on Society"
+    ]
+  ],
+  "dependency_closure": "PASS",
+  "missing_required_dependency_count": 0,
+  "excluded_wrong_layer_sections": [
+    "sv3-33b095f515080bad",
+    "sv3-40facfcb85f73424",
+    "sv3-4704e93432b9fdc2",
+    "sv3-4ae4f3fefa8c26db",
+    "sv3-5dee9d2fc58594d3",
+    "sv3-63fdcf9593c78873",
+    "sv3-6faf8dafed9ca421",
+    "sv3-76ba02adce162293",
+    "sv3-8e1133b68df847e4",
+    "sv3-9528d6c4b2b57eb4",
+    "sv3-9fb27539151c30df",
+    "sv3-9fea823351166907",
+    "sv3-ac725871cafdecc8",
+    "sv3-b1c6dff222515560",
+    "sv3-d3294cde968201ab",
+    "sv3-d3d2dc003456ac84",
+    "sv3-da24f76c7d1ce202",
+    "sv3-e9171611b98c26ef"
+  ],
+  "known_wrong_layer_selected_ids_before_exception": [],
+  "justified_shared_subset_exceptions": [],
+  "wrong_layer_selected_count_after_exception": 0,
+  "unknown_ownership_selected_count": 0,
+  "excluded_duplicate_sections": [],
+  "exact_duplicate_body_count": 0,
+  "raw_source_chars": 1303,
+  "rendered_context_chars": 2423,
+  "token_estimate": 606,
+  "available_skill_budget": 18203,
+  "capacity_status": "PASS",
+  "overflow_status": "NONE",
+  "rendered_context_sha256": "dc980e981d70fef74d886dae0a04e0c11460020e6e6f147fa1f2f6e54db89c04",
+  "full_verbatim_selected_skills_chars": 21491,
+  "current_compressed_profile_chars": 2742,
+  "current_compressed_profile_token_estimate": 686,
+  "current_compressed_profile_sha256": "e7828db2dc18eceabe06b9d1068b2683d117617fb0bd1257a26e7747fbe02772",
+  "selective_verbatim_shadow_chars": 2423,
+  "receipt": {
+    "compiler_version": "verbatim-selective-skill-compiler-shadow-v1",
+    "stage": "planning",
+    "substage": "event_realization",
+    "task_id_or_case_id": "world-heavy",
+    "task_contract_id": "planning_event_realization_shadow_v1@1",
+    "task_contract_schema_sha256": "62aaa63cc39a5baaec5657a889e3e77cf32abecbbfa582795620e34bf4877bee",
+    "resolver_version": "existing-stage-skill-resolver-v1",
+    "section_index_version": 1,
+    "selector_policy_version": "selective-section-selector-v1",
+    "render_policy_version": "verbatim-section-renderer-v1",
+    "budget_policy_version": "semantic-budget-v1",
+    "creative_demand_class": "world-heavy",
+    "selected_skill_ids": [
+      "plot-structure",
+      "worldbuilding"
+    ],
+    "selected_section_ids": [
+      "sv3-70a527462c32e7b6",
+      "sv3-faecc1466817d8aa",
+      "sv3-7633ad6f5c90db5e",
+      "sv3-3fb51ac3fed35bc0",
+      "sv3-6073d485d6a384b0",
+      "sv3-7e6d87ef69c95cfd",
+      "sv3-f998823d27d7086b",
+      "sv3-2985467b5f2bf929",
+      "sv3-60d4bee497e4c0dc",
+      "sv3-5f738df332e0919f",
+      "sv3-b4eb9bc24027f33c"
+    ],
+    "source_file_sha256": {
+      "sv3-70a527462c32e7b6": "c7d5922c3a39eda28ac1e6c027e1cf9fe79e47ede850fcd6610cf1dd127c2560",
+      "sv3-faecc1466817d8aa": "c7d5922c3a39eda28ac1e6c027e1cf9fe79e47ede850fcd6610cf1dd127c2560",
+      "sv3-7633ad6f5c90db5e": "c7d5922c3a39eda28ac1e6c027e1cf9fe79e47ede850fcd6610cf1dd127c2560",
+      "sv3-3fb51ac3fed35bc0": "c7d5922c3a39eda28ac1e6c027e1cf9fe79e47ede850fcd6610cf1dd127c2560",
+      "sv3-6073d485d6a384b0": "a3bb6fe51de4e4116642992d379582dadc5895fa791e802308723c99bc6d01ce",
+      "sv3-7e6d87ef69c95cfd": "a3bb6fe51de4e4116642992d379582dadc5895fa791e802308723c99bc6d01ce",
+      "sv3-f998823d27d7086b": "a3bb6fe51de4e4116642992d379582dadc5895fa791e802308723c99bc6d01ce",
+      "sv3-2985467b5f2bf929": "46114544c3b7ca01b101ee7f859684bb1ab3cc7b552b1e709c4f405262dd61d5",
+      "sv3-60d4bee497e4c0dc": "46114544c3b7ca01b101ee7f859684bb1ab3cc7b552b1e709c4f405262dd61d5",
+      "sv3-5f738df332e0919f": "39086414c53352a10661f7554d21c362df1a5e7d1aa205ad8548ae932f99474b",
+      "sv3-b4eb9bc24027f33c": "39086414c53352a10661f7554d21c362df1a5e7d1aa205ad8548ae932f99474b"
+    },
+    "section_content_sha256": {
+      "sv3-70a527462c32e7b6": "f9d070a8b08fd62d02c97c20f71cf091a1414657d94524125693472998a530a0",
+      "sv3-faecc1466817d8aa": "ac802425007fdb56b8a1c835d3557607ca70537439ae082d8cecaf64a8d2fece",
+      "sv3-7633ad6f5c90db5e": "e7655b22821ec2d7cefc4ddd6ad8bad7518b1cc0a2900b4fb3377bd6566f57d8",
+      "sv3-3fb51ac3fed35bc0": "64c7922b0e7732ef54dd6ba1e7af1578849ed42418430d7bb183dbd45399acaa",
+      "sv3-6073d485d6a384b0": "7db87e11dea52ebc9c35fa6dca2cea64cefa0bb2168d03e5261c9933a73501be",
+      "sv3-7e6d87ef69c95cfd": "619a46bde872d2e31f5818d9f5736156749bd081e423d5b1a957254042d1c7d5",
+      "sv3-f998823d27d7086b": "0cef23e02e1c059e5b6c7a91c55b4ecd29949716fa95d821dd090ee4ee1f5223",
+      "sv3-2985467b5f2bf929": "6fafb45c97b2c08902b03097f3f06f2dc1d9e9c9465b9489e1f5b37c209dad41",
+      "sv3-60d4bee497e4c0dc": "62fd1ac8a3c40cd681447b1e42ab7cb35d30a3c7dc8622553167db894983259a",
+      "sv3-5f738df332e0919f": "adf59ba8ee504efb755dee11f2ac4264c7ce806f7777ac0e3d39aec16048a406",
+      "sv3-b4eb9bc24027f33c": "058a0e4813c0130e9ab41d73ec0c0d9f7c403e90e90201b818cf2898cbcb4eb5"
+    },
+    "section_order": {
+      "sv3-70a527462c32e7b6": 1,
+      "sv3-faecc1466817d8aa": 2,
+      "sv3-7633ad6f5c90db5e": 3,
+      "sv3-3fb51ac3fed35bc0": 4,
+      "sv3-6073d485d6a384b0": 1,
+      "sv3-7e6d87ef69c95cfd": 2,
+      "sv3-f998823d27d7086b": 4,
+      "sv3-2985467b5f2bf929": 1,
+      "sv3-60d4bee497e4c0dc": 4,
+      "sv3-5f738df332e0919f": 2,
+      "sv3-b4eb9bc24027f33c": 5
+    },
+    "omitted_section_ids": [],
+    "omission_reason": {},
+    "rendered_context_sha256": "dc980e981d70fef74d886dae0a04e0c11460020e6e6f147fa1f2f6e54db89c04",
+    "rendered_context_chars": 2423,
+    "token_estimate": 606,
+    "budget": {
+      "safe_context_window_tokens": 32768,
+      "maximum_total_input_tokens": 24576,
+      "output_reserve_tokens": 4624,
+      "non_skill_input_tokens": 725,
+      "wrapper_and_estimator_margin_tokens": 1024,
+      "available_skill_tokens": 18203,
+      "stage_split_available": false
+    },
+    "capacity_status": "PASS",
+    "overflow_decision": "NONE",
+    "cache_key_sha256": "5d43a66ef3ad0226e523ae005255a94b6d18733bd158abfe85e586c75b7d40e5",
+    "authority_fact_hashes": {
+      "sanitized_fixture": "0f10b95f373e83b84129232ccdbf7c98cb92124a985934991a68728b0a19cd20"
+    },
+    "reconstructible": true,
+    "shadow_only": true
+  },
+  "source_excerpt_persisted": false,
+  "literary_quality_claimed": false
+}
