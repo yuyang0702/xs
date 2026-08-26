@@ -1,0 +1,29 @@
+{
+  "mismatch_count": 0,
+  "overall_status": "exact",
+  "parents": [
+    {
+      "entry_count": 29,
+      "manifest_file_sha256": "916cce911a87f5a3c5a2d9ed090d80450dde80b7853dc0cdc6b2a6adf75da9bd",
+      "mismatch_count": 0,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-corrected-quality-regression-root-cause-v1/sha256-manifest-v1.json",
+      "status": "EXACT"
+    },
+    {
+      "entry_count": 32,
+      "manifest_file_sha256": "2395a14ba811df2e5fdfc8913754fdd9ec4c5a0571667eeb15b893b310669ce1",
+      "mismatch_count": 0,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-corrected-b-binding-closure-v1/sha256-manifest-v1.json",
+      "status": "EXACT"
+    },
+    {
+      "entry_count": 16,
+      "manifest_file_sha256": "d210322f8e0314ae5a9841300faf0e5ea492732f08e21eb516c1f8ff32567796",
+      "mismatch_count": 0,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-execution-v4/pairs/restored-character-heavy-v2/a-arm/sha256-manifest-v1.json",
+      "status": "EXACT"
+    }
+  ],
+  "schema": "SkillV2DemandAwareCreativeCoreParentEvidenceValidationV1",
+  "version": 1
+}

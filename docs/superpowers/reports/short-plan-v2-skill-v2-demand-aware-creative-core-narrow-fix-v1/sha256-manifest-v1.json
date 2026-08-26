@@ -1,0 +1,136 @@
+{
+  "algorithm": "SHA-256",
+  "coverage": "all evidence payload files except manifest and final report",
+  "definition_sha256": "518e83e18445fd214483ef6a2515aa42746c5bc10eab5f6dd67801e3e4d900f7",
+  "entry_count": 25,
+  "files": [
+    {
+      "bytes": 219,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-demand-aware-creative-core-narrow-fix-v1/README.md",
+      "sha256": "86a1a71e85982d1c643c9142ead4f6d79b84094c9711ad09bea6886fe7c9f5ab"
+    },
+    {
+      "bytes": 1000,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-demand-aware-creative-core-narrow-fix-v1/a-control-reuse-decision-v1.json",
+      "sha256": "093f95d1a12bce89ec593a870b1fea369657e60b9b058c80817b361738bead0c"
+    },
+    {
+      "bytes": 343,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-demand-aware-creative-core-narrow-fix-v1/anti-template-validation-v1.json",
+      "sha256": "dc786d2b6c4e7d0105da0c0386ffee09bcfe786f0877cf9d9c9950d7884fb638"
+    },
+    {
+      "bytes": 2434,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-demand-aware-creative-core-narrow-fix-v1/change-contract-v1.json",
+      "sha256": "500b3f3b2ca75dbb2e5a66f63327d50abcf8ab33fd97005deafada388ddf7323"
+    },
+    {
+      "bytes": 1535,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-demand-aware-creative-core-narrow-fix-v1/character-heavy-semantic-coverage-v1.json",
+      "sha256": "0eca76f1a1b3d9e88fb2c1adeaea132684d523f6cd8ca4fa228f28da281b97f5"
+    },
+    {
+      "bytes": 598,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-demand-aware-creative-core-narrow-fix-v1/context-size-receipt-v1.json",
+      "sha256": "3d8fdcbc0d29f25b45e8ce2586eb02aa2d2968f4d5c38fc1808f3fc531e4c907"
+    },
+    {
+      "bytes": 720,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-demand-aware-creative-core-narrow-fix-v1/demand-aware-strategy-binding-v1.json",
+      "sha256": "2e4b8d3df5f6c000c474f823e3eea0ff73b5cec7b110fb7e1721141160f96dcd"
+    },
+    {
+      "bytes": 3931,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-demand-aware-creative-core-narrow-fix-v1/forward-risk-report-v2.json",
+      "sha256": "2ce2d44fd6a317882cc01deb0fb05653d8569ea28ec147d7b88656138957de37"
+    },
+    {
+      "bytes": 1480,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-demand-aware-creative-core-narrow-fix-v1/historical-matrix-classification-v1.json",
+      "sha256": "18ae5df0d7d5a94ad5899d5037f2cd8ee110231de2acc9661e5573ca179aa677"
+    },
+    {
+      "bytes": 374,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-demand-aware-creative-core-narrow-fix-v1/manifest-coverage-receipt-v1.json",
+      "sha256": "d6fee67d10ea5c74ac2f663a538a4c2ed41cc095209cac67cfe993d40f6708f6"
+    },
+    {
+      "bytes": 385,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-demand-aware-creative-core-narrow-fix-v1/manifest-definition-v1.json",
+      "sha256": "e4a91e2f84b3e56719168a9d34b1a806dea4131f9064736689802cb99efa3703"
+    },
+    {
+      "bytes": 416,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-demand-aware-creative-core-narrow-fix-v1/offline-quality-validation-v1.json",
+      "sha256": "6613215c3c0e3c1b8c91974dc30ee9bd7b67bb00b159a38f86acb83c00f728c1"
+    },
+    {
+      "bytes": 2572,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-demand-aware-creative-core-narrow-fix-v1/old-vs-new-context-semantic-diff-v1.json",
+      "sha256": "8dfa8c4ff8527bca4f78fc39f704ed7af9a278212f2d16546d4680b35259f2d4"
+    },
+    {
+      "bytes": 1149,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-demand-aware-creative-core-narrow-fix-v1/parent-evidence-validation-v1.json",
+      "sha256": "678617eeaed523b514c79797c6907087ebf895f15ab635cd028295898181fbfd"
+    },
+    {
+      "bytes": 361,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-demand-aware-creative-core-narrow-fix-v1/privacy-scan-v1.json",
+      "sha256": "30dd9dccdb0ee2d1f7d5ad389a9e5a8adad4b2d4d7cff29dea7a1c590f9100d2"
+    },
+    {
+      "bytes": 786,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-demand-aware-creative-core-narrow-fix-v1/profile-identity-v1.json",
+      "sha256": "ab430df0fc54349126239d5ce15c8ef368f75914a50ad578c8c0e4e1e7a2f93e"
+    },
+    {
+      "bytes": 410,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-demand-aware-creative-core-narrow-fix-v1/relationship-setup-payoff-preservation-v1.json",
+      "sha256": "7084c0585a02772f87a881ac67f50632ad716d7725d8f58b316083777e50f95c"
+    },
+    {
+      "bytes": 1743,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-demand-aware-creative-core-narrow-fix-v1/restoration-implementation-matrix-v1.json",
+      "sha256": "744726ec078166e04b22011376b46e463e5a2f94f745f1aaa26d2ff7604857e0"
+    },
+    {
+      "bytes": 2947,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-demand-aware-creative-core-narrow-fix-v1/revalidation-ab-lock-v1.json",
+      "sha256": "2923b104acb82ba2ac832bf6a757ef899f45db79fb6d1250b34a805964d881a3"
+    },
+    {
+      "bytes": 3729,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-demand-aware-creative-core-narrow-fix-v1/revalidation-candidate-v1.json",
+      "sha256": "46237042938300da6fc643371a6b6ddb74ed3c02be7153c30d8c7bf951dd8bad"
+    },
+    {
+      "bytes": 483,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-demand-aware-creative-core-narrow-fix-v1/root-cause-binding-v1.json",
+      "sha256": "6724a60fdbdbd72f1147ddae1d02caa4379c08c8cf25a3b3bc2b0adda0114df5"
+    },
+    {
+      "bytes": 925,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-demand-aware-creative-core-narrow-fix-v1/sealed-restoration-set-binding-v1.json",
+      "sha256": "5d0b9105ba7617f591138760965e5ba3cf3ed249c86bb970d0b954b06e861ac9"
+    },
+    {
+      "bytes": 471,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-demand-aware-creative-core-narrow-fix-v1/single-agent-clean-room-review-v1.json",
+      "sha256": "c56bcebdf7dad220e3684031814276e5a83f50950d5c7d7f520b4e6b27105567"
+    },
+    {
+      "bytes": 959,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-demand-aware-creative-core-narrow-fix-v1/source-diff-scope-v1.json",
+      "sha256": "e8946b1795e353d439db4f156c156c9ee17ed2a9e627126b00a98ac81f159f48"
+    },
+    {
+      "bytes": 1998,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-demand-aware-creative-core-narrow-fix-v1/test-receipt-v1.json",
+      "sha256": "88be9abba769b5196a0362387886181b527f9df028a5695cf5989e7a7e8194ed"
+    }
+  ],
+  "overall_status": "exact",
+  "schema": "SkillV2DemandAwareCreativeCoreSha256ManifestV1",
+  "version": 1
+}

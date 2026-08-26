@@ -1,0 +1,17 @@
+{
+  "input": "pair_creative_demand_class",
+  "known_mapping": {
+    "character-heavy": "RESTORED_SKILL_V2_CHARACTER_CORE_V2",
+    "conflict-pacing-heavy": "UNCHANGED_PENDING_PAIR3",
+    "mixed": "UNCHANGED_PENDING_PAIR5",
+    "setup-payoff-heavy": "UNCHANGED_PENDING_PAIR4",
+    "world-heavy": "UNCHANGED_PENDING_PAIR2"
+  },
+  "overall_status": "exact",
+  "resolver": "DETERMINISTIC_LOCAL",
+  "resolver_sha256": "b40ec5808a7acf62d942a79b988f39d6fd435a3043f45b629c4588025eecbf2c",
+  "schema": "SkillV2DemandAwareCreativeCoreStrategyBindingV1",
+  "source_file_sha256": "7998bcb934efdf0c37dec493b2e5d97f9efe99e94adb279dd5b016ae28f800b8",
+  "unknown_demand_behavior": "FAIL_CLOSED_NO_PROFILE_SUBSTITUTION",
+  "version": 1
+}

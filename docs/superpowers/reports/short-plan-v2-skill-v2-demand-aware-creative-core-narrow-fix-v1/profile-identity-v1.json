@@ -1,0 +1,13 @@
+{
+  "demand_aware_resolver_sha256": "b40ec5808a7acf62d942a79b988f39d6fd435a3043f45b629c4588025eecbf2c",
+  "new_context_sha256": "7d0f6309ede2261f2f6a1098d394937948bf5b50eb9248266ab350fd91da9adc",
+  "new_profile_id": "RESTORED_SKILL_V2_CHARACTER_CORE_V2",
+  "new_profile_sha256": "109bb50e2e649c5841bd7c83513100caa0d93cf3c1bb5db845e489b5ae10856d",
+  "old_profile_sha256": "c4ca606bd76359514e15cd60a2edcecbd9bc530690abb86be7313f2bd38999c5",
+  "production_reachable": false,
+  "profile_materializer_sha256": "e131cc3e89cb5b0cd21cd70478a6cf1960f258b06ca2964a62eb52b729fff9c7",
+  "runtime_skill_profiles_source_sha256": "0af34a7788595f7dea380c345141df4e4ad7c482a81993711977991dce1b6a10",
+  "schema": "SkillV2DemandAwareCreativeCoreProfileIdentityV1",
+  "shadow_only": true,
+  "version": 1
+}

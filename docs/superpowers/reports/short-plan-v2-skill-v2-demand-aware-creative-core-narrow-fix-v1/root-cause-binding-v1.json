@@ -1,0 +1,11 @@
+{
+  "parent_manifest_file_sha256": "916cce911a87f5a3c5a2d9ed090d80450dde80b7853dc0cdc6b2a6adf75da9bd",
+  "preserve_b_relationship_logic_gain": true,
+  "preserve_b_setup_payoff_gain": true,
+  "primary_root_cause_class": "MULTI_FACTOR_WITH_PRIMARY_CHARACTER_HEAVY_UNDERSPECIFICATION",
+  "restoration_diagnosis": "INSUFFICIENT_DEPTH",
+  "schema": "SkillV2DemandAwareCreativeCoreRootCauseBindingV1",
+  "skill_context_causality_confidence": "MEDIUM",
+  "status": "PASS",
+  "version": 1
+}

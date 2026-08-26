@@ -1,0 +1,19 @@
+{
+  "candidate_inertness_review": "PASS",
+  "context_sources": [
+    "raw_user_request",
+    "task_baseline",
+    "final_diff",
+    "raw_test_output",
+    "forward_risk_report"
+  ],
+  "hard_issue_count": 0,
+  "independence_claimed": false,
+  "mode": "single_agent_clean_room",
+  "schema": "SkillV2DemandAwareCreativeCoreCleanRoomReviewV1",
+  "scope_review": "PASS",
+  "semantic_diff_review": "PASS",
+  "status": "PASS",
+  "team_review_requested": false,
+  "version": 1
+}

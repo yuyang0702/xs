@@ -1,0 +1,11 @@
+{
+  "coverage_status": "exact",
+  "covered_payload_count_before_receipt": 24,
+  "exclusion_reason": "avoid manifest self-reference while allowing final report to bind the physical manifest file SHA",
+  "manifest_excludes": [
+    "sha256-manifest-v1.json",
+    "final-report-v1.md"
+  ],
+  "schema": "SkillV2DemandAwareCreativeCoreManifestCoverageReceiptV1",
+  "version": 1
+}

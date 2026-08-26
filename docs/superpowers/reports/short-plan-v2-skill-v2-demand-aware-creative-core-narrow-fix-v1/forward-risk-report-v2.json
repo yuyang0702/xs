@@ -1,0 +1,88 @@
+{
+  "closed_world_justification": "The sealed strategy enumerates all five accepted demand classes, the exact character-heavy mapping, four exact rewrites, and one unknown-value disposition.",
+  "constraint_traceability": [
+    {
+      "evidence": "exact target and non-target equality tests",
+      "implementation": "closed target-text map plus in-place dataclass replacement",
+      "requirement": "exact four-rule character-heavy deepening",
+      "test_paths": [
+        "tests/test_skill_v2_demand_aware_creative_core.py"
+      ]
+    },
+    {
+      "evidence": "parameterized profile equality and unknown rejection tests",
+      "implementation": "closed demand strategy lookup",
+      "requirement": "known sibling semantics unchanged and unknown fail-closed",
+      "test_paths": [
+        "tests/test_skill_v2_demand_aware_creative_core.py"
+      ]
+    },
+    {
+      "evidence": "2925-character canonical render with zero omitted rules",
+      "implementation": "targeted semantic assertions and profile-local fixed partition",
+      "requirement": "relationship/setup-payoff gains and 3000-char cap preserved",
+      "test_paths": [
+        "tests/test_skill_v2_demand_aware_creative_core.py"
+      ]
+    }
+  ],
+  "forbidden_narrowing": [
+    "Do not omit any sealed V2 semantic unit.",
+    "Do not weaken relationship or setup/payoff support.",
+    "Do not raise the 3000-character ceiling.",
+    "Do not make the shadow profile production reachable."
+  ],
+  "historical_incident_families_checked": [
+    "overcompressed character creative core",
+    "historical restored-profile byte drift",
+    "demand-agnostic profile substitution",
+    "mandatory context overflow",
+    "relationship and setup-payoff gain regression"
+  ],
+  "model_output_boundary_changed": false,
+  "model_output_not_applicable_evidence": "Only deterministic offline Skill context selection changes; output schema, parser, validator, Provider adapter, and generated-output boundary are untouched.",
+  "next_authoritative_boundary_tests": [
+    "tests/test_skill_v2_demand_aware_creative_core.py"
+  ],
+  "operational_definition": "Exact local demand lookup; one four-rule successor; old profile for four known sibling classes; typed fail-close for unknown classes.",
+  "original_requirement": "Apply exactly four sealed character-heavy creative-core rewrites without changing non-character demand semantics or production reachability.",
+  "production_shaped_tests": [
+    "tests/test_skill_v2_demand_aware_creative_core.py"
+  ],
+  "projected_failure_mechanisms": [
+    "unknown demand selects character profile",
+    "non-target rule or ordering drift",
+    "mandatory budget blocks the successor",
+    "runtime-owned instruction leakage",
+    "production reachability drift"
+  ],
+  "remaining_risks": [
+    "Generalized literary non-inferiority remains unproven until separately approved real Pair 1 B revalidation."
+  ],
+  "resolution_status": "case_fixed",
+  "scope_classification": "closed_world",
+  "sibling_boundaries": [
+    {
+      "boundary": "world-heavy/conflict-pacing-heavy/setup-payoff-heavy/mixed",
+      "disposition": "tested_not_susceptible",
+      "evidence": "each returns the historical restored profile exactly"
+    },
+    {
+      "boundary": "unknown demand class",
+      "disposition": "fixed_and_tested",
+      "evidence": "typed fail-close and no profile substitution"
+    },
+    {
+      "boundary": "historical restored builder",
+      "disposition": "tested_not_susceptible",
+      "evidence": "frozen profile/context hashes remain exact"
+    },
+    {
+      "boundary": "production workflow",
+      "disposition": "not_applicable",
+      "evidence": "shadow_only=true and production_reachable=false; no call site changed"
+    }
+  ],
+  "version": 2,
+  "why_previous_tests_missed": "Prior tests proved eight restoration cores were present but did not exercise demand-specific depth or the sealed character microchain."
+}

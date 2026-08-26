@@ -1,0 +1,11 @@
+{
+  "overall_status": "PASS",
+  "plot_setup_payoff_intent_byte_equal": true,
+  "relationship_logic_support_preserved": "YES",
+  "schema": "SkillV2DemandAwareCreativeCoreGainPreservationV1",
+  "setup_payoff_dependency_support_preserved": "YES",
+  "setup_payoff_rule_byte_equal": true,
+  "version": 1,
+  "voice_relation_contains_available_action": true,
+  "voice_relation_contains_relationship_pressure": true
+}

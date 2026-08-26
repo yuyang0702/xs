@@ -1,0 +1,70 @@
+{
+  "draft_handoff_consequence": "PASS",
+  "local_causal_microchain": "PASS",
+  "motivation_microchain": "PASS",
+  "overall_status": "PASS",
+  "rows": [
+    {
+      "missing": [],
+      "rule_id": "MOTIVE_ACTION",
+      "semantic_units": [
+        "formative pressure",
+        "present want",
+        "concealed need",
+        "opposed tactics",
+        "costly choice",
+        "observable reaction",
+        "next-beat consequence"
+      ],
+      "status": "PASS"
+    },
+    {
+      "missing": [],
+      "rule_id": "VOICE_RELATION",
+      "semantic_units": [
+        "distinct voice",
+        "diction",
+        "rhythm",
+        "evasion",
+        "gesture",
+        "withheld explanation",
+        "relationship pressure",
+        "trust",
+        "available action"
+      ],
+      "status": "PASS"
+    },
+    {
+      "missing": [],
+      "rule_id": "DRAFT_SCENE",
+      "semantic_units": [
+        "draft-usable microchain",
+        "spatial stimulus",
+        "opposed action",
+        "reaction",
+        "resistance",
+        "reversal",
+        "costly choice",
+        "terminal image",
+        "behavior"
+      ],
+      "status": "PASS"
+    },
+    {
+      "missing": [],
+      "rule_id": "ANTI_TAXONOMY",
+      "semantic_units": [
+        "labels in reasoning only",
+        "choice",
+        "dialogue",
+        "evasion",
+        "gesture",
+        "consequence"
+      ],
+      "status": "PASS"
+    }
+  ],
+  "schema": "SkillV2DemandAwareCreativeCoreSemanticCoverageV1",
+  "version": 1,
+  "voice_under_pressure": "PASS"
+}

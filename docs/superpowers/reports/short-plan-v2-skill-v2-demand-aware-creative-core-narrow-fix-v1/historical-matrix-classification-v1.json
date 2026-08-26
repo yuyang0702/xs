@@ -1,0 +1,47 @@
+{
+  "classifications": [
+    {
+      "classification": "HISTORICAL_TERMINAL_STATE_EXPECTATION",
+      "count": 35,
+      "families": [
+        "terminal Pair 1 A campaign stop state",
+        "historical restored-profile implementation HEAD source identity"
+      ],
+      "owning_source_regression": false
+    },
+    {
+      "classification": "CONSUMED_APPROVAL_EXPECTATION",
+      "count": 9,
+      "families": [
+        "sealed approvals and approval roots now exist where dormant historical tests expect absence"
+      ],
+      "owning_source_regression": false
+    },
+    {
+      "classification": "PREEXISTING_EXECUTION_ROOT_EXPECTATION",
+      "count": 4,
+      "families": [
+        "historical B-arm execution root exists"
+      ],
+      "owning_source_regression": false
+    },
+    {
+      "classification": "UNRELATED",
+      "count": 68,
+      "families": [
+        "legacy Provider probe materialization gates",
+        "legacy Short Completion and PTR3 successor gates",
+        "pre-existing Planning Skill shadow protected-source parity",
+        "R0E live database parity",
+        "other sealed source/evidence identity gates"
+      ],
+      "owning_source_regression": false
+    }
+  ],
+  "historical_evidence_rewritten": false,
+  "historical_matrix": "197 passed, 14 failed, 26 errors",
+  "known_fixed_head_failure_count": 40,
+  "owning_source_regression_count": 0,
+  "schema": "SkillV2DemandAwareCreativeCoreHistoricalMatrixClassificationV1",
+  "version": 1
+}

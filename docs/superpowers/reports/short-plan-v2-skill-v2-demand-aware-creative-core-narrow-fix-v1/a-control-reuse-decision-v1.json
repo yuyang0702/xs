@@ -1,0 +1,25 @@
+{
+  "a_artifact_injected_into_b_input": false,
+  "a_control_artifact_sha256": "f6aa5c49d64f38aefe71b01fc9eb0abf2ea3a08faba6f5bc3dbcb38c665e3f8f",
+  "a_control_packet_sha256": "39a46e38d9c11f8afd5fd1cf633443b31ae6fb1c97c4b93d404f950781f19356",
+  "a_control_reuse_conditions_satisfied": "YES",
+  "can_reuse_sealed_a_control_after_b_profile_only_fix": "CONDITIONAL",
+  "conditions": {
+    "a_artifact_sealed_immutable": true,
+    "campaign_policy_allows_conditional_reuse": true,
+    "next_strategy_requires_exact_campaign_lock": true,
+    "only_b_skill_context_changes": true,
+    "same_authority": true,
+    "same_corrected_fixture": true,
+    "same_non_skill_prompt": true,
+    "same_quality_rubrics": true,
+    "same_route_model_client": true,
+    "same_sampling_transport_output": true,
+    "same_story_slice": true,
+    "same_task": true,
+    "same_validator_ptr9_ptr12": true
+  },
+  "overall_status": "exact",
+  "schema": "SkillV2DemandAwareCreativeCoreAControlReuseDecisionV1",
+  "version": 1
+}

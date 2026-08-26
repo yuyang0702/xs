@@ -1,0 +1,22 @@
+{
+  "baseline_head": "4dff5603cde1ba4c4de3c601ce229c5bc102cedf",
+  "changed_paths": [
+    "docs/maintenance.md",
+    "docs/superpowers/reports/short-plan-v2-skill-v2-demand-aware-creative-core-narrow-fix-v1/change-contract-v1.json",
+    "src/novel_flywheel/runtime_skill_profiles.py",
+    "tests/test_skill_v2_demand_aware_creative_core.py",
+    "tests/test_skill_v2_demand_aware_creative_core_evidence.py",
+    "tools/diagnostics/skill_v2_demand_aware_creative_core.py"
+  ],
+  "historical_evidence_rewrite_count": 0,
+  "implementation_head": "a7999372a9fc96f3119a1e48a881fd7aa716a049",
+  "overall_status": "exact",
+  "production_runtime_paths": [
+    "src/novel_flywheel/runtime_skill_profiles.py"
+  ],
+  "prompt_route_model_retry_fallback_output_budget_diff_count": 0,
+  "schema": "SkillV2DemandAwareCreativeCoreSourceDiffScopeV1",
+  "story_state_canon_ready_diff_count": 0,
+  "validation_head": "90323f7993caae0fb1118605da993fb3837e6374",
+  "version": 1
+}

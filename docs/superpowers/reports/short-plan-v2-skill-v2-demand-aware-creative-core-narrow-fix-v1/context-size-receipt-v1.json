@@ -1,0 +1,16 @@
+{
+  "advisory_characters": 1587,
+  "delta_characters": 183,
+  "excluded_rule_ids": [],
+  "mandatory_characters": 1338,
+  "maximum_characters": 3000,
+  "new_character_heavy_context_characters": 2925,
+  "new_character_heavy_context_sha256": "7d0f6309ede2261f2f6a1098d394937948bf5b50eb9248266ab350fd91da9adc",
+  "old_context_characters": 2742,
+  "old_context_sha256": "e7828db2dc18eceabe06b9d1068b2683d117617fb0bd1257a26e7747fbe02772",
+  "overall_status": "exact",
+  "schema": "SkillV2DemandAwareCreativeCoreContextSizeReceiptV1",
+  "truncation_status": "NONE",
+  "version": 1,
+  "within_cap": true
+}

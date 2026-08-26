@@ -1,0 +1,20 @@
+{
+  "exact_missing_semantic_sha256": {
+    "ANTI_TAXONOMY_V2": "1e4fe91f4d6ef0c151d81aaa85914c2186577603628dc0d556714fb9dd74e08f",
+    "DRAFT_SCENE_V2": "b9c6b7c95d00190b43f43bf176ae052cdc2af079bdadc316a884ab2b0e859941",
+    "MOTIVE_ACTION_V2": "c9ddb92a628fe1d4943ab727f9b0a120fb8533f64aa588eda03ad9796682db9c",
+    "VOICE_RELATION_V2": "7c0ad85841a7e5bc904d5126df1583aa809e75b41ef6fb3cf2811906b9b4936f"
+  },
+  "item_count": 4,
+  "overall_status": "exact",
+  "restoration_ids": [
+    "MOTIVE_ACTION_V2",
+    "VOICE_RELATION_V2",
+    "DRAFT_SCENE_V2",
+    "ANTI_TAXONOMY_V2"
+  ],
+  "schema": "SkillV2DemandAwareCreativeCoreSealedRestorationSetBindingV1",
+  "source_file_sha256": "7c504a14c6be5148c3c96a9a8856dad4ba278824d80fad575348827efb34fe73",
+  "source_path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-corrected-quality-regression-root-cause-v1/minimal-creative-restoration-v2-set-v1.json",
+  "version": 1
+}

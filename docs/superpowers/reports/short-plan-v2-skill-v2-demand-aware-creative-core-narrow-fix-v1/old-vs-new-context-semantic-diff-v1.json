@@ -1,0 +1,72 @@
+{
+  "changed_semantic_unit_count": 4,
+  "changed_units": [
+    {
+      "classification": "SEALED_CHARACTER_HEAVY_DEEPENING",
+      "delta_characters": 63,
+      "new_characters": 187,
+      "new_text_sha256": "c9ddb92a628fe1d4943ab727f9b0a120fb8533f64aa588eda03ad9796682db9c",
+      "old_characters": 124,
+      "old_text_sha256": "2242d966d69b349ff3b870fb8cbd831c7b57f89eeed5ebce7e69b99ce22efadf",
+      "restoration_id": "MOTIVE_ACTION_V2",
+      "rule_id": "MOTIVE_ACTION"
+    },
+    {
+      "classification": "SEALED_CHARACTER_HEAVY_DEEPENING",
+      "delta_characters": 43,
+      "new_characters": 170,
+      "new_text_sha256": "7c0ad85841a7e5bc904d5126df1583aa809e75b41ef6fb3cf2811906b9b4936f",
+      "old_characters": 127,
+      "old_text_sha256": "53e9c259d213ce1e0f58533f11770c9062940728a2157218afa0d08cc02bab50",
+      "restoration_id": "VOICE_RELATION_V2",
+      "rule_id": "VOICE_RELATION"
+    },
+    {
+      "classification": "SEALED_CHARACTER_HEAVY_DEEPENING",
+      "delta_characters": 55,
+      "new_characters": 188,
+      "new_text_sha256": "b9c6b7c95d00190b43f43bf176ae052cdc2af079bdadc316a884ab2b0e859941",
+      "old_characters": 133,
+      "old_text_sha256": "eae5843a4f919aca6c54b994923e2893145b082f1fd8b97a5ec41ee889ed173c",
+      "restoration_id": "DRAFT_SCENE_V2",
+      "rule_id": "DRAFT_SCENE"
+    },
+    {
+      "classification": "SEALED_CHARACTER_HEAVY_DEEPENING",
+      "delta_characters": 22,
+      "new_characters": 163,
+      "new_text_sha256": "1e4fe91f4d6ef0c151d81aaa85914c2186577603628dc0d556714fb9dd74e08f",
+      "old_characters": 141,
+      "old_text_sha256": "e1833f5aeff2f4655a6c4377c86a9d992b610772201a70c375a258a130e8cb52",
+      "restoration_id": "ANTI_TAXONOMY_V2",
+      "rule_id": "ANTI_TAXONOMY"
+    }
+  ],
+  "changed_units_all_trace_to_sealed_restoration_set": true,
+  "contradictory_creative_rule_count": 0,
+  "duplicate_instruction_unit_count": 0,
+  "operational_rule_leak_count": 0,
+  "overall_status": "exact",
+  "schema": "SkillV2DemandAwareCreativeCoreSemanticDiffV1",
+  "unchanged_rule_count": 16,
+  "unchanged_rule_ids": [
+    "CAUSAL_AFFORDANCE",
+    "PRESSURE_BEATS",
+    "SETUP_PAYOFF",
+    "FRAME_BRIDGE",
+    "PLOT_CAUSAL_ESCALATION",
+    "PLOT_SETUP_PAYOFF_INTENT",
+    "PLOT_PACING_INTENT",
+    "CHARACTER_MOTIVATION",
+    "CHARACTER_VOICE",
+    "CHARACTER_ARC",
+    "CHARACTER_RELATIONSHIP_NUANCE",
+    "WORLD_SENSORY_SPECIFICITY",
+    "WORLD_COST_AND_LIMIT",
+    "WORLD_FACTION_PRESSURE",
+    "WORLD_CURRENT_STATE",
+    "WORLD_ARTIFACT_DETAIL"
+  ],
+  "unrelated_semantic_diff_count": 0,
+  "version": 1
+}

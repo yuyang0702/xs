@@ -1,0 +1,61 @@
+{
+  "adjacent": "19 passed, 2 failed, 15 errors; non-green is the pre-existing Planning Skill shadow parity baseline",
+  "external_actions": {
+    "credential_lookup_count": 0,
+    "http_post_attempts": 0,
+    "model_calls": 0,
+    "network_calls": 0,
+    "paid_calls": 0,
+    "real_provider_client_creation_count": 0,
+    "real_provider_request_attempts": 0
+  },
+  "focused": "57 passed",
+  "full_suite": "3535 passed, 44 failed, 72 errors, 41 skipped, 6 xfailed, 1 warning in 2288.49s",
+  "historical_classifications": [
+    {
+      "classification": "HISTORICAL_TERMINAL_STATE_EXPECTATION",
+      "count": 35,
+      "families": [
+        "terminal Pair 1 A campaign stop state",
+        "historical restored-profile implementation HEAD source identity"
+      ],
+      "owning_source_regression": false
+    },
+    {
+      "classification": "CONSUMED_APPROVAL_EXPECTATION",
+      "count": 9,
+      "families": [
+        "sealed approvals and approval roots now exist where dormant historical tests expect absence"
+      ],
+      "owning_source_regression": false
+    },
+    {
+      "classification": "PREEXISTING_EXECUTION_ROOT_EXPECTATION",
+      "count": 4,
+      "families": [
+        "historical B-arm execution root exists"
+      ],
+      "owning_source_regression": false
+    },
+    {
+      "classification": "UNRELATED",
+      "count": 68,
+      "families": [
+        "legacy Provider probe materialization gates",
+        "legacy Short Completion and PTR3 successor gates",
+        "pre-existing Planning Skill shadow protected-source parity",
+        "R0E live database parity",
+        "other sealed source/evidence identity gates"
+      ],
+      "owning_source_regression": false
+    }
+  ],
+  "historical_matrix": "197 passed, 14 failed, 26 errors",
+  "known_fixed_head_failure_count": 40,
+  "new_owning_source_regression_count": 0,
+  "schema": "SkillV2DemandAwareCreativeCoreTestReceiptV1",
+  "strict_l3": "PASS",
+  "strict_l3_blockers": 0,
+  "strict_l3_warnings": 0,
+  "version": 1
+}

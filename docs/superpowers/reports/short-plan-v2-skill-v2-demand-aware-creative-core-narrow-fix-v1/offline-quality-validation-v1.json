@@ -1,0 +1,11 @@
+{
+  "generalized_literary_non_inferiority": "NOT_PROVEN_OFFLINE",
+  "offline_creative_semantic_validation": "PASS",
+  "pair1_real_revalidation_still_required": "YES",
+  "production_cutover_authorized": false,
+  "prompt_changed": false,
+  "route_model_retry_fallback_output_budget_changed": false,
+  "schema": "SkillV2DemandAwareCreativeCoreOfflineQualityValidationV1",
+  "validator_changed": false,
+  "version": 1
+}

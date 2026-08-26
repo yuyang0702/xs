@@ -1,0 +1,11 @@
+{
+  "anti_taxonomy": "PASS",
+  "anti_template": "PASS",
+  "forbidden_phrase_match_count": 0,
+  "overall_status": "PASS",
+  "profile_contains_runtime_owned_responsibility": false,
+  "rigid_beat_template_requirement": "NO",
+  "schema": "SkillV2DemandAwareCreativeCoreAntiTemplateValidationV1",
+  "taxonomy_label_leak_count": 0,
+  "version": 1
+}
