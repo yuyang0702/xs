@@ -1,0 +1,50 @@
+{
+  "schema": "SkillV2DemandAwareCreativeCoreChangeContractV1",
+  "version": 1,
+  "requested_outcome": "Implement the sealed four-rule character-heavy creative-core deepening, validate it offline, and materialize only an inert revalidation candidate when all gates pass.",
+  "world_model": "closed_world",
+  "sealed_restoration_ids": [
+    "MOTIVE_ACTION_V2",
+    "VOICE_RELATION_V2",
+    "DRAFT_SCENE_V2",
+    "ANTI_TAXONOMY_V2"
+  ],
+  "allowed_source_changes": [
+    "src/novel_flywheel/runtime_skill_profiles.py",
+    "tests/test_skill_v2_demand_aware_creative_core.py",
+    "tools/diagnostics/skill_v2_demand_aware_creative_core.py",
+    "docs/maintenance.md",
+    "docs/superpowers/reports/short-plan-v2-skill-v2-demand-aware-creative-core-narrow-fix-v1/**"
+  ],
+  "selected_approach": {
+    "resolver": "deterministic local exact lookup of pair_creative_demand_class",
+    "character_heavy": "build a shadow-only successor profile by replacing exactly four existing rule texts in place",
+    "known_other_demands": "return the historical restored profile byte-for-byte",
+    "unknown_demand": "typed fail-close with no profile substitution",
+    "historical_builder": "preserved unchanged"
+  },
+  "authority_impact_map": {
+    "creative_profile_shadow_output": "write_successor",
+    "historical_restored_profile": "read_only",
+    "production_prompt_route_model_retry_budget": "not_involved",
+    "storystate_canon_ready_authority": "not_involved",
+    "real_execution_approval_nonce": "not_involved"
+  },
+  "protected_behavior": [
+    "all non-character-heavy effective profile bytes",
+    "all non-target rule bytes and ordering",
+    "relationship-logic support",
+    "setup/payoff support",
+    "3000-character hard cap",
+    "shadow_only=true and production_reachable=false",
+    "no Provider, network, model, paid, approval, nonce, Pair2-5, Full Short, or cutover action"
+  ],
+  "test_contract": {
+    "red_first": true,
+    "focused": "exact four rewrites, semantic coverage, cap, deterministic mapping, fail-close, no leakage",
+    "adjacent": "runtime Skill profiles, restoration, repeated A/B, planning shadow",
+    "strict_l3": "required pass with zero warnings and blockers",
+    "clean_room_review": "single-agent final review because team review was not requested"
+  },
+  "rollback": "Revert the bounded implementation, validation, and candidate-evidence commits; historical sealed artifacts remain untouched."
+}
