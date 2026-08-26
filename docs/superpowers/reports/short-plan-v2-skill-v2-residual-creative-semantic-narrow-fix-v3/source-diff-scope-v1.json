@@ -1,0 +1,26 @@
+{
+  "baml_source_diff_count": 0,
+  "baseline_head": "31e52466d6b03d684bf231b2ae4dd49768f704b6",
+  "canon_changed": false,
+  "changed_paths": [
+    "docs/maintenance.md",
+    "src/novel_flywheel/runtime_skill_profiles.py",
+    "tests/test_skill_v2_residual_creative_semantic_v3.py"
+  ],
+  "fallback_changed": false,
+  "implementation_head": "b79ae31adc73a238b2d9978058e52751702ef14c",
+  "model_changed": false,
+  "output_cap_changed": false,
+  "overall_status": "exact",
+  "production_source_paths": [
+    "src/novel_flywheel/runtime_skill_profiles.py"
+  ],
+  "prompt_changed": false,
+  "ready_authority_changed": false,
+  "retry_changed": false,
+  "route_changed": false,
+  "schema": "SkillV2ResidualV3SourceDiffScopeV1",
+  "story_state_changed": false,
+  "validator_changed": false,
+  "version": 1
+}

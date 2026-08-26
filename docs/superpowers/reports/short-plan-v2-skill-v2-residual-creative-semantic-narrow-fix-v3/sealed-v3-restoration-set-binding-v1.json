@@ -1,0 +1,20 @@
+{
+  "exact_proposed_text_sha256": {
+    "ANTI_GENERICITY_POSITIVE_SELECTION_V3": "8228ca76fef492c89be8fab618fe7e8a2c245bef1bffc543500806f50613c33e",
+    "SCENE_SUBTEXT_AFFORDANCE_BRIDGE_V3": "42c9e7a7bf6c9ed0c1732f177c70c3a763f261652551d4d98261076b9893c02c"
+  },
+  "implementation_status": "EXACT",
+  "item_count": 2,
+  "restoration_ids": [
+    "SCENE_SUBTEXT_AFFORDANCE_BRIDGE_V3",
+    "ANTI_GENERICITY_POSITIVE_SELECTION_V3"
+  ],
+  "schema": "SkillV2SealedResidualV3RestorationSetBindingV1",
+  "source_file_sha256": "86dbad4b99570eb9632ebc4b577ee3877eeba23c8749f73fc05bcd65c7b07781",
+  "source_path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-demand-aware-residual-quality-root-cause-v1/minimal-residual-creative-restoration-v3-set-v1.json",
+  "target_sections": [
+    "DRAFT_SCENE",
+    "ANTI_TAXONOMY"
+  ],
+  "version": 1
+}

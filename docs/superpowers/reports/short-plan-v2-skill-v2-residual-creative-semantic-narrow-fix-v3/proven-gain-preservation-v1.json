@@ -1,0 +1,22 @@
+{
+  "byte_equal": true,
+  "byte_equal_rule_ids": [
+    "MOTIVE_ACTION",
+    "VOICE_RELATION",
+    "CAUSAL_AFFORDANCE",
+    "PRESSURE_BEATS",
+    "SETUP_PAYOFF",
+    "PLOT_CAUSAL_ESCALATION",
+    "PLOT_SETUP_PAYOFF_INTENT",
+    "CHARACTER_VOICE",
+    "CHARACTER_RELATIONSHIP_NUANCE"
+  ],
+  "causal_microchain_support_preserved": "YES",
+  "character_voice_gain_preserved": "YES",
+  "event_causal_fidelity_gain_preserved": "YES",
+  "overall_status": "PASS",
+  "relationship_logic_gain_preserved": "YES",
+  "schema": "SkillV2ResidualV3ProvenGainPreservationV1",
+  "setup_payoff_gain_preserved": "YES",
+  "version": 1
+}

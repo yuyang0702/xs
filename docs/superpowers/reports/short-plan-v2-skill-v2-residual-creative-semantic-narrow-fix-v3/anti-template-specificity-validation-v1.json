@@ -1,0 +1,14 @@
+{
+  "character_specific_selection": true,
+  "genericity_avoidance_beyond_labels": true,
+  "mandatory_beat_count": 0,
+  "mandatory_sensory_count": 0,
+  "no_stock_checklist_requirement": true,
+  "offline_anti_template_semantic_validation": "PASS",
+  "overall_status": "PASS",
+  "positive_specificity_double_duty": true,
+  "rigid_emitted_structure": false,
+  "schema": "SkillV2ResidualV3AntiTemplateSpecificityValidationV1",
+  "version": 1,
+  "world_or_sensory_detail_can_be_causal": true
+}

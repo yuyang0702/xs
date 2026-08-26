@@ -1,0 +1,12 @@
+{
+  "anti_overconstraint": "PASS",
+  "no_fixed_scene_template": "YES",
+  "no_mandatory_beat_quota": "YES",
+  "no_mandatory_sensory_quota": "YES",
+  "overall_status": "PASS",
+  "profile_contains_runtime_owned_responsibility": false,
+  "rigid_template_requirement_count": 0,
+  "schema": "SkillV2ResidualV3AntiOverconstraintValidationV1",
+  "taxonomy_label_leak_count": 0,
+  "version": 1
+}

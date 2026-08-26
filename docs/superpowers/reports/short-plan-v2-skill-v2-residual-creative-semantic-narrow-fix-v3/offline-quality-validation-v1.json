@@ -1,0 +1,31 @@
+{
+  "anti_overconstraint": "PASS",
+  "demand_resolver": "DETERMINISTIC_LOCAL",
+  "generalized_literary_non_inferiority": "NOT_PROVEN_OFFLINE",
+  "offline_anti_template_semantic_validation": "PASS",
+  "offline_proven_gain_preservation": "PASS",
+  "offline_subtext_semantic_validation": "PASS",
+  "overall_status": "PASS",
+  "pair1_real_revalidation_still_required": "YES",
+  "schema": "SkillV2ResidualV3OfflineQualityValidationV1",
+  "sibling_demands": {
+    "conflict-pacing-heavy": {
+      "byte_equal": true,
+      "unrelated_semantic_diff_count": 0
+    },
+    "mixed": {
+      "byte_equal": true,
+      "unrelated_semantic_diff_count": 0
+    },
+    "setup-payoff-heavy": {
+      "byte_equal": true,
+      "unrelated_semantic_diff_count": 0
+    },
+    "world-heavy": {
+      "byte_equal": true,
+      "unrelated_semantic_diff_count": 0
+    }
+  },
+  "unknown_demand_behavior": "FAIL_CLOSED_NO_PROFILE_SUBSTITUTION",
+  "version": 1
+}

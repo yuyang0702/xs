@@ -1,0 +1,37 @@
+{
+  "external_actions": {
+    "credential_lookup_count": 0,
+    "http_post_attempts": 0,
+    "model_calls": 0,
+    "network_calls": 0,
+    "paid_calls": 0,
+    "real_provider_client_creation_count": 0,
+    "real_provider_request_attempts": 0
+  },
+  "focused_and_adjacent": {
+    "command_scope": [
+      "tests/test_skill_v2_residual_creative_semantic_v3.py",
+      "tests/test_skill_v2_demand_aware_creative_core.py"
+    ],
+    "result": "22 passed"
+  },
+  "full_suite": {
+    "elapsed_seconds": 2032.8,
+    "result": "3588 passed, 41 skipped, 6 xfailed, 49 failed, 72 errors, 1 warning"
+  },
+  "new_owning_source_regression_count": 0,
+  "owning_and_planning_integration": {
+    "command_scope": [
+      "tests/test_skill_v2_residual_creative_semantic_v3.py",
+      "tests/test_skill_v2_demand_aware_creative_core.py",
+      "tests/test_runtime_skill_profiles.py",
+      "tests/test_planning_v2_slice1.py"
+    ],
+    "result": "86 passed"
+  },
+  "schema": "SkillV2ResidualV3TestReceiptV1",
+  "strict_l3": "PASS",
+  "strict_l3_blockers": 0,
+  "strict_l3_warnings": 0,
+  "version": 1
+}

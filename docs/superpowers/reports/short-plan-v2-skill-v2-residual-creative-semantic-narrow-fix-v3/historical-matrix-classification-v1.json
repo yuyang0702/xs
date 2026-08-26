@@ -1,0 +1,44 @@
+{
+  "classifications": [
+    {
+      "examples": [
+        "R1_PTR4_PROBE_MAT_NO_GO_PROBE_DEFINITION_INCOMPLETE",
+        "expired or consumed approval/materialization roots"
+      ],
+      "family": "SEALED_CANARY_AND_PROBE_PARENT_GATE",
+      "owning_source_regression": false
+    },
+    {
+      "examples": [
+        "restored profile source changed after implementation head",
+        "demand-aware V2 repository materialization differs after intentional V3 successor source commit"
+      ],
+      "family": "HISTORICAL_FIXED_HEAD_OR_SOURCE_SHA",
+      "owning_source_regression": false
+    },
+    {
+      "examples": [
+        "R0E live DB/formal artifact baseline",
+        "PTR3 successor fixed source bytes"
+      ],
+      "family": "LIVE_PARITY_OR_SUCCESSOR_BASELINE",
+      "owning_source_regression": false
+    },
+    {
+      "examples": [
+        "signed preflight and campaign stop-state fixed bindings"
+      ],
+      "family": "HISTORICAL_APPROVAL_STOP_STATE_OR_LAUNCHER_BINDING",
+      "owning_source_regression": false
+    }
+  ],
+  "error_count": 72,
+  "failed_count": 49,
+  "first_failing_invariant": "Historical sealed packet no longer satisfies its original fixed parent/source identity at the current successor HEAD.",
+  "full_suite_status": "NON_GREEN_WITH_CLASSIFIED_HISTORICAL_GATES",
+  "historical_evidence_rewritten": false,
+  "new_owning_source_regression_count": 0,
+  "schema": "SkillV2ResidualV3HistoricalMatrixClassificationV1",
+  "version": 1,
+  "warning_count": 1
+}

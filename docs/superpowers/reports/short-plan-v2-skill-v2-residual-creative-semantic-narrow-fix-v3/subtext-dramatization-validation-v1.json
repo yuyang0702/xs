@@ -1,0 +1,18 @@
+{
+  "checks": {
+    "consequence": true,
+    "enacted_vs_stated": true,
+    "hidden_objective": true,
+    "implication_over_explanation": true,
+    "meaningful_micro_decision": true,
+    "relationship_specific_pressure": true,
+    "tactical_evasion_or_withholding": true,
+    "unresolved_pressure_and_draft_handoff": true
+  },
+  "explicit_motive_naming_required": false,
+  "offline_subtext_semantic_validation": "PASS",
+  "overall_status": "PASS",
+  "schema": "SkillV2ResidualV3SubtextDramatizationValidationV1",
+  "taxonomy_label_leak_count": 0,
+  "version": 1
+}

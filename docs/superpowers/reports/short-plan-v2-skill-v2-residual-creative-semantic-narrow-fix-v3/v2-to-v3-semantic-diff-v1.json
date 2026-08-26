@@ -1,0 +1,29 @@
+{
+  "changed_semantic_unit_count": 2,
+  "changed_semantic_units": [
+    {
+      "classification": "DRAFT_SCENE_AUTHORIZED_REWRITE",
+      "rule_id": "DRAFT_SCENE"
+    },
+    {
+      "classification": "ANTI_TAXONOMY_AUTHORIZED_REWRITE",
+      "rule_id": "ANTI_TAXONOMY"
+    }
+  ],
+  "net_delta_characters": 73,
+  "overall_status": "PASS",
+  "pure_addition_characters": 0,
+  "replaced_text_characters": 351,
+  "replacement_text_characters": 424,
+  "required_serialization_or_identity_updates": [
+    "profile_id",
+    "definition_sha256",
+    "prompt_binding_sha256",
+    "canonical_profile_sha256",
+    "context_budget_policy_sha256"
+  ],
+  "schema": "SkillV2V2ToV3SemanticDiffMatrixV1",
+  "unchanged_rule_count": 18,
+  "unrelated_change_count": 0,
+  "version": 1
+}

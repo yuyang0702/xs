@@ -1,0 +1,13 @@
+{
+  "context_budget_policy_sha256": "afc95e134adab65b0c61bdc836dbde302dc52356925f54a8032a018861a668fd",
+  "context_sha256": "98c5adc38074f442a986764fb140baf4d3bf3fa1ab58e34ba7f82b7ddc8888ba",
+  "definition_sha256": "8eb9f0f2abb12df9f49dc81e5366de6591c78df339055c47d1b4dc06a469bbc5",
+  "production_reachable": false,
+  "profile_id": "RESTORED_SKILL_V2_CHARACTER_CORE_V3",
+  "profile_sha256": "82a4542326e9b20771efc5f05e080ff0ac56438bef8288d61f30e6d905af708a",
+  "prompt_binding_sha256": "38a27fd14a2cfd684b9adfebdf675b9f897d6232215aced1f9084876641dbbca",
+  "runtime_skill_profiles_source_sha256": "10b7a45ada60e9b699d020e0ebf076ae20dad151afcb624c51a2bc3c3fae9f96",
+  "schema": "SkillV2ResidualV3ProfileIdentityV1",
+  "shadow_only": true,
+  "version": 1
+}

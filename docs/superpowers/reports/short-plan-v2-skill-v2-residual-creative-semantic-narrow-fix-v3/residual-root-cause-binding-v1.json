@@ -1,0 +1,39 @@
+{
+  "causality_confidence": "MEDIUM",
+  "demand_aware_v2_fix_disposition": "PARTIALLY_REVISE",
+  "overall_status": "PASS",
+  "pair1_minimal_residual_creative_restoration_v3_set_defined": "YES",
+  "parent_manifests": {
+    "a_execution": {
+      "entry_count": 16,
+      "file_sha256": "d210322f8e0314ae5a9841300faf0e5ea492732f08e21eb516c1f8ff32567796",
+      "mismatch_count": 0,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-execution-v4/pairs/restored-character-heavy-v2/a-arm/sha256-manifest-v1.json",
+      "status": "EXACT"
+    },
+    "approval_readiness": {
+      "entry_count": 24,
+      "file_sha256": "f9be641073ff5c17fc4c8084a8eb416c7c49638bef09151f7bb8e106633b615e",
+      "mismatch_count": 0,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-demand-aware-b-only-approval-readiness-v1/sha256-manifest-v1.json",
+      "status": "EXACT"
+    },
+    "demand_aware_v2": {
+      "entry_count": 26,
+      "file_sha256": "4d54c0517bd903392cdba7c2dc068ff1cefb02fa347da5a7f530928e25f6311b",
+      "mismatch_count": 0,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-demand-aware-creative-core-narrow-fix-v1/sha256-manifest-v1.json",
+      "status": "EXACT"
+    },
+    "root_cause": {
+      "entry_count": 27,
+      "file_sha256": "88a5702994b10f0d86f84dd219295ccf2152bf898262b052af4532dbf8eabec5",
+      "mismatch_count": 0,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-demand-aware-residual-quality-root-cause-v1/sha256-manifest-v1.json",
+      "status": "EXACT"
+    }
+  },
+  "primary_residual_root_cause_class": "MULTI_FACTOR_WITH_PRIMARY_SCENE_REALIZATION_BRIDGE_UNDERSPECIFIED",
+  "schema": "SkillV2ResidualV3RootCauseBindingV1",
+  "version": 1
+}

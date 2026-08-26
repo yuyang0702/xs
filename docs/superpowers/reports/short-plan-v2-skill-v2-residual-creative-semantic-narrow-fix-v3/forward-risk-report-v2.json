@@ -1,0 +1,126 @@
+{
+  "closed_world_justification": "The sealed evidence enumerates exactly two replacement texts, one applicable demand class, four known non-applicable sibling classes, one unknown-value fail-close disposition, and a fixed 3000-character boundary.",
+  "constraint_traceability": [
+    {
+      "evidence": "Exact two-rule object diff, exact sealed text, and non-target object equality assertions.",
+      "implementation": "CHARACTER_HEAVY_CREATIVE_CORE_V3_RULE_TEXT derives from the V2 map and overrides exactly those two keys; the V3 builder performs in-place dataclass replacement.",
+      "requirement": "Only DRAFT_SCENE and ANTI_TAXONOMY change from V2 to V3.",
+      "test_paths": [
+        "tests/test_skill_v2_residual_creative_semantic_v3.py"
+      ]
+    },
+    {
+      "evidence": "Four parameterized sibling byte-equality cases plus typed unknown-demand rejection.",
+      "implementation": "The V3 builder reuses resolve_demand_aware_creative_profile and returns the historical restored builder unless the sealed strategy is character-heavy.",
+      "requirement": "Preserve sibling demands and fail closed for unknown demand.",
+      "test_paths": [
+        "tests/test_skill_v2_residual_creative_semantic_v3.py",
+        "tests/test_skill_v2_demand_aware_creative_core.py"
+      ]
+    },
+    {
+      "evidence": "Gain-rule equality, semantic-unit coverage, and forbidden runtime/quota/template phrase checks.",
+      "implementation": "All causal, voice, relationship, and setup/payoff rules remain identical; the two exact replacements add no emitted structure or count requirement.",
+      "requirement": "Preserve proven creative gains and avoid quota/template leakage.",
+      "test_paths": [
+        "tests/test_skill_v2_residual_creative_semantic_v3.py"
+      ]
+    },
+    {
+      "evidence": "Deterministic 2998-character render, no excluded rule, NONE truncation status, and total cap equality.",
+      "implementation": "A profile-local 1411/1589 partition fits all mandatory and advisory rules without changing the total ceiling.",
+      "requirement": "Keep complete context within the unchanged 3000-character cap.",
+      "test_paths": [
+        "tests/test_skill_v2_residual_creative_semantic_v3.py",
+        "tests/test_runtime_skill_profiles.py"
+      ]
+    },
+    {
+      "evidence": "Profile authority assertions and repository import-boundary inspection.",
+      "implementation": "RuntimeSkillProfileV1 remains frozen with shadow_only=true and production_reachable=false; no production importer or workflow owner is changed.",
+      "requirement": "Remain shadow-only and outside every production authority boundary.",
+      "test_paths": [
+        "tests/test_skill_v2_residual_creative_semantic_v3.py",
+        "tests/test_planning_skill_profile_shadow.py"
+      ]
+    }
+  ],
+  "forbidden_narrowing": [
+    "Do not omit either sealed restoration item or alter its exact text.",
+    "Do not change the V2 builder or any non-target V2 rule.",
+    "Do not raise the 3000-character ceiling or omit a whole rule to fit.",
+    "Do not make the shadow profile production reachable or authorize a real request.",
+    "Do not weaken authority, validator, retry, fallback, route, model, StoryState, Canon, or READY invariants."
+  ],
+  "historical_incident_families_checked": [
+    "overcompressed character creative core",
+    "template flattening and explicit taxonomy leakage",
+    "context-cap whole-rule shedding",
+    "demand-agnostic profile substitution",
+    "unknown demand fail-open",
+    "authority or production-reachability drift",
+    "sealed profile and historical evidence byte drift",
+    "route, retry, fallback, output-budget, validator, StoryState, Canon, and READY scope expansion"
+  ],
+  "model_output_boundary_changed": false,
+  "model_output_not_applicable_evidence": "The changed source only builds a deterministic hash-bound Skill context before any model dispatch; it does not parse, normalize, validate, recover, or route model output, and the new builder remains production_reachable=false.",
+  "next_authoritative_boundary_tests": [
+    "tests/test_planning_skill_profile_shadow.py",
+    "tests/test_runtime_skill_profiles.py"
+  ],
+  "operational_definition": "A new shadow-only residual V3 builder reuses the closed local demand resolver, replaces only DRAFT_SCENE and ANTI_TAXONOMY for character-heavy demand, returns the unchanged historical restored profile for all four enumerated sibling demand classes, and fails closed for unknown values.",
+  "original_requirement": "Implement only the two sealed character-heavy residual V3 rewrites while preserving the demand-aware V2 base, sibling demand behavior, authority boundaries, and the 3000-character cap.",
+  "production_shaped_tests": [
+    "tests/test_skill_v2_residual_creative_semantic_v3.py",
+    "tests/test_skill_v2_demand_aware_creative_core.py",
+    "tests/test_runtime_skill_profiles.py"
+  ],
+  "projected_failure_mechanisms": [
+    "semantic replacement outside the sealed two-rule set",
+    "mandatory partition overflow causing whole-rule omission",
+    "sibling demand mutation through shared map reuse",
+    "unknown demand selecting a treatment",
+    "shadow profile becoming reachable from production prompt assembly",
+    "offline candidate accidentally carrying approval or external capability"
+  ],
+  "remaining_risks": [
+    "Generalized literary non-inferiority cannot be proven offline and requires one separately approved Pair 1 B-only real revalidation.",
+    "Pair 2 through Pair 5 remain blocked and cannot inherit the character-heavy result."
+  ],
+  "resolution_status": "case_fixed",
+  "scope_classification": "closed_world",
+  "sibling_boundaries": [
+    {
+      "boundary": "planning and planning recovery",
+      "disposition": "tested_not_susceptible",
+      "evidence": "The V3 profile is shadow-only, no planning dispatcher imports the V3 builder, and production_reachable remains false."
+    },
+    {
+      "boundary": "causal-chain and execution-manifest",
+      "disposition": "not_applicable",
+      "evidence": "No causal-chain or manifest source changed; formal event ownership and schemas are not referenced by the two text substitutions."
+    },
+    {
+      "boundary": "drafting, merge, polish, and targeted/manual revision",
+      "disposition": "not_applicable",
+      "evidence": "No draft, merge, polish, revision, prompt, validator, or workflow module imports or receives the shadow-only V3 profile."
+    },
+    {
+      "boundary": "AI issue refresh and final review",
+      "disposition": "not_applicable",
+      "evidence": "No review or issue-refresh contract, parser, route, model, or budget source changed."
+    },
+    {
+      "boundary": "formal promotion, StoryState, Canon, and READY authority",
+      "disposition": "tested_not_susceptible",
+      "evidence": "Profile models retain model_creative ownership, formal_write_authority=false, shadow_only=true, and production_reachable=false."
+    },
+    {
+      "boundary": "world-heavy, conflict-pacing-heavy, setup-payoff-heavy, and mixed demand",
+      "disposition": "fixed_and_tested",
+      "evidence": "Each enumerated sibling class returns the byte-identical historical restored profile in parameterized tests."
+    }
+  ],
+  "version": 2,
+  "why_previous_tests_missed": "The V2 tests correctly proved the prior four-rule restoration but predated the sealed residual blind-evaluation finding; they had no V3 successor, no exact two-rule V2-to-V3 oracle, and no 2998-character boundary case to exercise."
+}
