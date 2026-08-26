@@ -1,0 +1,13 @@
+{
+  "approval_readiness_packet_sha256": "762e98d2f83e919523aaced3131f29ef762773f496ffc0a3706a3c9c9f553e7b",
+  "artifact_file_sha256": "87628f204e7f4a3f27910cf4801d904b907cae29841b44be34031ae741cd1a3d",
+  "canon_mutations": 0,
+  "full_short_canary": "NOT_EXECUTED",
+  "http_post_attempts": 1,
+  "model_logical_calls": 1,
+  "network_request_attempts": 1,
+  "ready_mutations": 0,
+  "real_provider_request_attempts": 1,
+  "status": "executed_once",
+  "story_state_mutations": 0
+}

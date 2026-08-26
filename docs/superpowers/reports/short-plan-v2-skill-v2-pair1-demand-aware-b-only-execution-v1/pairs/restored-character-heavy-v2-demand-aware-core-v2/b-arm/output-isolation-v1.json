@@ -1,0 +1,22 @@
+{
+  "artifact_root": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-demand-aware-b-only-execution-v1/pairs/restored-character-heavy-v2-demand-aware-core-v2/b-arm/artifact",
+  "canon_mutations": 0,
+  "draft_executed": false,
+  "final_review_executed": false,
+  "formal_manuscript_mutations": 0,
+  "full_short_canary": "NOT_EXECUTED",
+  "isolated_model_artifact_allowed": true,
+  "isolated_model_artifact_count": 1,
+  "maintenance_executed": false,
+  "observed_temporary_runtime_database_sha256": "bf4fdfd3b6b0bac563a1b64ab0593b4bb0dfe764a082693afef298ddc162c4e7",
+  "output_isolation": "PASS",
+  "production_authority": false,
+  "production_database_mutation_from_execution": false,
+  "production_database_nonmutation_evidence": "launcher copied data/app.db to the isolated execution root before all execution-side Database construction; no production Database handle was passed to the Provider path",
+  "ready_mutations": 0,
+  "runtime_database_committed": false,
+  "runtime_database_present": false,
+  "schema": "SkillV2Pair1DemandAwareBExecutionOutputIsolationV1",
+  "story_state_mutations": 0,
+  "version": 1
+}

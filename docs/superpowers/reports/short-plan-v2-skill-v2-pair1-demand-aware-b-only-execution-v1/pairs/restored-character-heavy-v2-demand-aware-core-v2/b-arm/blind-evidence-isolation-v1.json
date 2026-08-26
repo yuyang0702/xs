@@ -1,0 +1,17 @@
+{
+  "fresh_blind_bundle_required": true,
+  "launcher_model_input_sources": [
+    "sealed corrected fixture",
+    "sealed authority",
+    "sealed task contract",
+    "demand-aware Skill profile/context",
+    "sealed route binding"
+  ],
+  "old_blind_review_reusable": false,
+  "private_blind_evidence_egress_count": 0,
+  "private_blind_evidence_in_new_b_input": false,
+  "private_blind_evidence_read_by_launcher": false,
+  "schema": "SkillV2Pair1DemandAwareBExecutionBlindEvidenceIsolationV1",
+  "status": "PASS",
+  "version": 1
+}

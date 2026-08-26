@@ -1,0 +1,38 @@
+{
+  "artifact": {
+    "artifact_id": "slice1-artifact-0419f3befa341a87a152016c49375df0",
+    "artifact_revision": 1,
+    "commit_performed": false,
+    "dependency_artifact_ids": [],
+    "dependency_set_sha256": "f9a6b03c46a03f77a09269e1db3625f651bcd41333d3b6092e4242bda3cc1e95",
+    "formal_event_contract_sha256": "55a5b2b47210d3b6106f7b985d35f888be348ad7aacfd4a6dcc4222c62fc2f70",
+    "formal_event_id": "EV-3D3AE01E",
+    "formal_event_ordinal": 0,
+    "freeze_state": "FROZEN",
+    "narrative": "The alarm bell coughed once above the sluice chamber, its clapper fouled by river grit. Mara heard boots on the iron stairs and found Iven pinned beside the rising gate, one leg trapped beneath the dropped locking bar. Black water sheeted through the seams. On the wall, the release wheel shuddered against its chain.\n\n“Go on,” Iven said through his teeth. “You’ve waited years for gravity to take my side.”\n\nMara tested the bar. It did not lift. The wheel would raise it, but opening the gate would also drown the evidence satchel chained to her wrist—the ledgers that could clear her name by proving Iven had acted alone.\n\nBoots struck the landing above.\n\nShe crouched and worked the satchel chain through the wheel spokes. “A revised offer. You keep breathing. In return, you testify that I was here under protest.”\n\n“You were always gifted at apologies.”\n\n“I’m negotiating. Try not to cheapen it.” Her voice stayed level, though her wet fingers slipped twice on the crank.\n\nIven caught her wrist. “The ledgers go through the gate.”\n\n“That is the price currently under discussion.”\n\nHe searched her face, waiting for the admission she would not give him: that she had sent him into this chamber years ago, that she had known the locks were failing, that every accusation since had been easier than saying his limp belonged partly to her.\n\nThe stair door buckled inward.\n\nMara snapped the cuff key in the satchel lock, freeing herself, then heaved the wheel. The chain tore the satchel open. Pages spun into the torrent like pale fish. The locking bar climbed; Iven dragged his leg clear and collapsed against her.\n\nShe could have run. Instead she braced his weight and faced the opening door with an empty cuff hanging from her wrist.\n\nIven pressed the stolen key into her palm. “I testify to what happened tonight. Nothing before it.”\n\n“Generous.”\n\n“Conditional.”\n\nThe gate thundered fully open behind them, carrying her vindication into the dark while, for the first time, he let her help him climb.",
+    "parent_authority_sha256": "5271869c41776bc7f8f3023729246899dd76b1bc19c22cb98854a5a976dafada",
+    "payload_sha256": "99ca68dd198e201980539c20b07c17817f3e428ea533ade9b323e2bfab036b6a",
+    "predecessor_boundary_sha256": "76a68bbed1248ae022a28653d63d27cef26c0810683a610c74cf1bb4ebef4360",
+    "promotion_eligible": false,
+    "provenance": {
+      "contract_identity": "planning_event_realization_shadow_v1@1",
+      "producer_kind": "future_model_shadow",
+      "source_candidate_sha256": "309eda53949b6fc565a85ef0070c3b03275814994f90a556e3d76ae2a394ef99"
+    },
+    "schema": "EventRealizationArtifactV1",
+    "scope_id": "slice1-scope-42008bf8685584e41c985df99da36b16",
+    "segment_ordinal": 0,
+    "shadow_only": true,
+    "stage": "event_realization_unit_shadow_v1",
+    "title": "Terms at the Floodgate",
+    "validation_receipt_sha256": "140c5a2fc65a45ba76ac7f935feeab6c6c9221b334b76e4d3dc738f607e4da5a",
+    "validation_status": "PASS",
+    "version": 1
+  },
+  "cohort_id": "skill-v2-pair1-demand-aware-b-revalidation-disabled-v1",
+  "conversion_audit_sha256": "4f1cc3a4a6a8bcfd291c5882628751d6901dfa87a8d597323a489702732cc22d",
+  "production_authority": false,
+  "schema": "SkillV2Pair1DemandAwareBOnlyGeneratedArtifactV1",
+  "skill_arm": "RESTORED_SKILL_V2_CHARACTER_CORE_V2",
+  "version": 1
+}

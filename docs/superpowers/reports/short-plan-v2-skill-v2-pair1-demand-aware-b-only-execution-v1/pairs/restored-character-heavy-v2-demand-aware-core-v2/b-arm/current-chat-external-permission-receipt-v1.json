@@ -1,0 +1,18 @@
+{
+  "a_control_historical_b_blind_evidence_egress_allowed": false,
+  "approval_readiness_packet_sha256": "762e98d2f83e919523aaced3131f29ef762773f496ffc0a3706a3c9c9f553e7b",
+  "candidate_sha256": "97adb8c54eacbc02314871b2beeb146dae96758e6dc541571605a403537cbaf5",
+  "credentials": true,
+  "data_egress": true,
+  "maximum_real_provider_request_attempts": 1,
+  "network": true,
+  "observed_at_utc": "2026-08-26T04:33:37Z",
+  "paid_provider": true,
+  "permission_receipt_file_sha256": "3d65cffbfd70d5ee3ba9c6a60254320f8e5842e84021443cf8a64582a7ccbc95",
+  "retry_fallback_route_switch_resume_second_request_allowed": false,
+  "schema": "CurrentChatExternalPermissionReceiptV1",
+  "scope": "SKILL_V2_PAIR1_DEMAND_AWARE_B_ONLY_REVALIDATION_SINGLE_DISPATCH_ONLY",
+  "signed_approval_sha256": "3650adc2e3106897c22966cf2cd8844b201626d12dc27975701e797af20f38d2",
+  "source": "current_user_chat_message_bound_by_execution_launcher",
+  "version": 1
+}

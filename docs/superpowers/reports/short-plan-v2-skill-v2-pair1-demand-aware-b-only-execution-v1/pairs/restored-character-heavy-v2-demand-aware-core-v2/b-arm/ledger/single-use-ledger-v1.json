@@ -1,0 +1,12 @@
+{
+  "approval_readiness_packet_sha256": "762e98d2f83e919523aaced3131f29ef762773f496ffc0a3706a3c9c9f553e7b",
+  "cohort_id": "skill-v2-pair1-demand-aware-b-revalidation-disabled-v1",
+  "http_post_attempts": 1,
+  "model_logical_calls": 1,
+  "network_request_attempts": 1,
+  "nonce_sha256": "546413d08c1fea06f0ed186e74de9482b3ad22d34bfb828428180193973f35c1",
+  "real_provider_request_attempts": 1,
+  "schema": "SkillV2Pair1DemandAwareBOnlyNonceLedgerV1",
+  "usage_status": "consumed",
+  "version": 1
+}

@@ -1,0 +1,12 @@
+{
+  "a_control_artifact_sha256": "f6aa5c49d64f38aefe71b01fc9eb0abf2ea3a08faba6f5bc3dbcb38c665e3f8f",
+  "a_control_mutated": false,
+  "a_control_packet_sha256": "39a46e38d9c11f8afd5fd1cf633443b31ae6fb1c97c4b93d404f950781f19356",
+  "a_control_prose_egress_count": 0,
+  "a_control_prose_in_new_b_model_input": false,
+  "a_control_status": "PASS_SEALED",
+  "a_result_used_only_as_sealed_control_evidence": true,
+  "schema": "SkillV2Pair1DemandAwareBExecutionAControlIsolationV1",
+  "status": "PASS",
+  "version": 1
+}

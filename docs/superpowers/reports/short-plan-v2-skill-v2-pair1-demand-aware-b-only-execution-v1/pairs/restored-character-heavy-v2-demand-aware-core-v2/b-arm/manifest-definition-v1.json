@@ -1,0 +1,14 @@
+{
+  "canonical_line_ending": "LF",
+  "coverage": "all sealed execution evidence files except sha256-manifest-v1.json itself",
+  "coverage_root": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-demand-aware-b-only-execution-v1/pairs/restored-character-heavy-v2-demand-aware-core-v2/b-arm",
+  "entry_order": "path_ascending",
+  "evidence_encoding": "UTF-8",
+  "hash_algorithm": "SHA-256",
+  "manifest_definition_sha256": "abdf5a3cbe246e7d84cf0bfef9a4277c58297a92e07c759e219b8ff049ea40c7",
+  "runtime_database_excluded": true,
+  "schema": "SkillV2Pair1DemandAwareBExecutionManifestDefinitionV1",
+  "self_excluded": true,
+  "version": 1,
+  "working_bytes_git_blobs_required_exact": true
+}

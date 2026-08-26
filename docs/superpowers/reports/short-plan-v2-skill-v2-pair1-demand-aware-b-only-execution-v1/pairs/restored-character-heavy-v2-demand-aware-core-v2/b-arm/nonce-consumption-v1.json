@@ -1,0 +1,17 @@
+{
+  "approval_readiness_packet_sha256": "762e98d2f83e919523aaced3131f29ef762773f496ffc0a3706a3c9c9f553e7b",
+  "binding_status": "PASS",
+  "candidate_sha256": "97adb8c54eacbc02314871b2beeb146dae96758e6dc541571605a403537cbaf5",
+  "canonical_ledger_path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-demand-aware-b-only-execution-v1/pairs/restored-character-heavy-v2-demand-aware-core-v2/b-arm/ledger/single-use-ledger-v1.json",
+  "canonical_ledger_sha256": "459925c9597b6c9afa35c20d3c08afaabc3226535d41fc802a0069163d860c96",
+  "cohort_id": "skill-v2-pair1-demand-aware-b-revalidation-disabled-v1",
+  "execution_receipt_sha256": "f402e3a2211811c4e3202046eebc47034aaafc5b3cac2d49c36facf5a63efbb5",
+  "nonce_raw_value_persisted_here": false,
+  "nonce_reusable": false,
+  "nonce_sha256": "546413d08c1fea06f0ed186e74de9482b3ad22d34bfb828428180193973f35c1",
+  "nonce_status": "CONSUMED",
+  "phase_b_preflight_receipt_sha256": "e362e3e0b8cc5da26dc24e29f3ee451aa0cb137dd468d97e95f410e6b794f1f8",
+  "schema": "SkillV2Pair1DemandAwareBExecutionNonceConsumptionV1",
+  "signed_approval_sha256": "3650adc2e3106897c22966cf2cd8844b201626d12dc27975701e797af20f38d2",
+  "version": 1
+}

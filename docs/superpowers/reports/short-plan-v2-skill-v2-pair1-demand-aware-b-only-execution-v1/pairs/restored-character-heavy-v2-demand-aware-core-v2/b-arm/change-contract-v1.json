@@ -1,0 +1,33 @@
+{
+  "allowed_changes": [
+    "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-demand-aware-b-only-execution-v1/pairs/restored-character-heavy-v2-demand-aware-core-v2/b-arm/**"
+  ],
+  "authorization": "offline_evidence_seal_only",
+  "external_actions_during_seal": {
+    "credential_lookup_count": 0,
+    "http_post_attempts": 0,
+    "model_calls": 0,
+    "network_calls": 0,
+    "paid_calls": 0,
+    "real_provider_request_attempts": 0
+  },
+  "forbidden_changes": [
+    "src/**",
+    "baml_src/**",
+    "Skill profile/context",
+    "fixture",
+    "validator",
+    "launcher",
+    "A artifact",
+    "historical B artifact",
+    "old blind evidence",
+    "Pair 2-5",
+    "production data"
+  ],
+  "requested_outcome": "Seal the already completed exact demand-aware Pair 1 B-only execution evidence offline.",
+  "resolution_status": "case_fixed",
+  "rollback_path": "Before commit, remove only newly materialized seal metadata while retaining the immutable artifact, execution receipt, and consumed ledger.",
+  "schema": "SkillV2Pair1DemandAwareBExecutionSealChangeContractV1",
+  "scope_classification": "closed_world",
+  "version": 1
+}

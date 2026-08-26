@@ -1,0 +1,19 @@
+{
+  "change_gate_helper_present": false,
+  "manual_equivalent_git_sentinel_hash_gate": "PASS",
+  "new_approval_created": 0,
+  "new_credential_lookup_count": 0,
+  "new_http_post_attempts": 0,
+  "new_model_calls": 0,
+  "new_network_calls": 0,
+  "new_nonce_consumed": 0,
+  "new_nonce_created": 0,
+  "new_nonce_reserved": 0,
+  "new_paid_calls": 0,
+  "new_real_provider_request_attempts": 0,
+  "production_source_diff": 0,
+  "schema": "SkillV2Pair1DemandAwareBExecutionSealSafetyReceiptV1",
+  "scope_helper_present": false,
+  "unexpected_dirty_path_count": 0,
+  "version": 1
+}

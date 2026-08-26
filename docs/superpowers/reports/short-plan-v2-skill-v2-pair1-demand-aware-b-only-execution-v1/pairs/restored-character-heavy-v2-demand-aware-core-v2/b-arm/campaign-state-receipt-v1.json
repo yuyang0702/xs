@@ -1,0 +1,16 @@
+{
+  "exact_next_gate": "SKILL_V2_PAIR_1_DEMAND_AWARE_REVALIDATION_FRESH_BLIND_BUNDLE_MATERIALIZATION",
+  "fresh_blind_evaluation_ready": true,
+  "full_short_canary": "NOT_EXECUTED",
+  "old_blind_review_reusable": false,
+  "pair1_demand_aware_a_control_status": "PASS_SEALED",
+  "pair1_demand_aware_b_status": "PASS_SEALED",
+  "pair1_demand_aware_b_treatment_sample_valid": true,
+  "pair1_demand_aware_revalidation_pair_complete": true,
+  "pair2_to_5_execution_allowed": false,
+  "pair_case_id": "restored-character-heavy-v2-demand-aware-core-v2",
+  "planning_v2_production_cutover_authorized": false,
+  "schema": "SkillV2Pair1DemandAwareBExecutionCampaignStateReceiptV1",
+  "skill_v2_production_cutover_authorized": false,
+  "version": 1
+}

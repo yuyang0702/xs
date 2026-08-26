@@ -1,0 +1,19 @@
+{
+  "application_second_dispatch_allowed": false,
+  "attempt_accounting_sha256": "af4368aa7ea487f545f623febf67c6d9841515a0ba7dcce744a4295fc5cc85ea",
+  "fallback_attempts": 0,
+  "http_post_attempts": 1,
+  "ledger_receipt_parity": "PASS",
+  "model_logical_calls": 1,
+  "network_request_attempts": 1,
+  "paid_calls": 1,
+  "real_provider_request_attempts": 1,
+  "resume_attempts": 0,
+  "retry_attempts": 0,
+  "route_switch_attempts": 0,
+  "schema": "SkillV2Pair1DemandAwareBExecutionAttemptAccountingV1",
+  "sdk_and_transport_retries_disabled": true,
+  "second_request_attempts": 0,
+  "single_dispatch_transport_guard": "PASS",
+  "version": 1
+}

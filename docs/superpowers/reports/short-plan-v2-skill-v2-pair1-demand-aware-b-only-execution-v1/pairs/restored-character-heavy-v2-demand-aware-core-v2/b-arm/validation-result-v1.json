@@ -1,0 +1,26 @@
+{
+  "artifact_file_sha_match": true,
+  "artifact_frozen": true,
+  "artifact_schema": "EventRealizationArtifactV1",
+  "artifact_schema_validation": "PASS",
+  "artifact_validation_receipt_sha256": "140c5a2fc65a45ba76ac7f935feeab6c6c9221b334b76e4d3dc738f607e4da5a",
+  "audit_serialization": "PASS",
+  "authority_normalization": "PASS",
+  "deferred_global_invariant_ids": [
+    "actor_world_global_closure",
+    "whole_plan_time_causal_closure",
+    "setup_payoff_ending_closure",
+    "draft_executability"
+  ],
+  "event_realization_validation": "PASS",
+  "freeze_state": "FROZEN",
+  "generated_artifact_present": true,
+  "generated_artifact_sha256": "87628f204e7f4a3f27910cf4801d904b907cae29841b44be34031ae741cd1a3d",
+  "local_parse_or_conversion": "PASS",
+  "persistence": "PASS",
+  "production_authority": false,
+  "provider_return_received": true,
+  "schema": "SkillV2Pair1DemandAwareBExecutionValidationResultV1",
+  "treatment_sample_valid": true,
+  "version": 1
+}

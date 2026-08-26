@@ -1,0 +1,125 @@
+{
+  "algorithm": "SHA-256",
+  "coverage": "exact",
+  "definition_sha256": "abdf5a3cbe246e7d84cf0bfef9a4277c58297a92e07c759e219b8ff049ea40c7",
+  "entry_count": 23,
+  "files": [
+    {
+      "bytes": 14,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-demand-aware-b-only-execution-v1/pairs/restored-character-heavy-v2-demand-aware-core-v2/b-arm/.gitattributes",
+      "sha256": "a79691a93b46e49ce460c26ef22afcc03d6eca1e63bf2edbc20e96159510f6c9"
+    },
+    {
+      "bytes": 488,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-demand-aware-b-only-execution-v1/pairs/restored-character-heavy-v2-demand-aware-core-v2/b-arm/README.md",
+      "sha256": "eda651fc0b4cab10940c063c528bacd4bf3ff75c848c760a4598567c3e6dd5f7"
+    },
+    {
+      "bytes": 513,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-demand-aware-b-only-execution-v1/pairs/restored-character-heavy-v2-demand-aware-core-v2/b-arm/a-control-isolation-v1.json",
+      "sha256": "0294f17b5aee661e56f31ba0aab49c504b8187116821433a51b712178378656d"
+    },
+    {
+      "bytes": 3894,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-demand-aware-b-only-execution-v1/pairs/restored-character-heavy-v2-demand-aware-core-v2/b-arm/artifact/generated-event-realization-v1.json",
+      "sha256": "87628f204e7f4a3f27910cf4801d904b907cae29841b44be34031ae741cd1a3d"
+    },
+    {
+      "bytes": 641,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-demand-aware-b-only-execution-v1/pairs/restored-character-heavy-v2-demand-aware-core-v2/b-arm/attempt-accounting-v1.json",
+      "sha256": "21f285cb863137a8fa9fe331f497c5a80ecd07cdb7158d808b5a5afac1099c25"
+    },
+    {
+      "bytes": 529,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-demand-aware-b-only-execution-v1/pairs/restored-character-heavy-v2-demand-aware-core-v2/b-arm/blind-evidence-isolation-v1.json",
+      "sha256": "0600cfd39e246b0c8d798d8967253263b42e36aa630d0232f01ef08a95cd415b"
+    },
+    {
+      "bytes": 740,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-demand-aware-b-only-execution-v1/pairs/restored-character-heavy-v2-demand-aware-core-v2/b-arm/campaign-state-receipt-v1.json",
+      "sha256": "b4a573a88db8fa2a3ac162a7566ff408e897d64c561959a9da2ed9aca68ee6b8"
+    },
+    {
+      "bytes": 1139,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-demand-aware-b-only-execution-v1/pairs/restored-character-heavy-v2-demand-aware-core-v2/b-arm/change-contract-v1.json",
+      "sha256": "c25369362c4f598d41d2052a84d304d7678a9577b6e7c35d0d44f0553ee84911"
+    },
+    {
+      "bytes": 938,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-demand-aware-b-only-execution-v1/pairs/restored-character-heavy-v2-demand-aware-core-v2/b-arm/current-chat-external-permission-receipt-v1.json",
+      "sha256": "715f65c65478fc3dc926040d82ca52054df6541828317c2561f5b54cc60893c2"
+    },
+    {
+      "bytes": 2459,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-demand-aware-b-only-execution-v1/pairs/restored-character-heavy-v2-demand-aware-core-v2/b-arm/execution-identity-binding-v1.json",
+      "sha256": "9ac21fcaca632763606e639f668c60216624b76a2c1ea8aa78d3a79e12bd8bad"
+    },
+    {
+      "bytes": 476,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-demand-aware-b-only-execution-v1/pairs/restored-character-heavy-v2-demand-aware-core-v2/b-arm/execution-receipt-v1.json",
+      "sha256": "f402e3a2211811c4e3202046eebc47034aaafc5b3cac2d49c36facf5a63efbb5"
+    },
+    {
+      "bytes": 2821,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-demand-aware-b-only-execution-v1/pairs/restored-character-heavy-v2-demand-aware-core-v2/b-arm/final-report-v1.md",
+      "sha256": "c9dca10c22812dfc8b975c1dd380daa4a37c4d8ca745ea7aa603af64fcdfd974"
+    },
+    {
+      "bytes": 564,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-demand-aware-b-only-execution-v1/pairs/restored-character-heavy-v2-demand-aware-core-v2/b-arm/historical-b-isolation-v1.json",
+      "sha256": "8fbab910306697aeab83b3ef7497b0e0cb4535950d6e9f3e0a3da8ef22d3a3ee"
+    },
+    {
+      "bytes": 498,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-demand-aware-b-only-execution-v1/pairs/restored-character-heavy-v2-demand-aware-core-v2/b-arm/ledger/single-use-ledger-v1.json",
+      "sha256": "459925c9597b6c9afa35c20d3c08afaabc3226535d41fc802a0069163d860c96"
+    },
+    {
+      "bytes": 692,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-demand-aware-b-only-execution-v1/pairs/restored-character-heavy-v2-demand-aware-core-v2/b-arm/manifest-definition-v1.json",
+      "sha256": "a6ae36483c0654e95dade2489e2caab675d572c3d41d67398f8c0d23ef11a645"
+    },
+    {
+      "bytes": 1177,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-demand-aware-b-only-execution-v1/pairs/restored-character-heavy-v2-demand-aware-core-v2/b-arm/nonce-consumption-v1.json",
+      "sha256": "e28e5b726b1c19a86d28e8c786e45c6782902dee9fc8025d78c0f3467d080b45"
+    },
+    {
+      "bytes": 1122,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-demand-aware-b-only-execution-v1/pairs/restored-character-heavy-v2-demand-aware-core-v2/b-arm/output-isolation-v1.json",
+      "sha256": "d7205abfa037427f0d3f5cb67fd4ecb50a6995adf034d6642f656466bed3b398"
+    },
+    {
+      "bytes": 854,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-demand-aware-b-only-execution-v1/pairs/restored-character-heavy-v2-demand-aware-core-v2/b-arm/privacy-scan-v1.json",
+      "sha256": "56bd6f5ffbf4246a00c2926a51cf33e39590725acee6ed843d0033cf83a9163d"
+    },
+    {
+      "bytes": 686,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-demand-aware-b-only-execution-v1/pairs/restored-character-heavy-v2-demand-aware-core-v2/b-arm/provider-observation-v1.json",
+      "sha256": "18e07633cac524e775b37330e1d1312a80254fbecd087f2ae54bc8a1d5e926ca"
+    },
+    {
+      "bytes": 572,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-demand-aware-b-only-execution-v1/pairs/restored-character-heavy-v2-demand-aware-core-v2/b-arm/seal-safety-receipt-v1.json",
+      "sha256": "c56435bd9b02f06448f001fc8ac5bee56fe070d5302f7deb0097a87fce2a32da"
+    },
+    {
+      "bytes": 666,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-demand-aware-b-only-execution-v1/pairs/restored-character-heavy-v2-demand-aware-core-v2/b-arm/successor-ab-lock-validation-v1.json",
+      "sha256": "d4ef1802eb27052d8f5aea9ec0f707cda09cd564033b477dfb79170a0a8c9206"
+    },
+    {
+      "bytes": 1661,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-demand-aware-b-only-execution-v1/pairs/restored-character-heavy-v2-demand-aware-core-v2/b-arm/test-receipt-v1.json",
+      "sha256": "8183fa2dc9e541d6747e93f848811994fc98e677a48d10902d793848e1c6b64d"
+    },
+    {
+      "bytes": 966,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-demand-aware-b-only-execution-v1/pairs/restored-character-heavy-v2-demand-aware-core-v2/b-arm/validation-result-v1.json",
+      "sha256": "4bc892d2eb59c878c590f8d2189dd31e8028fbf1845300ed4a1e46e8a44421fb"
+    }
+  ],
+  "schema": "SkillV2Pair1DemandAwareBExecutionSHA256ManifestV1",
+  "version": 1
+}

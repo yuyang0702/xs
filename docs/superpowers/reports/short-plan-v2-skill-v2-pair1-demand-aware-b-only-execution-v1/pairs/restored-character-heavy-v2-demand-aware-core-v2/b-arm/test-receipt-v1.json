@@ -1,0 +1,50 @@
+{
+  "artifact_revalidation": {
+    "artifact_file_sha_match": true,
+    "artifact_schema": "EventRealizationArtifactV1",
+    "artifact_validation": "PASS",
+    "freeze_state": "FROZEN",
+    "production_authority": false,
+    "validation_receipt_sha256": "140c5a2fc65a45ba76ac7f935feeab6c6c9221b334b76e4d3dc738f607e4da5a"
+  },
+  "focused_post_execution": {
+    "command_scope": "tests/canary/test_skill_v2_pair1_demand_aware_b_revalidation.py excluding five pre-execution-only state tests",
+    "deselected": 5,
+    "failed": 0,
+    "passed": 42,
+    "status": "PASS"
+  },
+  "initial_state_sensitive_run": {
+    "deselected": 3,
+    "failed": 2,
+    "failure_classification": "EXPECTED_POST_EXECUTION_STATE_REJECTION",
+    "failure_reasons": [
+      "approval_already_exists"
+    ],
+    "owning_source_regression_count": 0,
+    "passed": 42
+  },
+  "new_external_actions_during_validation": {
+    "credential_lookup_count": 0,
+    "http_post_attempts": 0,
+    "model_calls": 0,
+    "network_calls": 0,
+    "paid_calls": 0,
+    "real_provider_request_attempts": 0
+  },
+  "parent_full_suite_binding": {
+    "head": "1d6650f40c251392735c2e6ab4e1eb31b49a4c87",
+    "relationship_to_preseal_head": "ancestor_with_evidence_only_successor",
+    "result": "3582 passed, 44 failed, 72 errors, 41 skipped, 6 xfailed, 1 warning",
+    "source_diff_since_parent": 0,
+    "status": "BOUND_EXISTING_EVIDENCE"
+  },
+  "schema": "SkillV2Pair1DemandAwareBExecutionTestReceiptV1",
+  "strict_l3": {
+    "fallback": "manual_git_sentinel_hash_and_clean_room_gate",
+    "helper_scripts_present": false,
+    "parent_receipt": "PASS",
+    "production_source_diff": 0
+  },
+  "version": 1
+}
