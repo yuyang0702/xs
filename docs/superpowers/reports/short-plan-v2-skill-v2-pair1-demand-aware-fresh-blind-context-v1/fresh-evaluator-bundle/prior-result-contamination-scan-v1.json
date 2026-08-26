@@ -1,0 +1,21 @@
+{
+  "detector_count": 11,
+  "detector_sha256s": [
+    "08947d9dc97956b462abff6cbc0f94472cd47b013fb8eb359356137b900d666b",
+    "2bffa26265b6419f7dd00b8921364d2dc11ecac737ddf5545c79674a6f7d1cf6",
+    "36f3a60ee1202bedbbaab1d82c4510a0e1e12706b53239c2a77b700fafc10671",
+    "3b6db1d4a36f240ce4d2dc0a10e13d749890f78939de906d71954d42a99bb901",
+    "4bf926c07fbf66e7e5eca8e70b9939bbad1ae7b81cab83874beded0595d54933",
+    "4ce471aaf5470f034aecd25858d79c30aa89f82251a0d33e2bae9d085115e432",
+    "54aea6598e01e34793ce760aee9a1735a31853554b3570c3708651a7b45465da",
+    "65d7d832feac0bd7dfbc11a19ac1ead48ad5a0a7e619c6314bd35a96b4c06a2f",
+    "a3e0a4d5d52312797aed13efea220b7d8b3151f1e3676ce3232fca7131fe1264",
+    "be143c4724e37f3f31d4446d8eaa0ae2df8a23bb26788ace30c9b6afd81a6343",
+    "dcfb6974c10f6d9858ee2d50fff045cc46c1affffe748f87654f7ba9a3c7037e"
+  ],
+  "prior_result_contamination_count": 0,
+  "scan_scope": "ALL_EVALUATOR_VISIBLE_FILES_FINALIZED_BY_CLOSED_WORLD_VALIDATION",
+  "schema": "FreshBlindPriorResultContaminationScanV1",
+  "status": "PASS",
+  "version": 1
+}

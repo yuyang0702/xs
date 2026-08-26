@@ -1,0 +1,24 @@
+{
+  "auth_headers_persisted": false,
+  "credentials_persisted": false,
+  "detector_sha256s": [
+    "0a9143680e3bd72b6a4a98a8f70d810aceb5d41e0fffdc6dc049bbb274db1a9e",
+    "0c05efecc82f682b8da3a1ef3f03a44e4eb738b7e94546a2bd2e2d159693a5e4",
+    "37022beb14ca607fe68d95dcd509732bce2280c31cce2620276fc8678ded66de",
+    "3785a9f2cb87a27b0b1f5dd232ee43bb8c76f1880cc2da2e4bf6f903561494d5",
+    "5db9af704cee74e999cf7823f56e847b3f3f7beedc5e1143c7cbb8e1e169a824",
+    "70ffdbcd34c8e9c6352ede10c1cf6dc370ae267d0dc0a593c331474b63c50af6",
+    "7a61b0660b8d291a1a08664b30d14d324bff593f725f3fc2b2a47afc869eb284",
+    "9fc2f335660756f8103daade5a5b26d688d6dad4126e93ac5d71628968eb56a9"
+  ],
+  "hidden_reasoning_persisted": false,
+  "privacy_match_count": 0,
+  "raw_provider_payloads_persisted": false,
+  "scanned_file_count": 19,
+  "schema": "SkillV2Pair1DemandAwareFreshBlindPrivacyScanV1",
+  "secret_provider_urls_persisted": false,
+  "self_excluded": true,
+  "sha256_manifest_excluded": true,
+  "status": "PASS",
+  "version": 1
+}

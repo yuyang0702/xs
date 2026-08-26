@@ -1,0 +1,21 @@
+{
+  "a_artifact_sha256": "f6aa5c49d64f38aefe71b01fc9eb0abf2ea3a08faba6f5bc3dbcb38c665e3f8f",
+  "algorithm": "FIRST_BIT_OF_SHA256_ASCII_CONCAT_V1",
+  "concatenation_order": [
+    "domain",
+    "a_artifact_sha256",
+    "new_b_artifact_sha256",
+    "successor_ab_lock_sha256"
+  ],
+  "derivation_digest_sha256": "ec6bfcd961b3508fd5fd3c08385e394e405db6d5b28a80a25e640ef74db63326",
+  "domain": "skill-v2-pair1-demand-aware-revalidation-blind-map-v1",
+  "mapping_bit": 1,
+  "mapping_deterministic": true,
+  "mapping_uses_new_b_artifact": true,
+  "new_b_artifact_sha256": "87628f204e7f4a3f27910cf4801d904b907cae29841b44be34031ae741cd1a3d",
+  "old_mapping_reused": false,
+  "quality_based_selection": false,
+  "schema": "SkillV2Pair1DemandAwareFreshBlindMappingDerivationV1",
+  "successor_ab_lock_sha256": "5ace834e214ea25d4206b92d63e830ad7f51b3629072ea58107249e2457303a1",
+  "version": 1
+}

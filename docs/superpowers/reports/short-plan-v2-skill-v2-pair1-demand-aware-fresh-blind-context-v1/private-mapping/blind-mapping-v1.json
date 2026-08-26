@@ -1,0 +1,13 @@
+{
+  "evaluator_visible": false,
+  "mapping": {
+    "X": "NEW_B_TREATMENT",
+    "Y": "A_CONTROL"
+  },
+  "mapping_derivation_file_sha256": "b5badb427fe925b31263a8f03ab6179ce269dd82b005f02c35703754cdaab362",
+  "mapping_not_present_in_evaluator_bundle": true,
+  "mapping_separate": true,
+  "old_mapping_reused": false,
+  "schema": "SkillV2Pair1DemandAwareFreshBlindMappingV1",
+  "version": 1
+}

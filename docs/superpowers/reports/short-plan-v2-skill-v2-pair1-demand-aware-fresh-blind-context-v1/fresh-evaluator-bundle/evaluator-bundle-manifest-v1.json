@@ -1,0 +1,43 @@
+{
+  "closed_world": true,
+  "evaluator_visible_file_count": 7,
+  "files": [
+    {
+      "bytes": 712,
+      "path": "blind-evaluation-instructions-v1.md",
+      "sha256": "8fb509bbda7645bd9dfcd479fc9dc1a831924242743509baacfaedc20d449d40"
+    },
+    {
+      "bytes": 2126,
+      "path": "identity-leak-scan-v1.json",
+      "sha256": "ecb6bf82f5b66d23758b0d3c94e798af9e1b0c0d348ed758ba1311d99508c966"
+    },
+    {
+      "bytes": 2570,
+      "path": "neutral-evaluation-context-v1.json",
+      "sha256": "16168b9f5d2e08688a8a7004f37066ac14b4689ebf3994d6843669eaf1e45c82"
+    },
+    {
+      "bytes": 1064,
+      "path": "prior-result-contamination-scan-v1.json",
+      "sha256": "38c109aa2a7ec7e82433f6f230abf3c7bbc0065e0ab5a43a24582d266c67deee"
+    },
+    {
+      "bytes": 2243,
+      "path": "X/artifact-view-v1.json",
+      "sha256": "322f421291fe1bd91b01d9788fdbf1523a0fbc2b66fe57c979a7aa84204b44bd"
+    },
+    {
+      "bytes": 2346,
+      "path": "Y/artifact-view-v1.json",
+      "sha256": "511266bfbb29316e0476d6a3887a433a5ffa6f6f0db81a784453148e7bd6ab1d"
+    }
+  ],
+  "literary_judgment_file_count": 0,
+  "manifest_scope": "EVALUATOR_VISIBLE_CLOSED_WORLD",
+  "overall_status": "exact",
+  "private_mapping_present": false,
+  "schema": "FreshBlindEvaluatorBundleManifestV1",
+  "self_excluded": true,
+  "version": 1
+}

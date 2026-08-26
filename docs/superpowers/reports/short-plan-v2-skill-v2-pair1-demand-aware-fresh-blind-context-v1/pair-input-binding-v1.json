@@ -1,0 +1,27 @@
+{
+  "a_artifact_mutated": false,
+  "a_control": {
+    "artifact_sha256": "f6aa5c49d64f38aefe71b01fc9eb0abf2ea3a08faba6f5bc3dbcb38c665e3f8f",
+    "evidence_head": "2d97d2a47e80ef5289ee066fac592deaa896590d",
+    "packet_sha256": "39a46e38d9c11f8afd5fd1cf633443b31ae6fb1c97c4b93d404f950781f19356",
+    "status": "PASS_SEALED"
+  },
+  "a_narrative_copy": "EXACT",
+  "baseline_branch": "r1-ptr3/planning-repair-finding-propagation-20260817",
+  "baseline_head": "45258c64d28e124c5b8ca1c1f4d58cfc48d04216",
+  "new_b_artifact_mutated": false,
+  "new_b_narrative_copy": "EXACT",
+  "new_b_treatment": {
+    "artifact_sha256": "87628f204e7f4a3f27910cf4801d904b907cae29841b44be34031ae741cd1a3d",
+    "candidate_sha256": "97adb8c54eacbc02314871b2beeb146dae96758e6dc541571605a403537cbaf5",
+    "context_characters": 2925,
+    "context_sha256": "7d0f6309ede2261f2f6a1098d394937948bf5b50eb9248266ab350fd91da9adc",
+    "evidence_head": "45258c64d28e124c5b8ca1c1f4d58cfc48d04216",
+    "profile_sha256": "109bb50e2e649c5841bd7c83513100caa0d93cf3c1bb5db845e489b5ae10856d",
+    "status": "PASS_SEALED"
+  },
+  "old_failed_b_artifact_sha256": "1dd0e31dcf01bc369cf8cee1865ae1fffdb4ad890bb1d726482048755037dc69",
+  "old_failed_b_used_as_current_treatment": false,
+  "schema": "SkillV2Pair1DemandAwareFreshBlindPairInputBindingV1",
+  "version": 1
+}

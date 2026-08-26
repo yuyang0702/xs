@@ -1,0 +1,78 @@
+{
+  "allowed_dimension_judgments": [
+    "X_BETTER",
+    "Y_BETTER",
+    "EQUIVALENT",
+    "INCOMPARABLE",
+    "INSUFFICIENT_EVIDENCE",
+    "NOT_APPLICABLE"
+  ],
+  "creative_demand_class": "character-heavy",
+  "evaluation_rule": "Judge X against Y separately on every listed dimension using concise textual evidence. Apply NOT_APPLICABLE only when the supplied story and task context genuinely make the dimension inapplicable. Do not aggregate scores or issue a pair disposition.",
+  "rubric": {
+    "critical_dimensions": [
+      "event_causal_fidelity",
+      "character_motivation",
+      "character_voice",
+      "relationship_logic",
+      "subtext_dramatization",
+      "draft_intent_handoff",
+      "template_flattening_risk",
+      "authority_correctness",
+      "untargeted_creative_mutation"
+    ],
+    "dimension_count": 16,
+    "dimensions": [
+      "event_causal_fidelity",
+      "character_motivation",
+      "character_voice",
+      "relationship_logic",
+      "world_specificity",
+      "sensory_realization",
+      "conflict_pacing",
+      "setup_payoff_dependency",
+      "pov",
+      "tense",
+      "tone_genre",
+      "subtext_dramatization",
+      "draft_intent_handoff",
+      "template_flattening_risk",
+      "authority_correctness",
+      "untargeted_creative_mutation"
+    ],
+    "noncritical_dimensions": [
+      "world_specificity",
+      "sensory_realization",
+      "conflict_pacing",
+      "setup_payoff_dependency",
+      "pov",
+      "tense",
+      "tone_genre"
+    ]
+  },
+  "schema": "SkillV2Pair1FreshNeutralEvaluationContextV1",
+  "story_context": {
+    "entry_state": "Mara distrusts Iven after an old betrayal and hides that she still needs his help.",
+    "exit_state": "Iven recognizes the costly protection but misreads Mara's concealed apology as leverage.",
+    "formal_event_id": "EV-3D3AE01E",
+    "required_change": "Mara pays a personal cost to protect Iven, shifting distrust into conditional cooperation without resolving the betrayal.",
+    "required_obligation_ids": [
+      "motivation:protect-rival-without-confessing-guilt",
+      "voice:restrained-irony-under-fear",
+      "relationship:costly-choice-creates-conditional-trust",
+      "subtext:apology-concealed-as-bargain"
+    ]
+  },
+  "task_contract": {
+    "candidate_owned_fields": [
+      "title",
+      "narrative"
+    ],
+    "contract_identity": "planning_event_realization_shadow_v1@1",
+    "expected_output_characters": 1600,
+    "production_authority": false,
+    "shadow_only": true,
+    "stage": "event_realization_unit_shadow_v1"
+  },
+  "version": 1
+}

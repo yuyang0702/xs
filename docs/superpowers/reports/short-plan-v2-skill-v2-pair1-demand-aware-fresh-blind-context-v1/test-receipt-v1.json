@@ -1,0 +1,33 @@
+{
+  "blockers": 0,
+  "change_gate_helper_available": false,
+  "checks": {
+    "a_copy_exact": true,
+    "evaluator_manifest_exact": true,
+    "identity_leak_count": 0,
+    "literary_judgment_artifact_count": 0,
+    "mapping_deterministic": true,
+    "mapping_separate": true,
+    "new_b_copy_exact": true,
+    "old_b_excluded": true,
+    "policy_bindings_exact": true,
+    "prior_result_contamination_count": 0,
+    "production_source_diff": 0
+  },
+  "external_actions": {
+    "credential_lookup_count": 0,
+    "http_post_attempts": 0,
+    "model_calls": 0,
+    "network_calls": 0,
+    "paid_calls": 0,
+    "real_provider_request_attempts": 0
+  },
+  "focused_blind_bundle_validation": "PASS",
+  "new_owning_source_regression_count": 0,
+  "repo_scope_helper_available": false,
+  "schema": "SkillV2Pair1DemandAwareFreshBlindBundleTestReceiptV1",
+  "strict_l3": "PASS",
+  "strict_l3_method": "MANUAL_EQUIVALENT_GIT_SENTINEL_HASH_CLOSED_WORLD_GATE",
+  "version": 1,
+  "warnings": 0
+}

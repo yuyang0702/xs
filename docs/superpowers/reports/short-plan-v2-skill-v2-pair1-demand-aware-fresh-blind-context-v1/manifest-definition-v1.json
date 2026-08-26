@@ -1,0 +1,10 @@
+{
+  "algorithm": "SHA256_FILE_BYTES",
+  "coverage": "ALL_REGULAR_FILES_UNDER_ROOT_EXCEPT_SHA256_MANIFEST_ITSELF",
+  "line_endings": "LF",
+  "path_base": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-demand-aware-fresh-blind-context-v1",
+  "path_order": "UTF8_ORDINAL_ASCENDING",
+  "schema": "SkillV2Pair1DemandAwareFreshBlindRootManifestDefinitionV1",
+  "self_excluded": true,
+  "version": 1
+}
