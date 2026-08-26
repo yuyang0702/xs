@@ -27,10 +27,24 @@ VALIDATION = {
 
 
 def _documents():
+    candidate_path = REPO / evidence.EVIDENCE_ROOT / "revalidation-candidate-v1.json"
+    receipt_path = REPO / evidence.EVIDENCE_ROOT / "test-receipt-v1.json"
+    validation_head = evidence.IMPLEMENTATION_HEAD
+    validation = VALIDATION
+    if candidate_path.exists() and receipt_path.exists():
+        validation_head = json.loads(candidate_path.read_text(encoding="utf-8"))["validation_head"]
+        materialized_receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+        validation = {
+            key: value for key, value in materialized_receipt.items()
+            if key not in {
+                "schema", "version", "new_owning_source_regression_count",
+                "external_actions",
+            }
+        }
     return evidence.build_documents(
         REPO,
-        validation_head=evidence.IMPLEMENTATION_HEAD,
-        validation=VALIDATION,
+        validation_head=validation_head,
+        validation=validation,
     )
 
 
