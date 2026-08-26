@@ -1,0 +1,13 @@
+{
+  "allowed_changes": [
+    "tools/canary/skill_v2_pair1_residual_v3_b_revalidation.py",
+    "tests/canary/test_skill_v2_pair1_residual_v3_b_revalidation.py",
+    "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-residual-v3-b-only-approval-readiness-v1/**"
+  ],
+  "authorization": "implementation_offline_only",
+  "protected_source_diff_count": 0,
+  "resolution_status": "case_fixed",
+  "schema": "SkillV2Pair1ResidualV3BOnlyApprovalReadinessChangeContractV1",
+  "scope_classification": "closed_world",
+  "version": 1
+}

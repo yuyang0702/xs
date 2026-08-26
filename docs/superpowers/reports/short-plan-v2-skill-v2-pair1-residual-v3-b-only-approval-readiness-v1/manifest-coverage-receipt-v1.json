@@ -1,0 +1,10 @@
+{
+  "coverage_status": "exact",
+  "covered_payload_count_before_receipt": 25,
+  "manifest_excludes": [
+    "sha256-manifest-v1.json",
+    "final-report-v1.md"
+  ],
+  "schema": "SkillV2Pair1ResidualV3BOnlyManifestCoverageReceiptV1",
+  "version": 1
+}

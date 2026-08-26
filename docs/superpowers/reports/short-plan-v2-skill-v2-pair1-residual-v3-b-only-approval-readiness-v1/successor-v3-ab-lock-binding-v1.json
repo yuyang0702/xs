@@ -1,0 +1,10 @@
+{
+  "pair_case_id": "restored-character-heavy-v2-residual-v3",
+  "schema": "SkillV2Pair1ResidualV3ABLockBindingV1",
+  "skill_arm": "RESTORED_SKILL_V2_CHARACTER_CORE_V3",
+  "status": "exact",
+  "successor_v3_ab_lock_sha256": "817d88552c273fc2a9521423725af7460fd09b83b9d3eb558d2bd3cacaee75cf",
+  "unintended_ab_lock_diff_count": 0,
+  "v2_profile_context_substitution_allowed": false,
+  "version": 1
+}

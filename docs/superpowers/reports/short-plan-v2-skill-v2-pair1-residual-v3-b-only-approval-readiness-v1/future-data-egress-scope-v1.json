@@ -1,0 +1,20 @@
+{
+  "a_control_artifact_prose_egress": false,
+  "allowed_classes": [
+    "system_prompt",
+    "user_payload",
+    "authority_input",
+    "task_contract",
+    "demand_aware_skill_context",
+    "event_realization_candidate_schema"
+  ],
+  "credentials_or_auth_headers_in_evidence": false,
+  "historical_failed_b_artifact_prose_egress": false,
+  "only_new_b_packet_required_data_egress": true,
+  "only_new_v3_b_packet_required_data_egress": true,
+  "private_blind_evidence_egress": false,
+  "private_blind_review_evidence_egress": false,
+  "provider_url_in_evidence": false,
+  "schema": "SkillV2Pair1DemandAwareBOnlyFutureDataEgressScopeV1",
+  "version": 1
+}

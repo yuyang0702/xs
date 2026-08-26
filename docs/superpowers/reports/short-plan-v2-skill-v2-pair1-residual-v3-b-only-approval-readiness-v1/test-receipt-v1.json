@@ -1,0 +1,26 @@
+{
+  "adjacent": "33 current V3/Planning passed; 112 predecessor passed with 7 historical sealed-state failures",
+  "external_actions": {
+    "credential_lookup_count": 0,
+    "http_post_attempts": 0,
+    "model_calls": 0,
+    "network_calls": 0,
+    "paid_calls": 0,
+    "real_provider_client_creation_count": 0,
+    "real_provider_request_attempts": 0
+  },
+  "focused": "45 passed in 134.67s",
+  "full_suite": "3633 passed, 41 skipped, 6 xfailed, 49 failed, 72 errors, 1 warning in 2092.63s; non-green count unchanged from sealed V3 baseline",
+  "historical_non_green_classification": [
+    "historical consumed/sealed canary approval and materialization gates",
+    "historical Provider capability probe parent gate",
+    "Planning Skill fixed oracle evidence",
+    "R0E/live-parity fixed-hash evidence"
+  ],
+  "new_owning_source_regression_count": 0,
+  "schema": "SkillV2Pair1DemandAwareBOnlyApprovalReadinessTestReceiptV1",
+  "strict_l3": "PASS",
+  "strict_l3_blockers": 0,
+  "strict_l3_warnings": 0,
+  "version": 1
+}

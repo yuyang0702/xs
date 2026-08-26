@@ -1,0 +1,82 @@
+{
+  "constraint_traceability": [
+    {
+      "evidence": "candidate/profile/lock bindings",
+      "implementation": "tools/canary/skill_v2_pair1_residual_v3_b_revalidation.py",
+      "requirement": "V3 identity",
+      "test_paths": [
+        "tests/canary/test_skill_v2_pair1_residual_v3_b_revalidation.py"
+      ]
+    },
+    {
+      "evidence": "contracts and dry run",
+      "implementation": "tools/canary/skill_v2_pair1_residual_v3_b_revalidation.py",
+      "requirement": "one-shot and terminal tail",
+      "test_paths": [
+        "tests/canary/test_skill_v2_pair1_residual_v3_b_revalidation.py"
+      ]
+    },
+    {
+      "evidence": "Phase A and nonce receipts",
+      "implementation": "tools/canary/skill_v2_pair1_residual_v3_b_revalidation.py",
+      "requirement": "preapproval only",
+      "test_paths": [
+        "tests/canary/test_skill_v2_pair1_residual_v3_b_revalidation.py"
+      ]
+    }
+  ],
+  "forbidden_narrowing": [
+    "no V2 substitution",
+    "no historical prose",
+    "no retry/fallback/resume",
+    "no authority mutation"
+  ],
+  "historical_incident_families_checked": [
+    "stale binding",
+    "profile substitution",
+    "hidden retry",
+    "nonce replay",
+    "historical prose leakage",
+    "authority mutation"
+  ],
+  "model_output_boundary_changed": false,
+  "model_output_not_applicable_evidence": "Existing conversion, validator, artifact freeze, audit serialization and persistence functions are reused unchanged.",
+  "next_authoritative_boundary_tests": [
+    "tests/canary/test_skill_v2_pair1_residual_v3_b_revalidation.py"
+  ],
+  "operational_definition": "Canary-only exact V3 adapter over the sealed one-shot execution engine.",
+  "original_requirement": "Bind the exact sealed residual V3 Pair 1 B-only candidate for later fresh approval and one request.",
+  "production_shaped_tests": [
+    "tests/canary/test_skill_v2_pair1_residual_v3_b_revalidation.py"
+  ],
+  "projected_failure_mechanisms": [
+    "binding drift",
+    "approval staleness",
+    "replay",
+    "egress contamination"
+  ],
+  "remaining_risks": [
+    "Literary comparison requires a separately approved B execution and fresh blind evaluation."
+  ],
+  "resolution_status": "case_fixed",
+  "scope_classification": "closed_world",
+  "sibling_boundaries": [
+    {
+      "boundary": "production runtime",
+      "disposition": "not_applicable",
+      "evidence": "tools/canary only; src and baml unchanged"
+    },
+    {
+      "boundary": "Pair2-5",
+      "disposition": "tested_not_susceptible",
+      "evidence": "closed identity and negative matrix"
+    },
+    {
+      "boundary": "StoryState Canon READY",
+      "disposition": "tested_not_susceptible",
+      "evidence": "zero-mutation signed contract"
+    }
+  ],
+  "version": 2,
+  "why_previous_tests_missed": "The predecessor launcher froze V2 before the sealed residual V3 successor existed."
+}

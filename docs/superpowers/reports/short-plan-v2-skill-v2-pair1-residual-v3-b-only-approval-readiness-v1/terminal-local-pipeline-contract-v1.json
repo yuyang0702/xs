@@ -1,0 +1,23 @@
+{
+  "all_mandatory_stages_must_pass": true,
+  "canon_mutations_allowed": 0,
+  "ordered_stages": [
+    "PROVIDER_RETURN_RECEIVED",
+    "LOCAL_PARSE_OR_CONVERSION",
+    "AUTHORITY_NORMALIZATION",
+    "EVENT_REALIZATION_VALIDATION",
+    "ARTIFACT_SCHEMA_VALIDATION",
+    "ARTIFACT_FREEZE",
+    "AUDIT_SERIALIZATION",
+    "OUTPUT_ISOLATION",
+    "PERSISTENCE"
+  ],
+  "planning_v2_slice1_source_sha256": "28bd1656f2452bea03bbe8c0778847e973d5f3dca807121e028f17af747ce201",
+  "production_authority": false,
+  "ready_mutations_allowed": 0,
+  "schema": "SkillV2Pair1DemandAwareBOnlyTerminalLocalPipelineContractV1",
+  "story_state_mutations_allowed": 0,
+  "terminal_local_pipeline_contract_sha256": "f775d02a2329056be70ded6c1059a134f407120a3104eaa9052fbcbe4b39d7f1",
+  "validator_relaxation_allowed": false,
+  "version": 1
+}

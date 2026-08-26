@@ -1,0 +1,17 @@
+{
+  "fallback_allowed": false,
+  "http_post_attempts_hard_cap": 1,
+  "model_logical_calls_hard_cap": 1,
+  "network_request_attempts_hard_cap": 1,
+  "real_provider_request_attempts_hard_cap": 1,
+  "resume_allowed": false,
+  "retry_allowed": false,
+  "route_switch_allowed": false,
+  "same_nonce_second_dispatch_fails_closed": true,
+  "schema": "SkillV2Pair1DemandAwareBOnlySingleDispatchContractV1",
+  "sdk_retries_disabled": true,
+  "second_dispatch_allowed": false,
+  "single_dispatch_contract_sha256": "e03c24f9663e14e2c33ed5e01ce2a210603b64015fa57ed83feaa26293af03de",
+  "transport_request_retries_disabled": true,
+  "version": 1
+}

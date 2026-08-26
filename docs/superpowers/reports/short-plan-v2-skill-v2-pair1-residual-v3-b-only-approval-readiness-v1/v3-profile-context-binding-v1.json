@@ -1,0 +1,16 @@
+{
+  "changed_rule_ids": [
+    "DRAFT_SCENE",
+    "ANTI_TAXONOMY"
+  ],
+  "context_characters": 2998,
+  "context_sha256": "98c5adc38074f442a986764fb140baf4d3bf3fa1ab58e34ba7f82b7ddc8888ba",
+  "non_target_rule_diff_count": 0,
+  "production_reachable": false,
+  "profile_sha256": "82a4542326e9b20771efc5f05e080ff0ac56438bef8288d61f30e6d905af708a",
+  "schema": "SkillV2Pair1DemandAwareBOnlySkillBindingV1",
+  "shadow_only": true,
+  "skill_arm": "RESTORED_SKILL_V2_CHARACTER_CORE_V3",
+  "truncation": "NONE",
+  "version": 1
+}

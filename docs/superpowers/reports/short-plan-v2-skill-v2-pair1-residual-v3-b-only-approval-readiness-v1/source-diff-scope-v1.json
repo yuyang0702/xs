@@ -1,0 +1,19 @@
+{
+  "approval_parent_head": "3ce22f9858e029536d2a6ea57484b198c11b91b8",
+  "baml_source_diff_count": 0,
+  "changed_source_paths": [
+    "tools/canary/skill_v2_pair1_residual_v3_b_revalidation.py"
+  ],
+  "changed_test_paths": [
+    "tests/canary/test_skill_v2_pair1_residual_v3_b_revalidation.py"
+  ],
+  "materialization_parent_head": "c68969a836a7ac754910002435d67c405dee33a6",
+  "output_cap_changed": false,
+  "production_source_diff_count": 0,
+  "prompt_changed": false,
+  "retry_fallback_changed": false,
+  "route_model_client_changed": false,
+  "schema": "SkillV2Pair1DemandAwareBOnlySourceDiffScopeV1",
+  "validator_changed": false,
+  "version": 1
+}

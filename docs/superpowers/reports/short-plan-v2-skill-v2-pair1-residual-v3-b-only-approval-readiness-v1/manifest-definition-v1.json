@@ -1,0 +1,9 @@
+{
+  "algorithm": "SHA-256",
+  "coverage": "all evidence payload files except manifest and final report",
+  "entry_order": "path ascending",
+  "historical_evidence_rewritten": false,
+  "path_format": "repository-relative POSIX",
+  "schema": "SkillV2Pair1ResidualV3BOnlyManifestDefinitionV1",
+  "version": 1
+}
