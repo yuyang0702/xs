@@ -1,0 +1,47 @@
+{
+  "schema": "RealPilotPlanV1",
+  "materialized": true,
+  "pilot_plan_disabled": true,
+  "execution_authorized": false,
+  "signed_approval_present": false,
+  "real_execution_nonce_created": false,
+  "real_execution_nonce_reserved": false,
+  "real_execution_enabled": false,
+  "pilot_id": "skill-v3-character-heavy-multi-sample-v1-4d47410b0144360d",
+  "creative_demand_class": "character-heavy",
+  "arm_a": "DEMAND_AWARE_V2_LAST_KNOWN_BEST_COMPRESSED_BASELINE",
+  "arm_b": "VERBATIM_SELECTIVE_SKILL_COMPILER_SHADOW_V1_CHARACTER_HEAVY",
+  "samples_per_a": 3,
+  "samples_per_b": 3,
+  "maximum_total_real_requests": 6,
+  "sequential_execution_order": [
+    "A1",
+    "B1",
+    "A2",
+    "B2",
+    "A3",
+    "B3"
+  ],
+  "stop_conditions": [
+    "any authority mutation",
+    "dispatch bound breach",
+    "privacy breach",
+    "contract-invalid output",
+    "critical safety regression",
+    "route/model parity mismatch"
+  ],
+  "experiment_lock_sha256": "8a07c5106fec903952d4b622ab33702636c17d3add7eb380d3ac78071841fc9b",
+  "b_compiler_version": "verbatim-selective-skill-compiler-shadow-v1",
+  "b_selected_section_ids": [
+    "sv3-70a527462c32e7b6",
+    "sv3-faecc1466817d8aa",
+    "sv3-7633ad6f5c90db5e",
+    "sv3-3fb51ac3fed35bc0",
+    "sv3-4c6b004ecdd2077f",
+    "sv3-10e4ba0c5b7509b4",
+    "sv3-8e321726b4ebdcec",
+    "sv3-8afeb5229a4fe841",
+    "sv3-e92f0f3584d44b87"
+  ],
+  "b_rendered_context_sha256": "c830681f79526c44d9bd83430019d75cb886bde0affcad86714ee1fc1f41aedd"
+}

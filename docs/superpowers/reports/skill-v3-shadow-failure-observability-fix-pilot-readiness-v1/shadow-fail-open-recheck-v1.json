@@ -1,0 +1,11 @@
+{
+  "schema": "SkillV3ShadowFailOpenRecheckV1",
+  "status": "PASS",
+  "shadow_failure_can_block_production": false,
+  "shadow_failure_observable": true,
+  "shadow_failure_evidence_bounded": true,
+  "shadow_failure_counter_present": true,
+  "shadow_failure_event_hash_bound": true,
+  "privacy_safe_failure_evidence": true,
+  "direct_shadow_silent_swallow_count_after": 0
+}

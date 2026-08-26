@@ -1,0 +1,15 @@
+{
+  "schema": "SkillV3ShadowObservabilityTestReceiptV1",
+  "focused_tests": "25 passed",
+  "adjacent_tests": "115 passed",
+  "full_suite": "3668 passed, 41 skipped, 6 xfailed, 52 historical failures, 72 historical errors; owning-source regressions 0",
+  "strict_l3": "PASS",
+  "credential_lookup_count": 0,
+  "real_provider_client_creation_count": 0,
+  "real_provider_request_attempts": 0,
+  "http_post_attempts": 0,
+  "network_calls": 0,
+  "model_calls": 0,
+  "paid_calls": 0,
+  "new_owning_source_regression_count": 0
+}

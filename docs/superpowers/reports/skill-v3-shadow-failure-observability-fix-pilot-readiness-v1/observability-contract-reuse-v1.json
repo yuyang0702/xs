@@ -1,0 +1,10 @@
+{
+  "schema": "SkillV3ObservabilityContractReuseV1",
+  "status": "PASS",
+  "reused_observability_contract": [
+    "ReliabilityTraceEnvelopeV1",
+    "emit_observation",
+    "failure_evidence_sha256"
+  ],
+  "new_telemetry_subsystem_created": false
+}

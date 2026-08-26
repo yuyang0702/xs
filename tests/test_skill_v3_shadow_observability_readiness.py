@@ -67,6 +67,7 @@ def test_materialized_evidence_is_privacy_safe_and_has_required_coverage(
         "failure-event-schema-v1.json",
         "failure-counter-contract-v1.json",
         "failure-receipt-mode-v1.json",
+        "full-suite-classification-v1.json",
         "observer-fail-open-contract-v1.json",
         "negative-failure-injection-matrix-v1.json",
         "production-input-identity-v1.json",

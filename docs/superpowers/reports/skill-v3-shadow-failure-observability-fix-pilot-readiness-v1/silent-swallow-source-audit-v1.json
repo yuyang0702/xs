@@ -1,0 +1,21 @@
+{
+  "schema": "SkillV3SilentShadowFailureSourceAuditV1",
+  "silent_shadow_failure_site_count_before": 1,
+  "direct_shadow_silent_swallow_count_after": 0,
+  "sites": [
+    {
+      "call_site": "WorkflowService._stage planning shadow seam",
+      "source_file": "src/novel_flywheel/workflows.py",
+      "symbol": "WorkflowService._stage",
+      "exception_boundary": "observer call catch",
+      "current_behavior": "fail-open plus bounded hash-only observation",
+      "production_blocks_on_failure": false,
+      "failure_observable": true,
+      "already_has_trace_envelope": true,
+      "already_has_run_id": true,
+      "already_has_task_id": false,
+      "already_has_compiler_version": true,
+      "already_has_context_sha_if_available": "NOT_AVAILABLE_BY_STAGE"
+    }
+  ]
+}

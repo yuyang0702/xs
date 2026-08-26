@@ -1,0 +1,10 @@
+{
+  "schema": "SkillV3ShadowFailureCounterContractV1",
+  "counter": "WorkflowService.skill_v3_shadow_failure_count",
+  "scope": "WorkflowService instance lifetime",
+  "increment_per_failed_invocation": 1,
+  "bounded_record_capacity": 64,
+  "global_mutable_state": false,
+  "restart_semantics": "instance counter resets; append-only trace remains durable",
+  "replay_identity": "shadow_invocation_id binds run hash, input binding hash, and call site"
+}

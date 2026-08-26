@@ -1,0 +1,55 @@
+{
+  "schema": "SkillV3ShadowObservabilityFullSuiteClassificationV1",
+  "status": "CLASSIFIED_NO_NEW_OWNING_SOURCE_REGRESSION",
+  "pytest": {
+    "passed": 3668,
+    "skipped": 41,
+    "xfailed": 6,
+    "failed": 52,
+    "errors": 72,
+    "non_green_nodes": 124,
+    "elapsed_seconds": 2065.91
+  },
+  "owning_source_regression_count": 0,
+  "owning_source_test_modules": [
+    "tests.test_skill_v3_shadow_failure_observability",
+    "tests.test_skill_v3_shadow_observability_readiness",
+    "tests.test_selective_skill_compiler",
+    "tests.test_generated_artifacts",
+    "tests.test_reliability_trace",
+    "tests.test_failure_boundary"
+  ],
+  "historical_failure_families": [
+    {
+      "family": "legacy_canary_materialization_approval_and_parent_evidence_gates",
+      "node_count": 96,
+      "classification": "HISTORICAL_SEALED_EVIDENCE_OR_SUCCESSOR_BINDING"
+    },
+    {
+      "family": "planning_skill_historical_oracle_and_materialized_evidence",
+      "node_count": 17,
+      "classification": "HISTORICAL_SKILL_PROFILE_ORACLE"
+    },
+    {
+      "family": "r0e_r0f_live_parity_and_fixed_hash_gates",
+      "node_count": 2,
+      "classification": "HISTORICAL_LIVE_PARITY_OR_FIXED_HASH"
+    },
+    {
+      "family": "skill_v2_sealed_source_and_evidence_hash_gates",
+      "node_count": 9,
+      "classification": "HISTORICAL_SKILL_V2_SOURCE_OR_EVIDENCE_BINDING"
+    }
+  ],
+  "historical_evidence_rewritten": false,
+  "live_database_modified": false,
+  "external_actions": {
+    "credential_lookup_count": 0,
+    "real_provider_client_creation_count": 0,
+    "real_provider_request_attempts": 0,
+    "http_post_attempts": 0,
+    "network_calls": 0,
+    "model_calls": 0,
+    "paid_calls": 0
+  }
+}

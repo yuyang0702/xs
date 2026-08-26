@@ -1,0 +1,76 @@
+{
+  "schema": "SkillV3NegativeFailureInjectionMatrixV1",
+  "status": "PASS",
+  "cases": [
+    {
+      "case": "section_index_load_failure",
+      "production_path_continues": true,
+      "production_model_input_unchanged": true,
+      "shadow_failure_event_emitted": true,
+      "shadow_failure_count_delta": 1,
+      "raw_exception_not_persisted": true,
+      "network_calls": 0,
+      "real_model_calls": 0
+    },
+    {
+      "case": "selector_failure",
+      "production_path_continues": true,
+      "production_model_input_unchanged": true,
+      "shadow_failure_event_emitted": true,
+      "shadow_failure_count_delta": 1,
+      "raw_exception_not_persisted": true,
+      "network_calls": 0,
+      "real_model_calls": 0
+    },
+    {
+      "case": "dependency_closure_failure",
+      "production_path_continues": true,
+      "production_model_input_unchanged": true,
+      "shadow_failure_event_emitted": true,
+      "shadow_failure_count_delta": 1,
+      "raw_exception_not_persisted": true,
+      "network_calls": 0,
+      "real_model_calls": 0
+    },
+    {
+      "case": "renderer_failure",
+      "production_path_continues": true,
+      "production_model_input_unchanged": true,
+      "shadow_failure_event_emitted": true,
+      "shadow_failure_count_delta": 1,
+      "raw_exception_not_persisted": true,
+      "network_calls": 0,
+      "real_model_calls": 0
+    },
+    {
+      "case": "provenance_sink_materialization_failure",
+      "production_path_continues": true,
+      "production_model_input_unchanged": true,
+      "shadow_failure_event_emitted": true,
+      "shadow_failure_count_delta": 1,
+      "raw_exception_not_persisted": true,
+      "network_calls": 0,
+      "real_model_calls": 0
+    },
+    {
+      "case": "cache_layer_failure_at_observer_boundary",
+      "production_path_continues": true,
+      "production_model_input_unchanged": true,
+      "shadow_failure_event_emitted": true,
+      "shadow_failure_count_delta": 1,
+      "raw_exception_not_persisted": true,
+      "network_calls": 0,
+      "real_model_calls": 0
+    },
+    {
+      "case": "observer_sink_failure",
+      "production_path_continues": true,
+      "production_model_input_unchanged": true,
+      "shadow_failure_event_emitted": false,
+      "shadow_failure_count_delta": 1,
+      "raw_exception_not_persisted": true,
+      "network_calls": 0,
+      "real_model_calls": 0
+    }
+  ]
+}

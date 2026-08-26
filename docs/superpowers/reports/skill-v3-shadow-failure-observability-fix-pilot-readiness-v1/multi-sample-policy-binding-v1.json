@@ -1,0 +1,47 @@
+{
+  "schema": "SkillV3MultiSamplePolicySuccessorBindingV1",
+  "status": "EXACT_SUCCESSOR_BINDING",
+  "prior_policy_file_sha256": "b99184e3e262f64e386f73efb76d2e2175cd1297f7a339e2b199a66e1c46fdce",
+  "multi_sample_policy_sha_unchanged": true,
+  "policy": {
+    "schema": "SkillV3MultiSamplePolicyExactBindingV1",
+    "status": "PASS",
+    "pilot_creative_demand_class": "character-heavy",
+    "a_control_context_kind": "Demand-aware V2 last-known-best compressed baseline",
+    "b_treatment_context_kind": "selected-verbatim compiler candidate",
+    "samples_per_a_arm": 3,
+    "samples_per_b_arm": 3,
+    "max_total_real_requests": 6,
+    "sampling_policy": "same frozen policy identity across arms and samples",
+    "blinding_protocol": "opaque sample IDs; mapping inaccessible to evaluators until judgment freeze",
+    "fresh_evaluator_policy": {
+      "schema": "FreshEvaluatorContextPolicyV2",
+      "fresh_context_required": [
+        "each blind literary evaluation batch",
+        "tie-break evaluation if prospectively authorized"
+      ],
+      "forbidden_before_freeze": [
+        "arm mapping",
+        "engineering evidence",
+        "prior outcomes",
+        "profile version labels",
+        "private approval/nonce artifacts"
+      ],
+      "allowed_after_freeze": "main engineering/orchestration context may reveal mapping and perform engineering evaluation",
+      "evaluator_outputs": "dimension-level judgments, evidence references, uncertainty; no arm identity guess"
+    },
+    "stop_conditions": [
+      "any authority mutation",
+      "dispatch bound breach",
+      "privacy breach",
+      "contract-invalid output",
+      "critical safety regression",
+      "route/model parity mismatch"
+    ],
+    "aggregation_rule": "per dimension, take the median ordinal relation only when both evaluators agree on direction or at least 4 of 6 evaluator-by-batch votes support it; otherwise INCONCLUSIVE",
+    "inconclusive_rule": "blocks non-inferiority/cutover claim",
+    "non_inferiority_rule": "zero critical B regressions and minimum support on every critical dimension; no scalar compensation",
+    "generalization_limit": "character-heavy only; does not authorize other demand classes or production cutover",
+    "single_sample_prompt_hill_climbing_deprecated": true
+  }
+}

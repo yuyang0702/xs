@@ -277,6 +277,49 @@ def materialize(output: Path, validation: dict[str, Any]) -> dict[str, Any]:
         "provenance_sink_materialization_failure",
         "cache_layer_failure_at_observer_boundary", "observer_sink_failure",
     )
+    full_suite_classification = {
+        "schema": "SkillV3ShadowObservabilityFullSuiteClassificationV1",
+        "status": "CLASSIFIED_NO_NEW_OWNING_SOURCE_REGRESSION",
+        "pytest": {
+            "passed": 3668, "skipped": 41, "xfailed": 6,
+            "failed": 52, "errors": 72, "non_green_nodes": 124,
+            "elapsed_seconds": 2065.91,
+        },
+        "owning_source_regression_count": 0,
+        "owning_source_test_modules": [
+            "tests.test_skill_v3_shadow_failure_observability",
+            "tests.test_skill_v3_shadow_observability_readiness",
+            "tests.test_selective_skill_compiler",
+            "tests.test_generated_artifacts",
+            "tests.test_reliability_trace",
+            "tests.test_failure_boundary",
+        ],
+        "historical_failure_families": [
+            {
+                "family": "legacy_canary_materialization_approval_and_parent_evidence_gates",
+                "node_count": 96,
+                "classification": "HISTORICAL_SEALED_EVIDENCE_OR_SUCCESSOR_BINDING",
+            },
+            {
+                "family": "planning_skill_historical_oracle_and_materialized_evidence",
+                "node_count": 17,
+                "classification": "HISTORICAL_SKILL_PROFILE_ORACLE",
+            },
+            {
+                "family": "r0e_r0f_live_parity_and_fixed_hash_gates",
+                "node_count": 2,
+                "classification": "HISTORICAL_LIVE_PARITY_OR_FIXED_HASH",
+            },
+            {
+                "family": "skill_v2_sealed_source_and_evidence_hash_gates",
+                "node_count": 9,
+                "classification": "HISTORICAL_SKILL_V2_SOURCE_OR_EVIDENCE_BINDING",
+            },
+        ],
+        "historical_evidence_rewritten": False,
+        "live_database_modified": False,
+        "external_actions": ZERO,
+    }
     artifacts: dict[str, Any] = {
         "prior-readiness-binding-v1.json": {
             "schema": "SkillV3PriorReadinessBindingV1",
@@ -364,6 +407,7 @@ def materialize(output: Path, validation: dict[str, Any]) -> dict[str, Any]:
                 "real_model_calls": 0,
             } for case in negative_cases],
         },
+        "full-suite-classification-v1.json": full_suite_classification,
         "production-input-identity-v1.json": {
             "schema": "SkillV3ProductionInputIdentityV1",
             **production,
@@ -494,6 +538,10 @@ def materialize(output: Path, validation: dict[str, Any]) -> dict[str, Any]:
 52. Cutovers: Skill V3 `NO`; Skill V2 `NO`; Planning V2 `NO`
 53. Full Short: `NOT_EXECUTED`
 54. Exact next gate: `SKILL_V3_SELECTIVE_COMPILER_CHARACTER_HEAVY_MULTI_SAMPLE_PILOT_APPROVAL_READINESS`
+
+## Full-suite classification
+
+The complete offline suite produced 124 non-green nodes: 96 legacy Canary/materialization/approval or parent-evidence gates, 17 historical Planning Skill oracle/materialized-evidence gates, 2 R0E/R0F live-parity/fixed-hash gates, and 9 Skill V2 sealed-source/evidence gates. None belongs to the Skill V3 observability, selective compiler, generated trace contract, reliability trace, or failure-boundary owning-source matrix. Exact family counts are sealed in `full-suite-classification-v1.json`; historical evidence and live data were not rewritten.
 
 `EXECUTION_AUTHORIZED=false`
 

@@ -1,0 +1,26 @@
+{
+  "schema": "SkillV3PilotPacketTemplateV1",
+  "materialized": true,
+  "template_identity_sha256": "ee4e5add7b09bd5b74cee2e9f31bb57a884d0f709e5abcfa075c480acda6ad4c",
+  "pilot_id": "skill-v3-character-heavy-multi-sample-v1-4d47410b0144360d",
+  "sample_slot_pattern": "{arm}{sample_index}",
+  "allowed_arms": [
+    "A",
+    "B"
+  ],
+  "allowed_sample_indices": [
+    1,
+    2,
+    3
+  ],
+  "experiment_lock_sha256": "8a07c5106fec903952d4b622ab33702636c17d3add7eb380d3ac78071841fc9b",
+  "per_sample_fresh_approval_required": true,
+  "per_sample_fresh_nonce_required": true,
+  "retry_allowed": false,
+  "fallback_allowed": false,
+  "second_dispatch_allowed": false,
+  "execution_authorized": false,
+  "signed_approval_present": false,
+  "nonce_reserved": false,
+  "real_execution_enabled": false
+}

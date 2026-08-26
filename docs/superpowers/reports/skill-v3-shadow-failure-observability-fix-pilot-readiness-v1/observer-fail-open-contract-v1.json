@@ -1,0 +1,7 @@
+{
+  "schema": "SkillV3ObserverFailOpenContractV1",
+  "shadow_failure_can_block_production": false,
+  "observer_failure_can_block_production": false,
+  "observer_recursion_possible": false,
+  "trace_sink_failure_fallback": "instance counter plus bounded local record and drop counter"
+}

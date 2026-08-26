@@ -1,0 +1,14 @@
+{
+  "schema": "SkillV3PriorReadinessBindingV1",
+  "status": "EXACT",
+  "baseline_head": "248f786ffadb60224244343778fe6ca2ff3ab37e",
+  "prior_manifest": {
+    "status": "EXACT",
+    "failures": [],
+    "entry_count": 34,
+    "definition_sha256": "4bf2f3055561d45a473f9ea3569db1458b495d7db90ee66505a7c1d5b2fd7d0e",
+    "file_sha256": "5675b0dc79de8328d1247a118ff949540454ff56800edfee32b9bd23c408b3b8"
+  },
+  "prior_result": "SKILL_V3_SELECTIVE_COMPILER_REAL_PILOT_READY=NO",
+  "single_hard_blocker": "SHADOW_FAILURE_OBSERVABLE=NO"
+}

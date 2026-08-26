@@ -1,0 +1,115 @@
+{
+  "schema": "SkillV3ShadowObservabilityEvidenceManifestEnvelopeV1",
+  "definition": {
+    "schema": "SkillV3ShadowObservabilityEvidenceManifestV1",
+    "entry_count": 21,
+    "entries": [
+      {
+        "path": "failure-counter-contract-v1.json",
+        "bytes": 452,
+        "sha256": "a4c1a1c6807158a2d3ec74ee1425348476f637793549e84b7d61b789ef890b23"
+      },
+      {
+        "path": "failure-event-schema-v1.json",
+        "bytes": 484,
+        "sha256": "e974d073f4e2606a0b98a19279ed9ca8904f07b68c7a46fc7178a0d4fddd0411"
+      },
+      {
+        "path": "failure-receipt-mode-v1.json",
+        "bytes": 224,
+        "sha256": "718fc97a55d345785c57d684c0b7e1edb4abdc10f4061e0cefd754ff0260cf7a"
+      },
+      {
+        "path": "final-report-v1.md",
+        "bytes": 4429,
+        "sha256": "20ffa7f3cd46f3a5613ce98b67b81e5198e9fdb67d53041b1137608469912457"
+      },
+      {
+        "path": "full-suite-classification-v1.json",
+        "bytes": 1705,
+        "sha256": "0174ce0227efc30a19a85e3f2a28f86e14aca74486780a4e12f486a7170678e1"
+      },
+      {
+        "path": "multi-sample-policy-binding-v1.json",
+        "bytes": 2293,
+        "sha256": "40f91b6880d05c56e1672a13fbffcfededd8c87a37e4e089076368c59c2a68b0"
+      },
+      {
+        "path": "negative-failure-injection-matrix-v1.json",
+        "bytes": 2380,
+        "sha256": "b034f80b407da9723ad8baf68c1cc15c209319f3c25985bccb1be11463e77da3"
+      },
+      {
+        "path": "observability-contract-reuse-v1.json",
+        "bytes": 248,
+        "sha256": "52c28d09c7d02830c1df87f7e5594aa3f804189359ca673798f5469f10bfbfe3"
+      },
+      {
+        "path": "observer-fail-open-contract-v1.json",
+        "bytes": 286,
+        "sha256": "9deb04fd73e0a83e5587a5ee08bca6d4138caa33aee4ea713dd2150f06911877"
+      },
+      {
+        "path": "pilot-packet-template-v1.json",
+        "bytes": 796,
+        "sha256": "3652411cb9bb525e531ba2d4d1184c756e49553fef969f726094e862ae9f3dfb"
+      },
+      {
+        "path": "pilot-readiness-matrix-recheck-v1.json",
+        "bytes": 938,
+        "sha256": "0d64556bf3e129ea89369d721f43a4e5d9959271f657a7e3a2f61c0bcd92a629"
+      },
+      {
+        "path": "prior-readiness-binding-v1.json",
+        "bytes": 531,
+        "sha256": "8b894cee05b2734515eade86680e1c6c076c6feb8709d86dc1b0c93e5b02c90a"
+      },
+      {
+        "path": "privacy-scan-v1.json",
+        "bytes": 217,
+        "sha256": "9d68cf06a21e1b93cb86cb76a8e17b767fe1c5474fefb113eb979123740f01a8"
+      },
+      {
+        "path": "production-input-identity-v1.json",
+        "bytes": 578,
+        "sha256": "d4c2bcd0215c69a39480c988e51b0365f49934bb445bb7a873a29c90fea5a88b"
+      },
+      {
+        "path": "README.md",
+        "bytes": 358,
+        "sha256": "5a623d3b230d0ba2ae2ae524a94d57013863b51059deb93fde4b72b7d097c3ec"
+      },
+      {
+        "path": "real-pilot-plan-v1.json",
+        "bytes": 1475,
+        "sha256": "5c51f4507605bbb6f9138902009c6aa4a6a694c46546d6bd0f99df536503880a"
+      },
+      {
+        "path": "shadow-fail-open-recheck-v1.json",
+        "bytes": 372,
+        "sha256": "a7081fa9784b040d420a79c176c20872b30be5ded2ef89d42ca535a987aceeea"
+      },
+      {
+        "path": "shadow-success-output-parity-v1.json",
+        "bytes": 2081,
+        "sha256": "9b3cf9524427e788fe5a70f6eaba4b037ff5ee0799df3b82d16003da5aac4f67"
+      },
+      {
+        "path": "silent-swallow-source-audit-v1.json",
+        "bytes": 780,
+        "sha256": "606d9f9839d33a85d48182a8079885c92f2a47d8f4ef24de0ac5743a97e286c1"
+      },
+      {
+        "path": "strict-l3-receipt-v1.json",
+        "bytes": 208,
+        "sha256": "f9ff379d4b5e7fa54022e2347bcfe20df516bc5169754755f8a3d692eed11e90"
+      },
+      {
+        "path": "test-receipt-v1.json",
+        "bytes": 522,
+        "sha256": "e4033f89d433e923b97cfa3ea0bd1361a19b71a655f2ce48df2e730d4d8ac3d9"
+      }
+    ]
+  },
+  "definition_sha256": "53699061cb94821f9ec49a72b3ce57b4e437e52b4b31ae33d83df8b624ee960e"
+}

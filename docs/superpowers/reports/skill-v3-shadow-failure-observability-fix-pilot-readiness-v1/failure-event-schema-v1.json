@@ -1,0 +1,13 @@
+{
+  "schema": "SkillV3ShadowFailureObservationV1",
+  "schema_version": 1,
+  "event_type": "skill_v3_selective_compiler_shadow_failure",
+  "error_hash_semantics": "SHA256(boundary + class + raw message + typed reliability fields); raw message is never persisted",
+  "required_privacy_flags": {
+    "raw_exception_persisted": false,
+    "traceback_persisted": false,
+    "skill_source_text_persisted": false
+  },
+  "failure_event_hash_bound": true,
+  "input_binding_hash_bound": true
+}

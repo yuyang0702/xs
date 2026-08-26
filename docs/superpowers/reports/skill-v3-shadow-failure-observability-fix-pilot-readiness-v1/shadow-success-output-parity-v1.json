@@ -1,0 +1,48 @@
+{
+  "schema": "SkillV3ShadowSuccessOutputParityV1",
+  "status": "PASS",
+  "scenario_count": 5,
+  "verbatim_fidelity_unchanged": true,
+  "rows": [
+    {
+      "demand_class": "character-heavy",
+      "selected_section_ids_unchanged": true,
+      "rendered_context_sha256": "c830681f79526c44d9bd83430019d75cb886bde0affcad86714ee1fc1f41aedd",
+      "sealed_rendered_context_sha256": "c830681f79526c44d9bd83430019d75cb886bde0affcad86714ee1fc1f41aedd",
+      "rendered_context_sha_unchanged": true,
+      "capacity_status": "PASS"
+    },
+    {
+      "demand_class": "world-heavy",
+      "selected_section_ids_unchanged": true,
+      "rendered_context_sha256": "dc980e981d70fef74d886dae0a04e0c11460020e6e6f147fa1f2f6e54db89c04",
+      "sealed_rendered_context_sha256": "dc980e981d70fef74d886dae0a04e0c11460020e6e6f147fa1f2f6e54db89c04",
+      "rendered_context_sha_unchanged": true,
+      "capacity_status": "PASS"
+    },
+    {
+      "demand_class": "conflict-pacing-heavy",
+      "selected_section_ids_unchanged": true,
+      "rendered_context_sha256": "e4220b3b3fba69609bf419170f8661f55fe733a7518ce626ab1599a20cc2381e",
+      "sealed_rendered_context_sha256": "e4220b3b3fba69609bf419170f8661f55fe733a7518ce626ab1599a20cc2381e",
+      "rendered_context_sha_unchanged": true,
+      "capacity_status": "PASS"
+    },
+    {
+      "demand_class": "setup-payoff-heavy",
+      "selected_section_ids_unchanged": true,
+      "rendered_context_sha256": "c02f3e19cabe5c7d8a47fb6b9fdb5f785316df6d88afe025c1c095b0e56b4af6",
+      "sealed_rendered_context_sha256": "c02f3e19cabe5c7d8a47fb6b9fdb5f785316df6d88afe025c1c095b0e56b4af6",
+      "rendered_context_sha_unchanged": true,
+      "capacity_status": "PASS"
+    },
+    {
+      "demand_class": "mixed",
+      "selected_section_ids_unchanged": true,
+      "rendered_context_sha256": "2d88f401bb4ea70cecd0002382db6648d1055eeaeb5ec1cc78f459925963a2a7",
+      "sealed_rendered_context_sha256": "2d88f401bb4ea70cecd0002382db6648d1055eeaeb5ec1cc78f459925963a2a7",
+      "rendered_context_sha_unchanged": true,
+      "capacity_status": "PASS"
+    }
+  ]
+}

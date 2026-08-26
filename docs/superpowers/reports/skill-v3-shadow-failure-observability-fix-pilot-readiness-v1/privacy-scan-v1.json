@@ -1,0 +1,9 @@
+{
+  "schema": "SkillV3ShadowObservabilityPrivacyScanV1",
+  "status": "PASS",
+  "privacy_match_count": 0,
+  "matching_files": [],
+  "raw_exception_count": 0,
+  "traceback_count": 0,
+  "raw_provider_content_count": 0
+}

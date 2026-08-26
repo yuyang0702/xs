@@ -1,0 +1,6 @@
+{
+  "schema": "SkillV3ShadowFailureReceiptModeV1",
+  "runtime_failure_evidence_mode": "TRACE_EVENT_WITH_BOUNDED_IN_MEMORY_FALLBACK",
+  "durable_business_receipt": false,
+  "production_persistence_semantics_changed": false
+}
