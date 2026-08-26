@@ -1,0 +1,12 @@
+{
+  "schema": "SkillV3OptionalNoiseIndependentReviewV1",
+  "status": "PASS",
+  "classification_counts": {
+    "ALWAYS_ON_STAGE_CORE": 4,
+    "DEMAND_SPECIFIC": 18
+  },
+  "optional_support_section_count": 0,
+  "optional_support_char_share": 0.0,
+  "optional_support_token_share": 0.0,
+  "unjustified_selected_section_count": 0
+}

@@ -1,0 +1,32 @@
+{
+  "schema": "SkillV3SelectedSectionDuplicateIndependentReviewV1",
+  "status": "PASS",
+  "exact_duplicate_section_count": 0,
+  "exact_duplicate_body_count": 0,
+  "exact_duplicate_groups": [],
+  "semantic_similarity_only_count": 1,
+  "semantic_similarity_groups": [
+    {
+      "basis": "same_leaf_heading_nonidentical_body",
+      "leaf_heading": "Setup",
+      "section_ids": [
+        "sv3-70a527462c32e7b6",
+        "sv3-2ced894267dc51e3"
+      ],
+      "heading_paths": [
+        [
+          "Arc Template",
+          "Setup"
+        ],
+        [
+          "Promise Template",
+          "Setup"
+        ]
+      ],
+      "classification": "SEMANTIC_SIMILARITY_ONLY_SCOPE_DISAMBIGUATED"
+    }
+  ],
+  "dedupe_action_count": 0,
+  "unauthorized_semantic_dedup_count": 0,
+  "provenance_preserved": true
+}

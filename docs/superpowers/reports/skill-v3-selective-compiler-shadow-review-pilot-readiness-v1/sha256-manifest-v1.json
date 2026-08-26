@@ -1,0 +1,178 @@
+{
+  "schema": "SkillV3ShadowReviewPilotReadinessSha256ManifestV1",
+  "coverage_policy": "all files in evidence root except manifest itself",
+  "entry_count": 34,
+  "entries": [
+    {
+      "path": "aggregation-sanity-review-v1.json",
+      "sha256": "533c242d433c718b9aa2c2d56e18d4fc950293744acbe1195e540550d1b46969",
+      "bytes": 671
+    },
+    {
+      "path": "cache-invalidation-review-v1.json",
+      "sha256": "70d4c08976240aae62fe17d1a397496124f74c4870d28e186ef4805f4c68cbbe",
+      "bytes": 615
+    },
+    {
+      "path": "change-contract-v1.json",
+      "sha256": "2225827587f95ae650ee9acfed13141938a8906a12fb5623f66ab50ae6afd84f",
+      "bytes": 1095
+    },
+    {
+      "path": "conflict-review-v1.json",
+      "sha256": "1939c3e60b2c0b11674a9dec0ebf794cc42b06f2ac1bbf4ebb96ee2a26948b3c",
+      "bytes": 698
+    },
+    {
+      "path": "dependency-review-v1.json",
+      "sha256": "5ba743703e86fd54257b687ddc8ed38fd3db120ce13b67d18270f18d4eb98fd9",
+      "bytes": 1475
+    },
+    {
+      "path": "duplicate-review-v1.json",
+      "sha256": "d421380b3c19ccb31480e2bc4e1226540c1e2b76e7d175be5850d8027f4d7bd2",
+      "bytes": 804
+    },
+    {
+      "path": "evaluator-topology-v1.json",
+      "sha256": "536f45b6f71885dd00b6f84babed5c4db4d258919a2d50f0c80813e2d549fc00",
+      "bytes": 540
+    },
+    {
+      "path": "final-report-v1.md",
+      "sha256": "d166a6393586c38aaf10c43ba44d377e2d61349d4c0ce15a61607471fc36fb9e",
+      "bytes": 5695
+    },
+    {
+      "path": "five-scenario-capacity-review-v1.json",
+      "sha256": "a07437a10df97e228b2dd446d2c4634bf437d722e98e9b131c01cf6be58777ec",
+      "bytes": 4806
+    },
+    {
+      "path": "forward-risk-report-v2.json",
+      "sha256": "933614cc2c05b451fc82b10f2744bb01e5c070bcfdc3a24a8e4d42d25146dbcf",
+      "bytes": 2496
+    },
+    {
+      "path": "historical-sample-reuse-decision-v1.json",
+      "sha256": "087580bd11de3dc7f3a9b9027f916c79665235fa3b809b27c0f0a4e5707694a4",
+      "bytes": 352
+    },
+    {
+      "path": "multi-sample-blind-mapping-policy-v1.json",
+      "sha256": "6e716296eab7411a0207440f5cb083c74ca0ce4cc2e323ac460fcefc4350306c",
+      "bytes": 339
+    },
+    {
+      "path": "multi-sample-policy-binding-v1.json",
+      "sha256": "b99184e3e262f64e386f73efb76d2e2175cd1297f7a339e2b199a66e1c46fdce",
+      "bytes": 1957
+    },
+    {
+      "path": "optional-noise-review-v1.json",
+      "sha256": "1ee7dfb2a18ce8374b26c559fcbf0336ce9a83c65008dc77cfc9c9d6412ef3d5",
+      "bytes": 328
+    },
+    {
+      "path": "pilot-arm-definition-v1.json",
+      "sha256": "505c770ad0bd3b68bde1b4cce627e5185e09dd6cf4aaaf2da468bb30bc71ffce",
+      "bytes": 1921
+    },
+    {
+      "path": "pilot-budget-v1.json",
+      "sha256": "d7ef1c3a35013b52e5d46b19951f355e233620676bf0d5416e269a7e57cca50d",
+      "bytes": 462
+    },
+    {
+      "path": "pilot-packet-template-v1.json",
+      "sha256": "b84f0db2c9607a45836b6aeb8a59b6cf50cf69ea628a67297d39625c55a3967a",
+      "bytes": 469
+    },
+    {
+      "path": "pilot-readiness-matrix-v1.json",
+      "sha256": "77866050974d34a48b4f8d6db4244051aeefe613729eb0ced0a2b53772bad0bd",
+      "bytes": 944
+    },
+    {
+      "path": "privacy-scan-v1.json",
+      "sha256": "3f04369f2585c2ffd58fd7fccee75e31df308a720570ef6a2c21da5ef83574b6",
+      "bytes": 253
+    },
+    {
+      "path": "production-isolation-review-v1.json",
+      "sha256": "f3931ec256134e1455025e3ec24ee632255aad736fa3c734a5222b68c02900f8",
+      "bytes": 634
+    },
+    {
+      "path": "provenance-reconstruction-review-v1.json",
+      "sha256": "616ec2fde2e46d1667121d3dd43319fd0937f8cf645eecdd3aa937c5d00df7b5",
+      "bytes": 1472
+    },
+    {
+      "path": "README.md",
+      "sha256": "420ba8ead957a7df5b802b9b26c6d9f2c0caa2c1e146f523e9366348f46926e0",
+      "bytes": 616
+    },
+    {
+      "path": "real-pilot-experiment-lock-v1.json",
+      "sha256": "8a07c5106fec903952d4b622ab33702636c17d3add7eb380d3ac78071841fc9b",
+      "bytes": 4205
+    },
+    {
+      "path": "real-pilot-plan-v1.json",
+      "sha256": "4eeacf9a551dbb785161a7e3d65783e2704660c6269b2c7f1e94125dc1faf557",
+      "bytes": 980
+    },
+    {
+      "path": "sample-independence-contract-v1.json",
+      "sha256": "b40d01ca8bab16216a3171571f4eda89315a538f388cb7bab71f57bfddf87941",
+      "bytes": 490
+    },
+    {
+      "path": "section-identity-review-v1.json",
+      "sha256": "65f818d62770310fcddc1bcdf01d07c141e2d1f77b497da853459da9f1e58b22",
+      "bytes": 668
+    },
+    {
+      "path": "selector-replay-review-v1.json",
+      "sha256": "612380010ff45aa02e82b59d5a34f56299021ed394337ff45fdd74a61430f64a",
+      "bytes": 3444
+    },
+    {
+      "path": "semantic-coverage-review-v1.json",
+      "sha256": "f3457055d7993cb23cc75701242faf34241861e873810bf5f8c892aebbdbe594",
+      "bytes": 1128
+    },
+    {
+      "path": "shadow-evidence-binding-v1.json",
+      "sha256": "fb105d9c3ec086eb470560b69681e1d95e8428691a9bf58585c5c07d3fc034ae",
+      "bytes": 969
+    },
+    {
+      "path": "shadow-fail-open-review-v1.json",
+      "sha256": "031e9211f903dddb47ef67de3f8d0814aeef2612bcbe090f5d5690bd66b0aa55",
+      "bytes": 602
+    },
+    {
+      "path": "stage-ownership-review-v1.json",
+      "sha256": "ab04c5ff20227e9476fddf440886d0c4c4184cebf6f964bba0ad51f23ae78dde",
+      "bytes": 335
+    },
+    {
+      "path": "strict-l3-receipt-v1.json",
+      "sha256": "06b4369c389385286dc230ff9401cde9c41365907d8b263fe38afa7d8552f2df",
+      "bytes": 239
+    },
+    {
+      "path": "test-receipt-v1.json",
+      "sha256": "351b8a89be63067746effd4f3580ded97a8ef2769f0c856fea829d1d10bcc197",
+      "bytes": 586
+    },
+    {
+      "path": "verbatim-fidelity-review-v1.json",
+      "sha256": "11c503eee8b55690e66a94b0490d378d7143662685531f2fd80cb47df8921d23",
+      "bytes": 374
+    }
+  ],
+  "definition_sha256": "4bf2f3055561d45a473f9ea3569db1458b495d7db90ee66505a7c1d5b2fd7d0e"
+}

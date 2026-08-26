@@ -1,0 +1,10 @@
+{
+  "schema": "MultiSampleBlindMappingPolicyV1",
+  "status": "PASS_DESIGN_ONLY",
+  "evaluator_visible_ids_reveal_arm_or_order": false,
+  "mapping_frozen_before_evaluation": true,
+  "mapping_private_until_judgment_freeze": true,
+  "quality_adaptive_mapping": false,
+  "actual_mapping_created": false,
+  "actual_sample_ids_created": false
+}

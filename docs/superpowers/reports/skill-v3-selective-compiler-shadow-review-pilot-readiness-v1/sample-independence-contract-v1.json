@@ -1,0 +1,17 @@
+{
+  "schema": "SampleIndependenceContractV1",
+  "status": "PASS_DESIGN_ONLY",
+  "each_future_sample_requires": [
+    "unique approval identity",
+    "unique nonce",
+    "unique execution receipt",
+    "no prior sample prose injected",
+    "no previous blind result injected",
+    "no retry/fallback/second dispatch",
+    "independent Provider request"
+  ],
+  "fresh_approval_per_call_required": true,
+  "approval_created": false,
+  "nonce_created": false,
+  "execution_authorized": false
+}

@@ -1,0 +1,15 @@
+{
+  "schema": "SkillV3ShadowReviewPilotReadinessTestReceiptV1",
+  "focused_shadow_review": "13 passed in 3.60s",
+  "pilot_contract_validation": "4 passed, 9 deselected in 0.50s",
+  "selector_provenance_capacity": "15 compiler tests passed in 9.67s; 22 A-control profile tests passed in 1.84s",
+  "strict_l3": "PASS warnings=0 blockers=0",
+  "new_owning_source_regression_count": 0,
+  "credential_lookup_count": 0,
+  "real_provider_client_creation_count": 0,
+  "real_provider_request_attempts": 0,
+  "http_post_attempts": 0,
+  "network_calls": 0,
+  "model_calls": 0,
+  "paid_calls": 0
+}

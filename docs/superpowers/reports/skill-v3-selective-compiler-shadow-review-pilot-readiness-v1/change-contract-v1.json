@@ -1,0 +1,24 @@
+{
+  "schema": "SkillV3ShadowReviewChangeContractV1",
+  "requested_outcome": "independent offline evidence review and bounded real-pilot readiness decision",
+  "authorization": "EVALUATION_AND_EVIDENCE_MATERIALIZATION_ONLY",
+  "scope_classification": "closed_world",
+  "operational_definition": "recompute the sealed five-scenario shadow evidence, bind the sealed multi-sample method, and materialize a usable disabled pilot plan only if every readiness gate passes",
+  "forbidden_narrowing": "no substitution of one-sample A/B, no literary-quality claim from deterministic checks, and no silent acceptance of an unobservable shadow failure",
+  "allowed_changes": [
+    "diagnostic review tooling",
+    "offline tests",
+    "evidence/readiness artifacts"
+  ],
+  "protected_unchanged_behavior": [
+    "production prompt/model input",
+    "route/model",
+    "validators",
+    "authority",
+    "retry/fallback",
+    "StoryState/Canon/READY"
+  ],
+  "risk_level": "L3",
+  "rollback": "revert the single evidence/readiness commit; production source is untouched",
+  "resolution_status": "case_fixed"
+}

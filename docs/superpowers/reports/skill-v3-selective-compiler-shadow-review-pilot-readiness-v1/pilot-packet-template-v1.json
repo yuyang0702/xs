@@ -1,0 +1,19 @@
+{
+  "schema": "SkillV3PilotPacketTemplateWithheldV1",
+  "materialized": false,
+  "template_identity": "WITHHELD_BY_READINESS_GATE",
+  "required_future_bindings": [
+    "pilot_id",
+    "arm",
+    "sample_index",
+    "experiment_lock_sha256",
+    "model_route_policy",
+    "skill_context_identity",
+    "output_cap",
+    "validators"
+  ],
+  "execution_authorized": false,
+  "signed_approval_present": false,
+  "nonce_reserved": false,
+  "real_execution_enabled": false
+}

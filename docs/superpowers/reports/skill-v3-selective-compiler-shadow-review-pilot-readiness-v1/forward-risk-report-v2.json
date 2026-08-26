@@ -1,0 +1,51 @@
+{
+  "version": 2,
+  "original_requirement": "independently review the sealed shadow compiler and decide bounded multi-sample real-pilot readiness without production change or external calls",
+  "scope_classification": "closed_world",
+  "closed_world_justification": "The task freezes one branch, one HEAD, one sealed compiler/index, five named scenarios, and one finite evidence/pilot-readiness contract; it does not authorize implementation or a general cutover claim.",
+  "operational_definition": "hash-exact five-scenario review plus prospective pilot contract checks",
+  "forbidden_narrowing": [
+    "Do not suppress a hard readiness failure.",
+    "Do not replace the sealed multi-sample policy with one sample.",
+    "Do not claim literary quality from deterministic section evidence."
+  ],
+  "resolution_status": "case_fixed",
+  "constraint_traceability": [
+    {
+      "requirement": "shadow failures are fail-open, observable, and bounded",
+      "implementation": "existing WorkflowService observer seam; unchanged",
+      "test_paths": [
+        "tests/test_skill_v3_shadow_review_pilot_readiness.py"
+      ],
+      "evidence": "docs/superpowers/reports/skill-v3-selective-compiler-shadow-review-pilot-readiness-v1/shadow-fail-open-review-v1.json"
+    }
+  ],
+  "historical_incident_families_checked": [
+    "Skill context isolation",
+    "context capacity",
+    "authority leakage",
+    "single-dispatch experiment control"
+  ],
+  "projected_failure_mechanisms": [
+    "silent diagnostic loss"
+  ],
+  "why_previous_tests_missed": "the previous test asserted production continuation after an observer exception but did not assert a bounded observable failure receipt",
+  "sibling_boundaries": [
+    {
+      "boundary": "production model input",
+      "disposition": "tested_not_susceptible",
+      "evidence": "tests/test_selective_skill_compiler.py proves identical fake-gateway call tuples with the observer off, on, and failing"
+    }
+  ],
+  "model_output_boundary_changed": false,
+  "model_output_not_applicable_evidence": "this commit changes only diagnostic review tooling, tests, and evidence; no production prompt, parser, model output, route, validator, or authority source changes",
+  "production_shaped_tests": [
+    "tests/test_selective_skill_compiler.py"
+  ],
+  "next_authoritative_boundary_tests": [
+    "tests/test_skill_v3_shadow_review_pilot_readiness.py"
+  ],
+  "remaining_risks": [
+    "shadow failure is silent and therefore real-pilot readiness remains NO"
+  ]
+}

@@ -1,0 +1,9 @@
+{
+  "schema": "SkillV3ShadowReviewStrictL3ReceiptV1",
+  "status": "PASS",
+  "declared_level": "L3",
+  "warnings": 0,
+  "blockers": 0,
+  "production_source_changed": false,
+  "review_mode": "SINGLE_AGENT_CLEAN_ROOM_NO_INDEPENDENCE_CLAIM"
+}

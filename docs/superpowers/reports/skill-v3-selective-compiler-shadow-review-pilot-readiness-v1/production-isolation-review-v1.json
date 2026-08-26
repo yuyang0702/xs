@@ -1,0 +1,17 @@
+{
+  "schema": "SkillV3ProductionIsolationIndependentReviewV1",
+  "status": "PASS",
+  "shadow_compiler_called": true,
+  "shadow_context_used_by_model": false,
+  "shadow_context_used_by_validator": false,
+  "shadow_context_used_by_router": false,
+  "shadow_context_used_by_retry": false,
+  "shadow_context_used_by_authority": false,
+  "current_compressed_context_still_production": true,
+  "production_model_input_identity": "PASS",
+  "production_skill_context_changed": false,
+  "production_prompt_changed": false,
+  "production_route_changed": false,
+  "production_validator_changed": false,
+  "production_authority_changed": false
+}

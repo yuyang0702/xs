@@ -1,0 +1,10 @@
+{
+  "schema": "SkillV3StageOwnershipIndependentReviewV1",
+  "status": "PASS",
+  "sealed_full_verbatim_wrong_layer_count": 18,
+  "selected_known_wrong_layer_before_exception": [],
+  "exact_shared_stage_exceptions": [],
+  "wrong_layer_selected_count": 0,
+  "unknown_ownership_selected_count": 0,
+  "unknown_ownership_selected_ids": []
+}

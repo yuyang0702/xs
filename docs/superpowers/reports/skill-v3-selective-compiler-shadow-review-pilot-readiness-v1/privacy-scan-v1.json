@@ -1,0 +1,11 @@
+{
+  "schema": "SkillV3ShadowReviewPilotPrivacyScanV1",
+  "status": "PASS",
+  "privacy_match_count": 0,
+  "matching_files": [],
+  "credentials": 0,
+  "authorization_headers": 0,
+  "secret_provider_urls": 0,
+  "raw_payloads": 0,
+  "hidden_reasoning": 0
+}

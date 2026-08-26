@@ -1,0 +1,35 @@
+{
+  "schema": "SkillV3RealPilotPlanWithheldV1",
+  "materialized": false,
+  "pilot_plan_disabled": true,
+  "execution_authorized": false,
+  "withheld_by_gate": "SHADOW_FAILURE_NOT_OBSERVABLE",
+  "canonical_pilot_id_assigned": false,
+  "sealed_prospective_shape": {
+    "creative_demand_class": "character-heavy",
+    "arm_a": "DEMAND_AWARE_V2_LAST_KNOWN_BEST_COMPRESSED_BASELINE",
+    "arm_b": "VERBATIM_SELECTIVE_SKILL_COMPILER_SHADOW_V1_CHARACTER_HEAVY",
+    "sample_count_a": 3,
+    "sample_count_b": 3,
+    "maximum_total_requests": 6,
+    "sequential_execution_order": [
+      "A1",
+      "B1",
+      "A2",
+      "B2",
+      "A3",
+      "B3"
+    ],
+    "stop_conditions": [
+      "any authority mutation",
+      "dispatch bound breach",
+      "privacy breach",
+      "contract-invalid output",
+      "critical safety regression",
+      "route/model parity mismatch"
+    ]
+  },
+  "signed_approval_present": false,
+  "nonce_reserved": false,
+  "real_execution_enabled": false
+}

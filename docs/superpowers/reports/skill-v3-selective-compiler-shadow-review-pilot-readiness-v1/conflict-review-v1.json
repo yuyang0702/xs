@@ -1,0 +1,15 @@
+{
+  "schema": "SkillV3SelectedSectionConflictIndependentReviewV1",
+  "status": "PASS",
+  "review_scope_section_count": 22,
+  "method": "read every unique selected original section body and compare scope-qualified directives",
+  "classifications": [],
+  "no_conflict_count": 22,
+  "explicit_contradiction_count": 0,
+  "priority_resolved_by_sealed_policy_count": 0,
+  "review_required_count": 0,
+  "unknown_count": 0,
+  "unresolved_model_visible_conflict_count": 0,
+  "llm_precedence_adjudication_required": false,
+  "finding": "selected sections are additive, heading-path-scoped creative templates; repeated leaf heading Setup names different scoped fields and creates no instruction precedence"
+}

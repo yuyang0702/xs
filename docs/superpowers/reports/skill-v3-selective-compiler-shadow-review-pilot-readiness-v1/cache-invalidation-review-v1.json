@@ -1,0 +1,32 @@
+{
+  "schema": "SkillV3CacheInvalidationIndependentReviewV1",
+  "status": "PASS",
+  "pass_count": 6,
+  "case_count": 6,
+  "matrix": [
+    {
+      "case": "source_skill_content_change",
+      "status": "PASS"
+    },
+    {
+      "case": "section_index_selected_content_change",
+      "status": "PASS"
+    },
+    {
+      "case": "stage_change",
+      "status": "PASS"
+    },
+    {
+      "case": "demand_class_change",
+      "status": "PASS"
+    },
+    {
+      "case": "task_contract_selector_input_change",
+      "status": "PASS"
+    },
+    {
+      "case": "resolver_version_change",
+      "status": "PASS"
+    }
+  ]
+}

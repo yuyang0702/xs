@@ -1,0 +1,26 @@
+{
+  "schema": "SkillV3ShadowEvidenceBindingReviewV1",
+  "status": "PASS",
+  "branch": "r1-ptr3/planning-repair-finding-propagation-20260817",
+  "baseline_head": "4323a93c6094264f4569ff357c2381c933c5cfde",
+  "shadow_manifest": {
+    "status": "EXACT",
+    "failures": [],
+    "entry_count": 34,
+    "definition_sha256": "f189e47cce39d0798e6716982c6e25b53b7cd99a2dcf8c587643e7e97a21aad8",
+    "file_sha256": "b35329ba873603e53445e0c65f2de60d35e3745eafb8d4c66cfd65773a0e259f"
+  },
+  "strategy_manifest": {
+    "status": "EXACT",
+    "failures": [],
+    "entry_count": 29,
+    "definition_sha256": "1518f2824863945b061513fd325d352e4f1fdaeaf9c3ffd10d27cbd30853fd9b",
+    "file_sha256": "72ec6e3bab934b4834017ab70c74ef3ecaa818f5c3bc999ed03d40836e95efda"
+  },
+  "short_skill_count": 11,
+  "section_count": 413,
+  "verbatim_section_mismatch_count": 0,
+  "production_prompt_changed": false,
+  "production_model_input_changed": false,
+  "new_owning_source_regression_count": 0
+}

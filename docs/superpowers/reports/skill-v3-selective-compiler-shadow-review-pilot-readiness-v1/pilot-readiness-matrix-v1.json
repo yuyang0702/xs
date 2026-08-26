@@ -1,0 +1,30 @@
+{
+  "schema": "SkillV3PilotReadinessMatrixV1",
+  "matrix": {
+    "SECTION_IDENTITY": "PASS",
+    "SELECTOR_DETERMINISM": "PASS",
+    "DEPENDENCY_CLOSURE": "PASS",
+    "STAGE_OWNERSHIP": "PASS",
+    "DUPLICATE_HANDLING": "PASS",
+    "CONFLICT_HANDLING": "PASS",
+    "VERBATIM_FIDELITY": "PASS",
+    "SEMANTIC_COVERAGE": "PASS",
+    "CHARACTER_HEAVY_CAPACITY": "PASS",
+    "PROVENANCE": "PASS",
+    "CACHE_INVALIDATION": "PASS",
+    "PRODUCTION_ISOLATION": "PASS",
+    "SHADOW_FAIL_OPEN": "FAIL",
+    "MULTI_SAMPLE_METHOD": "PASS",
+    "EXPERIMENT_LOCK": "PASS",
+    "SAMPLE_INDEPENDENCE": "PASS",
+    "BLINDING": "PASS",
+    "AGGREGATION": "PASS",
+    "BUDGET": "PASS",
+    "PRIVACY": "PASS"
+  },
+  "overall": "NO",
+  "first_failing_invariant": "SHADOW_FAILURE_OBSERVABLE=YES",
+  "real_pilot_ready": false,
+  "production_cutover_authorized": false,
+  "exact_next_gate": "SKILL_V3_SELECTIVE_COMPILER_SHADOW_DESIGN_OR_IMPLEMENTATION_CORRECTION"
+}

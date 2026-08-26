@@ -1,0 +1,164 @@
+{
+  "schema": "SkillV3FiveScenarioCapacityIndependentReviewV1",
+  "status": "PASS",
+  "target_char_limit_used": false,
+  "scenarios": [
+    {
+      "demand_class": "character-heavy",
+      "selected_skill_ids": [
+        "plot-structure",
+        "character-management"
+      ],
+      "selected_section_count": 9,
+      "selected_section_ids": [
+        "sv3-70a527462c32e7b6",
+        "sv3-faecc1466817d8aa",
+        "sv3-7633ad6f5c90db5e",
+        "sv3-3fb51ac3fed35bc0",
+        "sv3-4c6b004ecdd2077f",
+        "sv3-10e4ba0c5b7509b4",
+        "sv3-8e321726b4ebdcec",
+        "sv3-8afeb5229a4fe841",
+        "sv3-e92f0f3584d44b87"
+      ],
+      "raw_source_chars": 1597,
+      "rendered_context_chars": 2556,
+      "token_estimate": 639,
+      "non_skill_input_estimate": 708,
+      "output_reserve": 4624,
+      "model_capacity": 32768,
+      "maximum_total_input_tokens": 24576,
+      "available_skill_tokens": 18220,
+      "headroom": 17581,
+      "capacity_status": "PASS",
+      "optional_dropped_count": 0,
+      "overflow_decision": "NONE"
+    },
+    {
+      "demand_class": "world-heavy",
+      "selected_skill_ids": [
+        "plot-structure",
+        "worldbuilding"
+      ],
+      "selected_section_count": 11,
+      "selected_section_ids": [
+        "sv3-70a527462c32e7b6",
+        "sv3-faecc1466817d8aa",
+        "sv3-7633ad6f5c90db5e",
+        "sv3-3fb51ac3fed35bc0",
+        "sv3-6073d485d6a384b0",
+        "sv3-7e6d87ef69c95cfd",
+        "sv3-f998823d27d7086b",
+        "sv3-2985467b5f2bf929",
+        "sv3-60d4bee497e4c0dc",
+        "sv3-5f738df332e0919f",
+        "sv3-b4eb9bc24027f33c"
+      ],
+      "raw_source_chars": 1303,
+      "rendered_context_chars": 2423,
+      "token_estimate": 606,
+      "non_skill_input_estimate": 725,
+      "output_reserve": 4624,
+      "model_capacity": 32768,
+      "maximum_total_input_tokens": 24576,
+      "available_skill_tokens": 18203,
+      "headroom": 17597,
+      "capacity_status": "PASS",
+      "optional_dropped_count": 0,
+      "overflow_decision": "NONE"
+    },
+    {
+      "demand_class": "conflict-pacing-heavy",
+      "selected_skill_ids": [
+        "plot-structure"
+      ],
+      "selected_section_count": 5,
+      "selected_section_ids": [
+        "sv3-70a527462c32e7b6",
+        "sv3-faecc1466817d8aa",
+        "sv3-7633ad6f5c90db5e",
+        "sv3-3fb51ac3fed35bc0",
+        "sv3-13580b3cdbef263e"
+      ],
+      "raw_source_chars": 717,
+      "rendered_context_chars": 1216,
+      "token_estimate": 304,
+      "non_skill_input_estimate": 731,
+      "output_reserve": 4624,
+      "model_capacity": 32768,
+      "maximum_total_input_tokens": 24576,
+      "available_skill_tokens": 18197,
+      "headroom": 17893,
+      "capacity_status": "PASS",
+      "optional_dropped_count": 0,
+      "overflow_decision": "NONE"
+    },
+    {
+      "demand_class": "setup-payoff-heavy",
+      "selected_skill_ids": [
+        "plot-structure"
+      ],
+      "selected_section_count": 9,
+      "selected_section_ids": [
+        "sv3-70a527462c32e7b6",
+        "sv3-faecc1466817d8aa",
+        "sv3-7633ad6f5c90db5e",
+        "sv3-3fb51ac3fed35bc0",
+        "sv3-ac7aa3aed8a7d237",
+        "sv3-2ced894267dc51e3",
+        "sv3-82ca2fdf9c28183b",
+        "sv3-a1cb6a6e7ccf6112",
+        "sv3-6e4a0b2625a01274"
+      ],
+      "raw_source_chars": 947,
+      "rendered_context_chars": 1864,
+      "token_estimate": 466,
+      "non_skill_input_estimate": 737,
+      "output_reserve": 4624,
+      "model_capacity": 32768,
+      "maximum_total_input_tokens": 24576,
+      "available_skill_tokens": 18191,
+      "headroom": 17725,
+      "capacity_status": "PASS",
+      "optional_dropped_count": 0,
+      "overflow_decision": "NONE"
+    },
+    {
+      "demand_class": "mixed",
+      "selected_skill_ids": [
+        "plot-structure",
+        "character-management",
+        "worldbuilding"
+      ],
+      "selected_section_count": 9,
+      "selected_section_ids": [
+        "sv3-70a527462c32e7b6",
+        "sv3-faecc1466817d8aa",
+        "sv3-7633ad6f5c90db5e",
+        "sv3-3fb51ac3fed35bc0",
+        "sv3-82ca2fdf9c28183b",
+        "sv3-10e4ba0c5b7509b4",
+        "sv3-8e321726b4ebdcec",
+        "sv3-e92f0f3584d44b87",
+        "sv3-5f738df332e0919f"
+      ],
+      "raw_source_chars": 1344,
+      "rendered_context_chars": 2285,
+      "token_estimate": 572,
+      "non_skill_input_estimate": 799,
+      "output_reserve": 4624,
+      "model_capacity": 32768,
+      "maximum_total_input_tokens": 24576,
+      "available_skill_tokens": 18129,
+      "headroom": 17557,
+      "capacity_status": "PASS",
+      "optional_dropped_count": 0,
+      "overflow_decision": "NONE"
+    }
+  ],
+  "character_heavy_capacity": "PASS",
+  "silent_truncation": false,
+  "summarization": false,
+  "ptr9_ptr12_compatible_output_reserve": 4624,
+  "deterministic_overflow": true
+}

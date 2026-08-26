@@ -1,0 +1,12 @@
+{
+  "schema": "SkillV3VerbatimFidelityIndependentReviewV1",
+  "status": "PASS",
+  "scenario_count": 5,
+  "selected_occurrence_count": 43,
+  "unique_selected_section_count": 22,
+  "source_section_sha_match": true,
+  "rendered_section_match": "CANONICAL_LF_NORMALIZED_EXACT",
+  "creative_paraphrase_count": 0,
+  "creative_summary_count": 0,
+  "semantic_truncation_count": 0
+}

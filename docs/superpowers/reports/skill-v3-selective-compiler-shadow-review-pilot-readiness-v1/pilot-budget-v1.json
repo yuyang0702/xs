@@ -1,0 +1,15 @@
+{
+  "schema": "SkillV3ProspectivePilotBudgetV1",
+  "status": "PASS_BOUNDED_DESIGN_ONLY",
+  "max_provider_requests": 6,
+  "max_http_posts": 6,
+  "max_network_attempts": 6,
+  "max_output_tokens_per_call": 4624,
+  "max_total_output_tokens": 27744,
+  "max_total_input_tokens_per_call": 24576,
+  "max_total_input_tokens": 147456,
+  "max_elapsed": "UNKNOWN_NOT_SEALED",
+  "cost": "UNKNOWN",
+  "automatic_retry_or_replacement": false,
+  "execution_authorized": false
+}

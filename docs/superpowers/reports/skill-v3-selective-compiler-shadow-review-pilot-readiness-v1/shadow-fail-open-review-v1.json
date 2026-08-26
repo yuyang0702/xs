@@ -1,0 +1,10 @@
+{
+  "schema": "SkillV3ShadowFailOpenIndependentReviewV1",
+  "status": "FAIL",
+  "shadow_failure_can_block_production": false,
+  "shadow_failure_observable": false,
+  "shadow_failure_evidence_bounded": true,
+  "source_evidence": "WorkflowService._stage wraps the observer in try/except Exception: pass; no failure event, receipt, counter, or hash is emitted",
+  "first_failing_invariant": "SHADOW_FAILURE_OBSERVABLE=YES",
+  "required_condition_closure": "add a bounded hash-only local shadow-failure observation that remains fail-open; requires a separately authorized production implementation task"
+}
