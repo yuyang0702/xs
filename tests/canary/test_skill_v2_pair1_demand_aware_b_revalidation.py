@@ -273,4 +273,3 @@ def test_real_entry_is_dormant_without_sealed_approval(tmp_path: Path) -> None:
             )
         )
     assert not (tmp_path / "never-created").exists()
-
