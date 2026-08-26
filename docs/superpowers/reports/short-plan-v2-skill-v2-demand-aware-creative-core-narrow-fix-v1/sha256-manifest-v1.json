@@ -1,9 +1,14 @@
 {
   "algorithm": "SHA-256",
   "coverage": "all evidence payload files except manifest and final report",
-  "definition_sha256": "518e83e18445fd214483ef6a2515aa42746c5bc10eab5f6dd67801e3e4d900f7",
-  "entry_count": 25,
+  "definition_sha256": "51e85b27f8f73d2ba8fe0c4622df6603e3c5f36d02ed233011e16d2b659e441c",
+  "entry_count": 26,
   "files": [
+    {
+      "bytes": 14,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-demand-aware-creative-core-narrow-fix-v1/.gitattributes",
+      "sha256": "a79691a93b46e49ce460c26ef22afcc03d6eca1e63bf2edbc20e96159510f6c9"
+    },
     {
       "bytes": 219,
       "path": "docs/superpowers/reports/short-plan-v2-skill-v2-demand-aware-creative-core-narrow-fix-v1/README.md",
@@ -52,7 +57,7 @@
     {
       "bytes": 374,
       "path": "docs/superpowers/reports/short-plan-v2-skill-v2-demand-aware-creative-core-narrow-fix-v1/manifest-coverage-receipt-v1.json",
-      "sha256": "d6fee67d10ea5c74ac2f663a538a4c2ed41cc095209cac67cfe993d40f6708f6"
+      "sha256": "924427fe12ea4f4317505cd3065227f163f6f326a73974f90489c0991f9b1a62"
     },
     {
       "bytes": 385,
@@ -77,7 +82,7 @@
     {
       "bytes": 361,
       "path": "docs/superpowers/reports/short-plan-v2-skill-v2-demand-aware-creative-core-narrow-fix-v1/privacy-scan-v1.json",
-      "sha256": "30dd9dccdb0ee2d1f7d5ad389a9e5a8adad4b2d4d7cff29dea7a1c590f9100d2"
+      "sha256": "4ff5159a50f0d2dbdf5e11147a210a6db9eafd9f741c6484572d6e43ebd696dd"
     },
     {
       "bytes": 786,
@@ -102,7 +107,7 @@
     {
       "bytes": 3729,
       "path": "docs/superpowers/reports/short-plan-v2-skill-v2-demand-aware-creative-core-narrow-fix-v1/revalidation-candidate-v1.json",
-      "sha256": "46237042938300da6fc643371a6b6ddb74ed3c02be7153c30d8c7bf951dd8bad"
+      "sha256": "3b6af32af70ab0b785e97cb1ca001ac251b2d3c81399687315fd4edd8e9ead0a"
     },
     {
       "bytes": 483,
@@ -120,9 +125,9 @@
       "sha256": "c56bcebdf7dad220e3684031814276e5a83f50950d5c7d7f520b4e6b27105567"
     },
     {
-      "bytes": 959,
+      "bytes": 4272,
       "path": "docs/superpowers/reports/short-plan-v2-skill-v2-demand-aware-creative-core-narrow-fix-v1/source-diff-scope-v1.json",
-      "sha256": "e8946b1795e353d439db4f156c156c9ee17ed2a9e627126b00a98ac81f159f48"
+      "sha256": "7d923d57d9d8f599186d3702b897f309991f7b764eabad44f241ea2a059f2559"
     },
     {
       "bytes": 1998,

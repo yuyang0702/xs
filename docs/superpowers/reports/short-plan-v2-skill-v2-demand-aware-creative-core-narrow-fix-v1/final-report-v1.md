@@ -3,7 +3,7 @@
 - Branch: `r1-ptr3/planning-repair-finding-propagation-20260817`
 - Baseline HEAD: `4dff5603cde1ba4c4de3c601ce229c5bc102cedf`
 - Implementation commit: `a7999372a9fc96f3119a1e48a881fd7aa716a049`
-- Validation commit: `90323f7993caae0fb1118605da993fb3837e6374`
+- Validation commit: `320924b9e352f97d983d8e3e6abc69b95ec08d7a`
 - Candidate/evidence commit: `THIS_EVIDENCE_SEAL_COMMIT`
 - Final HEAD: `THIS_EVIDENCE_SEAL_COMMIT`
 - Root-cause binding: `PASS`
@@ -20,13 +20,13 @@
 - Strict L3: `PASS`; warnings `0`; blockers `0`.
 - New owning-source regressions: `0`
 - Sealed-A control reuse: `CONDITIONAL`; conditions `YES`.
-- Revalidation candidate: `3a7a83f64242300a178c998780c2fc9addb44d1a8c8dc7dc57e4f1f0ce18eb05`; execution authorized `false`; nonce `ABSENT`; usage `unused`; reservation `unreserved`.
+- Revalidation candidate: `97adb8c54eacbc02314871b2beeb146dae96758e6dc541571605a403537cbaf5`; execution authorized `false`; nonce `ABSENT`; usage `unused`; reservation `unreserved`.
 - Successor A/B lock: `5ace834e214ea25d4206b92d63e830ad7f51b3629072ea58107249e2457303a1`; primary changed variable `SKILL_CONTEXT`; unintended diff `0`.
 - Pair 2-5: `BLOCKED/NOT_AUTHORIZED`; Skill V2 and Planning V2 cutover: `NOT_AUTHORIZED`; Full Short: `NOT_EXECUTED`.
 - Privacy: match count `0` / `PASS`.
 - Manifest definition SHA: `e4a91e2f84b3e56719168a9d34b1a806dea4131f9064736689802cb99efa3703`
-- Manifest file SHA: `694e971a68067edfd1c768bced765e2d1a106568d3b754e21af82402793890a7`
-- Manifest coverage: `25/25 payload files`; manifest and final report excluded only to avoid self-reference.
+- Manifest file SHA: `4d54c0517bd903392cdba7c2dc068ff1cefb02fa347da5a7f530928e25f6311b`
+- Manifest coverage: `26/26 payload files`; manifest and final report excluded only to avoid self-reference.
 - External counters: all `0`.
 
 `GENERALIZED_LITERARY_NON_INFERIORITY=NOT_PROVEN_OFFLINE`

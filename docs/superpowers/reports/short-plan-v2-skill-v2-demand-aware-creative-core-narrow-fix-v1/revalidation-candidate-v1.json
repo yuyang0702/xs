@@ -5,7 +5,7 @@
   "approval_reuse_allowed": false,
   "arm_role": "B_ARM",
   "candidate_scope": "SKILL_V2_PAIR1_DEMAND_AWARE_B_ONLY_REVALIDATION_DISABLED_V1",
-  "candidate_sha256": "3a7a83f64242300a178c998780c2fc9addb44d1a8c8dc7dc57e4f1f0ce18eb05",
+  "candidate_sha256": "97adb8c54eacbc02314871b2beeb146dae96758e6dc541571605a403537cbaf5",
   "cohort_id": "skill-v2-pair1-demand-aware-b-revalidation-disabled-v1",
   "cohort_reuse_allowed": false,
   "execution_authorized": false,
@@ -57,6 +57,6 @@
   "skill_v2_production_cutover_authorized": false,
   "successor_ab_lock_sha256": "5ace834e214ea25d4206b92d63e830ad7f51b3629072ea58107249e2457303a1",
   "usage_status": "unused",
-  "validation_head": "90323f7993caae0fb1118605da993fb3837e6374",
+  "validation_head": "320924b9e352f97d983d8e3e6abc69b95ec08d7a",
   "version": 1
 }
