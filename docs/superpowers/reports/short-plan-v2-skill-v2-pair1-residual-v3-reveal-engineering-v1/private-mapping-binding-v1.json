@@ -1,0 +1,9 @@
+{
+  "mapping_derivation_file_sha256": "3afd23840b2206644636e8c020cca62408b9f3c6eca429d4caf1c97c8f649fdf",
+  "mapping_file_sha256": "d85704bbeb166d19a547d9d7504888d785c1bc006c827f10aa91f8708bf9e996",
+  "mapping_source_artifacts_match": true,
+  "old_mapping_reused": false,
+  "schema": "SkillV2Pair1ResidualV3PrivateMappingBindingV1",
+  "status": "exact",
+  "version": 1
+}

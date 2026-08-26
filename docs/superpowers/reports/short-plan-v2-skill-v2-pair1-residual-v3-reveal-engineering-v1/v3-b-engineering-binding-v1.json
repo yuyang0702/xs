@@ -1,0 +1,67 @@
+{
+  "arm": "B_ARM",
+  "engineering": {
+    "actual_recorded_cost": "UNKNOWN_NOT_PERSISTED",
+    "artifact_freeze": "PASS",
+    "artifact_schema_validation": "PASS",
+    "artifact_sha256": "b5833ba6faf2fdb69b74a9f073c25ece537cc13e01694648e97f4dddda5d0bce",
+    "audit_serialization": "PASS",
+    "authority_normalization": "PASS",
+    "canon_mutations": 0,
+    "effective_output_cap": "UNKNOWN_NOT_PERSISTED",
+    "elapsed": "UNKNOWN_NOT_PERSISTED",
+    "event_realization_validation": "PASS",
+    "fallback_attempts": 0,
+    "finish_reason": "UNKNOWN_NOT_PERSISTED",
+    "http_post_attempts": 1,
+    "model_logical_calls": 1,
+    "network_attempts": 1,
+    "output_isolation": "PASS",
+    "paid_calls": "UNKNOWN_NOT_TRACKED_SEPARATELY",
+    "parse_conversion": "PASS",
+    "persistence": "PASS",
+    "production_authority": false,
+    "provider_input_tokens": "UNKNOWN_NOT_PERSISTED",
+    "provider_output_tokens": "UNKNOWN_NOT_PERSISTED",
+    "provider_requests": 1,
+    "provider_return": "RECEIVED",
+    "ready_mutations": 0,
+    "requested_output_cap": 4624,
+    "resume_attempts": 0,
+    "retry_attempts": 0,
+    "route_switch_attempts": 0,
+    "second_dispatch_attempts": 0,
+    "skill_context_characters": 2998,
+    "status": "PASS_SEALED",
+    "story_state_mutations": 0
+  },
+  "schema": "SkillV2Pair1ResidualV3BEngineeringBindingV1",
+  "sealed_source_files": [
+    {
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-residual-v3-b-only-execution-v1/pairs/restored-character-heavy-v2-residual-v3/b-arm/execution-receipt-v1.json",
+      "sha256": "854e0ed559d8a001716f5cfb0a7a0a528d365d14fe097e2b09530f122ef223c5"
+    },
+    {
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-residual-v3-b-only-execution-v1/pairs/restored-character-heavy-v2-residual-v3/b-arm/attempt-accounting-v1.json",
+      "sha256": "21181689593f19ff881bc86c0f39c1300b599ee407e4f84e642bdf7bc9537f9f"
+    },
+    {
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-residual-v3-b-only-execution-v1/pairs/restored-character-heavy-v2-residual-v3/b-arm/artifact-validation-v1.json",
+      "sha256": "1d0bac5d398c71a76c2437da5a753ac2bdb8badb03c6db972b1fd7453c8923c2"
+    },
+    {
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-residual-v3-b-only-execution-v1/pairs/restored-character-heavy-v2-residual-v3/b-arm/terminal-success-tail-validation-v1.json",
+      "sha256": "add970c8e931c30e11f2aacd0e6d5e753f41d33ed2b7fee81fb151cdd7a4b275"
+    },
+    {
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-residual-v3-b-only-execution-v1/pairs/restored-character-heavy-v2-residual-v3/b-arm/successor-v3-ab-lock-validation-v1.json",
+      "sha256": "d78b81bae7b5e0697e78a1050a8432358acb302b28ce807277a789611238aee7"
+    },
+    {
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-residual-v3-b-only-execution-v1/pairs/restored-character-heavy-v2-residual-v3/b-arm/sha256-manifest-v1.json",
+      "sha256": "969d1589473258acde0710dd98bef4c58df9c3716cc7f2ebc09c3e68b57669de"
+    }
+  ],
+  "status": "exact",
+  "version": 1
+}

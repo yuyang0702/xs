@@ -1,0 +1,33 @@
+{
+  "a_hard_contract_status": "PASS",
+  "ab_lock_result": "exact",
+  "b_hard_contract_status": "PASS",
+  "b_hard_regression_count": 0,
+  "descriptive_efficiency": {
+    "a_skill_context_characters": 8927,
+    "actual_recorded_cost": "UNKNOWN_BOTH_ARMS",
+    "context_character_delta_b_minus_a": -5929,
+    "efficiency_is_required_win": false,
+    "elapsed": "UNKNOWN_BOTH_ARMS",
+    "provider_input_tokens": "UNKNOWN_BOTH_ARMS",
+    "provider_output_tokens": "UNKNOWN_BOTH_ARMS",
+    "v3_b_skill_context_characters": 2998
+  },
+  "engineering_non_inferior": "YES",
+  "engineering_policy_sha256": "6bc62e72e1eddc2a962abbae608c5f99b5dfc1b4faf80d6bd90c1bc8a6e7926f",
+  "hard_contract_comparison": {
+    "artifact_schema_freeze_persistence": "EQUIVALENT_PASS",
+    "audit_and_output_isolation": "EQUIVALENT_PASS",
+    "authority_normalization": "EQUIVALENT_PASS",
+    "event_realization_validation": "EQUIVALENT_PASS",
+    "parse_conversion": "EQUIVALENT_PASS",
+    "production_authority": "EQUIVALENT_FALSE",
+    "retry_fallback_resume_second_dispatch": "EQUIVALENT_PASS",
+    "single_dispatch": "EQUIVALENT_PASS",
+    "story_state_canon_ready_mutation": "EQUIVALENT_ZERO",
+    "successor_v3_ab_lock": "PASS"
+  },
+  "schema": "SkillV2Pair1ResidualV3EngineeringComparisonV1",
+  "unknown_values_preserved_as_unknown": true,
+  "version": 1
+}

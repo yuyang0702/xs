@@ -1,0 +1,13 @@
+{
+  "ab_lock_valid": true,
+  "engineering_non_inferior": "YES",
+  "generalized_production_non_inferiority": "NOT_YET_PROVEN",
+  "narrative_non_inferior": "NO",
+  "pair_case_id": "restored-character-heavy-v2-residual-v3",
+  "pair_disposition": "PAIR_NO_GO_QUALITY_REGRESSION",
+  "pair_level_non_inferiority": "NO",
+  "post_reveal_narrative_rescoring": false,
+  "priority_path": "NARRATIVE_NON_INFERIOR_NO_AFTER_VALID_LOCK_AND_ENGINEERING_PASS",
+  "schema": "SkillV2Pair1ResidualV3FinalDispositionV1",
+  "version": 1
+}

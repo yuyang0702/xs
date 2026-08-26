@@ -1,0 +1,37 @@
+{
+  "critical_dimensions": [
+    "event_causal_fidelity",
+    "character_motivation",
+    "character_voice",
+    "relationship_logic",
+    "subtext_dramatization",
+    "draft_intent_handoff",
+    "template_flattening_risk",
+    "authority_correctness",
+    "untargeted_creative_mutation"
+  ],
+  "criticality_derived_from_pair1_outcome": false,
+  "dimension_count": 16,
+  "engineering_policy_sha256": "6bc62e72e1eddc2a962abbae608c5f99b5dfc1b4faf80d6bd90c1bc8a6e7926f",
+  "noncritical_dimensions": [
+    "world_specificity",
+    "sensory_realization",
+    "conflict_pacing",
+    "setup_payoff_dependency",
+    "pov",
+    "tense",
+    "tone_genre"
+  ],
+  "policy_file_sha256s": {
+    "criticality-policy-v1.json": "46a90e5e60cc8977eff96d822122ddecd80ef1fe455973cc6bc745ac5625403b",
+    "demand-criticality-map-v1.json": "f68666c0587c8150d17bcebb3738dd4e7770643d5513e8d6015b696242d2585f",
+    "narrative-non-inferiority-rule-v1.json": "cbd8fee2d2be718b2abd40b31fee523efb12c7a4a10a5592e4e26163623c71ec",
+    "pair-disposition-priority-v1.json": "668366d89685cd1c2dc0f17d6f2e601fad529e162a91ec2869fe179671806eba",
+    "pair1-criticality-resolution-v1.json": "1771121f38882dbc3693e717c13cb17b366d02e63b14e0dfb02c2ffeacff0b0e",
+    "policy-manifest-v1.json": "096198d4ac5466ac3b266e8a194fe7e10f3bed88f951b1cdf27dbcaf69e29e32",
+    "policy-provenance-v1.json": "e7f90f0302e363c5cf2b4858b8416459c57baa13d878791ed10d687581c9a9e2"
+  },
+  "schema": "SkillV2Pair1ResidualV3RevealCriticalityPolicyBindingV1",
+  "status": "exact",
+  "version": 1
+}

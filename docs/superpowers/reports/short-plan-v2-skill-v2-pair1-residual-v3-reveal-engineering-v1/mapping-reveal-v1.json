@@ -1,0 +1,14 @@
+{
+  "X": "B_ARM",
+  "X_skill": "RESTORED_SKILL_V2_CHARACTER_CORE_V3",
+  "Y": "A_ARM",
+  "Y_skill": "CURRENT_RUNTIME_SKILL",
+  "mapping_derivation": "PASS",
+  "mapping_derivation_digest_sha256": "afcce1e1b69a0a69b1f8b18839221c508de88ff9892508aef6e757cf6e0b9911",
+  "mapping_source_artifacts_match": true,
+  "old_mapping_reused": false,
+  "post_reveal_narrative_rescoring": false,
+  "private_mapping_sha256": "d85704bbeb166d19a547d9d7504888d785c1bc006c827f10aa91f8708bf9e996",
+  "schema": "SkillV2Pair1ResidualV3MappingRevealV1",
+  "version": 1
+}

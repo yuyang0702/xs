@@ -1,0 +1,18 @@
+{
+  "after": {
+    "blind_judgments_sha256": "b5f62ba59e2667041b62a4db1fcca90f991b94bb1d48334e57995fe186c9114d",
+    "blind_review_summary_sha256": "623824f61a4feefa1839ac07832b9cc1e900bf81217d9f1c149c072501a88ed9",
+    "freeze_receipt_sha256": "653ca614f52dc4ed7c692a597bb8879de67da96877cd8133d1b922ae8b607951"
+  },
+  "before": {
+    "blind_judgments_sha256": "b5f62ba59e2667041b62a4db1fcca90f991b94bb1d48334e57995fe186c9114d",
+    "blind_review_summary_sha256": "623824f61a4feefa1839ac07832b9cc1e900bf81217d9f1c149c072501a88ed9",
+    "freeze_receipt_sha256": "653ca614f52dc4ed7c692a597bb8879de67da96877cd8133d1b922ae8b607951"
+  },
+  "blind_judgment_files_mutated_after_reveal": false,
+  "frozen_blind_evidence_sha_unchanged": true,
+  "post_reveal_narrative_rescoring": false,
+  "schema": "SkillV2Pair1ResidualV3PostRevealFreezeIntegrityV1",
+  "status": "PASS",
+  "version": 1
+}

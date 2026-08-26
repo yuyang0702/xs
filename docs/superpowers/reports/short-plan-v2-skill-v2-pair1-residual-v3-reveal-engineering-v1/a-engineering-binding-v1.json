@@ -1,0 +1,72 @@
+{
+  "arm": "A_ARM",
+  "engineering": {
+    "actual_recorded_cost": "UNKNOWN_NOT_PERSISTED",
+    "artifact_freeze": "PASS",
+    "artifact_schema_validation": "PASS",
+    "artifact_sha256": "f6aa5c49d64f38aefe71b01fc9eb0abf2ea3a08faba6f5bc3dbcb38c665e3f8f",
+    "audit_serialization": "PASS",
+    "authority_normalization": "PASS",
+    "canon_mutations": 0,
+    "effective_output_cap": "UNKNOWN_NOT_PERSISTED",
+    "elapsed": "UNKNOWN_NOT_PERSISTED",
+    "event_realization_validation": "PASS",
+    "fallback_attempts": 0,
+    "finish_reason": "UNKNOWN_NOT_PERSISTED",
+    "http_post_attempts": 1,
+    "model_logical_calls": 1,
+    "network_attempts": 1,
+    "output_isolation": "PASS",
+    "paid_calls": "UNKNOWN_NOT_TRACKED_SEPARATELY",
+    "parse_conversion": "PASS",
+    "persistence": "PASS",
+    "production_authority": false,
+    "provider_input_tokens": "UNKNOWN_NOT_PERSISTED",
+    "provider_output_tokens": "UNKNOWN_NOT_PERSISTED",
+    "provider_requests": 1,
+    "provider_return": "RECEIVED",
+    "ready_mutations": 0,
+    "requested_output_cap": 4624,
+    "resume_attempts": 0,
+    "retry_attempts": 0,
+    "route_switch_attempts": "UNKNOWN_NOT_SEPARATELY_TRACKED",
+    "second_dispatch_attempts": 0,
+    "skill_context_characters": 8927,
+    "skill_context_characters_source": "SEALED_PRIOR_ENGINEERING_COMPARISON",
+    "status": "PASS_SEALED",
+    "story_state_mutations": 0
+  },
+  "prior_context_metric_source": {
+    "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-corrected-reveal-engineering-v1/engineering-comparison-v1.json",
+    "sha256": "6f518d263bdb8ea9519b6488951a9837b4e6f1ea0b35bdc8e429a5b1cb614a04"
+  },
+  "schema": "SkillV2Pair1ResidualV3AEngineeringBindingV1",
+  "sealed_source_files": [
+    {
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-execution-v4/pairs/restored-character-heavy-v2/a-arm/execution-receipt-v1.json",
+      "sha256": "d7dbb58ed1065e5a8ec55476113ed49ea83bc0856c10519b6bdd28bae14f8923"
+    },
+    {
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-execution-v4/pairs/restored-character-heavy-v2/a-arm/attempt-accounting-v1.json",
+      "sha256": "ac29429b0dcfce2fed3831f1ff80d64902e7b2ffea2b3b504fa9f47d90e75ab1"
+    },
+    {
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-execution-v4/pairs/restored-character-heavy-v2/a-arm/validation-result-v1.json",
+      "sha256": "d4b1a6639c7e741cbe60896e059fa77fc09344440d0ddba22af6bbb8b4421939"
+    },
+    {
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-execution-v4/pairs/restored-character-heavy-v2/a-arm/output-isolation-v1.json",
+      "sha256": "0b5e1770a67af1a96adeceeacebd26a1bcc5b236b01a253597ac6b2e725ff02c"
+    },
+    {
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-execution-v4/pairs/restored-character-heavy-v2/a-arm/provider-observation-v1.json",
+      "sha256": "465a597a65675c3f7d8d2b3f73bef0ddac893058b3cc72798d4cf168d70feadc"
+    },
+    {
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-execution-v4/pairs/restored-character-heavy-v2/a-arm/sha256-manifest-v1.json",
+      "sha256": "d210322f8e0314ae5a9841300faf0e5ea492732f08e21eb516c1f8ff32567796"
+    }
+  ],
+  "status": "exact",
+  "version": 1
+}

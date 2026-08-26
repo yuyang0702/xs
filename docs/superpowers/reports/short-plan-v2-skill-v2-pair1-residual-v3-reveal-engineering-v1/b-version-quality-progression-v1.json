@@ -1,0 +1,46 @@
+{
+  "diagnostic_only": true,
+  "historical_artifacts_rescored": false,
+  "progression": [
+    {
+      "critical_better_count": 1,
+      "critical_regression_count": 6,
+      "engineering_non_inferior": "YES",
+      "equivalent_count": 4,
+      "noncritical_better_count": 1,
+      "noncritical_regression_count": 4,
+      "pair_disposition": "PAIR_NO_GO_QUALITY_REGRESSION",
+      "version_label": "OLD_RESTORED_B"
+    },
+    {
+      "critical_better_count": 3,
+      "critical_regression_count": 2,
+      "engineering_non_inferior": "YES",
+      "equivalent_count": 8,
+      "noncritical_better_count": 1,
+      "noncritical_regression_count": 2,
+      "pair_disposition": "PAIR_NO_GO_QUALITY_REGRESSION",
+      "version_label": "DEMAND_AWARE_V2_B"
+    },
+    {
+      "critical_better_count": 0,
+      "critical_regression_count": 9,
+      "engineering_non_inferior": "YES",
+      "equivalent_count": 2,
+      "noncritical_better_count": 0,
+      "noncritical_regression_count": 5,
+      "pair_disposition": "PAIR_NO_GO_QUALITY_REGRESSION",
+      "version_label": "RESIDUAL_V3_B"
+    }
+  ],
+  "schema": "SkillV2Pair1BVersionQualityProgressionV1",
+  "sealed_source_sha256s": {
+    "old_disposition": "dc351584cb487805b8f11cc9f93aedf6352f4e6c77a64dc9482d367db8307e5f",
+    "old_engineering": "6f518d263bdb8ea9519b6488951a9837b4e6f1ea0b35bdc8e429a5b1cb614a04",
+    "old_narrative": "63ba8c703def11e83e59185092b4043660f9bc996420007b3f4cae9fcb7bc866",
+    "v2_disposition": "dadc922e86e0ba1cd089a36aba74e0de5e43699049a1b8e0a2ad9a8e36169bbd",
+    "v2_engineering": "f4d55c9f87e2c86001b8b7f6c99ca65fd1579427807cb62eab74fcaa1074f54d",
+    "v2_narrative_rows": "e5af60e56e9acf75d912c33eb36df0f5a7731c2e80daaafc35e098f391fa6c03"
+  },
+  "version": 1
+}

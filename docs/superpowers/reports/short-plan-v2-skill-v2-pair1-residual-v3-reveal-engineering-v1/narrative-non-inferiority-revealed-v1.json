@@ -1,0 +1,19 @@
+{
+  "b_critical_better_count": 0,
+  "b_critical_regression_count": 9,
+  "b_noncritical_better_count": 0,
+  "b_noncritical_regression_count": 5,
+  "critical_equivalent_count": 0,
+  "critical_true_inconclusive_count": 0,
+  "decision_path": "ANY_APPLICABLE_CRITICAL_DIMENSION_IS_A_BETTER",
+  "equivalent_treated_as_inconclusive": false,
+  "narrative_non_inferior": "NO",
+  "noncritical_equivalent_count": 2,
+  "noncritical_true_inconclusive_count": 0,
+  "post_reveal_narrative_rescoring": false,
+  "schema": "SkillV2Pair1ResidualV3NarrativeNonInferiorityRevealedV1",
+  "sealed_rule_file_sha256": "cbd8fee2d2be718b2abd40b31fee523efb12c7a4a10a5592e4e26163623c71ec",
+  "token_or_context_efficiency_override_used": false,
+  "treatment_arm": "B_ARM",
+  "version": 1
+}

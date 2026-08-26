@@ -1,0 +1,28 @@
+{
+  "blockers": 0,
+  "checks": {
+    "blind_freeze_exact": true,
+    "counts_reconcile": true,
+    "engineering_sources_exact": true,
+    "mapping_exact": true,
+    "policy_exact": true,
+    "post_reveal_freeze_unchanged": true,
+    "production_source_diff": 0,
+    "pure_mapping_transform": true
+  },
+  "external_actions": {
+    "credential_lookup_count": 0,
+    "http_post_attempts": 0,
+    "model_calls": 0,
+    "network_calls": 0,
+    "paid_calls": 0,
+    "real_provider_client_creation_count": 0,
+    "real_provider_request_attempts": 0
+  },
+  "focused_reveal_engineering_validation": "PASS",
+  "new_owning_source_regression_count": 0,
+  "schema": "SkillV2Pair1ResidualV3RevealEngineeringTestReceiptV1",
+  "strict_l3": "PASS",
+  "version": 1,
+  "warnings": 0
+}

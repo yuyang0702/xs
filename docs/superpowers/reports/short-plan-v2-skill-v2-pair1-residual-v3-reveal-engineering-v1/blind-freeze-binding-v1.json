@@ -1,0 +1,17 @@
+{
+  "blind_judgment_frozen": true,
+  "blind_judgments_sha256": "b5f62ba59e2667041b62a4db1fcca90f991b94bb1d48334e57995fe186c9114d",
+  "blind_manifest_sha256": "c02d01e93ad911e7d09b232e557c77333070e914d36d4fe765850bbe9aa25c6d",
+  "blind_manifest_status": "exact",
+  "blind_output_identity_leak_count": 0,
+  "blind_review_summary_sha256": "623824f61a4feefa1839ac07832b9cc1e900bf81217d9f1c149c072501a88ed9",
+  "freeze_receipt_sha256": "653ca614f52dc4ed7c692a597bb8879de67da96877cd8133d1b922ae8b607951",
+  "mapping_read_before_freeze": false,
+  "pair_disposition_before_reveal": "NOT_EMITTED",
+  "prior_result_output_contamination_count": 0,
+  "schema": "SkillV2Pair1ResidualV3BlindFreezeBindingV1",
+  "status": "exact",
+  "summary_counts_reconcile_with_16_rows": true,
+  "treatment_non_inferiority_computed_before_reveal": false,
+  "version": 1
+}

@@ -1,0 +1,26 @@
+{
+  "allowed_change": "CREATE_EVIDENCE_ONLY_REVEAL_ENGINEERING_ROOT",
+  "authorization": "EVALUATION_AND_EVIDENCE_MATERIALIZATION",
+  "closed_world": true,
+  "forbidden_changes": [
+    "src/**",
+    "baml_src/**",
+    "A_ARTIFACT",
+    "V3_B_ARTIFACT",
+    "FROZEN_BLIND_OUTPUT",
+    "PAIR2_TO_5",
+    "PRODUCTION_DATA"
+  ],
+  "operational_definition": "Verify frozen blind evidence, reveal exact mapping, perform pure mapping transform, compare sealed engineering evidence, and apply sealed disposition policy.",
+  "protected_authority_boundaries": {
+    "Canon": "UNCHANGED",
+    "READY": "UNCHANGED",
+    "StoryState": "UNCHANGED",
+    "production_authority": "UNCHANGED"
+  },
+  "requested_outcome": "SKILL_V2_PAIR_1_RESIDUAL_V3_REVALIDATION_BLIND_MAPPING_REVEAL_AND_ENGINEERING_EVALUATION",
+  "rollback": "REVERT_SINGLE_EVIDENCE_ONLY_COMMIT",
+  "schema": "SkillV2Pair1ResidualV3RevealEngineeringChangeContractV1",
+  "scope_classification": "closed_world",
+  "version": 1
+}

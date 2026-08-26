@@ -1,0 +1,10 @@
+{
+  "baseline_head": "181abf11edb0d2964da04da3d9d6d587a83ed09f",
+  "blockers": 0,
+  "declared_level": "L3",
+  "helper": ".agents/skills/novel-dev-council/scripts/inspect_change_gate.py",
+  "schema": "SkillV2Pair1ResidualV3RevealEngineeringStrictL3ReceiptV1",
+  "status": "PASS",
+  "version": 1,
+  "warnings": 0
+}
