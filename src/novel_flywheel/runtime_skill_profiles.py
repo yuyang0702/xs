@@ -320,6 +320,7 @@ class RuntimeSkillProfileV1(_ProfileModel):
         "CURRENT_PLANNING_V1_COMPAT_PROFILE_V1",
         "PLANNING_V2_EVENT_REALIZATION_PROFILE_V1",
         "RESTORED_SKILL_V2_CHARACTER_CORE_V2",
+        "RESTORED_SKILL_V2_CHARACTER_CORE_V3",
     ]
     stage: Literal["planning"] = "planning"
     substage: Literal["planning_v1_compat", "planning_v2_event_realization"]
@@ -551,6 +552,19 @@ def character_heavy_context_budget_policy_v2() -> SkillContextBudgetPolicyV1:
         "schema": "SkillContextBudgetPolicyV1", "policy_id": "SKILL_CONTEXT_BUDGET_POLICY_V1",
         "maximum_characters": 3000, "mandatory_character_budget": 1338,
         "advisory_character_budget": 1662, "whole_rule_only": True,
+        "mandatory_overflow_behavior": "block",
+        "advisory_overflow_behavior": "truncate_by_whole_rule",
+    }
+    return _make_policy(SkillContextBudgetPolicyV1, "SKILL_CONTEXT_BUDGET_POLICY_V1", payload)  # type: ignore[return-value]
+
+
+def character_heavy_context_budget_policy_v3() -> SkillContextBudgetPolicyV1:
+    """Keep the 3000-char ceiling while fitting the sealed mandatory V3 rewrite."""
+
+    payload = {
+        "schema": "SkillContextBudgetPolicyV1", "policy_id": "SKILL_CONTEXT_BUDGET_POLICY_V1",
+        "maximum_characters": 3000, "mandatory_character_budget": 1411,
+        "advisory_character_budget": 1589, "whole_rule_only": True,
         "mandatory_overflow_behavior": "block",
         "advisory_overflow_behavior": "truncate_by_whole_rule",
     }
@@ -864,6 +878,20 @@ CHARACTER_HEAVY_CREATIVE_CORE_V2_RULE_TEXT = {
     ),
 }
 
+CHARACTER_HEAVY_CREATIVE_CORE_V3_RULE_TEXT = {
+    **CHARACTER_HEAVY_CREATIVE_CORE_V2_RULE_TEXT,
+    "DRAFT_SCENE": (
+        "Make a specific setting affordance drive a Draft-usable chain of opposed action, "
+        "reaction, reversal, cost, and terminal image; carry hidden motive and relational "
+        "pressure through choice, omission, and consequence rather than explanation."
+    ),
+    "ANTI_TAXONOMY": (
+        "Keep labels in reasoning; avoid stock emotion, generic gestures, and checklist "
+        "rhythm; choose character-specific dialogue, evasion, sensory contrast, or "
+        "consequence that does double duty."
+    ),
+}
+
 _DEMAND_AWARE_PROFILE_STRATEGY: dict[str, DemandAwareProfileStrategy] = {
     "character-heavy": "RESTORED_SKILL_V2_CHARACTER_CORE_V2",
     "world-heavy": "UNCHANGED_PENDING_PAIR2",
@@ -896,6 +924,14 @@ def _character_heavy_creative_core_v2_rule_specs() -> tuple[_RuleSpec, ...]:
     return tuple(
         replace(spec, text=CHARACTER_HEAVY_CREATIVE_CORE_V2_RULE_TEXT[spec.rule_id])
         if spec.rule_id in CHARACTER_HEAVY_CREATIVE_CORE_V2_RULE_TEXT else spec
+        for spec in _RESTORED_CREATIVE_RULE_SPECS
+    )
+
+
+def _character_heavy_creative_core_v3_rule_specs() -> tuple[_RuleSpec, ...]:
+    return tuple(
+        replace(spec, text=CHARACTER_HEAVY_CREATIVE_CORE_V3_RULE_TEXT[spec.rule_id])
+        if spec.rule_id in CHARACTER_HEAVY_CREATIVE_CORE_V3_RULE_TEXT else spec
         for spec in _RESTORED_CREATIVE_RULE_SPECS
     )
 
@@ -1001,6 +1037,7 @@ def _build_profile(
         "CURRENT_PLANNING_V1_COMPAT_PROFILE_V1",
         "PLANNING_V2_EVENT_REALIZATION_PROFILE_V1",
         "RESTORED_SKILL_V2_CHARACTER_CORE_V2",
+        "RESTORED_SKILL_V2_CHARACTER_CORE_V3",
     ],
     phase: Literal["planning_v1", "planning_v2_event_realization"], selected_keys: tuple[str, ...],
     source_skill_ids: tuple[str, ...], conditional: tuple[ConditionalComponentV1, ...],
@@ -1130,6 +1167,7 @@ def _build_planning_v2_event_realization_profile_restored(
     profile_id: Literal[
         "PLANNING_V2_EVENT_REALIZATION_PROFILE_V1",
         "RESTORED_SKILL_V2_CHARACTER_CORE_V2",
+        "RESTORED_SKILL_V2_CHARACTER_CORE_V3",
     ],
     context_budget_policy: SkillContextBudgetPolicyV1 | None = None,
 ) -> RuntimeSkillProfileV1:
@@ -1203,6 +1241,28 @@ def build_planning_v2_event_realization_profile_demand_aware(
         restored_rule_specs=_character_heavy_creative_core_v2_rule_specs(),
         profile_id="RESTORED_SKILL_V2_CHARACTER_CORE_V2",
         context_budget_policy=character_heavy_context_budget_policy_v2(),
+    )
+
+
+def build_planning_v2_event_realization_profile_residual_v3(
+    bundle_root: Path,
+    inputs: SkillLoadDecisionInputsV1,
+    *,
+    pair_creative_demand_class: str,
+) -> RuntimeSkillProfileV1:
+    """Build the sealed residual V3 successor without changing the V2 base."""
+
+    resolution = resolve_demand_aware_creative_profile(pair_creative_demand_class)
+    if resolution.profile_strategy == "FAIL_CLOSED_NO_PROFILE_SUBSTITUTION":
+        raise ValueError("FAIL_CLOSED_NO_PROFILE_SUBSTITUTION")
+    if resolution.profile_strategy != "RESTORED_SKILL_V2_CHARACTER_CORE_V2":
+        return build_planning_v2_event_realization_profile_restored(bundle_root, inputs)
+    return _build_planning_v2_event_realization_profile_restored(
+        bundle_root,
+        inputs,
+        restored_rule_specs=_character_heavy_creative_core_v3_rule_specs(),
+        profile_id="RESTORED_SKILL_V2_CHARACTER_CORE_V3",
+        context_budget_policy=character_heavy_context_budget_policy_v3(),
     )
 
 

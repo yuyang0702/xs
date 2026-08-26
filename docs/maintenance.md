@@ -2058,3 +2058,21 @@ retry/fallback, Planning V1/V2 dispatch, StoryState, Canon, or READY authority.
 It requires a separately materialized single-use revalidation packet before any
 real model call. Revert the demand-aware implementation commit to remove the
 selector and successor; doing so cannot reactivate or create an approval.
+
+## Skill V2 residual creative-semantic V3 successor
+
+`build_planning_v2_event_realization_profile_residual_v3` is a shadow-only
+successor layered on the unchanged demand-aware V2 base. For the sealed
+`character-heavy` demand only, it rewrites `DRAFT_SCENE` and `ANTI_TAXONOMY`
+in place with the residual V3 text. All other rule objects, ordering, sibling
+demand results, source bindings, authority policy, and the 3,000-character cap
+remain unchanged. Unknown demand values fail closed.
+
+The V3 render is 2,998 characters with no omitted rule. Its profile-local
+mandatory/advisory partition is 1,411/1,589 under the unchanged 3,000-character
+ceiling. It adds no beat or sensory quota, emitted taxonomy, runtime bookkeeping,
+Provider behavior, or production reachability. The V2 builder remains available
+for sealed historical evidence. V3 requires a fresh disabled B-only revalidation
+candidate and later single-use user approval before any real request;
+implementation alone grants no approval, nonce, route access, cutover, or
+execution authority.
