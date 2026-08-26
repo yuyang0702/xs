@@ -1,0 +1,48 @@
+{
+  "anti_template_guidance_mode": "NEGATIVE_DOMINANT",
+  "contrastive_pair_required": false,
+  "emitted_example_template_required": false,
+  "missing_positive_heuristics": [
+    "character-specific double-duty behavior",
+    "sensory contrast linked to choice",
+    "setting affordance linked to tactic",
+    "omission/consequence carrying hidden motive"
+  ],
+  "rows": [
+    {
+      "finding": "Forbids labels and abstractions but does not choose a distinctive alternative.",
+      "modes": [
+        "NEGATIVE_CONSTRAINT_ONLY"
+      ],
+      "rule_id": "ANTI_TAXONOMY"
+    },
+    {
+      "finding": "Supplies voice and relationship raw material; does not require double-duty scene realization.",
+      "modes": [
+        "POSITIVE_GENERATION_HEURISTIC",
+        "CHARACTER_SPECIFIC_SELECTION_RULE"
+      ],
+      "rule_id": "VOICE_RELATION"
+    },
+    {
+      "finding": "Builds a causal chain but lacks a hidden-intent and world-affordance bridge.",
+      "modes": [
+        "POSITIVE_GENERATION_HEURISTIC",
+        "SCENE_LEVEL_SELECTION_RULE"
+      ],
+      "rule_id": "DRAFT_SCENE"
+    },
+    {
+      "finding": "Requests concrete detail without tying it to relational tactic or sensory contrast.",
+      "modes": [
+        "POSITIVE_GENERATION_HEURISTIC",
+        "WORLD_SPECIFIC_SELECTION_RULE"
+      ],
+      "rule_id": "WORLD_SENSORY_SPECIFICITY"
+    }
+  ],
+  "schema": "SkillV2Pair1DemandAwarePositiveVsNegativeGuidanceAuditV1",
+  "subtext_guidance_completeness": "PARTIAL",
+  "subtext_guidance_mode": "POSITIVE_ACTIONABLE",
+  "version": 1
+}

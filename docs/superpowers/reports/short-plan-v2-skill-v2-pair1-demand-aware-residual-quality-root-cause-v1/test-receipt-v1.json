@@ -1,0 +1,37 @@
+{
+  "baseline_gate": "PASS",
+  "deterministic_artifact_validator": "PASS",
+  "exact_context_reconstruction": {
+    "A": "PASS",
+    "B1": "PASS",
+    "B2": "PASS"
+  },
+  "external_actions": {
+    "credential_lookup_count": 0,
+    "http_post_attempts": 0,
+    "model_calls": 0,
+    "network_calls": 0,
+    "paid_calls": 0,
+    "real_provider_client_creation_count": 0,
+    "real_provider_request_attempts": 0
+  },
+  "focused_pytest": {
+    "command": ".venv/Scripts/python.exe -m pytest -q tests/test_skill_v2_demand_aware_creative_core.py tests/test_skill_v2_demand_aware_creative_core_evidence.py",
+    "elapsed_seconds": 2.38,
+    "result": "15 passed"
+  },
+  "full_suite_reason": "Evidence-only root-cause materialization changes no production or test source.",
+  "full_suite_required": false,
+  "nested_blind_output_hash_validation": "PASS",
+  "new_owning_source_regression_count": 0,
+  "parent_manifest_validation": {
+    "entry_mismatches": 0,
+    "roots": 8,
+    "status": "PASS"
+  },
+  "schema": "SkillV2Pair1DemandAwareResidualRootCauseTestReceiptV1",
+  "strict_l3": "PASS",
+  "strict_l3_blockers": 0,
+  "strict_l3_warnings": 0,
+  "version": 1
+}

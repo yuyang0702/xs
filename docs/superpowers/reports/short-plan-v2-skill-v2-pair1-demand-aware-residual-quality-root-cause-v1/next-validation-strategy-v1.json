@@ -1,0 +1,57 @@
+{
+  "current_blind_judgments_reusable_for_future_artifact": false,
+  "exact_next_gate": "SKILL_V2_PROFILE_RESIDUAL_CREATIVE_SEMANTIC_NARROW_FIX_V3",
+  "focused_test_requirements": [
+    "exact two-rule diff",
+    "positive subtext selection",
+    "anti-stock/generic/checklist guidance",
+    "world-affordance causal bridge",
+    "no rigid quota",
+    "preserve four proven gains",
+    "context <=3000",
+    "unknown demand fail-close",
+    "production reachability false"
+  ],
+  "new_blind_evaluation_required": true,
+  "new_real_call_authorized": false,
+  "schema": "SkillV2Pair1DemandAwareResidualV3NextValidationStrategyV1",
+  "steps": [
+    {
+      "action": "Implement the two-item residual V3 rule substitution offline under a separate narrow-fix gate.",
+      "ordinal": 1
+    },
+    {
+      "action": "Reconstruct B2 and V3 contexts; require only DRAFT_SCENE and ANTI_TAXONOMY semantic diffs and exact <=3000 characters.",
+      "ordinal": 2
+    },
+    {
+      "action": "Run focused subtext, anti-template, positive-specificity, setting-affordance, and gain-preservation tests.",
+      "ordinal": 3
+    },
+    {
+      "action": "Preserve event causality, character voice, relationship logic, setup/payoff, all non-target rules, and production non-reachability.",
+      "ordinal": 4
+    },
+    {
+      "action": "If A reuse conditions remain exact, materialize one fresh B-only successor candidate and lock; do not authorize it automatically.",
+      "ordinal": 5
+    },
+    {
+      "action": "After fresh user approval, execute at most one new B request; never rerun A under the reuse policy.",
+      "ordinal": 6
+    },
+    {
+      "action": "Materialize a new blind bundle that excludes every current judgment and mapping.",
+      "ordinal": 7
+    },
+    {
+      "action": "Use a fresh Codex evaluator window, freeze judgments, then reveal mapping mechanically.",
+      "ordinal": 8
+    },
+    {
+      "action": "Emit a new narrative and engineering disposition; Pair 2-5 remain blocked until Pair 1 is non-inferior.",
+      "ordinal": 9
+    }
+  ],
+  "version": 1
+}

@@ -1,0 +1,352 @@
+{
+  "a_unit_corpus": {
+    "path": "docs/superpowers/reports/short-plan-v2-skill-v2-quality-regression-root-cause-v1/a-vs-b-skill-context-semantic-diff-v1.json",
+    "sha256": "6ecfc73ba157686bab43a2cfd78369381d1790ba34406a417e656c68d236ecd9",
+    "unit_count": 66
+  },
+  "b1_to_b2_changed_rule_ids": [
+    "MOTIVE_ACTION",
+    "VOICE_RELATION",
+    "DRAFT_SCENE",
+    "ANTI_TAXONOMY"
+  ],
+  "b1_to_b2_unchanged_rule_count": 16,
+  "contexts": {
+    "A": {
+      "characters": 8927,
+      "profile": "CURRENT_RUNTIME_SKILL",
+      "reconstruction": "exact",
+      "sha256": "c7916de36e67f380f2e10f30f169bcdbe04440cc8bd01bbf2626d26a7cdf49b7"
+    },
+    "B1": {
+      "characters": 2742,
+      "profile": "PLANNING_V2_EVENT_REALIZATION_PROFILE_V1",
+      "reconstruction": "exact",
+      "sha256": "e7828db2dc18eceabe06b9d1068b2683d117617fb0bd1257a26e7747fbe02772"
+    },
+    "B2": {
+      "characters": 2925,
+      "profile": "RESTORED_SKILL_V2_CHARACTER_CORE_V2",
+      "reconstruction": "exact",
+      "sha256": "7d0f6309ede2261f2f6a1098d394937948bf5b50eb9248266ab350fd91da9adc"
+    }
+  },
+  "method": "Exact contexts reconstructed from current sealed sources and matched by SHA/character count; semantic rows bind the content-addressed 66-unit A corpus and exact B rule texts.",
+  "overall_status": "exact",
+  "row_count": 22,
+  "rows": [
+    {
+      "a_units": [
+        "A040",
+        "A041"
+      ],
+      "b_rules": [
+        "MOTIVE_ACTION",
+        "CHARACTER_MOTIVATION"
+      ],
+      "classification": "A_AND_B2_NOT_B1",
+      "finding": "B2 newly binds formative pressure and concealed need to opposed tactics, reaction, and consequence; this matches motivation and causal recovery.",
+      "ownership": "CHARACTER_PSYCHOLOGY",
+      "semantic_unit": "FORMATIVE_PRESSURE_TO_PRESENT_CONFLICT"
+    },
+    {
+      "a_units": [
+        "A012",
+        "A037",
+        "A039"
+      ],
+      "b_rules": [
+        "VOICE_RELATION",
+        "CHARACTER_VOICE"
+      ],
+      "classification": "A_AND_B2_NOT_B1",
+      "finding": "B2 adds diction, rhythm, evasion, gesture, and withheld explanation; the frozen output gains character voice.",
+      "ownership": "VOICE",
+      "semantic_unit": "DISTINCT_VOICE_WITH_EVASION"
+    },
+    {
+      "a_units": [
+        "A025",
+        "A039",
+        "A059",
+        "A060"
+      ],
+      "b_rules": [
+        "VOICE_RELATION",
+        "CHARACTER_RELATIONSHIP_NUANCE"
+      ],
+      "classification": "PRESENT_IN_A_B1_B2",
+      "finding": "All three carry relationship pressure; B2 increases depth while retaining B1's high priority.",
+      "ownership": "RELATIONSHIP",
+      "semantic_unit": "RELATIONSHIP_PRESSURE_CHANGES_ACTION"
+    },
+    {
+      "a_units": [
+        "A041"
+      ],
+      "b_rules": [
+        "MOTIVE_ACTION"
+      ],
+      "classification": "A_AND_B2_NOT_B1",
+      "finding": "B2 names concealment as input guidance but does not specify a hidden scene objective or discrepancy between stated and enacted intent.",
+      "ownership": "SUBTEXT",
+      "semantic_unit": "CONCEALED_NEED"
+    },
+    {
+      "a_units": [
+        "A039"
+      ],
+      "b_rules": [
+        "VOICE_RELATION"
+      ],
+      "classification": "A_AND_B2_NOT_B1",
+      "finding": "B2 adds withheld explanation, but lacks a selection rule that makes behavior carry the withheld meaning.",
+      "ownership": "SUBTEXT",
+      "semantic_unit": "WITHHELD_EXPLANATION"
+    },
+    {
+      "a_units": [
+        "A007",
+        "A039",
+        "A050"
+      ],
+      "b_rules": [],
+      "classification": "A_ONLY",
+      "finding": "A's distributed theme, character, and atmosphere scaffolding permits choices to carry more than one meaning; neither B rule set explicitly bridges that raw material into double-duty action.",
+      "ownership": "SUBTEXT",
+      "semantic_unit": "HIDDEN_OBJECTIVE_DOUBLE_DUTY"
+    },
+    {
+      "a_units": [
+        "A022",
+        "A026",
+        "A053"
+      ],
+      "b_rules": [
+        "DRAFT_SCENE"
+      ],
+      "classification": "A_AND_B2_NOT_B1",
+      "finding": "B2 restores continuity and behavior-before-summary, explaining causal and handoff recovery.",
+      "ownership": "DRAMATIZATION",
+      "semantic_unit": "CONTINUOUS_SCENE_MICROCHAIN"
+    },
+    {
+      "a_units": [
+        "A026"
+      ],
+      "b_rules": [
+        "PRESSURE_BEATS",
+        "DRAFT_SCENE"
+      ],
+      "classification": "PRESENT_IN_A_B1_B2",
+      "finding": "Present in all; B2 makes it more explicit and successful.",
+      "ownership": "DRAMATIZATION",
+      "semantic_unit": "OPPOSED_TACTIC_ESCALATION"
+    },
+    {
+      "a_units": [
+        "A012",
+        "A039",
+        "A052"
+      ],
+      "b_rules": [
+        "ANTI_TAXONOMY"
+      ],
+      "classification": "B1_AND_B2_NOT_A",
+      "finding": "The explicit label guard is B-only and becomes broader in B2.",
+      "ownership": "ANTI_TEMPLATE",
+      "semantic_unit": "TAXONOMY_LABEL_AVOIDANCE"
+    },
+    {
+      "a_units": [
+        "A039",
+        "A050",
+        "A053"
+      ],
+      "b_rules": [
+        "ANTI_TAXONOMY",
+        "DRAFT_SCENE"
+      ],
+      "classification": "B2_ONLY",
+      "finding": "B2 explicitly requests behavioral substitutes, but the frozen artifact still explains guilt and relationship taxonomy.",
+      "ownership": "ANTI_TEMPLATE",
+      "semantic_unit": "BEHAVIOR_INSTEAD_OF_ABSTRACTION"
+    },
+    {
+      "a_units": [
+        "A012",
+        "A039"
+      ],
+      "b_rules": [],
+      "classification": "A_ONLY",
+      "finding": "B2 forbids named abstractions, not stock emotional language or interchangeable reactions.",
+      "ownership": "ANTI_TEMPLATE",
+      "semantic_unit": "ANTI_STOCK_EMOTION"
+    },
+    {
+      "a_units": [
+        "A026",
+        "A039",
+        "A053"
+      ],
+      "b_rules": [],
+      "classification": "A_ONLY",
+      "finding": "B2's enumerated microchain has no guard against one-rule-per-beat symmetry or mechanically neat fulfillment.",
+      "ownership": "ANTI_TEMPLATE",
+      "semantic_unit": "ANTI_CHECKLIST_RHYTHM"
+    },
+    {
+      "a_units": [
+        "A037",
+        "A038",
+        "A039"
+      ],
+      "b_rules": [
+        "VOICE_RELATION",
+        "CHARACTER_VOICE"
+      ],
+      "classification": "SAME_CAPABILITY_DIFFERENT_DEPTH",
+      "finding": "B2 provides distinctive voice inputs but not a rule for selecting an idiosyncratic action or reaction over a generic one.",
+      "ownership": "ANTI_TEMPLATE",
+      "semantic_unit": "CHARACTER_SPECIFIC_POSITIVE_SELECTION"
+    },
+    {
+      "a_units": [
+        "A053",
+        "A061",
+        "A064"
+      ],
+      "b_rules": [
+        "CAUSAL_AFFORDANCE"
+      ],
+      "classification": "PRESENT_IN_A_B1_B2",
+      "finding": "All three support interactive affordances; B1/B2 place the concept at high priority.",
+      "ownership": "CAUSALITY",
+      "semantic_unit": "CAUSAL_PHYSICAL_AFFORDANCE"
+    },
+    {
+      "a_units": [
+        "A050",
+        "A052",
+        "A053",
+        "A064"
+      ],
+      "b_rules": [],
+      "classification": "A_ONLY",
+      "finding": "B2 does not explicitly join world mechanics to motive or relationship tactics; the frozen A sample does so more densely.",
+      "ownership": "WORLD_SPECIFICITY",
+      "semantic_unit": "SETTING_AFFORDANCE_DRIVES_RELATIONAL_CHOICE"
+    },
+    {
+      "a_units": [
+        "A048",
+        "A049",
+        "A051",
+        "A052",
+        "A054"
+      ],
+      "b_rules": [
+        "WORLD_SENSORY_SPECIFICITY",
+        "WORLD_CURRENT_STATE"
+      ],
+      "classification": "SAME_CAPABILITY_DIFFERENT_DEPTH",
+      "finding": "B2 preserves location identity/history intent but compresses A's era, culture, current-state, and institutional facets.",
+      "ownership": "WORLD_SPECIFICITY",
+      "semantic_unit": "MULTI_FACET_WORLD_IDENTITY"
+    },
+    {
+      "a_units": [
+        "A038",
+        "A050",
+        "A053",
+        "A061"
+      ],
+      "b_rules": [
+        "CAUSAL_AFFORDANCE",
+        "WORLD_SENSORY_SPECIFICITY"
+      ],
+      "classification": "SAME_CAPABILITY_DIFFERENT_DEPTH",
+      "finding": "B2 asks for concrete sensory details but not contrast tied to emotional pressure and physical decision.",
+      "ownership": "SENSORY_REALIZATION",
+      "semantic_unit": "CAUSAL_SENSORY_CONTRAST"
+    },
+    {
+      "a_units": [
+        "A025",
+        "A026",
+        "A030",
+        "A034"
+      ],
+      "b_rules": [
+        "SETUP_PAYOFF",
+        "PLOT_SETUP_PAYOFF_INTENT"
+      ],
+      "classification": "PRESENT_IN_A_B1_B2",
+      "finding": "B1/B2 preserve the direct dependency rule and both beat A on the frozen dimension.",
+      "ownership": "SETUP_PAYOFF",
+      "semantic_unit": "SETUP_PAYOFF_DEPENDENCY"
+    },
+    {
+      "a_units": [
+        "A005",
+        "A026",
+        "A053",
+        "A064"
+      ],
+      "b_rules": [
+        "DRAFT_SCENE",
+        "FRAME_BRIDGE"
+      ],
+      "classification": "SAME_CAPABILITY_DIFFERENT_DEPTH",
+      "finding": "B2's continuous microchain recovers equivalence without restoring A's operational material.",
+      "ownership": "DRAFT_HANDOFF",
+      "semantic_unit": "DRAFT_HANDOFF"
+    },
+    {
+      "a_units": [
+        "A004",
+        "A007",
+        "A008",
+        "A009",
+        "A012"
+      ],
+      "b_rules": [
+        "FRAME_BRIDGE"
+      ],
+      "classification": "PRESENT_IN_A_B1_B2",
+      "finding": "B1/B2 preserve confirmed frame values; B2 reaches equivalence in POV and tone/genre.",
+      "ownership": "FRAME_CONTINUITY",
+      "semantic_unit": "FRAME_POV_TENSE_TONE"
+    },
+    {
+      "a_units": [
+        "A001",
+        "A002",
+        "A010",
+        "A011",
+        "A013",
+        "A014",
+        "A015",
+        "A016",
+        "A065",
+        "A066"
+      ],
+      "b_rules": [],
+      "classification": "A_ONLY",
+      "finding": "Correctly omitted from B1/B2 and irrelevant to literary quality.",
+      "ownership": "OPERATIONAL_RUNTIME",
+      "semantic_unit": "OPERATIONAL_FILE_REGISTRY_RULES"
+    },
+    {
+      "a_units": [],
+      "b_rules": [],
+      "classification": "PRESENT_IN_A_B1_B2",
+      "finding": "Frozen A/B lock, schema, validator, and authority results are equal and outside the creative residual.",
+      "ownership": "OUTPUT_PROTOCOL",
+      "semantic_unit": "OUTPUT_SCHEMA_AND_AUTHORITY"
+    }
+  ],
+  "schema": "SkillV2Pair1DemandAwareThreeWayCreativeContextSemanticDiffV1",
+  "unknown_count": 0,
+  "version": 1
+}

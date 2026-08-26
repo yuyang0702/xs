@@ -1,0 +1,14 @@
+{
+  "auth_headers_persisted": false,
+  "bounded_evidence_excerpts_only": true,
+  "credentials_persisted": false,
+  "files_scanned": 26,
+  "hidden_reasoning_persisted": false,
+  "matches": [],
+  "overall_status": "exact",
+  "privacy_match_count": 0,
+  "raw_provider_payloads_persisted": false,
+  "schema": "SkillV2Pair1DemandAwareResidualRootCausePrivacyScanV1",
+  "secret_provider_urls_persisted": false,
+  "version": 1
+}

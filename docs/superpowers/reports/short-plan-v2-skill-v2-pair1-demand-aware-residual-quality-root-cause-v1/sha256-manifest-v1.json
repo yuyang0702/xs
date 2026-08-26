@@ -1,0 +1,145 @@
+{
+  "entry_count": 27,
+  "files": [
+    {
+      "bytes": 50,
+      "path": ".gitattributes",
+      "sha256": "4d07da6bf59632783d8926c9c6038edb764f8ffe634d744c6de1bf35b6a7b1bb"
+    },
+    {
+      "bytes": 490,
+      "path": "README.md",
+      "sha256": "54b0d0a718bb3911d3b85e87834526484147531fbf75523d347e5434965ca6f1"
+    },
+    {
+      "bytes": 770,
+      "path": "a-control-reuse-v3-decision-v1.json",
+      "sha256": "0f5e3ffc4c009d6312fa7d7f0715539e3377e69f9a8938fcec1f7c398589fd70"
+    },
+    {
+      "bytes": 659,
+      "path": "causality-world-affordance-integration-v1.json",
+      "sha256": "018cb7d8e4e82aa7fb31e88e39680de65034561e0e21b82535396b375f027895"
+    },
+    {
+      "bytes": 1093,
+      "path": "change-contract-v1.json",
+      "sha256": "eed9683e06d29a2d4f89bc6fe0846ce1ee4a8f829b63905d2b996678f4f0ad04"
+    },
+    {
+      "bytes": 473,
+      "path": "context-cap-policy-decision-v1.json",
+      "sha256": "e535de0a6b80435deb8aeeb236fa71082d850f10c0da495d74810a2751edf694"
+    },
+    {
+      "bytes": 2911,
+      "path": "context-cap-residual-fix-feasibility-v1.json",
+      "sha256": "b0bcf49cb5d5d6d4d8924a164745dc6cd782a21e1daf46b7160715f0f6216e24"
+    },
+    {
+      "bytes": 3796,
+      "path": "demand-aware-fix-success-attribution-v1.json",
+      "sha256": "ce168b3189f466ea3cb23e114fb73c88d2f4ecec7c4a228ea5d65f952305f386"
+    },
+    {
+      "bytes": 979,
+      "path": "demand-aware-v2-fix-disposition-v1.json",
+      "sha256": "f55a2b5efbf1bb3445930654a8acdf7b41c385d8266e4615c9af82e11a688765"
+    },
+    {
+      "bytes": 6540,
+      "path": "final-report-v1.md",
+      "sha256": "623c754b30d4204f6493f831d320b97d5712b6df7723d095746c7edcd57aa5a6"
+    },
+    {
+      "bytes": 2193,
+      "path": "frozen-result-binding-v1.json",
+      "sha256": "ad0078202bcc8bf77a508687c1a2895d5f7bab038ab5089670407a118ab276a2"
+    },
+    {
+      "bytes": 414,
+      "path": "manifest-definition-v1.json",
+      "sha256": "63852e21100754bd1834a53f532161a3e191de62e1641100a87c994bdf854a31"
+    },
+    {
+      "bytes": 1037,
+      "path": "microchain-vs-subtext-tradeoff-v1.json",
+      "sha256": "3a6d9e1cbe41ed6d983f15fff383830acb689cef271417e52e13ff1867340edf"
+    },
+    {
+      "bytes": 4695,
+      "path": "minimal-residual-creative-restoration-v3-set-v1.json",
+      "sha256": "86dbad4b99570eb9632ebc4b577ee3877eeba23c8749f73fc05bcd65c7b07781"
+    },
+    {
+      "bytes": 2078,
+      "path": "next-validation-strategy-v1.json",
+      "sha256": "a76a650852a4b15b4b3327dff11332a1f2085a6b0dc03a492380c3ee7321ace6"
+    },
+    {
+      "bytes": 338,
+      "path": "pair2-5-deferment-v1.json",
+      "sha256": "f4224d4037457ef1bd3f900bf37e2b923e187eab849c68052939ec958d90567b"
+    },
+    {
+      "bytes": 3468,
+      "path": "parent-evidence-validation-v1.json",
+      "sha256": "8ffb5f125247390548dc0c25452dc62ab3d2f3fb3d242c39ee919ae4c2a164f7"
+    },
+    {
+      "bytes": 1554,
+      "path": "positive-vs-negative-guidance-audit-v1.json",
+      "sha256": "ddcc5e5dd7676c00fcce2eb30dd66f8b1762ac7d153f00c8a83ddc165f48ed23"
+    },
+    {
+      "bytes": 422,
+      "path": "privacy-scan-v1.json",
+      "sha256": "086e0905e1cf04561b863d493af62adb9fabd0ffd3f05e320fe8fd49211a99b4"
+    },
+    {
+      "bytes": 1955,
+      "path": "residual-root-cause-decision-v1.json",
+      "sha256": "e0d42091bca6955f0325815a605b8cb846776f2f5304096e0eff5cf18e6cfed6"
+    },
+    {
+      "bytes": 1036,
+      "path": "stochastic-variance-assessment-v1.json",
+      "sha256": "81b261640691a1673477e00a40764fd8b46cce9c5973bd2ce23af0a870ad0435"
+    },
+    {
+      "bytes": 1318,
+      "path": "subtext-dramatization-residual-gap-v1.json",
+      "sha256": "a761e3abc92622a1eae2d9eb65ed7b5e0124e177876e6b5c5108663ab62ca8be"
+    },
+    {
+      "bytes": 1085,
+      "path": "template-flattening-residual-gap-v1.json",
+      "sha256": "31f052c3af8c85cc66afd1cf9458ea86bd8d8a9676f5e27c3d08df4e4478aacb"
+    },
+    {
+      "bytes": 1155,
+      "path": "test-receipt-v1.json",
+      "sha256": "37a85c8fb563a208be8f731b25293e2317060e300a077b8eb2083ef28c9ed03c"
+    },
+    {
+      "bytes": 10393,
+      "path": "three-way-context-semantic-diff-v1.json",
+      "sha256": "ee94e45dcd596e5a723f4db305eb63c126c795a96f452e9c37f684fcc7855639"
+    },
+    {
+      "bytes": 647,
+      "path": "voice-relation-to-subtext-bridge-v1.json",
+      "sha256": "bc3befe391e22c26736e941c9a3dfd3e3b68ee4a7e408f453950df8c62d30376"
+    },
+    {
+      "bytes": 1280,
+      "path": "world-sensory-residual-gap-v1.json",
+      "sha256": "a10a3e3168e3fd91c4986b8aadce960e11ab3f3e61e50e4aae3f7806822e7d77"
+    }
+  ],
+  "manifest_definition_sha256": "63852e21100754bd1834a53f532161a3e191de62e1641100a87c994bdf854a31",
+  "overall_status": "exact",
+  "schema": "SkillV2Pair1DemandAwareResidualRootCauseSHA256ManifestV1",
+  "self_excluded": true,
+  "version": 1
+}

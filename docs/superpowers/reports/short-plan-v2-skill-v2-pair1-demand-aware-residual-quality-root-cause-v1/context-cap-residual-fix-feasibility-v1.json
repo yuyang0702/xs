@@ -1,0 +1,114 @@
+{
+  "cap_changed": false,
+  "context_cap_forces_semantic_tradeoff": false,
+  "current_cap": 3000,
+  "current_context_characters": 2925,
+  "estimated_new_context_characters": 2998,
+  "estimated_post_fix_headroom_characters": 2,
+  "fits_3000_by_pure_addition": "NO",
+  "fits_3000_by_semantic_substitution": "YES",
+  "headroom_characters": 75,
+  "minimum_residual_fix_estimated_characters": {
+    "complete_replacement_text_characters": 424,
+    "net_context_delta_after_semantic_substitution": 73,
+    "replaced_text_characters": 351
+  },
+  "proposed_replacements": {
+    "ANTI_TAXONOMY": {
+      "current_text_characters": 163,
+      "delta_characters": 24,
+      "proposed_text_characters": 187
+    },
+    "DRAFT_SCENE": {
+      "current_text_characters": 188,
+      "delta_characters": 49,
+      "proposed_text_characters": 237
+    }
+  },
+  "pure_addition_payload_estimated_characters": 424,
+  "row_count": 20,
+  "rows": [
+    {
+      "classification": "KEEP_PROVEN_GAIN",
+      "rule_id": "MOTIVE_ACTION"
+    },
+    {
+      "classification": "KEEP_PROVEN_GAIN",
+      "rule_id": "VOICE_RELATION"
+    },
+    {
+      "classification": "KEEP_PROVEN_GAIN",
+      "rule_id": "CAUSAL_AFFORDANCE"
+    },
+    {
+      "classification": "KEEP_CRITICAL",
+      "rule_id": "PRESSURE_BEATS"
+    },
+    {
+      "classification": "DO_NOT_REMOVE",
+      "rule_id": "SETUP_PAYOFF"
+    },
+    {
+      "classification": "KEEP_CRITICAL",
+      "rule_id": "FRAME_BRIDGE"
+    },
+    {
+      "classification": "DEMAND_CONDITIONAL",
+      "rule_id": "DRAFT_SCENE"
+    },
+    {
+      "classification": "REPLACEABLE_LOW_VALUE",
+      "rule_id": "ANTI_TAXONOMY"
+    },
+    {
+      "classification": "KEEP_CRITICAL",
+      "rule_id": "PLOT_CAUSAL_ESCALATION"
+    },
+    {
+      "classification": "DO_NOT_REMOVE",
+      "rule_id": "PLOT_SETUP_PAYOFF_INTENT"
+    },
+    {
+      "classification": "KEEP_CRITICAL",
+      "rule_id": "PLOT_PACING_INTENT"
+    },
+    {
+      "classification": "KEEP_PROVEN_GAIN",
+      "rule_id": "CHARACTER_MOTIVATION"
+    },
+    {
+      "classification": "KEEP_PROVEN_GAIN",
+      "rule_id": "CHARACTER_VOICE"
+    },
+    {
+      "classification": "KEEP_CRITICAL",
+      "rule_id": "CHARACTER_ARC"
+    },
+    {
+      "classification": "DO_NOT_REMOVE",
+      "rule_id": "CHARACTER_RELATIONSHIP_NUANCE"
+    },
+    {
+      "classification": "KEEP_CRITICAL",
+      "rule_id": "WORLD_SENSORY_SPECIFICITY"
+    },
+    {
+      "classification": "COMPRESSIBLE_WITHOUT_SEMANTIC_LOSS",
+      "rule_id": "WORLD_COST_AND_LIMIT"
+    },
+    {
+      "classification": "DEMAND_CONDITIONAL",
+      "rule_id": "WORLD_FACTION_PRESSURE"
+    },
+    {
+      "classification": "KEEP_CRITICAL",
+      "rule_id": "WORLD_CURRENT_STATE"
+    },
+    {
+      "classification": "KEEP_CRITICAL",
+      "rule_id": "WORLD_ARTIFACT_DETAIL"
+    }
+  ],
+  "schema": "SkillV2Pair1DemandAwareContextCapResidualFixFeasibilityAuditV1",
+  "version": 1
+}

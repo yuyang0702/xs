@@ -1,0 +1,11 @@
+{
+  "cap_change_authorized": false,
+  "context_cap_policy_decision_required": "NO",
+  "current_cap": 3000,
+  "estimated_new_context_characters": 2998,
+  "minimum_proven_fix_fits_by_semantic_substitution": true,
+  "proposed_cap": 3000,
+  "risk_note": "Two characters of estimated headroom require exact offline rendering and fail-closed cap validation before any successor materialization.",
+  "schema": "SkillV2Pair1DemandAwareContextCapPolicyDecisionV1",
+  "version": 1
+}

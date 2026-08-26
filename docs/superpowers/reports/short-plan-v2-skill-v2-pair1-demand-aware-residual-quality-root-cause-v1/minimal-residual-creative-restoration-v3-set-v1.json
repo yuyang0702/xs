@@ -1,0 +1,88 @@
+{
+  "current_context_characters": 2925,
+  "estimated_headroom_characters": 2,
+  "estimated_new_context_characters": 2998,
+  "fits_current_3000_char_cap": "YES",
+  "hard_ceiling_characters": 3000,
+  "implementation_in_this_task": false,
+  "items": [
+    {
+      "always_or_character_heavy_conditional": "CHARACTER_HEAVY_CONDITIONAL",
+      "current_text": "Build a continuous Draft-usable microchain: spatial stimulus, opposed action, reaction, resistance, reversal, costly choice, and terminal image; replace interpretive summary with behavior.",
+      "current_text_characters": 188,
+      "current_text_sha256": "b9c6b7c95d00190b43f43bf176ae052cdc2af079bdadc316a884ab2b0e859941",
+      "exact_missing_semantic": "Use one specific setting affordance to drive the existing causal chain while hidden motive and relational pressure are carried by choice, omission, and consequence rather than explanation.",
+      "expected_context_char_cost": 49,
+      "positive_or_negative_guidance": "POSITIVE_GENERATION_HEURISTIC",
+      "preserves_character_voice_gain": true,
+      "preserves_event_causal_gain": true,
+      "preserves_relationship_gain": true,
+      "preserves_setup_payoff_gain": true,
+      "proposed_text": "Make a specific setting affordance drive a Draft-usable chain of opposed action, reaction, reversal, cost, and terminal image; carry hidden motive and relational pressure through choice, omission, and consequence rather than explanation.",
+      "proposed_text_characters": 237,
+      "proposed_text_sha256": "42c9e7a7bf6c9ed0c1732f177c70c3a763f261652551d4d98261076b9893c02c",
+      "restoration_id": "SCENE_SUBTEXT_AFFORDANCE_BRIDGE_V3",
+      "risk_of_overconstraint": "MEDIUM_LOW",
+      "risk_of_subtext_explicitness": "LOW",
+      "risk_of_template_effect": "LOW",
+      "source_a_capability_or_evidence": [
+        "A050",
+        "A053",
+        "A064",
+        "frozen A subtext/world/sensory evidence"
+      ],
+      "target_b_profile_section": "event-realization/dramatization-core/DRAFT_SCENE",
+      "target_dimensions": [
+        "subtext_dramatization",
+        "world_specificity",
+        "sensory_realization"
+      ],
+      "whether_existing_text_is_replaced_or_extended": "REPLACED_IN_PLACE"
+    },
+    {
+      "always_or_character_heavy_conditional": "CHARACTER_HEAVY_CONDITIONAL",
+      "current_text": "Keep labels in reasoning only; replace abstractions about wants, needs, instincts, strain, or local change with choice, dialogue, evasion, gesture, or consequence.",
+      "current_text_characters": 163,
+      "current_text_sha256": "1e4fe91f4d6ef0c151d81aaa85914c2186577603628dc0d556714fb9dd74e08f",
+      "exact_missing_semantic": "Reject stock emotion, generic gestures, and checklist rhythm, then positively choose character-specific dialogue, evasion, sensory contrast, or consequence with double dramatic duty.",
+      "expected_context_char_cost": 24,
+      "positive_or_negative_guidance": "BALANCED_NEGATIVE_AND_POSITIVE",
+      "preserves_character_voice_gain": true,
+      "preserves_event_causal_gain": true,
+      "preserves_relationship_gain": true,
+      "preserves_setup_payoff_gain": true,
+      "proposed_text": "Keep labels in reasoning; avoid stock emotion, generic gestures, and checklist rhythm; choose character-specific dialogue, evasion, sensory contrast, or consequence that does double duty.",
+      "proposed_text_characters": 187,
+      "proposed_text_sha256": "8228ca76fef492c89be8fab618fe7e8a2c245bef1bffc543500806f50613c33e",
+      "restoration_id": "ANTI_GENERICITY_POSITIVE_SELECTION_V3",
+      "risk_of_overconstraint": "LOW",
+      "risk_of_subtext_explicitness": "LOW",
+      "risk_of_template_effect": "LOW",
+      "source_a_capability_or_evidence": [
+        "A012",
+        "A039",
+        "A050",
+        "A052",
+        "frozen template-flattening evidence"
+      ],
+      "target_b_profile_section": "event-realization/dramatization-core/ANTI_TAXONOMY",
+      "target_dimensions": [
+        "template_flattening_risk",
+        "subtext_dramatization",
+        "world_specificity",
+        "sensory_realization"
+      ],
+      "whether_existing_text_is_replaced_or_extended": "REPLACED_IN_PLACE"
+    }
+  ],
+  "mandatory_beat_quota": false,
+  "net_context_delta_characters": 73,
+  "operational_runtime_rule_addition": false,
+  "residual_restoration_item_count": 2,
+  "rigid_emitted_template": false,
+  "schema": "SkillV2Pair1MinimalResidualCreativeRestorationV3SetV1",
+  "status": "DESIGN_ONLY_NOT_IMPLEMENTED",
+  "strategy": "Keep the demand-aware V2 profile as base; rewrite only DRAFT_SCENE and ANTI_TAXONOMY in place for character-heavy demand.",
+  "version": 1,
+  "wholesale_a_context_restoration": false
+}

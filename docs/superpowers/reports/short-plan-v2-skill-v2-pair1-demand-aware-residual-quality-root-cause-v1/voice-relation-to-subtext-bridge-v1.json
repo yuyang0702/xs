@@ -1,0 +1,13 @@
+{
+  "character_model_sufficient": true,
+  "distinctive_voice_present": true,
+  "finding": "B2 knows who the characters are and how the relationship changes; the residual appears when converting that knowledge into implicit, material, double-duty scene behavior.",
+  "layered_intent_inconsistently_realized": true,
+  "meaning_explained_more_than_implied": true,
+  "relationship_model_sufficient": true,
+  "relationship_pressure_explicit_more_than_enacted": true,
+  "schema": "SkillV2Pair1DemandAwareVoiceRelationToSubtextBridgeAuditV1",
+  "subtext_failure_location": "SCENE_REALIZATION",
+  "tactics_and_concessions_present": true,
+  "version": 1
+}

@@ -1,0 +1,102 @@
+{
+  "caveat": "One A and one new B sample cannot prove generalized production causality.",
+  "critical_regressions_new": 2,
+  "critical_regressions_old": 6,
+  "demand_aware_fix_causally_useful": "YES",
+  "method": "Mechanical old/new frozen judgment comparison plus exact B1-to-B2 four-rule semantic diff; no re-scoring.",
+  "noncritical_regressions_new": 2,
+  "noncritical_regressions_old": 4,
+  "recovered_or_preserved_dimension_count": 8,
+  "rows": [
+    {
+      "confidence": "HIGH",
+      "dimension": "event_causal_fidelity",
+      "intended_restoration_explains_improvement": "YES",
+      "likely_mechanism": "Formative pressure now flows through opposed tactics, reaction, next consequence, and a continuous microchain.",
+      "new_b_judgment": "B_BETTER",
+      "old_b_judgment": "A_BETTER",
+      "relevant_changed_rules": [
+        "MOTIVE_ACTION",
+        "DRAFT_SCENE"
+      ]
+    },
+    {
+      "confidence": "HIGH",
+      "dimension": "character_motivation",
+      "intended_restoration_explains_improvement": "YES",
+      "likely_mechanism": "Present want and concealed need are bound to costly action rather than left as labels.",
+      "new_b_judgment": "EQUIVALENT",
+      "old_b_judgment": "A_BETTER",
+      "relevant_changed_rules": [
+        "MOTIVE_ACTION"
+      ]
+    },
+    {
+      "confidence": "HIGH",
+      "dimension": "character_voice",
+      "intended_restoration_explains_improvement": "YES",
+      "likely_mechanism": "Diction, rhythm, evasion, gesture, and withheld explanation create relationship-specific counterpoint.",
+      "new_b_judgment": "B_BETTER",
+      "old_b_judgment": "A_BETTER",
+      "relevant_changed_rules": [
+        "VOICE_RELATION"
+      ]
+    },
+    {
+      "confidence": "MEDIUM",
+      "dimension": "relationship_logic",
+      "intended_restoration_explains_improvement": "YES",
+      "likely_mechanism": "The existing action-changing relationship priority is retained and deepened through tactics, cost, trust, and available action.",
+      "new_b_judgment": "B_BETTER",
+      "old_b_judgment": "B_BETTER",
+      "relevant_changed_rules": [
+        "VOICE_RELATION"
+      ]
+    },
+    {
+      "confidence": "HIGH",
+      "dimension": "setup_payoff_dependency",
+      "intended_restoration_explains_improvement": "PRESERVED_BY_NON_CHANGE",
+      "likely_mechanism": "The proven SETUP_PAYOFF and CAUSAL_AFFORDANCE rules are unchanged byte-for-byte.",
+      "new_b_judgment": "B_BETTER",
+      "old_b_judgment": "B_BETTER",
+      "relevant_changed_rules": []
+    },
+    {
+      "confidence": "HIGH",
+      "dimension": "draft_intent_handoff",
+      "intended_restoration_explains_improvement": "YES",
+      "likely_mechanism": "The continuous spatial/action microchain produces a usable scene handoff.",
+      "new_b_judgment": "EQUIVALENT",
+      "old_b_judgment": "A_BETTER",
+      "relevant_changed_rules": [
+        "DRAFT_SCENE"
+      ]
+    },
+    {
+      "confidence": "MEDIUM",
+      "dimension": "pov",
+      "intended_restoration_explains_improvement": "PARTIAL",
+      "likely_mechanism": "Withheld explanation plus focal behavior reduces pressure to leave the bound viewpoint.",
+      "new_b_judgment": "EQUIVALENT",
+      "old_b_judgment": "A_BETTER",
+      "relevant_changed_rules": [
+        "VOICE_RELATION",
+        "DRAFT_SCENE"
+      ]
+    },
+    {
+      "confidence": "MEDIUM",
+      "dimension": "tone_genre",
+      "intended_restoration_explains_improvement": "PARTIAL",
+      "likely_mechanism": "Sustained diction and rhythm help the confirmed frame rule carry tone into execution.",
+      "new_b_judgment": "EQUIVALENT",
+      "old_b_judgment": "A_BETTER",
+      "relevant_changed_rules": [
+        "VOICE_RELATION"
+      ]
+    }
+  ],
+  "schema": "SkillV2Pair1DemandAwareFixSuccessAttributionV1",
+  "version": 1
+}

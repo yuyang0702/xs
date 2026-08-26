@@ -1,0 +1,26 @@
+{
+  "dramatization_core_coverage": "STRONG",
+  "exact_missing_semantic_units": [
+    "Bind a hidden scene objective to a discrepancy between stated and enacted intent.",
+    "Select choices, omissions, concessions, and consequences that carry motive and relationship meaning without explaining it.",
+    "Make dialogue or action perform more than one dramatic function so subtext survives the causal microchain.",
+    "Carry unresolved relational pressure into the next beat without naming the intended interpretation."
+  ],
+  "explanatory_summary_suppression": "PARTIAL",
+  "failure_location": "SCENE_REALIZATION",
+  "frozen_outcome_evidence": "B2's explicit interior explanation resolves the old act, injury, and defensive accusation; A leaves that pressure in blocked explanation, material sacrifice, altered suspicion, and route choice.",
+  "hidden_objective_support": "PARTIAL",
+  "implicit_causal_expression_support": "PARTIAL",
+  "present_support": [
+    "concealed need",
+    "evasion",
+    "withheld explanation",
+    "relationship pressure changes tactics",
+    "behavior instead of interpretive summary",
+    "continuous microchain"
+  ],
+  "schema": "SkillV2Pair1DemandAwareSubtextDramatizationResidualGapAuditV1",
+  "subtext_core_coverage": "PARTIAL",
+  "validator_can_author_fix": false,
+  "version": 1
+}

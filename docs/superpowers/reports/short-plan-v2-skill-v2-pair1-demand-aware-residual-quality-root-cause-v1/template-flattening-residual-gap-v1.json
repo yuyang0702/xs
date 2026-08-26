@@ -1,0 +1,27 @@
+{
+  "anti_genericity_coverage": "WEAK",
+  "anti_repetitive_beat_coverage": "WEAK",
+  "anti_taxonomy_coverage": "STRONG",
+  "character_specificity_pressure": "PARTIAL",
+  "finding": "ANTI_TAXONOMY prevents category leakage but does not select an idiosyncratic positive alternative; its negative-only surface is too shallow for narrative genericity.",
+  "narrative_genericity_avoidance": "WEAK",
+  "positive_bridge_required": "Choose character-specific dialogue, evasion, sensory contrast, or consequence that does double dramatic duty.",
+  "present_support": [
+    "broad abstraction replacement",
+    "distinct diction and evasion",
+    "behavior-before-summary"
+  ],
+  "rigid_template_required": false,
+  "schema": "SkillV2Pair1DemandAwareTemplateFlatteningResidualGapAuditV1",
+  "taxonomy_label_avoidance": "STRONG",
+  "uncovered_risks": [
+    "stock emotional vocabulary",
+    "generic gestures",
+    "interchangeable reactions",
+    "checklist rhythm",
+    "one-rule-per-beat symmetry",
+    "mechanically neat causal chains",
+    "generic sensory decoration"
+  ],
+  "version": 1
+}

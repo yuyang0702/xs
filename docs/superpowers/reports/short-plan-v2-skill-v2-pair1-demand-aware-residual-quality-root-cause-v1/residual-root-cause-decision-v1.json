@@ -1,0 +1,53 @@
+{
+  "evaluated_classes": [
+    {
+      "decision": "SUPPORTED_SECONDARY",
+      "root_cause_class": "SUBTEXT_REALIZATION_UNDERSPECIFIED"
+    },
+    {
+      "decision": "SUPPORTED_SECONDARY",
+      "root_cause_class": "ANTI_TEMPLATE_GUIDANCE_TOO_SHALLOW"
+    },
+    {
+      "decision": "SUPPORTED_SECONDARY",
+      "root_cause_class": "POSITIVE_SPECIFICITY_HEURISTICS_MISSING"
+    },
+    {
+      "decision": "PARTIAL_AMPLIFIER_NOT_PRIMARY",
+      "root_cause_class": "MICROCHAIN_TOO_EXPLICIT_REDUCING_SUBTEXT"
+    },
+    {
+      "decision": "SUPPORTED_PRIMARY",
+      "root_cause_class": "SCENE_REALIZATION_BRIDGE_UNDERSPECIFIED"
+    },
+    {
+      "decision": "SUPPORTED_SECONDARY",
+      "root_cause_class": "WORLD_SENSORY_AFFORDANCE_INTEGRATION_UNDERSPECIFIED"
+    },
+    {
+      "decision": "DISPROVED_BY_2998_CHAR_SUBSTITUTION",
+      "root_cause_class": "CONTEXT_CAP_FORCES_SEMANTIC_TRADEOFF"
+    },
+    {
+      "decision": "NOT_SUPPORTED",
+      "root_cause_class": "INSTRUCTION_PRIORITY_OR_ORDERING"
+    },
+    {
+      "decision": "NOT_SUPPORTED_BUT_REMAINS_UNCERTAINTY",
+      "root_cause_class": "STOCHASTIC_VARIANCE_DOMINANT"
+    }
+  ],
+  "generalized_production_causality": false,
+  "mechanical_identification": true,
+  "primary_residual_root_cause_class": "MULTI_FACTOR_WITH_PRIMARY_SCENE_REALIZATION_BRIDGE_UNDERSPECIFIED",
+  "rationale": "The restored character and relationship model now wins, while subtext and genericity still lose; the narrow missing boundary is conversion of those gains into implicit, character-specific, world-bearing, double-duty scene choices.",
+  "residual_skill_context_causality_confidence": "MEDIUM",
+  "schema": "SkillV2Pair1DemandAwareResidualRootCauseDecisionV1",
+  "secondary_residual_causes": [
+    "SUBTEXT_REALIZATION_UNDERSPECIFIED",
+    "ANTI_TEMPLATE_GUIDANCE_TOO_SHALLOW",
+    "POSITIVE_SPECIFICITY_HEURISTICS_MISSING",
+    "WORLD_SENSORY_AFFORDANCE_INTEGRATION_UNDERSPECIFIED"
+  ],
+  "version": 1
+}

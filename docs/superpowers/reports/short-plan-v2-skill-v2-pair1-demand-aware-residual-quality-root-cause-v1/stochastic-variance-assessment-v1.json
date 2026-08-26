@@ -1,0 +1,21 @@
+{
+  "decision": "Variance remains a material uncertainty but does not dominate the coherent instruction-level residual mechanism.",
+  "evidence_for_context_causality": [
+    "Both residual critical dimensions were also A_BETTER for old B",
+    "B2 has identifiable missing positive subtext/genericity semantics",
+    "world and sensory residuals cohere with the same scene-specificity bridge",
+    "A/B lock and engineering parity are exact",
+    "four intended V2 changes align with dimensions that improved"
+  ],
+  "evidence_for_stochastic_variance": [
+    "Only one new B sample exists",
+    "Both artifacts contain nontrivial subtext and sensory detail",
+    "Some residual differences are stylistic selection choices"
+  ],
+  "generalized_causality_claimed": false,
+  "residual_skill_context_causality_confidence": "MEDIUM",
+  "sample_shape": "ONE_SEALED_A_CONTROL_VS_ONE_SEALED_NEW_B_TREATMENT",
+  "schema": "SkillV2Pair1DemandAwareResidualStochasticVarianceAssessmentV1",
+  "stochastic_variance_dominant": false,
+  "version": 1
+}

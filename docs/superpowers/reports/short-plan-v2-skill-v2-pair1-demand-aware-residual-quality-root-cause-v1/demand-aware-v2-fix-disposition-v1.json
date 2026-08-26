@@ -1,0 +1,36 @@
+{
+  "demand_aware_v2_fix_disposition": "PARTIALLY_REVISE",
+  "implementation_in_this_task": false,
+  "keep_as_base": true,
+  "preserve_character_voice_gain": true,
+  "preserve_event_causal_fidelity_gain": true,
+  "preserve_relationship_logic_gain": true,
+  "preserve_setup_payoff_gain": true,
+  "proposed_revision_targets": [
+    "DRAFT_SCENE",
+    "ANTI_TAXONOMY"
+  ],
+  "retained_rules_byte_for_byte": [
+    "MOTIVE_ACTION",
+    "VOICE_RELATION",
+    "CAUSAL_AFFORDANCE",
+    "PRESSURE_BEATS",
+    "SETUP_PAYOFF",
+    "FRAME_BRIDGE",
+    "PLOT_CAUSAL_ESCALATION",
+    "PLOT_SETUP_PAYOFF_INTENT",
+    "PLOT_PACING_INTENT",
+    "CHARACTER_MOTIVATION",
+    "CHARACTER_VOICE",
+    "CHARACTER_ARC",
+    "CHARACTER_RELATIONSHIP_NUANCE",
+    "WORLD_SENSORY_SPECIFICITY",
+    "WORLD_COST_AND_LIMIT",
+    "WORLD_FACTION_PRESSURE",
+    "WORLD_CURRENT_STATE",
+    "WORLD_ARTIFACT_DETAIL"
+  ],
+  "rollback": false,
+  "schema": "SkillV2Pair1DemandAwareV2FixDispositionV1",
+  "version": 1
+}

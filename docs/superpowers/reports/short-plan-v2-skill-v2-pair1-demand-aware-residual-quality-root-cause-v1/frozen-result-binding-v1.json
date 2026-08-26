@@ -1,0 +1,63 @@
+{
+  "a": {
+    "artifact_sha256": "f6aa5c49d64f38aefe71b01fc9eb0abf2ea3a08faba6f5bc3dbcb38c665e3f8f",
+    "skill": "CURRENT_RUNTIME_SKILL"
+  },
+  "a_better": [
+    "subtext_dramatization",
+    "template_flattening_risk",
+    "world_specificity",
+    "sensory_realization"
+  ],
+  "b": {
+    "artifact_sha256": "87628f204e7f4a3f27910cf4801d904b907cae29841b44be34031ae741cd1a3d",
+    "context_characters": 2925,
+    "context_sha256": "7d0f6309ede2261f2f6a1098d394937948bf5b50eb9248266ab350fd91da9adc",
+    "profile_sha256": "109bb50e2e649c5841bd7c83513100caa0d93cf3c1bb5db845e489b5ae10856d",
+    "skill": "RESTORED_SKILL_V2_CHARACTER_CORE_V2"
+  },
+  "b_better": [
+    "event_causal_fidelity",
+    "character_voice",
+    "relationship_logic",
+    "setup_payoff_dependency"
+  ],
+  "blind": {
+    "freeze_receipt_sha256": "3169825f947501f18798ce449ac56b90a87e3f5b6e54ce749555482d957757de",
+    "judgments_sha256": "ce4a93a6511440913df703040182becf02410aec0825baf1c8e308798a0b5aa1",
+    "mapping": {
+      "X": "B_ARM",
+      "Y": "A_ARM"
+    },
+    "summary_sha256": "49de30d069e88f48f8f190525ed290a786df92522973da0f6fea2d080a1a282d"
+  },
+  "blind_summary_aggregate_field_bug_relevant_to_root_cause": false,
+  "counts": {
+    "b_critical_better_count": 3,
+    "b_critical_regression_count": 2,
+    "b_noncritical_better_count": 1,
+    "b_noncritical_regression_count": 2
+  },
+  "creative_demand_class": "character-heavy",
+  "engineering_non_inferior": true,
+  "equivalent": [
+    "character_motivation",
+    "conflict_pacing",
+    "pov",
+    "tense",
+    "tone_genre",
+    "draft_intent_handoff",
+    "authority_correctness",
+    "untargeted_creative_mutation"
+  ],
+  "generalized_production_non_inferiority": "NOT_YET_PROVEN",
+  "narrative_non_inferior": false,
+  "overall_status": "exact",
+  "pair_case_id": "restored-character-heavy-v2-demand-aware-core-v2",
+  "pair_disposition": "PAIR_NO_GO_QUALITY_REGRESSION",
+  "per_dimension_frozen_judgments_are_normative": true,
+  "post_reveal_rescoring": false,
+  "schema": "SkillV2Pair1DemandAwareResidualRootCauseFrozenResultBindingV1",
+  "successor_ab_lock_sha256": "5ace834e214ea25d4206b92d63e830ad7f51b3629072ea58107249e2457303a1",
+  "version": 1
+}

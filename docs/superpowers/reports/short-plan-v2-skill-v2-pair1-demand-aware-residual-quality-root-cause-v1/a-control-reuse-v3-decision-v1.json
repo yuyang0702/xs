@@ -1,0 +1,22 @@
+{
+  "can_reuse_sealed_a_control_for_residual_v3_revalidation": "CONDITIONAL",
+  "conditions": {
+    "fresh_b_approval_required": true,
+    "fresh_b_successor_lock_required": true,
+    "fresh_blind_evaluation_required": true,
+    "only_b_skill_context_changes": true,
+    "same_a_artifact": true,
+    "same_authority_story_task": true,
+    "same_fixture": true,
+    "same_model_provider_route_client": true,
+    "same_non_skill_prompt": true,
+    "same_output_cap": true,
+    "same_rubric": true,
+    "same_validators": true
+  },
+  "decision": "CONDITIONAL",
+  "real_call_authorized": false,
+  "schema": "SkillV2Pair1DemandAwareAControlReuseV3DecisionV1",
+  "sealed_a_artifact_sha256": "f6aa5c49d64f38aefe71b01fc9eb0abf2ea3a08faba6f5bc3dbcb38c665e3f8f",
+  "version": 1
+}

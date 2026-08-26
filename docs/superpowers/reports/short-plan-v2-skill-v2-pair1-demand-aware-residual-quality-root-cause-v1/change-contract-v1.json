@@ -1,0 +1,33 @@
+{
+  "allowed_paths": [
+    "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-demand-aware-residual-quality-root-cause-v1/**"
+  ],
+  "baseline": {
+    "branch": "r1-ptr3/planning-repair-finding-propagation-20260817",
+    "head": "0e4dd71ba7170906ff96c06450a9513ac7ba61c7",
+    "worktree": "CLEAN"
+  },
+  "exact_next_gate_only": true,
+  "external_actions_allowed": false,
+  "forbidden_paths": [
+    "src/**",
+    "baml_src/**",
+    "vendor/**",
+    "tests/**",
+    "tools/**"
+  ],
+  "frozen_authority": [
+    "A artifact",
+    "old B artifact",
+    "new B artifact",
+    "blind judgments",
+    "criticality policy",
+    "quality rubric"
+  ],
+  "implementation_allowed": false,
+  "original_requirement": "Identify the narrow residual mechanism behind two critical and two noncritical frozen Pair 1 demand-aware quality regressions, then design but do not implement the minimum V3 restoration set.",
+  "pair2_to_5_execution_allowed": false,
+  "schema": "SkillV2Pair1DemandAwareResidualRootCauseChangeContractV1",
+  "scope_classification": "EVIDENCE_ONLY_OFFLINE_ROOT_CAUSE",
+  "version": 1
+}

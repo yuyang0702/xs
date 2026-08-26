@@ -1,0 +1,13 @@
+{
+  "current_causality_orientation": "CHARACTER_AND_RELATIONSHIP_DOMINANT_WITH_PRESENT_BUT_SHALLOWER_WORLD_INTEGRATION",
+  "emitted_template": false,
+  "event_causal_fidelity": "B_BETTER",
+  "exact_supported_semantic": "Make a specific setting affordance drive an existing opposed action, reaction, reversal, or cost so world detail becomes causal rather than decorative.",
+  "mandatory_quota": false,
+  "schema": "SkillV2Pair1DemandAwareCausalityWorldAffordanceIntegrationAuditV1",
+  "sensory_realization": "A_BETTER",
+  "separate_world_profile_expansion_required": false,
+  "supported_narrow_rule": true,
+  "version": 1,
+  "world_specificity": "A_BETTER"
+}

@@ -1,0 +1,9 @@
+{
+  "cutover_allowed": false,
+  "pair2_to_5_execution_allowed": false,
+  "pair2_to_5_fixture_compatibility_closure_deferred": true,
+  "real_calls_saved": true,
+  "reason": "Pair 1 still fails frozen narrative quality non-inferiority on two critical dimensions.",
+  "schema": "SkillV2Pair1DemandAwarePair2To5DefermentV1",
+  "version": 1
+}

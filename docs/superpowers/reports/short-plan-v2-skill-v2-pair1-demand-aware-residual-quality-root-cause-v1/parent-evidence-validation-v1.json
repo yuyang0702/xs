@@ -1,0 +1,84 @@
+{
+  "a_b_lock": "PASS",
+  "a_sample_valid": true,
+  "baml_src_diff_count": 0,
+  "baseline_head": "0e4dd71ba7170906ff96c06450a9513ac7ba61c7",
+  "blind_judgment_files_unchanged": true,
+  "branch": "r1-ptr3/planning-repair-finding-propagation-20260817",
+  "engineering_non_inferior": true,
+  "manifest_rows": [
+    {
+      "entry_count": 16,
+      "evidence_id": "FIRST_CORRECTED_A",
+      "manifest_file_sha256": "d210322f8e0314ae5a9841300faf0e5ea492732f08e21eb516c1f8ff32567796",
+      "mismatch_count": 0,
+      "root": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-execution-v4/pairs/restored-character-heavy-v2/a-arm",
+      "status": "exact"
+    },
+    {
+      "entry_count": 16,
+      "evidence_id": "OLD_RESTORED_B",
+      "manifest_file_sha256": "7368eafdb07a9b2d07fdd1abe95de60b8cba0da0520ba5214f31e621508b8a58",
+      "mismatch_count": 0,
+      "root": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-execution-v5/pairs/restored-character-heavy-v2/b-arm",
+      "status": "exact"
+    },
+    {
+      "entry_count": 18,
+      "evidence_id": "FIRST_PAIR1_RESULT",
+      "manifest_file_sha256": "658b9cba97d63da4972aab9fa619b4ebabfc670864818b86bb36af33844664d8",
+      "mismatch_count": 0,
+      "root": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-corrected-reveal-engineering-v1",
+      "status": "exact"
+    },
+    {
+      "entry_count": 29,
+      "evidence_id": "FIRST_PAIR1_ROOT_CAUSE",
+      "manifest_file_sha256": "916cce911a87f5a3c5a2d9ed090d80450dde80b7853dc0cdc6b2a6adf75da9bd",
+      "mismatch_count": 0,
+      "root": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-corrected-quality-regression-root-cause-v1",
+      "status": "exact"
+    },
+    {
+      "entry_count": 26,
+      "evidence_id": "DEMAND_AWARE_NARROW_FIX",
+      "manifest_file_sha256": "4d54c0517bd903392cdba7c2dc068ff1cefb02fa347da5a7f530928e25f6311b",
+      "mismatch_count": 0,
+      "root": "docs/superpowers/reports/short-plan-v2-skill-v2-demand-aware-creative-core-narrow-fix-v1",
+      "status": "exact"
+    },
+    {
+      "entry_count": 23,
+      "evidence_id": "NEW_B_EXECUTION",
+      "manifest_file_sha256": "1cbeaf83cf3e761d9d1fad743042546534b696898dd1596124d39d25a4a3eee8",
+      "mismatch_count": 0,
+      "root": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-demand-aware-b-only-execution-v1/pairs/restored-character-heavy-v2-demand-aware-core-v2/b-arm",
+      "status": "exact"
+    },
+    {
+      "entry_count": 20,
+      "evidence_id": "NEW_BLIND_BUNDLE_ROOT",
+      "manifest_file_sha256": "00dd38599682efd75b153c3f8967b06e578b397dae01591b1dceec1cdfeeb38e",
+      "mismatch_count": 0,
+      "root": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-demand-aware-fresh-blind-context-v1",
+      "status": "exact"
+    },
+    {
+      "entry_count": 21,
+      "evidence_id": "NEW_REVEAL_ENGINEERING",
+      "manifest_file_sha256": "0dd5ab0470a0fb51b30bd575bb49bb9d0270987cdc2a2a01a15ea7b733ddf139",
+      "mismatch_count": 0,
+      "root": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-demand-aware-reveal-engineering-v1",
+      "status": "exact"
+    }
+  ],
+  "nested_blind_output_manifest_status": "exact",
+  "new_b_sample_valid": true,
+  "overall_status": "exact",
+  "parent_manifest_count": 8,
+  "parent_manifest_mismatch_count": 0,
+  "schema": "SkillV2Pair1DemandAwareResidualRootCauseParentEvidenceValidationV1",
+  "src_diff_count": 0,
+  "version": 1,
+  "worktree_at_gate": "CLEAN"
+}
