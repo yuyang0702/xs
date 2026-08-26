@@ -1,0 +1,10 @@
+{
+  "schema": "FreshBlindOutputContaminationScanV1",
+  "version": 1,
+  "scan_scope": "BLIND_EVALUATION_OUTPUT_FILES_CREATED_BEFORE_THIS_SCAN",
+  "scanned_file_count": 4,
+  "mandated_negative_protocol_fields_are_assertions_not_disclosures": true,
+  "BLIND_OUTPUT_IDENTITY_LEAK_COUNT": 0,
+  "PRIOR_RESULT_OUTPUT_CONTAMINATION_COUNT": 0,
+  "status": "PASS"
+}

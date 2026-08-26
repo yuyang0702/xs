@@ -1,0 +1,176 @@
+{
+  "schema": "FreshBlindDimensionJudgmentsV1",
+  "version": 1,
+  "creative_demand_class": "character-heavy",
+  "dimension_count": 16,
+  "judgment_enum": [
+    "X_BETTER",
+    "Y_BETTER",
+    "EQUIVALENT",
+    "INCOMPARABLE",
+    "INSUFFICIENT_EVIDENCE",
+    "NOT_APPLICABLE"
+  ],
+  "judgments": [
+    {
+      "dimension": "event_causal_fidelity",
+      "criticality": "CRITICAL",
+      "judgment": "Y_BETTER",
+      "X_evidence": "X stages a protective lie, risks the packet, and ends in conditional cooperation, but the final condition depends on a newly introduced person still trapped inside.",
+      "Y_evidence": "Y makes Mara burn the costly seals to divert the patrol, then has Iven recognize that sacrifice and cooperate without forgiving her.",
+      "reasoning_summary": "Y realizes the required cost-to-protection-to-conditional-cooperation chain more directly and preserves the unresolved betrayal at the exit state.",
+      "confidence": "HIGH",
+      "evidence_sufficiency": "SUFFICIENT"
+    },
+    {
+      "dimension": "character_motivation",
+      "criticality": "CRITICAL",
+      "judgment": "Y_BETTER",
+      "X_evidence": "X implies guilt through the packet and calls the gesture a cheaper apology, but the protagonist's reason for protecting the rival remains comparatively schematic.",
+      "Y_evidence": "Y establishes that Mara exposed Iven to worse danger than intended, suppresses her explanation, sacrifices her escape papers, and then physically needs his help with the gate.",
+      "reasoning_summary": "Y connects guilt, concealed need, fear, sacrifice, and opposed self-presentation in one legible motivational chain.",
+      "confidence": "HIGH",
+      "evidence_sufficiency": "SUFFICIENT"
+    },
+    {
+      "dimension": "character_voice",
+      "criticality": "CRITICAL",
+      "judgment": "Y_BETTER",
+      "X_evidence": "X uses controlled irony in lines about sensible options, payment, and a cheaper apology, though the generic role labels limit character specificity.",
+      "Y_evidence": "Mara's accounting and machinery diction remains dry and controlled while her trembling hand, swallowed explanation, and physical strain expose fear beneath it; Iven answers in terse refusals.",
+      "reasoning_summary": "Both use restrained irony, but Y gives each character a more relationship-specific pressure voice and lets behavior contradict the spoken posture.",
+      "confidence": "HIGH",
+      "evidence_sufficiency": "SUFFICIENT"
+    },
+    {
+      "dimension": "relationship_logic",
+      "criticality": "CRITICAL",
+      "judgment": "Y_BETTER",
+      "X_evidence": "X explicitly states that trust has acquired a condition and makes the rival hold the gate, but the stated condition turns on a late-arriving third-party obligation.",
+      "Y_evidence": "Iven says the sacrifice buys nothing, yet catches the gate, binds Mara's palms before tending himself, and lets her choose the route while suspicion remains.",
+      "reasoning_summary": "Y dramatizes the exact shift from distrust to limited cooperation through reciprocal micro-decisions without resolving the betrayal.",
+      "confidence": "HIGH",
+      "evidence_sufficiency": "SUFFICIENT"
+    },
+    {
+      "dimension": "world_specificity",
+      "criticality": "NONCRITICAL",
+      "judgment": "Y_BETTER",
+      "X_evidence": "The service gate, west watch, alarm cord, packet, red cloth, and drainage recess support the escape mechanics but remain broadly archetypal.",
+      "Y_evidence": "Canal stairs, hounds, a jammed floodgate, forged transit seals, checkpoint timing, sluice basket, brake, current, and maintenance culvert all affect choices and consequences.",
+      "reasoning_summary": "Y's setting details form a causally operative system rather than primarily furnishing the scene.",
+      "confidence": "HIGH",
+      "evidence_sufficiency": "SUFFICIENT"
+    },
+    {
+      "dimension": "sensory_realization",
+      "criticality": "NONCRITICAL",
+      "judgment": "Y_BETTER",
+      "X_evidence": "X supplies scraping boots, lantern light, blood, gravel, bars, and mud, with the red cloth carrying a visible before-and-after change.",
+      "Y_evidence": "Y combines rain-blurred lanterns, claws on wet stone, choking hounds, trembling metal, blue flame, resin stink, black water, iron teeth, bleeding palms, and the taste of rain and rust.",
+      "reasoning_summary": "Y uses more varied embodied sensations and makes them intensify pressure, reveal fear, or drive action.",
+      "confidence": "HIGH",
+      "evidence_sufficiency": "SUFFICIENT"
+    },
+    {
+      "dimension": "conflict_pacing",
+      "criticality": "NONCRITICAL",
+      "judgment": "Y_BETTER",
+      "X_evidence": "X escalates from a patrol sweep to alarm-cord resistance, a protective lie, gate manipulation, and a conditional escape, but several packet and gate transitions require reorientation.",
+      "Y_evidence": "Y establishes approaching patrols and hounds, narrows the escape choice, burns the seals as a reversal, and converts solo survival into joint physical effort without releasing pressure.",
+      "reasoning_summary": "Y's countdown, costly decision, diversion, strain, and relational aftermath form the cleaner escalation curve.",
+      "confidence": "MEDIUM",
+      "evidence_sufficiency": "SUFFICIENT"
+    },
+    {
+      "dimension": "setup_payoff_dependency",
+      "criticality": "NONCRITICAL",
+      "judgment": "Y_BETTER",
+      "X_evidence": "The marked latch, key, packet, bloodied cuff, and alarm noise receive later use, while the hairpin solution and trapped-person condition arrive with little preparation.",
+      "Y_evidence": "The expensive seals become the sacrificed lure; the trembling crank and Mara's strain pay off in bleeding palms and Iven catching the gate; Iven's wound pays off when he tends her first.",
+      "reasoning_summary": "Y gives its major objects and physical states multiple connected payoffs, whereas X relies on two consequential late introductions.",
+      "confidence": "HIGH",
+      "evidence_sufficiency": "SUFFICIENT"
+    },
+    {
+      "dimension": "pov",
+      "criticality": "NONCRITICAL",
+      "judgment": "Y_BETTER",
+      "X_evidence": "X begins near the protagonist but also directly reports what the rival sees and understands, producing a more mobile and externally summarized viewpoint.",
+      "Y_evidence": "Y remains close to Mara through what she hears, remembers, suppresses, sees in Iven, tastes, and physically endures.",
+      "reasoning_summary": "No fixed viewpoint is supplied, but Y's sustained close perspective better supports the character-heavy pressure and concealed intent.",
+      "confidence": "MEDIUM",
+      "evidence_sufficiency": "SUFFICIENT"
+    },
+    {
+      "dimension": "tense",
+      "criticality": "NONCRITICAL",
+      "judgment": "EQUIVALENT",
+      "X_evidence": "X maintains past-tense narration throughout the escape and aftermath.",
+      "Y_evidence": "Y maintains past-tense narration throughout the escape and aftermath.",
+      "reasoning_summary": "No fixed tense is supplied, and both samples execute their chosen past tense consistently without a material comparative difference.",
+      "confidence": "HIGH",
+      "evidence_sufficiency": "SUFFICIENT"
+    },
+    {
+      "dimension": "tone_genre",
+      "criticality": "NONCRITICAL",
+      "judgment": "EQUIVALENT",
+      "X_evidence": "X sustains a tense intrigue-and-escape register with restrained irony, physical danger, and unresolved mistrust.",
+      "Y_evidence": "Y sustains a tense intrigue-and-escape register with restrained irony, physical danger, and unresolved mistrust.",
+      "reasoning_summary": "No fixed tone or genre is supplied, and both remain coherent within the same broad dramatic register; differences in specificity are captured elsewhere.",
+      "confidence": "MEDIUM",
+      "evidence_sufficiency": "SUFFICIENT"
+    },
+    {
+      "dimension": "subtext_dramatization",
+      "criticality": "CRITICAL",
+      "judgment": "Y_BETTER",
+      "X_evidence": "X converts protection into a bargain, but then explicitly names the gesture as an apology and explains that trust has acquired a condition.",
+      "Y_evidence": "Mara swallows the explanation, disguises rescue as debt cancellation, and answers Iven's refusal of leverage by merely revising the price; his practical care carries the relational response.",
+      "reasoning_summary": "Y keeps the apology beneath bargaining language and lets action, evasion, and asymmetric interpretation bear the meaning; X explains the intended subtext more directly.",
+      "confidence": "HIGH",
+      "evidence_sufficiency": "SUFFICIENT"
+    },
+    {
+      "dimension": "draft_intent_handoff",
+      "criticality": "CRITICAL",
+      "judgment": "Y_BETTER",
+      "X_evidence": "X offers a usable sequence of pressure, choice, rescue, reversal, and exit image, but generic roles and late dependencies leave several scene intentions to resolve.",
+      "Y_evidence": "Y supplies named actors, spatial geography, object dependencies, pressure reactions, tactical dialogue, a costly irreversible choice, reciprocal action, and a precise changed exit state.",
+      "reasoning_summary": "Y provides the clearer scene-ready handoff because its dramatic beats, motives, and physical dependencies can be drafted without first replacing abstractions or repairing late setup.",
+      "confidence": "HIGH",
+      "evidence_sufficiency": "SUFFICIENT"
+    },
+    {
+      "dimension": "template_flattening_risk",
+      "criticality": "CRITICAL",
+      "judgment": "Y_BETTER",
+      "X_evidence": "Repeated protagonist/rival labels, broadly reusable gate-and-packet elements, and explicit statements of apology and conditional trust expose the underlying planning taxonomy.",
+      "Y_evidence": "Mara's destructive use of forged seals, mechanical competence, accounting idiom, concealed culpability, and Iven's wound-first reciprocity make the behavior difficult to interchange with generic roles.",
+      "reasoning_summary": "Y transforms the required structure into character-specific tactics and causal setting behavior; X more visibly retains the template beneath the prose.",
+      "confidence": "HIGH",
+      "evidence_sufficiency": "SUFFICIENT"
+    },
+    {
+      "dimension": "authority_correctness",
+      "criticality": "CRITICAL",
+      "judgment": "Y_BETTER",
+      "X_evidence": "X stays within title and narrative fields but substitutes generic role labels for the supplied characters and adds a new trapped-person obligation that governs the exit bargain.",
+      "Y_evidence": "Y stays within title and narrative fields, retains Mara and Iven, realizes all four supplied obligations, and does not claim production authority.",
+      "reasoning_summary": "Y adheres more closely to the supplied story and task authority while confining invention to scene realization.",
+      "confidence": "HIGH",
+      "evidence_sufficiency": "SUFFICIENT"
+    },
+    {
+      "dimension": "untargeted_creative_mutation",
+      "criticality": "CRITICAL",
+      "judgment": "Y_BETTER",
+      "X_evidence": "X changes the named-character frame into generic roles and introduces a person still trapped inside as the decisive condition for cooperation.",
+      "Y_evidence": "Y invents patrol, seal, and floodgate mechanics that serve the required sacrifice and relationship shift without redirecting the exit obligation to a new plot dependency.",
+      "reasoning_summary": "Y's additions elaborate the requested event; X's late third-party condition materially redirects why cooperation remains conditional.",
+      "confidence": "HIGH",
+      "evidence_sufficiency": "SUFFICIENT"
+    }
+  ]
+}

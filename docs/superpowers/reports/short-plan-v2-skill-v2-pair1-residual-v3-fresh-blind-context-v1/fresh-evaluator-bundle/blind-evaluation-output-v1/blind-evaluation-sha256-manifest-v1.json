@@ -1,0 +1,36 @@
+{
+  "schema": "FreshBlindEvaluationSha256ManifestV1",
+  "version": 1,
+  "manifest_scope": "BLIND_EVALUATION_OUTPUT",
+  "self_excluded": true,
+  "covered_file_count": 5,
+  "total_output_file_count_including_manifest": 6,
+  "files": [
+    {
+      "path": "blind-dimension-judgments-v1.json",
+      "bytes": 11708,
+      "sha256": "b5f62ba59e2667041b62a4db1fcca90f991b94bb1d48334e57995fe186c9114d"
+    },
+    {
+      "path": "blind-evaluator-final-report-v1.md",
+      "bytes": 4622,
+      "sha256": "5496e35ee6c06d80d941cadb7f23d01924fc3b16ad7a9d19f5eb1bf44a668803"
+    },
+    {
+      "path": "blind-freeze-receipt-v1.json",
+      "bytes": 793,
+      "sha256": "653ca614f52dc4ed7c692a597bb8879de67da96877cd8133d1b922ae8b607951"
+    },
+    {
+      "path": "blind-output-contamination-scan-v1.json",
+      "bytes": 356,
+      "sha256": "c019689cea01c125b65753a7f7354dab5ae9845176c89d9ed9dd1d41cba16942"
+    },
+    {
+      "path": "blind-review-summary-v1.json",
+      "bytes": 1154,
+      "sha256": "623824f61a4feefa1839ac07832b9cc1e900bf81217d9f1c149c072501a88ed9"
+    }
+  ],
+  "coverage_status": "EXACT"
+}
