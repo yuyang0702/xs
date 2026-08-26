@@ -2093,7 +2093,11 @@ omissions, rendered-context hash, and all semantic cache inputs.
 resolver and before production compaction. The seam receives only local
 identities, hashes, counts, and capacity facts; it never receives raw story or
 Prompt text. Observer output is not used by the model, validator, authority,
-router, retry path, or production prompt assembly. Observer failures are
-swallowed, so enabling or failing the offline shadow cannot alter the current
-compressed Skill context or Provider request. This is evidence-only shadow
-infrastructure and does not authorize Skill V3 or Planning V2 cutover.
+router, retry path, or production prompt assembly. Observer failures emit a
+`skill_v3_selective_compiler_shadow_failure` hash-only reliability trace plus
+an instance-local bounded counter/record; raw exception text, traceback, Skill
+source, Prompt, and story text are never persisted. Trace-sink failure increments
+the bounded drop counter without recursion. Every observer and evidence-sink
+failure remains fail-open, so the current compressed Skill context and Provider
+request are unchanged. This is evidence-only shadow infrastructure and does not
+authorize Skill V3 or Planning V2 cutover.

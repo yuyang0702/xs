@@ -55,6 +55,7 @@ ReliabilityTraceEventType = Literal[
     "diagnostic_provider_shape_delta_v1",
     "diagnostic_ptr9_guard_decision_v1",
     "diagnostic_contract_output_limit_classification_v1",
+    "skill_v3_selective_compiler_shadow_failure",
 ]
 ReliabilitySemanticDomain = Literal[
     "future_normative", "occurred_current", "unknown",
@@ -138,6 +139,14 @@ class ReliabilityTraceEnvelopeV1(BaseModel):
         }),
         "diagnostic_contract_output_limit_classification_v1": frozenset({
             "schema", "classification_sha256", "correlation_id",
+        }),
+        "skill_v3_selective_compiler_shadow_failure": frozenset({
+            "schema", "run_or_task_id_sha256", "stage", "compiler_version",
+            "selector_version", "error_class", "error_message_hash",
+            "source_call_site", "failure_count_increment",
+            "production_continued", "shadow_output_used_by_model",
+            "shadow_invocation_id", "failure_event_sha256",
+            "input_binding_sha256",
         }),
     }
 

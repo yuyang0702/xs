@@ -9,6 +9,7 @@ import threading
 import unicodedata
 import uuid
 from contextlib import contextmanager, nullcontext
+from collections import deque
 from collections.abc import Awaitable, Callable, Mapping, Sequence
 from dataclasses import asdict, dataclass, replace
 from datetime import datetime, timezone
@@ -304,6 +305,10 @@ from novel_flywheel.reliability_trace import (
     emit_observation,
     resolve_projection_provenance,
     safe_canonical_hash as reliability_hash,
+)
+from novel_flywheel.selective_skill_compiler import (
+    COMPILER_VERSION as SKILL_V3_COMPILER_VERSION,
+    SELECTOR_POLICY_VERSION as SKILL_V3_SELECTOR_VERSION,
 )
 from novel_flywheel.canonical_shadow import observe_maintenance_shadow
 from novel_flywheel.short_canonical_promotion import (
@@ -864,9 +869,114 @@ class WorkflowService:
         self.local_nlp = local_nlp
         self.references = references
         self.skill_context_shadow_observer = skill_context_shadow_observer
+        # Instance-local operational evidence only. It is bounded and is not
+        # consulted by production prompt, routing, authority, retry, or model
+        # execution decisions.
+        self.skill_v3_shadow_failure_count = 0
+        self.skill_v3_shadow_failure_evidence_drop_count = 0
+        self.skill_v3_shadow_failure_records: deque[dict[str, object]] = deque(
+            maxlen=64,
+        )
         self.generated_artifacts = GeneratedArtifactGateway()
         self.protocol_route_circuit = ProtocolRouteCircuitBreaker()
         self.coordinator = WorkflowCoordinator(self)
+
+    def _record_skill_v3_shadow_failure(
+        self,
+        *,
+        project: Project,
+        run_id: str,
+        shadow_payload: Mapping[str, object] | None,
+        exc: BaseException,
+    ) -> None:
+        """Emit one privacy-safe failure observation without affecting work."""
+
+        input_binding_sha256 = (
+            reliability_hash(dict(shadow_payload), root=project.path)
+            if shadow_payload is not None else None
+        ) or hashlib.sha256(b"skill-v3-shadow-input-not-available").hexdigest()
+        run_or_task_id_sha256 = hashlib.sha256(
+            str(run_id).encode("utf-8", errors="replace")
+        ).hexdigest()
+        shadow_invocation_id = reliability_hash({
+            "workflow_run_identity_sha256": run_or_task_id_sha256,
+            "input_binding_sha256": input_binding_sha256,
+            "source_call_site": (
+                "WorkflowService._stage.skill_context_shadow_observer"
+            ),
+        }) or hashlib.sha256(
+            (run_or_task_id_sha256 + input_binding_sha256).encode("ascii")
+        ).hexdigest()
+        error_message_hash = failure_evidence_sha256(
+            exc,
+            boundary="WorkflowService._stage.skill_context_shadow_observer",
+        )
+        error_class = re.sub(
+            r"[^A-Za-z0-9_.-]", "_", type(exc).__name__,
+        )[:128] or "Exception"
+        payload: dict[str, object] = {
+            "schema": "SkillV3ShadowFailureObservationV1",
+            "schema_version": 1,
+            "run_or_task_id_sha256": run_or_task_id_sha256,
+            "shadow_invocation_id": shadow_invocation_id,
+            "stage": "planning",
+            "compiler_version": SKILL_V3_COMPILER_VERSION,
+            "selector_version": SKILL_V3_SELECTOR_VERSION,
+            "case_or_workload_id": (
+                str(shadow_payload.get("task_case"))[:128]
+                if shadow_payload is not None
+                and shadow_payload.get("task_case") is not None
+                else "NOT_AVAILABLE_BY_STAGE"
+            ),
+            "error_class": error_class,
+            "error_message_hash": error_message_hash,
+            "source_call_site": (
+                "WorkflowService._stage.skill_context_shadow_observer"
+            ),
+            "failure_count_increment": 1,
+            "failure_count": self.skill_v3_shadow_failure_count,
+            "input_binding_sha256": input_binding_sha256,
+            "rendered_context_sha256": "NOT_AVAILABLE_BY_STAGE",
+            "production_continued": True,
+            "shadow_output_used_by_model": False,
+            "raw_exception_persisted": False,
+            "traceback_persisted": False,
+            "skill_source_text_persisted": False,
+        }
+        payload["failure_event_sha256"] = reliability_hash(
+            payload, root=project.path,
+        ) or hashlib.sha256(
+            (
+                error_message_hash + input_binding_sha256
+                + run_or_task_id_sha256
+            ).encode("ascii")
+        ).hexdigest()
+        trace_written = False
+        try:
+            trace_written = emit_observation(
+                project.path,
+                event_type="skill_v3_selective_compiler_shadow_failure",
+                source_component=(
+                    "WorkflowService._stage.skill_context_shadow_observer"
+                ),
+                source_writer="skill_v3_shadow_failure_observer_v1",
+                observation_status="confirmed",
+                payload=payload,
+                run_id=run_id,
+                stage_id="planning_event_realization_skill_context_shadow",
+                semantic_domain="unknown",
+            )
+        except Exception:
+            # A substituted or future trace sink may violate emit_observation's
+            # no-raise contract. Keep the bounded local counter/record and do
+            # not recursively attempt another observation.
+            trace_written = False
+        if not trace_written:
+            self.skill_v3_shadow_failure_evidence_drop_count += 1
+        self.skill_v3_shadow_failure_records.append({
+            **payload,
+            "trace_event_written": trace_written,
+        })
 
     def _convert_generated_object(
         self, raw: str, run_path: Path, *, contract_name: str,
@@ -26810,6 +26920,7 @@ class WorkflowService:
                 # text.  Any observer failure is observationally fail-open and
                 # cannot alter the production prompt, model input, authority,
                 # route, validator, or retry path.
+                shadow_payload: dict[str, object] | None = None
                 try:
                     shadow_contract_id = (
                         f"{structured_contract.name}@{structured_contract.version}"
@@ -26829,7 +26940,7 @@ class WorkflowService:
                             separators=(",", ":"),
                         ).encode("utf-8")).hexdigest()
                     )
-                    self.skill_context_shadow_observer({
+                    shadow_payload = {
                         "stage": "planning",
                         "substage": "event_realization",
                         "task_case": "runtime-planning-shadow",
@@ -26868,9 +26979,21 @@ class WorkflowService:
                         ),
                         "wrapper_and_estimator_margin_tokens": 1024,
                         "stage_split_available": capacity_splitter is not None,
-                    })
-                except Exception:
-                    pass
+                    }
+                    self.skill_context_shadow_observer(shadow_payload)
+                except Exception as shadow_exc:
+                    self.skill_v3_shadow_failure_count += 1
+                    try:
+                        self._record_skill_v3_shadow_failure(
+                            project=project,
+                            run_id=run_id,
+                            shadow_payload=shadow_payload,
+                            exc=shadow_exc,
+                        )
+                    except Exception:
+                        # The instance-local counter remains the final bounded
+                        # fallback. Do not recurse and never block production.
+                        self.skill_v3_shadow_failure_evidence_drop_count += 1
             compact_context = layered_context
             model_skill_prompt = (
                 self.skill_prompts.compact(skill_run.prompt, skill_run.receipts)
