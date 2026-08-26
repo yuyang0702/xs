@@ -2076,3 +2076,24 @@ for sealed historical evidence. V3 requires a fresh disabled B-only revalidation
 candidate and later single-use user approval before any real request;
 implementation alone grants no approval, nonce, route access, cutover, or
 execution authority.
+
+## Skill V3 selective-verbatim compiler shadow
+
+`SelectiveSkillCompilerV1` reads the checked-in repo Skill section index and
+deterministically selects exact original `references/**` sections for the five
+closed-world Planning/Event Realization demand classes. It preserves section
+bodies byte-for-byte after line-ending normalization, closes declared
+dependencies, rejects stale source/index bindings, removes only optional
+support on overflow, and otherwise returns a typed stage-split/fail-closed
+diagnostic. Its receipt binds source and section hashes, ordering, budget,
+omissions, rendered-context hash, and all semantic cache inputs.
+
+`WorkflowService` exposes a disabled-by-default
+`skill_context_shadow_observer` seam immediately after the existing Skill
+resolver and before production compaction. The seam receives only local
+identities, hashes, counts, and capacity facts; it never receives raw story or
+Prompt text. Observer output is not used by the model, validator, authority,
+router, retry path, or production prompt assembly. Observer failures are
+swallowed, so enabling or failing the offline shadow cannot alter the current
+compressed Skill context or Provider request. This is evidence-only shadow
+infrastructure and does not authorize Skill V3 or Planning V2 cutover.

@@ -848,7 +848,10 @@ class WorkflowService:
                  skills: SkillGate, crewai_data_dir: Path | None = None,
                  skill_prompts: SkillPromptCompactor | None = None,
                  constraint_prompts: ConstraintPromptCompactor | None = None,
-                 local_nlp=None, references=None) -> None:
+                 local_nlp=None, references=None,
+                 skill_context_shadow_observer: (
+                     Callable[[dict[str, object]], object] | None
+                 ) = None) -> None:
         self.db = db
         self.projects = projects
         self.gateway = gateway
@@ -860,6 +863,7 @@ class WorkflowService:
         self.constraint_prompts = constraint_prompts or ConstraintPromptCompactor()
         self.local_nlp = local_nlp
         self.references = references
+        self.skill_context_shadow_observer = skill_context_shadow_observer
         self.generated_artifacts = GeneratedArtifactGateway()
         self.protocol_route_circuit = ProtocolRouteCircuitBreaker()
         self.coordinator = WorkflowCoordinator(self)
@@ -26801,6 +26805,72 @@ class WorkflowService:
                 preliminary_output_budget or 0,
                 preliminary_fallback_budget or 0,
             )
+            if self.skill_context_shadow_observer is not None and stage == "planning":
+                # Shadow-only: pass hashes/counts/identities, never prompt/story
+                # text.  Any observer failure is observationally fail-open and
+                # cannot alter the production prompt, model input, authority,
+                # route, validator, or retry path.
+                try:
+                    shadow_contract_id = (
+                        f"{structured_contract.name}@{structured_contract.version}"
+                        if structured_contract is not None
+                        else "planning-stage-default-v1"
+                    )
+                    shadow_contract_schema_sha256 = (
+                        structured_contract.schema_sha256()
+                        if structured_contract is not None
+                        else hashlib.sha256(json.dumps(
+                            {
+                                "stage": stage,
+                                "model_role": gateway_role,
+                            },
+                            ensure_ascii=False,
+                            sort_keys=True,
+                            separators=(",", ":"),
+                        ).encode("utf-8")).hexdigest()
+                    )
+                    self.skill_context_shadow_observer({
+                        "stage": "planning",
+                        "substage": "event_realization",
+                        "task_case": "runtime-planning-shadow",
+                        "task_contract_id": shadow_contract_id,
+                        "task_contract_schema_sha256": (
+                            shadow_contract_schema_sha256
+                        ),
+                        "creative_demand_class": project.metadata.get(
+                            "creative_demand_class"
+                        ),
+                        "resolved_skill_ids": tuple(skills),
+                        "resolved_skill_source_hashes": tuple(
+                            (receipt.skill_name, receipt.content_hash)
+                            for receipt in skill_run.receipts
+                        ),
+                        "authority_fact_hashes": (
+                            ("node_authority", node_authority_sha256),
+                            ("node_input", node_input_sha256),
+                        ),
+                        "safe_context_window_tokens": (
+                            self._route_safe_context_window(
+                                gateway_role,
+                                prefer_configured_fallback=(
+                                    prefer_configured_fallback
+                                ),
+                                include_configured_fallback=(
+                                    route_capacity_guard
+                                    and not prefer_configured_fallback
+                                    and not primary_only
+                                ),
+                            )
+                        ),
+                        "output_reserve_tokens": preliminary_route_reserve,
+                        "non_skill_input_tokens": estimate_input_tokens(
+                            stage_system + "\n" + constraints + "\n" + user
+                        ),
+                        "wrapper_and_estimator_margin_tokens": 1024,
+                        "stage_split_available": capacity_splitter is not None,
+                    })
+                except Exception:
+                    pass
             compact_context = layered_context
             model_skill_prompt = (
                 self.skill_prompts.compact(skill_run.prompt, skill_run.receipts)
