@@ -1,0 +1,20 @@
+{
+  "approval_binding_sha256": "f1c6f785eca0e955ac63fb4cec4f15782d55b4e42813679bbf8ede79c46806b4",
+  "approval_readiness_packet_sha256": "1ed7d0eb79127c2ffa74f449770bec6d3a9ce1d320a34b517e9df6d249c4416e",
+  "arm_role": "B_ARM",
+  "candidate_sha256": "c3b8562c359328148e34215db3c5b36e432e6bfe3bdd061740f0ab9299d30bdd",
+  "case_id": "restored-character-heavy-v2-residual-v3",
+  "context_characters": 2998,
+  "context_sha256": "98c5adc38074f442a986764fb140baf4d3bf3fa1ab58e34ba7f82b7ddc8888ba",
+  "nonce_id": "skill-v2-pair1-residual-v3-b-only-nonce-20260826t123511z-5ea50d97",
+  "phase_b_signed_preflight_receipt_sha256": "fc1a4ebb7547a4ec912fb8f9499d3a60d06c3fb025af1219c970cd6557f42103",
+  "profile_sha256": "82a4542326e9b20771efc5f05e080ff0ac56438bef8288d61f30e6d905af708a",
+  "schema": "SkillV2Pair1ResidualV3ExecutionIdentityBindingV1",
+  "signed_approval_file_sha256": "109a0a7cef03926cec5521c182498568015205104d62a291a6e01f61180d1806",
+  "signed_approval_id": "skill-v2-pair1-residual-v3-b-only-approval-20260826t123511z-4c189e07",
+  "signed_approval_sha256": "a66d136ca756f3fbd6759411e90c8d88a0c87bac1c5f88ce5ca107f5c86c3a9e",
+  "skill_arm": "RESTORED_SKILL_V2_CHARACTER_CORE_V3",
+  "status": "EXACT",
+  "successor_v3_ab_lock_sha256": "817d88552c273fc2a9521423725af7460fd09b83b9d3eb558d2bd3cacaee75cf",
+  "version": 1
+}

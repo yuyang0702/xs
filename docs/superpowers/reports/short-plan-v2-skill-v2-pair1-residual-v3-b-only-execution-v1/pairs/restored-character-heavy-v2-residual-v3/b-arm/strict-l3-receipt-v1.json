@@ -1,0 +1,17 @@
+{
+  "automatic_level": "L1",
+  "baseline_used": true,
+  "blocker_count": 0,
+  "change_scope": "execution evidence only plus deletion of its isolated runtime database copy",
+  "core_path_count": 0,
+  "declared_level": "L3",
+  "external_actions_during_gate": 0,
+  "forward_risk_report_required": false,
+  "recommended_level": "L3",
+  "schema": "SkillV2Pair1ResidualV3ExecutionSealStrictL3ReceiptV1",
+  "source_path_count": 0,
+  "status": "PASS",
+  "team_review_requested": false,
+  "version": 1,
+  "warning_count": 0
+}

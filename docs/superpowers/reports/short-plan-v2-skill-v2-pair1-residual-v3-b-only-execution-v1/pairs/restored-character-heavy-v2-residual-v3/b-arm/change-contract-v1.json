@@ -1,0 +1,46 @@
+{
+  "allowed_changes": [
+    "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-residual-v3-b-only-execution-v1/**"
+  ],
+  "authority_impact": {
+    "current_candidate": "read-only",
+    "execution_evidence": "changed only by verification metadata, cleanup receipt, manifest, and seal",
+    "formal_manuscript": "not involved",
+    "provider_route_credentials": "not involved during seal",
+    "runtime_skill_context": "read-only",
+    "story_state_canon_ready": "read-only; mutation counters must remain zero"
+  },
+  "authorization": "operation",
+  "current_behavior_and_evidence": "One unsealed V3 B treatment execution root exists with artifact, execution receipt, consumed ledger, current-chat permission receipt, and isolated runtime DB copy.",
+  "focused_tests": "Residual V3 binding/negative/terminal tests excluding absence-only Phase-A cases; direct artifact/domain revalidation.",
+  "forbidden_narrowing": "Artifact existence alone is not success; all mandatory terminal-tail, identity, accounting, isolation, privacy, and cleanup invariants must pass.",
+  "full_suite_requirement": "Not required because production source, tests, runtime behavior, schemas, and validators are unchanged.",
+  "operational_definition": "Validate exact sealed identities, one-attempt accounting, consumed nonce, terminal local validation/freeze/persistence, artifact bytes, isolation, privacy, temporary DB cleanup, and manifest coverage; then commit only the exact execution evidence root.",
+  "original_material_must": "No new Provider/model request, credential lookup, network access, approval, nonce, retry, fallback, route switch, resume, second dispatch, Pair 2-5 execution, cutover, or Full Short.",
+  "protected_unchanged_behavior": [
+    "src/**",
+    "baml_src/**",
+    "tools/**",
+    "tests/**",
+    "V3 Skill profile/context",
+    "fixture and validators",
+    "A control and prior B artifacts",
+    "blind evidence",
+    "production data"
+  ],
+  "rejected_alternatives": [
+    "rerun Provider request",
+    "infer success from artifact presence",
+    "rewrite generated artifact",
+    "reuse prior blind judgment",
+    "commit isolated database"
+  ],
+  "related_tests": "Planning V2 Slice1 artifact and audit serialization tests.",
+  "requested_outcome": "Verify and seal the already-created residual V3 Pair 1 B-only execution evidence in exactly one evidence-only commit.",
+  "resolution_status": "case_fixed",
+  "rollback_path": "Before commit, remove only newly generated seal metadata while preserving the original execution evidence; after commit, revert the evidence-only commit if explicitly authorized.",
+  "scope_classification": "closed_world",
+  "selected_approach": "Reconstruct every binding from sealed approval/readiness and existing execution bytes; revalidate artifact through production Pydantic/domain validators; remove only the isolated DB copy after hashing and proving production DB unchanged; materialize hash-only evidence and seal once.",
+  "unresolved_user_decisions": [],
+  "version": 1
+}

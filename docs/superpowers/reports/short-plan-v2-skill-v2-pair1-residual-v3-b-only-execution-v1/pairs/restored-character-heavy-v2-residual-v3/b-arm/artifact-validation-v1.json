@@ -1,0 +1,17 @@
+{
+  "artifact_file_sha256": "b5833ba6faf2fdb69b74a9f073c25ece537cc13e01694648e97f4dddda5d0bce",
+  "artifact_file_sha_match": true,
+  "artifact_schema": "EventRealizationArtifactV1",
+  "commit_performed": false,
+  "conversion_audit_sha256": "5b61a0dae8620243333aa0131ebf756f9cec4519556abadf67043e8552becc22",
+  "freeze_state": "FROZEN",
+  "literary_bytes_rewritten": false,
+  "payload_sha256": "19c107a0fe5d13e2afb4a036d0cce7a71cee4284825e3c6ae19e0534555d3b32",
+  "production_authority": false,
+  "schema": "SkillV2Pair1ResidualV3ArtifactValidationV1",
+  "shadow_only": true,
+  "status": "PASS",
+  "validation_receipt_sha256": "140c5a2fc65a45ba76ac7f935feeab6c6c9221b334b76e4d3dc738f607e4da5a",
+  "validation_status": "PASS",
+  "version": 1
+}

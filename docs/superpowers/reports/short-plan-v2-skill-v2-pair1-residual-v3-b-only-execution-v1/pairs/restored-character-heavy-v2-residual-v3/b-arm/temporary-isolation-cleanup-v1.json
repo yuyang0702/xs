@@ -1,0 +1,14 @@
+{
+  "execution_used_isolated_database_copy": true,
+  "no_production_db_mutation_from_execution": true,
+  "production_db_blob_sha1": "7fd01c0c1b13d6b2298b92b7db20c04187a18d72",
+  "production_db_file_sha256": "0fccb8aeca27731c297104622804ed689edfe3d33509a399ddf149240e4376e3",
+  "production_db_matches_head_blob": "NOT_APPLICABLE_UNTRACKED_RUNTIME_DB",
+  "production_route_input_bindings_match_sealed_packet": true,
+  "schema": "SkillV2Pair1ResidualV3TemporaryIsolationCleanupV1",
+  "status": "PASS",
+  "temporary_isolated_db_copy_present": false,
+  "temporary_isolated_db_copy_used": true,
+  "temporary_isolated_db_file_sha256_before_cleanup": "ceedb56b0287711367beb7457dbc400752f82d962618d2ed127e1941a293c2c7",
+  "version": 1
+}

@@ -1,0 +1,12 @@
+{
+  "algorithm": "SHA-256",
+  "arm_role": "B_ARM",
+  "artifact_file_sha256": "b5833ba6faf2fdb69b74a9f073c25ece537cc13e01694648e97f4dddda5d0bce",
+  "canonical_line_ending": "LF",
+  "case_id": "restored-character-heavy-v2-residual-v3",
+  "coverage": "all execution evidence payload files except manifest and final report",
+  "evidence_encoding": "UTF-8",
+  "manifest_definition_sha256": "d7fa212585da0ea0cf7cd08cbbb812951f0dcc7d9961cc480bed86de0c6fefa7",
+  "schema": "SkillV2Pair1ResidualV3ExecutionManifestDefinitionV1",
+  "version": 1
+}

@@ -1,0 +1,15 @@
+{
+  "execution_identity_review": "PASS",
+  "final_diff_scope": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-residual-v3-b-only-execution-v1/pairs/restored-character-heavy-v2-residual-v3/b-arm/**",
+  "independence_claimed": false,
+  "isolation_review": "PASS",
+  "new_hard_issue_count": 0,
+  "privacy_review": "PASS",
+  "raw_request_sha256": "192ff4ce4ed053f3da401c3d014a0c684b4f363b5ff094bdfba853409bf0758f",
+  "review_mode": "SINGLE_AGENT",
+  "schema": "SkillV2Pair1ResidualV3ExecutionSealCleanRoomReviewV1",
+  "status": "PASS",
+  "task_baseline": "skill-v2-pair1-residual-v3-b-execution-seal-v1.json",
+  "terminal_tail_review": "PASS",
+  "version": 1
+}

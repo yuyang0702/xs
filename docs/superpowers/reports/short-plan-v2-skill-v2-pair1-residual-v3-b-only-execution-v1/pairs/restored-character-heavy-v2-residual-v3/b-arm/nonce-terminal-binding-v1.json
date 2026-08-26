@@ -1,0 +1,17 @@
+{
+  "approval_readiness_packet_sha256": "1ed7d0eb79127c2ffa74f449770bec6d3a9ce1d320a34b517e9df6d249c4416e",
+  "artifact_file_sha256": "b5833ba6faf2fdb69b74a9f073c25ece537cc13e01694648e97f4dddda5d0bce",
+  "candidate_sha256": "c3b8562c359328148e34215db3c5b36e432e6bfe3bdd061740f0ab9299d30bdd",
+  "context_sha256": "98c5adc38074f442a986764fb140baf4d3bf3fa1ab58e34ba7f82b7ddc8888ba",
+  "execution_receipt_file_sha256": "854e0ed559d8a001716f5cfb0a7a0a528d365d14fe097e2b09530f122ef223c5",
+  "nonce_id": "skill-v2-pair1-residual-v3-b-only-nonce-20260826t123511z-5ea50d97",
+  "nonce_reusable": false,
+  "nonce_sha256": "7309ad475a571249713b95f0925e232f261b50a8b184a3a2b3ac4ec516426f7b",
+  "nonce_usage_status": "consumed",
+  "profile_sha256": "82a4542326e9b20771efc5f05e080ff0ac56438bef8288d61f30e6d905af708a",
+  "schema": "SkillV2Pair1ResidualV3NonceTerminalBindingV1",
+  "second_execution_allowed": false,
+  "signed_approval_sha256": "a66d136ca756f3fbd6759411e90c8d88a0c87bac1c5f88ce5ca107f5c86c3a9e",
+  "status": "EXACT",
+  "version": 1
+}

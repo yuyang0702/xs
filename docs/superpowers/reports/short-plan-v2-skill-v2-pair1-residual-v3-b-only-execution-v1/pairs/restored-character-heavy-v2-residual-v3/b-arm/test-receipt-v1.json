@@ -1,0 +1,33 @@
+{
+  "absence_only_phase_a_disposition": "not applicable after the authorized execution; no source behavior changed",
+  "absence_only_phase_a_tests_rerun": false,
+  "external_actions_during_validation": {
+    "credential_lookup_count": 0,
+    "http_post_attempts": 0,
+    "model_calls": 0,
+    "network_calls": 0,
+    "paid_calls": 0,
+    "real_provider_client_creation_count": 0,
+    "real_provider_request_attempts": 0
+  },
+  "full_suite": "NOT_REQUIRED_EVIDENCE_ONLY_NO_SOURCE_CHANGE",
+  "new_owning_source_regression_count": 0,
+  "runs": [
+    {
+      "name": "residual_v3_binding_negative_terminal_matrix",
+      "result": "42 passed, 3 deselected in 81.93s"
+    },
+    {
+      "name": "planning_v2_slice1_and_audit_serialization",
+      "result": "28 passed in 0.97s"
+    },
+    {
+      "name": "direct_existing_execution_artifact_revalidation",
+      "result": "PASS"
+    }
+  ],
+  "schema": "SkillV2Pair1ResidualV3ExecutionSealTestReceiptV1",
+  "status": "PASS",
+  "summary": "residual V3 approval-independent focused 42 passed, 3 deselected; Planning V2 Slice1 and audit serialization related tests 28 passed; direct production artifact/domain revalidation PASS",
+  "version": 1
+}

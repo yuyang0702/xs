@@ -1,0 +1,20 @@
+{
+  "artifact_file_sha_match": true,
+  "artifact_frozen": true,
+  "experiment_isolation": "PASS",
+  "fresh_blind_evaluation_ready": true,
+  "nonce_usage_status": "consumed",
+  "pair1_residual_v3_b_status": "PASS_READY_TO_SEAL",
+  "pair1_residual_v3_b_treatment_sample_valid": true,
+  "pair1_residual_v3_revalidation_pair_complete": true,
+  "post_commit_status_after_exact_evidence_only_seal": "PASS_SEALED",
+  "prior_v2_blind_judgment_reusable": false,
+  "production_authority": false,
+  "real_execution_once": true,
+  "schema": "SkillV2Pair1ResidualV3TreatmentSampleValidityV1",
+  "status": "PASS",
+  "story_state_canon_ready_mutations": "0/0/0",
+  "successor_v3_ab_lock": "PASS",
+  "terminal_local_pipeline": "PASS",
+  "version": 1
+}

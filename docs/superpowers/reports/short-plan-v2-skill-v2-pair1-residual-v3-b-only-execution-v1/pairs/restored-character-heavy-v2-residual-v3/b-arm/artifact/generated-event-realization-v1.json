@@ -1,0 +1,38 @@
+{
+  "artifact": {
+    "artifact_id": "slice1-artifact-0419f3befa341a87a152016c49375df0",
+    "artifact_revision": 1,
+    "commit_performed": false,
+    "dependency_artifact_ids": [],
+    "dependency_set_sha256": "f9a6b03c46a03f77a09269e1db3625f651bcd41333d3b6092e4242bda3cc1e95",
+    "formal_event_contract_sha256": "55a5b2b47210d3b6106f7b985d35f888be348ad7aacfd4a6dcc4222c62fc2f70",
+    "formal_event_id": "EV-3D3AE01E",
+    "formal_event_ordinal": 0,
+    "freeze_state": "FROZEN",
+    "narrative": "The rival reaches the service gate just as the west watch begins its sweep. A strip of red cloth, caught on the latch, marks the gate as compromised; beyond it, boots scrape over the gravel and a lantern beam passes between the bars. The protagonist has the key and one clear route out. The rival has neither, and the sealed packet under their coat would expose the protagonist’s earlier mistake if it is found.\n\n“Good,” the protagonist says softly. “You always did arrive when the sensible options were gone.”\n\nThe irony nearly holds. Then the rival sees the blood on the protagonist’s cuff and the missing seal from the packet. Their hand moves toward the alarm cord—not to call the watch, but to force an explanation. The protagonist catches the cord before it rings. The rival twists free, making enough noise that the nearest lantern turns back.\n\nThe protagonist must choose quickly: run through the gate alone, or spend the only key on the person most likely to name what happened. They shove the rival into the narrow drainage recess and step into the lantern’s path, drawing the watchman’s attention. When challenged, the protagonist drops the packet into the mud and claims it as contraband taken from the rival. The lie protects the rival’s name but puts the evidence, and therefore the protagonist’s own defense, within the watchman’s reach.\n\nThe rival understands the cost. While the watchman bends to retrieve the packet, the rival reaches through the bars and uses a hairpin to lift the inner catch. The gate opens only far enough for one person. The protagonist pushes the packet back through first. The rival stares at it, then at the bloodied cuff.\n\n“Keep it,” the protagonist says. “Call it payment for not asking why I was there.”\n\n“That is not payment.”\n\n“No. It is the cheaper apology.”\n\nThe rival takes the packet but does not leave. Instead, they hold the gate against the watchman’s returning shoulder while the protagonist crosses. Their trust is not restored; it has acquired a condition. The rival will conceal the protagonist’s guilt until dawn, provided the protagonist returns for the person still trapped inside. As the gate slams shut, the red cloth tears free and falls into the mud, leaving the latch unmarked—and the way back visibly harder to find.",
+    "parent_authority_sha256": "5271869c41776bc7f8f3023729246899dd76b1bc19c22cb98854a5a976dafada",
+    "payload_sha256": "19c107a0fe5d13e2afb4a036d0cce7a71cee4284825e3c6ae19e0534555d3b32",
+    "predecessor_boundary_sha256": "76a68bbed1248ae022a28653d63d27cef26c0810683a610c74cf1bb4ebef4360",
+    "promotion_eligible": false,
+    "provenance": {
+      "contract_identity": "planning_event_realization_shadow_v1@1",
+      "producer_kind": "future_model_shadow",
+      "source_candidate_sha256": "643cf015076cef48ea32d1253b4fbc6e71fe4e6daabd88953be2a28043606457"
+    },
+    "schema": "EventRealizationArtifactV1",
+    "scope_id": "slice1-scope-42008bf8685584e41c985df99da36b16",
+    "segment_ordinal": 0,
+    "shadow_only": true,
+    "stage": "event_realization_unit_shadow_v1",
+    "title": "The Bargain at the Service Gate",
+    "validation_receipt_sha256": "140c5a2fc65a45ba76ac7f935feeab6c6c9221b334b76e4d3dc738f607e4da5a",
+    "validation_status": "PASS",
+    "version": 1
+  },
+  "cohort_id": "skill-v2-pair1-residual-v3-b-revalidation-disabled-20260826-001",
+  "conversion_audit_sha256": "5b61a0dae8620243333aa0131ebf756f9cec4519556abadf67043e8552becc22",
+  "production_authority": false,
+  "schema": "SkillV2Pair1DemandAwareBOnlyGeneratedArtifactV1",
+  "skill_arm": "RESTORED_SKILL_V2_CHARACTER_CORE_V3",
+  "version": 1
+}

@@ -1,0 +1,18 @@
+{
+  "a_control_artifact_sha256": "f6aa5c49d64f38aefe71b01fc9eb0abf2ea3a08faba6f5bc3dbcb38c665e3f8f",
+  "a_control_exact_prose_overlap_count": 0,
+  "a_control_mutated": false,
+  "a_control_prose_egress": false,
+  "a_control_prose_in_v3_b_model_input": false,
+  "a_control_status": "PASS_SEALED",
+  "a_result_used_only_as_sealed_control_evidence": true,
+  "prior_b_exact_prose_overlap_count": 0,
+  "prior_b_prose_egress": false,
+  "prior_b_prose_in_v3_b_model_input": false,
+  "prior_b_used_as_current_treatment": false,
+  "private_blind_evidence_egress": false,
+  "private_blind_evidence_in_v3_b_input": false,
+  "schema": "SkillV2Pair1ResidualV3ExecutionExperimentIsolationV1",
+  "status": "PASS",
+  "version": 1
+}

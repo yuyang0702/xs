@@ -1,0 +1,16 @@
+{
+  "fallback_attempts": 0,
+  "http_post_attempts": 1,
+  "model_logical_calls": 1,
+  "network_request_attempts": 1,
+  "paid_calls": "NOT_TRACKED_SEPARATELY_BY_CANONICAL_RECEIPT",
+  "real_provider_request_attempts": 1,
+  "resume_attempts": 0,
+  "retry_attempts": 0,
+  "route_switch_attempts": 0,
+  "schema": "SkillV2Pair1ResidualV3ExecutionAttemptAccountingV1",
+  "second_dispatch_attempts": 0,
+  "single_dispatch_guard": "PASS",
+  "status": "EXACT",
+  "version": 1
+}

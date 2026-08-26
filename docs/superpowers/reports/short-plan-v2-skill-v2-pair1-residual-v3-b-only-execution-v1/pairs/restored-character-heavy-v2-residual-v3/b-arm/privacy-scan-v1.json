@@ -1,0 +1,23 @@
+{
+  "a_control_prose_egress_count": 0,
+  "auth_header_persistence": false,
+  "blind_evidence_egress_count": 0,
+  "credential_persistence": false,
+  "files_scanned": 21,
+  "hidden_reasoning_persistence": false,
+  "patterns_checked": [
+    "anthropic_api_key",
+    "api_key_assignment",
+    "authorization_header",
+    "openai_api_key",
+    "raw_provider_payload_field",
+    "secret_provider_url"
+  ],
+  "prior_b_prose_egress_count": 0,
+  "privacy_match_count": 0,
+  "raw_provider_payload_persistence": false,
+  "schema": "SkillV2Pair1ResidualV3ExecutionPrivacyScanV1",
+  "secret_provider_url_persistence": false,
+  "status": "PASS",
+  "version": 1
+}
