@@ -1,0 +1,13 @@
+{
+  "baseline_head": "1d6650f40c251392735c2e6ab4e1eb31b49a4c87",
+  "final_diff_scope": "APPROVAL_EVIDENCE_ONLY",
+  "forward_risk_report_bound": true,
+  "independence_claimed": false,
+  "new_hard_issue_count": 0,
+  "raw_request_sha256": "0172b530868e5d99cfacaa7f273479216cd6d9e8017eeed31f29315a0e3a044d",
+  "raw_test_output_bound": true,
+  "review_mode": "SINGLE_AGENT_CLEAN_ROOM",
+  "schema": "SkillV2Pair1DemandAwareBOnlyApprovalCleanRoomReviewV1",
+  "status": "PASS",
+  "version": 1
+}

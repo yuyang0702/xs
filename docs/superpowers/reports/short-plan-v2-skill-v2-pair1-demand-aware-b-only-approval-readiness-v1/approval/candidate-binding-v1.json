@@ -1,0 +1,12 @@
+{
+  "arm_role": "B_ARM",
+  "candidate_sha256": "97adb8c54eacbc02314871b2beeb146dae96758e6dc541571605a403537cbaf5",
+  "case_id": "restored-character-heavy-v2-demand-aware-core-v2",
+  "context_chars": 2925,
+  "context_sha256": "7d0f6309ede2261f2f6a1098d394937948bf5b50eb9248266ab350fd91da9adc",
+  "profile_sha256": "109bb50e2e649c5841bd7c83513100caa0d93cf3c1bb5db845e489b5ae10856d",
+  "schema": "SkillV2Pair1DemandAwareBOnlyApprovalCandidateBindingV1",
+  "skill_arm": "RESTORED_SKILL_V2_CHARACTER_CORE_V2",
+  "status": "EXACT",
+  "version": 1
+}

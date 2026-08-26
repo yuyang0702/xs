@@ -1,0 +1,13 @@
+{
+  "approval_id": "skill-v2-pair1-demand-aware-b-v1-approval-20260826t035219z-10cb0afb",
+  "nonce_consumed": false,
+  "nonce_id": "skill-v2-pair1-demand-aware-b-v1-nonce-20260826t035219z-81322168",
+  "nonce_reserved": false,
+  "nonce_reuse_allowed": false,
+  "nonce_sha256": "546413d08c1fea06f0ed186e74de9482b3ad22d34bfb828428180193973f35c1",
+  "nonce_status": "FRESH_UNRESERVED_UNCONSUMED",
+  "raw_nonce_omitted_from_this_receipt": true,
+  "schema": "SkillV2Pair1DemandAwareBOnlyNonceStateV1",
+  "usage_status": "unused",
+  "version": 1
+}

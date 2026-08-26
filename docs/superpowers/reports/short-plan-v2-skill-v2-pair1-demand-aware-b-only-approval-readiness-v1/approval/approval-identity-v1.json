@@ -1,0 +1,21 @@
+{
+  "approval_domain": "skill-v2-pair1-demand-aware-b-only-signed-approval-v1",
+  "approval_id": "skill-v2-pair1-demand-aware-b-v1-approval-20260826t035219z-10cb0afb",
+  "approval_identity_sha256": "d0e968b5a30e897d682ff108406a60c0904644c1758462b475ef2615ded48215",
+  "approval_readiness_packet_sha256": "762e98d2f83e919523aaced3131f29ef762773f496ffc0a3706a3c9c9f553e7b",
+  "arm_role": "B_ARM",
+  "candidate_sha256": "97adb8c54eacbc02314871b2beeb146dae96758e6dc541571605a403537cbaf5",
+  "case_id": "restored-character-heavy-v2-demand-aware-core-v2",
+  "cohort_id": "skill-v2-pair1-demand-aware-b-revalidation-disabled-v1",
+  "created_at": "2026-08-26T03:52:19Z",
+  "expires_at": "2026-08-28T03:52:19Z",
+  "fresh": true,
+  "named_approver": "USER_PROJECT_OWNER",
+  "nonce_id": "skill-v2-pair1-demand-aware-b-v1-nonce-20260826t035219z-81322168",
+  "reuse_allowed": false,
+  "schema": "SkillV2Pair1DemandAwareBOnlyApprovalIdentityV1",
+  "scope": "SKILL_V2_PAIR1_DEMAND_AWARE_B_ONLY_REVALIDATION_SINGLE_DISPATCH_ONLY",
+  "skill_arm": "RESTORED_SKILL_V2_CHARACTER_CORE_V2",
+  "user_approval_receipt_sha256": "49cc9387a6d7aafc8c31b63e7eadbeb648e1da1dcbc2636033ca6e8164d207af",
+  "version": 1
+}

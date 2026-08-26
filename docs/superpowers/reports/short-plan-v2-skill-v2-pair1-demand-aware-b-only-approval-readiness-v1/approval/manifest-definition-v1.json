@@ -1,0 +1,9 @@
+{
+  "algorithm": "SHA-256",
+  "approval_id": "skill-v2-pair1-demand-aware-b-v1-approval-20260826t035219z-10cb0afb",
+  "coverage": "all approval evidence payload files except manifest and final report",
+  "manifest_definition_sha256": "d0111835f47ef95e92ddf589a1223c13c355275f72da58bce57adab7c88e83af",
+  "schema": "SkillV2Pair1DemandAwareBOnlyApprovalManifestDefinitionV1",
+  "signed_approval_sha256": "3650adc2e3106897c22966cf2cd8844b201626d12dc27975701e797af20f38d2",
+  "version": 1
+}

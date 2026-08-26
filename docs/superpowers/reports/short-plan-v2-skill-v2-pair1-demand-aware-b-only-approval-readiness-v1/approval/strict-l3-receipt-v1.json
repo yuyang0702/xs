@@ -1,0 +1,9 @@
+{
+  "blockers": 0,
+  "independence_claimed": false,
+  "review_mode": "SINGLE_AGENT_CLEAN_ROOM",
+  "schema": "SkillV2Pair1DemandAwareBOnlyApprovalStrictL3ReceiptV1",
+  "strict_l3": "PASS",
+  "version": 1,
+  "warnings": 0
+}

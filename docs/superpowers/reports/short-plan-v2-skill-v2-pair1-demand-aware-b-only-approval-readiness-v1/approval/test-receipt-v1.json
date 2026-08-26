@@ -1,0 +1,22 @@
+{
+  "adjacent": "50 passed in 49.66s",
+  "external_actions": {
+    "credential_lookup_count": 0,
+    "http_post_attempts": 0,
+    "model_calls": 0,
+    "network_calls": 0,
+    "paid_calls": 0,
+    "real_execution_attempts": 0,
+    "real_provider_client_creation_count": 0,
+    "real_provider_request_attempts": 0
+  },
+  "focused": "10 passed in 1.68s after finalization; pre-finalization 9 passed with 1 expected manifest skip",
+  "full_suite_binding": "exact unchanged source HEAD 1d6650f40c251392735c2e6ab4e1eb31b49a4c87; 3582 passed, 44 failed, 72 errors, 41 skipped, 6 xfailed, 1 warning; non-green items are historical sealed-state/live-parity/oracle gates and no owning-source regression",
+  "new_owning_source_regression_count": 0,
+  "raw_request_sha256": "0172b530868e5d99cfacaa7f273479216cd6d9e8017eeed31f29315a0e3a044d",
+  "schema": "SkillV2Pair1DemandAwareBOnlyApprovalTestReceiptV1",
+  "strict_l3": "PASS",
+  "strict_l3_blockers": 0,
+  "strict_l3_warnings": 0,
+  "version": 1
+}

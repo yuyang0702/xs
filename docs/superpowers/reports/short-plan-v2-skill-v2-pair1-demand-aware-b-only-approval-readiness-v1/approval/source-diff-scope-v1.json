@@ -1,0 +1,11 @@
+{
+  "baml_src_diff_count": 0,
+  "baseline_head": "1d6650f40c251392735c2e6ab4e1eb31b49a4c87",
+  "evidence_only": true,
+  "production_source_diff_count": 0,
+  "schema": "SkillV2Pair1DemandAwareBOnlyApprovalSourceDiffScopeV1",
+  "src_diff_count": 0,
+  "tests_diff_count": 0,
+  "tools_diff_count": 0,
+  "version": 1
+}

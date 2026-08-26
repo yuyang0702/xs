@@ -1,0 +1,20 @@
+{
+  "approval_creation_authorized": true,
+  "approval_readiness_packet_sha256": "762e98d2f83e919523aaced3131f29ef762773f496ffc0a3706a3c9c9f553e7b",
+  "approval_task": "SKILL_V2_PAIR_1_DEMAND_AWARE_B_ONLY_REVALIDATION_FRESH_USER_APPROVAL",
+  "arm_role": "B_ARM",
+  "authorization_source_file_sha256": "0172b530868e5d99cfacaa7f273479216cd6d9e8017eeed31f29315a0e3a044d",
+  "case_id": "restored-character-heavy-v2-demand-aware-core-v2",
+  "credential_lookup_authorized_by_this_task": false,
+  "named_approver": "USER_PROJECT_OWNER",
+  "network_authorized_by_this_task": false,
+  "nonce_consumption_authorized_by_this_task": false,
+  "nonce_reservation_authorized_by_this_task": false,
+  "paid_call_authorized_by_this_task": false,
+  "phase_b_signed_preflight_authorized": true,
+  "real_provider_execution_authorized_by_this_task": false,
+  "schema": "SkillV2Pair1DemandAwareBOnlyUserApprovalReceiptV1",
+  "skill_arm": "RESTORED_SKILL_V2_CHARACTER_CORE_V2",
+  "user_approval_receipt_sha256": "49cc9387a6d7aafc8c31b63e7eadbeb648e1da1dcbc2636033ca6e8164d207af",
+  "version": 1
+}

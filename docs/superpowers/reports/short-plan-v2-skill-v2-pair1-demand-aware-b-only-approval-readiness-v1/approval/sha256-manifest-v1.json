@@ -1,0 +1,125 @@
+{
+  "algorithm": "SHA-256",
+  "coverage": "exact",
+  "definition_sha256": "d0111835f47ef95e92ddf589a1223c13c355275f72da58bce57adab7c88e83af",
+  "entry_count": 23,
+  "files": [
+    {
+      "bytes": 14,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-demand-aware-b-only-approval-readiness-v1/approval/.gitattributes",
+      "sha256": "a79691a93b46e49ce460c26ef22afcc03d6eca1e63bf2edbc20e96159510f6c9"
+    },
+    {
+      "bytes": 615,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-demand-aware-b-only-approval-readiness-v1/approval/a-control-isolation-v1.json",
+      "sha256": "7d60a3080ee39424dfadc7b1e1b1d637fd1532516d0e44feb6d548a75f18b003"
+    },
+    {
+      "bytes": 924,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-demand-aware-b-only-approval-readiness-v1/approval/approval-binding-v1.json",
+      "sha256": "1bc5a89ad84e27ad706a6b134ed02fd658212ef3f35561d70a398d3670b1c755"
+    },
+    {
+      "bytes": 1188,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-demand-aware-b-only-approval-readiness-v1/approval/approval-identity-v1.json",
+      "sha256": "00b4941b8c56d9ceb346aa707df7c1e945d5f6fba64a44a901bc430075e84479"
+    },
+    {
+      "bytes": 543,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-demand-aware-b-only-approval-readiness-v1/approval/candidate-binding-v1.json",
+      "sha256": "7ecaeaf82a5aebe795fd018c3f10ee85dba393454a79a3065a819fb4eaa24d33"
+    },
+    {
+      "bytes": 3748,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-demand-aware-b-only-approval-readiness-v1/approval/forward-risk-report-v2.json",
+      "sha256": "005f59b97059368ac83f63e9bf36dbd54f93ee569a12b8ce9758ba5dd09405b1"
+    },
+    {
+      "bytes": 794,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-demand-aware-b-only-approval-readiness-v1/approval/future-current-chat-permission-gate-v1.json",
+      "sha256": "59189e9e4f92c7def5722010b0e6a96f05660cb8cfc19bb5f5c6139feaaff74f"
+    },
+    {
+      "bytes": 560,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-demand-aware-b-only-approval-readiness-v1/approval/future-data-egress-scope-v1.json",
+      "sha256": "a6c3c45524f2bc03e06ff1fb740df9e54d24d136bd5e90e2f5ae67ad29f3f4f3"
+    },
+    {
+      "bytes": 487,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-demand-aware-b-only-approval-readiness-v1/approval/manifest-definition-v1.json",
+      "sha256": "0219415c751f860c19c54f95c966e326c853d6ce23f33eb11f812a49a1ff4f89"
+    },
+    {
+      "bytes": 14682,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-demand-aware-b-only-approval-readiness-v1/approval/negative-approval-matrix-v1.json",
+      "sha256": "d85f0a98d3461d814d765186e8f77e4e171ce0846f433ac64181a1b8e868767c"
+    },
+    {
+      "bytes": 541,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-demand-aware-b-only-approval-readiness-v1/approval/nonce-state-v1.json",
+      "sha256": "5bdd015a03280a264f953653087d2c02076953c18ca9d7620620fcbb8461ce58"
+    },
+    {
+      "bytes": 693,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-demand-aware-b-only-approval-readiness-v1/approval/offline-approved-boundary-dry-run-v1.json",
+      "sha256": "d7f1ca878580987e72ea94b485b88b91534a75219bc72982dc69c1f616a517d4"
+    },
+    {
+      "bytes": 4897,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-demand-aware-b-only-approval-readiness-v1/approval/phase-b-signed-preflight-v1.json",
+      "sha256": "846e163f6ad0562949b9d5f9db37768ffb439eb9627e4a131ba05f7b05b27443"
+    },
+    {
+      "bytes": 453,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-demand-aware-b-only-approval-readiness-v1/approval/privacy-scan-v1.json",
+      "sha256": "7bb678ab8403434671682e0e85def2333b50891d157344097b97c587ba2450e0"
+    },
+    {
+      "bytes": 303,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-demand-aware-b-only-approval-readiness-v1/approval/readiness-binding-v1.json",
+      "sha256": "d1444fd41f1540ba3a6cae58090e9fe529a5f2324f158ed6b5f51a42b637190f"
+    },
+    {
+      "bytes": 115,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-demand-aware-b-only-approval-readiness-v1/approval/README.md",
+      "sha256": "ec3b7b56c45c90e3c0c636aabd0e43284fea48b88c17e886e59e08352019f647"
+    },
+    {
+      "bytes": 5564,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-demand-aware-b-only-approval-readiness-v1/approval/signed-approval-v1.json",
+      "sha256": "d9900f58c31ceef1e5304d3f886d4327d360053cf4ea22778766b769069a761b"
+    },
+    {
+      "bytes": 487,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-demand-aware-b-only-approval-readiness-v1/approval/single-agent-clean-room-review-v1.json",
+      "sha256": "e45096421d7210a2cc9f971a131be1a1fcbd02654ebc2ff615c9e5fa199a3028"
+    },
+    {
+      "bytes": 314,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-demand-aware-b-only-approval-readiness-v1/approval/source-diff-scope-v1.json",
+      "sha256": "35d993129d9585f565b46fb5bddea671b21205c02ff702bca5f5f67c5e95ca87"
+    },
+    {
+      "bytes": 222,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-demand-aware-b-only-approval-readiness-v1/approval/strict-l3-receipt-v1.json",
+      "sha256": "59521ccc096175d0d22cc98f8c109259c89fff616fad5a7974a56528aca641e5"
+    },
+    {
+      "bytes": 2109,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-demand-aware-b-only-approval-readiness-v1/approval/successor-ab-lock-binding-v1.json",
+      "sha256": "7cbb897ac36f135518338e9513e4a3c6d143c3d6b5f0572509acb2e8f62490a1"
+    },
+    {
+      "bytes": 990,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-demand-aware-b-only-approval-readiness-v1/approval/test-receipt-v1.json",
+      "sha256": "007cb7d8213ec506eff7da234327e2c7635a50f38ce7684198d1270a83748d5f"
+    },
+    {
+      "bytes": 1072,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-demand-aware-b-only-approval-readiness-v1/approval/user-approval-receipt-v1.json",
+      "sha256": "9a1d9c3a2d3778709122a6aa93f8ab2ecbd15a6ff0ad8998e7492a1e5af3620e"
+    }
+  ],
+  "schema": "SkillV2Pair1DemandAwareBOnlyApprovalSHA256ManifestV1",
+  "version": 1
+}

@@ -1,0 +1,7 @@
+{
+  "readiness_manifest_file_sha256": "f9be641073ff5c17fc4c8084a8eb416c7c49638bef09151f7bb8e106633b615e",
+  "readiness_packet_sha256": "762e98d2f83e919523aaced3131f29ef762773f496ffc0a3706a3c9c9f553e7b",
+  "schema": "SkillV2Pair1DemandAwareBOnlyReadinessBindingV1",
+  "status": "EXACT",
+  "version": 1
+}

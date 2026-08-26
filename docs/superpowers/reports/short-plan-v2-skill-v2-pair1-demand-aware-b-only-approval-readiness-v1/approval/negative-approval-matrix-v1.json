@@ -1,0 +1,467 @@
+{
+  "case_count": 28,
+  "external_actions": {
+    "credential_lookup_count": 0,
+    "http_post_attempts": 0,
+    "model_calls": 0,
+    "network_calls": 0,
+    "paid_calls": 0,
+    "real_execution_attempts": 0,
+    "real_provider_client_creation_count": 0,
+    "real_provider_request_attempts": 0
+  },
+  "overall_status": "PASS",
+  "pass_count": 28,
+  "results": [
+    {
+      "case": "stale_readiness_packet",
+      "external_actions": {
+        "credential_lookup_count": 0,
+        "http_post_attempts": 0,
+        "model_calls": 0,
+        "network_calls": 0,
+        "paid_calls": 0,
+        "real_execution_attempts": 0,
+        "real_provider_client_creation_count": 0,
+        "real_provider_request_attempts": 0
+      },
+      "nonce_reserved": false,
+      "reason_code": "packet_sha_mismatch",
+      "status": "REJECTED_BEFORE_CREDENTIAL_LOOKUP"
+    },
+    {
+      "case": "stale_candidate",
+      "external_actions": {
+        "credential_lookup_count": 0,
+        "http_post_attempts": 0,
+        "model_calls": 0,
+        "network_calls": 0,
+        "paid_calls": 0,
+        "real_execution_attempts": 0,
+        "real_provider_client_creation_count": 0,
+        "real_provider_request_attempts": 0
+      },
+      "nonce_reserved": false,
+      "reason_code": "packet_binding:candidate_sha256",
+      "status": "REJECTED_BEFORE_CREDENTIAL_LOOKUP"
+    },
+    {
+      "case": "stale_profile",
+      "external_actions": {
+        "credential_lookup_count": 0,
+        "http_post_attempts": 0,
+        "model_calls": 0,
+        "network_calls": 0,
+        "paid_calls": 0,
+        "real_execution_attempts": 0,
+        "real_provider_client_creation_count": 0,
+        "real_provider_request_attempts": 0
+      },
+      "nonce_reserved": false,
+      "reason_code": "packet_binding:skill_profile_sha256",
+      "status": "REJECTED_BEFORE_CREDENTIAL_LOOKUP"
+    },
+    {
+      "case": "stale_context",
+      "external_actions": {
+        "credential_lookup_count": 0,
+        "http_post_attempts": 0,
+        "model_calls": 0,
+        "network_calls": 0,
+        "paid_calls": 0,
+        "real_execution_attempts": 0,
+        "real_provider_client_creation_count": 0,
+        "real_provider_request_attempts": 0
+      },
+      "nonce_reserved": false,
+      "reason_code": "packet_binding:skill_context_sha256",
+      "status": "REJECTED_BEFORE_CREDENTIAL_LOOKUP"
+    },
+    {
+      "case": "stale_ab_lock",
+      "external_actions": {
+        "credential_lookup_count": 0,
+        "http_post_attempts": 0,
+        "model_calls": 0,
+        "network_calls": 0,
+        "paid_calls": 0,
+        "real_execution_attempts": 0,
+        "real_provider_client_creation_count": 0,
+        "real_provider_request_attempts": 0
+      },
+      "nonce_reserved": false,
+      "reason_code": "packet_binding:pair_lock_sha256",
+      "status": "REJECTED_BEFORE_CREDENTIAL_LOOKUP"
+    },
+    {
+      "case": "stale_a_control",
+      "external_actions": {
+        "credential_lookup_count": 0,
+        "http_post_attempts": 0,
+        "model_calls": 0,
+        "network_calls": 0,
+        "paid_calls": 0,
+        "real_execution_attempts": 0,
+        "real_provider_client_creation_count": 0,
+        "real_provider_request_attempts": 0
+      },
+      "nonce_reserved": false,
+      "reason_code": "packet_binding:a_control_reuse_binding_sha256",
+      "status": "REJECTED_BEFORE_CREDENTIAL_LOOKUP"
+    },
+    {
+      "case": "wrong_execution_entry",
+      "external_actions": {
+        "credential_lookup_count": 0,
+        "http_post_attempts": 0,
+        "model_calls": 0,
+        "network_calls": 0,
+        "paid_calls": 0,
+        "real_execution_attempts": 0,
+        "real_provider_client_creation_count": 0,
+        "real_provider_request_attempts": 0
+      },
+      "nonce_reserved": false,
+      "reason_code": "signed_binding:execution_entry_point_id",
+      "status": "REJECTED_BEFORE_CREDENTIAL_LOOKUP"
+    },
+    {
+      "case": "wrong_launcher_sha",
+      "external_actions": {
+        "credential_lookup_count": 0,
+        "http_post_attempts": 0,
+        "model_calls": 0,
+        "network_calls": 0,
+        "paid_calls": 0,
+        "real_execution_attempts": 0,
+        "real_provider_client_creation_count": 0,
+        "real_provider_request_attempts": 0
+      },
+      "nonce_reserved": false,
+      "reason_code": "critical_binding:launcher_source_sha256",
+      "status": "REJECTED_BEFORE_CREDENTIAL_LOOKUP"
+    },
+    {
+      "case": "wrong_route",
+      "external_actions": {
+        "credential_lookup_count": 0,
+        "http_post_attempts": 0,
+        "model_calls": 0,
+        "network_calls": 0,
+        "paid_calls": 0,
+        "real_execution_attempts": 0,
+        "real_provider_client_creation_count": 0,
+        "real_provider_request_attempts": 0
+      },
+      "nonce_reserved": false,
+      "reason_code": "critical_binding:route_fingerprint",
+      "status": "REJECTED_BEFORE_CREDENTIAL_LOOKUP"
+    },
+    {
+      "case": "wrong_model",
+      "external_actions": {
+        "credential_lookup_count": 0,
+        "http_post_attempts": 0,
+        "model_calls": 0,
+        "network_calls": 0,
+        "paid_calls": 0,
+        "real_execution_attempts": 0,
+        "real_provider_client_creation_count": 0,
+        "real_provider_request_attempts": 0
+      },
+      "nonce_reserved": false,
+      "reason_code": "critical_binding:model_binding_sha256",
+      "status": "REJECTED_BEFORE_CREDENTIAL_LOOKUP"
+    },
+    {
+      "case": "wrong_client",
+      "external_actions": {
+        "credential_lookup_count": 0,
+        "http_post_attempts": 0,
+        "model_calls": 0,
+        "network_calls": 0,
+        "paid_calls": 0,
+        "real_execution_attempts": 0,
+        "real_provider_client_creation_count": 0,
+        "real_provider_request_attempts": 0
+      },
+      "nonce_reserved": false,
+      "reason_code": "critical_binding:client",
+      "status": "REJECTED_BEFORE_CREDENTIAL_LOOKUP"
+    },
+    {
+      "case": "wrong_output_cap",
+      "external_actions": {
+        "credential_lookup_count": 0,
+        "http_post_attempts": 0,
+        "model_calls": 0,
+        "network_calls": 0,
+        "paid_calls": 0,
+        "real_execution_attempts": 0,
+        "real_provider_client_creation_count": 0,
+        "real_provider_request_attempts": 0
+      },
+      "nonce_reserved": false,
+      "reason_code": "critical_binding:output_cap",
+      "status": "REJECTED_BEFORE_CREDENTIAL_LOOKUP"
+    },
+    {
+      "case": "wrong_validator",
+      "external_actions": {
+        "credential_lookup_count": 0,
+        "http_post_attempts": 0,
+        "model_calls": 0,
+        "network_calls": 0,
+        "paid_calls": 0,
+        "real_execution_attempts": 0,
+        "real_provider_client_creation_count": 0,
+        "real_provider_request_attempts": 0
+      },
+      "nonce_reserved": false,
+      "reason_code": "critical_binding:validator_policy_sha256",
+      "status": "REJECTED_BEFORE_CREDENTIAL_LOOKUP"
+    },
+    {
+      "case": "approval_mismatch",
+      "external_actions": {
+        "credential_lookup_count": 0,
+        "http_post_attempts": 0,
+        "model_calls": 0,
+        "network_calls": 0,
+        "paid_calls": 0,
+        "real_execution_attempts": 0,
+        "real_provider_client_creation_count": 0,
+        "real_provider_request_attempts": 0
+      },
+      "nonce_reserved": false,
+      "reason_code": "approval_id_binding",
+      "status": "REJECTED_BEFORE_CREDENTIAL_LOOKUP"
+    },
+    {
+      "case": "approval_expiry",
+      "external_actions": {
+        "credential_lookup_count": 0,
+        "http_post_attempts": 0,
+        "model_calls": 0,
+        "network_calls": 0,
+        "paid_calls": 0,
+        "real_execution_attempts": 0,
+        "real_provider_client_creation_count": 0,
+        "real_provider_request_attempts": 0
+      },
+      "nonce_reserved": false,
+      "reason_code": "execution_window_inactive",
+      "status": "REJECTED_BEFORE_CREDENTIAL_LOOKUP"
+    },
+    {
+      "case": "stale_approval_time_preflight",
+      "external_actions": {
+        "credential_lookup_count": 0,
+        "http_post_attempts": 0,
+        "model_calls": 0,
+        "network_calls": 0,
+        "paid_calls": 0,
+        "real_execution_attempts": 0,
+        "real_provider_client_creation_count": 0,
+        "real_provider_request_attempts": 0
+      },
+      "nonce_reserved": false,
+      "reason_code": "phase_signed",
+      "status": "REJECTED_BEFORE_CREDENTIAL_LOOKUP"
+    },
+    {
+      "case": "execution_authorized_false",
+      "external_actions": {
+        "credential_lookup_count": 0,
+        "http_post_attempts": 0,
+        "model_calls": 0,
+        "network_calls": 0,
+        "paid_calls": 0,
+        "real_execution_attempts": 0,
+        "real_provider_client_creation_count": 0,
+        "real_provider_request_attempts": 0
+      },
+      "nonce_reserved": false,
+      "reason_code": "signed_binding:execution_authorized",
+      "status": "REJECTED_BEFORE_CREDENTIAL_LOOKUP"
+    },
+    {
+      "case": "nonce_reservation_before_permission",
+      "external_actions": {
+        "credential_lookup_count": 0,
+        "http_post_attempts": 0,
+        "model_calls": 0,
+        "network_calls": 0,
+        "paid_calls": 0,
+        "real_execution_attempts": 0,
+        "real_provider_client_creation_count": 0,
+        "real_provider_request_attempts": 0
+      },
+      "nonce_reserved": false,
+      "reason_code": "signed_binding:nonce_reserved",
+      "status": "REJECTED_BEFORE_CREDENTIAL_LOOKUP"
+    },
+    {
+      "case": "consumed_nonce",
+      "external_actions": {
+        "credential_lookup_count": 0,
+        "http_post_attempts": 0,
+        "model_calls": 0,
+        "network_calls": 0,
+        "paid_calls": 0,
+        "real_execution_attempts": 0,
+        "real_provider_client_creation_count": 0,
+        "real_provider_request_attempts": 0
+      },
+      "nonce_reserved": false,
+      "reason_code": "signed_binding:nonce_consumed",
+      "status": "REJECTED_BEFORE_CREDENTIAL_LOOKUP"
+    },
+    {
+      "case": "second_dispatch",
+      "external_actions": {
+        "credential_lookup_count": 0,
+        "http_post_attempts": 0,
+        "model_calls": 0,
+        "network_calls": 0,
+        "paid_calls": 0,
+        "real_execution_attempts": 0,
+        "real_provider_client_creation_count": 0,
+        "real_provider_request_attempts": 0
+      },
+      "nonce_reserved": false,
+      "reason_code": "signed_binding:second_dispatch_allowed",
+      "status": "REJECTED_BEFORE_CREDENTIAL_LOOKUP"
+    },
+    {
+      "case": "retry",
+      "external_actions": {
+        "credential_lookup_count": 0,
+        "http_post_attempts": 0,
+        "model_calls": 0,
+        "network_calls": 0,
+        "paid_calls": 0,
+        "real_execution_attempts": 0,
+        "real_provider_client_creation_count": 0,
+        "real_provider_request_attempts": 0
+      },
+      "nonce_reserved": false,
+      "reason_code": "signed_binding:retry_allowed",
+      "status": "REJECTED_BEFORE_CREDENTIAL_LOOKUP"
+    },
+    {
+      "case": "fallback",
+      "external_actions": {
+        "credential_lookup_count": 0,
+        "http_post_attempts": 0,
+        "model_calls": 0,
+        "network_calls": 0,
+        "paid_calls": 0,
+        "real_execution_attempts": 0,
+        "real_provider_client_creation_count": 0,
+        "real_provider_request_attempts": 0
+      },
+      "nonce_reserved": false,
+      "reason_code": "signed_binding:fallback_allowed",
+      "status": "REJECTED_BEFORE_CREDENTIAL_LOOKUP"
+    },
+    {
+      "case": "route_switch",
+      "external_actions": {
+        "credential_lookup_count": 0,
+        "http_post_attempts": 0,
+        "model_calls": 0,
+        "network_calls": 0,
+        "paid_calls": 0,
+        "real_execution_attempts": 0,
+        "real_provider_client_creation_count": 0,
+        "real_provider_request_attempts": 0
+      },
+      "nonce_reserved": false,
+      "reason_code": "signed_binding:route_switch_allowed",
+      "status": "REJECTED_BEFORE_CREDENTIAL_LOOKUP"
+    },
+    {
+      "case": "resume",
+      "external_actions": {
+        "credential_lookup_count": 0,
+        "http_post_attempts": 0,
+        "model_calls": 0,
+        "network_calls": 0,
+        "paid_calls": 0,
+        "real_execution_attempts": 0,
+        "real_provider_client_creation_count": 0,
+        "real_provider_request_attempts": 0
+      },
+      "nonce_reserved": false,
+      "reason_code": "signed_binding:resume_allowed",
+      "status": "REJECTED_BEFORE_CREDENTIAL_LOOKUP"
+    },
+    {
+      "case": "a_artifact_injection",
+      "external_actions": {
+        "credential_lookup_count": 0,
+        "http_post_attempts": 0,
+        "model_calls": 0,
+        "network_calls": 0,
+        "paid_calls": 0,
+        "real_execution_attempts": 0,
+        "real_provider_client_creation_count": 0,
+        "real_provider_request_attempts": 0
+      },
+      "nonce_reserved": false,
+      "reason_code": "signed_policy:a_artifact_injected_into_b_model_input",
+      "status": "REJECTED_BEFORE_CREDENTIAL_LOOKUP"
+    },
+    {
+      "case": "pair2_to5_identity",
+      "external_actions": {
+        "credential_lookup_count": 0,
+        "http_post_attempts": 0,
+        "model_calls": 0,
+        "network_calls": 0,
+        "paid_calls": 0,
+        "real_execution_attempts": 0,
+        "real_provider_client_creation_count": 0,
+        "real_provider_request_attempts": 0
+      },
+      "nonce_reserved": false,
+      "reason_code": "signed_binding:pair_case_id",
+      "status": "REJECTED_BEFORE_CREDENTIAL_LOOKUP"
+    },
+    {
+      "case": "cutover_request",
+      "external_actions": {
+        "credential_lookup_count": 0,
+        "http_post_attempts": 0,
+        "model_calls": 0,
+        "network_calls": 0,
+        "paid_calls": 0,
+        "real_execution_attempts": 0,
+        "real_provider_client_creation_count": 0,
+        "real_provider_request_attempts": 0
+      },
+      "nonce_reserved": false,
+      "reason_code": "signed_binding:skill_v2_production_cutover_authorized",
+      "status": "REJECTED_BEFORE_CREDENTIAL_LOOKUP"
+    },
+    {
+      "case": "current_chat_permission_forged_by_approval",
+      "external_actions": {
+        "credential_lookup_count": 0,
+        "http_post_attempts": 0,
+        "model_calls": 0,
+        "network_calls": 0,
+        "paid_calls": 0,
+        "real_execution_attempts": 0,
+        "real_provider_client_creation_count": 0,
+        "real_provider_request_attempts": 0
+      },
+      "nonce_reserved": false,
+      "reason_code": "signed_policy:current_chat_external_execution_permission",
+      "status": "REJECTED_BEFORE_CREDENTIAL_LOOKUP"
+    }
+  ],
+  "schema": "SkillV2Pair1DemandAwareBOnlyNegativeApprovalMatrixV1",
+  "version": 1
+}

@@ -1,0 +1,90 @@
+{
+  "closed_world_justification": "One exact packet, candidate, profile, context, A/B lock, case, arm, route and single-dispatch contract are frozen.",
+  "constraint_traceability": [
+    {
+      "evidence": "approval-identity-v1.json and signed-approval-v1.json",
+      "implementation": "evidence-only signed approval",
+      "requirement": "fresh single-use approval",
+      "test_paths": [
+        "tests/canary/test_skill_v2_pair1_demand_aware_b_revalidation.py"
+      ]
+    },
+    {
+      "evidence": "phase-b-signed-preflight-v1.json",
+      "implementation": "existing sealed launcher validator",
+      "requirement": "approval-time signed preflight",
+      "test_paths": [
+        "tests/canary/test_skill_v2_pair1_demand_aware_b_revalidation.py"
+      ]
+    },
+    {
+      "evidence": "offline-approved-boundary-dry-run-v1.json",
+      "implementation": "existing precredential gate",
+      "requirement": "permission before nonce and zero external actions",
+      "test_paths": [
+        "tests/canary/test_skill_v2_pair1_demand_aware_b_revalidation.py"
+      ]
+    }
+  ],
+  "forbidden_narrowing": [
+    "Do not treat approval as current-chat permission.",
+    "Do not execute B, A, Pair2-5, a cutover or Full Short.",
+    "Do not mutate source, candidate, Skill profile, A artifact or historical B artifact."
+  ],
+  "historical_incident_families_checked": [
+    "stale approval parent or packet",
+    "consumed nonce replay",
+    "hidden second dispatch",
+    "authority tuple drift",
+    "audit serialization post-response failure",
+    "A/B treatment leakage"
+  ],
+  "invalid_output_variants_tested": [],
+  "invariant_test_paths": [],
+  "model_output_boundary_changed": false,
+  "model_output_not_applicable_evidence": "No source, prompt, route, model, adapter, parser, validator, budget or Provider boundary is changed; this task writes approval evidence only.",
+  "model_output_topology_classes_tested": [],
+  "model_output_variants_tested": [],
+  "next_authoritative_boundary_tests": [
+    "tests/canary/test_skill_v2_pair1_demand_aware_b_revalidation.py"
+  ],
+  "operational_definition": "Materialize one evidence-only approval under the packet-owned approval root; keep current-chat external permission absent and the nonce unreserved/unconsumed.",
+  "original_requirement": "Create one fresh signed approval and approval-time signed preflight for the exact demand-aware Pair 1 B packet without executing it.",
+  "production_shaped_tests": [
+    "tests/canary/test_skill_v2_pair1_demand_aware_b_revalidation.py"
+  ],
+  "projected_failure_mechanisms": [
+    "binding drift",
+    "approval expiry",
+    "nonce replay",
+    "external-permission confusion",
+    "experiment contamination"
+  ],
+  "remaining_risks": [
+    "The real B result and literary non-inferiority remain unproven until separately authorized execution and evaluation."
+  ],
+  "resolution_status": "case_fixed",
+  "scope_classification": "closed_world",
+  "sibling_boundaries": [
+    {
+      "boundary": "production runtime",
+      "disposition": "not_applicable",
+      "evidence": "src and baml_src diff are zero"
+    },
+    {
+      "boundary": "Pair2-5",
+      "disposition": "tested_not_susceptible",
+      "evidence": "signed approval fixes pair2_or_later_authorized false and the negative matrix rejects Pair2 identity"
+    },
+    {
+      "boundary": "A control and historical B",
+      "disposition": "tested_not_susceptible",
+      "evidence": "both remain evidence-only and their prose egress flags are false"
+    }
+  ],
+  "transport_capacity_variants_tested": [],
+  "unknown_variant_behavior": "",
+  "unseen_valid_variants_tested": [],
+  "version": 2,
+  "why_previous_tests_missed": "The predecessor intentionally stopped with signed approval absent."
+}

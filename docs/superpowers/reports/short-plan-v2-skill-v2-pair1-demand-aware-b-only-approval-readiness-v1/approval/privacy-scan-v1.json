@@ -1,0 +1,15 @@
+{
+  "a_control_prose_persisted": false,
+  "auth_headers_persisted": false,
+  "credentials_persisted": false,
+  "files_scanned": 22,
+  "historical_b_prose_persisted": false,
+  "matches": [],
+  "overall_status": "PASS",
+  "privacy_match_count": 0,
+  "private_blind_evidence_persisted": false,
+  "provider_payload_persisted": false,
+  "provider_reasoning_persisted": false,
+  "schema": "SkillV2Pair1DemandAwareBOnlyApprovalPrivacyScanV1",
+  "version": 1
+}
