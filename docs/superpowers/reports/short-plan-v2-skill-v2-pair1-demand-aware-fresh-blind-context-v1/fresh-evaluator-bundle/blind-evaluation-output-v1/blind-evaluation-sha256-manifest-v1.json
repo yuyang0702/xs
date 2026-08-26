@@ -1,0 +1,35 @@
+{
+  "schema": "FreshBlindEvaluationSha256ManifestV1",
+  "version": 1,
+  "manifest_scope": "BLIND_EVALUATION_OUTPUT_V1",
+  "file_count": 5,
+  "files": [
+    {
+      "path": "blind-dimension-judgments-v1.json",
+      "bytes": 11136,
+      "sha256": "ce4a93a6511440913df703040182becf02410aec0825baf1c8e308798a0b5aa1"
+    },
+    {
+      "path": "blind-evaluator-final-report-v1.md",
+      "bytes": 3869,
+      "sha256": "4e0723607e2687c3223b7b62341f4026ae41e9728aefe261089b9873e935acbc"
+    },
+    {
+      "path": "blind-freeze-receipt-v1.json",
+      "bytes": 1106,
+      "sha256": "3169825f947501f18798ce449ac56b90a87e3f5b6e54ce749555482d957757de"
+    },
+    {
+      "path": "blind-output-identity-leak-scan-v1.json",
+      "bytes": 1711,
+      "sha256": "cb0907ad0ddc7d2648ff6198572189f58572963ed9035198db8f1a6a35592917"
+    },
+    {
+      "path": "blind-review-summary-v1.json",
+      "bytes": 1576,
+      "sha256": "49de30d069e88f48f8f190525ed290a786df92522973da0f6fea2d080a1a282d"
+    }
+  ],
+  "overall_status": "exact",
+  "self_excluded": true
+}

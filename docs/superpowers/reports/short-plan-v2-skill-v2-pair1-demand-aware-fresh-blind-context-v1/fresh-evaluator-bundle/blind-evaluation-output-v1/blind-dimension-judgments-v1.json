@@ -1,0 +1,168 @@
+{
+  "schema": "FreshBlindDimensionJudgmentsV1",
+  "version": 1,
+  "creative_demand_class": "character-heavy",
+  "dimension_count": 16,
+  "judgments": [
+    {
+      "dimension": "event_causal_fidelity",
+      "pair_criticality": "CRITICAL",
+      "judgment": "X_BETTER",
+      "x_evidence": "X makes the sacrificed ledgers the mechanism that lifts the locking bar, then converts that loss directly into Iven's limited testimony and accepted help.",
+      "y_evidence": "Y burns the transit seals to divert pursuit and escapes with Iven, but his 'buys nothing' response frames the precise leverage misreading less explicitly.",
+      "difference_matter": "X more completely realizes the required chain from personal cost, through protection, to explicitly conditional cooperation while preserving the unresolved betrayal.",
+      "confidence": "HIGH",
+      "evidence_sufficiency": "SUFFICIENT"
+    },
+    {
+      "dimension": "character_motivation",
+      "pair_criticality": "CRITICAL",
+      "judgment": "EQUIVALENT",
+      "x_evidence": "Mara must choose between vindicating herself with the ledgers and saving Iven; her buried responsibility for his limp supplies guilt she refuses to confess.",
+      "y_evidence": "Mara must choose between escape enabled by costly seals and saving Iven; she suppresses the explanation that her accusation exposed him to hanging.",
+      "difference_matter": "Both establish a strong present desire, a guilt-driven need, self-protective silence, and a costly choice that contradicts the immediate escape plan.",
+      "confidence": "HIGH",
+      "evidence_sufficiency": "SUFFICIENT"
+    },
+    {
+      "dimension": "character_voice",
+      "pair_criticality": "CRITICAL",
+      "judgment": "X_BETTER",
+      "x_evidence": "Under mounting danger, Mara's clipped bargaining diction meets Iven's relationship-specific barbs about gravity, apologies, and generosity; her slips on the crank expose fear without changing her register.",
+      "y_evidence": "Mara sustains dry accounting language and level delivery while the crank trembles, and Iven answers tersely, but their exchanges disclose less of their shared history.",
+      "difference_matter": "Both satisfy restrained irony under fear, while X gives each speaker a more relationally specific rhythm and sharper evasive counterpoint.",
+      "confidence": "MEDIUM",
+      "evidence_sufficiency": "SUFFICIENT"
+    },
+    {
+      "dimension": "relationship_logic",
+      "pair_criticality": "CRITICAL",
+      "judgment": "X_BETTER",
+      "x_evidence": "Iven recognizes the destroyed vindication, restricts his promised testimony to tonight, and only then permits Mara to support him up the stairs.",
+      "y_evidence": "Iven recognizes the lost passage, rejects any purchase, binds Mara's hands, and lets her lead them into the culvert.",
+      "difference_matter": "Both earn a limited shift through reciprocal action, but X states the new boundary and Iven's transactional interpretation with greater fidelity to the required exit state.",
+      "confidence": "HIGH",
+      "evidence_sufficiency": "SUFFICIENT"
+    },
+    {
+      "dimension": "world_specificity",
+      "pair_criticality": "NONCRITICAL",
+      "judgment": "Y_BETTER",
+      "x_evidence": "X grounds the scene in a sluice chamber with an iron stair, fouled bell, locking bar, evidence satchel, and ledgers.",
+      "y_evidence": "Y integrates canal patrol lanterns, hounds, forged checkpoint seals, oilskin, resin flame, sluice basket, eastern grate, and maintenance culvert into the action.",
+      "difference_matter": "Y's denser institutional and mechanical details create a more particular city and make the escape tactic inseparable from the setting.",
+      "confidence": "HIGH",
+      "evidence_sufficiency": "SUFFICIENT"
+    },
+    {
+      "dimension": "sensory_realization",
+      "pair_criticality": "NONCRITICAL",
+      "judgment": "Y_BETTER",
+      "x_evidence": "X uses the coughing bell, river grit, black water, wet fingers, buckling door, and pages spinning like pale fish.",
+      "y_evidence": "Y layers pale lanterns, claws on wet stone, choking hounds, rain, soaked blood, trembling metal, resin stink, blue fire, rust taste, and shuddering iron.",
+      "difference_matter": "Both are vivid, while Y activates more sensory channels and keeps those sensations tied to pressure and physical decisions.",
+      "confidence": "HIGH",
+      "evidence_sufficiency": "SUFFICIENT"
+    },
+    {
+      "dimension": "conflict_pacing",
+      "pair_criticality": "NONCRITICAL",
+      "judgment": "EQUIVALENT",
+      "x_evidence": "Repeated boots, a rising gate, the failed lift, a buckling door, and the final wheel heave create a clean escalating countdown.",
+      "y_evidence": "Approaching lanterns and hounds, the burning diversion, split patrol, shared crank effort, and crawl beneath iron teeth sustain a similarly escalating sequence.",
+      "difference_matter": "Each alternates compressed dialogue with irreversible action and reaches its costly reversal before momentum stalls.",
+      "confidence": "HIGH",
+      "evidence_sufficiency": "SUFFICIENT"
+    },
+    {
+      "dimension": "setup_payoff_dependency",
+      "pair_criticality": "NONCRITICAL",
+      "judgment": "X_BETTER",
+      "x_evidence": "The satchel, wrist chain, exonerating ledgers, release wheel, trapped leg, and cuff key all participate in the rescue and its price; the empty cuff and lost pages then carry into the negotiation.",
+      "y_evidence": "The costly seals become a burning decoy, and the jammed gate becomes the shared escape route, with injured hands paid off by Iven's bandaging.",
+      "difference_matter": "Both plant functional details, but X makes more of its early objects jointly necessary to the climax, relational turn, and final image.",
+      "confidence": "MEDIUM",
+      "evidence_sufficiency": "SUFFICIENT"
+    },
+    {
+      "dimension": "pov",
+      "pair_criticality": "NONCRITICAL",
+      "judgment": "EQUIVALENT",
+      "x_evidence": "X remains in close third around Mara's perceptions, choices, withheld admission, and interpretation of Iven.",
+      "y_evidence": "Y remains in close third around Mara's hearing, bodily strain, suppressed explanation, and reading of Iven's changed suspicion.",
+      "difference_matter": "Neither text breaks the established viewpoint, and both use interior access selectively to support the concealed apology.",
+      "confidence": "HIGH",
+      "evidence_sufficiency": "SUFFICIENT"
+    },
+    {
+      "dimension": "tense",
+      "pair_criticality": "NONCRITICAL",
+      "judgment": "EQUIVALENT",
+      "x_evidence": "X consistently narrates the scene in past tense.",
+      "y_evidence": "Y consistently narrates the scene in past tense.",
+      "difference_matter": "Both maintain tense without disruptive shifts.",
+      "confidence": "HIGH",
+      "evidence_sufficiency": "SUFFICIENT"
+    },
+    {
+      "dimension": "tone_genre",
+      "pair_criticality": "NONCRITICAL",
+      "judgment": "EQUIVALENT",
+      "x_evidence": "X combines industrial floodgate danger, legal intrigue, terse irony, and unresolved moral history in a tense speculative-thriller register.",
+      "y_evidence": "Y combines canal pursuit, forged documents, terse irony, and unresolved moral history in the same tense speculative-thriller register.",
+      "difference_matter": "Both sustain a coherent, restrained, danger-driven tone compatible with the supplied event and character demand.",
+      "confidence": "HIGH",
+      "evidence_sufficiency": "SUFFICIENT"
+    },
+    {
+      "dimension": "subtext_dramatization",
+      "pair_criticality": "CRITICAL",
+      "judgment": "Y_BETTER",
+      "x_evidence": "X dramatizes apology as negotiation in the dialogue and sacrifice, but an interior paragraph explicitly explains Mara's old act, Iven's injury, and her defensive accusations.",
+      "y_evidence": "Y lets the blocked explanation, burned seals, changing suspicion, hand-binding, and repeated price language carry the apology and resistance largely through action.",
+      "difference_matter": "Y preserves more interpretive pressure and converts guilt into micro-decisions instead of resolving much of it through explanatory summary.",
+      "confidence": "HIGH",
+      "evidence_sufficiency": "SUFFICIENT"
+    },
+    {
+      "dimension": "draft_intent_handoff",
+      "pair_criticality": "CRITICAL",
+      "judgment": "EQUIVALENT",
+      "x_evidence": "X ends with lost exoneration, restricted testimony, an open threat behind them, Iven accepting physical help, and the older betrayal still live.",
+      "y_evidence": "Y ends with a forfeited escape route, reciprocal care, Mara choosing their path, and explicit non-forgiveness preserving pressure for the next beat.",
+      "difference_matter": "Both provide sceneable consequences, a changed but bounded relationship state, and unresolved dramatic material for continuation.",
+      "confidence": "HIGH",
+      "evidence_sufficiency": "SUFFICIENT"
+    },
+    {
+      "dimension": "template_flattening_risk",
+      "pair_criticality": "CRITICAL",
+      "judgment": "Y_BETTER",
+      "x_evidence": "X has distinctive objects and reversals, but its explicit guilt explanation and repeated direct labels such as price, apology, and conditional make the intended relational taxonomy more visible.",
+      "y_evidence": "Y embeds the same demand in hound timing, burned seals, a failed grip, shared force, divided cloth, and the small transfer of route choice.",
+      "difference_matter": "Y relies more on idiosyncratic behavior and material consequence, reducing the sense that the scene is checking named relational beats.",
+      "confidence": "MEDIUM",
+      "evidence_sufficiency": "SUFFICIENT"
+    },
+    {
+      "dimension": "authority_correctness",
+      "pair_criticality": "CRITICAL",
+      "judgment": "EQUIVALENT",
+      "x_evidence": "X supplies only the candidate-owned title and narrative within the evaluator-visible artifact.",
+      "y_evidence": "Y supplies only the candidate-owned title and narrative within the evaluator-visible artifact.",
+      "difference_matter": "Neither artifact visibly claims production authority or edits fields outside the supplied candidate scope.",
+      "confidence": "HIGH",
+      "evidence_sufficiency": "SUFFICIENT"
+    },
+    {
+      "dimension": "untargeted_creative_mutation",
+      "pair_criticality": "CRITICAL",
+      "judgment": "EQUIVALENT",
+      "x_evidence": "X specifies ledgers, a past chamber decision, and injury as local machinery for the fixed guilt, distrust, and protection requirements without resolving the betrayal.",
+      "y_evidence": "Y specifies forged seals, a magistrate accusation, and hanging risk as local machinery for the same fixed guilt, distrust, and protection requirements without resolving the betrayal.",
+      "difference_matter": "The neutral context leaves these particulars open; both additions serve the targeted event rather than visibly altering a fixed fact or unrelated story area.",
+      "confidence": "MEDIUM",
+      "evidence_sufficiency": "SUFFICIENT"
+    }
+  ]
+}

@@ -1,0 +1,48 @@
+{
+  "schema": "FreshBlindReviewSummaryV1",
+  "version": 1,
+  "creative_demand_class": "character-heavy",
+  "dimension_count": 16,
+  "critical_dimension_set": [
+    "event_causal_fidelity",
+    "character_motivation",
+    "character_voice",
+    "relationship_logic",
+    "subtext_dramatization",
+    "draft_intent_handoff",
+    "template_flattening_risk",
+    "authority_correctness",
+    "untargeted_creative_mutation"
+  ],
+  "noncritical_dimension_set": [
+    "world_specificity",
+    "sensory_realization",
+    "conflict_pacing",
+    "setup_payoff_dependency",
+    "pov",
+    "tense",
+    "tone_genre"
+  ],
+  "counts": {
+    "X_BETTER_COUNT": 4,
+    "Y_BETTER_COUNT": 4,
+    "EQUIVALENT_COUNT": 8,
+    "INCOMPARABLE_COUNT": 0,
+    "NOT_APPLICABLE_COUNT": 0,
+    "INSUFFICIENT_EVIDENCE_COUNT": 0,
+    "CRITICAL_X_BETTER_COUNT": 3,
+    "CRITICAL_Y_BETTER_COUNT": 2,
+    "CRITICAL_INCONCLUSIVE_COUNT": 4,
+    "NONCRITICAL_X_BETTER_COUNT": 1,
+    "NONCRITICAL_Y_BETTER_COUNT": 2,
+    "NONCRITICAL_INCONCLUSIVE_COUNT": 4
+  },
+  "inconclusive_count_definition": "For criticality-subset accounting, this count includes EQUIVALENT, INCOMPARABLE, NOT_APPLICABLE, and INSUFFICIENT_EVIDENCE judgments.",
+  "anonymous_directional_non_inferiority": {
+    "sealed_policy_requested": false,
+    "X_NON_INFERIOR_TO_Y": "NOT_COMPUTED",
+    "Y_NON_INFERIOR_TO_X": "NOT_COMPUTED",
+    "reason": "The sealed neutral evaluation contract requests per-dimension judgments and forbids aggregate scoring, but supplies no directional non-inferiority rule."
+  },
+  "pair_disposition": "NOT_EMITTED"
+}

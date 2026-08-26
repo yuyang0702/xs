@@ -1,0 +1,34 @@
+{
+  "schema": "FreshBlindOutputIdentityLeakScanV1",
+  "version": 1,
+  "scan_scope": "ALL_BLIND_OUTPUT_CONTENT_FILES_FINALIZED_BEFORE_SELF_AND_SHA_MANIFEST",
+  "scanned_file_count": 4,
+  "scanned_files": [
+    "blind-dimension-judgments-v1.json",
+    "blind-evaluator-final-report-v1.md",
+    "blind-freeze-receipt-v1.json",
+    "blind-review-summary-v1.json"
+  ],
+  "detector_count": 13,
+  "detector_sha256s": [
+    "772bef7caa671ce62e0b5b870d9d3176364971c0008c905b571d99d1a5bc8e19",
+    "9ff3dda8cf03c83eda390ac51d1e1a1709f0e68344d8036433d61d172e42bebf",
+    "2b179c781622d54a09f3030e42eba0646403d212a9a7c31b724a3e457836795c",
+    "44e9e33d610936e04c7910328e41663c0ac2c253e6d179d29ea37aad78057858",
+    "a174c2bd0785e07dd1fb6f370c24ba0df498890efec9a61c25de96e54939b61c",
+    "0fcd568a5cb9bdb4677b69354b11ee415af8f784519cff3da49a26f84eaee7f2",
+    "60c411b2baec2ab58d4494dd7a1efcec94ed33e8737a24a920ab58a59284208d",
+    "305f253d98dd9997f2f233381a765422970e893d480ac7980a0155ff55b2b07c",
+    "ae726f0a167bf30c5a0b8b06088f2cfc7801d2ccd40cb598eeb4028b8a5ca95e",
+    "02f2ff7c97163db5b57a173db8ffefbfdd1c4881d4188675ca7bf1a82746ca93",
+    "f9befc71aa67222b3780b5ce3c14bce0a090733cca6e55b5cf20119cca841a4e",
+    "7a1cba6888288e4633980e778058ff086b39928a023f26b4ef4301e4a5a52022",
+    "8ef1de116f95fffb8005be6476ff77d74ecc4e85bb2759e9f98569541b4804b2"
+  ],
+  "mandatory_protocol_assertion_exception_count": 9,
+  "mandatory_protocol_assertion_exception_policy": "Required negative or unknown-status receipt assertions are protocol evidence, not an identity disclosure.",
+  "BLIND_OUTPUT_IDENTITY_LEAK_COUNT": 0,
+  "status": "PASS",
+  "self_excluded": true,
+  "sha_manifest_excluded_as_postscan_hash_metadata": true
+}
