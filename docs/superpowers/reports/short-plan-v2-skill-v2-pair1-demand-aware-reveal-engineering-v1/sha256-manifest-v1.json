@@ -1,0 +1,115 @@
+{
+  "entry_count": 21,
+  "files": [
+    {
+      "bytes": 36,
+      "path": ".gitattributes",
+      "sha256": "3f142fa4d164c2efd7c4a473db4bd894756df2063a4a721687383359130579de"
+    },
+    {
+      "bytes": 1713,
+      "path": "a-engineering-binding-v1.json",
+      "sha256": "cb61828116aae80d9bc3b6d5b3d67141536b45712cfa29702cf7d38a1c0e3377"
+    },
+    {
+      "bytes": 1685,
+      "path": "b-engineering-binding-v1.json",
+      "sha256": "58a6513faa477976cb8e7276c7db48efdf55db012cf1404f90bfbbff8b289f22"
+    },
+    {
+      "bytes": 1068,
+      "path": "blind-freeze-binding-v1.json",
+      "sha256": "00ad1abb0f4f05079d2e209e72a7a17a5d03bef713569f117f49d018f1e30ddb"
+    },
+    {
+      "bytes": 534,
+      "path": "campaign-consequence-v1.json",
+      "sha256": "b1da7a78eac14f7cd79d8b038e4887e7875d72b54d8c49d4c1799e41e3c6735f"
+    },
+    {
+      "bytes": 1026,
+      "path": "change-contract-v1.json",
+      "sha256": "5efb7f49bb1b1a98f567129d7bb29033720ff3120e7199e0fbc61a5d46e95691"
+    },
+    {
+      "bytes": 1433,
+      "path": "criticality-policy-binding-v1.json",
+      "sha256": "a88677a8e4c7f15fe22aed56d1848df64232dba497fa4f7a5aef2ff67e76ebcb"
+    },
+    {
+      "bytes": 1605,
+      "path": "demand-aware-fix-improvement-summary-v1.json",
+      "sha256": "952291495eaaca13bf3e297c8d055fd45d2fe507b8be4ac0da26e0cfe3e543e4"
+    },
+    {
+      "bytes": 559,
+      "path": "engineering-comparison-v1.json",
+      "sha256": "f4d55c9f87e2c86001b8b7f6c99ca65fd1579427807cb62eab74fcaa1074f54d"
+    },
+    {
+      "bytes": 4741,
+      "path": "final-report-v1.md",
+      "sha256": "697bc4008db9ab16ef719db9b27b0c39aa643edd3fd38c10afad38e9668acb09"
+    },
+    {
+      "bytes": 405,
+      "path": "manifest-definition-v1.json",
+      "sha256": "9c674791ce62cc1ab3729275f0fe339fce250cbb2b550cde09d1545706095a7a"
+    },
+    {
+      "bytes": 493,
+      "path": "mapping-reveal-v1.json",
+      "sha256": "ea9f8ef7372f190e537fdae6381866ba14af0ad195939c9f21941512e2773033"
+    },
+    {
+      "bytes": 14466,
+      "path": "narrative-dimension-comparison-revealed-v1.json",
+      "sha256": "e5af60e56e9acf75d912c33eb36df0f5a7731c2e80daaafc35e098f391fa6c03"
+    },
+    {
+      "bytes": 813,
+      "path": "narrative-non-inferiority-revealed-v1.json",
+      "sha256": "9221f1c0c1d98d836d0fc4418748d405755771872dc032fb1b98d860e8635afe"
+    },
+    {
+      "bytes": 457,
+      "path": "pair-disposition-v1.json",
+      "sha256": "dadc922e86e0ba1cd089a36aba74e0de5e43699049a1b8e0a2ad9a8e36169bbd"
+    },
+    {
+      "bytes": 1120,
+      "path": "post-reveal-freeze-integrity-v1.json",
+      "sha256": "de4595bda0884298c04bdf3b0e60ec533c90400ce87292bfdafe31dd8890ddd1"
+    },
+    {
+      "bytes": 1096,
+      "path": "privacy-scan-v1.json",
+      "sha256": "68c64ec16099d61009dc1f83e9cc240b6c1a7b8d43ab7c3d9fb8342890bc1ec8"
+    },
+    {
+      "bytes": 664,
+      "path": "private-mapping-binding-v1.json",
+      "sha256": "9d2972cae39f6b26dc8af505ac5dee95dc8e9c6d30ee9dd681c23fd0c3d8458e"
+    },
+    {
+      "bytes": 517,
+      "path": "README.md",
+      "sha256": "8d06159e5206a59b8bdbe8e3789246e56d520b62a422765baa166263d815df6d"
+    },
+    {
+      "bytes": 934,
+      "path": "successor-ab-lock-verification-v1.json",
+      "sha256": "8e5063ace03b486f28848dd99866d315c996dc6dd227ce9f4d4322d1f6830221"
+    },
+    {
+      "bytes": 860,
+      "path": "test-receipt-v1.json",
+      "sha256": "62b623643cc49e76dc9ff330342a0ebe190c23429b223caa93e0424278f5e7a8"
+    }
+  ],
+  "manifest_definition_sha256": "9c674791ce62cc1ab3729275f0fe339fce250cbb2b550cde09d1545706095a7a",
+  "overall_status": "exact",
+  "schema": "SkillV2Pair1DemandAwareRevealEngineeringSHA256ManifestV1",
+  "self_excluded": true,
+  "version": 1
+}

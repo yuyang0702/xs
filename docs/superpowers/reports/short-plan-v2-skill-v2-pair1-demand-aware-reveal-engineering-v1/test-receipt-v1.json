@@ -1,0 +1,25 @@
+{
+  "blockers": 0,
+  "checks": {
+    "a_manifest_exact": true,
+    "ab_lock_exact": true,
+    "b_manifest_exact": true,
+    "blind_freeze_exact": true,
+    "engineering_hard_contracts_exact": true,
+    "mapping_derivation_exact": true,
+    "pair_disposition_priority_exact": true,
+    "policy_exact": true,
+    "post_reveal_freeze_exact": true,
+    "production_source_diff": 0,
+    "pure_mapping_transform": true
+  },
+  "final_diff_review": "PASS_NON_INDEPENDENT_CLEAN_ROOM_SELF_REVIEW",
+  "focused_reveal_engineering_validation": "PASS",
+  "full_suite": "NOT_REQUIRED_EVIDENCE_ONLY_NO_SOURCE_CHANGE",
+  "new_owning_source_regression_count": 0,
+  "schema": "SkillV2Pair1DemandAwareRevealEngineeringTestReceiptV1",
+  "strict_l3": "PASS",
+  "strict_l3_runner": ".agents/skills/novel-dev-council/scripts/inspect_change_gate.py",
+  "version": 1,
+  "warnings": 0
+}

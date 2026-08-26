@@ -1,0 +1,51 @@
+{
+  "arm": "B_ARM",
+  "artifact_sha256": "87628f204e7f4a3f27910cf4801d904b907cae29841b44be34031ae741cd1a3d",
+  "evidence_head": "45258c64d28e124c5b8ca1c1f4d58cfc48d04216",
+  "evidence_manifest_file_sha256": "1cbeaf83cf3e761d9d1fad743042546534b696898dd1596124d39d25a4a3eee8",
+  "execution": {
+    "fallbacks": 0,
+    "http_post_attempts": 1,
+    "logical_model_calls": 1,
+    "network_calls": 1,
+    "paid_calls": 1,
+    "provider_requests": 1,
+    "resume": 0,
+    "retries": 0,
+    "route_switches": 0,
+    "second_request": 0
+  },
+  "hard_contract_status": "PASS",
+  "provider_metadata": {
+    "actual_cost": "UNKNOWN_NOT_PERSISTED",
+    "configured_output_cap": 4624,
+    "effective_output_cap": "UNKNOWN_NOT_PERSISTED",
+    "elapsed_seconds": "UNKNOWN_NOT_PERSISTED",
+    "finish_reason": "UNKNOWN_NOT_PERSISTED",
+    "input_tokens": "UNKNOWN_NOT_PERSISTED",
+    "output_tokens": "UNKNOWN_NOT_PERSISTED",
+    "requested_output_cap": "UNKNOWN_NOT_PERSISTED"
+  },
+  "schema": "SkillV2Pair1DemandAwareBEngineeringBindingV1",
+  "skill": "RESTORED_SKILL_V2_CHARACTER_CORE_V2",
+  "skill_context": {
+    "characters": 2925,
+    "sha256": "7d0f6309ede2261f2f6a1098d394937948bf5b50eb9248266ab350fd91da9adc"
+  },
+  "terminal_tail": {
+    "artifact_freeze": "PASS",
+    "artifact_schema_validation": "PASS",
+    "audit_serialization": "PASS",
+    "authority_normalization": "PASS",
+    "canon_mutations": 0,
+    "event_realization_validation": "PASS",
+    "output_isolation": "PASS",
+    "parse_conversion": "PASS",
+    "persistence": "PASS",
+    "production_authority": false,
+    "provider_return": "RECEIVED",
+    "ready_mutations": 0,
+    "story_state_mutations": 0
+  },
+  "version": 1
+}

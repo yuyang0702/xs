@@ -1,0 +1,21 @@
+{
+  "ab_identity_revealed_before_freeze": false,
+  "blind_judgment_frozen": true,
+  "engineering_metrics_read_before_freeze": false,
+  "file_sha256s": {
+    "blind-dimension-judgments-v1.json": "ce4a93a6511440913df703040182becf02410aec0825baf1c8e308798a0b5aa1",
+    "blind-evaluation-sha256-manifest-v1.json": "3a2021f8a748f3101051c1dd3f2980ecca04311fd3ea48247c686e603b1429f4",
+    "blind-freeze-receipt-v1.json": "3169825f947501f18798ce449ac56b90a87e3f5b6e54ce749555482d957757de",
+    "blind-review-summary-v1.json": "49de30d069e88f48f8f190525ed290a786df92522973da0f6fea2d080a1a282d"
+  },
+  "frozen_blind_evaluation_head": "fd3b51056678cb08664bb76f426c8e921bf6dd6c",
+  "mapping_read_before_freeze": false,
+  "old_blind_result_read_before_freeze": false,
+  "pair_disposition_before_freeze": "NOT_EMITTED",
+  "private_mapping_read_before_freeze": false,
+  "repository_outside_bundle_read_before_freeze": false,
+  "schema": "SkillV2Pair1DemandAwareBlindFreezeBindingV1",
+  "status": "exact",
+  "treatment_non_inferiority_computed_before_freeze": false,
+  "version": 1
+}

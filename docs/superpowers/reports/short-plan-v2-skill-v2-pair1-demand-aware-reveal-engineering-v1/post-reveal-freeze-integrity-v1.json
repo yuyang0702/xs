@@ -1,0 +1,18 @@
+{
+  "blind_judgment_files_mutated_after_reveal": false,
+  "post_reveal_file_sha256s": {
+    "blind-dimension-judgments-v1.json": "ce4a93a6511440913df703040182becf02410aec0825baf1c8e308798a0b5aa1",
+    "blind-evaluation-sha256-manifest-v1.json": "3a2021f8a748f3101051c1dd3f2980ecca04311fd3ea48247c686e603b1429f4",
+    "blind-freeze-receipt-v1.json": "3169825f947501f18798ce449ac56b90a87e3f5b6e54ce749555482d957757de",
+    "blind-review-summary-v1.json": "49de30d069e88f48f8f190525ed290a786df92522973da0f6fea2d080a1a282d"
+  },
+  "post_reveal_narrative_rescoring": false,
+  "pre_reveal_file_sha256s": {
+    "blind-dimension-judgments-v1.json": "ce4a93a6511440913df703040182becf02410aec0825baf1c8e308798a0b5aa1",
+    "blind-evaluation-sha256-manifest-v1.json": "3a2021f8a748f3101051c1dd3f2980ecca04311fd3ea48247c686e603b1429f4",
+    "blind-freeze-receipt-v1.json": "3169825f947501f18798ce449ac56b90a87e3f5b6e54ce749555482d957757de",
+    "blind-review-summary-v1.json": "49de30d069e88f48f8f190525ed290a786df92522973da0f6fea2d080a1a282d"
+  },
+  "schema": "SkillV2Pair1DemandAwarePostRevealFreezeIntegrityV1",
+  "version": 1
+}

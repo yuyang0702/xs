@@ -1,0 +1,15 @@
+{
+  "blind_summary_semantic_note": "The summary fields named CRITICAL_INCONCLUSIVE_COUNT and NONCRITICAL_INCONCLUSIVE_COUNT include EQUIVALENT by their local definition; the normative per-dimension judgments show four EQUIVALENT in each subset and zero true INCOMPARABLE or INSUFFICIENT_EVIDENCE values.",
+  "critical_regression_dimensions": [
+    "subtext_dramatization",
+    "template_flattening_risk"
+  ],
+  "decision_path": "ANY_APPLICABLE_CRITICAL_DIMENSION_IS_A_BETTER",
+  "equivalent_treated_as_inconclusive": false,
+  "narrative_non_inferior": "NO",
+  "post_reveal_narrative_rescoring": false,
+  "schema": "SkillV2Pair1DemandAwareNarrativeNonInferiorityRevealedV1",
+  "sealed_policy_sha256": "cbd8fee2d2be718b2abd40b31fee523efb12c7a4a10a5592e4e26163623c71ec",
+  "treatment_arm": "B_ARM",
+  "version": 1
+}

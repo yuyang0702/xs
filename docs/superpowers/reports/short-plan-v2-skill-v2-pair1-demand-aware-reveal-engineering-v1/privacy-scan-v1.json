@@ -1,0 +1,25 @@
+{
+  "auth_headers_persisted": false,
+  "credentials_persisted": false,
+  "detector_sha256s": [
+    "028b88b4b7f673b2af88bcab9e18c697ef6a1d5e4fccf73159a004c6b51dd9af",
+    "0b147dc0b9c3124a3fd3db68c848a017c94acdbc214156679e79f62f167ffe8f",
+    "1b884137d04cdf5d024f0b3f48915b5adc96d07fe02b41e96c43be8498d13da7",
+    "29d71a377200a7ca617b533048d887083515b68aa6be3ab8c4c907a915c6a0ce",
+    "45657ceb50031413fb5247b1fd2cc63701f70e56d46073c8af254d6dafaed05a",
+    "548e810dc3cdc395e0bec848347a323158f80527578d181f378119482a3f293d",
+    "720f8eaa6a5b83826fdcbe4c5e087d6020909a936578388ef259d18969a0cd4a",
+    "c94c19cebe82b7c988ed4383f4706812ae135420c3267ea88f779ebc247d022c",
+    "f7ff1bfd800e6c5c91fda10577a2f14622e9ed7182318ef609d9990af65491b3"
+  ],
+  "hidden_reasoning_persisted": false,
+  "privacy_match_count": 0,
+  "raw_provider_payloads_persisted": false,
+  "scanned_file_count": 20,
+  "schema": "SkillV2Pair1DemandAwareRevealEngineeringPrivacyScanV1",
+  "secret_provider_urls_persisted": false,
+  "self_excluded": true,
+  "sha256_manifest_excluded": true,
+  "status": "PASS",
+  "version": 1
+}

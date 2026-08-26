@@ -1,0 +1,13 @@
+{
+  "campaign_continue": false,
+  "exact_next_gate": "SKILL_V2_PAIR_1_DEMAND_AWARE_REVALIDATION_RESIDUAL_QUALITY_GAP_ROOT_CAUSE",
+  "full_short_canary": "NOT_EXECUTED",
+  "pair1_demand_aware_revalidation_pass": false,
+  "pair2_or_later_authorized": false,
+  "pair2_to_5_execution_allowed": false,
+  "pair_disposition": "PAIR_NO_GO_QUALITY_REGRESSION",
+  "planning_v2_production_cutover_authorized": false,
+  "schema": "SkillV2Pair1DemandAwareCampaignConsequenceV1",
+  "skill_v2_production_cutover_authorized": false,
+  "version": 1
+}

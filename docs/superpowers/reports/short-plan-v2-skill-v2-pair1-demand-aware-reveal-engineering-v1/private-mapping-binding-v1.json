@@ -1,0 +1,12 @@
+{
+  "a_artifact_sha256": "f6aa5c49d64f38aefe71b01fc9eb0abf2ea3a08faba6f5bc3dbcb38c665e3f8f",
+  "mapping_derivation": "PASS",
+  "mapping_derivation_file_sha256": "b5badb427fe925b31263a8f03ab6179ce269dd82b005f02c35703754cdaab362",
+  "mapping_file_sha256": "937a21580b44277cad6ab29aca9db489ccae463d2df4ccd2eece6d7333c2f015",
+  "mapping_uses_new_b_artifact": true,
+  "new_b_artifact_sha256": "87628f204e7f4a3f27910cf4801d904b907cae29841b44be34031ae741cd1a3d",
+  "old_mapping_reused": false,
+  "schema": "SkillV2Pair1DemandAwarePrivateMappingBindingV1",
+  "successor_ab_lock_sha256": "5ace834e214ea25d4206b92d63e830ad7f51b3629072ea58107249e2457303a1",
+  "version": 1
+}

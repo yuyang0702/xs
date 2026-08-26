@@ -1,0 +1,20 @@
+{
+  "a_hard_contract_status": "PASS",
+  "b_hard_contract_status": "PASS",
+  "b_hard_regression_count": 0,
+  "efficiency_differences_are_descriptive_only": true,
+  "engineering_non_inferior": "YES",
+  "schema": "SkillV2Pair1DemandAwareEngineeringComparisonV1",
+  "successor_ab_lock_valid": true,
+  "unknown_values_not_inferred": [
+    "A paid calls",
+    "A route-switch count",
+    "A context characters/SHA",
+    "both finish reasons",
+    "requested/effective output caps",
+    "provider tokens",
+    "elapsed time",
+    "actual cost"
+  ],
+  "version": 1
+}

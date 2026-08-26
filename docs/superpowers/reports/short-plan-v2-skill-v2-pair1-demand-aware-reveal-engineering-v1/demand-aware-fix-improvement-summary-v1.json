@@ -1,0 +1,40 @@
+{
+  "comparison_method": "MECHANICAL_COMPARISON_OF_SEPARATELY_FROZEN_OLD_AND_NEW_REVEALED_DIMENSION_JUDGMENTS",
+  "created_after_final_revalidation_disposition_fixed": true,
+  "dimensions_remaining_below_a": [
+    "subtext_dramatization",
+    "template_flattening_risk",
+    "world_specificity",
+    "sensory_realization"
+  ],
+  "final_pair_disposition_unchanged_by_this_summary": true,
+  "intended_direction": "MATERIAL_IMPROVEMENT_BUT_INSUFFICIENT_DUE_TO_TWO_RESIDUAL_CRITICAL_REGRESSIONS",
+  "new_b_artifact_sha256": "87628f204e7f4a3f27910cf4801d904b907cae29841b44be34031ae741cd1a3d",
+  "new_b_critical_regression_count": 2,
+  "new_b_noncritical_regression_count": 2,
+  "new_better_dimensions_beyond_preserved_gains": [
+    "event_causal_fidelity",
+    "character_voice"
+  ],
+  "new_blind_judgment_rescored": false,
+  "old_b_artifact_sha256": "1dd0e31dcf01bc369cf8cee1865ae1fffdb4ad890bb1d726482048755037dc69",
+  "old_b_critical_regression_count": 6,
+  "old_b_noncritical_regression_count": 4,
+  "old_pair_disposition_file_sha256": "dc351584cb487805b8f11cc9f93aedf6352f4e6c77a64dc9482d367db8307e5f",
+  "old_revealed_judgments_file_sha256": "38ea56efd6f2f8c1ef7f98254d9534b14535605ead885683ed42732d1bae6e62",
+  "previous_b_gains_lost": [],
+  "previous_b_gains_preserved": [
+    "relationship_logic",
+    "setup_payoff_dependency"
+  ],
+  "previously_regressed_dimensions_improved": [
+    "event_causal_fidelity",
+    "character_motivation",
+    "character_voice",
+    "draft_intent_handoff",
+    "pov",
+    "tone_genre"
+  ],
+  "schema": "SkillV2Pair1DemandAwareFixImprovementSummaryV1",
+  "version": 1
+}

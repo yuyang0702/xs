@@ -1,0 +1,27 @@
+{
+  "allowed_changes": [
+    "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-demand-aware-reveal-engineering-v1/**"
+  ],
+  "authority_impact": "READ_ONLY_EVIDENCE_BINDING_ONLY",
+  "authorization": "offline_evidence_implementation",
+  "external_actions_authorized": false,
+  "focused_test": "DETERMINISTIC_REVEAL_ENGINEERING_EVIDENCE_VALIDATOR",
+  "protected_unchanged": [
+    "src/**",
+    "baml_src/**",
+    "Skill profile/context",
+    "A artifact",
+    "new B artifact",
+    "old B artifact",
+    "frozen blind judgment files",
+    "Pair 2-5",
+    "production data"
+  ],
+  "requested_outcome": "Reveal the fresh deterministic mapping, mechanically translate frozen judgments, compare sealed engineering evidence, and emit the Pair 1 disposition.",
+  "rollback": "REVERT_SINGLE_EVIDENCE_ONLY_COMMIT",
+  "schema": "SkillV2Pair1DemandAwareRevealEngineeringChangeContractV1",
+  "scope_classification": "closed_world",
+  "strict_gate": "L3_REQUESTED_NO_SOURCE_CHANGE",
+  "team_review_authorized": false,
+  "version": 1
+}
