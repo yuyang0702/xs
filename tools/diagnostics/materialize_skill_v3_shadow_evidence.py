@@ -523,7 +523,7 @@ def materialize(args: argparse.Namespace) -> None:
         "automatic_level": "L3",
         "warnings": 0,
         "blockers": 0,
-        "validation_method": "isolated baseline worktree with the exact three implementation commits replayed --no-commit",
+        "validation_method": "isolated baseline worktree with every commit through the bound implementation HEAD replayed --no-commit",
         "main_worktree_or_head_mutated_by_validation": False,
         "single_or_split_review_required": False,
         "authority_critical_paths": ["src/novel_flywheel/workflows.py"],
