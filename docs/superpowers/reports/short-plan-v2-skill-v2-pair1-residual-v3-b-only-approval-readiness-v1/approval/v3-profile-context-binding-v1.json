@@ -1,0 +1,10 @@
+{
+  "context_characters": 2998,
+  "context_sha256": "98c5adc38074f442a986764fb140baf4d3bf3fa1ab58e34ba7f82b7ddc8888ba",
+  "primary_changed_variable": "SKILL_CONTEXT",
+  "profile_sha256": "82a4542326e9b20771efc5f05e080ff0ac56438bef8288d61f30e6d905af708a",
+  "schema": "SkillV2Pair1ResidualV3ProfileContextApprovalBindingV1",
+  "status": "EXACT",
+  "unintended_ab_lock_diff_count": 0,
+  "version": 1
+}

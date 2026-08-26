@@ -1,0 +1,8 @@
+{
+  "primary_changed_variable": "SKILL_CONTEXT",
+  "schema": "SkillV2Pair1ResidualV3ApprovalSuccessorLockBindingV1",
+  "status": "EXACT",
+  "successor_v3_ab_lock_sha256": "817d88552c273fc2a9521423725af7460fd09b83b9d3eb558d2bd3cacaee75cf",
+  "unintended_ab_lock_diff_count": 0,
+  "version": 1
+}

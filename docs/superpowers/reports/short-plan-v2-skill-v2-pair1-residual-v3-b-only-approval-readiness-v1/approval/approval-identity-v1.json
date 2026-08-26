@@ -1,0 +1,32 @@
+{
+  "a_control_artifact_sha256": "f6aa5c49d64f38aefe71b01fc9eb0abf2ea3a08faba6f5bc3dbcb38c665e3f8f",
+  "approval_created_at": "2026-08-26T12:35:11Z",
+  "approval_domain": "skill-v2-pair1-demand-aware-b-only-signed-approval-v1",
+  "approval_expires_at": "2026-08-28T12:35:11Z",
+  "approval_id": "skill-v2-pair1-residual-v3-b-only-approval-20260826t123511z-4c189e07",
+  "approval_identity_sha256": "7474413750f385018f414a563b57552e414b83917243a8f2130c7648c8ae15bd",
+  "approval_materialization_parent_head": "5e575babc4cc7c411c645ecb8b0fc9c14a3531b2",
+  "approval_parent_head": "3ce22f9858e029536d2a6ea57484b198c11b91b8",
+  "approval_readiness_packet_sha256": "1ed7d0eb79127c2ffa74f449770bec6d3a9ce1d320a34b517e9df6d249c4416e",
+  "approval_reuse_allowed": false,
+  "arm_role": "B_ARM",
+  "candidate_sha256": "c3b8562c359328148e34215db3c5b36e432e6bfe3bdd061740f0ab9299d30bdd",
+  "external_actions": {
+    "credential_lookup_count": 0,
+    "http_post_attempts": 0,
+    "model_calls": 0,
+    "network_calls": 0,
+    "paid_calls": 0,
+    "real_provider_client_creation_count": 0,
+    "real_provider_request_attempts": 0
+  },
+  "nonce_id": "skill-v2-pair1-residual-v3-b-only-nonce-20260826t123511z-5ea50d97",
+  "nonce_reuse_allowed": false,
+  "pair_case_id": "restored-character-heavy-v2-residual-v3",
+  "schema": "SkillV2Pair1ResidualV3BOnlyFreshApprovalIdentityV1",
+  "skill_arm": "RESTORED_SKILL_V2_CHARACTER_CORE_V3",
+  "skill_context_sha256": "98c5adc38074f442a986764fb140baf4d3bf3fa1ab58e34ba7f82b7ddc8888ba",
+  "skill_profile_sha256": "82a4542326e9b20771efc5f05e080ff0ac56438bef8288d61f30e6d905af708a",
+  "successor_v3_ab_lock_sha256": "817d88552c273fc2a9521423725af7460fd09b83b9d3eb558d2bd3cacaee75cf",
+  "version": 1
+}

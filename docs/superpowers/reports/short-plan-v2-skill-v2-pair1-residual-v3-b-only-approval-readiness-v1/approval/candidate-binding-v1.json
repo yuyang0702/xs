@@ -1,0 +1,9 @@
+{
+  "arm_role": "B_ARM",
+  "candidate_sha256": "c3b8562c359328148e34215db3c5b36e432e6bfe3bdd061740f0ab9299d30bdd",
+  "case_id": "restored-character-heavy-v2-residual-v3",
+  "schema": "SkillV2Pair1ResidualV3BOnlyFreshApprovalCandidateBindingV1",
+  "skill_arm": "RESTORED_SKILL_V2_CHARACTER_CORE_V3",
+  "status": "EXACT",
+  "version": 1
+}

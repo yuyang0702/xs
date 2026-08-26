@@ -1,0 +1,8 @@
+{
+  "approval_readiness_packet_sha256": "1ed7d0eb79127c2ffa74f449770bec6d3a9ce1d320a34b517e9df6d249c4416e",
+  "readiness_manifest_entry_count": 26,
+  "readiness_manifest_file_sha256": "181a912d1d55f5ed93681553c08004aa1969e31802b205ff632797130b281f59",
+  "schema": "SkillV2Pair1ResidualV3BOnlyApprovalReadinessBindingV1",
+  "status": "EXACT",
+  "version": 1
+}

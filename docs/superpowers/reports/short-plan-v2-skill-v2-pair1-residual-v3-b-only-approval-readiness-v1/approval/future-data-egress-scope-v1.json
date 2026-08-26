@@ -1,0 +1,11 @@
+{
+  "a_control_artifact_prose_egress": false,
+  "credential_or_auth_header_evidence_persistence": false,
+  "only_new_v3_b_packet_required_data_egress": true,
+  "prior_b_artifact_prose_egress": false,
+  "private_blind_evidence_egress": false,
+  "raw_provider_reasoning_persistence": false,
+  "schema": "SkillV2Pair1ResidualV3FutureDataEgressScopeV1",
+  "status": "PASS",
+  "version": 1
+}

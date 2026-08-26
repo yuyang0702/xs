@@ -1,0 +1,135 @@
+{
+  "algorithm": "SHA-256",
+  "coverage": "exact",
+  "definition_sha256": "b0eff729cf914325a960915d3228c12237d95adf52221ef765427a39b5b2e776",
+  "entry_count": 25,
+  "files": [
+    {
+      "bytes": 14,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-residual-v3-b-only-approval-readiness-v1/approval/.gitattributes",
+      "sha256": "a79691a93b46e49ce460c26ef22afcc03d6eca1e63bf2edbc20e96159510f6c9"
+    },
+    {
+      "bytes": 575,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-residual-v3-b-only-approval-readiness-v1/approval/a-control-isolation-v1.json",
+      "sha256": "999ade4b3c0a2b9904e9f72ae23b01d75c6c2c21532e7014bd7962c00c19e82c"
+    },
+    {
+      "bytes": 1526,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-residual-v3-b-only-approval-readiness-v1/approval/approval-binding-v1.json",
+      "sha256": "e48ac263605b5e0a3f944d263eb6ebae9f4f314a418fcd47233a1ec9e0b5ba25"
+    },
+    {
+      "bytes": 1721,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-residual-v3-b-only-approval-readiness-v1/approval/approval-identity-v1.json",
+      "sha256": "8a27307b130135fa8366440d48cd0e2179a7dccfdd0c548696389d42d62b32ac"
+    },
+    {
+      "bytes": 337,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-residual-v3-b-only-approval-readiness-v1/approval/candidate-binding-v1.json",
+      "sha256": "ca8a3990e08ce9e524d2cb620eef7eb4eb79bfeafd9e3477c23e2c38c4bd0bb5"
+    },
+    {
+      "bytes": 509,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-residual-v3-b-only-approval-readiness-v1/approval/change-contract-v1.json",
+      "sha256": "8b5331f81c94305b78bdf958e13359654f8b1c1da6d226e85603f2f8f2ce2aa4"
+    },
+    {
+      "bytes": 720,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-residual-v3-b-only-approval-readiness-v1/approval/future-current-chat-permission-gate-v1.json",
+      "sha256": "b6e7e8d93c26d110ce0ac1c540e08f799da0d5d8444cb9371285121704921009"
+    },
+    {
+      "bytes": 387,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-residual-v3-b-only-approval-readiness-v1/approval/future-data-egress-scope-v1.json",
+      "sha256": "27c0ec109d04796555e639bb4c4596885a1160c8d13b35bba79f5296d1b18785"
+    },
+    {
+      "bytes": 530,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-residual-v3-b-only-approval-readiness-v1/approval/historical-b-isolation-v1.json",
+      "sha256": "e872f4ae6c44b16b683b57e0200773819f5eb7f988c40ec65c942caeb11f1aae"
+    },
+    {
+      "bytes": 487,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-residual-v3-b-only-approval-readiness-v1/approval/manifest-definition-v1.json",
+      "sha256": "558ffb6234733dc1dac6bef8b4b95cd62cc9fe2e9994a955b51f8480f8c0c6af"
+    },
+    {
+      "bytes": 29026,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-residual-v3-b-only-approval-readiness-v1/approval/negative-approval-matrix-v1.json",
+      "sha256": "ec3e2c464d04fbb7cbfa6b20275cdfd3579ab509bd8023e1a191d892fb5ae738"
+    },
+    {
+      "bytes": 578,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-residual-v3-b-only-approval-readiness-v1/approval/nonce-state-v1.json",
+      "sha256": "fd5aaa02cec21ed98c9264a37d828b94882826873ec5292c4afaa89fc77be69e"
+    },
+    {
+      "bytes": 712,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-residual-v3-b-only-approval-readiness-v1/approval/offline-approved-boundary-dry-run-v1.json",
+      "sha256": "b1ecdd373021e62be301a11ee65f86bccde1a22e95f2453502350950d88a6f5a"
+    },
+    {
+      "bytes": 5019,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-residual-v3-b-only-approval-readiness-v1/approval/phase-b-signed-preflight-v1.json",
+      "sha256": "cb2adf5b859b38084c7a8eb820e85a4407df6beb8a3f52c2f0b36e6c5ae34f56"
+    },
+    {
+      "bytes": 497,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-residual-v3-b-only-approval-readiness-v1/approval/privacy-scan-v1.json",
+      "sha256": "de72cf3111be16fb09d1851b4d7e27bbb979e1710e1d94dfad334d6c7e600317"
+    },
+    {
+      "bytes": 359,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-residual-v3-b-only-approval-readiness-v1/approval/readiness-binding-v1.json",
+      "sha256": "1b2d6f6a1be76840ffd7071e021e4b098f1d989c6ba0d2523f4a455090d5813e"
+    },
+    {
+      "bytes": 224,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-residual-v3-b-only-approval-readiness-v1/approval/README.md",
+      "sha256": "462b920ef37a118d80700c53f1b21a3f92d52e5f217c9ac30148cfda2a71d3f1"
+    },
+    {
+      "bytes": 5431,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-residual-v3-b-only-approval-readiness-v1/approval/signed-approval-v1.json",
+      "sha256": "109a0a7cef03926cec5521c182498568015205104d62a291a6e01f61180d1806"
+    },
+    {
+      "bytes": 354,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-residual-v3-b-only-approval-readiness-v1/approval/single-agent-clean-room-review-v1.json",
+      "sha256": "8a314ca349202786f4644721944606c4508f4f2e82c07c64c6c71135639b508e"
+    },
+    {
+      "bytes": 377,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-residual-v3-b-only-approval-readiness-v1/approval/source-diff-scope-v1.json",
+      "sha256": "9e8364ee61636f91f24299451aa084de3f9d167bed15440a608362f7eeb4b06e"
+    },
+    {
+      "bytes": 468,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-residual-v3-b-only-approval-readiness-v1/approval/strict-l3-receipt-v1.json",
+      "sha256": "a545ad78beb9751a5bd61369dc859cc81ee6d6949d6d8854bbe57a3ff1501be4"
+    },
+    {
+      "bytes": 294,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-residual-v3-b-only-approval-readiness-v1/approval/successor-v3-ab-lock-binding-v1.json",
+      "sha256": "ab54771236eda0f5798a4ae09a2cd210d4c48a4499538580e48d6564e00fb314"
+    },
+    {
+      "bytes": 1382,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-residual-v3-b-only-approval-readiness-v1/approval/test-receipt-v1.json",
+      "sha256": "d6200e50c6febd9a13f69fce292ca40366fbd1c13ac33a983551007bd421dedc"
+    },
+    {
+      "bytes": 1294,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-residual-v3-b-only-approval-readiness-v1/approval/user-approval-receipt-v1.json",
+      "sha256": "363c8f9bcd66dac1491ba8cfc2042881ebc5ef122211abd72e6020113c690d40"
+    },
+    {
+      "bytes": 400,
+      "path": "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-residual-v3-b-only-approval-readiness-v1/approval/v3-profile-context-binding-v1.json",
+      "sha256": "8dcdc057affe20a975477e80799579fd32ab402bb9e9b18dbb50a2dd8bfe9fbb"
+    }
+  ],
+  "schema": "SkillV2Pair1ResidualV3FreshApprovalSHA256ManifestV1",
+  "version": 1
+}

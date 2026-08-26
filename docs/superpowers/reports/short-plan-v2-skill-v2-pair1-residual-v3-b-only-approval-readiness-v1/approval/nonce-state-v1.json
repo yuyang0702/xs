@@ -1,0 +1,14 @@
+{
+  "nonce_consumed": false,
+  "nonce_domain": "skill-v2-pair1-demand-aware-b-only-single-use-nonce-v1",
+  "nonce_id": "skill-v2-pair1-residual-v3-b-only-nonce-20260826t123511z-5ea50d97",
+  "nonce_reserved": false,
+  "nonce_reuse_allowed": false,
+  "nonce_sha256": "7309ad475a571249713b95f0925e232f261b50a8b184a3a2b3ac4ec516426f7b",
+  "nonce_status": "FRESH_UNRESERVED_UNCONSUMED",
+  "permission_check_before_nonce_reservation": true,
+  "reservation_status": "unreserved",
+  "schema": "SkillV2Pair1ResidualV3BOnlyFreshNonceStateV1",
+  "usage_status": "unused",
+  "version": 1
+}

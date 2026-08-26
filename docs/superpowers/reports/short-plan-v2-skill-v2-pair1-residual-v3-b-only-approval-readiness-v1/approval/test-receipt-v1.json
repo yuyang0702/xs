@@ -1,0 +1,41 @@
+{
+  "external_actions": {
+    "credential_lookup_count": 0,
+    "http_post_attempts": 0,
+    "model_calls": 0,
+    "network_calls": 0,
+    "paid_calls": 0,
+    "real_provider_client_creation_count": 0,
+    "real_provider_request_attempts": 0
+  },
+  "new_owning_source_regression_count": 0,
+  "phase_a_absence_only_tests_disposition": "not_applicable_after_canonical_signed_approval_creation; covered before materialization",
+  "phase_a_absence_only_tests_rerun_after_materialization": false,
+  "production_source_diff_count": 0,
+  "runs": [
+    {
+      "name": "preapproval_full_focused_v3",
+      "result": "45 passed in 134.54s"
+    },
+    {
+      "name": "postapproval_approval_independent_focused_v3",
+      "result": "42 passed, 3 deselected in 81.95s"
+    },
+    {
+      "name": "adjacent_readiness_launcher_a_control",
+      "result": "10 passed, 76 deselected in 5.86s"
+    },
+    {
+      "name": "approval_aware_core_verifier",
+      "result": "PASS"
+    },
+    {
+      "name": "negative_approval_matrix",
+      "result": "68/68 PASS"
+    }
+  ],
+  "schema": "SkillV2Pair1ResidualV3FreshApprovalTestReceiptV1",
+  "status": "PASS",
+  "summary": "pre-approval focused 45 passed; post-approval approval-independent focused 42 passed, 3 deselected; adjacent 10 passed, 76 deselected; approval-aware core verification PASS; negative approval matrix 68/68 PASS",
+  "version": 1
+}

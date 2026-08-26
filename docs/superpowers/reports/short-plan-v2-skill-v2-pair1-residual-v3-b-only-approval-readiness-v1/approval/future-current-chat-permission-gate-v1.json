@@ -1,0 +1,23 @@
+{
+  "current_chat_external_execution_permission": "NOT_GRANTED_BY_THIS_TASK",
+  "external_actions": {
+    "credential_lookup_count": 0,
+    "http_post_attempts": 0,
+    "model_calls": 0,
+    "network_calls": 0,
+    "paid_calls": 0,
+    "real_provider_client_creation_count": 0,
+    "real_provider_request_attempts": 0
+  },
+  "future_execution_permission_must_be_reconfirmed": true,
+  "permission_check_before_nonce_reservation": true,
+  "real_execution_blocked": true,
+  "required_permissions": [
+    "credential_lookup",
+    "network_access",
+    "exactly_one_paid_provider_model_request",
+    "necessary_request_data_egress"
+  ],
+  "schema": "SkillV2Pair1ResidualV3FutureCurrentChatPermissionGateV1",
+  "version": 1
+}

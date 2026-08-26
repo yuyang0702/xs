@@ -1,0 +1,12 @@
+{
+  "a_artifact_content_in_new_v3_b_input": false,
+  "a_artifact_prose_egress": false,
+  "a_control_artifact_sha256": "f6aa5c49d64f38aefe71b01fc9eb0abf2ea3a08faba6f5bc3dbcb38c665e3f8f",
+  "a_control_packet_sha256": "39a46e38d9c11f8afd5fd1cf633443b31ae6fb1c97c4b93d404f950781f19356",
+  "a_control_reuse_binding_sha256": "9af3fd0145bc915b494a9547379bae9a4f4aad98af2c790ab09d0dd2f39ebd88",
+  "a_control_status": "PASS_SEALED",
+  "a_result_used_only_as_sealed_control_evidence": true,
+  "schema": "SkillV2Pair1ResidualV3AControlIsolationV1",
+  "status": "PASS",
+  "version": 1
+}

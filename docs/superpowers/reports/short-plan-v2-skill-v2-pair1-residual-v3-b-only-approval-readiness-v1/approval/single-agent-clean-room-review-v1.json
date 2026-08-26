@@ -1,0 +1,12 @@
+{
+  "authority_critical_binding_review": "PASS",
+  "experiment_isolation_review": "PASS",
+  "external_action_review": "PASS",
+  "hard_issue_count": 0,
+  "one_shot_safety_review": "PASS",
+  "review_mode": "SINGLE_AGENT",
+  "schema": "SkillV2Pair1ResidualV3ApprovalCleanRoomReviewV1",
+  "status": "PASS",
+  "team_review_requested": false,
+  "version": 1
+}

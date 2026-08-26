@@ -1,0 +1,9 @@
+{
+  "algorithm": "SHA-256",
+  "approval_id": "skill-v2-pair1-residual-v3-b-only-approval-20260826t123511z-4c189e07",
+  "coverage": "all approval evidence payload files except manifest and final report",
+  "manifest_definition_sha256": "b0eff729cf914325a960915d3228c12237d95adf52221ef765427a39b5b2e776",
+  "schema": "SkillV2Pair1ResidualV3FreshApprovalManifestDefinitionV1",
+  "signed_approval_sha256": "a66d136ca756f3fbd6759411e90c8d88a0c87bac1c5f88ce5ca107f5c86c3a9e",
+  "version": 1
+}

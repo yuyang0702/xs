@@ -1,0 +1,17 @@
+{
+  "automatic_level": "L1",
+  "baseline_used": true,
+  "blocker_count": 0,
+  "changed_path_scope": "approval evidence only",
+  "core_path_count": 0,
+  "declared_level": "L3",
+  "forward_risk_report_required": false,
+  "recommended_level": "L3",
+  "schema": "SkillV2Pair1ResidualV3FreshApprovalStrictL3ReceiptV1",
+  "single_review_required": false,
+  "source_path_count": 0,
+  "split_review_required": false,
+  "status": "PASS",
+  "version": 1,
+  "warning_count": 0
+}

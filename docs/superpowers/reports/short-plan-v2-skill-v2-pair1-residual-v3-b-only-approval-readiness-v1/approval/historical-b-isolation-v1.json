@@ -1,0 +1,12 @@
+{
+  "historical_b_artifact_sha256": "1dd0e31dcf01bc369cf8cee1865ae1fffdb4ad890bb1d726482048755037dc69",
+  "historical_b_packet_sha256": "6190409613b8ba3cff8ae5fba6216a2c4885f0d1d37245367ce5eea63288b37a",
+  "historical_b_prose_egress": false,
+  "historical_b_prose_in_new_v3_b_input": false,
+  "historical_b_used_as_new_treatment": false,
+  "private_blind_evidence_egress": false,
+  "private_blind_evidence_in_new_v3_b_input": false,
+  "schema": "SkillV2Pair1ResidualV3HistoricalBIsolationV1",
+  "status": "PASS",
+  "version": 1
+}

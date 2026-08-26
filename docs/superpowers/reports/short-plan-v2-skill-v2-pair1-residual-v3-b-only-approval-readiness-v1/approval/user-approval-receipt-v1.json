@@ -1,0 +1,29 @@
+{
+  "approval_administration_only": true,
+  "approval_scope": "SKILL_V2_PAIR1_RESIDUAL_V3_B_ONLY_REVALIDATION_SINGLE_DISPATCH_ONLY",
+  "approval_source_path_persisted": false,
+  "approval_source_sha256": "ca19b8a56c0b83acccdc6543c8acb4a3036c10048148646dea7aabb74717e0eb",
+  "approval_time_signed_preflight_authorized": true,
+  "created_at": "2026-08-26T12:35:11Z",
+  "credential_lookup_authorized_by_this_task": false,
+  "external_actions": {
+    "credential_lookup_count": 0,
+    "http_post_attempts": 0,
+    "model_calls": 0,
+    "network_calls": 0,
+    "paid_calls": 0,
+    "real_provider_client_creation_count": 0,
+    "real_provider_request_attempts": 0
+  },
+  "future_current_chat_permission_required": true,
+  "named_approver": "USER_PROJECT_OWNER",
+  "necessary_request_data_egress_authorized_by_this_task": false,
+  "network_access_authorized_by_this_task": false,
+  "paid_provider_request_authorized_by_this_task": false,
+  "real_execution_authorized_by_this_task": false,
+  "schema": "SkillV2Pair1ResidualV3BOnlyUserApprovalReceiptV1",
+  "signed_approval_creation_authorized": true,
+  "task": "SKILL_V2_PAIR_1_RESIDUAL_V3_B_ONLY_REVALIDATION_FRESH_USER_APPROVAL",
+  "user_approval_receipt_sha256": "aae5a0dcef41697a181ef5e8922077443765dd3cb101b1b142793abfd843a74f",
+  "version": 1
+}

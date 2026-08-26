@@ -1,0 +1,16 @@
+{
+  "allowed_paths": [
+    "docs/superpowers/reports/short-plan-v2-skill-v2-pair1-residual-v3-b-only-approval-readiness-v1/approval/**"
+  ],
+  "closed_world": true,
+  "external_calls_allowed": false,
+  "forbidden_paths": [
+    "src/**",
+    "baml_src/**",
+    "vendor/novel-skills/source/**"
+  ],
+  "intent": "Create and seal offline approval evidence only for residual V3 Pair 1 B revalidation.",
+  "production_behavior_change_allowed": false,
+  "schema": "NovelDevCouncilChangeContractV1",
+  "version": 1
+}
