@@ -1,0 +1,14 @@
+{
+  "auth_headers_persisted": false,
+  "credentials_persisted": false,
+  "hidden_reasoning_persisted": false,
+  "privacy_match_count": 0,
+  "raw_provider_payloads_persisted": false,
+  "scanned_file_count": 19,
+  "schema": "SkillV2Pair1ResidualV3FreshBlindPrivacyScanV1",
+  "secret_provider_urls_persisted": false,
+  "self_excluded": true,
+  "sha256_manifest_excluded": true,
+  "status": "PASS",
+  "version": 1
+}

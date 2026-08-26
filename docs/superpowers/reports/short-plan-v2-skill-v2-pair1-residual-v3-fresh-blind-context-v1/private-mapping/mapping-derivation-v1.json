@@ -1,0 +1,21 @@
+{
+  "a_artifact_sha256": "f6aa5c49d64f38aefe71b01fc9eb0abf2ea3a08faba6f5bc3dbcb38c665e3f8f",
+  "algorithm": "FIRST_BIT_OF_SHA256_ASCII_CONCAT_V1",
+  "concatenation_order": [
+    "domain",
+    "a_artifact_sha256",
+    "v3_b_artifact_sha256",
+    "successor_v3_ab_lock_sha256"
+  ],
+  "derivation_digest_sha256": "afcce1e1b69a0a69b1f8b18839221c508de88ff9892508aef6e757cf6e0b9911",
+  "domain": "skill-v2-pair1-residual-v3-revalidation-blind-map-v1",
+  "mapping_bit": 1,
+  "mapping_deterministic": true,
+  "mapping_uses_v3_b_artifact": true,
+  "old_mapping_reused": false,
+  "quality_based_selection": false,
+  "schema": "SkillV2Pair1ResidualV3FreshBlindMappingDerivationV1",
+  "successor_v3_ab_lock_sha256": "817d88552c273fc2a9521423725af7460fd09b83b9d3eb558d2bd3cacaee75cf",
+  "v3_b_artifact_sha256": "b5833ba6faf2fdb69b74a9f073c25ece537cc13e01694648e97f4dddda5d0bce",
+  "version": 1
+}

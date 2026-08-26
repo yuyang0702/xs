@@ -1,0 +1,43 @@
+{
+  "closed_world": true,
+  "evaluator_visible_file_count": 7,
+  "files": [
+    {
+      "bytes": 2516,
+      "path": "X/artifact-view-v1.json",
+      "sha256": "a84c832b0f34fa90413f21d28a263aabb4823b9c3b26a037fb7368153ee42867"
+    },
+    {
+      "bytes": 2346,
+      "path": "Y/artifact-view-v1.json",
+      "sha256": "511266bfbb29316e0476d6a3887a433a5ffa6f6f0db81a784453148e7bd6ab1d"
+    },
+    {
+      "bytes": 756,
+      "path": "blind-evaluation-instructions-v1.md",
+      "sha256": "ef0191d038d465395d8c00f893a9da82ab3f7e905ed7cafaf93e40e243dd72dd"
+    },
+    {
+      "bytes": 1838,
+      "path": "identity-leak-scan-v1.json",
+      "sha256": "dd4e55ef6fdbc120cf1aa85252f7b561769e9aabc0703fe8d5832c17f043ec02"
+    },
+    {
+      "bytes": 2563,
+      "path": "neutral-evaluation-context-v1.json",
+      "sha256": "f0f4db2d08acf85bffd8d564a02d7be0fa14e64bebc44ed081c513023d2ba361"
+    },
+    {
+      "bytes": 1352,
+      "path": "prior-result-contamination-scan-v1.json",
+      "sha256": "0a5872c4435083f5c21ff8266bcc7fe6c1f8753b2826d50c4e4a81388a993e5c"
+    }
+  ],
+  "literary_judgment_file_count": 0,
+  "manifest_scope": "EVALUATOR_VISIBLE_CLOSED_WORLD",
+  "overall_status": "exact",
+  "private_mapping_present": false,
+  "schema": "FreshBlindEvaluatorBundleManifestV1",
+  "self_excluded": true,
+  "version": 1
+}

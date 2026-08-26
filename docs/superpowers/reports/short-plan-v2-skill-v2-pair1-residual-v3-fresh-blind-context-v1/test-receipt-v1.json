@@ -1,0 +1,39 @@
+{
+  "blockers": 0,
+  "checks": {
+    "a_copy_exact": true,
+    "evaluator_manifest_exact": true,
+    "identity_leak_count": 0,
+    "literary_judgment_artifact_count": 0,
+    "mapping_deterministic": true,
+    "mapping_separate": true,
+    "policy_bindings_exact": true,
+    "prior_b_artifacts_excluded": true,
+    "prior_result_contamination_count": 0,
+    "production_source_diff": 0,
+    "v3_b_copy_exact": true
+  },
+  "external_actions": {
+    "credential_lookup_count": 0,
+    "http_post_attempts": 0,
+    "model_calls": 0,
+    "network_calls": 0,
+    "paid_calls": 0,
+    "real_provider_client_creation_count": 0,
+    "real_provider_request_attempts": 0
+  },
+  "focused_blind_bundle_validation": "PASS",
+  "new_owning_source_regression_count": 0,
+  "related_offline_tests": {
+    "current_state_compatible_rerun": "PASS: 87 passed, 2 deselected",
+    "initial_failure_classification": "HISTORICAL_SEALED_STATE_LIFECYCLE_ASSUMPTION",
+    "initial_failure_reason": "approval_already_exists",
+    "initial_run": "87 passed, 2 failed",
+    "new_owning_source_regression": false
+  },
+  "schema": "SkillV2Pair1ResidualV3FreshBlindBundleTestReceiptV1",
+  "strict_l3": "PASS",
+  "strict_l3_method": "NOVEL_DEV_COUNCIL_INSPECT_CHANGE_GATE_STRICT",
+  "version": 1,
+  "warnings": 0
+}

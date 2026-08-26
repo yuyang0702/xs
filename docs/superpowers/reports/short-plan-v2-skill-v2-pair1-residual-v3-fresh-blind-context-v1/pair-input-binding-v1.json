@@ -1,0 +1,24 @@
+{
+  "a_artifact_mutated": false,
+  "a_control": {
+    "artifact_sha256": "f6aa5c49d64f38aefe71b01fc9eb0abf2ea3a08faba6f5bc3dbcb38c665e3f8f",
+    "status": "PASS_SEALED"
+  },
+  "a_narrative_copy": "EXACT",
+  "baseline_branch": "r1-ptr3/planning-repair-finding-propagation-20260817",
+  "baseline_head": "fd1f207ab5ff7893908fd496960ec678fc171e92",
+  "prior_b_artifacts_used_as_current_treatment": false,
+  "schema": "SkillV2Pair1ResidualV3FreshBlindPairInputBindingV1",
+  "v3_b_artifact_mutated": false,
+  "v3_b_narrative_copy": "EXACT",
+  "v3_b_treatment": {
+    "artifact_sha256": "b5833ba6faf2fdb69b74a9f073c25ece537cc13e01694648e97f4dddda5d0bce",
+    "candidate_sha256": "c3b8562c359328148e34215db3c5b36e432e6bfe3bdd061740f0ab9299d30bdd",
+    "context_characters": 2998,
+    "context_sha256": "98c5adc38074f442a986764fb140baf4d3bf3fa1ab58e34ba7f82b7ddc8888ba",
+    "evidence_head": "fd1f207ab5ff7893908fd496960ec678fc171e92",
+    "profile_sha256": "82a4542326e9b20771efc5f05e080ff0ac56438bef8288d61f30e6d905af708a",
+    "status": "PASS_SEALED"
+  },
+  "version": 1
+}
