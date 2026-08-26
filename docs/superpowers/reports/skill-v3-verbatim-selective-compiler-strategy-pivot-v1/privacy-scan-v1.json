@@ -1,0 +1,15 @@
+{
+  "schema": "SkillV3StrategyPivotPrivacyScanV1",
+  "status": "PASS",
+  "privacy_match_count": 0,
+  "matches": [],
+  "scanned_file_count": 28,
+  "forbidden_material": [
+    "credentials",
+    "auth headers",
+    "secret Provider URLs",
+    "raw Provider payloads",
+    "hidden reasoning"
+  ],
+  "external_actions": 0
+}

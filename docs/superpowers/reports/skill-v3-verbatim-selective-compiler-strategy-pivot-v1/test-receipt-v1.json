@@ -1,0 +1,18 @@
+{
+  "schema": "SkillV3StrategyPivotTestReceiptV1",
+  "status": "PASS",
+  "source_discovery_contract_validation": "PASS",
+  "focused_related_tests": "95 passed in 4.54s",
+  "strict_l3": "PASS; warnings=0; blockers=0",
+  "source_implementation_diff": 0,
+  "new_owning_source_regression_count": 0,
+  "external_actions": {
+    "credential_lookup": 0,
+    "provider_client_creation": 0,
+    "provider_requests": 0,
+    "http_post_attempts": 0,
+    "network": 0,
+    "model": 0,
+    "paid": 0
+  }
+}

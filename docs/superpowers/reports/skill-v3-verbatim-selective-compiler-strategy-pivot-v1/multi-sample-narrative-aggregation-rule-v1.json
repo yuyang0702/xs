@@ -1,0 +1,29 @@
+{
+  "schema": "MultiSampleNarrativeAggregationRuleV1",
+  "dimensions": [
+    "character_agency",
+    "causal_coherence",
+    "subtext_support",
+    "specificity",
+    "scene_pressure",
+    "setup_payoff_integrity",
+    "voice_readiness",
+    "anti_template_risk"
+  ],
+  "relation_values": [
+    "A_BETTER",
+    "B_BETTER",
+    "TIE",
+    "INCOMPARABLE"
+  ],
+  "aggregation": "per dimension, take the median ordinal relation only when both evaluators agree on direction or at least 4 of 6 evaluator-by-batch votes support it; otherwise INCONCLUSIVE",
+  "critical_dimensions": [
+    "character_agency",
+    "causal_coherence",
+    "setup_payoff_integrity"
+  ],
+  "worst_case_rule": "any supported A_BETTER result on a critical dimension is a critical B regression and blocks pass",
+  "minimum_support": "every critical dimension must be TIE or B_BETTER with the support threshold; at least one critical dimension must not be INCONCLUSIVE",
+  "scalar_average_allowed": false,
+  "retrospective_tuning_allowed": false
+}

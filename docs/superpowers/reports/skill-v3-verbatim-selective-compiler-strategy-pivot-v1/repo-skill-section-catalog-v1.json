@@ -1,0 +1,4668 @@
+{
+  "schema": "RepoSkillSectionCatalogV1",
+  "source_root": "vendor/novel-skills/source",
+  "source_root_runtime_reachability": "NONE_CURRENTLY",
+  "short_used_skill_count": 11,
+  "short_used_skill_ids": [
+    "story-init",
+    "plot-structure",
+    "character-management",
+    "worldbuilding",
+    "revision-continuity",
+    "chapter-writing",
+    "novel-writing",
+    "dialogue",
+    "humanizer-zh",
+    "story-maintenance",
+    "better-writing"
+  ],
+  "canonical_local_estimator": "src/novel_flywheel/context_policy.py:estimate_input_tokens",
+  "skills": [
+    {
+      "skill_id": "story-init",
+      "files": [
+        {
+          "source_file": "vendor/novel-skills/source/story-init/SKILL.md",
+          "source_sha256": "9ace3dec9fd2ca22e9f6a96a9cf54ea4f498ee6d4522301fd775bc87bd2511d6",
+          "chars": 7739,
+          "token_estimate": 1935,
+          "top_level_sections": [
+            "Story Initialization",
+            "Characters",
+            "Worldbuilding",
+            "Plot Structure",
+            "Story Timeline",
+            "Chapters"
+          ],
+          "subsections": [
+            {
+              "section_id": "sv3-c5cabdbecc9d9ebe",
+              "heading_path": [
+                "Story Initialization",
+                "Overview"
+              ],
+              "order": 1,
+              "chars": 290
+            },
+            {
+              "section_id": "sv3-8ac17f0d47795d10",
+              "heading_path": [
+                "Story Initialization",
+                "When to Use"
+              ],
+              "order": 2,
+              "chars": 393
+            },
+            {
+              "section_id": "sv3-40facfcb85f73424",
+              "heading_path": [
+                "Story Initialization",
+                "Workflow"
+              ],
+              "order": 3,
+              "chars": 2084
+            },
+            {
+              "section_id": "sv3-9528d6c4b2b57eb4",
+              "heading_path": [
+                "Characters",
+                "Registry"
+              ],
+              "order": 5,
+              "chars": 107
+            },
+            {
+              "section_id": "sv3-80f6f64ac2866551",
+              "heading_path": [
+                "Characters",
+                "Relationship Map"
+              ],
+              "order": 6,
+              "chars": 53
+            },
+            {
+              "section_id": "sv3-8af2ee5c60d74c3a",
+              "heading_path": [
+                "Characters",
+                "Family Trees"
+              ],
+              "order": 7,
+              "chars": 152
+            },
+            {
+              "section_id": "sv3-bcc4b46286151c12",
+              "heading_path": [
+                "Worldbuilding",
+                "World Overview"
+              ],
+              "order": 9,
+              "chars": 62
+            },
+            {
+              "section_id": "sv3-ccab1e500e5e4cf5",
+              "heading_path": [
+                "Worldbuilding",
+                "Locations"
+              ],
+              "order": 10,
+              "chars": 107
+            },
+            {
+              "section_id": "sv3-3b37f8c3c1f21dee",
+              "heading_path": [
+                "Worldbuilding",
+                "Systems"
+              ],
+              "order": 11,
+              "chars": 83
+            },
+            {
+              "section_id": "sv3-16a97e19884d7d9b",
+              "heading_path": [
+                "Worldbuilding",
+                "Factions"
+              ],
+              "order": 12,
+              "chars": 105
+            },
+            {
+              "section_id": "sv3-c8d71917fcf24380",
+              "heading_path": [
+                "Worldbuilding",
+                "Artifacts"
+              ],
+              "order": 13,
+              "chars": 222
+            },
+            {
+              "section_id": "sv3-8eb1efe5e9383747",
+              "heading_path": [
+                "Plot Structure",
+                "Story Structure"
+              ],
+              "order": 15,
+              "chars": 70
+            },
+            {
+              "section_id": "sv3-a78544c964829282",
+              "heading_path": [
+                "Plot Structure",
+                "Arcs"
+              ],
+              "order": 16,
+              "chars": 97
+            },
+            {
+              "section_id": "sv3-10ca03901075308f",
+              "heading_path": [
+                "Plot Structure",
+                "Theme Tracking"
+              ],
+              "order": 17,
+              "chars": 198
+            },
+            {
+              "section_id": "sv3-e9171611b98c26ef",
+              "heading_path": [
+                "Chapters",
+                "Registry"
+              ],
+              "order": 20,
+              "chars": 143
+            },
+            {
+              "section_id": "sv3-8e1133b68df847e4",
+              "heading_path": [
+                "Chapters",
+                "Total Word Count: 0"
+              ],
+              "order": 21,
+              "chars": 1233
+            },
+            {
+              "section_id": "sv3-d3294cde968201ab",
+              "heading_path": [
+                "Chapters",
+                "Conventions"
+              ],
+              "order": 22,
+              "chars": 1779
+            }
+          ]
+        }
+      ],
+      "current_short_usage": [
+        "planning"
+      ],
+      "current_stage_ownership": [
+        "AUTHORITY_ONLY",
+        "LOCAL_RUNTIME"
+      ]
+    },
+    {
+      "skill_id": "plot-structure",
+      "files": [
+        {
+          "source_file": "vendor/novel-skills/source/plot-structure/references/arc-template.md",
+          "source_sha256": "c7d5922c3a39eda28ac1e6c027e1cf9fe79e47ede850fcd6610cf1dd127c2560",
+          "chars": 1257,
+          "token_estimate": 315,
+          "top_level_sections": [
+            "Arc Template"
+          ],
+          "subsections": [
+            {
+              "section_id": "sv3-70a527462c32e7b6",
+              "heading_path": [
+                "Arc Template",
+                "Setup"
+              ],
+              "order": 1,
+              "chars": 129
+            },
+            {
+              "section_id": "sv3-faecc1466817d8aa",
+              "heading_path": [
+                "Arc Template",
+                "Rising Action"
+              ],
+              "order": 2,
+              "chars": 159
+            },
+            {
+              "section_id": "sv3-7633ad6f5c90db5e",
+              "heading_path": [
+                "Arc Template",
+                "Climax"
+              ],
+              "order": 3,
+              "chars": 102
+            },
+            {
+              "section_id": "sv3-3fb51ac3fed35bc0",
+              "heading_path": [
+                "Arc Template",
+                "Resolution"
+              ],
+              "order": 4,
+              "chars": 107
+            },
+            {
+              "section_id": "sv3-13580b3cdbef263e",
+              "heading_path": [
+                "Arc Template",
+                "Plot Points"
+              ],
+              "order": 5,
+              "chars": 220
+            },
+            {
+              "section_id": "sv3-ac7aa3aed8a7d237",
+              "heading_path": [
+                "Arc Template",
+                "Foreshadowing"
+              ],
+              "order": 6,
+              "chars": 232
+            }
+          ]
+        },
+        {
+          "source_file": "vendor/novel-skills/source/plot-structure/references/promise-template.md",
+          "source_sha256": "ca34c4eba78e253cd0f6b315999c596750bbe872279e52007cc8d078caec98d1",
+          "chars": 454,
+          "token_estimate": 114,
+          "top_level_sections": [
+            "Promise Template"
+          ],
+          "subsections": [
+            {
+              "section_id": "sv3-2ced894267dc51e3",
+              "heading_path": [
+                "Promise Template",
+                "Setup"
+              ],
+              "order": 1,
+              "chars": 46
+            },
+            {
+              "section_id": "sv3-82ca2fdf9c28183b",
+              "heading_path": [
+                "Promise Template",
+                "Payoff"
+              ],
+              "order": 2,
+              "chars": 47
+            },
+            {
+              "section_id": "sv3-dd97e7e7e139fe7b",
+              "heading_path": [
+                "Promise Template",
+                "Tracking Notes"
+              ],
+              "order": 3,
+              "chars": 61
+            }
+          ]
+        },
+        {
+          "source_file": "vendor/novel-skills/source/plot-structure/references/question-template.md",
+          "source_sha256": "a432d5f68ea0475faa07fa4fec80f1486a833adf68cbeb174de0948377c313f2",
+          "chars": 483,
+          "token_estimate": 121,
+          "top_level_sections": [
+            "Question Template"
+          ],
+          "subsections": [
+            {
+              "section_id": "sv3-a1cb6a6e7ccf6112",
+              "heading_path": [
+                "Question Template",
+                "Question"
+              ],
+              "order": 1,
+              "chars": 68
+            },
+            {
+              "section_id": "sv3-972a75cb8ca8f0bd",
+              "heading_path": [
+                "Question Template",
+                "Evidence"
+              ],
+              "order": 2,
+              "chars": 59
+            },
+            {
+              "section_id": "sv3-6e4a0b2625a01274",
+              "heading_path": [
+                "Question Template",
+                "Resolution Plan"
+              ],
+              "order": 3,
+              "chars": 57
+            }
+          ]
+        },
+        {
+          "source_file": "vendor/novel-skills/source/plot-structure/references/structure-models.md",
+          "source_sha256": "c1c42fa42e5d37f749c326c0451dd0b123ddbebf7e91b19d0c0fd360c33f8e5f",
+          "chars": 4204,
+          "token_estimate": 1051,
+          "top_level_sections": [
+            "Story Structure Models Reference"
+          ],
+          "subsections": [
+            {
+              "section_id": "sv3-36cdb33180195037",
+              "heading_path": [
+                "Story Structure Models Reference",
+                "Three-Act Structure"
+              ],
+              "order": 1,
+              "chars": 685
+            },
+            {
+              "section_id": "sv3-ca5d5ef7e2a542ca",
+              "heading_path": [
+                "Story Structure Models Reference",
+                "Hero's Journey (Campbell/Vogler)"
+              ],
+              "order": 2,
+              "chars": 979
+            },
+            {
+              "section_id": "sv3-ea99d0f57e75c9d5",
+              "heading_path": [
+                "Story Structure Models Reference",
+                "Save the Cat (Snyder)"
+              ],
+              "order": 3,
+              "chars": 1048
+            },
+            {
+              "section_id": "sv3-b641e2fb5b11c38e",
+              "heading_path": [
+                "Story Structure Models Reference",
+                "Kishotenketsu"
+              ],
+              "order": 4,
+              "chars": 429
+            },
+            {
+              "section_id": "sv3-9145562c04bd7206",
+              "heading_path": [
+                "Story Structure Models Reference",
+                "Five-Act Structure (Shakespeare)"
+              ],
+              "order": 5,
+              "chars": 409
+            },
+            {
+              "section_id": "sv3-67bbe2ba2accf4b1",
+              "heading_path": [
+                "Story Structure Models Reference",
+                "Choosing a Structure"
+              ],
+              "order": 6,
+              "chars": 521
+            }
+          ]
+        },
+        {
+          "source_file": "vendor/novel-skills/source/plot-structure/SKILL.md",
+          "source_sha256": "54a38f07a5d0106c66e30058a7e375867f3ca1924aef8208a4428c205d73146c",
+          "chars": 4595,
+          "token_estimate": 1149,
+          "top_level_sections": [
+            "Plot Structure"
+          ],
+          "subsections": [
+            {
+              "section_id": "sv3-477f0ce633e7f98a",
+              "heading_path": [
+                "Plot Structure",
+                "Overview"
+              ],
+              "order": 1,
+              "chars": 267
+            },
+            {
+              "section_id": "sv3-0ae5cb27f85a5d2b",
+              "heading_path": [
+                "Plot Structure",
+                "Prerequisites"
+              ],
+              "order": 2,
+              "chars": 144
+            },
+            {
+              "section_id": "sv3-b7f4552148118714",
+              "heading_path": [
+                "Plot Structure",
+                "Choosing a Story Structure"
+              ],
+              "order": 3,
+              "chars": 387
+            },
+            {
+              "section_id": "sv3-8f60ce5781d2680f",
+              "heading_path": [
+                "Plot Structure",
+                "Creating an Arc"
+              ],
+              "order": 4,
+              "chars": 718
+            },
+            {
+              "section_id": "sv3-a62c59fc8e1e910d",
+              "heading_path": [
+                "Plot Structure",
+                "Managing Plot Points"
+              ],
+              "order": 5,
+              "chars": 553
+            },
+            {
+              "section_id": "sv3-5dee9d2fc58594d3",
+              "heading_path": [
+                "Plot Structure",
+                "Timeline Management"
+              ],
+              "order": 6,
+              "chars": 431
+            },
+            {
+              "section_id": "sv3-c8068581ef934af9",
+              "heading_path": [
+                "Plot Structure",
+                "Foreshadowing Tracking"
+              ],
+              "order": 7,
+              "chars": 633
+            },
+            {
+              "section_id": "sv3-6faf8dafed9ca421",
+              "heading_path": [
+                "Plot Structure",
+                "Cross-Referencing"
+              ],
+              "order": 8,
+              "chars": 366
+            },
+            {
+              "section_id": "sv3-33b095f515080bad",
+              "heading_path": [
+                "Plot Structure",
+                "CLI Maintenance"
+              ],
+              "order": 9,
+              "chars": 333
+            },
+            {
+              "section_id": "sv3-9fb27539151c30df",
+              "heading_path": [
+                "Plot Structure",
+                "Reference Files"
+              ],
+              "order": 10,
+              "chars": 424
+            }
+          ]
+        }
+      ],
+      "current_short_usage": [
+        "planning",
+        "revision_plan"
+      ],
+      "current_stage_ownership": [
+        "LOCAL_RUNTIME",
+        "PLANNING_EVENT_REALIZATION"
+      ]
+    },
+    {
+      "skill_id": "character-management",
+      "files": [
+        {
+          "source_file": "vendor/novel-skills/source/character-management/references/character-template.md",
+          "source_sha256": "522739455fe7dfbc2bfc60e364e3106cd100d422898dbf53c67f4a62e5c42746",
+          "chars": 1986,
+          "token_estimate": 497,
+          "top_level_sections": [
+            "Character Template"
+          ],
+          "subsections": [
+            {
+              "section_id": "sv3-974421ec02a478fa",
+              "heading_path": [
+                "Character Template",
+                "Appearance"
+              ],
+              "order": 1,
+              "chars": 122
+            },
+            {
+              "section_id": "sv3-4c39329c602fd48e",
+              "heading_path": [
+                "Character Template",
+                "Personality & Traits"
+              ],
+              "order": 2,
+              "chars": 117
+            },
+            {
+              "section_id": "sv3-4c6b004ecdd2077f",
+              "heading_path": [
+                "Character Template",
+                "Backstory"
+              ],
+              "order": 3,
+              "chars": 94
+            },
+            {
+              "section_id": "sv3-10e4ba0c5b7509b4",
+              "heading_path": [
+                "Character Template",
+                "Motivations & Goals"
+              ],
+              "order": 4,
+              "chars": 129
+            },
+            {
+              "section_id": "sv3-5fd3ed6ce8158b53",
+              "heading_path": [
+                "Character Template",
+                "Location References"
+              ],
+              "order": 5,
+              "chars": 133
+            },
+            {
+              "section_id": "sv3-b75227453c1cc26a",
+              "heading_path": [
+                "Character Template",
+                "Voice & Speech Patterns"
+              ],
+              "order": 6,
+              "chars": 275
+            },
+            {
+              "section_id": "sv3-8e321726b4ebdcec",
+              "heading_path": [
+                "Character Template",
+                "Character Arc"
+              ],
+              "order": 7,
+              "chars": 186
+            },
+            {
+              "section_id": "sv3-b6abd167c92af559",
+              "heading_path": [
+                "Character Template",
+                "Timeline"
+              ],
+              "order": 8,
+              "chars": 120
+            }
+          ]
+        },
+        {
+          "source_file": "vendor/novel-skills/source/character-management/references/relationship-types.md",
+          "source_sha256": "c43761d100598a4651999fccd078c499b6df9aae05786250c02e31a40493ad56",
+          "chars": 1982,
+          "token_estimate": 496,
+          "top_level_sections": [
+            "Relationship Types Reference"
+          ],
+          "subsections": [
+            {
+              "section_id": "sv3-33b3c011ab637068",
+              "heading_path": [
+                "Relationship Types Reference",
+                "Family"
+              ],
+              "order": 1,
+              "chars": 583
+            },
+            {
+              "section_id": "sv3-8afeb5229a4fe841",
+              "heading_path": [
+                "Relationship Types Reference",
+                "Social"
+              ],
+              "order": 2,
+              "chars": 381
+            },
+            {
+              "section_id": "sv3-e92f0f3584d44b87",
+              "heading_path": [
+                "Relationship Types Reference",
+                "Story Role"
+              ],
+              "order": 3,
+              "chars": 310
+            },
+            {
+              "section_id": "sv3-fc9570e47e65f4a2",
+              "heading_path": [
+                "Relationship Types Reference",
+                "Usage"
+              ],
+              "order": 4,
+              "chars": 601
+            }
+          ]
+        },
+        {
+          "source_file": "vendor/novel-skills/source/character-management/SKILL.md",
+          "source_sha256": "bc21410cc846d00b766a8c465c30e48af859083c83d2f731bd7eb415c76c578a",
+          "chars": 4127,
+          "token_estimate": 1032,
+          "top_level_sections": [
+            "Character Management"
+          ],
+          "subsections": [
+            {
+              "section_id": "sv3-a204bb78679cbd43",
+              "heading_path": [
+                "Character Management",
+                "Overview"
+              ],
+              "order": 1,
+              "chars": 254
+            },
+            {
+              "section_id": "sv3-81e4eea8804f7fcc",
+              "heading_path": [
+                "Character Management",
+                "Prerequisites"
+              ],
+              "order": 2,
+              "chars": 144
+            },
+            {
+              "section_id": "sv3-9e36963fe1a5a940",
+              "heading_path": [
+                "Character Management",
+                "Creating a Character"
+              ],
+              "order": 3,
+              "chars": 1082
+            },
+            {
+              "section_id": "sv3-9fea823351166907",
+              "heading_path": [
+                "Character Management",
+                "Updating a Character"
+              ],
+              "order": 4,
+              "chars": 388
+            },
+            {
+              "section_id": "sv3-ccc77609137fa745",
+              "heading_path": [
+                "Character Management",
+                "Managing Relationships"
+              ],
+              "order": 5,
+              "chars": 352
+            },
+            {
+              "section_id": "sv3-76ba02adce162293",
+              "heading_path": [
+                "Character Management",
+                "Family Trees"
+              ],
+              "order": 6,
+              "chars": 130
+            },
+            {
+              "section_id": "sv3-63fdcf9593c78873",
+              "heading_path": [
+                "Character Management",
+                "Family Trees"
+              ],
+              "order": 7,
+              "chars": 243
+            },
+            {
+              "section_id": "sv3-d98d3a730489b732",
+              "heading_path": [
+                "Character Management",
+                "Family Trees",
+                "{Family Name}"
+              ],
+              "order": 8,
+              "chars": 226
+            },
+            {
+              "section_id": "sv3-d3d2dc003456ac84",
+              "heading_path": [
+                "Character Management",
+                "Cross-Referencing"
+              ],
+              "order": 9,
+              "chars": 644
+            },
+            {
+              "section_id": "sv3-da24f76c7d1ce202",
+              "heading_path": [
+                "Character Management",
+                "CLI Maintenance"
+              ],
+              "order": 10,
+              "chars": 333
+            },
+            {
+              "section_id": "sv3-b0f2860f08520315",
+              "heading_path": [
+                "Character Management",
+                "Reference Files"
+              ],
+              "order": 11,
+              "chars": 205
+            }
+          ]
+        }
+      ],
+      "current_short_usage": [
+        "planning"
+      ],
+      "current_stage_ownership": [
+        "DRAFT",
+        "LOCAL_RUNTIME",
+        "PLANNING_EVENT_REALIZATION"
+      ]
+    },
+    {
+      "skill_id": "worldbuilding",
+      "files": [
+        {
+          "source_file": "vendor/novel-skills/source/worldbuilding/references/artifact-template.md",
+          "source_sha256": "7471681d588ad288480ae9f7fe10acbeeaa38f0ed0948e7a8e697cdd17b18766",
+          "chars": 663,
+          "token_estimate": 166,
+          "top_level_sections": [
+            "Artifact Template"
+          ],
+          "subsections": [
+            {
+              "section_id": "sv3-b4583d410167ab14",
+              "heading_path": [
+                "Artifact Template",
+                "Description"
+              ],
+              "order": 1,
+              "chars": 75
+            },
+            {
+              "section_id": "sv3-ad3871e96cc16876",
+              "heading_path": [
+                "Artifact Template",
+                "Function"
+              ],
+              "order": 2,
+              "chars": 67
+            },
+            {
+              "section_id": "sv3-0933e75cb694edca",
+              "heading_path": [
+                "Artifact Template",
+                "History"
+              ],
+              "order": 3,
+              "chars": 61
+            },
+            {
+              "section_id": "sv3-d6b21e83ccca5d10",
+              "heading_path": [
+                "Artifact Template",
+                "Current State"
+              ],
+              "order": 4,
+              "chars": 76
+            }
+          ]
+        },
+        {
+          "source_file": "vendor/novel-skills/source/worldbuilding/references/faction-template.md",
+          "source_sha256": "a3bb6fe51de4e4116642992d379582dadc5895fa791e802308723c99bc6d01ce",
+          "chars": 644,
+          "token_estimate": 161,
+          "top_level_sections": [
+            "Faction Template"
+          ],
+          "subsections": [
+            {
+              "section_id": "sv3-6073d485d6a384b0",
+              "heading_path": [
+                "Faction Template",
+                "Purpose"
+              ],
+              "order": 1,
+              "chars": 55
+            },
+            {
+              "section_id": "sv3-7e6d87ef69c95cfd",
+              "heading_path": [
+                "Faction Template",
+                "Power Base"
+              ],
+              "order": 2,
+              "chars": 91
+            },
+            {
+              "section_id": "sv3-fc3356d9026d4407",
+              "heading_path": [
+                "Faction Template",
+                "Members"
+              ],
+              "order": 3,
+              "chars": 47
+            },
+            {
+              "section_id": "sv3-f998823d27d7086b",
+              "heading_path": [
+                "Faction Template",
+                "Conflicts"
+              ],
+              "order": 4,
+              "chars": 58
+            }
+          ]
+        },
+        {
+          "source_file": "vendor/novel-skills/source/worldbuilding/references/location-template.md",
+          "source_sha256": "46114544c3b7ca01b101ee7f859684bb1ab3cc7b552b1e709c4f405262dd61d5",
+          "chars": 1196,
+          "token_estimate": 299,
+          "top_level_sections": [
+            "Location Template"
+          ],
+          "subsections": [
+            {
+              "section_id": "sv3-2985467b5f2bf929",
+              "heading_path": [
+                "Location Template",
+                "Description"
+              ],
+              "order": 1,
+              "chars": 156
+            },
+            {
+              "section_id": "sv3-ed69a0903a3d0d13",
+              "heading_path": [
+                "Location Template",
+                "History"
+              ],
+              "order": 2,
+              "chars": 119
+            },
+            {
+              "section_id": "sv3-3bc191e96a2ab3ad",
+              "heading_path": [
+                "Location Template",
+                "Culture & Customs"
+              ],
+              "order": 3,
+              "chars": 136
+            },
+            {
+              "section_id": "sv3-60d4bee497e4c0dc",
+              "heading_path": [
+                "Location Template",
+                "Notable Features"
+              ],
+              "order": 4,
+              "chars": 152
+            },
+            {
+              "section_id": "sv3-9c4a3467ac259cc3",
+              "heading_path": [
+                "Location Template",
+                "Current State"
+              ],
+              "order": 5,
+              "chars": 131
+            }
+          ]
+        },
+        {
+          "source_file": "vendor/novel-skills/source/worldbuilding/references/system-template.md",
+          "source_sha256": "39086414c53352a10661f7554d21c362df1a5e7d1aa205ad8548ae932f99474b",
+          "chars": 1008,
+          "token_estimate": 252,
+          "top_level_sections": [
+            "System Template"
+          ],
+          "subsections": [
+            {
+              "section_id": "sv3-5453df8aca0b08ea",
+              "heading_path": [
+                "System Template",
+                "Overview"
+              ],
+              "order": 1,
+              "chars": 83
+            },
+            {
+              "section_id": "sv3-5f738df332e0919f",
+              "heading_path": [
+                "System Template",
+                "Rules & Limitations"
+              ],
+              "order": 2,
+              "chars": 175
+            },
+            {
+              "section_id": "sv3-4b840fd181bdfa94",
+              "heading_path": [
+                "System Template",
+                "History"
+              ],
+              "order": 3,
+              "chars": 109
+            },
+            {
+              "section_id": "sv3-380f93b14235db0a",
+              "heading_path": [
+                "System Template",
+                "Practitioners"
+              ],
+              "order": 4,
+              "chars": 113
+            },
+            {
+              "section_id": "sv3-b4eb9bc24027f33c",
+              "heading_path": [
+                "System Template",
+                "Impact on Society"
+              ],
+              "order": 5,
+              "chars": 119
+            }
+          ]
+        },
+        {
+          "source_file": "vendor/novel-skills/source/worldbuilding/references/world-element-types.md",
+          "source_sha256": "fe747c7e1a156d1c0204ab865a26e8f82ec0588c7b3772481b36861896bcf783",
+          "chars": 2797,
+          "token_estimate": 700,
+          "top_level_sections": [
+            "World Element Types Reference"
+          ],
+          "subsections": [
+            {
+              "section_id": "sv3-2f174a4add11e8bb",
+              "heading_path": [
+                "World Element Types Reference",
+                "Magic System"
+              ],
+              "order": 1,
+              "chars": 470
+            },
+            {
+              "section_id": "sv3-ed55d4c37cd60565",
+              "heading_path": [
+                "World Element Types Reference",
+                "Political System"
+              ],
+              "order": 2,
+              "chars": 368
+            },
+            {
+              "section_id": "sv3-d0d93cb328c5ffb7",
+              "heading_path": [
+                "World Element Types Reference",
+                "Technology System"
+              ],
+              "order": 3,
+              "chars": 347
+            },
+            {
+              "section_id": "sv3-25df5a1786123936",
+              "heading_path": [
+                "World Element Types Reference",
+                "Religion System"
+              ],
+              "order": 4,
+              "chars": 307
+            },
+            {
+              "section_id": "sv3-1349fa0f712bc848",
+              "heading_path": [
+                "World Element Types Reference",
+                "Economic System"
+              ],
+              "order": 5,
+              "chars": 262
+            },
+            {
+              "section_id": "sv3-ce98dbecaf8cde57",
+              "heading_path": [
+                "World Element Types Reference",
+                "Military System"
+              ],
+              "order": 6,
+              "chars": 289
+            },
+            {
+              "section_id": "sv3-773cc32a42e74484",
+              "heading_path": [
+                "World Element Types Reference",
+                "Social System"
+              ],
+              "order": 7,
+              "chars": 249
+            },
+            {
+              "section_id": "sv3-4bb0dd734af872fa",
+              "heading_path": [
+                "World Element Types Reference",
+                "Education System"
+              ],
+              "order": 8,
+              "chars": 372
+            }
+          ]
+        },
+        {
+          "source_file": "vendor/novel-skills/source/worldbuilding/SKILL.md",
+          "source_sha256": "6085390c930309c1e9f3182c50c30e9d746d0f054000f2808147a80807b2b279",
+          "chars": 4878,
+          "token_estimate": 1220,
+          "top_level_sections": [
+            "Worldbuilding"
+          ],
+          "subsections": [
+            {
+              "section_id": "sv3-731b5f96f38e031d",
+              "heading_path": [
+                "Worldbuilding",
+                "Overview"
+              ],
+              "order": 1,
+              "chars": 299
+            },
+            {
+              "section_id": "sv3-a7007aa93c406539",
+              "heading_path": [
+                "Worldbuilding",
+                "Prerequisites"
+              ],
+              "order": 2,
+              "chars": 144
+            },
+            {
+              "section_id": "sv3-57971b1277b054c2",
+              "heading_path": [
+                "Worldbuilding",
+                "Creating a Location"
+              ],
+              "order": 3,
+              "chars": 912
+            },
+            {
+              "section_id": "sv3-1b82b62f5f30c841",
+              "heading_path": [
+                "Worldbuilding",
+                "Creating a System"
+              ],
+              "order": 4,
+              "chars": 667
+            },
+            {
+              "section_id": "sv3-34fe98efc05e155b",
+              "heading_path": [
+                "Worldbuilding",
+                "Creating A Faction"
+              ],
+              "order": 5,
+              "chars": 443
+            },
+            {
+              "section_id": "sv3-329e7ffd65867e60",
+              "heading_path": [
+                "Worldbuilding",
+                "Creating An Artifact"
+              ],
+              "order": 6,
+              "chars": 449
+            },
+            {
+              "section_id": "sv3-b1c6dff222515560",
+              "heading_path": [
+                "Worldbuilding",
+                "Updating World Elements"
+              ],
+              "order": 7,
+              "chars": 305
+            },
+            {
+              "section_id": "sv3-4ae4f3fefa8c26db",
+              "heading_path": [
+                "Worldbuilding",
+                "Cross-Referencing"
+              ],
+              "order": 8,
+              "chars": 525
+            },
+            {
+              "section_id": "sv3-ac725871cafdecc8",
+              "heading_path": [
+                "Worldbuilding",
+                "CLI Maintenance"
+              ],
+              "order": 9,
+              "chars": 333
+            },
+            {
+              "section_id": "sv3-4704e93432b9fdc2",
+              "heading_path": [
+                "Worldbuilding",
+                "Reference Files"
+              ],
+              "order": 10,
+              "chars": 452
+            }
+          ]
+        }
+      ],
+      "current_short_usage": [
+        "planning"
+      ],
+      "current_stage_ownership": [
+        "LOCAL_RUNTIME",
+        "PLANNING_EVENT_REALIZATION"
+      ]
+    },
+    {
+      "skill_id": "revision-continuity",
+      "files": [
+        {
+          "source_file": "vendor/novel-skills/source/revision-continuity/SKILL.md",
+          "source_sha256": "c6a39a9c03d43ea6ac345f5fa428d11005c1e9cf430b1edff8b824b8b6273da1",
+          "chars": 4493,
+          "token_estimate": 1124,
+          "top_level_sections": [
+            "Revision Continuity"
+          ],
+          "subsections": [
+            {
+              "section_id": "sv3-17f13f41b28b6ce0",
+              "heading_path": [
+                "Revision Continuity",
+                "Overview"
+              ],
+              "order": 1,
+              "chars": 232
+            },
+            {
+              "section_id": "sv3-477bc57613bf3c6a",
+              "heading_path": [
+                "Revision Continuity",
+                "Prerequisites"
+              ],
+              "order": 2,
+              "chars": 176
+            },
+            {
+              "section_id": "sv3-b34e7564c812c492",
+              "heading_path": [
+                "Revision Continuity",
+                "Revision Workflow"
+              ],
+              "order": 3,
+              "chars": 2469
+            },
+            {
+              "section_id": "sv3-b3579f1897dfb725",
+              "heading_path": [
+                "Revision Continuity",
+                "Continuity Audit Checklist"
+              ],
+              "order": 4,
+              "chars": 1001
+            },
+            {
+              "section_id": "sv3-22d727c9ae601385",
+              "heading_path": [
+                "Revision Continuity",
+                "Reporting"
+              ],
+              "order": 5,
+              "chars": 261
+            }
+          ]
+        }
+      ],
+      "current_short_usage": [
+        "revision_plan",
+        "review",
+        "final_review"
+      ],
+      "current_stage_ownership": [
+        "SEMANTIC_REVIEW"
+      ]
+    },
+    {
+      "skill_id": "chapter-writing",
+      "files": [
+        {
+          "source_file": "vendor/novel-skills/source/chapter-writing/references/chapter-template.md",
+          "source_sha256": "1ad1896e09ad84f3fee3e97177c9217c55088bdc7c41e08e2250fc1bcc773739",
+          "chars": 1007,
+          "token_estimate": 252,
+          "top_level_sections": [
+            "Chapter Template"
+          ],
+          "subsections": [
+            {
+              "section_id": "sv3-acd903c509616296",
+              "heading_path": [
+                "Chapter Template",
+                "Outline"
+              ],
+              "order": 1,
+              "chars": 311
+            },
+            {
+              "section_id": "sv3-ed72322e0c69198e",
+              "heading_path": [
+                "Chapter Template",
+                "Chapter Text"
+              ],
+              "order": 2,
+              "chars": 40
+            }
+          ]
+        },
+        {
+          "source_file": "vendor/novel-skills/source/chapter-writing/references/scene-template.md",
+          "source_sha256": "0da3cdd511c97c851ef6e8ecfbb91fe48ed85349ce80b4008944df2aa1c84f46",
+          "chars": 686,
+          "token_estimate": 172,
+          "top_level_sections": [
+            "Scene Template"
+          ],
+          "subsections": [
+            {
+              "section_id": "sv3-660abc252aa43677",
+              "heading_path": [
+                "Scene Template",
+                "Purpose"
+              ],
+              "order": 1,
+              "chars": 85
+            },
+            {
+              "section_id": "sv3-f92b52219ee787c2",
+              "heading_path": [
+                "Scene Template",
+                "Continuity Notes"
+              ],
+              "order": 2,
+              "chars": 131
+            }
+          ]
+        },
+        {
+          "source_file": "vendor/novel-skills/source/chapter-writing/references/writing-guidelines.md",
+          "source_sha256": "86467e6b843b1ac2c72312a081f87ddde23870d875f9c97ada57d2bf4108b893",
+          "chars": 2627,
+          "token_estimate": 657,
+          "top_level_sections": [
+            "Writing Guidelines"
+          ],
+          "subsections": [
+            {
+              "section_id": "sv3-0b6d889ccd9f46d5",
+              "heading_path": [
+                "Writing Guidelines",
+                "Show, Don't Tell"
+              ],
+              "order": 1,
+              "chars": 213
+            },
+            {
+              "section_id": "sv3-11667e175b0168be",
+              "heading_path": [
+                "Writing Guidelines",
+                "POV Consistency"
+              ],
+              "order": 2,
+              "chars": 428
+            },
+            {
+              "section_id": "sv3-f233306b3a55e1ee",
+              "heading_path": [
+                "Writing Guidelines",
+                "Dialogue"
+              ],
+              "order": 3,
+              "chars": 326
+            },
+            {
+              "section_id": "sv3-400e20d2331750a5",
+              "heading_path": [
+                "Writing Guidelines",
+                "Pacing"
+              ],
+              "order": 4,
+              "chars": 251
+            },
+            {
+              "section_id": "sv3-2eb41a7a98103980",
+              "heading_path": [
+                "Writing Guidelines",
+                "Scene Structure"
+              ],
+              "order": 5,
+              "chars": 327
+            },
+            {
+              "section_id": "sv3-f960a2e29fc8918f",
+              "heading_path": [
+                "Writing Guidelines",
+                "Sensory Detail"
+              ],
+              "order": 6,
+              "chars": 272
+            },
+            {
+              "section_id": "sv3-fd7dd754d138d5df",
+              "heading_path": [
+                "Writing Guidelines",
+                "Chapter Openings"
+              ],
+              "order": 7,
+              "chars": 192
+            },
+            {
+              "section_id": "sv3-93f4a2230e1cb4ef",
+              "heading_path": [
+                "Writing Guidelines",
+                "Chapter Endings"
+              ],
+              "order": 8,
+              "chars": 215
+            },
+            {
+              "section_id": "sv3-b786c1358fec7171",
+              "heading_path": [
+                "Writing Guidelines",
+                "Continuity"
+              ],
+              "order": 9,
+              "chars": 266
+            }
+          ]
+        },
+        {
+          "source_file": "vendor/novel-skills/source/chapter-writing/SKILL.md",
+          "source_sha256": "f302204d7fd1b61e99db81bdaff19cb45a5859635f6173404ddd2b985a1df346",
+          "chars": 6177,
+          "token_estimate": 1545,
+          "top_level_sections": [
+            "Chapter Writing"
+          ],
+          "subsections": [
+            {
+              "section_id": "sv3-bc4dc1d11801fee5",
+              "heading_path": [
+                "Chapter Writing",
+                "Overview"
+              ],
+              "order": 1,
+              "chars": 318
+            },
+            {
+              "section_id": "sv3-bd8bea40e2a0ccfd",
+              "heading_path": [
+                "Chapter Writing",
+                "Prerequisites"
+              ],
+              "order": 2,
+              "chars": 226
+            },
+            {
+              "section_id": "sv3-4c92dfe27e16776d",
+              "heading_path": [
+                "Chapter Writing",
+                "Recommended Companion Skill"
+              ],
+              "order": 3,
+              "chars": 634
+            },
+            {
+              "section_id": "sv3-90ccf3c8436dbb2e",
+              "heading_path": [
+                "Chapter Writing",
+                "Outline-First Workflow"
+              ],
+              "order": 4,
+              "chars": 3585
+            },
+            {
+              "section_id": "sv3-092a3661a5ca71d0",
+              "heading_path": [
+                "Chapter Writing",
+                "Outline-First Workflow",
+                "1. Gather Context"
+              ],
+              "order": 5,
+              "chars": 727
+            },
+            {
+              "section_id": "sv3-fbc9de4f372935c0",
+              "heading_path": [
+                "Chapter Writing",
+                "Outline-First Workflow",
+                "2. Determine Chapter Scope"
+              ],
+              "order": 6,
+              "chars": 210
+            },
+            {
+              "section_id": "sv3-b0490e3bff1701ed",
+              "heading_path": [
+                "Chapter Writing",
+                "Outline-First Workflow",
+                "3. Build the Outline"
+              ],
+              "order": 7,
+              "chars": 461
+            },
+            {
+              "section_id": "sv3-caf67b8dcd13f8a4",
+              "heading_path": [
+                "Chapter Writing",
+                "Outline-First Workflow",
+                "4. Write the Chapter"
+              ],
+              "order": 8,
+              "chars": 1208
+            },
+            {
+              "section_id": "sv3-1c598fbde9a15fc2",
+              "heading_path": [
+                "Chapter Writing",
+                "Outline-First Workflow",
+                "5. Post-Write Updates"
+              ],
+              "order": 9,
+              "chars": 948
+            },
+            {
+              "section_id": "sv3-fa3943dc0bf52ffb",
+              "heading_path": [
+                "Chapter Writing",
+                "Scene Breaks"
+              ],
+              "order": 10,
+              "chars": 163
+            },
+            {
+              "section_id": "sv3-d7d94597b8221fe8",
+              "heading_path": [
+                "Chapter Writing",
+                "Revision Handoff"
+              ],
+              "order": 11,
+              "chars": 277
+            },
+            {
+              "section_id": "sv3-0b87522316408092",
+              "heading_path": [
+                "Chapter Writing",
+                "CLI Maintenance"
+              ],
+              "order": 12,
+              "chars": 346
+            },
+            {
+              "section_id": "sv3-af3f37a7cc1649ed",
+              "heading_path": [
+                "Chapter Writing",
+                "Reference Files"
+              ],
+              "order": 13,
+              "chars": 334
+            }
+          ]
+        }
+      ],
+      "current_short_usage": [
+        "draft"
+      ],
+      "current_stage_ownership": [
+        "DRAFT",
+        "LOCAL_RUNTIME",
+        "PLANNING_EVENT_REALIZATION",
+        "SEMANTIC_REVIEW"
+      ]
+    },
+    {
+      "skill_id": "novel-writing",
+      "files": [
+        {
+          "source_file": "vendor/novel-skills/source/novel-writing/references/character-introductions.md",
+          "source_sha256": "626a4f440458c5a8e7787c401e44f513cf8d2920b284846f50a68ff37093e9f0",
+          "chars": 3237,
+          "token_estimate": 810,
+          "top_level_sections": [
+            "Character Introductions"
+          ],
+          "subsections": [
+            {
+              "section_id": "sv3-49ffb0603d00481e",
+              "heading_path": [
+                "Character Introductions",
+                "Core Principle"
+              ],
+              "order": 1,
+              "chars": 181
+            },
+            {
+              "section_id": "sv3-ba0d187d82a32152",
+              "heading_path": [
+                "Character Introductions",
+                "Character Entry Levels"
+              ],
+              "order": 2,
+              "chars": 664
+            },
+            {
+              "section_id": "sv3-5beabd0e35d17088",
+              "heading_path": [
+                "Character Introductions",
+                "Character Entry Levels",
+                "1. Passing Figure"
+              ],
+              "order": 3,
+              "chars": 135
+            },
+            {
+              "section_id": "sv3-80dcbdeada482beb",
+              "heading_path": [
+                "Character Introductions",
+                "Character Entry Levels",
+                "2. Functional Character"
+              ],
+              "order": 4,
+              "chars": 194
+            },
+            {
+              "section_id": "sv3-8087d4152ad8eb30",
+              "heading_path": [
+                "Character Introductions",
+                "Character Entry Levels",
+                "3. Core Character"
+              ],
+              "order": 5,
+              "chars": 306
+            },
+            {
+              "section_id": "sv3-b0d2ecd332edcee3",
+              "heading_path": [
+                "Character Introductions",
+                "Minimum Questions for First Entry"
+              ],
+              "order": 6,
+              "chars": 387
+            },
+            {
+              "section_id": "sv3-9dc4b7e952001445",
+              "heading_path": [
+                "Character Introductions",
+                "Entry Context"
+              ],
+              "order": 7,
+              "chars": 424
+            },
+            {
+              "section_id": "sv3-2128c1902c160660",
+              "heading_path": [
+                "Character Introductions",
+                "Villain First Appearance"
+              ],
+              "order": 8,
+              "chars": 522
+            },
+            {
+              "section_id": "sv3-931986a71cd5b0ed",
+              "heading_path": [
+                "Character Introductions",
+                "Common Failure Modes"
+              ],
+              "order": 9,
+              "chars": 393
+            },
+            {
+              "section_id": "sv3-c7e9d7dcf5c2aab7",
+              "heading_path": [
+                "Character Introductions",
+                "Repair Tactics"
+              ],
+              "order": 10,
+              "chars": 274
+            },
+            {
+              "section_id": "sv3-d4a8a61d97a543dc",
+              "heading_path": [
+                "Character Introductions",
+                "Review Questions"
+              ],
+              "order": 11,
+              "chars": 273
+            }
+          ]
+        },
+        {
+          "source_file": "vendor/novel-skills/source/novel-writing/references/planning.md",
+          "source_sha256": "c9a7b1198b07cb3efbb031f276fa21444bd43afbfd8c486331ed182652a55d7c",
+          "chars": 2660,
+          "token_estimate": 665,
+          "top_level_sections": [
+            "Planning"
+          ],
+          "subsections": [
+            {
+              "section_id": "sv3-0a8428e8583bd6ad",
+              "heading_path": [
+                "Planning",
+                "Goal"
+              ],
+              "order": 1,
+              "chars": 84
+            },
+            {
+              "section_id": "sv3-563f625e979ec245",
+              "heading_path": [
+                "Planning",
+                "Required Outputs"
+              ],
+              "order": 2,
+              "chars": 413
+            },
+            {
+              "section_id": "sv3-e861fa88a4217420",
+              "heading_path": [
+                "Planning",
+                "Planning Sequence"
+              ],
+              "order": 3,
+              "chars": 1466
+            },
+            {
+              "section_id": "sv3-525b37095566755a",
+              "heading_path": [
+                "Planning",
+                "Planning Sequence",
+                "1. Name the chapter job"
+              ],
+              "order": 4,
+              "chars": 307
+            },
+            {
+              "section_id": "sv3-2e51aa999f5ddba4",
+              "heading_path": [
+                "Planning",
+                "Planning Sequence",
+                "2. Name the secondary job"
+              ],
+              "order": 5,
+              "chars": 204
+            },
+            {
+              "section_id": "sv3-469b5ac469243134",
+              "heading_path": [
+                "Planning",
+                "Planning Sequence",
+                "3. Lock the point of view"
+              ],
+              "order": 6,
+              "chars": 287
+            },
+            {
+              "section_id": "sv3-9d7e3702d0787928",
+              "heading_path": [
+                "Planning",
+                "Planning Sequence",
+                "4. Decide information order"
+              ],
+              "order": 7,
+              "chars": 406
+            },
+            {
+              "section_id": "sv3-bcc9ebe8b529c821",
+              "heading_path": [
+                "Planning",
+                "Planning Sequence",
+                "5. Define chapter end-state"
+              ],
+              "order": 8,
+              "chars": 236
+            },
+            {
+              "section_id": "sv3-87fe2957764a155f",
+              "heading_path": [
+                "Planning",
+                "Common Planning Failures"
+              ],
+              "order": 9,
+              "chars": 342
+            },
+            {
+              "section_id": "sv3-49eaa689bd9b6372",
+              "heading_path": [
+                "Planning",
+                "Quick Check"
+              ],
+              "order": 10,
+              "chars": 293
+            }
+          ]
+        },
+        {
+          "source_file": "vendor/novel-skills/source/novel-writing/references/realism-constraints.md",
+          "source_sha256": "04ef603caf4c575dec694290f7f1cf9c87c203454cd0f5dab43593be715fc8e2",
+          "chars": 2442,
+          "token_estimate": 611,
+          "top_level_sections": [
+            "Realism Constraints"
+          ],
+          "subsections": [
+            {
+              "section_id": "sv3-607b99940911d129",
+              "heading_path": [
+                "Realism Constraints",
+                "Core Principle"
+              ],
+              "order": 1,
+              "chars": 147
+            },
+            {
+              "section_id": "sv3-3c6d4c1066c7cbe4",
+              "heading_path": [
+                "Realism Constraints",
+                "Two Separate Checks"
+              ],
+              "order": 2,
+              "chars": 538
+            },
+            {
+              "section_id": "sv3-a8a2753648ee914c",
+              "heading_path": [
+                "Realism Constraints",
+                "Two Separate Checks",
+                "Observation Rights"
+              ],
+              "order": 3,
+              "chars": 150
+            },
+            {
+              "section_id": "sv3-25d1525de66ed5a7",
+              "heading_path": [
+                "Realism Constraints",
+                "Two Separate Checks",
+                "Knowledge Rights"
+              ],
+              "order": 4,
+              "chars": 342
+            },
+            {
+              "section_id": "sv3-e584fa3d00c13f9c",
+              "heading_path": [
+                "Realism Constraints",
+                "Institutional Realism"
+              ],
+              "order": 5,
+              "chars": 442
+            },
+            {
+              "section_id": "sv3-7efcbee4196f14a7",
+              "heading_path": [
+                "Realism Constraints",
+                "Body and Capability Limits"
+              ],
+              "order": 6,
+              "chars": 317
+            },
+            {
+              "section_id": "sv3-d66256a9f2cbed26",
+              "heading_path": [
+                "Realism Constraints",
+                "One-Chance Contact Scenes"
+              ],
+              "order": 7,
+              "chars": 256
+            },
+            {
+              "section_id": "sv3-250c12a789195d63",
+              "heading_path": [
+                "Realism Constraints",
+                "Uncertainty Protocol"
+              ],
+              "order": 8,
+              "chars": 235
+            },
+            {
+              "section_id": "sv3-f11f222766251450",
+              "heading_path": [
+                "Realism Constraints",
+                "Review Questions"
+              ],
+              "order": 9,
+              "chars": 380
+            }
+          ]
+        },
+        {
+          "source_file": "vendor/novel-skills/source/novel-writing/references/revision-checklist.md",
+          "source_sha256": "85479c284655991300a8262c27855dab9d0f36aab342cf160afbfbaac90f4f67",
+          "chars": 2234,
+          "token_estimate": 559,
+          "top_level_sections": [
+            "Revision Checklist"
+          ],
+          "subsections": [
+            {
+              "section_id": "sv3-0257d51bdcf4ff15",
+              "heading_path": [
+                "Revision Checklist",
+                "Output Format"
+              ],
+              "order": 1,
+              "chars": 297
+            },
+            {
+              "section_id": "sv3-a3d5cf1f9aa0db9d",
+              "heading_path": [
+                "Revision Checklist",
+                "Recommended Problem Types"
+              ],
+              "order": 2,
+              "chars": 161
+            },
+            {
+              "section_id": "sv3-bd5791fe70e7424f",
+              "heading_path": [
+                "Revision Checklist",
+                "Minimum Review Procedure"
+              ],
+              "order": 3,
+              "chars": 688
+            },
+            {
+              "section_id": "sv3-f67eaae1a84c6dca",
+              "heading_path": [
+                "Revision Checklist",
+                "Minimum Review Procedure",
+                "1. Check reader anchoring"
+              ],
+              "order": 4,
+              "chars": 172
+            },
+            {
+              "section_id": "sv3-fcbefa1c0863c402",
+              "heading_path": [
+                "Revision Checklist",
+                "Minimum Review Procedure",
+                "2. Check structural progression"
+              ],
+              "order": 5,
+              "chars": 146
+            },
+            {
+              "section_id": "sv3-3b36c19d393a5b2d",
+              "heading_path": [
+                "Revision Checklist",
+                "Minimum Review Procedure",
+                "3. Check style preservation"
+              ],
+              "order": 6,
+              "chars": 195
+            },
+            {
+              "section_id": "sv3-5c03d42facb7861e",
+              "heading_path": [
+                "Revision Checklist",
+                "Minimum Review Procedure",
+                "4. Check realism"
+              ],
+              "order": 7,
+              "chars": 143
+            },
+            {
+              "section_id": "sv3-4724d8ae9ab69e78",
+              "heading_path": [
+                "Revision Checklist",
+                "High-Frequency False Assumptions"
+              ],
+              "order": 8,
+              "chars": 474
+            },
+            {
+              "section_id": "sv3-fc0d068c7401136c",
+              "heading_path": [
+                "Revision Checklist",
+                "Example Finding Shape"
+              ],
+              "order": 9,
+              "chars": 520
+            }
+          ]
+        },
+        {
+          "source_file": "vendor/novel-skills/source/novel-writing/references/scene-and-structure.md",
+          "source_sha256": "7f3b935335e5d97dbecca123b5b5ad70beb14e7d3e48427c14d86057e6e07fa4",
+          "chars": 2500,
+          "token_estimate": 625,
+          "top_level_sections": [
+            "Scene and Structure"
+          ],
+          "subsections": [
+            {
+              "section_id": "sv3-2451b5fe94a6fbab",
+              "heading_path": [
+                "Scene and Structure",
+                "Core Principle"
+              ],
+              "order": 1,
+              "chars": 109
+            },
+            {
+              "section_id": "sv3-f26184c2be435667",
+              "heading_path": [
+                "Scene and Structure",
+                "Functional Segment Check"
+              ],
+              "order": 2,
+              "chars": 307
+            },
+            {
+              "section_id": "sv3-8a00470cc23e9ffd",
+              "heading_path": [
+                "Scene and Structure",
+                "Valid Segment Jobs"
+              ],
+              "order": 3,
+              "chars": 310
+            },
+            {
+              "section_id": "sv3-5712c5044219b1c4",
+              "heading_path": [
+                "Scene and Structure",
+                "Progression Rules"
+              ],
+              "order": 4,
+              "chars": 168
+            },
+            {
+              "section_id": "sv3-ba1e0fd78f2514f3",
+              "heading_path": [
+                "Scene and Structure",
+                "Transition Checks"
+              ],
+              "order": 5,
+              "chars": 262
+            },
+            {
+              "section_id": "sv3-6ae04655b0f116d4",
+              "heading_path": [
+                "Scene and Structure",
+                "High-Tension Pacing"
+              ],
+              "order": 6,
+              "chars": 436
+            },
+            {
+              "section_id": "sv3-c8625d8abdfdcff5",
+              "heading_path": [
+                "Scene and Structure",
+                "Chapter Ending"
+              ],
+              "order": 7,
+              "chars": 253
+            },
+            {
+              "section_id": "sv3-2f6671c0014448fc",
+              "heading_path": [
+                "Scene and Structure",
+                "Common Structural Failures"
+              ],
+              "order": 8,
+              "chars": 335
+            },
+            {
+              "section_id": "sv3-c7396a4acfd24ce2",
+              "heading_path": [
+                "Scene and Structure",
+                "Review Questions"
+              ],
+              "order": 9,
+              "chars": 214
+            }
+          ]
+        },
+        {
+          "source_file": "vendor/novel-skills/source/novel-writing/references/style-fidelity.md",
+          "source_sha256": "8034fe900cc17d5b9856bcbd53b5f1df3edb3d43e0cd13b55286a91aa9a2e6b3",
+          "chars": 2161,
+          "token_estimate": 541,
+          "top_level_sections": [
+            "Style Fidelity"
+          ],
+          "subsections": [
+            {
+              "section_id": "sv3-04f3551fa81f870d",
+              "heading_path": [
+                "Style Fidelity",
+                "Core Principle"
+              ],
+              "order": 1,
+              "chars": 181
+            },
+            {
+              "section_id": "sv3-930842996c76452f",
+              "heading_path": [
+                "Style Fidelity",
+                "What Usually Carries Style"
+              ],
+              "order": 2,
+              "chars": 292
+            },
+            {
+              "section_id": "sv3-f9a72282304e10bf",
+              "heading_path": [
+                "Style Fidelity",
+                "What May Be Corrected"
+              ],
+              "order": 3,
+              "chars": 255
+            },
+            {
+              "section_id": "sv3-d815c21127ff02fd",
+              "heading_path": [
+                "Style Fidelity",
+                "What Must Not Be Silently Removed"
+              ],
+              "order": 4,
+              "chars": 288
+            },
+            {
+              "section_id": "sv3-2fc498c6a12a8d68",
+              "heading_path": [
+                "Style Fidelity",
+                "Burden of Proof for Deletion"
+              ],
+              "order": 5,
+              "chars": 254
+            },
+            {
+              "section_id": "sv3-630df65b1af2c189",
+              "heading_path": [
+                "Style Fidelity",
+                "Rewrite Strategy"
+              ],
+              "order": 6,
+              "chars": 222
+            },
+            {
+              "section_id": "sv3-b1f51d2f197121b4",
+              "heading_path": [
+                "Style Fidelity",
+                "When You Hit a Hard Boundary"
+              ],
+              "order": 7,
+              "chars": 264
+            },
+            {
+              "section_id": "sv3-2008ae80a9c5104a",
+              "heading_path": [
+                "Style Fidelity",
+                "Review Questions"
+              ],
+              "order": 8,
+              "chars": 285
+            }
+          ]
+        },
+        {
+          "source_file": "vendor/novel-skills/source/novel-writing/SKILL.md",
+          "source_sha256": "59d2cb7f75731989ea9b24c062fb29194773eb62eb980659c55d377467a3cc0f",
+          "chars": 7173,
+          "token_estimate": 1794,
+          "top_level_sections": [
+            "Novel Writing"
+          ],
+          "subsections": [
+            {
+              "section_id": "sv3-71fa861ad08f2699",
+              "heading_path": [
+                "Novel Writing",
+                "Overview"
+              ],
+              "order": 1,
+              "chars": 243
+            },
+            {
+              "section_id": "sv3-531c92fb6cb428d0",
+              "heading_path": [
+                "Novel Writing",
+                "When to Use"
+              ],
+              "order": 2,
+              "chars": 550
+            },
+            {
+              "section_id": "sv3-eeda4209afb6d456",
+              "heading_path": [
+                "Novel Writing",
+                "Stage Selection"
+              ],
+              "order": 3,
+              "chars": 936
+            },
+            {
+              "section_id": "sv3-457ae028a5cc51fc",
+              "heading_path": [
+                "Novel Writing",
+                "Stage Selection",
+                "1. Planning"
+              ],
+              "order": 4,
+              "chars": 301
+            },
+            {
+              "section_id": "sv3-1e1d93544cee577a",
+              "heading_path": [
+                "Novel Writing",
+                "Stage Selection",
+                "2. Drafting or Continuing"
+              ],
+              "order": 5,
+              "chars": 344
+            },
+            {
+              "section_id": "sv3-208cb3082888ffd3",
+              "heading_path": [
+                "Novel Writing",
+                "Stage Selection",
+                "3. Reviewing"
+              ],
+              "order": 6,
+              "chars": 222
+            },
+            {
+              "section_id": "sv3-77490e3fae476c0f",
+              "heading_path": [
+                "Novel Writing",
+                "Long-Fiction Context Strategy"
+              ],
+              "order": 7,
+              "chars": 1977
+            },
+            {
+              "section_id": "sv3-b4cb8800c6718abc",
+              "heading_path": [
+                "Novel Writing",
+                "Long-Fiction Context Strategy",
+                "Load order"
+              ],
+              "order": 8,
+              "chars": 985
+            },
+            {
+              "section_id": "sv3-b7742eaefa9658b0",
+              "heading_path": [
+                "Novel Writing",
+                "Long-Fiction Context Strategy",
+                "Collaboration-state discipline"
+              ],
+              "order": 9,
+              "chars": 808
+            },
+            {
+              "section_id": "sv3-a90d90d7d1f5051c",
+              "heading_path": [
+                "Novel Writing",
+                "Hard Rules"
+              ],
+              "order": 10,
+              "chars": 2191
+            },
+            {
+              "section_id": "sv3-bc8bf784615842fd",
+              "heading_path": [
+                "Novel Writing",
+                "Hard Rules",
+                "Reader Knowledge Is Not Author Knowledge"
+              ],
+              "order": 11,
+              "chars": 260
+            },
+            {
+              "section_id": "sv3-451d01bc1cabf13c",
+              "heading_path": [
+                "Novel Writing",
+                "Hard Rules",
+                "Important Characters Cannot Enter Naked"
+              ],
+              "order": 12,
+              "chars": 477
+            },
+            {
+              "section_id": "sv3-e27df15b99251958",
+              "heading_path": [
+                "Novel Writing",
+                "Hard Rules",
+                "Scene Information Must Obey Access Limits"
+              ],
+              "order": 13,
+              "chars": 353
+            },
+            {
+              "section_id": "sv3-63ad73c8ec7112fb",
+              "heading_path": [
+                "Novel Writing",
+                "Hard Rules",
+                "Every Scene Segment Must Earn Its Place"
+              ],
+              "order": 14,
+              "chars": 304
+            },
+            {
+              "section_id": "sv3-4950faaae282c19d",
+              "heading_path": [
+                "Novel Writing",
+                "Hard Rules",
+                "Protect Style-Bearing Material"
+              ],
+              "order": 15,
+              "chars": 335
+            },
+            {
+              "section_id": "sv3-51c8791f10dd799d",
+              "heading_path": [
+                "Novel Writing",
+                "Hard Rules",
+                "Review Output Must Be Specific"
+              ],
+              "order": 16,
+              "chars": 220
+            },
+            {
+              "section_id": "sv3-f32071a7200093ac",
+              "heading_path": [
+                "Novel Writing",
+                "Hard Rules",
+                "Project Rules Override This Skill"
+              ],
+              "order": 17,
+              "chars": 221
+            },
+            {
+              "section_id": "sv3-03781e4f2a006e67",
+              "heading_path": [
+                "Novel Writing",
+                "Working Pattern"
+              ],
+              "order": 18,
+              "chars": 576
+            },
+            {
+              "section_id": "sv3-b2fed299bb3f5ded",
+              "heading_path": [
+                "Novel Writing",
+                "References"
+              ],
+              "order": 19,
+              "chars": 472
+            }
+          ]
+        }
+      ],
+      "current_short_usage": [
+        "draft",
+        "polish"
+      ],
+      "current_stage_ownership": [
+        "DRAFT",
+        "PLANNING_EVENT_REALIZATION",
+        "SEMANTIC_REVIEW"
+      ]
+    },
+    {
+      "skill_id": "dialogue",
+      "files": [
+        {
+          "source_file": "vendor/novel-skills/source/dialogue/SKILL.md",
+          "source_sha256": "54c9e2bc11aafd14f40081ee1bbee748dfe0c263ff8b810d6cb193dad6edd9f6",
+          "chars": 1909,
+          "token_estimate": 478,
+          "top_level_sections": [
+            "Dialogue Skill"
+          ],
+          "subsections": [
+            {
+              "section_id": "sv3-1f5f0292417f2ce7",
+              "heading_path": [
+                "Dialogue Skill",
+                "Dialogue Principles"
+              ],
+              "order": 1,
+              "chars": 451
+            },
+            {
+              "section_id": "sv3-0430a94abedf9806",
+              "heading_path": [
+                "Dialogue Skill",
+                "Character Voice Differentiation"
+              ],
+              "order": 2,
+              "chars": 425
+            },
+            {
+              "section_id": "sv3-468ebd506554dad0",
+              "heading_path": [
+                "Dialogue Skill",
+                "Dialogue Tags"
+              ],
+              "order": 3,
+              "chars": 253
+            },
+            {
+              "section_id": "sv3-ba700be002004ad0",
+              "heading_path": [
+                "Dialogue Skill",
+                "Subtext Techniques"
+              ],
+              "order": 4,
+              "chars": 342
+            }
+          ]
+        }
+      ],
+      "current_short_usage": [
+        "draft",
+        "polish"
+      ],
+      "current_stage_ownership": [
+        "DRAFT"
+      ]
+    },
+    {
+      "skill_id": "humanizer-zh",
+      "files": [
+        {
+          "source_file": "vendor/novel-skills/source/humanizer-zh/README.md",
+          "source_sha256": "60cd3ed8b4753837ca8f8fcebf6076a38591a269d91ea1791aa7448e5a1b1b58",
+          "chars": 4025,
+          "token_estimate": 2300,
+          "top_level_sections": [
+            "Humanizer-zh: AI 写作去痕工具（中文版）",
+            "克隆到 Claude Code 的 skills 目录"
+          ],
+          "subsections": [
+            {
+              "section_id": "sv3-12b7a2baca870667",
+              "heading_path": [
+                "Humanizer-zh: AI 写作去痕工具（中文版）",
+                "项目简介"
+              ],
+              "order": 1,
+              "chars": 132
+            },
+            {
+              "section_id": "sv3-ad9a940db99ba906",
+              "heading_path": [
+                "Humanizer-zh: AI 写作去痕工具（中文版）",
+                "安装"
+              ],
+              "order": 2,
+              "chars": 158
+            },
+            {
+              "section_id": "sv3-edc415f64caeb7b9",
+              "heading_path": [
+                "Humanizer-zh: AI 写作去痕工具（中文版）",
+                "安装",
+                "方法一：通过 npx 一键安装（推荐）"
+              ],
+              "order": 3,
+              "chars": 123
+            },
+            {
+              "section_id": "sv3-7775859035999ae3",
+              "heading_path": [
+                "Humanizer-zh: AI 写作去痕工具（中文版）",
+                "安装",
+                "方法二：通过 Git 克隆"
+              ],
+              "order": 4,
+              "chars": 27
+            },
+            {
+              "section_id": "sv3-24999cb5486336ad",
+              "heading_path": [
+                "克隆到 Claude Code 的 skills 目录",
+                "方法三：手动安装"
+              ],
+              "order": 6,
+              "chars": 309
+            },
+            {
+              "section_id": "sv3-232971aa3c300b32",
+              "heading_path": [
+                "克隆到 Claude Code 的 skills 目录",
+                "验证安装"
+              ],
+              "order": 7,
+              "chars": 88
+            },
+            {
+              "section_id": "sv3-f676dd04f030d89d",
+              "heading_path": [
+                "克隆到 Claude Code 的 skills 目录",
+                "使用"
+              ],
+              "order": 8,
+              "chars": 833
+            },
+            {
+              "section_id": "sv3-288e93583fcbd61a",
+              "heading_path": [
+                "克隆到 Claude Code 的 skills 目录",
+                "使用",
+                "基础用法"
+              ],
+              "order": 9,
+              "chars": 278
+            },
+            {
+              "section_id": "sv3-1cbaa183982c9b2a",
+              "heading_path": [
+                "克隆到 Claude Code 的 skills 目录",
+                "使用",
+                "基础用法",
+                "1. 直接调用技能"
+              ],
+              "order": 10,
+              "chars": 66
+            },
+            {
+              "section_id": "sv3-111c0721e0981695",
+              "heading_path": [
+                "克隆到 Claude Code 的 skills 目录",
+                "使用",
+                "基础用法",
+                "2. 在对话中使用"
+              ],
+              "order": 11,
+              "chars": 99
+            },
+            {
+              "section_id": "sv3-9b1fba7eda0d9a12",
+              "heading_path": [
+                "克隆到 Claude Code 的 skills 目录",
+                "使用",
+                "基础用法",
+                "3. 处理文件内容"
+              ],
+              "order": 12,
+              "chars": 61
+            },
+            {
+              "section_id": "sv3-fd84077a8e82d7a0",
+              "heading_path": [
+                "克隆到 Claude Code 的 skills 目录",
+                "使用",
+                "使用场景示例"
+              ],
+              "order": 13,
+              "chars": 547
+            },
+            {
+              "section_id": "sv3-c72b879791fcadca",
+              "heading_path": [
+                "克隆到 Claude Code 的 skills 目录",
+                "使用",
+                "使用场景示例",
+                "场景 1：改写营销文案"
+              ],
+              "order": 14,
+              "chars": 167
+            },
+            {
+              "section_id": "sv3-e37e100f559c2757",
+              "heading_path": [
+                "克隆到 Claude Code 的 skills 目录",
+                "使用",
+                "使用场景示例",
+                "场景 2：改写学术摘要"
+              ],
+              "order": 15,
+              "chars": 189
+            },
+            {
+              "section_id": "sv3-800fe61bd8a3a053",
+              "heading_path": [
+                "克隆到 Claude Code 的 skills 目录",
+                "使用",
+                "使用场景示例",
+                "场景 3：改写博客文章"
+              ],
+              "order": 16,
+              "chars": 177
+            },
+            {
+              "section_id": "sv3-decc929af93daa6d",
+              "heading_path": [
+                "克隆到 Claude Code 的 skills 目录",
+                "检测的 AI 写作模式"
+              ],
+              "order": 17,
+              "chars": 438
+            },
+            {
+              "section_id": "sv3-e2f944f911bc4522",
+              "heading_path": [
+                "克隆到 Claude Code 的 skills 目录",
+                "检测的 AI 写作模式",
+                "📝 内容模式（6种）"
+              ],
+              "order": 18,
+              "chars": 113
+            },
+            {
+              "section_id": "sv3-e8ac5c48a41d73f0",
+              "heading_path": [
+                "克隆到 Claude Code 的 skills 目录",
+                "检测的 AI 写作模式",
+                "🔤 语言和语法模式（6种）"
+              ],
+              "order": 19,
+              "chars": 100
+            },
+            {
+              "section_id": "sv3-ae0089673fea2bdd",
+              "heading_path": [
+                "克隆到 Claude Code 的 skills 目录",
+                "检测的 AI 写作模式",
+                "🎨 风格模式（6种）"
+              ],
+              "order": 20,
+              "chars": 81
+            },
+            {
+              "section_id": "sv3-8e5b4c8b5cc7e22f",
+              "heading_path": [
+                "克隆到 Claude Code 的 skills 目录",
+                "检测的 AI 写作模式",
+                "💬 交流模式和填充词（6种）"
+              ],
+              "order": 21,
+              "chars": 89
+            },
+            {
+              "section_id": "sv3-b3d74814a90f8300",
+              "heading_path": [
+                "克隆到 Claude Code 的 skills 目录",
+                "文件说明"
+              ],
+              "order": 22,
+              "chars": 136
+            },
+            {
+              "section_id": "sv3-4e34036ea32c0d9f",
+              "heading_path": [
+                "克隆到 Claude Code 的 skills 目录",
+                "手动使用方法"
+              ],
+              "order": 23,
+              "chars": 693
+            },
+            {
+              "section_id": "sv3-cd2b6ac651ec4825",
+              "heading_path": [
+                "克隆到 Claude Code 的 skills 目录",
+                "手动使用方法",
+                "基本流程"
+              ],
+              "order": 24,
+              "chars": 164
+            },
+            {
+              "section_id": "sv3-5fa9ca3516aa03d0",
+              "heading_path": [
+                "克隆到 Claude Code 的 skills 目录",
+                "手动使用方法",
+                "关键原则"
+              ],
+              "order": 25,
+              "chars": 517
+            },
+            {
+              "section_id": "sv3-d48ba41e298be008",
+              "heading_path": [
+                "克隆到 Claude Code 的 skills 目录",
+                "手动使用方法",
+                "关键原则",
+                "✨ 不仅要\"干净\"，更要\"鲜活\""
+              ],
+              "order": 26,
+              "chars": 207
+            },
+            {
+              "section_id": "sv3-a17272a6dce898d0",
+              "heading_path": [
+                "克隆到 Claude Code 的 skills 目录",
+                "手动使用方法",
+                "关键原则",
+                "示例对比"
+              ],
+              "order": 27,
+              "chars": 299
+            },
+            {
+              "section_id": "sv3-8c15fa56e274e4c8",
+              "heading_path": [
+                "克隆到 Claude Code 的 skills 目录",
+                "常见 AI 词汇警示列表"
+              ],
+              "order": 28,
+              "chars": 139
+            },
+            {
+              "section_id": "sv3-86b119d2ed62d17f",
+              "heading_path": [
+                "克隆到 Claude Code 的 skills 目录",
+                "贡献"
+              ],
+              "order": 29,
+              "chars": 148
+            },
+            {
+              "section_id": "sv3-ab5abdf5ab67761e",
+              "heading_path": [
+                "克隆到 Claude Code 的 skills 目录",
+                "贡献",
+                "中文语境特殊性"
+              ],
+              "order": 30,
+              "chars": 96
+            },
+            {
+              "section_id": "sv3-5c19b42b38f05108",
+              "heading_path": [
+                "克隆到 Claude Code 的 skills 目录",
+                "参考资源"
+              ],
+              "order": 31,
+              "chars": 372
+            },
+            {
+              "section_id": "sv3-39f98b528675a1e4",
+              "heading_path": [
+                "克隆到 Claude Code 的 skills 目录",
+                "许可"
+              ],
+              "order": 32,
+              "chars": 120
+            }
+          ]
+        },
+        {
+          "source_file": "vendor/novel-skills/source/humanizer-zh/SKILL.md",
+          "source_sha256": "e0edbdbc9008644263d5573fb59beac95794e188fd99c35012bfd79e9ae4beeb",
+          "chars": 8112,
+          "token_estimate": 5591,
+          "top_level_sections": [
+            "Humanizer-zh: 去除 AI 写作痕迹"
+          ],
+          "subsections": [
+            {
+              "section_id": "sv3-9c9c6e424e1a1a7d",
+              "heading_path": [
+                "Humanizer-zh: 去除 AI 写作痕迹",
+                "你的任务"
+              ],
+              "order": 1,
+              "chars": 182
+            },
+            {
+              "section_id": "sv3-dd0ad4ce7e716250",
+              "heading_path": [
+                "Humanizer-zh: 去除 AI 写作痕迹",
+                "核心规则速查"
+              ],
+              "order": 2,
+              "chars": 204
+            },
+            {
+              "section_id": "sv3-2ad0bd8c1cf99b6b",
+              "heading_path": [
+                "Humanizer-zh: 去除 AI 写作痕迹",
+                "个性与灵魂"
+              ],
+              "order": 3,
+              "chars": 703
+            },
+            {
+              "section_id": "sv3-923a0c3374fde900",
+              "heading_path": [
+                "Humanizer-zh: 去除 AI 写作痕迹",
+                "个性与灵魂",
+                "缺乏灵魂的写作迹象（即使技术上\"干净\"）："
+              ],
+              "order": 4,
+              "chars": 119
+            },
+            {
+              "section_id": "sv3-b3c4dcad3e2d0c2b",
+              "heading_path": [
+                "Humanizer-zh: 去除 AI 写作痕迹",
+                "个性与灵魂",
+                "如何增加语调："
+              ],
+              "order": 5,
+              "chars": 326
+            },
+            {
+              "section_id": "sv3-33598311b292139d",
+              "heading_path": [
+                "Humanizer-zh: 去除 AI 写作痕迹",
+                "个性与灵魂",
+                "改写前（干净但无灵魂）："
+              ],
+              "order": 6,
+              "chars": 74
+            },
+            {
+              "section_id": "sv3-8e29f53b55fa7cc7",
+              "heading_path": [
+                "Humanizer-zh: 去除 AI 写作痕迹",
+                "个性与灵魂",
+                "改写后（鲜活）："
+              ],
+              "order": 7,
+              "chars": 116
+            },
+            {
+              "section_id": "sv3-ef9b2251354e0c94",
+              "heading_path": [
+                "Humanizer-zh: 去除 AI 写作痕迹",
+                "内容模式"
+              ],
+              "order": 8,
+              "chars": 1784
+            },
+            {
+              "section_id": "sv3-c14284d464ee8ffc",
+              "heading_path": [
+                "Humanizer-zh: 去除 AI 写作痕迹",
+                "内容模式",
+                "1. 过度强调意义、遗产和更广泛的趋势"
+              ],
+              "order": 9,
+              "chars": 405
+            },
+            {
+              "section_id": "sv3-2a3cec2c62073245",
+              "heading_path": [
+                "Humanizer-zh: 去除 AI 写作痕迹",
+                "内容模式",
+                "2. 过度强调知名度和媒体报道"
+              ],
+              "order": 10,
+              "chars": 237
+            },
+            {
+              "section_id": "sv3-d46e18ef91f76316",
+              "heading_path": [
+                "Humanizer-zh: 去除 AI 写作痕迹",
+                "内容模式",
+                "3. 以 -ing 结尾的肤浅分析"
+              ],
+              "order": 11,
+              "chars": 276
+            },
+            {
+              "section_id": "sv3-78d0279ca4ad13bf",
+              "heading_path": [
+                "Humanizer-zh: 去除 AI 写作痕迹",
+                "内容模式",
+                "4. 宣传和广告式语言"
+              ],
+              "order": 12,
+              "chars": 331
+            },
+            {
+              "section_id": "sv3-f3ca6d2c021abdca",
+              "heading_path": [
+                "Humanizer-zh: 去除 AI 写作痕迹",
+                "内容模式",
+                "5. 模糊归因和含糊措辞"
+              ],
+              "order": 13,
+              "chars": 227
+            },
+            {
+              "section_id": "sv3-3982e0c26af6a5b4",
+              "heading_path": [
+                "Humanizer-zh: 去除 AI 写作痕迹",
+                "内容模式",
+                "6. 提纲式的\"挑战与未来展望\"部分"
+              ],
+              "order": 14,
+              "chars": 294
+            },
+            {
+              "section_id": "sv3-b0b30d956dbfd0b9",
+              "heading_path": [
+                "Humanizer-zh: 去除 AI 写作痕迹",
+                "语言和语法模式"
+              ],
+              "order": 15,
+              "chars": 1191
+            },
+            {
+              "section_id": "sv3-e130b92f56d3b2d3",
+              "heading_path": [
+                "Humanizer-zh: 去除 AI 写作痕迹",
+                "语言和语法模式",
+                "7. 过度使用的\"AI 词汇\""
+              ],
+              "order": 16,
+              "chars": 338
+            },
+            {
+              "section_id": "sv3-f29784ca8599771d",
+              "heading_path": [
+                "Humanizer-zh: 去除 AI 写作痕迹",
+                "语言和语法模式",
+                "8. 避免使用\"是\"（系动词回避）"
+              ],
+              "order": 17,
+              "chars": 235
+            },
+            {
+              "section_id": "sv3-5a18d6a9b8bdf0d1",
+              "heading_path": [
+                "Humanizer-zh: 去除 AI 写作痕迹",
+                "语言和语法模式",
+                "9. 否定式排比"
+              ],
+              "order": 18,
+              "chars": 148
+            },
+            {
+              "section_id": "sv3-86b5941aa7e16578",
+              "heading_path": [
+                "Humanizer-zh: 去除 AI 写作痕迹",
+                "语言和语法模式",
+                "10. 三段式法则过度使用"
+              ],
+              "order": 19,
+              "chars": 142
+            },
+            {
+              "section_id": "sv3-5307c1edfd5e8616",
+              "heading_path": [
+                "Humanizer-zh: 去除 AI 写作痕迹",
+                "语言和语法模式",
+                "11. 刻意换词（同义词循环）"
+              ],
+              "order": 20,
+              "chars": 146
+            },
+            {
+              "section_id": "sv3-d2fad1067f3e1cba",
+              "heading_path": [
+                "Humanizer-zh: 去除 AI 写作痕迹",
+                "语言和语法模式",
+                "12. 虚假范围"
+              ],
+              "order": 21,
+              "chars": 165
+            },
+            {
+              "section_id": "sv3-46e0af6235208a79",
+              "heading_path": [
+                "Humanizer-zh: 去除 AI 写作痕迹",
+                "风格模式"
+              ],
+              "order": 22,
+              "chars": 1094
+            },
+            {
+              "section_id": "sv3-fec73672ed1f1c7e",
+              "heading_path": [
+                "Humanizer-zh: 去除 AI 写作痕迹",
+                "风格模式",
+                "13. 破折号过度使用"
+              ],
+              "order": 23,
+              "chars": 208
+            },
+            {
+              "section_id": "sv3-c862b688f813fea8",
+              "heading_path": [
+                "Humanizer-zh: 去除 AI 写作痕迹",
+                "风格模式",
+                "14. 粗体过度使用"
+              ],
+              "order": 24,
+              "chars": 191
+            },
+            {
+              "section_id": "sv3-e5a9ac09dac828d4",
+              "heading_path": [
+                "Humanizer-zh: 去除 AI 写作痕迹",
+                "风格模式",
+                "15. 内联标题垂直列表"
+              ],
+              "order": 25,
+              "chars": 198
+            },
+            {
+              "section_id": "sv3-6e5e20a7da423931",
+              "heading_path": [
+                "Humanizer-zh: 去除 AI 写作痕迹",
+                "风格模式",
+                "16. 标题中的标题大写"
+              ],
+              "order": 26,
+              "chars": 144
+            },
+            {
+              "section_id": "sv3-a377dc83fa6785ce",
+              "heading_path": [
+                "Humanizer-zh: 去除 AI 写作痕迹",
+                "风格模式",
+                "17. 表情符号"
+              ],
+              "order": 27,
+              "chars": 175
+            },
+            {
+              "section_id": "sv3-470f126ea8cf390a",
+              "heading_path": [
+                "Humanizer-zh: 去除 AI 写作痕迹",
+                "风格模式",
+                "18. 弯引号"
+              ],
+              "order": 28,
+              "chars": 164
+            },
+            {
+              "section_id": "sv3-2f5141cf951bc85f",
+              "heading_path": [
+                "Humanizer-zh: 去除 AI 写作痕迹",
+                "交流模式"
+              ],
+              "order": 29,
+              "chars": 555
+            },
+            {
+              "section_id": "sv3-e185489bc5b874ae",
+              "heading_path": [
+                "Humanizer-zh: 去除 AI 写作痕迹",
+                "交流模式",
+                "19. 协作交流痕迹"
+              ],
+              "order": 30,
+              "chars": 206
+            },
+            {
+              "section_id": "sv3-16fb136f68d8eb59",
+              "heading_path": [
+                "Humanizer-zh: 去除 AI 写作痕迹",
+                "交流模式",
+                "20. 知识截止日期免责声明"
+              ],
+              "order": 31,
+              "chars": 212
+            },
+            {
+              "section_id": "sv3-7ba3baecb7de829b",
+              "heading_path": [
+                "Humanizer-zh: 去除 AI 写作痕迹",
+                "交流模式",
+                "21. 谄媚/卑躬屈膝的语气"
+              ],
+              "order": 32,
+              "chars": 126
+            },
+            {
+              "section_id": "sv3-11cb9b1baa3e54dc",
+              "heading_path": [
+                "Humanizer-zh: 去除 AI 写作痕迹",
+                "填充词和回避"
+              ],
+              "order": 33,
+              "chars": 416
+            },
+            {
+              "section_id": "sv3-883cd4e8424bad3a",
+              "heading_path": [
+                "Humanizer-zh: 去除 AI 写作痕迹",
+                "填充词和回避",
+                "22. 填充短语"
+              ],
+              "order": 34,
+              "chars": 174
+            },
+            {
+              "section_id": "sv3-f2bd023432c0b75e",
+              "heading_path": [
+                "Humanizer-zh: 去除 AI 写作痕迹",
+                "填充词和回避",
+                "23. 过度限定"
+              ],
+              "order": 35,
+              "chars": 98
+            },
+            {
+              "section_id": "sv3-45b1add2099db5ca",
+              "heading_path": [
+                "Humanizer-zh: 去除 AI 写作痕迹",
+                "填充词和回避",
+                "24. 通用积极结论"
+              ],
+              "order": 36,
+              "chars": 131
+            },
+            {
+              "section_id": "sv3-d5e2471ea81defc8",
+              "heading_path": [
+                "Humanizer-zh: 去除 AI 写作痕迹",
+                "快速检查清单"
+              ],
+              "order": 37,
+              "chars": 185
+            },
+            {
+              "section_id": "sv3-2732b4120e2b6547",
+              "heading_path": [
+                "Humanizer-zh: 去除 AI 写作痕迹",
+                "处理流程"
+              ],
+              "order": 38,
+              "chars": 163
+            },
+            {
+              "section_id": "sv3-a270ff5966ae3a45",
+              "heading_path": [
+                "Humanizer-zh: 去除 AI 写作痕迹",
+                "输出格式"
+              ],
+              "order": 39,
+              "chars": 51
+            },
+            {
+              "section_id": "sv3-c88aac61daf3a594",
+              "heading_path": [
+                "Humanizer-zh: 去除 AI 写作痕迹",
+                "质量评分"
+              ],
+              "order": 40,
+              "chars": 445
+            },
+            {
+              "section_id": "sv3-81c77547c0fe0a7d",
+              "heading_path": [
+                "Humanizer-zh: 去除 AI 写作痕迹",
+                "完整示例"
+              ],
+              "order": 41,
+              "chars": 419
+            },
+            {
+              "section_id": "sv3-3bb8954ac75ce52d",
+              "heading_path": [
+                "Humanizer-zh: 去除 AI 写作痕迹",
+                "参考"
+              ],
+              "order": 42,
+              "chars": 226
+            }
+          ]
+        }
+      ],
+      "current_short_usage": [
+        "polish"
+      ],
+      "current_stage_ownership": [
+        "QUALITY_REVIEW"
+      ]
+    },
+    {
+      "skill_id": "story-maintenance",
+      "files": [
+        {
+          "source_file": "vendor/novel-skills/source/story-maintenance/SKILL.md",
+          "source_sha256": "c9343be1365417b7323eaf98e97c2d9ac413d510bda549a30cd1d2c709b8500e",
+          "chars": 3904,
+          "token_estimate": 976,
+          "top_level_sections": [
+            "Story Maintenance"
+          ],
+          "subsections": [
+            {
+              "section_id": "sv3-fb0e319ed6f9914c",
+              "heading_path": [
+                "Story Maintenance",
+                "Overview"
+              ],
+              "order": 1,
+              "chars": 376
+            },
+            {
+              "section_id": "sv3-60e7e8ec86f64549",
+              "heading_path": [
+                "Story Maintenance",
+                "CLI Access"
+              ],
+              "order": 2,
+              "chars": 734
+            },
+            {
+              "section_id": "sv3-e01ca52af6e4b61b",
+              "heading_path": [
+                "Story Maintenance",
+                "Commands"
+              ],
+              "order": 3,
+              "chars": 2022
+            },
+            {
+              "section_id": "sv3-3a4f7a6b1aa420e6",
+              "heading_path": [
+                "Story Maintenance",
+                "Failure Handling"
+              ],
+              "order": 4,
+              "chars": 401
+            }
+          ]
+        }
+      ],
+      "current_short_usage": [
+        "maintenance"
+      ],
+      "current_stage_ownership": [
+        "LOCAL_RUNTIME"
+      ]
+    },
+    {
+      "skill_id": "better-writing",
+      "files": [
+        {
+          "source_file": "vendor/novel-skills/source/better-writing/CHANGELOG.md",
+          "source_sha256": "5c33018390fab90088e53aa4ef72f4b967df77e6f7a1ecaa2b363db5be068b6d",
+          "chars": 5313,
+          "token_estimate": 1329,
+          "top_level_sections": [
+            "Changelog"
+          ],
+          "subsections": [
+            {
+              "section_id": "sv3-5f6fd28463f6a1f7",
+              "heading_path": [
+                "Changelog",
+                "2026-07-02"
+              ],
+              "order": 1,
+              "chars": 1348
+            },
+            {
+              "section_id": "sv3-aaa8bc5201effee6",
+              "heading_path": [
+                "Changelog",
+                "2026-07-02",
+                "Added"
+              ],
+              "order": 2,
+              "chars": 365
+            },
+            {
+              "section_id": "sv3-4f665f4155b98996",
+              "heading_path": [
+                "Changelog",
+                "2026-07-02",
+                "Changed"
+              ],
+              "order": 3,
+              "chars": 967
+            },
+            {
+              "section_id": "sv3-b53ad57045f11379",
+              "heading_path": [
+                "Changelog",
+                "2026-06-15"
+              ],
+              "order": 4,
+              "chars": 2786
+            },
+            {
+              "section_id": "sv3-d76f3f8ad6822496",
+              "heading_path": [
+                "Changelog",
+                "2026-06-15",
+                "Added"
+              ],
+              "order": 5,
+              "chars": 1437
+            },
+            {
+              "section_id": "sv3-d638770c5874165d",
+              "heading_path": [
+                "Changelog",
+                "2026-06-15",
+                "Changed"
+              ],
+              "order": 6,
+              "chars": 652
+            },
+            {
+              "section_id": "sv3-fbdef581880211a0",
+              "heading_path": [
+                "Changelog",
+                "2026-06-15",
+                "Marked legacy"
+              ],
+              "order": 7,
+              "chars": 454
+            },
+            {
+              "section_id": "sv3-cc42ddb924a45fb3",
+              "heading_path": [
+                "Changelog",
+                "2026-06-10"
+              ],
+              "order": 8,
+              "chars": 646
+            },
+            {
+              "section_id": "sv3-09ac381a17b2a803",
+              "heading_path": [
+                "Changelog",
+                "2026-06-10",
+                "Added"
+              ],
+              "order": 9,
+              "chars": 302
+            },
+            {
+              "section_id": "sv3-6263357a374d361f",
+              "heading_path": [
+                "Changelog",
+                "2026-06-10",
+                "Catalogue baseline"
+              ],
+              "order": 10,
+              "chars": 328
+            },
+            {
+              "section_id": "sv3-9339db8caca98b92",
+              "heading_path": [
+                "Changelog",
+                "2026 (pre-changelog)"
+              ],
+              "order": 11,
+              "chars": 193
+            }
+          ]
+        },
+        {
+          "source_file": "vendor/novel-skills/source/better-writing/evals/examples/chatbot-artefacts.md",
+          "source_sha256": "bfb99cc5f28150a1f54900960bab96306ac225d8de08e1c411918ef8feaba571",
+          "chars": 148,
+          "token_estimate": 37,
+          "top_level_sections": [],
+          "subsections": []
+        },
+        {
+          "source_file": "vendor/novel-skills/source/better-writing/evals/examples/launch-email.md",
+          "source_sha256": "2277988b88e6d11b68244de8fcc1a563a75c2c0b6f6fb28433ab32a7b57434cb",
+          "chars": 301,
+          "token_estimate": 76,
+          "top_level_sections": [],
+          "subsections": []
+        },
+        {
+          "source_file": "vendor/novel-skills/source/better-writing/evals/examples/over-signposting.md",
+          "source_sha256": "19f1c7801914b59a90522a6edf5efe1a6dd97983fd4ad918ddd54b2b22778edd",
+          "chars": 270,
+          "token_estimate": 68,
+          "top_level_sections": [],
+          "subsections": []
+        },
+        {
+          "source_file": "vendor/novel-skills/source/better-writing/evals/examples/plain-human.md",
+          "source_sha256": "66c15df98ef660ff83a0dc6563255c2a9e4a9c368d80ac120914c0931d73fa24",
+          "chars": 261,
+          "token_estimate": 66,
+          "top_level_sections": [],
+          "subsections": []
+        },
+        {
+          "source_file": "vendor/novel-skills/source/better-writing/evals/examples/quarterly-report.md",
+          "source_sha256": "4292812a348221012d6e2142290a8c759b941d7d7f05a0a7776544bafb5c704f",
+          "chars": 214,
+          "token_estimate": 54,
+          "top_level_sections": [],
+          "subsections": []
+        },
+        {
+          "source_file": "vendor/novel-skills/source/better-writing/evals/examples/release-notes.md",
+          "source_sha256": "89917a2ad4a7d5fd1340235e911f70db4a7127773e1f53f547376e298ca2b25c",
+          "chars": 190,
+          "token_estimate": 48,
+          "top_level_sections": [],
+          "subsections": [
+            {
+              "section_id": "sv3-616e26884f8a1943",
+              "heading_path": [
+                "v2.4.0"
+              ],
+              "order": 0,
+              "chars": 190
+            }
+          ]
+        },
+        {
+          "source_file": "vendor/novel-skills/source/better-writing/evals/examples/voice-preservation.md",
+          "source_sha256": "b4c8e1ba72b115d8b43b42dc59b3526708d0bccf1cb0e842a09018895f86bc18",
+          "chars": 263,
+          "token_estimate": 66,
+          "top_level_sections": [],
+          "subsections": []
+        },
+        {
+          "source_file": "vendor/novel-skills/source/better-writing/evals/fixtures/chatbot-artefacts/input.md",
+          "source_sha256": "d9ad3b4320009b1515c835e4e8984c4f885e9e871720948aaa25966c36880496",
+          "chars": 367,
+          "token_estimate": 92,
+          "top_level_sections": [],
+          "subsections": []
+        },
+        {
+          "source_file": "vendor/novel-skills/source/better-writing/evals/fixtures/launch-email/input.md",
+          "source_sha256": "d2bedbad6dc9ef75d0332e4ff336e99c70d6e4850e459f396dd8bef53eb3eb27",
+          "chars": 550,
+          "token_estimate": 138,
+          "top_level_sections": [],
+          "subsections": []
+        },
+        {
+          "source_file": "vendor/novel-skills/source/better-writing/evals/fixtures/over-signposting/input.md",
+          "source_sha256": "aa59fdf60b53bd9a7875ba434f51722050ab035038b1278bc6d6942929d8437e",
+          "chars": 536,
+          "token_estimate": 134,
+          "top_level_sections": [],
+          "subsections": []
+        },
+        {
+          "source_file": "vendor/novel-skills/source/better-writing/evals/fixtures/plain-human/input.md",
+          "source_sha256": "66c15df98ef660ff83a0dc6563255c2a9e4a9c368d80ac120914c0931d73fa24",
+          "chars": 261,
+          "token_estimate": 66,
+          "top_level_sections": [],
+          "subsections": []
+        },
+        {
+          "source_file": "vendor/novel-skills/source/better-writing/evals/fixtures/quarterly-report/input.md",
+          "source_sha256": "2cd270f951b0896d4c08543920fb39ba8017e527acf77e29c5e2db9b2c6150ef",
+          "chars": 366,
+          "token_estimate": 92,
+          "top_level_sections": [],
+          "subsections": []
+        },
+        {
+          "source_file": "vendor/novel-skills/source/better-writing/evals/fixtures/release-notes/input.md",
+          "source_sha256": "dfa068667557fb007d5d7eb8bbab368462ffd97c8d265d5c597c11f9c2510091",
+          "chars": 459,
+          "token_estimate": 115,
+          "top_level_sections": [],
+          "subsections": [
+            {
+              "section_id": "sv3-9aba2dccf5ea668c",
+              "heading_path": [
+                "What's New in v2.4.0 🎉"
+              ],
+              "order": 0,
+              "chars": 459
+            }
+          ]
+        },
+        {
+          "source_file": "vendor/novel-skills/source/better-writing/evals/fixtures/voice-preservation/input.md",
+          "source_sha256": "b4c8e1ba72b115d8b43b42dc59b3526708d0bccf1cb0e842a09018895f86bc18",
+          "chars": 263,
+          "token_estimate": 66,
+          "top_level_sections": [],
+          "subsections": []
+        },
+        {
+          "source_file": "vendor/novel-skills/source/better-writing/evals/README.md",
+          "source_sha256": "8aa5989f130127f140a8402cc872c251ad6fd6ce38be48897103cbd4f0b3fd8c",
+          "chars": 3054,
+          "token_estimate": 764,
+          "top_level_sections": [
+            "Evals",
+            "One fixture",
+            "All fixtures"
+          ],
+          "subsections": [
+            {
+              "section_id": "sv3-60331a9c0efda648",
+              "heading_path": [
+                "Evals",
+                "Workflow"
+              ],
+              "order": 1,
+              "chars": 235
+            },
+            {
+              "section_id": "sv3-53db49bcd5f90c57",
+              "heading_path": [
+                "All fixtures",
+                "Known-good outputs"
+              ],
+              "order": 4,
+              "chars": 318
+            },
+            {
+              "section_id": "sv3-7c5b8c72561946cf",
+              "heading_path": [
+                "All fixtures",
+                "What each fixture tests"
+              ],
+              "order": 5,
+              "chars": 1108
+            },
+            {
+              "section_id": "sv3-5bdc7bbe3a494928",
+              "heading_path": [
+                "All fixtures",
+                "Check format"
+              ],
+              "order": 6,
+              "chars": 481
+            },
+            {
+              "section_id": "sv3-af9d187d2a5dfe18",
+              "heading_path": [
+                "All fixtures",
+                "Adding a fixture"
+              ],
+              "order": 7,
+              "chars": 339
+            }
+          ]
+        },
+        {
+          "source_file": "vendor/novel-skills/source/better-writing/README.md",
+          "source_sha256": "f3e02b2dc0ba4720fa10eb5aebe4e333b0f9018c11be02370c6cb2979fd38fed",
+          "chars": 13311,
+          "token_estimate": 3328,
+          "top_level_sections": [
+            "Better Writing"
+          ],
+          "subsections": [
+            {
+              "section_id": "sv3-787dd2bb6859d37a",
+              "heading_path": [
+                "Better Writing",
+                "What It Is"
+              ],
+              "order": 1,
+              "chars": 1638
+            },
+            {
+              "section_id": "sv3-8351125525fdb573",
+              "heading_path": [
+                "Better Writing",
+                "Before and After"
+              ],
+              "order": 2,
+              "chars": 2733
+            },
+            {
+              "section_id": "sv3-7204fb1ac956f48b",
+              "heading_path": [
+                "Better Writing",
+                "Before and After",
+                "A launch email, de-slopped"
+              ],
+              "order": 3,
+              "chars": 1013
+            },
+            {
+              "section_id": "sv3-f09d223fa229bef6",
+              "heading_path": [
+                "Better Writing",
+                "Before and After",
+                "A report paragraph, made specific without inventing anything"
+              ],
+              "order": 4,
+              "chars": 863
+            },
+            {
+              "section_id": "sv3-13ba66ca2a6ad98d",
+              "heading_path": [
+                "Better Writing",
+                "Before and After",
+                "A writer's draft, edited without flattening"
+              ],
+              "order": 5,
+              "chars": 696
+            },
+            {
+              "section_id": "sv3-7bf61685ea3c02fe",
+              "heading_path": [
+                "Better Writing",
+                "When To Use It"
+              ],
+              "order": 6,
+              "chars": 326
+            },
+            {
+              "section_id": "sv3-2aa4fba1c2b8b673",
+              "heading_path": [
+                "Better Writing",
+                "Installation"
+              ],
+              "order": 7,
+              "chars": 865
+            },
+            {
+              "section_id": "sv3-e971e141f3d9fb80",
+              "heading_path": [
+                "Better Writing",
+                "Usage"
+              ],
+              "order": 8,
+              "chars": 463
+            },
+            {
+              "section_id": "sv3-963df5ff608f5f7b",
+              "heading_path": [
+                "Better Writing",
+                "What Is Inside"
+              ],
+              "order": 9,
+              "chars": 1596
+            },
+            {
+              "section_id": "sv3-fdf327f8a4f2d7e8",
+              "heading_path": [
+                "Better Writing",
+                "Design Principles"
+              ],
+              "order": 10,
+              "chars": 191
+            },
+            {
+              "section_id": "sv3-cf0f6002ce45d9f0",
+              "heading_path": [
+                "Better Writing",
+                "Validation"
+              ],
+              "order": 11,
+              "chars": 624
+            },
+            {
+              "section_id": "sv3-39824be663d6040c",
+              "heading_path": [
+                "Better Writing",
+                "How It Differs from Its Influences"
+              ],
+              "order": 12,
+              "chars": 1299
+            },
+            {
+              "section_id": "sv3-96c35bb32f02359b",
+              "heading_path": [
+                "Better Writing",
+                "Evaluation"
+              ],
+              "order": 13,
+              "chars": 527
+            },
+            {
+              "section_id": "sv3-55a070f88720d032",
+              "heading_path": [
+                "Better Writing",
+                "A Living Pattern Catalogue"
+              ],
+              "order": 14,
+              "chars": 1073
+            },
+            {
+              "section_id": "sv3-14cf14a08c814955",
+              "heading_path": [
+                "Better Writing",
+                "Compatibility"
+              ],
+              "order": 15,
+              "chars": 862
+            },
+            {
+              "section_id": "sv3-376c35b9fb8472f1",
+              "heading_path": [
+                "Better Writing",
+                "Contributing"
+              ],
+              "order": 16,
+              "chars": 624
+            },
+            {
+              "section_id": "sv3-358d540af84ca319",
+              "heading_path": [
+                "Better Writing",
+                "Licence"
+              ],
+              "order": 17,
+              "chars": 51
+            }
+          ]
+        },
+        {
+          "source_file": "vendor/novel-skills/source/better-writing/references/ai-writing-patterns.md",
+          "source_sha256": "7e6c85c8135668192b40f70a8bda79562d91a130b896284ff150bf05d44fa67d",
+          "chars": 15191,
+          "token_estimate": 3798,
+          "top_level_sections": [
+            "AI-Writing Patterns"
+          ],
+          "subsections": [
+            {
+              "section_id": "sv3-af1ca315a330f915",
+              "heading_path": [
+                "AI-Writing Patterns",
+                "How to Use This Catalogue"
+              ],
+              "order": 1,
+              "chars": 1320
+            },
+            {
+              "section_id": "sv3-0a834e627e752721",
+              "heading_path": [
+                "AI-Writing Patterns",
+                "Near-Conclusive Artefacts"
+              ],
+              "order": 2,
+              "chars": 1310
+            },
+            {
+              "section_id": "sv3-4f3457786ce64fdd",
+              "heading_path": [
+                "AI-Writing Patterns",
+                "Content Patterns"
+              ],
+              "order": 3,
+              "chars": 2852
+            },
+            {
+              "section_id": "sv3-46580ca1f7389d54",
+              "heading_path": [
+                "AI-Writing Patterns",
+                "Content Patterns",
+                "Significance Inflation"
+              ],
+              "order": 4,
+              "chars": 548
+            },
+            {
+              "section_id": "sv3-4b81aa316cc3a3b6",
+              "heading_path": [
+                "AI-Writing Patterns",
+                "Content Patterns",
+                "Notability Padding"
+              ],
+              "order": 5,
+              "chars": 198
+            },
+            {
+              "section_id": "sv3-de2602dd9ab38e2e",
+              "heading_path": [
+                "AI-Writing Patterns",
+                "Content Patterns",
+                "Superficial Present-Participle Analysis"
+              ],
+              "order": 6,
+              "chars": 579
+            },
+            {
+              "section_id": "sv3-0bba9d349d4d51e6",
+              "heading_path": [
+                "AI-Writing Patterns",
+                "Content Patterns",
+                "Promotional Language"
+              ],
+              "order": 7,
+              "chars": 645
+            },
+            {
+              "section_id": "sv3-b99c2afb6f48503e",
+              "heading_path": [
+                "AI-Writing Patterns",
+                "Content Patterns",
+                "Vague Attribution"
+              ],
+              "order": 8,
+              "chars": 640
+            },
+            {
+              "section_id": "sv3-ba6d90bf5a78d170",
+              "heading_path": [
+                "AI-Writing Patterns",
+                "Content Patterns",
+                "Formulaic Challenges and Future Sections"
+              ],
+              "order": 9,
+              "chars": 216
+            },
+            {
+              "section_id": "sv3-1695c733facaa191",
+              "heading_path": [
+                "AI-Writing Patterns",
+                "Language Patterns"
+              ],
+              "order": 10,
+              "chars": 3909
+            },
+            {
+              "section_id": "sv3-74f6299b400160b8",
+              "heading_path": [
+                "AI-Writing Patterns",
+                "Language Patterns",
+                "Overused AI Vocabulary"
+              ],
+              "order": 11,
+              "chars": 1669
+            },
+            {
+              "section_id": "sv3-42ad0624f65ff9c8",
+              "heading_path": [
+                "AI-Writing Patterns",
+                "Language Patterns",
+                "Nominalisation and Noun Density"
+              ],
+              "order": 12,
+              "chars": 602
+            },
+            {
+              "section_id": "sv3-871bc86508bb30e7",
+              "heading_path": [
+                "AI-Writing Patterns",
+                "Language Patterns",
+                "Copula Avoidance"
+              ],
+              "order": 13,
+              "chars": 291
+            },
+            {
+              "section_id": "sv3-f8ab3bd6a62575fc",
+              "heading_path": [
+                "AI-Writing Patterns",
+                "Language Patterns",
+                "Negative Parallelism"
+              ],
+              "order": 14,
+              "chars": 429
+            },
+            {
+              "section_id": "sv3-65f08703de1aa807",
+              "heading_path": [
+                "AI-Writing Patterns",
+                "Language Patterns",
+                "Rule of Three"
+              ],
+              "order": 15,
+              "chars": 283
+            },
+            {
+              "section_id": "sv3-48364e7a3bb9fbe9",
+              "heading_path": [
+                "AI-Writing Patterns",
+                "Language Patterns",
+                "Synonym Cycling"
+              ],
+              "order": 16,
+              "chars": 190
+            },
+            {
+              "section_id": "sv3-2a2628b678b4a965",
+              "heading_path": [
+                "AI-Writing Patterns",
+                "Language Patterns",
+                "False Ranges"
+              ],
+              "order": 17,
+              "chars": 132
+            },
+            {
+              "section_id": "sv3-72ec9183d6f15f9e",
+              "heading_path": [
+                "AI-Writing Patterns",
+                "Language Patterns",
+                "Passive Voice and Subjectless Fragments"
+              ],
+              "order": 18,
+              "chars": 284
+            },
+            {
+              "section_id": "sv3-fa0a30e7f76b4147",
+              "heading_path": [
+                "AI-Writing Patterns",
+                "Formatting and Style Patterns"
+              ],
+              "order": 19,
+              "chars": 1854
+            },
+            {
+              "section_id": "sv3-eeb2ad8a856ade66",
+              "heading_path": [
+                "AI-Writing Patterns",
+                "Formatting and Style Patterns",
+                "Dash Dependence"
+              ],
+              "order": 20,
+              "chars": 995
+            },
+            {
+              "section_id": "sv3-dd2f9bd376021a7e",
+              "heading_path": [
+                "AI-Writing Patterns",
+                "Formatting and Style Patterns",
+                "Mechanical Bold and Inline Headers"
+              ],
+              "order": 21,
+              "chars": 329
+            },
+            {
+              "section_id": "sv3-f3c341e1c1baef20",
+              "heading_path": [
+                "AI-Writing Patterns",
+                "Formatting and Style Patterns",
+                "Title-Case Headings"
+              ],
+              "order": 22,
+              "chars": 82
+            },
+            {
+              "section_id": "sv3-32c8f1a4ff67130c",
+              "heading_path": [
+                "AI-Writing Patterns",
+                "Formatting and Style Patterns",
+                "Decorative Emoji"
+              ],
+              "order": 23,
+              "chars": 251
+            },
+            {
+              "section_id": "sv3-3545e145e7e11ada",
+              "heading_path": [
+                "AI-Writing Patterns",
+                "Formatting and Style Patterns",
+                "Curly Quotes"
+              ],
+              "order": 24,
+              "chars": 159
+            },
+            {
+              "section_id": "sv3-5b11b03366fd70fd",
+              "heading_path": [
+                "AI-Writing Patterns",
+                "Communication Artefacts"
+              ],
+              "order": 25,
+              "chars": 905
+            },
+            {
+              "section_id": "sv3-faedbffb5a30e272",
+              "heading_path": [
+                "AI-Writing Patterns",
+                "Communication Artefacts",
+                "Sycophancy"
+              ],
+              "order": 26,
+              "chars": 491
+            },
+            {
+              "section_id": "sv3-23ec864c11231b4f",
+              "heading_path": [
+                "AI-Writing Patterns",
+                "Filler, Hedging, and Fake Depth"
+              ],
+              "order": 27,
+              "chars": 399
+            },
+            {
+              "section_id": "sv3-214f81b597863f7b",
+              "heading_path": [
+                "AI-Writing Patterns",
+                "Model Fingerprints (diagnostic only)"
+              ],
+              "order": 28,
+              "chars": 513
+            },
+            {
+              "section_id": "sv3-d9de6a35fd2db869",
+              "heading_path": [
+                "AI-Writing Patterns",
+                "False Positives"
+              ],
+              "order": 29,
+              "chars": 1574
+            },
+            {
+              "section_id": "sv3-09c8bc1e84af4eae",
+              "heading_path": [
+                "AI-Writing Patterns",
+                "Human Signals to Preserve"
+              ],
+              "order": 30,
+              "chars": 367
+            }
+          ]
+        },
+        {
+          "source_file": "vendor/novel-skills/source/better-writing/references/genre-tells.md",
+          "source_sha256": "b9ed9d1341859f2ea54eefbf1301e9f0e865cecf885aa58707032ad1794faab3",
+          "chars": 4107,
+          "token_estimate": 1027,
+          "top_level_sections": [
+            "Genre Tells"
+          ],
+          "subsections": [
+            {
+              "section_id": "sv3-fe28f6b3861d1ea5",
+              "heading_path": [
+                "Genre Tells",
+                "Email and Business Messages"
+              ],
+              "order": 1,
+              "chars": 538
+            },
+            {
+              "section_id": "sv3-39e5acc837465a86",
+              "heading_path": [
+                "Genre Tells",
+                "LinkedIn and Social"
+              ],
+              "order": 2,
+              "chars": 452
+            },
+            {
+              "section_id": "sv3-8987e636796dd25f",
+              "heading_path": [
+                "Genre Tells",
+                "Marketing and SEO"
+              ],
+              "order": 3,
+              "chars": 840
+            },
+            {
+              "section_id": "sv3-ddd13d5649e53b69",
+              "heading_path": [
+                "Genre Tells",
+                "Academic and Scientific"
+              ],
+              "order": 4,
+              "chars": 912
+            },
+            {
+              "section_id": "sv3-fd901eff7dcd897d",
+              "heading_path": [
+                "Genre Tells",
+                "Code, Pull Requests, and Documentation"
+              ],
+              "order": 5,
+              "chars": 1082
+            }
+          ]
+        },
+        {
+          "source_file": "vendor/novel-skills/source/better-writing/references/preflight.md",
+          "source_sha256": "488f39ebd18dc92c8c20614f266c5c84bf59be124d6336764353c0504953eb36",
+          "chars": 3115,
+          "token_estimate": 779,
+          "top_level_sections": [
+            "Pre-Flight"
+          ],
+          "subsections": [
+            {
+              "section_id": "sv3-a5f5ed6af6cfce64",
+              "heading_path": [
+                "Pre-Flight",
+                "Preservation Check"
+              ],
+              "order": 1,
+              "chars": 394
+            },
+            {
+              "section_id": "sv3-59427a4b9d2b0532",
+              "heading_path": [
+                "Pre-Flight",
+                "Anti-Slop Check"
+              ],
+              "order": 2,
+              "chars": 857
+            },
+            {
+              "section_id": "sv3-2f0c928b4c151889",
+              "heading_path": [
+                "Pre-Flight",
+                "Taste Check"
+              ],
+              "order": 3,
+              "chars": 529
+            },
+            {
+              "section_id": "sv3-a33fec836a731358",
+              "heading_path": [
+                "Pre-Flight",
+                "Read-Aloud Check"
+              ],
+              "order": 4,
+              "chars": 329
+            },
+            {
+              "section_id": "sv3-d7dba00fafe4c99c",
+              "heading_path": [
+                "Pre-Flight",
+                "Structure Check"
+              ],
+              "order": 5,
+              "chars": 648
+            },
+            {
+              "section_id": "sv3-a4af5de5e91cd6ab",
+              "heading_path": [
+                "Pre-Flight",
+                "Delivery Check"
+              ],
+              "order": 6,
+              "chars": 312
+            }
+          ]
+        },
+        {
+          "source_file": "vendor/novel-skills/source/better-writing/references/sources.md",
+          "source_sha256": "1e7866e7dd6ed5786ade5ee642d18f69aeda5ca835a36db68022893c2e3bb59d",
+          "chars": 2664,
+          "token_estimate": 666,
+          "top_level_sections": [
+            "Sources"
+          ],
+          "subsections": [
+            {
+              "section_id": "sv3-027a029ecc69a395",
+              "heading_path": [
+                "Sources",
+                "Corpus and detection research (2023–2025)"
+              ],
+              "order": 1,
+              "chars": 1823
+            }
+          ]
+        },
+        {
+          "source_file": "vendor/novel-skills/source/better-writing/references/structures-and-phrases.md",
+          "source_sha256": "085b697bf7160bfc7e1cd0b4845bdfafed4101b31aa7046a0792919e7cfa6e1f",
+          "chars": 9947,
+          "token_estimate": 2487,
+          "top_level_sections": [
+            "Structures and Phrases"
+          ],
+          "subsections": [
+            {
+              "section_id": "sv3-46ff80db2b3aa7d0",
+              "heading_path": [
+                "Structures and Phrases",
+                "Phrases to Cut or Replace"
+              ],
+              "order": 1,
+              "chars": 3507
+            },
+            {
+              "section_id": "sv3-02cfc7e87f9d5825",
+              "heading_path": [
+                "Structures and Phrases",
+                "Phrases to Cut or Replace",
+                "Throat-Clearing"
+              ],
+              "order": 2,
+              "chars": 289
+            },
+            {
+              "section_id": "sv3-bbbd0b8d6ccb0151",
+              "heading_path": [
+                "Structures and Phrases",
+                "Phrases to Cut or Replace",
+                "Stock Openers"
+              ],
+              "order": 3,
+              "chars": 644
+            },
+            {
+              "section_id": "sv3-16baaadfe269db3b",
+              "heading_path": [
+                "Structures and Phrases",
+                "Phrases to Cut or Replace",
+                "Mechanical Transitions"
+              ],
+              "order": 4,
+              "chars": 386
+            },
+            {
+              "section_id": "sv3-4a96649b20a9acb9",
+              "heading_path": [
+                "Structures and Phrases",
+                "Phrases to Cut or Replace",
+                "Essay-Scaffold Closers"
+              ],
+              "order": 5,
+              "chars": 305
+            },
+            {
+              "section_id": "sv3-2b143393ad7090c6",
+              "heading_path": [
+                "Structures and Phrases",
+                "Phrases to Cut or Replace",
+                "Emphasis Crutches"
+              ],
+              "order": 6,
+              "chars": 170
+            },
+            {
+              "section_id": "sv3-b3fcdabb8295602c",
+              "heading_path": [
+                "Structures and Phrases",
+                "Phrases to Cut or Replace",
+                "Business Jargon"
+              ],
+              "order": 7,
+              "chars": 955
+            },
+            {
+              "section_id": "sv3-9372f4502f39a245",
+              "heading_path": [
+                "Structures and Phrases",
+                "Phrases to Cut or Replace",
+                "Softening and Intensifying Adverbs"
+              ],
+              "order": 8,
+              "chars": 430
+            },
+            {
+              "section_id": "sv3-ed848a3ddd3dbec2",
+              "heading_path": [
+                "Structures and Phrases",
+                "Phrases to Cut or Replace",
+                "Empty Importance"
+              ],
+              "order": 9,
+              "chars": 291
+            },
+            {
+              "section_id": "sv3-9aba1303d56b6c0d",
+              "heading_path": [
+                "Structures and Phrases",
+                "Structures to Avoid"
+              ],
+              "order": 10,
+              "chars": 5702
+            },
+            {
+              "section_id": "sv3-6105bf16b97e902f",
+              "heading_path": [
+                "Structures and Phrases",
+                "Structures to Avoid",
+                "Binary Contrast"
+              ],
+              "order": 11,
+              "chars": 689
+            },
+            {
+              "section_id": "sv3-c9d81bac4c3fd64b",
+              "heading_path": [
+                "Structures and Phrases",
+                "Structures to Avoid",
+                "Negative Listing"
+              ],
+              "order": 12,
+              "chars": 107
+            },
+            {
+              "section_id": "sv3-056c27ec4317d324",
+              "heading_path": [
+                "Structures and Phrases",
+                "Structures to Avoid",
+                "Dramatic Fragmentation"
+              ],
+              "order": 13,
+              "chars": 219
+            },
+            {
+              "section_id": "sv3-5680fb64a542b275",
+              "heading_path": [
+                "Structures and Phrases",
+                "Structures to Avoid",
+                "Rhetorical Setups"
+              ],
+              "order": 14,
+              "chars": 189
+            },
+            {
+              "section_id": "sv3-ea163e9673792a4c",
+              "heading_path": [
+                "Structures and Phrases",
+                "Structures to Avoid",
+                "False Agency"
+              ],
+              "order": 15,
+              "chars": 279
+            },
+            {
+              "section_id": "sv3-de115164c2173e88",
+              "heading_path": [
+                "Structures and Phrases",
+                "Structures to Avoid",
+                "Narrator from a Distance"
+              ],
+              "order": 16,
+              "chars": 311
+            },
+            {
+              "section_id": "sv3-e384e4b263607a2c",
+              "heading_path": [
+                "Structures and Phrases",
+                "Structures to Avoid",
+                "Question-Answer Habit"
+              ],
+              "order": 17,
+              "chars": 197
+            },
+            {
+              "section_id": "sv3-34ff8da0c662a677",
+              "heading_path": [
+                "Structures and Phrases",
+                "Structures to Avoid",
+                "Repetitive Paragraph Endings"
+              ],
+              "order": 18,
+              "chars": 202
+            },
+            {
+              "section_id": "sv3-745c230cb7accf29",
+              "heading_path": [
+                "Structures and Phrases",
+                "Structures to Avoid",
+                "Countdown and Tail Negation"
+              ],
+              "order": 19,
+              "chars": 312
+            },
+            {
+              "section_id": "sv3-8637b01e86b65c98",
+              "heading_path": [
+                "Structures and Phrases",
+                "Structures to Avoid",
+                "Rhetorical Self-Answer"
+              ],
+              "order": 20,
+              "chars": 289
+            },
+            {
+              "section_id": "sv3-18bbc44a9f33ec4a",
+              "heading_path": [
+                "Structures and Phrases",
+                "Structures to Avoid",
+                "Over-Signposting"
+              ],
+              "order": 21,
+              "chars": 421
+            },
+            {
+              "section_id": "sv3-97a7ce650d547e38",
+              "heading_path": [
+                "Structures and Phrases",
+                "Structures to Avoid",
+                "False Balance"
+              ],
+              "order": 22,
+              "chars": 402
+            },
+            {
+              "section_id": "sv3-d0530927ba82460f",
+              "heading_path": [
+                "Structures and Phrases",
+                "Structures to Avoid",
+                "List-Itis"
+              ],
+              "order": 23,
+              "chars": 480
+            },
+            {
+              "section_id": "sv3-4fd4931ef7a706dc",
+              "heading_path": [
+                "Structures and Phrases",
+                "Structures to Avoid",
+                "Fractal Recap"
+              ],
+              "order": 24,
+              "chars": 336
+            },
+            {
+              "section_id": "sv3-88153982ce058b45",
+              "heading_path": [
+                "Structures and Phrases",
+                "Structures to Avoid",
+                "Invented Compound Jargon"
+              ],
+              "order": 25,
+              "chars": 287
+            },
+            {
+              "section_id": "sv3-fe159f40c1c55996",
+              "heading_path": [
+                "Structures and Phrases",
+                "Structures to Avoid",
+                "Aphorism Formula"
+              ],
+              "order": 26,
+              "chars": 250
+            },
+            {
+              "section_id": "sv3-e0526b6dbf8af5b1",
+              "heading_path": [
+                "Structures and Phrases",
+                "Structures to Avoid",
+                "Meta-Commentary Joiners"
+              ],
+              "order": 27,
+              "chars": 276
+            },
+            {
+              "section_id": "sv3-12ebd09d039eb6ac",
+              "heading_path": [
+                "Structures and Phrases",
+                "Structures to Avoid",
+                "Engagement Bait"
+              ],
+              "order": 28,
+              "chars": 415
+            },
+            {
+              "section_id": "sv3-90508d151966677e",
+              "heading_path": [
+                "Structures and Phrases",
+                "Quick Rewrite Moves"
+              ],
+              "order": 29,
+              "chars": 551
+            }
+          ]
+        },
+        {
+          "source_file": "vendor/novel-skills/source/better-writing/references/voice-and-context.md",
+          "source_sha256": "cc3c0a7f3abd494ec9f4428edfd5cd5dd03b3f235b58bc1eb6199662a1c7a51e",
+          "chars": 4996,
+          "token_estimate": 1249,
+          "top_level_sections": [
+            "Voice and Context"
+          ],
+          "subsections": [
+            {
+              "section_id": "sv3-1346f63f25531b8c",
+              "heading_path": [
+                "Voice and Context",
+                "Brief Read"
+              ],
+              "order": 1,
+              "chars": 852
+            },
+            {
+              "section_id": "sv3-391282d36346c90e",
+              "heading_path": [
+                "Voice and Context",
+                "Dials"
+              ],
+              "order": 2,
+              "chars": 576
+            },
+            {
+              "section_id": "sv3-b54180be46ed72f2",
+              "heading_path": [
+                "Voice and Context",
+                "Genre Defaults"
+              ],
+              "order": 3,
+              "chars": 2178
+            },
+            {
+              "section_id": "sv3-6374e180bfc80cf4",
+              "heading_path": [
+                "Voice and Context",
+                "Genre Defaults",
+                "Emails"
+              ],
+              "order": 4,
+              "chars": 197
+            },
+            {
+              "section_id": "sv3-3e5b14a019af8060",
+              "heading_path": [
+                "Voice and Context",
+                "Genre Defaults",
+                "Documentation and Technical Writing"
+              ],
+              "order": 5,
+              "chars": 304
+            },
+            {
+              "section_id": "sv3-297525ca93beb7eb",
+              "heading_path": [
+                "Voice and Context",
+                "Genre Defaults",
+                "Product and Marketing Copy"
+              ],
+              "order": 6,
+              "chars": 419
+            },
+            {
+              "section_id": "sv3-7bbe56ac64d05580",
+              "heading_path": [
+                "Voice and Context",
+                "Genre Defaults",
+                "Essays, Posts, and Opinion"
+              ],
+              "order": 7,
+              "chars": 299
+            },
+            {
+              "section_id": "sv3-9e7e63ebb59922fa",
+              "heading_path": [
+                "Voice and Context",
+                "Genre Defaults",
+                "Reference, Legal, Medical, Financial, and Policy Text"
+              ],
+              "order": 8,
+              "chars": 285
+            },
+            {
+              "section_id": "sv3-c0e3d69403775ef5",
+              "heading_path": [
+                "Voice and Context",
+                "Voice Calibration"
+              ],
+              "order": 9,
+              "chars": 490
+            },
+            {
+              "section_id": "sv3-87a30795bc594519",
+              "heading_path": [
+                "Voice and Context",
+                "Specificity Ladder"
+              ],
+              "order": 10,
+              "chars": 291
+            },
+            {
+              "section_id": "sv3-10ea47cb92a739f2",
+              "heading_path": [
+                "Voice and Context",
+                "Fact Safety"
+              ],
+              "order": 11,
+              "chars": 479
+            }
+          ]
+        },
+        {
+          "source_file": "vendor/novel-skills/source/better-writing/SKILL.md",
+          "source_sha256": "a7af6d2ca2c0ec53c237e755a6e5b908a5244210a74cf1a9b75c5e54c97e2d2b",
+          "chars": 5572,
+          "token_estimate": 1393,
+          "top_level_sections": [
+            "Better Writing"
+          ],
+          "subsections": [
+            {
+              "section_id": "sv3-2c4087b0f05fa975",
+              "heading_path": [
+                "Better Writing",
+                "Core Workflow"
+              ],
+              "order": 1,
+              "chars": 1815
+            },
+            {
+              "section_id": "sv3-0eb3fe71490b23e0",
+              "heading_path": [
+                "Better Writing",
+                "Default Output"
+              ],
+              "order": 2,
+              "chars": 1218
+            },
+            {
+              "section_id": "sv3-2b8292ca97e06d0b",
+              "heading_path": [
+                "Better Writing",
+                "Editing Principles"
+              ],
+              "order": 3,
+              "chars": 694
+            },
+            {
+              "section_id": "sv3-d0f5e5bec8348e94",
+              "heading_path": [
+                "Better Writing",
+                "Guardrails"
+              ],
+              "order": 4,
+              "chars": 521
+            },
+            {
+              "section_id": "sv3-5dc655b1792acb5b",
+              "heading_path": [
+                "Better Writing",
+                "References"
+              ],
+              "order": 5,
+              "chars": 560
+            }
+          ]
+        },
+        {
+          "source_file": "vendor/novel-skills/source/better-writing/skills/better-writing/CHANGELOG.md",
+          "source_sha256": "1fd710a35393616a7f8416fb6fea2d9ee31fae4d309e820f9212a9a83885339e",
+          "chars": 18,
+          "token_estimate": 5,
+          "top_level_sections": [],
+          "subsections": []
+        },
+        {
+          "source_file": "vendor/novel-skills/source/better-writing/skills/better-writing/README.md",
+          "source_sha256": "4cc4e4c8a5120617ab0800cd8f722a9797f7a9c04d4a159fd42a4419f82c7c30",
+          "chars": 15,
+          "token_estimate": 4,
+          "top_level_sections": [],
+          "subsections": []
+        },
+        {
+          "source_file": "vendor/novel-skills/source/better-writing/skills/better-writing/references/ai-writing-patterns.md",
+          "source_sha256": "3cc6190898dfad9ce5424f44022dfc67f17df1c6ba20d05f71664a478691b229",
+          "chars": 42,
+          "token_estimate": 11,
+          "top_level_sections": [],
+          "subsections": []
+        },
+        {
+          "source_file": "vendor/novel-skills/source/better-writing/skills/better-writing/references/genre-tells.md",
+          "source_sha256": "e6af8f849996a51128aabc0746f53ccde585e16373496561789a2bb58f2455bc",
+          "chars": 34,
+          "token_estimate": 9,
+          "top_level_sections": [],
+          "subsections": []
+        },
+        {
+          "source_file": "vendor/novel-skills/source/better-writing/skills/better-writing/references/preflight.md",
+          "source_sha256": "e1d132fbf07bfde7e6616063016cb02edcc39b086f27dc7507ec55f74deafa7f",
+          "chars": 32,
+          "token_estimate": 8,
+          "top_level_sections": [],
+          "subsections": []
+        },
+        {
+          "source_file": "vendor/novel-skills/source/better-writing/skills/better-writing/references/sources.md",
+          "source_sha256": "4a058ed868d8f1d93727e378834aa308c404e5def88dc5dbedbd3628cccad7d0",
+          "chars": 30,
+          "token_estimate": 8,
+          "top_level_sections": [],
+          "subsections": []
+        },
+        {
+          "source_file": "vendor/novel-skills/source/better-writing/skills/better-writing/references/structures-and-phrases.md",
+          "source_sha256": "885b0b844c19c98aa51ef39ad346cabce51fbe3aaf1325d1ed93768c182ada9a",
+          "chars": 45,
+          "token_estimate": 12,
+          "top_level_sections": [],
+          "subsections": []
+        },
+        {
+          "source_file": "vendor/novel-skills/source/better-writing/skills/better-writing/references/voice-and-context.md",
+          "source_sha256": "b95ea183dbdb5cb9897da277a27dfa64bdcdebd38ee6122b4ecaef80be14231e",
+          "chars": 40,
+          "token_estimate": 10,
+          "top_level_sections": [],
+          "subsections": []
+        },
+        {
+          "source_file": "vendor/novel-skills/source/better-writing/skills/better-writing/SKILL.md",
+          "source_sha256": "51e5cba874c5a2ce71c3adf50602abec67bd6e4231d0c666d98eb27a219af837",
+          "chars": 14,
+          "token_estimate": 4,
+          "top_level_sections": [],
+          "subsections": []
+        }
+      ],
+      "current_short_usage": [
+        "draft",
+        "polish"
+      ],
+      "current_stage_ownership": [
+        "LOCAL_RUNTIME",
+        "QUALITY_REVIEW"
+      ]
+    }
+  ]
+}

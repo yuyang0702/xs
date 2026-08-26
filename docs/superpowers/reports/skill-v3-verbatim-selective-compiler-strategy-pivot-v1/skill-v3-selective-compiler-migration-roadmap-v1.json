@@ -1,0 +1,87 @@
+{
+  "schema": "SkillV3SelectiveCompilerMigrationRoadmapV1",
+  "phases": [
+    {
+      "phase": "S0",
+      "entry_gate": "this design evidence sealed",
+      "code_scope": "docs/evidence only",
+      "real_calls_allowed": 0,
+      "success_gate": "strategy decision and exact next gate",
+      "rollback": "no runtime effect",
+      "user_approval_requirement": "NO"
+    },
+    {
+      "phase": "S1",
+      "entry_gate": "S0 ready",
+      "code_scope": "section index + selector/renderer/provenance SHADOW prototype",
+      "real_calls_allowed": 0,
+      "success_gate": "deterministic contracts and focused tests pass",
+      "rollback": "disable/delete shadow artifacts",
+      "user_approval_requirement": "NO external-call approval; separate code-change authorization required"
+    },
+    {
+      "phase": "S2",
+      "entry_gate": "S1 green",
+      "code_scope": "offline shadow materialization for five demand classes",
+      "real_calls_allowed": 0,
+      "success_gate": "all five size/provenance receipts exact",
+      "rollback": "retain current path",
+      "user_approval_requirement": "NO"
+    },
+    {
+      "phase": "S3",
+      "entry_gate": "S2 green",
+      "code_scope": "offline semantic coverage gate",
+      "real_calls_allowed": 0,
+      "success_gate": "mandatory coverage exact and wrong-layer zero",
+      "rollback": "retain current path",
+      "user_approval_requirement": "NO"
+    },
+    {
+      "phase": "S4",
+      "entry_gate": "S3 green + fresh packet/approvals",
+      "code_scope": "character-heavy 3+3 pilot",
+      "real_calls_allowed": 6,
+      "success_gate": "prospective engineering and narrative rule pass",
+      "rollback": "current Demand-aware V2 remains production baseline",
+      "user_approval_requirement": "YES, separate single-use approval per dispatch"
+    },
+    {
+      "phase": "S5",
+      "entry_gate": "S4 pass",
+      "code_scope": "remaining demand classes one bounded campaign at a time",
+      "real_calls_allowed": "separately bounded",
+      "success_gate": "each class independently non-inferior",
+      "rollback": "stop on first no-go",
+      "user_approval_requirement": "YES"
+    },
+    {
+      "phase": "S6",
+      "entry_gate": "sufficient S4/S5 evidence",
+      "code_scope": "generalized decision evidence",
+      "real_calls_allowed": 0,
+      "success_gate": "scope-bounded non-inferiority decision",
+      "rollback": "no cutover",
+      "user_approval_requirement": "NO"
+    },
+    {
+      "phase": "S7",
+      "entry_gate": "S6 pass + separate change approval",
+      "code_scope": "runtime cutover candidate",
+      "real_calls_allowed": 0,
+      "success_gate": "offline parity/regression and authority gates",
+      "rollback": "feature flag to compressed V2 baseline",
+      "user_approval_requirement": "YES"
+    },
+    {
+      "phase": "S8",
+      "entry_gate": "S7 sealed + separate canary approval",
+      "code_scope": "Planning V2 / Full Short later",
+      "real_calls_allowed": "not authorized here",
+      "success_gate": "separate production/canary gates",
+      "rollback": "rollback to sealed baseline",
+      "user_approval_requirement": "YES"
+    }
+  ],
+  "automatic_phase_transition": false
+}

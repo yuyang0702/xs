@@ -1,0 +1,10 @@
+{
+  "schema": "CompressedProfileLifecycleDecisionV1",
+  "decision": "KEEP_AS_PRODUCTION_BASELINE_ONLY",
+  "last_known_best": "DEMAND_AWARE_V2",
+  "last_known_best_profile_sha256": "109bb50e2e649c5841bd7c83513100caa0d93cf3c1bb5db845e489b5ae10856d",
+  "last_known_best_context_sha256": "7d0f6309ede2261f2f6a1098d394937948bf5b50eb9248266ab350fd91da9adc",
+  "residual_v3_status": "SEALED_NEGATIVE_EVIDENCE",
+  "deprecate_after": "selector/compiler proves offline coverage and bounded multi-sample non-inferiority, then receives separate cutover authorization",
+  "delete_now": false
+}

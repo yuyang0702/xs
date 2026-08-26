@@ -1,0 +1,22 @@
+{
+  "schema": "SelectiveSkillContextBudgetPolicyV1",
+  "priority": [
+    "SEMANTIC_COMPLETENESS_FIRST",
+    "CAPACITY_SAFETY_SECOND",
+    "TOKEN_EFFICIENCY_THIRD"
+  ],
+  "unit": "canonical conservative token estimate; retain chars as auditable secondary measure",
+  "safe_context_window": "minimum exact configured primary/fallback context window; unknown route uses 32768",
+  "planning_output_reserve": "exact runtime stage reserve (12288 in production); bounded experiment uses its sealed output cap (4624)",
+  "maximum_total_input": "floor(0.75 * safe_context_window)",
+  "available_skill_tokens": "floor(0.75*safe_context_window) - output_reserve - measured_non_skill_input_tokens - wrapper_and_estimator_margin",
+  "drop_order": [
+    "OPTIONAL_SUPPORT",
+    "non-demand support",
+    "duplicate semantic units with exact provenance retained"
+  ],
+  "mandatory_overflow": "use an already-contracted semantic stage split if available, otherwise typed fail-close",
+  "summarize_to_fit": false,
+  "production_3000_char_target_is_architectural_invariant": false,
+  "ptr9_ptr12_preflight_preserved": true
+}

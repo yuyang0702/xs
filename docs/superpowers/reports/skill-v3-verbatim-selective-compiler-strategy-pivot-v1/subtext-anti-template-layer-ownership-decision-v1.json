@@ -1,0 +1,32 @@
+{
+  "schema": "SubtextAntiTemplateLayerOwnershipDecisionV1",
+  "decisions": [
+    {
+      "source": "character-management/character-template/Voice & Speech Patterns",
+      "decision": "MOVE_TO_DRAFT",
+      "reason": "surface voice realization belongs to prose production, not Event Realization structure"
+    },
+    {
+      "source": "dialogue/Subtext",
+      "decision": "MOVE_TO_DRAFT",
+      "reason": "dialogue tactics and subtext are realized in scene prose"
+    },
+    {
+      "source": "humanizer-zh pattern detection sections",
+      "decision": "MOVE_TO_QUALITY_REVIEW",
+      "reason": "detect/check prose templates after realization"
+    },
+    {
+      "source": "plot/character motive-goal-cost-dependency sections",
+      "decision": "KEEP_IN_PLANNING_EVENT_REALIZATION",
+      "reason": "causal event structure"
+    },
+    {
+      "source": "chapter-writing outline/gather/scope sections",
+      "decision": "SHARED_BUT_STAGE_SPECIFIC_SUBSET",
+      "reason": "only planning facts, never chapter-writing or post-write mutation instructions"
+    }
+  ],
+  "event_realization_policy": "do not force surface-level anti-template or cadence rules into Planning; Planning owns causal structure and Draft/Review own realization/detection",
+  "production_routing_changed": false
+}

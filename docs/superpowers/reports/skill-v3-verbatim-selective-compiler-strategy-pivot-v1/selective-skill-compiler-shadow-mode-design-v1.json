@@ -1,0 +1,18 @@
+{
+  "schema": "SelectiveSkillCompilerShadowModeDesignV1",
+  "integration_point": "WorkflowService._stage after SkillGate resolution/load and before SkillPromptCompactor/context packet construction (src/novel_flywheel/workflows.py:26754)",
+  "shadow_outputs": [
+    "selected section IDs",
+    "rendered shadow context",
+    "provenance receipt",
+    "size/capacity report",
+    "semantic coverage report"
+  ],
+  "production_model_input_uses_shadow": false,
+  "production_authority_uses_shadow": false,
+  "production_route_mutation": false,
+  "production_prompt_mutation": false,
+  "real_provider_requests": 0,
+  "failure_mode": "typed diagnostic and observational fail-open during S1/S2; current production path remains byte-identical",
+  "repo_source_plan": "shadow compiler reads the checked-in vendor bundle through a new explicit index; it does not silently make the inactive bundle production reachable"
+}

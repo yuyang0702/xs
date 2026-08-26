@@ -1,0 +1,22 @@
+{
+  "schema": "SelectiveCompilerOfflineCoverageGateV1",
+  "corpora": [
+    "A full original corpus of currently resolved Skills",
+    "B current demand-aware V2 compressed profile",
+    "C selected-verbatim shadow context"
+  ],
+  "mechanical_checks": [
+    "capability-unit presence",
+    "caveat retention",
+    "example retention",
+    "negative-constraint retention",
+    "wrong-stage exclusion",
+    "runtime-owned exclusion",
+    "exact wording and order for selected sections",
+    "provenance reconstruction",
+    "budget reproducibility"
+  ],
+  "pass_rule": "all contract/demand mandatory units exact in C; every omission classified; zero wrong-layer/runtime mutation instruction; every selected byte reconstructs from repo source",
+  "literary_quality_claim_allowed": false,
+  "external_calls": 0
+}

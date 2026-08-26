@@ -1,0 +1,22 @@
+{
+  "schema": "SkillSectionIdentityContractV1",
+  "required_fields": [
+    "skill_id",
+    "section_id",
+    "source_path",
+    "source_file_sha256",
+    "section_content_sha256",
+    "heading_path",
+    "source_span_or_ast_node",
+    "section_order",
+    "stage_ownership",
+    "demand_tags",
+    "capability_tags"
+  ],
+  "section_id_policy": "checked-in opaque immutable ID assigned once by an explicit section index; not regenerated from headings, hashes, paths or line numbers after S1",
+  "initial_assignment": "deterministic candidate IDs may seed S1; the checked-in index freezes identity before use",
+  "exact_binding": "file hash + section hash + heading path + AST/span + order must all match; mismatch is typed fail-close and requires an explicit index migration",
+  "line_number_only_allowed": false,
+  "fuzzy_match_allowed": false,
+  "rename_or_edit_policy": "preserve section_id in an explicit migration record while updating exact assertions; ambiguous split/merge gets new IDs and predecessor links"
+}

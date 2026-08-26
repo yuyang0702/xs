@@ -1,0 +1,21 @@
+{
+  "schema": "VerbatimSelectorOverflowPolicyV1",
+  "order": [
+    "keep mandatory stage core",
+    "keep contract-required",
+    "keep demand-critical",
+    "drop optional support with omission receipt",
+    "use an existing semantic split when contract-authorized",
+    "typed fail-close"
+  ],
+  "auto_summarize_to_fit": false,
+  "silent_semantic_truncation": false,
+  "fail_closed_or_stage_split": true,
+  "split_must_preserve": [
+    "contract identity",
+    "authority lineage",
+    "section provenance",
+    "output reserve",
+    "retry/fallback bounds"
+  ]
+}

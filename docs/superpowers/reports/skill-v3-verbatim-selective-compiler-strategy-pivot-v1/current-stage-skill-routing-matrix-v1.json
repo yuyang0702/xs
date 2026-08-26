@@ -1,0 +1,145 @@
+{
+  "schema": "CurrentStageSkillRoutingMatrixV1",
+  "existing_stage_specific_skill_routing_confirmed": true,
+  "repo_skill_runtime_reachability": "NONE_CURRENTLY",
+  "repo_local_source_of_truth_target": true,
+  "columns": [
+    "stage",
+    "call_site",
+    "resolver",
+    "selected_skill_ids",
+    "selection_inputs",
+    "selection_deterministic",
+    "current_context_form",
+    "current_context_builder",
+    "current_budget_or_cap",
+    "runtime_authority_source",
+    "notes"
+  ],
+  "rows": [
+    {
+      "stage": "planning",
+      "call_site": "WorkflowService._stage (workflows.py:26682, load at 26754)",
+      "resolver": "SkillGate",
+      "selected_skill_ids": [
+        "story-init",
+        "plot-structure",
+        "character-management",
+        "worldbuilding"
+      ],
+      "selection_inputs": "stage + REQUIRED_SKILLS_BY_STAGE",
+      "selection_deterministic": true,
+      "current_context_form": "compacted advisory + mandatory clauses; offline A/B may replace with compressed profile",
+      "current_context_builder": "SkillPromptCompactor + context_packet; runtime_skill_profiles only in bounded experiment",
+      "current_budget_or_cap": "9000 chars before packet; advisory 8000/3000; profile 3000",
+      "runtime_authority_source": "active scanner roots; global currently wins because repo bundle is not reachable",
+      "notes": "Event Realization uses the Planning route; repo bundle remains staged/inactive"
+    },
+    {
+      "stage": "revision_plan",
+      "call_site": "WorkflowService._stage",
+      "resolver": "SkillGate",
+      "selected_skill_ids": [
+        "revision-continuity",
+        "plot-structure"
+      ],
+      "selection_inputs": "stage registry",
+      "selection_deterministic": true,
+      "current_context_form": "compacted advisory + mandatory clauses",
+      "current_context_builder": "SkillPromptCompactor + context_packet",
+      "current_budget_or_cap": "same packet pressure policy",
+      "runtime_authority_source": "active scanner roots",
+      "notes": "layered stage"
+    },
+    {
+      "stage": "draft",
+      "call_site": "WorkflowService._stage",
+      "resolver": "SkillGate",
+      "selected_skill_ids": [
+        "chapter-writing",
+        "novel-writing",
+        "dialogue",
+        "better-writing(optional)"
+      ],
+      "selection_inputs": "stage registry + optional availability",
+      "selection_deterministic": true,
+      "current_context_form": "compacted advisory + mandatory clauses",
+      "current_context_builder": "SkillPromptCompactor + context_packet",
+      "current_budget_or_cap": "same packet pressure policy",
+      "runtime_authority_source": "active scanner roots",
+      "notes": "better-writing is optional"
+    },
+    {
+      "stage": "review",
+      "call_site": "WorkflowService._stage",
+      "resolver": "SkillGate",
+      "selected_skill_ids": [
+        "revision-continuity"
+      ],
+      "selection_inputs": "stage registry",
+      "selection_deterministic": true,
+      "current_context_form": "compacted advisory + mandatory clauses",
+      "current_context_builder": "SkillPromptCompactor + context_packet",
+      "current_budget_or_cap": "same packet pressure policy",
+      "runtime_authority_source": "active scanner roots",
+      "notes": "semantic review"
+    },
+    {
+      "stage": "polish",
+      "call_site": "WorkflowService._stage",
+      "resolver": "SkillGate",
+      "selected_skill_ids": [
+        "humanizer-zh",
+        "dialogue",
+        "novel-writing",
+        "better-writing(optional)"
+      ],
+      "selection_inputs": "stage registry + optional availability",
+      "selection_deterministic": true,
+      "current_context_form": "compacted advisory + mandatory clauses",
+      "current_context_builder": "SkillPromptCompactor + context_packet",
+      "current_budget_or_cap": "same packet pressure policy",
+      "runtime_authority_source": "active scanner roots",
+      "notes": "quality/surface realization"
+    },
+    {
+      "stage": "final_review",
+      "call_site": "WorkflowService._stage",
+      "resolver": "SkillGate",
+      "selected_skill_ids": [
+        "revision-continuity"
+      ],
+      "selection_inputs": "stage registry",
+      "selection_deterministic": true,
+      "current_context_form": "compacted advisory + mandatory clauses",
+      "current_context_builder": "SkillPromptCompactor + context_packet",
+      "current_budget_or_cap": "same packet pressure policy",
+      "runtime_authority_source": "active scanner roots",
+      "notes": "layered final review"
+    },
+    {
+      "stage": "maintenance",
+      "call_site": "WorkflowService._stage (workflows.py:26764)",
+      "resolver": "SkillGate",
+      "selected_skill_ids": [
+        "story-maintenance"
+      ],
+      "selection_inputs": "stage registry + executable flag",
+      "selection_deterministic": true,
+      "current_context_form": "local executable output; not a model Skill prompt",
+      "current_context_builder": "SkillGate executable path",
+      "current_budget_or_cap": "local process constraints",
+      "runtime_authority_source": "active scanner roots",
+      "notes": "deterministic local runtime"
+    }
+  ],
+  "source_bindings": {
+    "stage_registry": "src/novel_flywheel/prompts.py:62",
+    "scanner": "src/novel_flywheel/skills.py:39",
+    "gate": "src/novel_flywheel/skills.py:69",
+    "workflow": "src/novel_flywheel/workflows.py:26682",
+    "compactor": "src/novel_flywheel/skill_prompts.py:188",
+    "packet": "src/novel_flywheel/context_packet.py:218",
+    "shadow_profiles": "src/novel_flywheel/runtime_skill_profiles.py"
+  }
+}

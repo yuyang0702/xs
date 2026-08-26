@@ -1,0 +1,8 @@
+{
+  "schema": "LiteraryExperimentMethodologyPivotV1",
+  "single_sample_prompt_hill_climbing_for_skill_context": "DEPRECATED_FOR_ARCHITECTURE_DECISIONS",
+  "single_sample_allowed_use": "engineering smoke only",
+  "active_direction": "source-faithful context architecture, followed by prospective bounded multi-sample validation",
+  "superseded_for_now_gate": "SKILL_V2_PAIR_1_RESIDUAL_V3_REVALIDATION_QUALITY_REGRESSION_ROOT_CAUSE",
+  "historical_evidence_rewritten": false
+}

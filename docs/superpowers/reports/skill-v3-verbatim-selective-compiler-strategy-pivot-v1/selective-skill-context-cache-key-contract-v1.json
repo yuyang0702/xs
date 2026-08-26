@@ -1,0 +1,28 @@
+{
+  "schema": "SelectiveSkillContextCacheKeyContractV1",
+  "hash": "sha256(canonical_json(all semantic inputs))",
+  "semantic_inputs": [
+    "compiler_version",
+    "resolver_version",
+    "section_index_version",
+    "selector_policy_version",
+    "render_policy_version",
+    "budget_policy_version",
+    "stage/substage",
+    "task_contract_id/schema_hash",
+    "creative_demand_class",
+    "authority selection facts hashes",
+    "ordered skill IDs/source hashes",
+    "ordered section IDs/content hashes",
+    "capacity profile"
+  ],
+  "excluded_inputs": [
+    "generated output",
+    "quality result",
+    "blind mapping",
+    "timestamps",
+    "nonce",
+    "provider response"
+  ],
+  "stale_after_skill_edit": false
+}

@@ -1,0 +1,24 @@
+{
+  "schema": "SelectiveSkillContextProvenanceContractV1",
+  "required_fields": [
+    "compiler_version",
+    "stage",
+    "task_id_or_case_id",
+    "resolver_version",
+    "selected_skill_ids",
+    "selected_section_ids",
+    "source_file_sha256",
+    "section_content_sha256",
+    "section_order",
+    "omitted_section_ids",
+    "omission_reason",
+    "rendered_context_sha256",
+    "rendered_context_chars",
+    "token_estimate",
+    "budget",
+    "overflow_decision"
+  ],
+  "raw_context_persistence": "shadow artifacts may persist repo-public Skill text only in an explicitly authorized artifact; default receipt stores hashes/shape/counts, not story or Provider payload",
+  "hidden_reasoning_persisted": false,
+  "reconstructible": true
+}

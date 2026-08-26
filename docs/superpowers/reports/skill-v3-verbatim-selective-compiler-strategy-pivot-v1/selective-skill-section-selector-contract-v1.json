@@ -1,0 +1,34 @@
+{
+  "schema": "SelectiveSkillSectionSelectorContractV1",
+  "deterministic_local": true,
+  "no_llm_selector": true,
+  "allowed_inputs": [
+    "resolved_skill_ids_and_exact_source_hashes",
+    "stage_and_substage",
+    "task_contract_id_and_schema_hash",
+    "creative_demand_class_enum",
+    "authority_presence_facts_counts_and_hashes",
+    "section_index_version",
+    "selector_policy_version",
+    "budget_policy_version"
+  ],
+  "forbidden_inputs": [
+    "generated_prose",
+    "model_judgment",
+    "sampling",
+    "prior_quality_outcomes",
+    "blind_mapping",
+    "provider_response"
+  ],
+  "precedence": [
+    "ALWAYS_ON_STAGE_CORE",
+    "CONTRACT_SPECIFIC",
+    "DEMAND_SPECIFIC",
+    "OPTIONAL_SUPPORT",
+    "EXCLUDED_WRONG_LAYER"
+  ],
+  "unknown_demand": "TYPED_FAIL_CLOSED",
+  "stage_router_reused": true,
+  "repo_bundle_scope": "sections may be selected only from Skills already selected by the current stage resolver; referenced markdown belongs to its parent selected Skill",
+  "deterministic_section_selector": true
+}

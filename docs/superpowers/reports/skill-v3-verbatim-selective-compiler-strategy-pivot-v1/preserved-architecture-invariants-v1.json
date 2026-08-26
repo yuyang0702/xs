@@ -1,0 +1,18 @@
+{
+  "schema": "PreservedArchitectureInvariantsV1",
+  "preserved": [
+    "existing stage-specific Skill routing",
+    "repo-local Skill source of truth target",
+    "deterministic Skill resolver",
+    "Planning V2 staged artifact architecture",
+    "StoryState/Canon/READY authority model",
+    "Contract Runtime",
+    "PTR9/PTR12",
+    "R1-D3 Draft fix",
+    "local validators",
+    "single-dispatch/approval/nonce controls",
+    "blind-evaluation discipline",
+    "Prompt/Route/Model/Retry/Fallback/Output Budget production behavior"
+  ],
+  "reopen_without_new_causal_evidence": false
+}

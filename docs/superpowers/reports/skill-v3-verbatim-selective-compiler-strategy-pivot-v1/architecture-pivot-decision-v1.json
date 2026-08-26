@@ -1,0 +1,15 @@
+{
+  "schema": "SkillV3ArchitecturePivotDecisionV1",
+  "selective_compiler_is_predetermined_required_architecture": false,
+  "priority_baseline": "FULL_VERBATIM_SELECTED_SKILLS",
+  "priority_baseline_result": "NOT_PREFERRED",
+  "preferred_architecture": "SELECTIVE_VERBATIM_SECTIONS",
+  "causal_gate_failures": [
+    "SAFETY",
+    "REPETITION",
+    "STAGE_OWNERSHIP"
+  ],
+  "capacity_result": "PASS",
+  "prohibited_inference": "capacity PASS does not imply stage-safety PASS",
+  "future_reassessment": "If complete selected Skills become stage-owned and mutation-free, FULL_VERBATIM_SELECTED_SKILLS_PREFERRED remains an allowed result."
+}

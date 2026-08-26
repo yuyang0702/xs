@@ -1,0 +1,197 @@
+{
+  "schema": "SelectiveCompilerContextSizeScenarioMatrixV1",
+  "estimator": "src/novel_flywheel/context_policy.py:estimate_input_tokens semantics",
+  "scenarios": [
+    {
+      "demand_class": "character-heavy",
+      "fixture": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-v1/pairs/restored-character-heavy-v1/sanitized-fixture-v1.json",
+      "fixture_sha256": "d5cc3cd9ca720173dd68205a28a820b5f853271474d140dc356576fe0b94b3cf",
+      "selected_skills": [
+        "plot-structure",
+        "character-management"
+      ],
+      "selected_section_ids": [
+        "sv3-8f60ce5781d2680f",
+        "sv3-70a527462c32e7b6",
+        "sv3-faecc1466817d8aa",
+        "sv3-7633ad6f5c90db5e",
+        "sv3-3fb51ac3fed35bc0",
+        "sv3-9e36963fe1a5a940",
+        "sv3-4c6b004ecdd2077f",
+        "sv3-10e4ba0c5b7509b4",
+        "sv3-8e321726b4ebdcec",
+        "sv3-8afeb5229a4fe841",
+        "sv3-e92f0f3584d44b87"
+      ],
+      "raw_selected_chars": 3397,
+      "rendered_context_chars": 4647,
+      "rendered_context_sha256": "62dfba21be0a903b28b95976cb22b2a1643daedd43637b61555db257be146cf7",
+      "token_estimate": 1162,
+      "fixture_token_estimate": 708,
+      "fixed_wrapper_token_allowance": 1024,
+      "output_reserve_tokens": 4624,
+      "conservative_context_window": 32768,
+      "safe_input_plus_output_threshold": 24576,
+      "estimated_total_with_output_reserve": 7518,
+      "model_context_safety_status": "PASS",
+      "sections_dropped": [],
+      "why": "deterministic stage core plus demand-specific original sections; no char-target compression"
+    },
+    {
+      "demand_class": "world-heavy",
+      "fixture": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-v1/pairs/restored-world-heavy-v1/sanitized-fixture-v1.json",
+      "fixture_sha256": "0f10b95f373e83b84129232ccdbf7c98cb92124a985934991a68728b0a19cd20",
+      "selected_skills": [
+        "plot-structure",
+        "worldbuilding"
+      ],
+      "selected_section_ids": [
+        "sv3-8f60ce5781d2680f",
+        "sv3-70a527462c32e7b6",
+        "sv3-faecc1466817d8aa",
+        "sv3-7633ad6f5c90db5e",
+        "sv3-3fb51ac3fed35bc0",
+        "sv3-57971b1277b054c2",
+        "sv3-1b82b62f5f30c841",
+        "sv3-34fe98efc05e155b",
+        "sv3-2985467b5f2bf929",
+        "sv3-60d4bee497e4c0dc",
+        "sv3-5f738df332e0919f",
+        "sv3-b4eb9bc24027f33c",
+        "sv3-6073d485d6a384b0",
+        "sv3-7e6d87ef69c95cfd",
+        "sv3-f998823d27d7086b"
+      ],
+      "raw_selected_chars": 4043,
+      "rendered_context_chars": 5653,
+      "rendered_context_sha256": "27a9212bb21cb4408e470b18900ba255a587e3d24fafb3edaaf1eca775561385",
+      "token_estimate": 1414,
+      "fixture_token_estimate": 725,
+      "fixed_wrapper_token_allowance": 1024,
+      "output_reserve_tokens": 4624,
+      "conservative_context_window": 32768,
+      "safe_input_plus_output_threshold": 24576,
+      "estimated_total_with_output_reserve": 7787,
+      "model_context_safety_status": "PASS",
+      "sections_dropped": [],
+      "why": "deterministic stage core plus demand-specific original sections; no char-target compression"
+    },
+    {
+      "demand_class": "conflict-pacing-heavy",
+      "fixture": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-v1/pairs/restored-conflict-pacing-heavy-v1/sanitized-fixture-v1.json",
+      "fixture_sha256": "a09f1fc23787b8c22e872aca9a862fec8204e832687b553cb1e31b98183a1df8",
+      "selected_skills": [
+        "plot-structure"
+      ],
+      "selected_section_ids": [
+        "sv3-8f60ce5781d2680f",
+        "sv3-70a527462c32e7b6",
+        "sv3-faecc1466817d8aa",
+        "sv3-7633ad6f5c90db5e",
+        "sv3-3fb51ac3fed35bc0",
+        "sv3-a62c59fc8e1e910d",
+        "sv3-13580b3cdbef263e"
+      ],
+      "raw_selected_chars": 1988,
+      "rendered_context_chars": 2728,
+      "rendered_context_sha256": "6a904285ee70f23a1cc805b9c9bc8accce8c55b3ad4731363f32b467cb144740",
+      "token_estimate": 682,
+      "fixture_token_estimate": 731,
+      "fixed_wrapper_token_allowance": 1024,
+      "output_reserve_tokens": 4624,
+      "conservative_context_window": 32768,
+      "safe_input_plus_output_threshold": 24576,
+      "estimated_total_with_output_reserve": 7061,
+      "model_context_safety_status": "PASS",
+      "sections_dropped": [],
+      "why": "deterministic stage core plus demand-specific original sections; no char-target compression"
+    },
+    {
+      "demand_class": "setup-payoff-heavy",
+      "fixture": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-v1/pairs/restored-setup-payoff-heavy-v1/sanitized-fixture-v1.json",
+      "fixture_sha256": "a131846ce5988f763e2656e2b65ace82873ebbfcfd0bd1da00ce6d16cc241f65",
+      "selected_skills": [
+        "plot-structure"
+      ],
+      "selected_section_ids": [
+        "sv3-8f60ce5781d2680f",
+        "sv3-70a527462c32e7b6",
+        "sv3-faecc1466817d8aa",
+        "sv3-7633ad6f5c90db5e",
+        "sv3-3fb51ac3fed35bc0",
+        "sv3-c8068581ef934af9",
+        "sv3-ac7aa3aed8a7d237",
+        "sv3-2ced894267dc51e3",
+        "sv3-82ca2fdf9c28183b",
+        "sv3-a1cb6a6e7ccf6112",
+        "sv3-6e4a0b2625a01274"
+      ],
+      "raw_selected_chars": 2298,
+      "rendered_context_chars": 3500,
+      "rendered_context_sha256": "fae167027c4765aa5d37c6c44f080e83d8d080438f6d511d82b1e1ce4fbe23b5",
+      "token_estimate": 875,
+      "fixture_token_estimate": 737,
+      "fixed_wrapper_token_allowance": 1024,
+      "output_reserve_tokens": 4624,
+      "conservative_context_window": 32768,
+      "safe_input_plus_output_threshold": 24576,
+      "estimated_total_with_output_reserve": 7260,
+      "model_context_safety_status": "PASS",
+      "sections_dropped": [],
+      "why": "deterministic stage core plus demand-specific original sections; no char-target compression"
+    },
+    {
+      "demand_class": "mixed",
+      "fixture": "docs/superpowers/reports/short-plan-v2-skill-v2-bounded-repeated-ab-v1/pairs/restored-mixed-v1/sanitized-fixture-v1.json",
+      "fixture_sha256": "3b9e87cdfee19f27a492ef0e5bd1717cc97115da75fa087f94cae92469b05c70",
+      "selected_skills": [
+        "plot-structure",
+        "character-management",
+        "worldbuilding"
+      ],
+      "selected_section_ids": [
+        "sv3-8f60ce5781d2680f",
+        "sv3-70a527462c32e7b6",
+        "sv3-faecc1466817d8aa",
+        "sv3-7633ad6f5c90db5e",
+        "sv3-3fb51ac3fed35bc0",
+        "sv3-10e4ba0c5b7509b4",
+        "sv3-8e321726b4ebdcec",
+        "sv3-e92f0f3584d44b87",
+        "sv3-57971b1277b054c2",
+        "sv3-5f738df332e0919f",
+        "sv3-a62c59fc8e1e910d",
+        "sv3-c8068581ef934af9",
+        "sv3-82ca2fdf9c28183b"
+      ],
+      "raw_selected_chars": 4160,
+      "rendered_context_chars": 5571,
+      "rendered_context_sha256": "518bdfaab4b7d754be786302c0b86a71caaf99692e23562b36b799b9488ffcaa",
+      "token_estimate": 1393,
+      "fixture_token_estimate": 799,
+      "fixed_wrapper_token_allowance": 1024,
+      "output_reserve_tokens": 4624,
+      "conservative_context_window": 32768,
+      "safe_input_plus_output_threshold": 24576,
+      "estimated_total_with_output_reserve": 7840,
+      "model_context_safety_status": "PASS",
+      "sections_dropped": [],
+      "why": "deterministic stage core plus demand-specific original sections; no char-target compression"
+    }
+  ],
+  "full_verbatim_priority_baseline": {
+    "selected_skills": [
+      "story-init",
+      "plot-structure",
+      "character-management",
+      "worldbuilding"
+    ],
+    "rendered_context_chars": 21491,
+    "token_estimate": 5373,
+    "worst_fixture_total_with_output_reserve": 11820,
+    "safe_input_plus_output_threshold": 24576,
+    "capacity_status": "PASS",
+    "architecture_status": "NOT_PREFERRED_DUE_TO_NON_CAPACITY_GATES"
+  },
+  "reproducible": true
+}

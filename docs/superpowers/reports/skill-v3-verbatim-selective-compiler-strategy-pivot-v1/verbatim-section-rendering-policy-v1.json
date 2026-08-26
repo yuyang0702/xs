@@ -1,0 +1,22 @@
+{
+  "schema": "VerbatimSectionRenderingPolicyV1",
+  "selected_section_text": "EXACT_SOURCE_TEXT",
+  "allowed_transforms": [
+    "normalize CRLF/CR to LF",
+    "remove YAML frontmatter by exact node type",
+    "remove explicitly indexed repo-navigation/runtime metadata sections",
+    "add neutral machine delimiters carrying section_id and source identity"
+  ],
+  "forbidden_transforms": [
+    "creative paraphrase",
+    "semantic compression",
+    "example rewriting",
+    "heuristic merging",
+    "caveat deletion for budget",
+    "sentence reordering inside a section"
+  ],
+  "creative_semantic_reauthoring_count": 0,
+  "runtime_paraphrase_of_selected_skill_source": false,
+  "section_internal_order_preserved": true,
+  "source_line_endings_normalized_only": true
+}

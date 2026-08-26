@@ -1,0 +1,121 @@
+{
+  "schema": "SkillSemanticTransformationPipelineV1",
+  "transforms": [
+    {
+      "transform_id": "T0_RESOLVE",
+      "source": "active scanner roots/full SKILL.md",
+      "target": "resolved Skill.content",
+      "deterministic": true,
+      "paraphrases_source": false,
+      "can_lose_decomposition": false,
+      "can_change_priority": false,
+      "can_change_examples": false,
+      "can_change_negative_constraints": false,
+      "can_change_interaction": false,
+      "current_test_coverage": "tests/test_skills.py"
+    },
+    {
+      "transform_id": "T1_LINE_COMPACTOR",
+      "source": "full SKILL.md",
+      "target": "<=9000-char line-selected prompt",
+      "deterministic": true,
+      "paraphrases_source": false,
+      "can_lose_decomposition": true,
+      "can_change_priority": true,
+      "can_change_examples": true,
+      "can_change_negative_constraints": true,
+      "can_change_interaction": true,
+      "current_test_coverage": "tests/test_skill_prompts.py"
+    },
+    {
+      "transform_id": "T2_MANDATORY_EXTRACTOR",
+      "source": "full SKILL.md",
+      "target": "normalized mandatory clauses",
+      "deterministic": true,
+      "paraphrases_source": false,
+      "can_lose_decomposition": true,
+      "can_change_priority": true,
+      "can_change_examples": true,
+      "can_change_negative_constraints": true,
+      "can_change_interaction": true,
+      "current_test_coverage": "tests/test_context_packet.py"
+    },
+    {
+      "transform_id": "T3_ADVISORY_PACKET",
+      "source": "compacted prompt",
+      "target": "mandatory-de-duplicated advisory <=8000/3000 chars",
+      "deterministic": true,
+      "paraphrases_source": false,
+      "can_lose_decomposition": true,
+      "can_change_priority": true,
+      "can_change_examples": true,
+      "can_change_negative_constraints": true,
+      "can_change_interaction": true,
+      "current_test_coverage": "tests/test_context_packet.py"
+    },
+    {
+      "transform_id": "T4_PRESSURE_DROP",
+      "source": "context packet",
+      "target": "mandatory-only packet",
+      "deterministic": true,
+      "paraphrases_source": false,
+      "can_lose_decomposition": true,
+      "can_change_priority": true,
+      "can_change_examples": true,
+      "can_change_negative_constraints": true,
+      "can_change_interaction": true,
+      "current_test_coverage": "tests/test_context_packet.py"
+    },
+    {
+      "transform_id": "T5_COMPRESSED_PROFILE",
+      "source": "selected Skill ideas",
+      "target": "_RuleSpec rewritten prose <=3000 chars",
+      "deterministic": true,
+      "paraphrases_source": true,
+      "can_lose_decomposition": true,
+      "can_change_priority": true,
+      "can_change_examples": true,
+      "can_change_negative_constraints": true,
+      "can_change_interaction": true,
+      "current_test_coverage": "tests/test_runtime_skill_profiles.py"
+    },
+    {
+      "transform_id": "T6_DEMAND_AWARE_V2_V3",
+      "source": "compressed rules",
+      "target": "demand-specific rewritten rules",
+      "deterministic": true,
+      "paraphrases_source": true,
+      "can_lose_decomposition": true,
+      "can_change_priority": true,
+      "can_change_examples": true,
+      "can_change_negative_constraints": true,
+      "can_change_interaction": true,
+      "current_test_coverage": "tests/test_skill_v2_demand_aware_creative_core.py; tests/test_skill_v2_residual_creative_semantic_v3.py"
+    },
+    {
+      "transform_id": "T7_MAINTENANCE_EXECUTION",
+      "source": "story-maintenance Skill",
+      "target": "local executable receipt",
+      "deterministic": true,
+      "paraphrases_source": false,
+      "can_lose_decomposition": true,
+      "can_change_priority": true,
+      "can_change_examples": false,
+      "can_change_negative_constraints": false,
+      "can_change_interaction": false,
+      "current_test_coverage": "tests/test_skills.py"
+    }
+  ],
+  "paraphrase_boundaries": [
+    "T5_COMPRESSED_PROFILE",
+    "T6_DEMAND_AWARE_V2_V3"
+  ],
+  "semantic_loss_boundaries": [
+    "T1_LINE_COMPACTOR",
+    "T2_MANDATORY_EXTRACTOR",
+    "T3_ADVISORY_PACKET",
+    "T4_PRESSURE_DROP",
+    "T5_COMPRESSED_PROFILE",
+    "T6_DEMAND_AWARE_V2_V3"
+  ]
+}

@@ -1,0 +1,37 @@
+{
+  "schema": "MultiSamplePairValidationPolicyV1",
+  "first_case": "character-heavy",
+  "samples_per_arm": 3,
+  "max_real_calls": 6,
+  "arms": {
+    "A": "Demand-aware V2 last-known-best compressed baseline",
+    "B": "selected-verbatim compiler candidate"
+  },
+  "controls": [
+    "same story/task/authority",
+    "same provider/model/route/client",
+    "same sampling policy",
+    "same output cap",
+    "independent nonce/request identity",
+    "anonymous outputs",
+    "engineering validity required"
+  ],
+  "stop_conditions": [
+    "any authority mutation",
+    "dispatch bound breach",
+    "privacy breach",
+    "contract-invalid output",
+    "critical safety regression",
+    "route/model parity mismatch"
+  ],
+  "engineering_hard_failure_rule": "invalid sample blocks that arm and no replacement request is automatic",
+  "blinding_rule": "opaque sample IDs; mapping inaccessible to evaluators until judgment freeze",
+  "evaluator_independence_rule": "two fresh independent evaluator contexts; a third only as prospectively authorized tie breaker",
+  "review_method": "setwise within each dimension, with paired task identity but shuffled sample order",
+  "dimension_aggregation": "prospective ordinal rule in multi-sample-narrative-aggregation-rule-v1.json",
+  "variance_handling": "high dispersion or evaluator disagreement yields INCONCLUSIVE, never an inferred pass",
+  "inconclusive_rule": "blocks non-inferiority/cutover claim",
+  "non_inferiority_rule": "zero critical B regressions and minimum support on every critical dimension; no scalar compensation",
+  "generalization_limits": "character-heavy only; does not authorize other demand classes or production cutover",
+  "fresh_approval_per_call_required": true
+}

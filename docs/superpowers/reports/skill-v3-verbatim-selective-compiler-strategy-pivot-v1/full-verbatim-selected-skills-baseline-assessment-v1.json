@@ -1,0 +1,134 @@
+{
+  "schema": "FullVerbatimSelectedSkillsBaselineAssessmentV1",
+  "priority": "FIRST_BASELINE_NOT_STRAWMAN",
+  "selective_compiler_predetermined_required_architecture": false,
+  "input": {
+    "stage": "planning/event-realization",
+    "resolver_selected_skills": [
+      "story-init",
+      "plot-structure",
+      "character-management",
+      "worldbuilding"
+    ],
+    "copy_unit": "complete original SKILL.md",
+    "rendered_context_sha256": "2e6a91d6f680ce619be7cac38a75b5deeff121eabf3c3409e2960abe0c9a35ed",
+    "raw_chars": 21339,
+    "rendered_chars": 21491,
+    "token_estimate": 5373
+  },
+  "gates": {
+    "capacity": {
+      "status": "PASS",
+      "basis": "rendered Skill tokens fit the conservative 32768-token route window with 4624 output reserve for all five small offline fixtures; scenario-specific totals are recorded separately"
+    },
+    "safety": {
+      "status": "FAIL",
+      "finding_count": 4,
+      "findings": [
+        {
+          "finding": "file_and_directory_creation_instructions",
+          "skills": [
+            "story-init",
+            "character-management",
+            "worldbuilding"
+          ]
+        },
+        {
+          "finding": "registry_and_cross_reference_mutation_instructions",
+          "skills": [
+            "story-init",
+            "plot-structure",
+            "character-management",
+            "worldbuilding"
+          ]
+        },
+        {
+          "finding": "cli_maintenance_instructions",
+          "skills": [
+            "plot-structure",
+            "character-management",
+            "worldbuilding"
+          ]
+        },
+        {
+          "finding": "chapter_registry_and_post_creation_conventions",
+          "skills": [
+            "story-init"
+          ]
+        }
+      ],
+      "basis": "complete source carries project mutation/CLI instructions into a model stage that is authorized only to return EventRealizationCandidateV1"
+    },
+    "repetition": {
+      "status": "FAIL",
+      "overlap_group_count": 4,
+      "overlap_groups": [
+        {
+          "concept": "character_creation_and_registry",
+          "skills": [
+            "story-init",
+            "character-management"
+          ]
+        },
+        {
+          "concept": "world_entity_creation_and_registry",
+          "skills": [
+            "story-init",
+            "worldbuilding"
+          ]
+        },
+        {
+          "concept": "plot_arc_and_timeline_management",
+          "skills": [
+            "story-init",
+            "plot-structure"
+          ]
+        },
+        {
+          "concept": "cross_reference_mutation",
+          "skills": [
+            "plot-structure",
+            "character-management",
+            "worldbuilding"
+          ]
+        }
+      ],
+      "basis": "complete sources repeat initialization, registry and cross-reference workflows; repetition changes priority and spends context without adding Event Realization semantics"
+    },
+    "stage_ownership": {
+      "status": "FAIL",
+      "wrong_layer_section_count": 18,
+      "wrong_layer_section_ids": [
+        "sv3-40facfcb85f73424",
+        "sv3-9528d6c4b2b57eb4",
+        "sv3-e9171611b98c26ef",
+        "sv3-8e1133b68df847e4",
+        "sv3-d3294cde968201ab",
+        "sv3-5dee9d2fc58594d3",
+        "sv3-6faf8dafed9ca421",
+        "sv3-33b095f515080bad",
+        "sv3-9fb27539151c30df",
+        "sv3-9fea823351166907",
+        "sv3-76ba02adce162293",
+        "sv3-63fdcf9593c78873",
+        "sv3-d3d2dc003456ac84",
+        "sv3-da24f76c7d1ce202",
+        "sv3-b1c6dff222515560",
+        "sv3-4ae4f3fefa8c26db",
+        "sv3-ac725871cafdecc8",
+        "sv3-4704e93432b9fdc2"
+      ],
+      "basis": "complete sources include LOCAL_RUNTIME sections and authority/project initialization material outside Planning Event Realization ownership"
+    }
+  },
+  "decision_rule": "FULL_VERBATIM_SELECTED_SKILLS_PREFERRED iff capacity,safety,repetition,stage_ownership are all PASS",
+  "decision": "SELECTIVE_VERBATIM_SECTIONS_PREFERRED",
+  "full_verbatim_selected_skills_preferred_allowed_result": true,
+  "full_verbatim_selected_skills_preferred_selected": false,
+  "selector_justification": [
+    "safety FAIL",
+    "repetition FAIL",
+    "stage ownership FAIL"
+  ],
+  "implementation_authorized": false
+}

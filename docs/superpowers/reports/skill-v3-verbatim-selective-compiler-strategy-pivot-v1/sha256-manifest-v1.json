@@ -1,0 +1,157 @@
+{
+  "schema": "SkillV3StrategyPivotSha256ManifestV1",
+  "definition": {
+    "algorithm": "SHA-256",
+    "root": "docs/superpowers/reports/skill-v3-verbatim-selective-compiler-strategy-pivot-v1",
+    "coverage_rule": "all regular files in root except sha256-manifest-v1.json",
+    "entry_count": 29,
+    "entries": [
+      {
+        "path": "architecture-pivot-decision-v1.json",
+        "sha256": "4da6576023fc0143751993b15c5fdb1180ca9d47488383b7096b3ebca69679ae",
+        "bytes": 653
+      },
+      {
+        "path": "compressed-profile-lifecycle-decision-v1.json",
+        "sha256": "8067c6ac9b229d3974437f18cb906180252dec1fc7889cc2517f9f76d229768b",
+        "bytes": 591
+      },
+      {
+        "path": "current-stage-skill-routing-matrix-v1.json",
+        "sha256": "d67fdd60e6edff960beddab574d2d978df4f01657db00e1b7fbb932e89536bc1",
+        "bytes": 5731
+      },
+      {
+        "path": "final-report-v1.md",
+        "sha256": "787e1602dfb5ae9093fcb4674e6bca1d9a85ff5fec06597f7e04da223fdae58e",
+        "bytes": 6807
+      },
+      {
+        "path": "fresh-evaluator-context-policy-v2.json",
+        "sha256": "601355321f7e5cf177e9526af07d5969920215bd8d7dace8228ff20a1b7920ab",
+        "bytes": 603
+      },
+      {
+        "path": "full-verbatim-selected-skills-baseline-assessment-v1.json",
+        "sha256": "fe44881c614bd1700043ebf64ad83385546dc5846c8aec200409ed7a332d6955",
+        "bytes": 4392
+      },
+      {
+        "path": "literary-experiment-methodology-pivot-v1.json",
+        "sha256": "ca78cfa768ae8646cece2da2e4738452770a62ba42ea67d4712bbdb0bf9ef64d",
+        "bytes": 483
+      },
+      {
+        "path": "multi-sample-narrative-aggregation-rule-v1.json",
+        "sha256": "ec87962c32020a9cbf91c6de1f40412fb532d955ea0da2dc5eaabdd5e5d631d1",
+        "bytes": 1044
+      },
+      {
+        "path": "multi-sample-pair-validation-policy-v1.json",
+        "sha256": "6878b50fb8fcbbaed3aabbb4ccc7b5d0ea8aba62b79dc7558b0160b0f01eaf42",
+        "bytes": 1767
+      },
+      {
+        "path": "preserved-architecture-invariants-v1.json",
+        "sha256": "5757ade9f6a443fdfa8a88f840df831be521723587136f757b058d9f790765ab",
+        "bytes": 606
+      },
+      {
+        "path": "privacy-scan-v1.json",
+        "sha256": "10efbafb9f309021246e18249d05d90ad7cb0199f3d69aad800ecb2421b5192c",
+        "bytes": 335
+      },
+      {
+        "path": "README.md",
+        "sha256": "2c4b8c94e9b41f7668f297d2207ea4b1da8da23a21f90b5f631634adf65750ab",
+        "bytes": 859
+      },
+      {
+        "path": "repo-skill-section-catalog-v1.json",
+        "sha256": "1969c868240e68b957eef90e6a7092d84cd369d5f8935bbdb8224f063f2b34ef",
+        "bytes": 145082
+      },
+      {
+        "path": "selective-compiler-context-size-scenario-matrix-v1.json",
+        "sha256": "0e4b6814782b5fa4130d4487476720a2dcc29391e1a3d43a595ff294c0e927c8",
+        "bytes": 7986
+      },
+      {
+        "path": "selective-compiler-offline-coverage-gate-v1.json",
+        "sha256": "2b11b94451df71137ebd5316e3942122f99a4930d4dbd3b65443568a3ddb66bc",
+        "bytes": 830
+      },
+      {
+        "path": "selective-skill-compiler-shadow-mode-design-v1.json",
+        "sha256": "78caf16965caae32e5a11066148d91344966498edbfaea9ab2cc913043c210d3",
+        "bytes": 929
+      },
+      {
+        "path": "selective-skill-context-budget-policy-v1.json",
+        "sha256": "4e9756bb6b1cb8261dc8ecfa8e601065b2a458fbd8e4d2b942c0bad42405a989",
+        "bytes": 1129
+      },
+      {
+        "path": "selective-skill-context-cache-key-contract-v1.json",
+        "sha256": "423c785874ae081916ceedcb492259a9b44563488a236ba8572bea0129b0a2c4",
+        "bytes": 753
+      },
+      {
+        "path": "selective-skill-context-provenance-contract-v1.json",
+        "sha256": "bf111e816464e1041751f0cc41341316d3a5878ecbb49955d15c41e89e594568",
+        "bytes": 768
+      },
+      {
+        "path": "selective-skill-section-selector-contract-v1.json",
+        "sha256": "337d0815989c2c1d5306e57d14a9fff8819602e7ee5bca5e1f2511efb0dfd43d",
+        "bytes": 1067
+      },
+      {
+        "path": "shadow-implementation-readiness-v1.json",
+        "sha256": "2621553f149aecdaec291403b4678fcdf209db39931ea69083a36eed7140ab31",
+        "bytes": 903
+      },
+      {
+        "path": "skill-section-identity-contract-v1.json",
+        "sha256": "2ce1cc8b2d763a1f6244fa4676c7d2acc2fa7cbf6004643d12cd5ab383950ba0",
+        "bytes": 1040
+      },
+      {
+        "path": "skill-semantic-stage-ownership-matrix-v1.json",
+        "sha256": "75a413785dcfdead55d9d347fc4b1253c10486fc7c41fef0fd5182d6a5878a30",
+        "bytes": 345732
+      },
+      {
+        "path": "skill-semantic-transformation-pipeline-v1.json",
+        "sha256": "5258013c2848d50ee9c737f9ff88f48ab29b482d798fabfd6675bb6da3a32e5b",
+        "bytes": 4289
+      },
+      {
+        "path": "skill-v3-selective-compiler-migration-roadmap-v1.json",
+        "sha256": "f19aeb1fbafc36a90a6d5cf6767523278cb13c5bd6b977dd631677eca004ffe0",
+        "bytes": 3278
+      },
+      {
+        "path": "subtext-anti-template-layer-ownership-decision-v1.json",
+        "sha256": "ad7c68fda0982bb1e85e24c26e9fc4c2801ace4a309df6f41872675bb0959c49",
+        "bytes": 1320
+      },
+      {
+        "path": "test-receipt-v1.json",
+        "sha256": "42242a668dea20ea609aedae3697e3e95f8645e269ed10c9a61b8f5daa157336",
+        "bytes": 511
+      },
+      {
+        "path": "verbatim-section-rendering-policy-v1.json",
+        "sha256": "5f2fac27762161aebd5474faa26b9bdb05c2e3a09fdb02261511505eafdb8448",
+        "bytes": 791
+      },
+      {
+        "path": "verbatim-selector-overflow-policy-v1.json",
+        "sha256": "4f6cda8e84909a92841a328e1062742c362142b58ce87722e531d28d3c6f0cde",
+        "bytes": 587
+      }
+    ]
+  },
+  "definition_sha256": "1518f2824863945b061513fd325d352e4f1fdaeaf9c3ffd10d27cbd30853fd9b"
+}
