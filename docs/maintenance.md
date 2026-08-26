@@ -2034,3 +2034,27 @@ The actionable capability audit requires rule identity plus decomposed semantic
 phrases; capability labels alone fail. Revert the restoration implementation
 commit to remove the successor profile and its tests. Reversion never revives a
 historical approval or authorizes a Provider call.
+
+## Skill V2 demand-aware character creative core
+
+`build_planning_v2_event_realization_profile_demand_aware` is a shadow-only
+successor selector. It performs one closed-world lookup of the sealed
+`pair_creative_demand_class`: `character-heavy` selects
+`RESTORED_SKILL_V2_CHARACTER_CORE_V2`; world-, conflict/pacing-,
+setup/payoff-heavy, and mixed cases retain the historical restored profile;
+unknown values fail closed without selecting a substitute. The selector never
+reads generated prose, Provider output, randomness, credentials, or quality
+results.
+
+The character-heavy successor rewrites only `MOTIVE_ACTION`, `VOICE_RELATION`,
+`DRAFT_SCENE`, and `ANTI_TAXONOMY` with the sealed V2 text. Every other rule and
+its ordering remain byte-identical. The resulting mandatory/advisory text is
+1,338/1,587 characters, so this profile alone uses a 1,338/1,662 partition of
+the unchanged 3,000-character ceiling. The historical 1,200/1,800 policy and
+all historical builders remain unchanged.
+
+This successor is not connected to production prompt assembly, routing,
+retry/fallback, Planning V1/V2 dispatch, StoryState, Canon, or READY authority.
+It requires a separately materialized single-use revalidation packet before any
+real model call. Revert the demand-aware implementation commit to remove the
+selector and successor; doing so cannot reactivate or create an approval.

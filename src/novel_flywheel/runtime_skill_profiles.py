@@ -10,7 +10,7 @@ from __future__ import annotations
 import hashlib
 import json
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any, Literal
 
@@ -319,6 +319,7 @@ class RuntimeSkillProfileV1(_ProfileModel):
     profile_id: Literal[
         "CURRENT_PLANNING_V1_COMPAT_PROFILE_V1",
         "PLANNING_V2_EVENT_REALIZATION_PROFILE_V1",
+        "RESTORED_SKILL_V2_CHARACTER_CORE_V2",
     ]
     stage: Literal["planning"] = "planning"
     substage: Literal["planning_v1_compat", "planning_v2_event_realization"]
@@ -403,6 +404,26 @@ class _RuleSpec:
         "advisory_creative"
     )
     authority_level: Literal[6, 7] = 7
+
+
+DemandAwareProfileStrategy = Literal[
+    "RESTORED_SKILL_V2_CHARACTER_CORE_V2",
+    "UNCHANGED_PENDING_PAIR2",
+    "UNCHANGED_PENDING_PAIR3",
+    "UNCHANGED_PENDING_PAIR4",
+    "UNCHANGED_PENDING_PAIR5",
+    "FAIL_CLOSED_NO_PROFILE_SUBSTITUTION",
+]
+
+
+@dataclass(frozen=True)
+class DemandAwareCreativeProfileResolutionV1:
+    """Closed-world local decision for the shadow-only creative profile."""
+
+    pair_creative_demand_class: str
+    profile_strategy: DemandAwareProfileStrategy
+    substitution_allowed: bool
+    changed_rule_ids: tuple[str, ...]
 
 
 def _json_hash(value: Any) -> str:
@@ -517,6 +538,19 @@ def context_budget_policy_v1() -> SkillContextBudgetPolicyV1:
         "schema": "SkillContextBudgetPolicyV1", "policy_id": "SKILL_CONTEXT_BUDGET_POLICY_V1",
         "maximum_characters": 3000, "mandatory_character_budget": 1200,
         "advisory_character_budget": 1800, "whole_rule_only": True,
+        "mandatory_overflow_behavior": "block",
+        "advisory_overflow_behavior": "truncate_by_whole_rule",
+    }
+    return _make_policy(SkillContextBudgetPolicyV1, "SKILL_CONTEXT_BUDGET_POLICY_V1", payload)  # type: ignore[return-value]
+
+
+def character_heavy_context_budget_policy_v2() -> SkillContextBudgetPolicyV1:
+    """Keep the 3000-char ceiling while fitting the sealed mandatory V2 rewrite."""
+
+    payload = {
+        "schema": "SkillContextBudgetPolicyV1", "policy_id": "SKILL_CONTEXT_BUDGET_POLICY_V1",
+        "maximum_characters": 3000, "mandatory_character_budget": 1338,
+        "advisory_character_budget": 1662, "whole_rule_only": True,
         "mandatory_overflow_behavior": "block",
         "advisory_overflow_behavior": "truncate_by_whole_rule",
     }
@@ -808,6 +842,64 @@ _RESTORED_CREATIVE_RULE_SPECS = (
 )
 
 
+CHARACTER_HEAVY_CREATIVE_CORE_V2_RULE_TEXT = {
+    "MOTIVE_ACTION": (
+        "Link formative pressure to present want and concealed need; externalize conflict "
+        "through opposed tactics, costly choice, observable reaction, and next-beat "
+        "consequence; never name labels."
+    ),
+    "VOICE_RELATION": (
+        "Sustain distinct voice through diction, rhythm, evasion, gesture, and withheld "
+        "explanation; make relationship pressure change tactics, costs, trust, and available "
+        "action."
+    ),
+    "DRAFT_SCENE": (
+        "Build a continuous Draft-usable microchain: spatial stimulus, opposed action, "
+        "reaction, resistance, reversal, costly choice, and terminal image; replace "
+        "interpretive summary with behavior."
+    ),
+    "ANTI_TAXONOMY": (
+        "Keep labels in reasoning only; replace abstractions about wants, needs, instincts, "
+        "strain, or local change with choice, dialogue, evasion, gesture, or consequence."
+    ),
+}
+
+_DEMAND_AWARE_PROFILE_STRATEGY: dict[str, DemandAwareProfileStrategy] = {
+    "character-heavy": "RESTORED_SKILL_V2_CHARACTER_CORE_V2",
+    "world-heavy": "UNCHANGED_PENDING_PAIR2",
+    "conflict-pacing-heavy": "UNCHANGED_PENDING_PAIR3",
+    "setup-payoff-heavy": "UNCHANGED_PENDING_PAIR4",
+    "mixed": "UNCHANGED_PENDING_PAIR5",
+}
+
+
+def resolve_demand_aware_creative_profile(
+    pair_creative_demand_class: str,
+) -> DemandAwareCreativeProfileResolutionV1:
+    """Resolve only sealed demand-class facts; unknown values cannot select a profile."""
+
+    strategy: DemandAwareProfileStrategy = _DEMAND_AWARE_PROFILE_STRATEGY.get(
+        pair_creative_demand_class, "FAIL_CLOSED_NO_PROFILE_SUBSTITUTION",
+    )
+    return DemandAwareCreativeProfileResolutionV1(
+        pair_creative_demand_class=pair_creative_demand_class,
+        profile_strategy=strategy,
+        substitution_allowed=strategy == "RESTORED_SKILL_V2_CHARACTER_CORE_V2",
+        changed_rule_ids=(
+            tuple(CHARACTER_HEAVY_CREATIVE_CORE_V2_RULE_TEXT)
+            if strategy == "RESTORED_SKILL_V2_CHARACTER_CORE_V2" else ()
+        ),
+    )
+
+
+def _character_heavy_creative_core_v2_rule_specs() -> tuple[_RuleSpec, ...]:
+    return tuple(
+        replace(spec, text=CHARACTER_HEAVY_CREATIVE_CORE_V2_RULE_TEXT[spec.rule_id])
+        if spec.rule_id in CHARACTER_HEAVY_CREATIVE_CORE_V2_RULE_TEXT else spec
+        for spec in _RESTORED_CREATIVE_RULE_SPECS
+    )
+
+
 def _all_section_specs() -> dict[str, _SectionSpec]:
     return {
         **_STORY_SECTION_SPECS,
@@ -905,11 +997,16 @@ def _definition_payload(
 
 
 def _build_profile(
-    *, bundle_root: Path, profile_id: Literal["CURRENT_PLANNING_V1_COMPAT_PROFILE_V1", "PLANNING_V2_EVENT_REALIZATION_PROFILE_V1"],
+    *, bundle_root: Path, profile_id: Literal[
+        "CURRENT_PLANNING_V1_COMPAT_PROFILE_V1",
+        "PLANNING_V2_EVENT_REALIZATION_PROFILE_V1",
+        "RESTORED_SKILL_V2_CHARACTER_CORE_V2",
+    ],
     phase: Literal["planning_v1", "planning_v2_event_realization"], selected_keys: tuple[str, ...],
     source_skill_ids: tuple[str, ...], conditional: tuple[ConditionalComponentV1, ...],
     bridge: ExistingProjectNarrativeBridgeV1 | None, decision: SkillLoadDecisionV1 | None,
     rule_specs: tuple[_RuleSpec, ...] = _RULE_SPECS,
+    context_budget_policy: SkillContextBudgetPolicyV1 | None = None,
 ) -> RuntimeSkillProfileV1:
     verification = verify_source_bundle(bundle_root)
     sections = _compile_sections(bundle_root, selected_keys, rule_specs)
@@ -920,7 +1017,7 @@ def _build_profile(
     advisory_rules = tuple(rule for rule in rules if rule.classification == "advisory_creative")
     canonical_rules = (*mandatory_rules, *advisory_rules)
     precedence = precedence_policy_v1()
-    budget = context_budget_policy_v1()
+    budget = context_budget_policy or context_budget_policy_v1()
     world_policy = world_creative_policy_v1()
     definition_payload = _definition_payload(
         profile_id=profile_id, phase=phase, source_skill_ids=source_skill_ids,
@@ -1025,8 +1122,16 @@ def build_planning_v2_event_realization_profile(
     )
 
 
-def build_planning_v2_event_realization_profile_restored(
-    bundle_root: Path, inputs: SkillLoadDecisionInputsV1,
+def _build_planning_v2_event_realization_profile_restored(
+    bundle_root: Path,
+    inputs: SkillLoadDecisionInputsV1,
+    *,
+    restored_rule_specs: tuple[_RuleSpec, ...],
+    profile_id: Literal[
+        "PLANNING_V2_EVENT_REALIZATION_PROFILE_V1",
+        "RESTORED_SKILL_V2_CHARACTER_CORE_V2",
+    ],
+    context_budget_policy: SkillContextBudgetPolicyV1 | None = None,
 ) -> RuntimeSkillProfileV1:
     decision = resolve_conditional_load(inputs)
     included = set(decision.included_skill_ids)
@@ -1034,7 +1139,7 @@ def build_planning_v2_event_realization_profile_restored(
         rule for rule in _RULE_SPECS
         if rule.rule_id != "PLOT_STRUCTURE_ADAPTATION" and rule.skill_id in included
     )
-    active_rules = (*_RESTORED_CREATIVE_RULE_SPECS, *conditional_rules)
+    active_rules = (*restored_rule_specs, *conditional_rules)
     used = {key for rule in active_rules for key in rule.section_keys}
     selected = tuple(key for key in _all_section_specs() if key in used)
     sections = _compile_sections(bundle_root, selected, active_rules)
@@ -1062,11 +1167,42 @@ def build_planning_v2_event_realization_profile_restored(
         )
     )
     return _build_profile(
-        bundle_root=bundle_root, profile_id="PLANNING_V2_EVENT_REALIZATION_PROFILE_V1",
+        bundle_root=bundle_root, profile_id=profile_id,
         phase="planning_v2_event_realization", selected_keys=selected,
         source_skill_ids=PLANNING_SKILL_IDS, conditional=conditional,
         bridge=make_narrative_bridge({}), decision=decision,
-        rule_specs=active_rules,
+        rule_specs=active_rules, context_budget_policy=context_budget_policy,
+    )
+
+
+def build_planning_v2_event_realization_profile_restored(
+    bundle_root: Path, inputs: SkillLoadDecisionInputsV1,
+) -> RuntimeSkillProfileV1:
+    return _build_planning_v2_event_realization_profile_restored(
+        bundle_root,
+        inputs,
+        restored_rule_specs=_RESTORED_CREATIVE_RULE_SPECS,
+        profile_id="PLANNING_V2_EVENT_REALIZATION_PROFILE_V1",
+    )
+
+
+def build_planning_v2_event_realization_profile_demand_aware(
+    bundle_root: Path,
+    inputs: SkillLoadDecisionInputsV1,
+    *,
+    pair_creative_demand_class: str,
+) -> RuntimeSkillProfileV1:
+    resolution = resolve_demand_aware_creative_profile(pair_creative_demand_class)
+    if resolution.profile_strategy == "FAIL_CLOSED_NO_PROFILE_SUBSTITUTION":
+        raise ValueError("FAIL_CLOSED_NO_PROFILE_SUBSTITUTION")
+    if resolution.profile_strategy != "RESTORED_SKILL_V2_CHARACTER_CORE_V2":
+        return build_planning_v2_event_realization_profile_restored(bundle_root, inputs)
+    return _build_planning_v2_event_realization_profile_restored(
+        bundle_root,
+        inputs,
+        restored_rule_specs=_character_heavy_creative_core_v2_rule_specs(),
+        profile_id="RESTORED_SKILL_V2_CHARACTER_CORE_V2",
+        context_budget_policy=character_heavy_context_budget_policy_v2(),
     )
 
 
