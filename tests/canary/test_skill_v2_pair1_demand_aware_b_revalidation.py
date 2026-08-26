@@ -13,6 +13,8 @@ from tools.canary import skill_v2_pair1_demand_aware_b_revalidation as readiness
 
 REPO = Path(__file__).resolve().parents[2]
 
+# Every focused path substitutes or stops before the credential/Provider boundary.
+
 
 def _packet() -> dict:
     return readiness.build_approval_readiness_packet(

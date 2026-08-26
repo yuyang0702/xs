@@ -89,6 +89,8 @@ ENTRY_POINT_ID = (
     "execute_authorized_once_v1"
 )
 
+# This owner is canary-only: production workflows cannot discover or dispatch it.
+
 ZERO_EXTERNAL_ACTIONS = {
     "credential_lookup_count": 0,
     "real_provider_client_creation_count": 0,
@@ -1908,17 +1910,17 @@ def forward_risk_report_v2() -> dict[str, Any]:
         "sibling_boundaries": [
             {
                 "boundary": "production runtime",
-                "disposition": "not_susceptible",
+                "disposition": "not_applicable",
                 "evidence": "new owner is tools/canary only; src and baml are unchanged",
             },
             {
                 "boundary": "Pair2-5",
-                "disposition": "fail_closed",
+                "disposition": "tested_not_susceptible",
                 "evidence": "closed entry identity and negative pair identity test",
             },
             {
                 "boundary": "StoryState Canon READY",
-                "disposition": "fail_closed",
+                "disposition": "tested_not_susceptible",
                 "evidence": "signed approval mutation flags are fixed false and tested",
             },
         ],
