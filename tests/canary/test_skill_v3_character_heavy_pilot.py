@@ -116,4 +116,3 @@ def test_stale_sample_lock_fails_before_nonce(tmp_path: Path) -> None:
         ))
     assert caught.value.reason_code == "STALE_SAMPLE_LOCK"
     assert nonce.reservation_count == 0
-

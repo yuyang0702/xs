@@ -13,6 +13,7 @@ import asyncio
 import copy
 import hashlib
 import json
+from functools import lru_cache
 import re
 import subprocess
 import sys
@@ -31,6 +32,7 @@ from tools.diagnostics.recheck_skill_v3_shadow_observability import production_i
 BRANCH = "r1-ptr3/planning-repair-finding-propagation-20260817"
 BASELINE_HEAD = "3e317192fe98601789d76d1751b9f3073f3a797c"
 PILOT_ID = "skill-v3-character-heavy-multi-sample-v1-4d47410b0144360d"
+EXPECTED_B_CONTEXT_SHA256 = "c830681f79526c44d9bd83430019d75cb886bde0affcad86714ee1fc1f41aedd"
 PARENT_EXPERIMENT_LOCK_SHA256 = (
     "8a07c5106fec903952d4b622ab33702636c17d3add7eb380d3ac78071841fc9b"
 )
@@ -131,6 +133,19 @@ def _require(condition: bool, reason: str) -> None:
         raise ReadinessError(reason)
 
 
+@lru_cache(maxsize=1)
+def _baseline_launcher_candidates() -> tuple[str, ...]:
+    candidates = []
+    baseline_paths = git(
+        "ls-tree", "-r", "--name-only", BASELINE_HEAD, "--", "tools/canary",
+    ).splitlines()
+    for relative in sorted(path for path in baseline_paths if path.endswith(".py")):
+        text = git("show", f"{BASELINE_HEAD}:{relative}")
+        if PILOT_ID in text or EXPECTED_B_CONTEXT_SHA256 in text:
+            candidates.append(relative)
+    return tuple(candidates)
+
+
 def load_sealed_state() -> dict[str, Any]:
     closure_manifest = verify_sealed_manifest(CLOSURE_ROOT)
     review_manifest = verify_sealed_manifest(REVIEW_ROOT)
@@ -185,11 +200,14 @@ def load_sealed_state() -> dict[str, Any]:
     _require(reuse["historical_a_sample_reuse_allowed"] == "NO", "HISTORICAL_A_REUSE_DRIFT")
     _require(reuse["historical_b_sample_reuse_allowed"] == "NO", "HISTORICAL_B_REUSE_DRIFT")
 
-    launcher_candidates = []
-    for path in sorted((ROOT / "tools/canary").glob("*.py")):
-        text = path.read_text(encoding="utf-8")
-        if PILOT_ID in text or arms["b_arm_identity"]["context_sha256"] in text:
-            launcher_candidates.append(path.relative_to(ROOT).as_posix())
+    # This diagnostic reproduces the historical readiness decision at its
+    # sealed baseline.  Successor launchers must not retroactively change that
+    # evidence from CONDITIONAL to another state.
+    _require(
+        arms["b_arm_identity"]["context_sha256"] == EXPECTED_B_CONTEXT_SHA256,
+        "B_CONTEXT_DRIFT",
+    )
+    launcher_candidates = list(_baseline_launcher_candidates())
 
     return {
         "closure_manifest": closure_manifest,
