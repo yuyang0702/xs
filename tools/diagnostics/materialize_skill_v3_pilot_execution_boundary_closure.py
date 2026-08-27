@@ -21,6 +21,8 @@ BASELINE_HEAD = "7096c91adeb005acd0e31a2b6a9c0f7d1f9f51ae"
 IMPLEMENTATION_COMMITS = (
     "8c52c29",
     "febf0f7",
+    "a951471",
+    "39f2502",
 )
 DEFAULT_OUTPUT = ROOT / "docs/superpowers/reports/skill-v3-character-heavy-pilot-execution-boundary-closure-v1"
 ZERO = {
