@@ -1,0 +1,17 @@
+{
+  "schema": "SkillV3B1PhaseAStrictL3ReceiptV1",
+  "status": "PASS",
+  "declared_level": "L3",
+  "automatic_level": "L1",
+  "recommended_level": "L3",
+  "baseline_used": true,
+  "source_path_count": 0,
+  "test_path_change_count": 0,
+  "changed_path_count_at_gate": 16,
+  "warnings": 0,
+  "blockers": 0,
+  "forward_risk_report_required": false,
+  "reason": "Evidence-only closed-world approval readiness; no source or model-output boundary changed.",
+  "team_review_requested": false,
+  "independence_claimed": false
+}

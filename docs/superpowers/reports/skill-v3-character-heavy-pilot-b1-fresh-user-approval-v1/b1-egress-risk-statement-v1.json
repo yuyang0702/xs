@@ -1,0 +1,27 @@
+{
+  "schema": "SkillV3B1EgressRiskStatementV1",
+  "status": "READY_FOR_USER_DECISION",
+  "destination": "https://lingsuan.org:443/v1/messages",
+  "operator_class": "THIRD_PARTY_RELAY_LOCAL_METADATA_ONLY",
+  "included_data_classes": [
+    "sealed system/context",
+    "task envelope",
+    "authority context",
+    "story slice",
+    "non-Skill project guidance",
+    "B-arm selective-verbatim Skill context",
+    "output contract",
+    "Provider request metadata"
+  ],
+  "raw_ref_corpus_sent": false,
+  "a1_prose_or_result_sent": false,
+  "privacy_statement": "The project/story request data would leave the local machine and may be processed, logged, or stored under the destination operator or Provider policies; no stronger privacy promise is asserted.",
+  "maximum_paid_requests": 1,
+  "retry_allowed": false,
+  "transport_retry_allowed": false,
+  "fallback_allowed": false,
+  "route_switch_allowed": false,
+  "second_destination_allowed": false,
+  "cross_origin_redirect_allowed": false,
+  "sample_scope": "B1_ONLY"
+}

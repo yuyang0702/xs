@@ -1,0 +1,15 @@
+{
+  "schema": "SkillV3B1NextEligibilityV1",
+  "status": "PASS",
+  "pilot_id": "skill-v3-character-heavy-multi-sample-v1-4d47410b0144360d",
+  "execution_sequence": ["A1", "B1", "A2", "B2", "A3", "B3"],
+  "sealed_completed_samples": ["A1"],
+  "next_eligible_sample_slot": "B1",
+  "next_eligible_sample_id": "sv3s-cd80aa5d21e790079a06",
+  "b1_next_eligible": true,
+  "stop_condition_active": false,
+  "a1_auto_advance_to_b1": false,
+  "b1_auto_advance_to_a2": false,
+  "later_sample_approval_created": false,
+  "remaining_pilot_real_request_budget_after_a1": 5
+}

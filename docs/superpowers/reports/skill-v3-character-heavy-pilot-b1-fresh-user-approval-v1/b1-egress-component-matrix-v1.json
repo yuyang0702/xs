@@ -1,0 +1,30 @@
+{
+  "schema": "SkillV3B1EgressPolicyV1",
+  "version": 1,
+  "status": "EXACT",
+  "pilot_id": "skill-v3-character-heavy-multi-sample-v1-4d47410b0144360d",
+  "sample_id": "sv3s-cd80aa5d21e790079a06",
+  "wire_input_sha256": "75106c9a5ece3a400432228dfa02bef229d44a772173c1b88da361a97d206eff",
+  "components": [
+    {"component": "SYSTEM_CONTEXT", "egress_included": true, "sensitivity_class": "PROJECT_CONTENT", "source_identity_or_sha": "c85a337b8d95f805ac3f24d1f6096f98eac23b7f82a7561151415c5c6665a42e"},
+    {"component": "TASK_ENVELOPE", "egress_included": true, "sensitivity_class": "OPERATIONAL_METADATA", "source_identity_or_sha": "84bed63082c9b4abd588790f9292d29aa466ee14e8b085c403ebb47ded2ab0ad"},
+    {"component": "AUTHORITY_CONTEXT", "egress_included": true, "sensitivity_class": "PROJECT_CONTENT", "source_identity_or_sha": "91e5fe89ae741233b983f344bb0aa517974a4341dab56c8341669a5233c2e3d4"},
+    {"component": "STORY_SLICE", "egress_included": true, "sensitivity_class": "PROJECT_CONTENT", "source_identity_or_sha": "7134e84052d6e15bdd0f3bbb75de41a45c9e8c083d09e896004f8228b71c47c7"},
+    {"component": "NON_SKILL_PROJECT_GUIDANCE", "egress_included": true, "sensitivity_class": "CREATIVE_GUIDANCE", "source_identity_or_sha": "94cfcd4f879232b18b389e6dbfe9595ac4a89a047e887f2fd7160046a1d738ba"},
+    {"component": "B_ARM_SELECTIVE_VERBATIM_SKILL_CONTEXT", "egress_included": true, "sensitivity_class": "CREATIVE_GUIDANCE", "source_identity_or_sha": "c830681f79526c44d9bd83430019d75cb886bde0affcad86714ee1fc1f41aedd"},
+    {"component": "OUTPUT_CONTRACT", "egress_included": true, "sensitivity_class": "OPERATIONAL_METADATA", "source_identity_or_sha": "62aaa63cc39a5baaec5657a889e3e77cf32abecbbfa582795620e34bf4877bee"},
+    {"component": "PROVIDER_REQUEST_METADATA", "egress_included": true, "sensitivity_class": "OPERATIONAL_METADATA", "source_identity_or_sha": "7fd2d07b48b3e0178f6f9ab7bbc1d8511c04f3fdd2452c9d3bbf1a8d0e40051f"}
+  ],
+  "excluded": {
+    "raw_ref_corpus_egress": false,
+    "raw_distill_evidence_excerpt_egress": false,
+    "learn_node_raw_evidence_egress": false,
+    "a1_prose_egress": false,
+    "a1_result_egress": false,
+    "other_sample_data_egress": false,
+    "historical_blind_result_egress": false,
+    "credential_egress": false,
+    "local_absolute_path_egress": false
+  },
+  "egress_policy_sha256": "76225b4f0b47ee9de0002e0df1760b5e66e3a83e9647d75e82896281b8d246ad"
+}

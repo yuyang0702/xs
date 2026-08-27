@@ -1,0 +1,20 @@
+{
+  "schema": "SkillV3B1FreshApprovalBaselineBindingV1",
+  "status": "EXACT",
+  "branch": "r1-ptr3/planning-repair-finding-propagation-20260817",
+  "phase_a_baseline_head": "c6252b587967c210f4ec2810c58fda135fd3cec4",
+  "phase_a_baseline_worktree": "CLEAN",
+  "approval_successor_head_binding": "EXACT_CLEAN_PHASE_A_EVIDENCE_COMMIT_HEAD_REPORTED_OUT_OF_BAND",
+  "a1_evidence_root": "docs/superpowers/reports/skill-v3-character-heavy-pilot-a1-real-execution-v3",
+  "a1_manifest_status": "EXACT",
+  "a1_manifest_entry_count": 27,
+  "a1_evidence_commit_head": "c6252b587967c210f4ec2810c58fda135fd3cec4",
+  "a1_pre_execution_head": "4295653aee0ef795fc00e14f7f739591eaa219c7",
+  "production_source_diff_from_a1_pre_execution_head": 0,
+  "baml_src_diff_from_a1_pre_execution_head": 0,
+  "source_or_runtime_change_in_phase_a": false,
+  "credential_lookup_count": 0,
+  "network_calls": 0,
+  "model_calls": 0,
+  "paid_calls": 0
+}

@@ -1,0 +1,20 @@
+{
+  "schema": "SkillV3B1PhaseAPrivacyScanV1",
+  "status": "PASS",
+  "scan_scope": "all Phase-A payload and receipt files except this scan and the SHA manifest",
+  "scanned_file_count": 15,
+  "raw_prompt_count": 0,
+  "raw_story_prose_count": 0,
+  "raw_provider_content_count": 0,
+  "raw_ref_corpus_count": 0,
+  "credential_or_secret_value_count": 0,
+  "authorization_header_count": 0,
+  "api_key_pattern_count": 0,
+  "local_absolute_path_count": 0,
+  "user_home_path_count": 0,
+  "external_action_count": 0,
+  "notes": [
+    "The exact hostname/origin/path and non-secret Provider/model labels are intentional approval-risk metadata.",
+    "The Chinese authorization sentence is a non-executable template and contains no raw project prose or secret."
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "schema": "SkillV3B1ExperimentIsolationV1",
+  "status": "PASS",
+  "a1_b1_equal_non_skill_bindings": {
+    "non_skill_guidance_snapshot_sha256": "82ab7881d58764552de2371e08c6ffd23b2d13dc2523cc1a9c8dbb96f227c303",
+    "authority_sha256": "91e5fe89ae741233b983f344bb0aa517974a4341dab56c8341669a5233c2e3d4",
+    "task_sha256": "84bed63082c9b4abd588790f9292d29aa466ee14e8b085c403ebb47ded2ab0ad",
+    "story_slice_sha256": "7134e84052d6e15bdd0f3bbb75de41a45c9e8c083d09e896004f8228b71c47c7",
+    "non_skill_prompt_sha256": "26c789b6bc96e406337ef6a545818eeaec48165adcde9adb2310c5b047c31e85",
+    "project_guidance_sha256": "94cfcd4f879232b18b389e6dbfe9595ac4a89a047e887f2fd7160046a1d738ba",
+    "output_contract_sha256": "62aaa63cc39a5baaec5657a889e3e77cf32abecbbfa582795620e34bf4877bee",
+    "validator_policy_sha256": "062dd052fd34949dd8b2369c0c5d5488e100d71ff4d905d9524711f5d14039e7",
+    "reference_derived_provenance_sha256": "41b9fe2c61e20cd68429f3451994c90bc0e450beb97cf7bf400b5e77a82620df"
+  },
+  "all_non_skill_model_visible_bytes_identical_a1_b1": true,
+  "primary_changed_variable": "SKILL_CONTEXT",
+  "a1_skill_context_sha256": "7d0f6309ede2261f2f6a1098d394937948bf5b50eb9248266ab350fd91da9adc",
+  "b1_skill_context_sha256": "c830681f79526c44d9bd83430019d75cb886bde0affcad86714ee1fc1f41aedd",
+  "prior_a1_prose_in_b1_input": false,
+  "prior_a1_result_in_b1_input": false,
+  "prior_a1_execution_metadata_in_b1_model_input": false,
+  "prior_a1_blind_result_in_b1_input": false,
+  "uncontrolled_variable_count": 0
+}

@@ -1,0 +1,53 @@
+{
+  "schema": "SkillV3B1PhaseATestReceiptV1",
+  "status": "PASS",
+  "executed_at_utc": "2026-08-27T15:54:10Z",
+  "focused_binding_check": {
+    "status": "PASS",
+    "check_count": 12,
+    "checks": [
+      "A1/B1 sequence eligibility",
+      "B1 sample lock exact",
+      "B1 wire input exact",
+      "B1 Skill context exact",
+      "B1 non-Skill snapshot exact",
+      "A1/B1 non-Skill lock equality",
+      "Skill context is the primary changed variable",
+      "destination exact",
+      "route exact",
+      "egress policy SHA exact",
+      "no advisory truncation or shedding",
+      "unsigned execution authorization false"
+    ]
+  },
+  "related_pytest": {
+    "command_scope": [
+      "tests/canary/test_skill_v3_character_heavy_pilot.py",
+      "tests/canary/test_skill_v3_real_execution_boundary.py",
+      "tests/canary/test_skill_v3_a1_destination_binding.py",
+      "tests/canary/test_skill_v3_pilot_approval_store.py",
+      "tests/test_skill_v3_multi_sample_pilot_approval_readiness.py",
+      "tests/test_skill_v3_pilot_guidance_binding.py"
+    ],
+    "passed": 118,
+    "failed": 0,
+    "duration_seconds": 184.84
+  },
+  "full_suite": "NOT_RUN_EVIDENCE_ONLY_NO_SOURCE_OR_RUNTIME_CHANGE",
+  "negative_and_adjacent_coverage": [
+    "wrong/stale sample, lock, route, input and approval fail closed",
+    "later sample before turn is rejected",
+    "nonce cannot precede permission and approval",
+    "nonce reuse and approval reuse are rejected",
+    "second dispatch, retry, fallback, route switch and resume are rejected",
+    "destination mismatch, path mismatch, proxy override and cross-origin redirect are rejected",
+    "all six sealed samples reconstruct under offline fake execution"
+  ],
+  "credential_lookup_count": 0,
+  "real_provider_client_creation_count": 0,
+  "provider_request_attempts": 0,
+  "http_post_attempts": 0,
+  "network_calls": 0,
+  "model_calls": 0,
+  "paid_calls": 0
+}

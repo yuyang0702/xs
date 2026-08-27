@@ -1,0 +1,23 @@
+{
+  "schema": "SkillV3B1PhaseASha256ManifestV1",
+  "status": "EXACT",
+  "entry_count": 16,
+  "entries": [
+    {"path": "a1-valid-sample-binding-v1.json", "bytes": 939, "sha256": "24e54d8183c699fde5fc782566d17d8eaba0cc6c41b4d1ac06469316a6622017"},
+    {"path": "b1-destination-binding-v1.json", "bytes": 1320, "sha256": "28abe2f16560ae32c045687fa947f188967c427a043eb4a99d9a492eeec4d431"},
+    {"path": "b1-egress-component-matrix-v1.json", "bytes": 2408, "sha256": "62dbbb2d8e115271e8a7bf03afba5200bb2f6e881b045cf5a1bda3f92290be8c"},
+    {"path": "b1-egress-risk-statement-v1.json", "bytes": 1022, "sha256": "63f5283d4b0dbaac933cfa1154847e2cd99df5044dc1892e495e33d3bf964be2"},
+    {"path": "b1-experiment-isolation-v1.json", "bytes": 1521, "sha256": "55991b8957887e4b755f5622b0581f08956fac108029652e1df9f1a6d5e6e99c"},
+    {"path": "b1-next-eligibility-v1.json", "bytes": 560, "sha256": "15346b36335f24df04ccc5b8d698dee6c2d851e61de2c9385fb7681a89dbd73e"},
+    {"path": "b1-route-capacity-binding-v1.json", "bytes": 2303, "sha256": "f1d1d6a6b945d0501ec9670ce6f35e8d51894b627c30c1ee985f100ef68ee91d"},
+    {"path": "b1-sample-identity-v1.json", "bytes": 2167, "sha256": "5eaaff518a6d9c865c96eb51d91dedea21830ec1738857dca2062a9b4c60c4c6"},
+    {"path": "b1-selective-context-binding-v1.json", "bytes": 1999, "sha256": "d9356a54703f25004e30fdb5041f5d69cd5af18df1ede89a3f71404cd36c34a1"},
+    {"path": "b1-unsigned-approval-request-v1.json", "bytes": 3561, "sha256": "77cb062db8d1f06856aa5b60d3f5019a21046dda4198253814da237229403bd1"},
+    {"path": "baseline-binding-v1.json", "bytes": 920, "sha256": "aa4c7ae1f250d15ff446b4e3077d8a601161c26785f6813185c4fe6a987d38bf"},
+    {"path": "phase-a-report-v1.md", "bytes": 3889, "sha256": "13ad38d295f0fa47c26ea16e10772625b16a736f8d7ffebf4a522757b2a869de"},
+    {"path": "privacy-scan-phase-a-v1.json", "bytes": 756, "sha256": "dbc874285812ef5894107e5226972f43068de3d701e68d0386f5dd6da52b2b07"},
+    {"path": "README.md", "bytes": 869, "sha256": "59d31980bed7c79e7c34c5e22e254cfe3af924c960d4e9fe0e4b86e9b43ce3cd"},
+    {"path": "strict-l3-receipt-phase-a-v1.json", "bytes": 519, "sha256": "32dd8ceef81446a00722ffda2eb166a9284fa05270b33f70a2e4179736a91218"},
+    {"path": "test-receipt-phase-a-v1.json", "bytes": 1911, "sha256": "1e12b6203fe40585ecb7519db39087e99154215d653c9a342b4090e27e1750e4"}
+  ]
+}
