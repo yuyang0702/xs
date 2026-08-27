@@ -140,7 +140,9 @@ def _real_dispatcher(
         execution_root=tmp_path / f"real-{slot}",
         offline_dependencies=OfflineDispatchDependenciesV1(
             secret_store=_secret_store_for(ROOT / "data" / "app.db", available=secret_available),
-            http_transport=httpx.MockTransport(handler),
+            client_factory=lambda: httpx.AsyncClient(
+                timeout=180, transport=httpx.MockTransport(handler),
+            ),
         ),
     )
 
@@ -240,7 +242,9 @@ def test_real_dispatcher_route_drift_fails_before_secret_lookup(tmp_path: Path) 
             execution_root=tmp_path / "run",
             offline_dependencies=OfflineDispatchDependenciesV1(
                 secret_store=MemorySecretStore(),
-                http_transport=httpx.MockTransport(handler),
+                client_factory=lambda: httpx.AsyncClient(
+                    timeout=180, transport=httpx.MockTransport(handler),
+                ),
             ),
         )
     assert handler.count == 0

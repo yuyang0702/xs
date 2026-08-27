@@ -14,9 +14,7 @@ import hashlib
 import json
 from pathlib import Path
 import shutil
-from typing import Any, Mapping
-
-import httpx
+from typing import Any, Callable, Mapping
 
 from novel_flywheel.config import default_settings
 from novel_flywheel.db import Database
@@ -64,7 +62,7 @@ class OfflineDispatchDependenciesV1:
     """Explicit test-only seam below the real dispatcher and request builder."""
 
     secret_store: SecretStore
-    http_transport: httpx.AsyncBaseTransport
+    client_factory: Callable[[], Any]
 
 
 class _NonceAwareAttemptObserver:
@@ -204,10 +202,7 @@ class RealPilotDispatcherV1:
                 self.last_adapter = resolved.adapter
                 if dependencies is not None:
                     self.replaced_client = getattr(resolved.adapter, "client", None)
-                    resolved.adapter.client = httpx.AsyncClient(
-                        timeout=180,
-                        transport=dependencies.http_transport,
-                    )
+                    resolved.adapter.client = dependencies.client_factory()
                 return resolved
 
         registry = PilotRegistry(
