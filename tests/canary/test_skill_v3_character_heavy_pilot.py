@@ -116,3 +116,31 @@ def test_stale_sample_lock_fails_before_nonce(tmp_path: Path) -> None:
         ))
     assert caught.value.reason_code == "STALE_SAMPLE_LOCK"
     assert nonce.reservation_count == 0
+
+
+def test_evidence_builder_covers_required_closure_files() -> None:
+    from tools.diagnostics.materialize_skill_v3_pilot_execution_boundary_closure import build_artifacts
+
+    artifacts = build_artifacts({
+        "focused_tests": "pending", "adjacent_tests": "pending",
+        "full_suite": "pending", "strict_l3": "PASS",
+    })
+    required = {
+        "README.md", "baseline-binding-v1.json", "prior-readiness-conditional-binding-v1.json",
+        "sealed-execution-inputs-binding-v1.json", "execution-state-machine-v1.json",
+        "dedicated-execution-entry-contract-v1.json", "pilot-isolation-v1.json",
+        "launcher-contract-v1.json", "sequential-eligibility-v1.json",
+        "permission-before-nonce-v1.json", "signed-approval-verification-v1.json",
+        "nonce-contract-v1.json", "single-dispatch-guard-v1.json",
+        "gateway-retry-isolation-v1.json", "attempt-accounting-v1.json",
+        "provider-failure-no-retry-v1.json", "arm-a-input-binding-v1.json",
+        "arm-b-input-binding-v1.json", "experimental-isolation-recheck-v1.json",
+        "terminal-pipeline-binding-v1.json", "sample-validity-state-machine-v1.json",
+        "fake-provider-harness-v1.json", "negative-execution-boundary-matrix-v1.json",
+        "six-sample-fake-execution-v1.json", "production-model-input-identity-v1.json",
+        "approval-readiness-delta-v1.json", "privacy-scan-v1.json", "test-receipt-v1.json",
+        "strict-l3-receipt-v1.json", "final-report-v1.md",
+    }
+    assert required <= set(artifacts)
+    assert artifacts["privacy-scan-v1.json"]["privacy_match_count"] == 0
+    assert artifacts["approval-readiness-delta-v1.json"]["overall"] == "YES"
