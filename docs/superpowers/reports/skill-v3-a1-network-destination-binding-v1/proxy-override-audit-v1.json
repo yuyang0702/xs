@@ -1,0 +1,14 @@
+{
+  "schema": "SkillV3A1ProxyOverrideAuditV1",
+  "status": "PASS",
+  "httpx_explicit_transport": "AsyncHTTPTransport(retries=0)",
+  "httpx_follow_redirects": false,
+  "explicit_transport_disables_environment_proxy_mounts": true,
+  "HTTP_PROXY_override_allowed": false,
+  "HTTPS_PROXY_override_allowed": false,
+  "ALL_PROXY_override_allowed": false,
+  "provider_environment_base_url_override_allowed": false,
+  "caller_base_url_override_allowed": false,
+  "unbound_proxy_route_allowed": false,
+  "proxy_secret_values_inspected": false
+}

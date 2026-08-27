@@ -1,0 +1,13 @@
+{
+  "schema": "SkillV3A1DestinationBaselineBindingV1",
+  "status": "EXACT",
+  "branch": "r1-ptr3/planning-repair-finding-propagation-20260817",
+  "baseline_head": "97bb0019360cedd3033f61809171bd407cd69606",
+  "baseline_worktree": "CLEAN",
+  "destination_implementation_head": "143ac0fce07aa955f40712c90001e0fbc9c5ee07",
+  "pilot_id": "skill-v3-character-heavy-multi-sample-v1-4d47410b0144360d",
+  "sample_id": "sv3s-089dd120ad568f87e7ef",
+  "sample_slot": "A1",
+  "sample_lock_sha256": "8bc9c05794e1dbecb095a9a1b9937d9a277c5efa462b83c6b7e1e49495b862a7",
+  "parent_experiment_lock_sha256": "8a07c5106fec903952d4b622ab33702636c17d3add7eb380d3ac78071841fc9b"
+}

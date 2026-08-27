@@ -1,0 +1,15 @@
+{
+  "schema": "SkillV3A1DestinationStrictL3ReceiptV1",
+  "status": "PASS",
+  "declared_level": "L3",
+  "recommended_level": "L3",
+  "baseline_used": true,
+  "forward_risk_report_version": 2,
+  "scope_classification": "closed_world",
+  "warnings": 0,
+  "blockers": 0,
+  "review_mode": "MAIN_CODEX_SINGLE_AGENT_NO_INDEPENDENCE_CLAIM",
+  "team_review_requested": false,
+  "model_output_boundary_changed": false,
+  "production_source_paths_changed": 0
+}

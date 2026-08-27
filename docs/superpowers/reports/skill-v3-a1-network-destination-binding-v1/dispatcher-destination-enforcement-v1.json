@@ -1,0 +1,19 @@
+{
+  "schema": "SkillV3A1DispatcherDestinationEnforcementV1",
+  "status": "PASS",
+  "dispatcher_version": "skill-v3-real-pilot-dispatcher-v2",
+  "owner_file": "tools/canary/skill_v3_real_execution_boundary.py",
+  "owners": ["RealPilotDispatcherV1.__init__", "RealPilotDispatcherV1.dispatch", "PilotRegistry.resolve", "launch_real_a1_once_v3"],
+  "destination_check_before_nonce_reservation": true,
+  "destination_check_before_credential_lookup": true,
+  "destination_check_before_provider_client": true,
+  "destination_check_before_network": true,
+  "request_target_rechecked_after_adapter_resolution": true,
+  "destination_drift_failure": "SKILL_V3_A1_REAL_DISPATCH_NO_GO_DESTINATION_DRIFT",
+  "legacy_destination_unbound_launcher": "FAIL_CLOSED_DESTINATION_BOUND_APPROVAL_V3_REQUIRED",
+  "legacy_destination_unbound_executable_body_present": false,
+  "retry_disabled": true,
+  "fallback_disabled": true,
+  "route_switch_disabled": true,
+  "resume_disabled": true
+}

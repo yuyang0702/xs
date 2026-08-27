@@ -1,0 +1,11 @@
+{
+  "schema": "SkillV3A1RedirectPolicyV1",
+  "status": "PASS",
+  "redirect_policy": "DISABLED",
+  "http_redirect_following": false,
+  "cross_origin_redirect_allowed": false,
+  "observed_client_default_for_bound_path": false,
+  "offline_cross_origin_redirect_request_count": 1,
+  "offline_second_origin_attempt_count": 0,
+  "failure_disposition": "PROVIDER_BOUNDARY_FAILED_WITHOUT_REDIRECT_FOLLOW"
+}

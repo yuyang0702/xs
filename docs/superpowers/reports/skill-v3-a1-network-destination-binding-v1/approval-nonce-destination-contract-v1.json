@@ -1,0 +1,22 @@
+{
+  "schema": "SkillV3A1ApprovalNonceDestinationContractV1",
+  "status": "PASS",
+  "approval_schema": "SkillV3PilotDestinationBoundSuccessorSignedApprovalV3",
+  "approval_version": 3,
+  "approval_created": false,
+  "approval_usage": "NOT_CREATED",
+  "approval_required_fields": ["destination_origin", "destination_origin_sha256", "destination_path_or_prefix", "destination_operator_class", "egress_policy_sha256", "cross_origin_redirect_allowed", "unbound_proxy_route_allowed"],
+  "nonce_schema": "SkillV3PilotDestinationBoundDurableNonceV2",
+  "nonce_created": false,
+  "nonce_reserved": false,
+  "nonce_consumed": false,
+  "nonce_required_fields": ["approved_destination_origin", "approved_destination_origin_sha256", "approved_destination_path_or_prefix", "egress_policy_sha256", "cross_origin_redirect_allowed", "unbound_proxy_route_allowed"],
+  "approval_destination_bound": true,
+  "nonce_destination_bound": true,
+  "dispatch_destination_bound": true,
+  "cross_origin_redirect_allowed": false,
+  "unbound_proxy_route_allowed": false,
+  "single_use": true,
+  "max_provider_request_attempts": 1,
+  "max_network_request_attempts": 1
+}

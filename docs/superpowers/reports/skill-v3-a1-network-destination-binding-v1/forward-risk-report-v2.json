@@ -1,0 +1,115 @@
+{
+  "version": 2,
+  "original_requirement": "resolve the exact non-secret A1 network destination, bind it and the exact egress classes into a fresh Approval V3/nonce contract, enforce the binding in the real dispatcher, then stop before approval or dispatch",
+  "scope_classification": "closed_world",
+  "operational_definition": "one sealed pilot, one fixed A1 sample, one primary route fingerprint, one provider/model binding, one HTTPS origin and one API path",
+  "forbidden_narrowing": [
+    "no hostname-only authorization without scheme, port, path, operator classification, and egress disclosure",
+    "no caller or environment base URL override",
+    "no proxy, redirect, retry, fallback, route switch, resume, or second dispatch",
+    "no Approval V3 or nonce creation before a new destination-naming user authorization",
+    "no production runtime, Prompt, Skill, Planning, story authority, or output-contract change"
+  ],
+  "resolution_status": "case_fixed",
+  "closed_world_justification": "the experiment identity, A1 input, route/provider/model hashes, local provider row, exact origin, exact path, caps, and excluded actions are finite and sealed",
+  "constraint_traceability": [
+    {
+      "requirement": "resolve one exact non-secret destination from sealed route plus local SQLite metadata",
+      "implementation": "resolve_a1_destination_binding_v1",
+      "test_paths": ["tests/canary/test_skill_v3_a1_destination_binding.py"],
+      "evidence": "destination-resolution-trace-v1.json"
+    },
+    {
+      "requirement": "bind exact destination and egress policy into Approval V3 and durable nonce V2",
+      "implementation": "validate_successor_signed_approval_v3 and reserve_destination_bound_v2",
+      "test_paths": ["tests/canary/test_skill_v3_a1_destination_binding.py"],
+      "evidence": "approval-nonce-destination-contract-v1.json"
+    },
+    {
+      "requirement": "fail closed before credential lookup or network dispatch on destination drift",
+      "implementation": "RealPilotDispatcherV1.__init__, dispatch, and PilotRegistry.resolve",
+      "test_paths": ["tests/canary/test_skill_v3_a1_destination_binding.py", "tests/canary/test_skill_v3_real_execution_boundary.py"],
+      "evidence": "dispatcher-destination-enforcement-v1.json"
+    },
+    {
+      "requirement": "one POST only with redirects, proxies, fallback, route switch, and legacy approval disabled",
+      "implementation": "SingleDispatchTransportPolicyV1 plus launch_real_a1_once_v1 fail-close plus launch_real_a1_once_v3",
+      "test_paths": ["tests/canary/test_skill_v3_a1_destination_binding.py", "tests/providers/test_single_dispatch_transport_guard.py"],
+      "evidence": "negative-destination-matrix-v1.json"
+    }
+  ],
+  "historical_incident_families_checked": [
+    "stale_authority_binding",
+    "approval_nonce_order",
+    "nonce_reuse_after_restart",
+    "duplicate_dispatch",
+    "hidden_transport_retry",
+    "fallback_route_expansion",
+    "caller_or_environment_route_override",
+    "cross_origin_redirect",
+    "environment_proxy_override",
+    "provider_route_metadata_drift",
+    "post-response_evidence_serialization"
+  ],
+  "projected_failure_mechanisms": [
+    "wrong scheme, host, port, or API path",
+    "approval destination or egress hash tamper",
+    "nonce destination hash mismatch",
+    "local provider row changes after approval",
+    "HTTP redirect to a second origin",
+    "HTTP_PROXY, HTTPS_PROXY, or ALL_PROXY rerouting",
+    "fallback or route switch to a second origin",
+    "legacy destination-unbound approval reachability",
+    "second POST after transport or validation failure"
+  ],
+  "why_previous_tests_missed": "the blocked V2 execution proved single-dispatch and real-boundary realization but deliberately stopped because its approval did not name a concrete destination or disclose exact egress classes; destination authority therefore was not part of the approval/nonce/dispatcher test surface",
+  "sibling_boundaries": [
+    {
+      "boundary": "normal production provider dispatch",
+      "disposition": "tested_not_susceptible",
+      "evidence": "all changes are under tools/canary or tests/canary; src and baml_src bytes are unchanged and the canary module is not imported by production"
+    },
+    {
+      "boundary": "other Skill V3 samples B1 through B3",
+      "disposition": "tested_not_susceptible",
+      "evidence": "the launcher remains A1-only and reconstructs the A1 sample lock; no other sample entry is added"
+    },
+    {
+      "boundary": "Planning V1 and V2",
+      "disposition": "tested_not_susceptible",
+      "evidence": "no production Planning source, Prompt, contract, route, retry, fallback, validator, or budget file changes"
+    },
+    {
+      "boundary": "Draft, Final Review, Maintenance, Canon, StoryState, and READY authority",
+      "disposition": "tested_not_susceptible",
+      "evidence": "the closed-world pilot dispatcher has no mutation entry into these boundaries and src/baml_src diff remains zero"
+    },
+    {
+      "boundary": "future destination-bound A1 approval issuance",
+      "disposition": "fixed_and_tested",
+      "evidence": "Approval V3 creation and validation require exact origin/path/operator/egress hashes and old V2 launcher fails closed"
+    },
+    {
+      "boundary": "future real A1 HTTP dispatch",
+      "disposition": "fixed_and_tested",
+      "evidence": "offline counting transport reaches exactly https://lingsuan.org/v1/messages once; wrong target, redirect, proxy, fallback, route switch, and second dispatch cases fail closed"
+    }
+  ],
+  "model_output_boundary_changed": false,
+  "model_output_not_applicable_evidence": "EventRealizationCandidateV1, output contract, parser, validator, model input, Prompt, Skill context, sampling, and 4624 output cap are unchanged; only pre-dispatch authority and transport destination checks change",
+  "production_shaped_tests": [
+    "tests/canary/test_skill_v3_a1_destination_binding.py",
+    "tests/canary/test_skill_v3_real_execution_boundary.py",
+    "tests/providers/test_single_dispatch_transport_guard.py"
+  ],
+  "next_authoritative_boundary_tests": [
+    "tests/canary/test_skill_v3_a1_destination_binding.py",
+    "tests/canary/test_skill_v3_real_execution_boundary.py",
+    "tests/providers/test_single_dispatch_transport_guard.py"
+  ],
+  "remaining_risks": [
+    "local metadata identifies lingsuan.org as a third-party relay but cannot establish legal ownership, retention, logging, or downstream subprocessors",
+    "a future real dispatch still requires a new current-conversation authorization that explicitly names https://lingsuan.org and accepts the disclosed egress",
+    "no Approval V3, nonce, credential lookup, client construction, DNS request, network request, or model call is performed by this phase"
+  ]
+}

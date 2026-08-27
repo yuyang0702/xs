@@ -1,0 +1,15 @@
+{
+  "schema": "SkillV3A1RealDispatcherDestinationOfflineTestV1",
+  "status": "PASS",
+  "test": "test_real_dispatcher_counting_transport_targets_only_sealed_destination",
+  "destination_check_executed": true,
+  "destination_check_count": 3,
+  "request_target_origin": "https://lingsuan.org",
+  "request_target_path": "/v1/messages",
+  "outbound_fake_attempt_count": 1,
+  "real_network_reached": 0,
+  "second_origin_attempt_count": 0,
+  "cross_origin_redirect_attempt": "REJECTED_NOT_FOLLOWED",
+  "result": "SEALED_VALID",
+  "raw_provider_content_persisted": false
+}

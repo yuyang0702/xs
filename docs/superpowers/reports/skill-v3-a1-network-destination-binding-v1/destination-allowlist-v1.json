@@ -1,0 +1,13 @@
+{
+  "schema": "SkillV3A1DestinationAllowlistV1",
+  "status": "PASS",
+  "allowed_destination_count": 1,
+  "allowed_destination_origins": ["https://lingsuan.org"],
+  "allowed_path": "/v1/messages",
+  "wildcard_domain_allowed": false,
+  "caller_can_override_destination": false,
+  "fallback_destination_allowed": false,
+  "route_switch_destination_allowed": false,
+  "alternate_relay_allowed": false,
+  "second_origin_allowed": false
+}

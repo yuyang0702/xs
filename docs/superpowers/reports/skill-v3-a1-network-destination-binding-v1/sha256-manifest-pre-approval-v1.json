@@ -1,0 +1,30 @@
+{
+  "schema": "SkillV3A1DestinationSha256ManifestPreApprovalV1",
+  "status": "EXACT",
+  "manifest_scope": "ALL_PRE_APPROVAL_EVIDENCE_EXCEPT_THIS_MANIFEST",
+  "entry_count": 21,
+  "destination_implementation_head": "143ac0fce07aa955f40712c90001e0fbc9c5ee07",
+  "entries": [
+    {"path": "approval-nonce-destination-contract-v1.json", "sha256": "627d325c2ffb6e1f764a848ac59a0bc45e0cd93fc89e8bb1b9d9f07933a91622", "bytes": 1139},
+    {"path": "baseline-binding-v1.json", "sha256": "bc61c7a5144ad75cc6f80373d530c4538dc8c19c580eeffec8f37f50db5cceb8", "bytes": 658},
+    {"path": "blocked-v2-binding-v1.json", "sha256": "a7820030a8aa43cc2fb8ed84e7b97bba0641adbe37902b97f4f3a4faf30cbcd0", "bytes": 976},
+    {"path": "concrete-destination-binding-v1.json", "sha256": "981cc7dd53bbdff715b8430e90d46013f8f2c4a23815fb04e423d337b3f160ad", "bytes": 912},
+    {"path": "destination-allowlist-v1.json", "sha256": "b3715555f54877528c63921a0c06e9602b59429e641af19ad372a2af4e33b0a5", "bytes": 433},
+    {"path": "destination-resolution-trace-v1.json", "sha256": "e37e3c87cb064a0c40890b0ada3cd44faacf4a6c76572a39de59aa46a2a84df5", "bytes": 1342},
+    {"path": "dispatcher-destination-enforcement-v1.json", "sha256": "aebd725b5496fd7c772a0f6a6cd243ca67103ed3195e1f776b5172af54ffc994", "bytes": 966},
+    {"path": "egress-component-matrix-v1.json", "sha256": "6e93fa2972e39cd6003862abf3efbbf1f37974dfeaadc7973de9254928d83766", "bytes": 2334},
+    {"path": "egress-risk-statement-v1.json", "sha256": "f3a99cfd870941cfc2aa0b243d7a5ec4b36c8f0f9467989b7874a75eeeb08c98", "bytes": 1207},
+    {"path": "experiment-identity-v1.json", "sha256": "f58cf12dcbb078a297b70cec65c21b5f65ecb27bf309b7987bc98027749bcb44", "bytes": 1703},
+    {"path": "final-report-pre-approval-v1.md", "sha256": "6bcd290d83802bceddceb189a24aa1b7c184bf82227642d356809f1688fbfa92", "bytes": 3033},
+    {"path": "forward-risk-report-v2.json", "sha256": "a8293c8114621140b86e169b3bf9caf741b4a7b18230817d6a329e52f090e0ef", "bytes": 6797},
+    {"path": "negative-destination-matrix-v1.json", "sha256": "86dca1e329f89d22f1a23e924d7825ceb3567715c62b991a0bb0af2fe35bea1a", "bytes": 620},
+    {"path": "privacy-scan-v1.json", "sha256": "04b5a80450d2840e4561f83a18f22f12fcda9c7195752bcaf2da6261c3c1c5f8", "bytes": 539},
+    {"path": "production-isolation-v1.json", "sha256": "8f4e7175d0f9e6a3ca39aee453571802257c60c94de60526c85aa33db5413723", "bytes": 663},
+    {"path": "proxy-override-audit-v1.json", "sha256": "2d75d701db9b258a6a92cdbcc6e686e98bf0c3c2d7c6117afda2e8267fee86fd", "bytes": 536},
+    {"path": "README.md", "sha256": "d4171a221fa9092dc19a2f00a53db1215e739363ae39ca733c7bc469bb439bc3", "bytes": 926},
+    {"path": "real-dispatcher-destination-offline-test-v1.json", "sha256": "11965d32c11fa2a7b7d160a45cf5e887b38bec5799d394b28787262611c5e508", "bytes": 565},
+    {"path": "redirect-policy-v1.json", "sha256": "655f5e2d827d350015e4dce9670b66c0b0cf8a114a50b1d1657e4187e5297041", "bytes": 399},
+    {"path": "strict-l3-receipt-v1.json", "sha256": "c1ba41b5532df72c44fb8247daa289b69c598320364edf82a446d3df3aa715f4", "bytes": 450},
+    {"path": "test-receipt-v1.json", "sha256": "cd9975efab23899f403a18094ff0e4cb08aebf442e7cb077829a289227963f21", "bytes": 1257}
+  ]
+}

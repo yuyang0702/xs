@@ -1,0 +1,16 @@
+{
+  "schema": "SkillV3A1DestinationPrivacyScanV1",
+  "status": "PASS",
+  "files_scanned": 22,
+  "credential_values_found": 0,
+  "api_keys_found": 0,
+  "auth_headers_found": 0,
+  "signed_secret_urls_found": 0,
+  "raw_prompt_or_story_persisted": false,
+  "raw_ref_corpus_persisted": false,
+  "raw_provider_content_persisted": false,
+  "absolute_local_paths_persisted": false,
+  "destination_origin_is_non_secret": true,
+  "provider_and_model_labels_are_local_non_secret_metadata": true,
+  "privacy_claim_scope": "LOCAL_ARTIFACT_SCAN_ONLY"
+}

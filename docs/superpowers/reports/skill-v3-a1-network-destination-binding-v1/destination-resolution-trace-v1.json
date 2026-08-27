@@ -1,0 +1,41 @@
+{
+  "schema": "SkillV3A1DestinationResolutionTraceV1",
+  "status": "EXACT",
+  "resolution_mode": "LOCAL_NON_SECRET_METADATA_ONLY",
+  "chain": [
+    {
+      "step": 1,
+      "source": "sealed A1 ReconstructedInput",
+      "symbol": "tools.canary.skill_v3_character_heavy_pilot.reconstruct_sample_input",
+      "result": "route/provider/model hashes exact"
+    },
+    {
+      "step": 2,
+      "source": "data/app.db planning role binding",
+      "symbol": "novel_flywheel.db.Database.get_role_binding",
+      "result": "primary provider/model selected"
+    },
+    {
+      "step": 3,
+      "source": "data/app.db non-secret provider/model rows",
+      "symbol": "Database.get_provider and Database.get_model",
+      "result": "anthropic protocol, lingsuan_gpt, gpt-5.6-sol, https://lingsuan.org"
+    },
+    {
+      "step": 4,
+      "source": "AnthropicAdapter request construction",
+      "symbol": "novel_flywheel.providers.anthropic.AnthropicAdapter",
+      "result": "base URL plus /v1/messages"
+    },
+    {
+      "step": 5,
+      "source": "destination contract",
+      "symbol": "tools.canary.skill_v3_a1_destination_binding.resolve_a1_destination_binding_v1",
+      "result": "https://lingsuan.org:443/v1/messages"
+    }
+  ],
+  "credential_lookup_count": 0,
+  "provider_client_creation_count": 0,
+  "dns_calls": 0,
+  "network_calls": 0
+}

@@ -1,0 +1,21 @@
+{
+  "schema": "SkillV3A1DestinationProductionIsolationV1",
+  "status": "PASS",
+  "changed_runtime_scope": "CANARY_ONLY",
+  "src_diff_count": 0,
+  "baml_src_diff_count": 0,
+  "prompt_changed": false,
+  "skill_context_changed": false,
+  "planning_v1_changed": false,
+  "planning_v2_changed": false,
+  "production_route_model_changed": false,
+  "production_retry_fallback_changed": false,
+  "output_budget_changed": false,
+  "validator_changed": false,
+  "canon_changed": false,
+  "story_state_changed": false,
+  "ready_authority_changed": false,
+  "ordinary_production_runtime_changed": false,
+  "auto_advance_to_b1": false,
+  "full_short_canary": "NOT_EXECUTED"
+}

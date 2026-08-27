@@ -1,0 +1,12 @@
+{
+  "schema": "SkillV3A1EgressRiskStatementV1",
+  "status": "READY_FOR_USER_DISCLOSURE",
+  "destination_origin": "https://lingsuan.org",
+  "destination_hostname": "lingsuan.org",
+  "destination_operator_class": "THIRD_PARTY_RELAY_LOCAL_METADATA_ONLY",
+  "operator_class_basis": "local configured metadata only; external ownership and service policies were not verified",
+  "included_data_classes": ["SYSTEM_CONTEXT", "TASK_ENVELOPE", "AUTHORITY_CONTEXT", "STORY_SLICE", "NON_SKILL_PROJECT_GUIDANCE", "A_ARM_SKILL_CONTEXT", "OUTPUT_CONTRACT", "PROVIDER_REQUEST_METADATA"],
+  "raw_ref_corpus_egress": false,
+  "statement": "The one future A1 request would send sealed project/story context, authority/task/story slice, project guidance, A-arm Skill context, output contract, and request metadata to https://lingsuan.org. Local configuration identifies this as a third-party relay, not a verified official Provider endpoint. Raw REF corpus is not sent. The remote operator/Provider may process, store, or log the request under its own policies. Authorization would cover exactly one request with no retry, fallback, second destination, or cross-origin redirect.",
+  "unverified_privacy_promises_made": false
+}

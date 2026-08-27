@@ -1,0 +1,23 @@
+{
+  "schema": "SkillV3A1BlockedV2BindingV1",
+  "status": "EXACT",
+  "evidence_root": "docs/superpowers/reports/skill-v3-character-heavy-pilot-a1-real-execution-v2",
+  "sealed_manifest_entry_count": 25,
+  "sealed_manifest_mismatch_count": 0,
+  "sealed_result": "SKILL_V3_CHARACTER_HEAVY_MULTI_SAMPLE_PILOT_SAMPLE_1_REAL_EXECUTION_V2_BLOCKED_PRE_DISPATCH",
+  "typed_blocker": "EXPLICIT_CONCRETE_DESTINATION_AUTHORIZATION_NOT_PROVABLE",
+  "authorized_network_destination_bound": false,
+  "approval_usage_status": "unused",
+  "nonce_created_reserved_consumed": [0, 0, 0],
+  "credential_lookup_count": 0,
+  "provider_client_creation_count": 0,
+  "provider_request_attempts": 0,
+  "network_calls": 0,
+  "model_calls": 0,
+  "paid_calls": 0,
+  "a1_real_execution": "NOT_EXECUTED",
+  "prior_blocked_a1_counts_as_real_sample": false,
+  "prior_blocked_a1_counts_as_provider_request": false,
+  "prior_blocked_a1_eligible_for_blind_eval": false,
+  "historical_evidence_rewritten": false
+}

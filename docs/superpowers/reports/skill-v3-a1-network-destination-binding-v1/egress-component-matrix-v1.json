@@ -1,0 +1,28 @@
+{
+  "schema": "SkillV3A1EgressComponentMatrixV1",
+  "status": "EXACT",
+  "destination_origin": "https://lingsuan.org",
+  "sample_id": "sv3s-089dd120ad568f87e7ef",
+  "wire_input_sha256": "47d7e240783edf70528dc05b1c6694271a4228677fee2ef358db398d35a406f5",
+  "egress_policy_sha256": "a9eef53bd052d6f70d717c8df00d20e1a16fd99bcca12cb9e6cf26e2e22d80b4",
+  "components": [
+    {"component": "SYSTEM_CONTEXT", "egress_included": true, "source_identity_or_sha": "e1d254599d24721965a53246da5a61418e51bb923b0204c4d620785568fd5294", "sensitivity_class": "PROJECT_CONTENT"},
+    {"component": "TASK_ENVELOPE", "egress_included": true, "source_identity_or_sha": "84bed63082c9b4abd588790f9292d29aa466ee14e8b085c403ebb47ded2ab0ad", "sensitivity_class": "OPERATIONAL_METADATA"},
+    {"component": "AUTHORITY_CONTEXT", "egress_included": true, "source_identity_or_sha": "91e5fe89ae741233b983f344bb0aa517974a4341dab56c8341669a5233c2e3d4", "sensitivity_class": "PROJECT_CONTENT"},
+    {"component": "STORY_SLICE", "egress_included": true, "source_identity_or_sha": "7134e84052d6e15bdd0f3bbb75de41a45c9e8c083d09e896004f8228b71c47c7", "sensitivity_class": "PROJECT_CONTENT"},
+    {"component": "NON_SKILL_PROJECT_GUIDANCE", "egress_included": true, "source_identity_or_sha": "94cfcd4f879232b18b389e6dbfe9595ac4a89a047e887f2fd7160046a1d738ba", "sensitivity_class": "CREATIVE_GUIDANCE"},
+    {"component": "A_ARM_SKILL_CONTEXT", "egress_included": true, "source_identity_or_sha": "7d0f6309ede2261f2f6a1098d394937948bf5b50eb9248266ab350fd91da9adc", "sensitivity_class": "CREATIVE_GUIDANCE"},
+    {"component": "OUTPUT_CONTRACT", "egress_included": true, "source_identity_or_sha": "62aaa63cc39a5baaec5657a889e3e77cf32abecbbfa582795620e34bf4877bee", "sensitivity_class": "OPERATIONAL_METADATA"},
+    {"component": "PROVIDER_REQUEST_METADATA", "egress_included": true, "source_identity_or_sha": "4b88216eb6aadd7426c3264cf192774f6fadc61a14a2d1deccb9812f4023f09d", "sensitivity_class": "OPERATIONAL_METADATA"}
+  ],
+  "excluded": {
+    "raw_ref_corpus_egress": false,
+    "raw_distill_evidence_excerpt_egress": false,
+    "learn_node_raw_evidence_egress": false,
+    "unrelated_project_data_egress": false,
+    "other_sample_data_egress": false,
+    "historical_blind_result_egress": false,
+    "credential_egress": false,
+    "local_file_path_egress": false
+  }
+}

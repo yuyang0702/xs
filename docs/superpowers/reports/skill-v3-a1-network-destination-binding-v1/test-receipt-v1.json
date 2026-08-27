@@ -1,0 +1,30 @@
+{
+  "schema": "SkillV3A1DestinationTestReceiptV1",
+  "status": "PASS",
+  "commands": [
+    {
+      "kind": "compile",
+      "command": ".venv/Scripts/python.exe -m py_compile <changed canary modules and destination tests>",
+      "result": "PASS"
+    },
+    {
+      "kind": "focused",
+      "command": ".venv/Scripts/python.exe -m pytest -q -p no:cacheprovider tests/canary/test_skill_v3_a1_destination_binding.py",
+      "result": "23 passed",
+      "elapsed_seconds": 40.68
+    },
+    {
+      "kind": "adjacent",
+      "command": ".venv/Scripts/python.exe -m pytest -q -p no:cacheprovider tests/canary/test_skill_v3_real_execution_boundary.py tests/canary/test_skill_v3_pilot_approval_store.py tests/canary/test_skill_v3_character_heavy_pilot.py tests/providers/test_single_dispatch_transport_guard.py tests/test_skill_v3_multi_sample_pilot_approval_readiness.py tests/test_skill_v3_reference_distill_binding_closure.py tests/test_skill_v3_pilot_guidance_binding.py",
+      "result": "119 passed",
+      "elapsed_seconds": 115.20
+    }
+  ],
+  "focused_plus_adjacent_passed": 142,
+  "focused_plus_adjacent_failed": 0,
+  "credential_lookup_count": 0,
+  "real_provider_client_creation_count": 0,
+  "network_calls": 0,
+  "model_calls": 0,
+  "paid_calls": 0
+}
