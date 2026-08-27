@@ -2118,3 +2118,13 @@ the bounded drop counter without recursion. Every observer and evidence-sink
 failure remains fail-open, so the current compressed Skill context and Provider
 request are unchanged. This is evidence-only shadow infrastructure and does not
 authorize Skill V3 or Planning V2 cutover.
+# Skill V3 character-heavy pilot execution boundary
+
+The six-sample Skill V3 character-heavy pilot has a dedicated, dormant canary
+entry in `tools/canary/skill_v3_character_heavy_pilot.py`. It is not imported by
+the application and does not change production Skill selection or model input.
+The entry reconstructs only sealed sample identities, requires current-chat
+permission before approval and nonce handling, enforces one logical/provider/
+HTTP/network attempt, disables retry/fallback/route switching for the pilot
+path, and never advances to the next sample automatically. Ordinary provider
+transport behavior remains unchanged.
