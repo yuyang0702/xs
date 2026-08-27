@@ -1,0 +1,32 @@
+{
+  "authority_boundary_changed": true,
+  "model_output_boundary_changed": false,
+  "production_shaped_tests": [
+    "tests/canary/test_skill_v3_overnight_campaign.py"
+  ],
+  "projected_incident_families": [
+    "batch permission mistaken for executable approval",
+    "eager later-sample approval or nonce",
+    "continuation after invalid predecessor",
+    "campaign budget overrun",
+    "elapsed-cap overrun",
+    "route or destination drift",
+    "cross-sample prose contamination",
+    "repo write invalidates HEAD",
+    "approval or nonce replay",
+    "retry/fallback/second dispatch"
+  ],
+  "remaining_risks": [
+    "real Provider behavior remains untested until fresh authorization",
+    "monetary cap is not sealed"
+  ],
+  "schema": "ForwardRiskReportV2",
+  "stable_invariants": [
+    "one request per sample",
+    "exact sealed input",
+    "stop on first failure",
+    "external runtime state only"
+  ],
+  "unknown_variant_behavior": "typed fail-close before next dispatch",
+  "version": 2
+}

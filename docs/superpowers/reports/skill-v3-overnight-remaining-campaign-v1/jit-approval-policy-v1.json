@@ -1,0 +1,13 @@
+{
+  "approval_schema": "SkillV3RemainingCampaignJitSignedApprovalV4",
+  "approval_scope": "SKILL_V3_REMAINING_CAMPAIGN_JIT_SINGLE_SAMPLE_ONLY",
+  "campaign_permission_is_authorization_source_only": true,
+  "later_sample_approvals_created_eagerly": false,
+  "nonce_state_at_creation": "NOT_CREATED",
+  "one_current_sample_only": true,
+  "schema": "SkillV3RemainingCampaignJitApprovalPolicyV1",
+  "single_use": true,
+  "status": "PASS",
+  "stored_outside_git_worktree": true,
+  "usage_status_at_creation": "unused"
+}

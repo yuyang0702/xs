@@ -1,0 +1,12 @@
+{
+  "all_artifacts_hash_bound": true,
+  "anonymous_sample_count": 6,
+  "arm_mapping_evaluator_visible": false,
+  "blind_bundle_created_in_phase_a": false,
+  "main_window_literary_judgment_allowed": false,
+  "requires_all_six_sealed_valid": true,
+  "route_cost_approval_nonce_metadata_evaluator_visible": false,
+  "schema": "SkillV3RemainingCampaignBlindHandoffPolicyV1",
+  "skill_context_evaluator_visible": false,
+  "status": "PASS_DESIGN_ONLY"
+}

@@ -1,0 +1,10 @@
+{
+  "b1_individual_approval_path": "SUPERSEDED_BY_OVERNIGHT_ADMINISTRATIVE_SUCCESSOR",
+  "b1_model_input_changed": false,
+  "b1_only_signed_approval_created": false,
+  "b1_sample_id": "sv3s-cd80aa5d21e790079a06",
+  "b1_sample_identity_changed": false,
+  "historical_b1_phase_a_evidence_preserved": true,
+  "schema": "SkillV3B1PhaseASupersessionV1",
+  "status": "PASS"
+}

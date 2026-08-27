@@ -1,0 +1,22 @@
+{
+  "a1_sample_id": "sv3s-089dd120ad568f87e7ef",
+  "all_non_skill_model_visible_bytes_identical_across_6": true,
+  "cross_arm_prose_injection": false,
+  "primary_changed_variable": "SKILL_CONTEXT",
+  "prior_sample_blind_result_in_input": false,
+  "prior_sample_execution_metadata_in_model_input": false,
+  "prior_sample_prose_in_input": false,
+  "prior_sample_result_in_input": false,
+  "prior_sample_status_enters_model_input": false,
+  "prior_sample_status_read_for_eligibility_only": true,
+  "remaining_sample_ids": [
+    "sv3s-cd80aa5d21e790079a06",
+    "sv3s-689f28e6be27dd416760",
+    "sv3s-86c1bce67d1e52ec2aa6",
+    "sv3s-32d61044ab8db7c9b145",
+    "sv3s-bbd71244a306271cd726"
+  ],
+  "schema": "SkillV3SixSampleIndependenceRecheckV1",
+  "status": "PASS",
+  "uncontrolled_variable_count": 0
+}

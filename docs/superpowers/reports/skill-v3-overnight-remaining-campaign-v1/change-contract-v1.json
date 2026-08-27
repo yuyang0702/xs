@@ -1,0 +1,27 @@
+{
+  "allowed_changes": [
+    "tools/canary",
+    "tests/canary",
+    "docs/superpowers/reports/skill-v3-overnight-remaining-campaign-v1"
+  ],
+  "authorization": "implementation_phase_a_only",
+  "protected_unchanged_behavior": [
+    "production runtime",
+    "model-visible inputs",
+    "route/model/sampling/output cap/validator",
+    "A1 approval validators"
+  ],
+  "rejected_alternatives": [
+    "five-sample executable approval",
+    "eager approvals/nonces",
+    "weakening A1 V3",
+    "repo writes during campaign"
+  ],
+  "requested_outcome": "bounded offline administrative successor and dormant canary execution boundary",
+  "resolution_status": "contained",
+  "rollback_path": "revert Phase-A successor commit; no external execution state exists",
+  "schema": "NovelDevCouncilChangeContractV1",
+  "scope_classification": "closed_world",
+  "selected_approach": "additive V4 per-sample approval plus external-state campaign orchestrator",
+  "status": "PASS"
+}

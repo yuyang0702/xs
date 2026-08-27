@@ -1,0 +1,17 @@
+{
+  "external_actions": {
+    "credential_lookup_count": 0,
+    "http_post_attempts": 0,
+    "model_calls": 0,
+    "network_calls": 0,
+    "paid_calls": 0,
+    "provider_client_creation_count": 0,
+    "real_nonce_created": 0,
+    "real_provider_request_attempts": 0
+  },
+  "focused": "7 passed",
+  "full_suite": "3794 passed, 41 skipped, 6 xfailed, 54 failed, 72 errors; failures/errors are pre-existing sealed-evidence/live-parity/materialization gates outside changed paths; reproduced identically in two complete runs",
+  "related": "107 passed",
+  "schema": "SkillV3OvernightPhaseATestReceiptV1",
+  "status": "PASS"
+}

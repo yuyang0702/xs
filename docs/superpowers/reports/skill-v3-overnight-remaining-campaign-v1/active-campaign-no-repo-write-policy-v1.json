@@ -1,0 +1,17 @@
+{
+  "clean_head_rechecked_before_each_sample": true,
+  "external_stores": [
+    "campaign permission receipt",
+    "JIT signed approvals",
+    "JIT nonces",
+    "execution receipts",
+    "sample artifacts",
+    "attempt counters",
+    "intermediate status"
+  ],
+  "no_git_commits": true,
+  "no_repo_file_writes": true,
+  "resume_provider_dispatch_allowed": false,
+  "schema": "SkillV3ActiveCampaignNoRepoWritePolicyV1",
+  "status": "PASS"
+}

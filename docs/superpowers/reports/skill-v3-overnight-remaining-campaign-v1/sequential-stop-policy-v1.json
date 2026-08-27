@@ -1,0 +1,43 @@
+{
+  "automatic_replacement": false,
+  "continue_after_failure": false,
+  "predecessor_must_be_sealed_valid": true,
+  "schema": "SkillV3RemainingCampaignSequentialStopPolicyV1",
+  "sequence": [
+    "B1",
+    "A2",
+    "B2",
+    "A3",
+    "B3"
+  ],
+  "status": "PASS",
+  "stop_on_first_failure": true,
+  "stop_reasons": [
+    "APPROVAL_FAILURE",
+    "ATTEMPT_COUNTER_VIOLATION",
+    "BLOCKED_PRE_DISPATCH",
+    "CAMPAIGN_ELAPSED_CAP_REACHED",
+    "CAMPAIGN_REQUEST_BUDGET_EXHAUSTED",
+    "CREDENTIAL_FAILURE",
+    "DESTINATION_DRIFT",
+    "DOMAIN_VALIDATION_FAILURE",
+    "EGRESS_POLICY_DRIFT",
+    "GIT_DRIFT",
+    "LOCAL_VALIDATION_FAILURE",
+    "METHOD_CONTAMINATION",
+    "MODEL_INPUT_DRIFT",
+    "NETWORK_HTTP_TRANSPORT_FAILURE",
+    "NONCE_FAILURE",
+    "PARSE_FAILURE",
+    "PRIVACY_VIOLATION",
+    "PROVIDER_CLIENT_FAILURE",
+    "REFERENCE_DISTILL_DRIFT",
+    "ROUTE_DRIFT",
+    "SAMPLE_LOCK_DRIFT",
+    "SCHEMA_FAILURE",
+    "SEALED_INVALID",
+    "SKILL_SOURCE_DRIFT",
+    "TERMINAL_PIPELINE_FAILURE",
+    "WIRE_INPUT_DRIFT"
+  ]
+}

@@ -30,6 +30,7 @@ from . import skill_v3_character_heavy_pilot as pilot
 SIGNED_APPROVAL_SCHEMA = "SkillV3PilotSuccessorSignedApprovalV1"
 SIGNED_APPROVAL_SCHEMA_V2 = "SkillV3PilotRealBoundarySuccessorSignedApprovalV2"
 SIGNED_APPROVAL_SCHEMA_V3 = "SkillV3PilotDestinationBoundSuccessorSignedApprovalV3"
+SIGNED_APPROVAL_SCHEMA_V4 = "SkillV3RemainingCampaignJitSignedApprovalV4"
 CONSUMPTION_SCHEMA = "SkillV3PilotSuccessorApprovalConsumptionV1"
 APPROVAL_SCOPE = "SKILL_V3_CHARACTER_HEAVY_MULTI_SAMPLE_PILOT_SAMPLE_1_A1_ONLY"
 SIGNED_APPROVAL_DOMAIN = "novel-flywheel-skill-v3-pilot-successor-signed-approval-v1"
@@ -38,6 +39,9 @@ SIGNED_APPROVAL_DOMAIN_V2 = (
 )
 SIGNED_APPROVAL_DOMAIN_V3 = (
     "novel-flywheel-skill-v3-pilot-destination-bound-successor-signed-approval-v3"
+)
+SIGNED_APPROVAL_DOMAIN_V4 = (
+    "novel-flywheel-skill-v3-remaining-campaign-jit-signed-approval-v4"
 )
 CONSUMPTION_DOMAIN = "novel-flywheel-skill-v3-pilot-successor-approval-consumption-v1"
 DEFAULT_STORE_RELATIVE = Path(
@@ -123,6 +127,16 @@ _DESTINATION_FIELDS_V3 = {
 }
 _PAYLOAD_FIELDS_V3 = _PAYLOAD_FIELDS_V2 | _DESTINATION_FIELDS_V3
 _SIGNED_FIELDS_V3 = (_SIGNED_FIELDS_V2 - _PAYLOAD_FIELDS_V2) | _PAYLOAD_FIELDS_V3
+REMAINING_CAMPAIGN_APPROVAL_SCOPE = (
+    "SKILL_V3_REMAINING_CAMPAIGN_JIT_SINGLE_SAMPLE_ONLY"
+)
+_CAMPAIGN_FIELDS_V4 = {
+    "campaign_authorization_sha256",
+    "campaign_authorization_context_identity_sha256",
+    "campaign_expires_at",
+}
+_PAYLOAD_FIELDS_V4 = _PAYLOAD_FIELDS_V3 | _CAMPAIGN_FIELDS_V4
+_SIGNED_FIELDS_V4 = _SIGNED_FIELDS_V3 | _CAMPAIGN_FIELDS_V4
 
 
 class SkillV3ApprovalStoreError(RuntimeError):
@@ -1026,3 +1040,255 @@ def successor_payload_from_sealed_a1_v3(
         "unbound_proxy_route_allowed": False,
     })
     return payload
+
+
+def _sealed_remaining_campaign_approval_v4(
+    payload: Mapping[str, Any], branch: str,
+) -> dict[str, Any]:
+    """Seal one JIT approval sourced from a bounded campaign permission.
+
+    This is deliberately additive: the historical A1 V1/V2/V3 approval
+    validators remain byte-for-byte strict and A1-only.
+    """
+
+    _require(set(payload) == _PAYLOAD_FIELDS_V4, "SIGNED_APPROVAL_FIELDS_UNEXPECTED")
+    body = {
+        "schema": SIGNED_APPROVAL_SCHEMA_V4,
+        "version": 4,
+        "canonicalization_version": CANONICALIZATION_VERSION,
+        **deepcopy(dict(payload)),
+        "repository_branch": branch,
+        "approval_scope": REMAINING_CAMPAIGN_APPROVAL_SCOPE,
+        "max_provider_request_attempts": 1,
+        "max_network_request_attempts": 1,
+        "max_http_post_attempts": 1,
+        "max_logical_model_calls": 1,
+        "no_retry": True,
+        "no_transport_retry": True,
+        "no_fallback": True,
+        "no_route_switch": True,
+        "no_resume": True,
+        "no_second_dispatch": True,
+        "required_egress_scope": [
+            "exact sealed current-sample system/context packet",
+            "current-sample authority/task/story slice",
+            "frozen non-Skill project guidance",
+            "current-arm Skill context",
+            "structured output contract",
+        ],
+        "raw_ref_corpus_egress": False,
+        "named_approver": "USER_PROJECT_OWNER",
+        "approval_method": "bounded_campaign_permission_jit_derivation",
+        "authorized_actions": {
+            "credential_lookup": True,
+            "provider_client_creation": True,
+            "network": True,
+            "paid_provider_model_request": True,
+            "necessary_request_data_egress": True,
+        },
+        "single_use": True,
+        "usage_status": "unused",
+        "execution_authorized": True,
+        "other_samples_authorized": False,
+        "skill_v3_cutover_authorized": False,
+        "planning_v2_cutover_authorized": False,
+        "full_short_authorized": False,
+        "nonce_state": "NOT_CREATED",
+    }
+    return {
+        **body,
+        "signed_approval_sha256": domain_sha256(SIGNED_APPROVAL_DOMAIN_V4, body),
+    }
+
+
+def validate_remaining_campaign_signed_approval_v4(
+    value: Mapping[str, Any], *, expected: Mapping[str, Any],
+    expected_branch: str | None = None, now: datetime | None = None,
+) -> dict[str, Any]:
+    """Validate one exact remaining-sample approval without weakening A1 V3."""
+
+    _require(isinstance(value, Mapping), "SIGNED_APPROVAL_SCHEMA_MISMATCH")
+    _require(
+        value.get("schema") == SIGNED_APPROVAL_SCHEMA_V4
+        and value.get("version") == 4,
+        "SIGNED_APPROVAL_SCHEMA_MISMATCH",
+    )
+    _require(set(value) == _SIGNED_FIELDS_V4, "SIGNED_APPROVAL_FIELDS_UNEXPECTED")
+    _require(
+        value.get("canonicalization_version") == CANONICALIZATION_VERSION,
+        "SIGNED_APPROVAL_CANONICALIZATION_UNSUPPORTED",
+    )
+    _require(
+        value.get("approval_scope") == REMAINING_CAMPAIGN_APPROVAL_SCOPE,
+        "APPROVAL_SCOPE_MISMATCH",
+    )
+    _require(value.get("pilot_id") == pilot.PILOT_ID, "STALE_APPROVAL")
+    for field, reason in (
+        ("repository_head", "STALE_APPROVAL_HEAD"),
+        ("sample_id", "APPROVAL_FOR_WRONG_SAMPLE"),
+        ("sample_slot", "APPROVAL_FOR_WRONG_SAMPLE"),
+        ("arm", "APPROVAL_FOR_WRONG_SAMPLE"),
+        ("sample_index", "APPROVAL_FOR_WRONG_SAMPLE"),
+        ("sample_lock_sha256", "APPROVAL_FOR_WRONG_SAMPLE_LOCK"),
+        ("parent_experiment_lock_sha256", "STALE_PARENT_EXPERIMENT_LOCK"),
+        ("wire_input_sha256", "WIRE_INPUT_BINDING_MISMATCH"),
+        ("model_input_component_binding_sha256", "STALE_INPUT_COMPONENT_BINDING"),
+        ("provider_descriptor_sha256", "WRONG_PROVIDER"),
+        ("model_binding_sha256", "WRONG_MODEL"),
+        ("route_fingerprint", "WRONG_ROUTE"),
+        ("sampling_policy_sha256", "WRONG_SAMPLING_POLICY"),
+        ("validator_sha256", "WRONG_VALIDATOR_POLICY"),
+        ("max_output_tokens", "WRONG_OUTPUT_CAP"),
+        ("nonce_policy_version", "NONCE_POLICY_MISMATCH"),
+        ("real_dispatcher_version", "REAL_DISPATCHER_VERSION_MISMATCH"),
+        ("destination_origin", "APPROVAL_DESTINATION_ORIGIN_MISMATCH"),
+        ("destination_origin_sha256", "APPROVAL_DESTINATION_SHA_MISMATCH"),
+        ("destination_path_or_prefix", "APPROVAL_DESTINATION_PATH_MISMATCH"),
+        ("destination_operator_class", "APPROVAL_DESTINATION_OPERATOR_MISMATCH"),
+        ("egress_policy_sha256", "EGRESS_POLICY_SHA_MISMATCH"),
+        ("campaign_authorization_sha256", "CAMPAIGN_PERMISSION_MISMATCH"),
+        (
+            "campaign_authorization_context_identity_sha256",
+            "CAMPAIGN_PERMISSION_MISMATCH",
+        ),
+        ("campaign_expires_at", "CAMPAIGN_PERMISSION_MISMATCH"),
+    ):
+        _require(value.get(field) == expected.get(field), reason)
+    _require(_HEX40.fullmatch(str(value.get("repository_head"))) is not None, "STALE_APPROVAL_HEAD")
+    if expected_branch is not None:
+        _require(value.get("repository_branch") == expected_branch, "STALE_APPROVAL_BRANCH")
+    for field in (
+        "sample_lock_sha256", "parent_experiment_lock_sha256",
+        "model_input_component_binding_sha256", "provider_descriptor_sha256",
+        "model_binding_sha256", "route_fingerprint", "wire_input_sha256",
+        "sampling_policy_sha256", "validator_sha256",
+        "destination_origin_sha256", "egress_policy_sha256",
+        "user_authorization_message_sha256",
+        "user_authorization_context_identity_sha256",
+        "campaign_authorization_sha256",
+        "campaign_authorization_context_identity_sha256",
+    ):
+        _require(_HEX64.fullmatch(str(value.get(field))) is not None, f"{field.upper()}_INVALID")
+    _require(value.get("sample_slot") in {"B1", "A2", "B2", "A3", "B3"}, "APPROVAL_FOR_WRONG_SAMPLE")
+    expected_arm_index = {
+        "B1": ("B", 1), "A2": ("A", 2), "B2": ("B", 2),
+        "A3": ("A", 3), "B3": ("B", 3),
+    }[str(value["sample_slot"])]
+    _require(
+        (value.get("arm"), value.get("sample_index")) == expected_arm_index,
+        "APPROVAL_FOR_WRONG_SAMPLE",
+    )
+    _require(value.get("max_output_tokens") == 4624, "WRONG_OUTPUT_CAP")
+    _require(value.get("destination_origin") == "https://lingsuan.org", "APPROVAL_DESTINATION_ORIGIN_MISMATCH")
+    _require(value.get("destination_path_or_prefix") == "/v1/messages", "APPROVAL_DESTINATION_PATH_MISMATCH")
+    _require(
+        value.get("destination_operator_class")
+        == "THIRD_PARTY_RELAY_LOCAL_METADATA_ONLY",
+        "APPROVAL_DESTINATION_OPERATOR_MISMATCH",
+    )
+    _require(value.get("cross_origin_redirect_allowed") is False, "CROSS_ORIGIN_REDIRECT")
+    _require(value.get("unbound_proxy_route_allowed") is False, "UNBOUND_PROXY_ROUTE")
+    for field in (
+        "max_provider_request_attempts", "max_network_request_attempts",
+        "max_http_post_attempts", "max_logical_model_calls",
+    ):
+        _require(value.get(field) == 1, "APPROVAL_BUDGET_MISMATCH")
+    for field in (
+        "no_retry", "no_transport_retry", "no_fallback", "no_route_switch",
+        "no_resume", "no_second_dispatch",
+    ):
+        _require(value.get(field) is True, "APPROVAL_DISPATCH_POLICY_MISMATCH")
+    _require(value.get("raw_ref_corpus_egress") is False, "APPROVAL_EGRESS_SCOPE_MISMATCH")
+    _require(value.get("named_approver") == "USER_PROJECT_OWNER", "NAMED_APPROVER_INVALID")
+    _require(
+        value.get("approval_method") == "bounded_campaign_permission_jit_derivation",
+        "APPROVAL_SCOPE_MISMATCH",
+    )
+    _require(
+        tuple(value.get("required_egress_scope") or ())
+        == (
+            "exact sealed current-sample system/context packet",
+            "current-sample authority/task/story slice",
+            "frozen non-Skill project guidance",
+            "current-arm Skill context",
+            "structured output contract",
+        ),
+        "APPROVAL_EGRESS_SCOPE_MISMATCH",
+    )
+    _require(
+        value.get("authorized_actions") == {
+            "credential_lookup": True,
+            "provider_client_creation": True,
+            "network": True,
+            "paid_provider_model_request": True,
+            "necessary_request_data_egress": True,
+        },
+        "APPROVAL_ACTION_SCOPE_MISMATCH",
+    )
+    _require(value.get("single_use") is True, "APPROVAL_NOT_SINGLE_USE")
+    _require(value.get("usage_status") == "unused", "APPROVAL_REUSE")
+    _require(value.get("execution_authorized") is True, "SIGNED_APPROVAL_NOT_EXECUTABLE")
+    _require(value.get("nonce_state") == "NOT_CREATED", "NONCE_CREATED_DURING_APPROVAL")
+    _require("nonce" not in value, "INLINE_EXECUTABLE_NONCE_FORBIDDEN")
+    _require(
+        all(value.get(field) is False for field in (
+            "other_samples_authorized", "skill_v3_cutover_authorized",
+            "planning_v2_cutover_authorized", "full_short_authorized",
+        )),
+        "APPROVAL_SCOPE_MISMATCH",
+    )
+    issued = _parse_utc(value.get("issued_at"))
+    expires = _parse_utc(value.get("expires_at"))
+    campaign_expires = _parse_utc(value.get("campaign_expires_at"))
+    current = now or datetime.now(timezone.utc)
+    _require(issued <= current <= expires <= campaign_expires, "STALE_APPROVAL")
+    body = dict(value)
+    digest = body.pop("signed_approval_sha256", None)
+    _require(
+        digest == domain_sha256(SIGNED_APPROVAL_DOMAIN_V4, body),
+        "SIGNED_APPROVAL_SHA256_MISMATCH",
+    )
+    return deepcopy(dict(value))
+
+
+def create_remaining_campaign_signed_approval_v4(
+    *, repo_root: Path, store_root: Path, payload: Mapping[str, Any],
+    now: datetime | None = None,
+) -> dict[str, Any]:
+    before_head, branch = _clean_git_identity(repo_root)
+    _require(payload.get("repository_head") == before_head, "STALE_APPROVAL_HEAD")
+    root = _exact_store_root(repo_root, store_root)
+    current = now or datetime.now(timezone.utc)
+    value = validate_remaining_campaign_signed_approval_v4(
+        _sealed_remaining_campaign_approval_v4(payload, branch),
+        expected=payload,
+        expected_branch=branch,
+        now=current,
+    )
+    _require(not _active_approval_exists(root, value, current), "ACTIVE_APPROVAL_ALREADY_EXISTS")
+    _exclusive_write(
+        _approval_path(root, str(value["approval_id"])),
+        value,
+        "APPROVAL_ID_ALREADY_EXISTS",
+    )
+    after_head, after_branch = _clean_git_identity(repo_root)
+    _require(after_head == before_head and after_branch == branch, "APPROVAL_CHANGED_GIT_STATE")
+    return value
+
+
+def load_remaining_campaign_signed_approval_v4(
+    *, repo_root: Path, store_root: Path, approval_id: str,
+    expected: Mapping[str, Any], now: datetime | None = None,
+) -> dict[str, Any]:
+    head, branch = _clean_git_identity(repo_root)
+    root = _exact_store_root(repo_root, store_root)
+    _require(not _consumption_path(root, approval_id).exists(), "APPROVAL_REUSE")
+    value = _read_json(_approval_path(root, approval_id), "SIGNED_APPROVAL_NOT_FOUND")
+    expected_value = dict(expected)
+    expected_value["repository_head"] = head
+    return validate_remaining_campaign_signed_approval_v4(
+        value,
+        expected=expected_value,
+        expected_branch=branch,
+        now=now,
+    )

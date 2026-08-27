@@ -1,0 +1,28 @@
+{
+  "a1_individual_permission_evidence_remains_valid": true,
+  "administrative_permission_is_executable_signed_approval": false,
+  "distinct_durable_nonce_per_sample": true,
+  "distinct_execution_receipt_per_sample": true,
+  "distinct_real_provider_request_per_sample": true,
+  "distinct_signed_approval_per_sample": true,
+  "five_sample_signed_approval_object": false,
+  "jit_approval_only": true,
+  "jit_nonce_only": true,
+  "policy": "SKILL_V3_REMAINING_CAMPAIGN_BOUNDED_USER_PERMISSION_V1",
+  "schema": "SkillV3RemainingCampaignBoundedUserPermissionV1",
+  "status": "PASS",
+  "unchanged": {
+    "aggregation": true,
+    "blinding": true,
+    "model": true,
+    "model_visible": true,
+    "non_skill_context": true,
+    "output_cap": true,
+    "reference_distill": true,
+    "route": true,
+    "sample_input": true,
+    "sampling": true,
+    "skill_context": true,
+    "validator": true
+  }
+}

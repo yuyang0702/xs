@@ -1,0 +1,12 @@
+{
+  "destination_and_egress_bound": true,
+  "later_sample_nonces_created_eagerly": false,
+  "nonce_policy_version": "skill-v3-pilot-durable-nonce-policy-v1",
+  "one_nonce_per_sample": true,
+  "real_nonce_created_in_phase_a": false,
+  "reserve_after_current_sample_approval_validation": true,
+  "schema": "SkillV3RemainingCampaignJitNoncePolicyV1",
+  "single_use": true,
+  "status": "PASS",
+  "stored_outside_git_worktree": true
+}

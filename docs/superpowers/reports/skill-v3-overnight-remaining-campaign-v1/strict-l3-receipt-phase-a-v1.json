@@ -1,0 +1,13 @@
+{
+  "authority_critical_modules": [
+    "tools/canary/skill_v3_pilot_approval_store.py",
+    "tools/canary/skill_v3_overnight_campaign.py"
+  ],
+  "blockers": 0,
+  "implementation_authorized": "PHASE_A_ONLY",
+  "review_mode": "MAIN_CODEX_SINGLE_AGENT_NO_INDEPENDENCE_CLAIM",
+  "risk_level": "L3_USER_REQUIRED_EXTERNAL_INTEGRATION_CAMPAIGN_AUTHORITY",
+  "schema": "SkillV3OvernightPhaseAStrictL3ReceiptV1",
+  "status": "PASS",
+  "warnings": 0
+}

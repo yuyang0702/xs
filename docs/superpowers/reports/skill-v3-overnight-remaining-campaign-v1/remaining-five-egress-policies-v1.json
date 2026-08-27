@@ -1,0 +1,354 @@
+{
+  "credential_egress": false,
+  "historical_blind_result_egress": false,
+  "learn_node_raw_evidence_egress": false,
+  "local_absolute_path_egress": false,
+  "policies": [
+    {
+      "components": [
+        {
+          "component": "SYSTEM_CONTEXT",
+          "egress_included": true,
+          "sensitivity_class": "PROJECT_CONTENT",
+          "source_identity_or_sha": "c85a337b8d95f805ac3f24d1f6096f98eac23b7f82a7561151415c5c6665a42e"
+        },
+        {
+          "component": "TASK_ENVELOPE",
+          "egress_included": true,
+          "sensitivity_class": "OPERATIONAL_METADATA",
+          "source_identity_or_sha": "84bed63082c9b4abd588790f9292d29aa466ee14e8b085c403ebb47ded2ab0ad"
+        },
+        {
+          "component": "AUTHORITY_CONTEXT",
+          "egress_included": true,
+          "sensitivity_class": "PROJECT_CONTENT",
+          "source_identity_or_sha": "91e5fe89ae741233b983f344bb0aa517974a4341dab56c8341669a5233c2e3d4"
+        },
+        {
+          "component": "STORY_SLICE",
+          "egress_included": true,
+          "sensitivity_class": "PROJECT_CONTENT",
+          "source_identity_or_sha": "7134e84052d6e15bdd0f3bbb75de41a45c9e8c083d09e896004f8228b71c47c7"
+        },
+        {
+          "component": "NON_SKILL_PROJECT_GUIDANCE",
+          "egress_included": true,
+          "sensitivity_class": "CREATIVE_GUIDANCE",
+          "source_identity_or_sha": "94cfcd4f879232b18b389e6dbfe9595ac4a89a047e887f2fd7160046a1d738ba"
+        },
+        {
+          "component": "B_ARM_SKILL_CONTEXT",
+          "egress_included": true,
+          "sensitivity_class": "CREATIVE_GUIDANCE",
+          "source_identity_or_sha": "c830681f79526c44d9bd83430019d75cb886bde0affcad86714ee1fc1f41aedd"
+        },
+        {
+          "component": "OUTPUT_CONTRACT",
+          "egress_included": true,
+          "sensitivity_class": "OPERATIONAL_METADATA",
+          "source_identity_or_sha": "62aaa63cc39a5baaec5657a889e3e77cf32abecbbfa582795620e34bf4877bee"
+        },
+        {
+          "component": "PROVIDER_REQUEST_METADATA",
+          "egress_included": true,
+          "sensitivity_class": "OPERATIONAL_METADATA",
+          "source_identity_or_sha": "6d2188c3b0e1fc0120a7713178b254219436622893c6353cf8a62dd00b68452a"
+        }
+      ],
+      "egress_policy_sha256": "68577676f158f5ee0661ceeed74284c2f652ce2d748b4eae9bae857c33f11736",
+      "excluded": {
+        "credential_egress": false,
+        "historical_blind_result_egress": false,
+        "learn_node_raw_evidence_egress": false,
+        "local_absolute_path_egress": false,
+        "prior_sample_prose_egress": false,
+        "prior_sample_result_egress": false,
+        "raw_distill_evidence_excerpt_egress": false,
+        "raw_ref_corpus_egress": false
+      },
+      "sample_id": "sv3s-cd80aa5d21e790079a06",
+      "sample_slot": "B1",
+      "schema": "SkillV3RemainingSampleEgressPolicyV1",
+      "version": 1,
+      "wire_input_sha256": "75106c9a5ece3a400432228dfa02bef229d44a772173c1b88da361a97d206eff"
+    },
+    {
+      "components": [
+        {
+          "component": "SYSTEM_CONTEXT",
+          "egress_included": true,
+          "sensitivity_class": "PROJECT_CONTENT",
+          "source_identity_or_sha": "e1d254599d24721965a53246da5a61418e51bb923b0204c4d620785568fd5294"
+        },
+        {
+          "component": "TASK_ENVELOPE",
+          "egress_included": true,
+          "sensitivity_class": "OPERATIONAL_METADATA",
+          "source_identity_or_sha": "84bed63082c9b4abd588790f9292d29aa466ee14e8b085c403ebb47ded2ab0ad"
+        },
+        {
+          "component": "AUTHORITY_CONTEXT",
+          "egress_included": true,
+          "sensitivity_class": "PROJECT_CONTENT",
+          "source_identity_or_sha": "91e5fe89ae741233b983f344bb0aa517974a4341dab56c8341669a5233c2e3d4"
+        },
+        {
+          "component": "STORY_SLICE",
+          "egress_included": true,
+          "sensitivity_class": "PROJECT_CONTENT",
+          "source_identity_or_sha": "7134e84052d6e15bdd0f3bbb75de41a45c9e8c083d09e896004f8228b71c47c7"
+        },
+        {
+          "component": "NON_SKILL_PROJECT_GUIDANCE",
+          "egress_included": true,
+          "sensitivity_class": "CREATIVE_GUIDANCE",
+          "source_identity_or_sha": "94cfcd4f879232b18b389e6dbfe9595ac4a89a047e887f2fd7160046a1d738ba"
+        },
+        {
+          "component": "A_ARM_SKILL_CONTEXT",
+          "egress_included": true,
+          "sensitivity_class": "CREATIVE_GUIDANCE",
+          "source_identity_or_sha": "7d0f6309ede2261f2f6a1098d394937948bf5b50eb9248266ab350fd91da9adc"
+        },
+        {
+          "component": "OUTPUT_CONTRACT",
+          "egress_included": true,
+          "sensitivity_class": "OPERATIONAL_METADATA",
+          "source_identity_or_sha": "62aaa63cc39a5baaec5657a889e3e77cf32abecbbfa582795620e34bf4877bee"
+        },
+        {
+          "component": "PROVIDER_REQUEST_METADATA",
+          "egress_included": true,
+          "sensitivity_class": "OPERATIONAL_METADATA",
+          "source_identity_or_sha": "6d2188c3b0e1fc0120a7713178b254219436622893c6353cf8a62dd00b68452a"
+        }
+      ],
+      "egress_policy_sha256": "d26e74f84016b8236738ebc15862c005eb998a12e8270f9e89eff45a3c2158d8",
+      "excluded": {
+        "credential_egress": false,
+        "historical_blind_result_egress": false,
+        "learn_node_raw_evidence_egress": false,
+        "local_absolute_path_egress": false,
+        "prior_sample_prose_egress": false,
+        "prior_sample_result_egress": false,
+        "raw_distill_evidence_excerpt_egress": false,
+        "raw_ref_corpus_egress": false
+      },
+      "sample_id": "sv3s-689f28e6be27dd416760",
+      "sample_slot": "A2",
+      "schema": "SkillV3RemainingSampleEgressPolicyV1",
+      "version": 1,
+      "wire_input_sha256": "47d7e240783edf70528dc05b1c6694271a4228677fee2ef358db398d35a406f5"
+    },
+    {
+      "components": [
+        {
+          "component": "SYSTEM_CONTEXT",
+          "egress_included": true,
+          "sensitivity_class": "PROJECT_CONTENT",
+          "source_identity_or_sha": "c85a337b8d95f805ac3f24d1f6096f98eac23b7f82a7561151415c5c6665a42e"
+        },
+        {
+          "component": "TASK_ENVELOPE",
+          "egress_included": true,
+          "sensitivity_class": "OPERATIONAL_METADATA",
+          "source_identity_or_sha": "84bed63082c9b4abd588790f9292d29aa466ee14e8b085c403ebb47ded2ab0ad"
+        },
+        {
+          "component": "AUTHORITY_CONTEXT",
+          "egress_included": true,
+          "sensitivity_class": "PROJECT_CONTENT",
+          "source_identity_or_sha": "91e5fe89ae741233b983f344bb0aa517974a4341dab56c8341669a5233c2e3d4"
+        },
+        {
+          "component": "STORY_SLICE",
+          "egress_included": true,
+          "sensitivity_class": "PROJECT_CONTENT",
+          "source_identity_or_sha": "7134e84052d6e15bdd0f3bbb75de41a45c9e8c083d09e896004f8228b71c47c7"
+        },
+        {
+          "component": "NON_SKILL_PROJECT_GUIDANCE",
+          "egress_included": true,
+          "sensitivity_class": "CREATIVE_GUIDANCE",
+          "source_identity_or_sha": "94cfcd4f879232b18b389e6dbfe9595ac4a89a047e887f2fd7160046a1d738ba"
+        },
+        {
+          "component": "B_ARM_SKILL_CONTEXT",
+          "egress_included": true,
+          "sensitivity_class": "CREATIVE_GUIDANCE",
+          "source_identity_or_sha": "c830681f79526c44d9bd83430019d75cb886bde0affcad86714ee1fc1f41aedd"
+        },
+        {
+          "component": "OUTPUT_CONTRACT",
+          "egress_included": true,
+          "sensitivity_class": "OPERATIONAL_METADATA",
+          "source_identity_or_sha": "62aaa63cc39a5baaec5657a889e3e77cf32abecbbfa582795620e34bf4877bee"
+        },
+        {
+          "component": "PROVIDER_REQUEST_METADATA",
+          "egress_included": true,
+          "sensitivity_class": "OPERATIONAL_METADATA",
+          "source_identity_or_sha": "6d2188c3b0e1fc0120a7713178b254219436622893c6353cf8a62dd00b68452a"
+        }
+      ],
+      "egress_policy_sha256": "084bdf32daabdc1f7b286496e52260146777a5602f7fff64278d414b7279622a",
+      "excluded": {
+        "credential_egress": false,
+        "historical_blind_result_egress": false,
+        "learn_node_raw_evidence_egress": false,
+        "local_absolute_path_egress": false,
+        "prior_sample_prose_egress": false,
+        "prior_sample_result_egress": false,
+        "raw_distill_evidence_excerpt_egress": false,
+        "raw_ref_corpus_egress": false
+      },
+      "sample_id": "sv3s-86c1bce67d1e52ec2aa6",
+      "sample_slot": "B2",
+      "schema": "SkillV3RemainingSampleEgressPolicyV1",
+      "version": 1,
+      "wire_input_sha256": "75106c9a5ece3a400432228dfa02bef229d44a772173c1b88da361a97d206eff"
+    },
+    {
+      "components": [
+        {
+          "component": "SYSTEM_CONTEXT",
+          "egress_included": true,
+          "sensitivity_class": "PROJECT_CONTENT",
+          "source_identity_or_sha": "e1d254599d24721965a53246da5a61418e51bb923b0204c4d620785568fd5294"
+        },
+        {
+          "component": "TASK_ENVELOPE",
+          "egress_included": true,
+          "sensitivity_class": "OPERATIONAL_METADATA",
+          "source_identity_or_sha": "84bed63082c9b4abd588790f9292d29aa466ee14e8b085c403ebb47ded2ab0ad"
+        },
+        {
+          "component": "AUTHORITY_CONTEXT",
+          "egress_included": true,
+          "sensitivity_class": "PROJECT_CONTENT",
+          "source_identity_or_sha": "91e5fe89ae741233b983f344bb0aa517974a4341dab56c8341669a5233c2e3d4"
+        },
+        {
+          "component": "STORY_SLICE",
+          "egress_included": true,
+          "sensitivity_class": "PROJECT_CONTENT",
+          "source_identity_or_sha": "7134e84052d6e15bdd0f3bbb75de41a45c9e8c083d09e896004f8228b71c47c7"
+        },
+        {
+          "component": "NON_SKILL_PROJECT_GUIDANCE",
+          "egress_included": true,
+          "sensitivity_class": "CREATIVE_GUIDANCE",
+          "source_identity_or_sha": "94cfcd4f879232b18b389e6dbfe9595ac4a89a047e887f2fd7160046a1d738ba"
+        },
+        {
+          "component": "A_ARM_SKILL_CONTEXT",
+          "egress_included": true,
+          "sensitivity_class": "CREATIVE_GUIDANCE",
+          "source_identity_or_sha": "7d0f6309ede2261f2f6a1098d394937948bf5b50eb9248266ab350fd91da9adc"
+        },
+        {
+          "component": "OUTPUT_CONTRACT",
+          "egress_included": true,
+          "sensitivity_class": "OPERATIONAL_METADATA",
+          "source_identity_or_sha": "62aaa63cc39a5baaec5657a889e3e77cf32abecbbfa582795620e34bf4877bee"
+        },
+        {
+          "component": "PROVIDER_REQUEST_METADATA",
+          "egress_included": true,
+          "sensitivity_class": "OPERATIONAL_METADATA",
+          "source_identity_or_sha": "6d2188c3b0e1fc0120a7713178b254219436622893c6353cf8a62dd00b68452a"
+        }
+      ],
+      "egress_policy_sha256": "4f883e65a60e1f109fa11706dc1b877cbc08675efc522829e9723c35802f5efb",
+      "excluded": {
+        "credential_egress": false,
+        "historical_blind_result_egress": false,
+        "learn_node_raw_evidence_egress": false,
+        "local_absolute_path_egress": false,
+        "prior_sample_prose_egress": false,
+        "prior_sample_result_egress": false,
+        "raw_distill_evidence_excerpt_egress": false,
+        "raw_ref_corpus_egress": false
+      },
+      "sample_id": "sv3s-32d61044ab8db7c9b145",
+      "sample_slot": "A3",
+      "schema": "SkillV3RemainingSampleEgressPolicyV1",
+      "version": 1,
+      "wire_input_sha256": "47d7e240783edf70528dc05b1c6694271a4228677fee2ef358db398d35a406f5"
+    },
+    {
+      "components": [
+        {
+          "component": "SYSTEM_CONTEXT",
+          "egress_included": true,
+          "sensitivity_class": "PROJECT_CONTENT",
+          "source_identity_or_sha": "c85a337b8d95f805ac3f24d1f6096f98eac23b7f82a7561151415c5c6665a42e"
+        },
+        {
+          "component": "TASK_ENVELOPE",
+          "egress_included": true,
+          "sensitivity_class": "OPERATIONAL_METADATA",
+          "source_identity_or_sha": "84bed63082c9b4abd588790f9292d29aa466ee14e8b085c403ebb47ded2ab0ad"
+        },
+        {
+          "component": "AUTHORITY_CONTEXT",
+          "egress_included": true,
+          "sensitivity_class": "PROJECT_CONTENT",
+          "source_identity_or_sha": "91e5fe89ae741233b983f344bb0aa517974a4341dab56c8341669a5233c2e3d4"
+        },
+        {
+          "component": "STORY_SLICE",
+          "egress_included": true,
+          "sensitivity_class": "PROJECT_CONTENT",
+          "source_identity_or_sha": "7134e84052d6e15bdd0f3bbb75de41a45c9e8c083d09e896004f8228b71c47c7"
+        },
+        {
+          "component": "NON_SKILL_PROJECT_GUIDANCE",
+          "egress_included": true,
+          "sensitivity_class": "CREATIVE_GUIDANCE",
+          "source_identity_or_sha": "94cfcd4f879232b18b389e6dbfe9595ac4a89a047e887f2fd7160046a1d738ba"
+        },
+        {
+          "component": "B_ARM_SKILL_CONTEXT",
+          "egress_included": true,
+          "sensitivity_class": "CREATIVE_GUIDANCE",
+          "source_identity_or_sha": "c830681f79526c44d9bd83430019d75cb886bde0affcad86714ee1fc1f41aedd"
+        },
+        {
+          "component": "OUTPUT_CONTRACT",
+          "egress_included": true,
+          "sensitivity_class": "OPERATIONAL_METADATA",
+          "source_identity_or_sha": "62aaa63cc39a5baaec5657a889e3e77cf32abecbbfa582795620e34bf4877bee"
+        },
+        {
+          "component": "PROVIDER_REQUEST_METADATA",
+          "egress_included": true,
+          "sensitivity_class": "OPERATIONAL_METADATA",
+          "source_identity_or_sha": "6d2188c3b0e1fc0120a7713178b254219436622893c6353cf8a62dd00b68452a"
+        }
+      ],
+      "egress_policy_sha256": "890c67d589f40fb2fa5c7795c58d1d332134720843c506b8ad7c0ed182be8e05",
+      "excluded": {
+        "credential_egress": false,
+        "historical_blind_result_egress": false,
+        "learn_node_raw_evidence_egress": false,
+        "local_absolute_path_egress": false,
+        "prior_sample_prose_egress": false,
+        "prior_sample_result_egress": false,
+        "raw_distill_evidence_excerpt_egress": false,
+        "raw_ref_corpus_egress": false
+      },
+      "sample_id": "sv3s-bbd71244a306271cd726",
+      "sample_slot": "B3",
+      "schema": "SkillV3RemainingSampleEgressPolicyV1",
+      "version": 1,
+      "wire_input_sha256": "75106c9a5ece3a400432228dfa02bef229d44a772173c1b88da361a97d206eff"
+    }
+  ],
+  "prior_sample_prose_egress": false,
+  "prior_sample_result_egress": false,
+  "raw_distill_evidence_excerpt_egress": false,
+  "raw_ref_corpus_egress": false,
+  "schema": "SkillV3RemainingFiveEgressPoliciesV1",
+  "status": "EXACT"
+}

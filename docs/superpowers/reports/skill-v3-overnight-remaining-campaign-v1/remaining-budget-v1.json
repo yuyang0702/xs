@@ -1,0 +1,44 @@
+{
+  "maximum_elapsed_hours": 10,
+  "per_sample_caps": {
+    "http_posts": 1,
+    "logical_model_calls": 1,
+    "network_attempts": 1,
+    "provider_requests": 1
+  },
+  "per_sample_output_caps": [
+    {
+      "max_output_tokens": 4624,
+      "sample_id": "sv3s-cd80aa5d21e790079a06",
+      "sample_slot": "B1"
+    },
+    {
+      "max_output_tokens": 4624,
+      "sample_id": "sv3s-689f28e6be27dd416760",
+      "sample_slot": "A2"
+    },
+    {
+      "max_output_tokens": 4624,
+      "sample_id": "sv3s-86c1bce67d1e52ec2aa6",
+      "sample_slot": "B2"
+    },
+    {
+      "max_output_tokens": 4624,
+      "sample_id": "sv3s-32d61044ab8db7c9b145",
+      "sample_slot": "A3"
+    },
+    {
+      "max_output_tokens": 4624,
+      "sample_id": "sv3s-bbd71244a306271cd726",
+      "sample_slot": "B3"
+    }
+  ],
+  "remaining_cost_cap": "UNKNOWN_NOT_SEALED",
+  "remaining_max_http_post_attempts": 5,
+  "remaining_max_logical_model_calls": 5,
+  "remaining_max_network_attempts": 5,
+  "remaining_max_output_tokens_sum": 23120,
+  "remaining_max_provider_requests": 5,
+  "schema": "SkillV3RemainingCampaignBudgetV1",
+  "status": "EXACT"
+}

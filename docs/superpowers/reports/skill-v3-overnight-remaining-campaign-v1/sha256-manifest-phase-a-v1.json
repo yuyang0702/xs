@@ -1,0 +1,108 @@
+{
+  "definition_sha256": "da04de699776644088000e1a625682c7ee35012ad19447d8d24b1ede8fe2a150",
+  "entries": [
+    {
+      "bytes": 252,
+      "path": "README.md",
+      "sha256": "98c30f2ae10e0fbebfc443dc43d1f90a298650f38420258c53d243052c638d37"
+    },
+    {
+      "bytes": 441,
+      "path": "active-campaign-no-repo-write-policy-v1.json",
+      "sha256": "9b19d519af101a85a9d964ab56e8683dfae01989d02df9cab2812f042d28a68c"
+    },
+    {
+      "bytes": 370,
+      "path": "b1-phase-a-supersession-v1.json",
+      "sha256": "0fdf2620611ff8b50b315900b96da42300079398306cc9707a3e609a3a54d054"
+    },
+    {
+      "bytes": 448,
+      "path": "blind-handoff-policy-v1.json",
+      "sha256": "276d6fb326a8e1a7e21ca18c47122c01ff5bc14cb390ff832de81f8f18dc5872"
+    },
+    {
+      "bytes": 896,
+      "path": "bounded-user-permission-successor-policy-v1.json",
+      "sha256": "27e6240702b38c0e12ca2be839d42d6193a3cec29fcc23876896858fc5733d66"
+    },
+    {
+      "bytes": 966,
+      "path": "change-contract-v1.json",
+      "sha256": "66641c7aa50c4e133d689000c318e2b2d5a2296a388908f7c4fc72ed1bf294a8"
+    },
+    {
+      "bytes": 1673,
+      "path": "entry-state-v1.json",
+      "sha256": "65f296745706c2911d88d3b39381a5c61c7ed46dfcfbddc4e5fa0e4d6b834fff"
+    },
+    {
+      "bytes": 1002,
+      "path": "forward-risk-report-v2.json",
+      "sha256": "b891fad6e2025a2d0bf2872180812a30848d401a000d2c3c04d14008a4571871"
+    },
+    {
+      "bytes": 515,
+      "path": "jit-approval-policy-v1.json",
+      "sha256": "17401ecf4b2ebd159fd61fdca5349f3904ddfa2159b40dbb0f44eeeb818aff2c"
+    },
+    {
+      "bytes": 430,
+      "path": "jit-nonce-policy-v1.json",
+      "sha256": "bdf3300e1eeb343dcb0673d7e8ecd7e26d6f3b5df2828161e72e302d965dc56e"
+    },
+    {
+      "bytes": 3656,
+      "path": "phase-a-report-v1.md",
+      "sha256": "1252eb107870b5bbb4c684140c2e5bc08a434a56c8c67505e5dac8fd45920693"
+    },
+    {
+      "bytes": 620,
+      "path": "privacy-scan-phase-a-v1.json",
+      "sha256": "3a369e4e9d01c8f0424312b1b4c2ff6777ddf3d8b11ef8049f264291d188d81a"
+    },
+    {
+      "bytes": 1122,
+      "path": "remaining-budget-v1.json",
+      "sha256": "6f29f23c0abf8cfae62c46c4311d5e30346fb138925f012c3c13a80302301cd3"
+    },
+    {
+      "bytes": 6112,
+      "path": "remaining-five-destination-binding-v1.json",
+      "sha256": "cdea940b20a3ab7e83503a8b0fc13f2b1a041132fc4347cf16d533bcfdc6726f"
+    },
+    {
+      "bytes": 14525,
+      "path": "remaining-five-egress-policies-v1.json",
+      "sha256": "96027487acfe8e55f4fbcadeaebc8a6d928b1b33818084d10fde606c013946a7"
+    },
+    {
+      "bytes": 42293,
+      "path": "remaining-five-sample-identities-v1.json",
+      "sha256": "5218684ac075af244c0d1345d38459c5ca45cf08803e1378bc563e0547297989"
+    },
+    {
+      "bytes": 1038,
+      "path": "sequential-stop-policy-v1.json",
+      "sha256": "bfe29f83208a108856eb8679f39dce470be810a53b8a257ca1d6a9579425e59c"
+    },
+    {
+      "bytes": 800,
+      "path": "six-sample-independence-recheck-v1.json",
+      "sha256": "d02cc84e710a6398b1d4a4b51df3df12570bb147af6c5715a818d7a3595b9c20"
+    },
+    {
+      "bytes": 443,
+      "path": "strict-l3-receipt-phase-a-v1.json",
+      "sha256": "e847f99e175e9d7747135f3f654b84403258e865f57ccd4335cefadb03992765"
+    },
+    {
+      "bytes": 622,
+      "path": "test-receipt-phase-a-v1.json",
+      "sha256": "3c8d95cbbcbff92ccf7ecba79911b1c4efd351b19ce065747da309665c5541f5"
+    }
+  ],
+  "entry_count": 20,
+  "schema": "SkillV3OvernightPhaseASha256ManifestV1",
+  "status": "EXACT"
+}

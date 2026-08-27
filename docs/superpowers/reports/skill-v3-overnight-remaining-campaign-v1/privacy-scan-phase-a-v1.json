@@ -1,0 +1,24 @@
+{
+  "credential_pattern_matches": {
+    "anthropic_secret": 0,
+    "bearer_token": 0,
+    "private_key": 0
+  },
+  "external_actions": {
+    "credential_lookup_count": 0,
+    "http_post_attempts": 0,
+    "model_calls": 0,
+    "network_calls": 0,
+    "paid_calls": 0,
+    "provider_client_creation_count": 0,
+    "real_nonce_created": 0,
+    "real_provider_request_attempts": 0
+  },
+  "raw_prompt_persisted": false,
+  "raw_provider_content_persisted": false,
+  "raw_ref_corpus_persisted": false,
+  "raw_story_persisted": false,
+  "schema": "SkillV3OvernightPhaseAPrivacyScanV1",
+  "status": "PASS",
+  "total_matches": 0
+}
