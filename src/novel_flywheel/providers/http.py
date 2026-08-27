@@ -2,7 +2,7 @@ import asyncio
 from dataclasses import asdict, dataclass
 import hashlib
 import json
-from typing import Any
+from typing import Any, Protocol
 
 import httpx
 
@@ -17,6 +17,14 @@ class ProviderResponseError(RuntimeError):
 
 class SingleDispatchTransportGuardError(RuntimeError):
     pass
+
+
+class SingleDispatchAttemptObserver(Protocol):
+    """Optional pilot-only observer called at the actual outbound boundary."""
+
+    def before_http_post(self) -> None: ...
+
+    def before_network_request(self) -> None: ...
 
 
 @dataclass(frozen=True)
@@ -66,12 +74,14 @@ class HttpProvider:
         timeout: float = 180,
         auth_type: str | None = None,
         transport_policy: SingleDispatchTransportPolicyV1 | None = None,
+        attempt_observer: SingleDispatchAttemptObserver | None = None,
     ) -> None:
         self.base_url = base_url.rstrip("/")
         self.api_key = api_key
         self.headers = headers or {}
         self.auth_type = auth_type
         self.transport_policy = transport_policy
+        self.attempt_observer = attempt_observer
         self._model_logical_calls = 0
         self._http_post_attempts = 0
         if transport_policy is None:
@@ -98,6 +108,9 @@ class HttpProvider:
                 "single_dispatch_http_post_attempt_limit_exhausted",
             )
         self._http_post_attempts += 1
+        if self.attempt_observer is not None:
+            self.attempt_observer.before_http_post()
+            self.attempt_observer.before_network_request()
 
     def transport_attempt_snapshot(self) -> dict[str, Any]:
         policy = self.transport_policy

@@ -57,6 +57,8 @@ PERMISSION_SCOPES = (
     "necessary_request_data_egress",
 )
 HARD_CAP_REASON = "SKILL_V3_PILOT_SINGLE_DISPATCH_HARD_CAP_REACHED"
+REAL_DISPATCHER_VERSION = "skill-v3-real-pilot-dispatcher-v1"
+NONCE_POLICY_VERSION = "skill-v3-pilot-durable-nonce-policy-v1"
 
 
 NEGATIVE_EXECUTION_CASES = (
@@ -296,6 +298,13 @@ class Dispatcher(Protocol):
     async def dispatch(self, model_input: ReconstructedInput, attempts: AttemptGuard) -> str: ...
 
 
+class NonceStore(Protocol):
+    def reserve(self, **bindings: Any) -> Mapping[str, Any]: ...
+    def mark_dispatch_attempt(self, **bindings: Any) -> Mapping[str, Any]: ...
+    def consume(self, **bindings: Any) -> Mapping[str, Any]: ...
+    def invalidate(self, **bindings: Any) -> Mapping[str, Any]: ...
+
+
 class FakeDispatcher:
     offline_fake = True
     retry_disabled = True
@@ -342,19 +351,54 @@ class FakePilotLedger:
 
 @dataclass
 class FakeNonceStore:
-    reserved: set[str] = field(default_factory=set)
-    consumed: set[str] = field(default_factory=set)
+    records: dict[str, dict[str, Any]] = field(default_factory=dict)
     reservation_count: int = 0
 
-    def reserve(self, nonce: str, sample_id: str) -> None:
-        key = _sha_json({"nonce": nonce, "sample_id": sample_id})
-        _require(key not in self.reserved and key not in self.consumed, "NONCE_REUSE")
-        self.reserved.add(key); self.reservation_count += 1
+    @staticmethod
+    def _key(bindings: Mapping[str, Any]) -> str:
+        return _sha_json({
+            "pilot_id": bindings["pilot_id"],
+            "sample_id": bindings["sample_id"],
+            "approval_id": bindings["approval_id"],
+        })
 
-    def consume(self, nonce: str, sample_id: str) -> None:
-        key = _sha_json({"nonce": nonce, "sample_id": sample_id})
-        _require(key in self.reserved and key not in self.consumed, "NONCE_REUSE")
-        self.consumed.add(key)
+    def reserve(self, **bindings: Any) -> Mapping[str, Any]:
+        key = self._key(bindings)
+        _require(key not in self.records, "NONCE_REUSE")
+        record = {
+            **bindings,
+            "nonce_id": "offline-fake-" + str(bindings["sample_id"]),
+            "state": "RESERVED",
+        }
+        self.records[key] = record
+        self.reservation_count += 1
+        return dict(record)
+
+    def _transition(self, new_state: str, **bindings: Any) -> Mapping[str, Any]:
+        key = self._key(bindings)
+        _require(key in self.records, "NONCE_REUSE")
+        record = self.records[key]
+        _require(record["nonce_id"] == bindings["nonce_id"], "NONCE_REUSE")
+        if new_state == "DISPATCH_ATTEMPTED":
+            _require(record["state"] == "RESERVED", "NONCE_REUSE")
+        elif new_state == "CONSUMED":
+            _require(record["state"] == "DISPATCH_ATTEMPTED", "NONCE_REUSE")
+        record["state"] = new_state
+        return dict(record)
+
+    def mark_dispatch_attempt(self, **bindings: Any) -> Mapping[str, Any]:
+        return self._transition("DISPATCH_ATTEMPTED", **bindings)
+
+    def consume(self, **bindings: Any) -> Mapping[str, Any]:
+        return self._transition("CONSUMED", **bindings)
+
+    def invalidate(self, **bindings: Any) -> Mapping[str, Any]:
+        state = (
+            "INVALIDATED_FAILED_DISPATCH"
+            if bindings.get("after_dispatch_attempt")
+            else "INVALIDATED_PRE_DISPATCH"
+        )
+        return self._transition(state, **bindings)
 
 
 def fake_permission(lock: Mapping[str, Any]) -> dict[str, Any]:
@@ -364,10 +408,23 @@ def fake_permission(lock: Mapping[str, Any]) -> dict[str, Any]:
 
 def fake_signed_approval(lock: Mapping[str, Any]) -> dict[str, Any]:
     return {"schema": "OfflineFakeSignedApprovalV1", "non_executable": True,
+            "approval_id": "offline-approval-" + str(lock["sample_id"]),
             "pilot_id": PILOT_ID, "sample_id": lock["sample_id"],
             "sample_lock_sha256": lock["sample_lock_sha256"],
             "parent_experiment_lock_sha256": PARENT_EXPERIMENT_LOCK_SHA256,
-            "nonce": "offline-fake-" + lock["sample_id"], "usage_status": "unused", "expired": False}
+            "model_input_component_binding_sha256": lock["model_input_component_binding_sha256"],
+            "route_fingerprint": lock["route_fingerprint"],
+            "wire_input_sha256": reconstruct_sample_input(
+                Path(__file__).resolve().parents[2], str(lock["sample_id"]),
+            ).wire_input_sha256,
+            "nonce_policy_version": NONCE_POLICY_VERSION,
+            "real_dispatcher_version": REAL_DISPATCHER_VERSION,
+            "nonce_state": "NOT_CREATED",
+            "signed_approval_sha256": _sha_json({
+                "kind": "offline-fake", "sample_id": lock["sample_id"],
+            }),
+            "repository_head": "0" * 40,
+            "usage_status": "unused", "expired": False}
 
 
 def _validate_permission(permission: Mapping[str, Any] | None, lock: Mapping[str, Any], offline_fake: bool) -> None:
@@ -377,18 +434,34 @@ def _validate_permission(permission: Mapping[str, Any] | None, lock: Mapping[str
     if offline_fake: _require(permission.get("non_executable") is True, "PERMISSION_SCOPE_INCOMPLETE")
 
 
-def _validate_approval(approval: Mapping[str, Any] | None, lock: Mapping[str, Any], offline_fake: bool) -> str:
+def _validate_approval(
+    approval: Mapping[str, Any] | None,
+    lock: Mapping[str, Any],
+    model_input: ReconstructedInput,
+    offline_fake: bool,
+) -> dict[str, Any]:
     _require(bool(approval), "MISSING_SIGNED_APPROVAL")
-    _require(approval.get("expired") is False, "STALE_APPROVAL")
+    _require(approval.get("expired", False) is False, "STALE_APPROVAL")
     _require(approval.get("usage_status") == "unused", "APPROVAL_REUSE")
     _require(approval.get("pilot_id") == PILOT_ID, "STALE_APPROVAL")
     _require(approval.get("sample_id") == lock["sample_id"], "APPROVAL_FOR_WRONG_SAMPLE")
     _require(approval.get("sample_lock_sha256") == lock["sample_lock_sha256"], "APPROVAL_FOR_WRONG_SAMPLE_LOCK")
     _require(approval.get("parent_experiment_lock_sha256") == PARENT_EXPERIMENT_LOCK_SHA256, "STALE_PARENT_EXPERIMENT_LOCK")
     if offline_fake: _require(approval.get("non_executable") is True, "MISSING_SIGNED_APPROVAL")
-    nonce = str(approval.get("nonce") or "")
-    _require(bool(nonce), "MISSING_SIGNED_APPROVAL")
-    return nonce
+    _require("nonce" not in approval, "INLINE_EXECUTABLE_NONCE_FORBIDDEN")
+    _require(approval.get("nonce_state") == "NOT_CREATED", "NONCE_CREATED_DURING_APPROVAL")
+    _require(approval.get("nonce_policy_version") == NONCE_POLICY_VERSION, "NONCE_POLICY_MISMATCH")
+    _require(approval.get("real_dispatcher_version") == REAL_DISPATCHER_VERSION, "REAL_DISPATCHER_VERSION_MISMATCH")
+    _require(
+        approval.get("model_input_component_binding_sha256")
+        == model_input.model_input_component_binding_sha256,
+        "STALE_INPUT_COMPONENT_BINDING",
+    )
+    _require(approval.get("route_fingerprint") == model_input.route_fingerprint, "WRONG_ROUTE")
+    _require(approval.get("wire_input_sha256") == model_input.wire_input_sha256, "STALE_INPUT_COMPONENT_BINDING")
+    _require(bool(approval.get("approval_id")), "MISSING_SIGNED_APPROVAL")
+    _require(len(str(approval.get("signed_approval_sha256") or "")) == 64, "MISSING_SIGNED_APPROVAL")
+    return dict(approval)
 
 
 def _eligible(lock: Mapping[str, Any], ledger: FakePilotLedger) -> None:
@@ -459,7 +532,7 @@ async def launch_one_sealed_sample(
     *, repo_root: Path, pilot_id: str, sample_id: str,
     expected_sample_lock_sha256: str, expected_parent_experiment_lock_sha256: str,
     permission: Mapping[str, Any] | None, signed_approval: Mapping[str, Any] | None,
-    nonce_store: FakeNonceStore, ledger: FakePilotLedger, dispatcher: Dispatcher,
+    nonce_store: NonceStore, ledger: FakePilotLedger, dispatcher: Dispatcher,
     output_root: Path, offline_fake: bool,
 ) -> dict[str, Any]:
     sealed = load_sealed_pilot(repo_root)
@@ -470,18 +543,56 @@ async def launch_one_sealed_sample(
     _require(expected_sample_lock_sha256 == lock["sample_lock_sha256"], "STALE_SAMPLE_LOCK")
     _eligible(lock, ledger)
     _validate_permission(permission, lock, offline_fake)
-    nonce = _validate_approval(signed_approval, lock, offline_fake)
     model_input = reconstruct_sample_input(repo_root, sample_id)
+    approval = _validate_approval(signed_approval, lock, model_input, offline_fake)
     _validate_dispatcher(dispatcher, model_input, offline_fake)
-    nonce_store.reserve(nonce, sample_id)
+    reservation = nonce_store.reserve(
+        pilot_id=PILOT_ID,
+        sample_id=sample_id,
+        sample_lock_sha256=lock["sample_lock_sha256"],
+        parent_experiment_lock_sha256=PARENT_EXPERIMENT_LOCK_SHA256,
+        execution_head=str(approval["repository_head"]),
+        approval_id=str(approval["approval_id"]),
+        signed_approval_sha256=str(approval["signed_approval_sha256"]),
+        model_input_component_binding_sha256=model_input.model_input_component_binding_sha256,
+        route_fingerprint=model_input.route_fingerprint,
+    )
+    nonce_binding = {
+        "pilot_id": PILOT_ID,
+        "sample_id": sample_id,
+        "approval_id": str(approval["approval_id"]),
+        "nonce_id": str(reservation["nonce_id"]),
+    }
+    bind_nonce = getattr(dispatcher, "bind_nonce_reservation", None)
+    if bind_nonce is not None:
+        bind_nonce(nonce_store=nonce_store, nonce_binding=nonce_binding)
     # Final post-reservation pre-dispatch check; no mutable caller input is accepted.
-    _require(reconstruct_sample_input(repo_root, sample_id) == model_input, "STALE_INPUT_COMPONENT_BINDING")
+    try:
+        _require(reconstruct_sample_input(repo_root, sample_id) == model_input, "STALE_INPUT_COMPONENT_BINDING")
+        _validate_dispatcher(dispatcher, model_input, offline_fake)
+    except PilotBoundaryError as exc:
+        nonce_store.invalidate(
+            **nonce_binding, reason=exc.reason_code, after_dispatch_attempt=False,
+        )
+        raise
+    nonce_store.mark_dispatch_attempt(**nonce_binding)
     try:
         result = await execute_one_sealed_sample(repo_root=repo_root, sample_id=sample_id, dispatcher=dispatcher, output_root=output_root)
     except PilotBoundaryError as exc:
         ledger.sample_states[sample_id] = exc.reason_code
+        nonce_store.invalidate(
+            **nonce_binding, reason=exc.reason_code, after_dispatch_attempt=True,
+        )
         raise
-    nonce_store.consume(nonce, sample_id)
+    except BaseException:
+        ledger.sample_states[sample_id] = "PROVIDER_BOUNDARY_FAILED"
+        nonce_store.invalidate(
+            **nonce_binding,
+            reason="PROVIDER_BOUNDARY_FAILED",
+            after_dispatch_attempt=True,
+        )
+        raise
+    nonce_store.consume(**nonce_binding)
     ledger.sample_states[sample_id] = f"{lock['sample_slot']}:SEALED_VALID"
     return result
 

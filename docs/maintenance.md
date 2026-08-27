@@ -2128,3 +2128,17 @@ permission before approval and nonce handling, enforces one logical/provider/
 HTTP/network attempt, disables retry/fallback/route switching for the pilot
 path, and never advances to the next sample automatically. Ordinary provider
 transport behavior remains unchanged.
+
+The real pilot boundary is separately dormant in
+`tools/canary/skill_v3_real_execution_boundary.py`. Signed approval V2 binds
+the sealed wire input, route, one-shot policy, nonce-policy version, and real
+dispatcher version without containing an executable nonce. A later explicitly
+authorized execution reserves a durable pilot-scoped nonce under the configured
+user data directory before credential lookup. The nonce ledger uses a
+process-released file lock plus atomic content-addressed records, survives
+restart, and never becomes reusable after a dispatch marker. The dispatcher
+uses the existing `ModelGateway`, provider registry, adapter, structured
+contract, and `SingleDispatchTransportPolicyV1`; its optional outbound attempt
+observer is absent by default, so ordinary Runtime retry and transport behavior
+remain unchanged. No normal application entry imports or constructs this pilot
+environment.

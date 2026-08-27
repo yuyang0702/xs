@@ -28,9 +28,13 @@ from . import skill_v3_character_heavy_pilot as pilot
 
 
 SIGNED_APPROVAL_SCHEMA = "SkillV3PilotSuccessorSignedApprovalV1"
+SIGNED_APPROVAL_SCHEMA_V2 = "SkillV3PilotRealBoundarySuccessorSignedApprovalV2"
 CONSUMPTION_SCHEMA = "SkillV3PilotSuccessorApprovalConsumptionV1"
 APPROVAL_SCOPE = "SKILL_V3_CHARACTER_HEAVY_MULTI_SAMPLE_PILOT_SAMPLE_1_A1_ONLY"
 SIGNED_APPROVAL_DOMAIN = "novel-flywheel-skill-v3-pilot-successor-signed-approval-v1"
+SIGNED_APPROVAL_DOMAIN_V2 = (
+    "novel-flywheel-skill-v3-pilot-real-boundary-successor-signed-approval-v2"
+)
 CONSUMPTION_DOMAIN = "novel-flywheel-skill-v3-pilot-successor-approval-consumption-v1"
 DEFAULT_STORE_RELATIVE = Path(
     "canary-approval-ledgers/skill-v3-character-heavy-multi-sample-v1/signed-approvals-v1"
@@ -96,6 +100,14 @@ _SIGNED_FIELDS = _PAYLOAD_FIELDS | {
     "nonce_state",
     "signed_approval_sha256",
 }
+_PAYLOAD_FIELDS_V2 = _PAYLOAD_FIELDS | {
+    "wire_input_sha256",
+    "sampling_policy_sha256",
+    "validator_sha256",
+    "nonce_policy_version",
+    "real_dispatcher_version",
+}
+_SIGNED_FIELDS_V2 = (_SIGNED_FIELDS - _PAYLOAD_FIELDS) | _PAYLOAD_FIELDS_V2
 
 
 class SkillV3ApprovalStoreError(RuntimeError):
@@ -474,6 +486,299 @@ def successor_payload_from_sealed_a1_v1(
         "provider_descriptor_sha256": model_input.provider_descriptor_sha256,
         "model_binding_sha256": model_input.model_binding_sha256,
         "route_fingerprint": model_input.route_fingerprint,
+        "max_output_tokens": model_input.output_cap,
+        "user_authorization_message_sha256": user_authorization_message_sha256,
+        "user_authorization_context_identity_sha256": user_authorization_context_identity_sha256,
+        "issued_at": issued_at,
+        "expires_at": expires_at,
+    }
+
+
+def _sealed_approval_v2(payload: Mapping[str, Any], branch: str) -> dict[str, Any]:
+    _require(set(payload) == _PAYLOAD_FIELDS_V2, "SIGNED_APPROVAL_FIELDS_UNEXPECTED")
+    body = {
+        "schema": SIGNED_APPROVAL_SCHEMA_V2,
+        "version": 2,
+        "canonicalization_version": CANONICALIZATION_VERSION,
+        **deepcopy(dict(payload)),
+        "repository_branch": branch,
+        "approval_scope": APPROVAL_SCOPE,
+        "max_provider_request_attempts": 1,
+        "max_network_request_attempts": 1,
+        "max_http_post_attempts": 1,
+        "max_logical_model_calls": 1,
+        "no_retry": True,
+        "no_transport_retry": True,
+        "no_fallback": True,
+        "no_route_switch": True,
+        "no_resume": True,
+        "no_second_dispatch": True,
+        "required_egress_scope": list(REQUIRED_EGRESS_SCOPE),
+        "raw_ref_corpus_egress": False,
+        "named_approver": "USER_PROJECT_OWNER",
+        "approval_method": "explicit_same_conversation_user_authorization",
+        "authorized_actions": {
+            "credential_lookup": True,
+            "provider_client_creation": True,
+            "network": True,
+            "paid_provider_model_request": True,
+            "necessary_request_data_egress": True,
+        },
+        "single_use": True,
+        "usage_status": "unused",
+        "execution_authorized": True,
+        "other_samples_authorized": False,
+        "skill_v3_cutover_authorized": False,
+        "planning_v2_cutover_authorized": False,
+        "full_short_authorized": False,
+        "nonce_state": "NOT_CREATED",
+    }
+    return {
+        **body,
+        "signed_approval_sha256": domain_sha256(SIGNED_APPROVAL_DOMAIN_V2, body),
+    }
+
+
+def validate_successor_signed_approval_v2(
+    value: Mapping[str, Any],
+    *,
+    expected_head: str,
+    expected_sample_id: str,
+    expected_sample_lock_sha256: str,
+    expected_parent_experiment_lock_sha256: str,
+    expected_wire_input_sha256: str,
+    expected_model_input_component_binding_sha256: str,
+    expected_provider_descriptor_sha256: str,
+    expected_model_binding_sha256: str,
+    expected_route_fingerprint: str,
+    expected_sampling_policy_sha256: str,
+    expected_validator_sha256: str,
+    expected_max_output_tokens: int,
+    expected_nonce_policy_version: str,
+    expected_real_dispatcher_version: str,
+    expected_branch: str | None = None,
+    now: datetime | None = None,
+) -> dict[str, Any]:
+    _require(isinstance(value, Mapping), "SIGNED_APPROVAL_SCHEMA_MISMATCH")
+    _require(
+        value.get("schema") == SIGNED_APPROVAL_SCHEMA_V2 and value.get("version") == 2,
+        "SIGNED_APPROVAL_SCHEMA_MISMATCH",
+    )
+    _require(set(value) == _SIGNED_FIELDS_V2, "SIGNED_APPROVAL_FIELDS_UNEXPECTED")
+    _require(
+        value.get("canonicalization_version") == CANONICALIZATION_VERSION,
+        "SIGNED_APPROVAL_CANONICALIZATION_UNSUPPORTED",
+    )
+    _require(value.get("approval_scope") == APPROVAL_SCOPE, "APPROVAL_SCOPE_MISMATCH")
+    _require(value.get("pilot_id") == pilot.PILOT_ID, "STALE_APPROVAL")
+    _require(value.get("sample_id") == expected_sample_id, "APPROVAL_FOR_WRONG_SAMPLE")
+    _require(value.get("sample_lock_sha256") == expected_sample_lock_sha256, "APPROVAL_FOR_WRONG_SAMPLE_LOCK")
+    _require(
+        value.get("parent_experiment_lock_sha256") == expected_parent_experiment_lock_sha256,
+        "STALE_PARENT_EXPERIMENT_LOCK",
+    )
+    _require(value.get("repository_head") == expected_head, "STALE_APPROVAL_HEAD")
+    _require(_HEX40.fullmatch(str(value.get("repository_head"))) is not None, "STALE_APPROVAL_HEAD")
+    if expected_branch is not None:
+        _require(value.get("repository_branch") == expected_branch, "STALE_APPROVAL_BRANCH")
+    for field in (
+        "sample_lock_sha256",
+        "parent_experiment_lock_sha256",
+        "model_input_component_binding_sha256",
+        "provider_descriptor_sha256",
+        "model_binding_sha256",
+        "route_fingerprint",
+        "wire_input_sha256",
+        "sampling_policy_sha256",
+        "validator_sha256",
+        "user_authorization_message_sha256",
+        "user_authorization_context_identity_sha256",
+    ):
+        _require(_HEX64.fullmatch(str(value.get(field))) is not None, f"{field.upper()}_INVALID")
+    _require(value.get("wire_input_sha256") == expected_wire_input_sha256, "WIRE_INPUT_BINDING_MISMATCH")
+    for field, expected, reason in (
+        (
+            "model_input_component_binding_sha256",
+            expected_model_input_component_binding_sha256,
+            "STALE_INPUT_COMPONENT_BINDING",
+        ),
+        ("provider_descriptor_sha256", expected_provider_descriptor_sha256, "WRONG_PROVIDER"),
+        ("model_binding_sha256", expected_model_binding_sha256, "WRONG_MODEL"),
+        ("route_fingerprint", expected_route_fingerprint, "WRONG_ROUTE"),
+        ("sampling_policy_sha256", expected_sampling_policy_sha256, "WRONG_SAMPLING_POLICY"),
+        ("validator_sha256", expected_validator_sha256, "WRONG_VALIDATOR_POLICY"),
+    ):
+        _require(value.get(field) == expected, reason)
+    _require(value.get("nonce_policy_version") == expected_nonce_policy_version, "NONCE_POLICY_MISMATCH")
+    _require(value.get("real_dispatcher_version") == expected_real_dispatcher_version, "REAL_DISPATCHER_VERSION_MISMATCH")
+    _require(value.get("sample_slot") == "A1", "APPROVAL_FOR_WRONG_SAMPLE")
+    _require(value.get("arm") == "A" and value.get("sample_index") == 1, "APPROVAL_FOR_WRONG_SAMPLE")
+    _require(value.get("max_output_tokens") == expected_max_output_tokens == 4624, "WRONG_OUTPUT_CAP")
+    for field in (
+        "max_provider_request_attempts",
+        "max_network_request_attempts",
+        "max_http_post_attempts",
+        "max_logical_model_calls",
+    ):
+        _require(value.get(field) == 1, "APPROVAL_BUDGET_MISMATCH")
+    for field in (
+        "no_retry",
+        "no_transport_retry",
+        "no_fallback",
+        "no_route_switch",
+        "no_resume",
+        "no_second_dispatch",
+    ):
+        _require(value.get(field) is True, "APPROVAL_DISPATCH_POLICY_MISMATCH")
+    _require(tuple(value.get("required_egress_scope") or ()) == REQUIRED_EGRESS_SCOPE, "APPROVAL_EGRESS_SCOPE_MISMATCH")
+    _require(value.get("raw_ref_corpus_egress") is False, "APPROVAL_EGRESS_SCOPE_MISMATCH")
+    _require(value.get("named_approver") == "USER_PROJECT_OWNER", "NAMED_APPROVER_INVALID")
+    _require(value.get("single_use") is True, "APPROVAL_NOT_SINGLE_USE")
+    _require(value.get("usage_status") == "unused", "APPROVAL_REUSE")
+    _require(value.get("execution_authorized") is True, "SIGNED_APPROVAL_NOT_EXECUTABLE")
+    _require(value.get("nonce_state") == "NOT_CREATED", "NONCE_CREATED_DURING_APPROVAL")
+    _require("nonce" not in value, "INLINE_EXECUTABLE_NONCE_FORBIDDEN")
+    _require(
+        value.get("authorized_actions") == {
+            "credential_lookup": True,
+            "provider_client_creation": True,
+            "network": True,
+            "paid_provider_model_request": True,
+            "necessary_request_data_egress": True,
+        },
+        "APPROVAL_ACTION_SCOPE_MISMATCH",
+    )
+    _require(
+        all(value.get(field) is False for field in (
+            "other_samples_authorized",
+            "skill_v3_cutover_authorized",
+            "planning_v2_cutover_authorized",
+            "full_short_authorized",
+        )),
+        "APPROVAL_SCOPE_MISMATCH",
+    )
+    issued = _parse_utc(value.get("issued_at"))
+    expires = _parse_utc(value.get("expires_at"))
+    current = now or datetime.now(timezone.utc)
+    _require(issued <= current <= expires, "STALE_APPROVAL")
+    body = dict(value)
+    digest = body.pop("signed_approval_sha256", None)
+    _require(digest == domain_sha256(SIGNED_APPROVAL_DOMAIN_V2, body), "SIGNED_APPROVAL_SHA256_MISMATCH")
+    return deepcopy(dict(value))
+
+
+def create_successor_signed_approval_v2(
+    *, repo_root: Path, store_root: Path, payload: Mapping[str, Any], now: datetime | None = None,
+) -> dict[str, Any]:
+    before_head, branch = _clean_git_identity(repo_root)
+    _require(payload.get("repository_head") == before_head, "STALE_APPROVAL_HEAD")
+    root = _exact_store_root(repo_root, store_root)
+    current = now or datetime.now(timezone.utc)
+    value = validate_successor_signed_approval_v2(
+        _sealed_approval_v2(payload, branch),
+        expected_head=before_head,
+        expected_sample_id=str(payload["sample_id"]),
+        expected_sample_lock_sha256=str(payload["sample_lock_sha256"]),
+        expected_parent_experiment_lock_sha256=str(payload["parent_experiment_lock_sha256"]),
+        expected_wire_input_sha256=str(payload["wire_input_sha256"]),
+        expected_model_input_component_binding_sha256=str(payload["model_input_component_binding_sha256"]),
+        expected_provider_descriptor_sha256=str(payload["provider_descriptor_sha256"]),
+        expected_model_binding_sha256=str(payload["model_binding_sha256"]),
+        expected_route_fingerprint=str(payload["route_fingerprint"]),
+        expected_sampling_policy_sha256=str(payload["sampling_policy_sha256"]),
+        expected_validator_sha256=str(payload["validator_sha256"]),
+        expected_max_output_tokens=int(payload["max_output_tokens"]),
+        expected_nonce_policy_version=str(payload["nonce_policy_version"]),
+        expected_real_dispatcher_version=str(payload["real_dispatcher_version"]),
+        expected_branch=branch,
+        now=current,
+    )
+    _require(not _active_approval_exists(root, value, current), "ACTIVE_APPROVAL_ALREADY_EXISTS")
+    _exclusive_write(_approval_path(root, str(value["approval_id"])), value, "APPROVAL_ID_ALREADY_EXISTS")
+    after_head, after_branch = _clean_git_identity(repo_root)
+    _require(after_head == before_head and after_branch == branch, "APPROVAL_CHANGED_GIT_STATE")
+    return value
+
+
+def load_successor_signed_approval_v2(
+    *,
+    repo_root: Path,
+    store_root: Path,
+    approval_id: str,
+    expected_sample_id: str,
+    expected_sample_lock_sha256: str,
+    expected_parent_experiment_lock_sha256: str,
+    expected_wire_input_sha256: str,
+    expected_model_input_component_binding_sha256: str,
+    expected_provider_descriptor_sha256: str,
+    expected_model_binding_sha256: str,
+    expected_route_fingerprint: str,
+    expected_sampling_policy_sha256: str,
+    expected_validator_sha256: str,
+    expected_max_output_tokens: int,
+    expected_nonce_policy_version: str,
+    expected_real_dispatcher_version: str,
+    now: datetime | None = None,
+) -> dict[str, Any]:
+    head, branch = _clean_git_identity(repo_root)
+    root = _exact_store_root(repo_root, store_root)
+    _require(not _consumption_path(root, approval_id).exists(), "APPROVAL_REUSE")
+    value = _read_json(_approval_path(root, approval_id), "SIGNED_APPROVAL_NOT_FOUND")
+    return validate_successor_signed_approval_v2(
+        value,
+        expected_head=head,
+        expected_sample_id=expected_sample_id,
+        expected_sample_lock_sha256=expected_sample_lock_sha256,
+        expected_parent_experiment_lock_sha256=expected_parent_experiment_lock_sha256,
+        expected_wire_input_sha256=expected_wire_input_sha256,
+        expected_model_input_component_binding_sha256=expected_model_input_component_binding_sha256,
+        expected_provider_descriptor_sha256=expected_provider_descriptor_sha256,
+        expected_model_binding_sha256=expected_model_binding_sha256,
+        expected_route_fingerprint=expected_route_fingerprint,
+        expected_sampling_policy_sha256=expected_sampling_policy_sha256,
+        expected_validator_sha256=expected_validator_sha256,
+        expected_max_output_tokens=expected_max_output_tokens,
+        expected_nonce_policy_version=expected_nonce_policy_version,
+        expected_real_dispatcher_version=expected_real_dispatcher_version,
+        expected_branch=branch,
+        now=now,
+    )
+
+
+def successor_payload_from_sealed_a1_v2(
+    *,
+    repo_root: Path,
+    approval_id: str,
+    user_authorization_message_sha256: str,
+    user_authorization_context_identity_sha256: str,
+    issued_at: str,
+    expires_at: str,
+) -> dict[str, Any]:
+    from .skill_v3_pilot_nonce_store import NONCE_POLICY_VERSION
+
+    head, _branch = _clean_git_identity(repo_root)
+    sealed = pilot.load_sealed_pilot(repo_root)
+    lock = next(row for row in sealed["locks"] if row["sample_slot"] == "A1")
+    model_input = pilot.reconstruct_sample_input(repo_root, str(lock["sample_id"]))
+    return {
+        "approval_id": approval_id,
+        "repository_head": head,
+        "pilot_id": pilot.PILOT_ID,
+        "sample_id": lock["sample_id"],
+        "sample_slot": lock["sample_slot"],
+        "arm": lock["arm"],
+        "sample_index": int(lock["sample_index"]),
+        "sample_lock_sha256": lock["sample_lock_sha256"],
+        "parent_experiment_lock_sha256": pilot.PARENT_EXPERIMENT_LOCK_SHA256,
+        "model_input_component_binding_sha256": model_input.model_input_component_binding_sha256,
+        "provider_descriptor_sha256": model_input.provider_descriptor_sha256,
+        "model_binding_sha256": model_input.model_binding_sha256,
+        "route_fingerprint": model_input.route_fingerprint,
+        "wire_input_sha256": model_input.wire_input_sha256,
+        "sampling_policy_sha256": model_input.sampling_policy_sha256,
+        "validator_sha256": model_input.validator_sha256,
+        "nonce_policy_version": NONCE_POLICY_VERSION,
+        "real_dispatcher_version": pilot.REAL_DISPATCHER_VERSION,
         "max_output_tokens": model_input.output_cap,
         "user_authorization_message_sha256": user_authorization_message_sha256,
         "user_authorization_context_identity_sha256": user_authorization_context_identity_sha256,
