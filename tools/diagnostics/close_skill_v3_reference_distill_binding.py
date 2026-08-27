@@ -431,7 +431,7 @@ def materialize(output: Path, validation: dict[str, Any]) -> dict[str, Any]:
 2. Baseline HEAD: `{BASELINE_HEAD}`
 3. Runtime-truth audit source lock: `{AUDIT_SOURCE_LOCK}`
 4. Relevant source diff since audit: `workflows.py` only before this task; current behavior revalidated
-5. Implementation commits: `1a3edc6` plus evidence seal commit containing this report
+5. Implementation commits: `1a3edc6`, `be91a09`, `9826e00`; evidence seal commit contains this report
 6. Final HEAD/worktree: evidence seal commit / clean after seal
 7. Raw REF / direct DISTILL / direct LEARN visibility: `NO / NO / NO`
 8. Blueprint / prose baseline: `PASS`, indirect via compacted constraints
