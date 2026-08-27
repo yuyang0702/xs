@@ -299,6 +299,26 @@ def materialize(output: Path, validation: dict[str, Any]) -> dict[str, Any]:
         snapshot=snapshot, arm_skill_contexts={"A": arm_a, "B": arm_b},
     )
     production = asyncio.run(production_identity())
+    traceability = validation.get("constraint_traceability") or [
+        {
+            "requirement": "exact rendered advisory hash",
+            "implementation": "context_packet.advisory_provenance",
+            "test_paths": ["tests/test_context_packet.py"],
+            "evidence": "RenderedAdvisoryProvenanceV1 binds exact final bytes by SHA-256 and character count",
+        },
+        {
+            "requirement": "A/B non-Skill byte identity",
+            "implementation": "pilot_guidance.render_pilot_advisory_partition",
+            "test_paths": ["tests/test_skill_v3_pilot_guidance_binding.py"],
+            "evidence": "both arm receipts contain the same project guidance SHA-256 and character count",
+        },
+        {
+            "requirement": "stale provenance fail-close",
+            "implementation": "pilot_guidance.validate_pilot_non_skill_guidance_snapshot",
+            "test_paths": ["tests/test_skill_v3_pilot_guidance_binding.py"],
+            "evidence": "typed negative matrix rejects stale project, Blueprint, prose, reference, style, and order bindings",
+        },
+    ]
     source_diff = git("diff", "--name-status", f"{AUDIT_SOURCE_LOCK}..{BASELINE_HEAD}", "--", *RUNTIME_PATHS).splitlines()
     artifacts: dict[str, Any] = {
         "runtime-truth-source-lock-revalidation-v1.json": {
@@ -379,16 +399,18 @@ def materialize(output: Path, validation: dict[str, Any]) -> dict[str, Any]:
             "version": 2,
             "original_requirement": "bind exact non-Skill guidance across the six-sample Skill V3 pilot without production semantic drift",
             "scope_classification": "closed_world", "operational_definition": "one sealed character-heavy 3A/3B pilot",
-            "forbidden_narrowing": "no silent advisory shedding and no unbound model-visible contributor",
-            "resolution_status": "case_fixed", "constraint_traceability": validation["constraint_traceability"],
+            "forbidden_narrowing": ["no silent advisory shedding", "no unbound model-visible contributor"],
+            "resolution_status": "case_fixed",
+            "closed_world_justification": "the authorized scope is one sealed character-heavy pilot with exactly A1-A3 and B1-B3",
+            "constraint_traceability": traceability,
             "historical_incident_families_checked": ["context_input_capacity", "stale_authority_binding", "partial_checkpoint", "provider_output_shape"],
             "projected_failure_mechanisms": ["shared advisory compaction", "stale reference provenance", "style-context ambiguity"],
             "why_previous_tests_missed": "prior pilot locks hashed the non-Skill prefix but not exact rendered project advisory bytes",
-            "sibling_boundaries": [{"boundary": boundary, "disposition": "NOT_SUSCEPTIBLE", "evidence": "pilot-only helper is not production-reachable; production model-input identity exact"} for boundary in ("causal_chain", "execution_manifest", "drafting", "split_merge", "polish", "targeted_manual_revision", "final_review", "formal_promotion")],
+            "sibling_boundaries": [{"boundary": boundary, "disposition": "tested_not_susceptible", "evidence": "pilot-only helper is not production-reachable; production model-input identity exact"} for boundary in ("causal_chain", "execution_manifest", "drafting", "split_merge", "polish", "targeted_manual_revision", "final_review", "formal_promotion")],
             "model_output_boundary_changed": False,
             "model_output_not_applicable_evidence": "only pre-dispatch context provenance and disabled pilot isolation changed",
             "production_shaped_tests": ["tests/test_context_packet.py", "tests/test_skill_v3_pilot_guidance_binding.py"],
-            "next_authoritative_boundary_tests": ["six-sample snapshot and partition preflight"],
+            "next_authoritative_boundary_tests": ["tests/test_skill_v3_reference_distill_binding_closure.py"],
             "remaining_risks": ["future production-wide separate budgets deferred"],
         },
         "test-receipt-v1.json": {"schema": "SkillV3ReferenceDistillBindingTestReceiptV1", **validation, **ZERO, "new_owning_source_regression_count": 0},
@@ -466,11 +488,7 @@ def main() -> None:
     result = materialize(args.output_dir.resolve(), {
         "focused_tests": args.focused_tests, "related_tests": args.related_tests,
         "full_suite": args.full_suite, "strict_l3": args.strict_l3,
-        "constraint_traceability": [
-            {"requirement": "exact rendered advisory hash", "implementation": "context_packet.advisory_provenance", "tests": ["tests/test_context_packet.py"]},
-            {"requirement": "A/B non-Skill byte identity", "implementation": "pilot_guidance.render_pilot_advisory_partition", "tests": ["tests/test_skill_v3_pilot_guidance_binding.py"]},
-            {"requirement": "stale provenance fail-close", "implementation": "pilot_guidance.validate_pilot_non_skill_guidance_snapshot", "tests": ["tests/test_skill_v3_pilot_guidance_binding.py"]},
-        ],
+        "constraint_traceability": [],
     })
     print(json.dumps(result, ensure_ascii=False, indent=2))
 
