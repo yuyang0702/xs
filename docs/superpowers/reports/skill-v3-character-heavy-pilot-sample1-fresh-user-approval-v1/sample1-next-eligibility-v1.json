@@ -1,0 +1,24 @@
+{
+  "schema": "SkillV3Sample1NextEligibilityV1",
+  "status": "PASS",
+  "execution_sequence": [
+    "A1",
+    "B1",
+    "A2",
+    "B2",
+    "A3",
+    "B3"
+  ],
+  "first_eligible_sample": "A1",
+  "first_eligible_sample_id": "sv3s-089dd120ad568f87e7ef",
+  "a1_already_executed": false,
+  "a1_already_sealed": false,
+  "a1_signed_approval_already_present": false,
+  "stop_condition_active": false,
+  "predecessor_required": false,
+  "auto_advance_to_next_sample": false,
+  "execution_root_present": false,
+  "blanket_approval_present": false,
+  "other_sample_approval_count": 0
+}
+

@@ -1,0 +1,24 @@
+{
+  "schema": "SkillV3A1ApprovalSuccessorFullSuiteReceiptV1",
+  "status": "COMPLETED_WITH_HISTORICAL_NON_GREEN_FAMILIES",
+  "command": "python -m pytest -q",
+  "result": "3747 passed, 41 skipped, 6 xfailed, 52 failed, 72 errors, 1 warning",
+  "final_tree_elapsed_seconds": 2252.31,
+  "repeat_count": 2,
+  "failure_and_error_counts_stable_across_repeats": true,
+  "new_owning_source_regression_count": 0,
+  "changed_test_failures": [],
+  "changed_source_failure_references": [],
+  "historical_non_green_families": [
+    "PTR4 provider capability materialization sealed parent evidence",
+    "Short Completion materialization and successor sealed evidence",
+    "Skill V2 historical approval/head/fixture evidence",
+    "Planning Skill profile historical oracle evidence",
+    "R0E live database/formal artifact parity",
+    "R0F historical successor fixed hash",
+    "legacy C0B and PA registered approval artifacts"
+  ],
+  "historical_evidence_rewritten": false,
+  "live_database_modified": false,
+  "external_actions": 0
+}

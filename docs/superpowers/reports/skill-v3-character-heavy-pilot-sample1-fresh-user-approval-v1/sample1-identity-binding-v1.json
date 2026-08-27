@@ -1,0 +1,27 @@
+{
+  "schema": "SkillV3Sample1IdentityBindingV1",
+  "status": "EXACT",
+  "pilot_id": "skill-v3-character-heavy-multi-sample-v1-4d47410b0144360d",
+  "sample_id": "sv3s-089dd120ad568f87e7ef",
+  "sample_slot": "A1",
+  "arm": "A",
+  "sample_index": 1,
+  "parent_experiment_lock_sha256": "8a07c5106fec903952d4b622ab33702636c17d3add7eb380d3ac78071841fc9b",
+  "sample_lock_sha256": "8bc9c05794e1dbecb095a9a1b9937d9a277c5efa462b83c6b7e1e49495b862a7",
+  "model_input_component_binding_sha256": "d215fdf2590b39e43f63e28944a09f244b55177f09039acb67ebb87008acae85",
+  "a_skill_context_kind": "DEMAND_AWARE_V2_LAST_KNOWN_BEST_COMPRESSED_BASELINE",
+  "a_skill_context_sha256": "7d0f6309ede2261f2f6a1098d394937948bf5b50eb9248266ab350fd91da9adc",
+  "non_skill_guidance_snapshot_sha256": "82ab7881d58764552de2371e08c6ffd23b2d13dc2523cc1a9c8dbb96f227c303",
+  "reference_derived_provenance_sha256": "41b9fe2c61e20cd68429f3451994c90bc0e450beb97cf7bf400b5e77a82620df",
+  "authority_sha256": "91e5fe89ae741233b983f344bb0aa517974a4341dab56c8341669a5233c2e3d4",
+  "task_sha256": "84bed63082c9b4abd588790f9292d29aa466ee14e8b085c403ebb47ded2ab0ad",
+  "story_slice_sha256": "7134e84052d6e15bdd0f3bbb75de41a45c9e8c083d09e896004f8228b71c47c7",
+  "non_skill_prompt_sha256": "26c789b6bc96e406337ef6a545818eeaec48165adcde9adb2310c5b047c31e85",
+  "project_guidance_sha256": "94cfcd4f879232b18b389e6dbfe9595ac4a89a047e887f2fd7160046a1d738ba",
+  "output_contract_sha256": "62aaa63cc39a5baaec5657a889e3e77cf32abecbbfa582795620e34bf4877bee",
+  "validator_policy_sha256": "062dd052fd34949dd8b2369c0c5d5488e100d71ff4d905d9524711f5d14039e7",
+  "ptr_policy_sha256": "16b35c8f740b2a8f9727d7d55f5caf10ad9a0ddc8f9d009b221e2756935b3cc4",
+  "execution_entry_symbol": "tools.canary.skill_v3_character_heavy_pilot.execute_one_sealed_sample",
+  "launcher_symbol": "tools.canary.skill_v3_character_heavy_pilot.launch_one_sealed_sample"
+}
+

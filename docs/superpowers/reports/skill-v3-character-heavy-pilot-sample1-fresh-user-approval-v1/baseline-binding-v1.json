@@ -1,0 +1,17 @@
+{
+  "schema": "SkillV3Sample1FreshApprovalBaselineBindingV1",
+  "status": "EXACT",
+  "branch": "r1-ptr3/planning-repair-finding-propagation-20260817",
+  "head": "483796e46129750e35111b51bb8d1395c2a777c4",
+  "starting_worktree": "CLEAN",
+  "pilot_execution_boundary_manifest_definition_sha256": "ce231e8bb8ee239277b34b7ad6018b856bebbd5b57142e8149d5aba5a7a6227d",
+  "pilot_execution_boundary_manifest_file_sha256": "b5759d453e815f6d84a159f16f52f7a7cbcbae3116f9d950e1082a785a4d9965",
+  "pilot_readiness_manifest_definition_sha256": "f1f3dba847990bbf2caca9e4645f9310316939787c508c164c5c1bb4f7cf46e4",
+  "pilot_readiness_manifest_entry_count": 38,
+  "pilot_execution_boundary_manifest_entry_count": 32,
+  "manifest_failures": 0,
+  "pilot_runtime_source_sha256": "4e99a0cfe7c0e713a34716317565d7ffce9289a17ddbb73fa979ec7534348134",
+  "production_source_changed": false,
+  "baml_src_changed": false
+}
+

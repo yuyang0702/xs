@@ -1,0 +1,65 @@
+{
+  "schema": "SkillV3A1ApprovalSuccessorClosureManifestEnvelopeV1",
+  "definition": {
+    "schema": "SkillV3A1ApprovalSuccessorClosureManifestV1",
+    "entry_count": 11,
+    "entries": [
+      {
+        "path": "README.md",
+        "bytes": 509,
+        "sha256": "ae01dde1b6171cb04fb180699603498f987f4ffa74312885983bd8102dd347b9"
+      },
+      {
+        "path": "approval-head-worktree-invariant-v1.json",
+        "bytes": 716,
+        "sha256": "4848fd76d37d837dc24534b0d7de134381cf37c18c64ccc42ed1dd0398ba8160"
+      },
+      {
+        "path": "approval-report-materialization-policy-v1.json",
+        "bytes": 738,
+        "sha256": "5f4b7314c63b328fdb50d5d7f1a9ba79fab742cbf4977be386939a228f5ce67a"
+      },
+      {
+        "path": "approval-storage-lifecycle-audit-v1.json",
+        "bytes": 1223,
+        "sha256": "fad3462b33e6203f35dea2fd607a87aa31b263d7ea931478416ed98691359c2b"
+      },
+      {
+        "path": "dirty-state-audit-v1.json",
+        "bytes": 590,
+        "sha256": "42e72f9e2cc7d73fcb3da3bfdb3f3ca195c04c4f723dc611bf697f1568315a76"
+      },
+      {
+        "path": "full-suite-receipt-pre-successor-v1.json",
+        "bytes": 1024,
+        "sha256": "e24800fc907d6bad901a5dcc04d8fed6a538459c5380ff1a8b8789279c31ff98"
+      },
+      {
+        "path": "old-approval-evidence-validation-v1.json",
+        "bytes": 1629,
+        "sha256": "fde16fa6dd0073d8cb7d72873d1d989f806afac6666d8fa6120cd32aa5ca6c5f"
+      },
+      {
+        "path": "old-approval-supersession-policy-v1.json",
+        "bytes": 579,
+        "sha256": "331df86a8dc2d758e9f107814498f5c468b40cd12be3f1bcf5860c3f83b9a61b"
+      },
+      {
+        "path": "privacy-scan-pre-successor-v1.json",
+        "bytes": 512,
+        "sha256": "e1e98fed45d45955ebc0f1975dfa6889aa9cb33d48af6a92ff08a9f89f1a3daf"
+      },
+      {
+        "path": "source-change-summary-v1.json",
+        "bytes": 1077,
+        "sha256": "b477ea509b5af872bd6901812c30abbbe0ea26e7ba3102e1a4e4467bd6de6b2a"
+      },
+      {
+        "path": "test-receipt-pre-successor-v1.json",
+        "bytes": 1019,
+        "sha256": "ed6ee9b114b5c76b18ee2b67bc608a8c962dc416ab7a9767350a354548946c80"
+      }
+    ]
+  },
+  "definition_sha256": "19cd20132c3ad6e432ddd5b92d55164959128c271b3a6e98b5f9b4dda206400c"
+}

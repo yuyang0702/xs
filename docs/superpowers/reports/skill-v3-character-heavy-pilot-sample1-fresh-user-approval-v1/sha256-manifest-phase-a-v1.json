@@ -1,0 +1,60 @@
+{
+  "schema": "SkillV3Sample1FreshApprovalPhaseAManifestEnvelopeV1",
+  "definition": {
+    "schema": "SkillV3Sample1FreshApprovalPhaseAManifestV1",
+    "entry_count": 10,
+    "entries": [
+      {
+        "path": "baseline-binding-v1.json",
+        "bytes": 894,
+        "sha256": "8854b97f066c22f8d206be01a8c1cde452a659b9a71c00084e6556f58d3d3035"
+      },
+      {
+        "path": "phase-a-report-v1.md",
+        "bytes": 3955,
+        "sha256": "1d409332bd6c499e51fdd2222527bdb7635e0f78baa26b0894de7f449a44d8f4"
+      },
+      {
+        "path": "privacy-scan-phase-a-v1.json",
+        "bytes": 515,
+        "sha256": "b36aa4edebdfe53a37232b6c75b83163c4873ff896b99df03f5f00b0169f8ae9"
+      },
+      {
+        "path": "README.md",
+        "bytes": 347,
+        "sha256": "91fa9906fc43cfb2d544a9e1b09fdb79cda80569abe8742a4cb210a4b93485a4"
+      },
+      {
+        "path": "sample1-egress-summary-v1.json",
+        "bytes": 782,
+        "sha256": "89e8b6c90cf9f43c437afa4ce5143a8a7719782152ebbd82363e91b93629caeb"
+      },
+      {
+        "path": "sample1-identity-binding-v1.json",
+        "bytes": 1887,
+        "sha256": "92ae9aa8eb668a4390a31fa15ff35e606b792f40ebc24b6ac44e239786b8996d"
+      },
+      {
+        "path": "sample1-input-binding-v1.json",
+        "bytes": 1034,
+        "sha256": "eaaded98055d9f85ae8340119241d67a1070069da63e04f3c0a7b57bc7d75ad7"
+      },
+      {
+        "path": "sample1-next-eligibility-v1.json",
+        "bytes": 577,
+        "sha256": "f73e773f2f6f75c5f1ff73578a0412a1ee85d3251aae9e328d950e04493a889b"
+      },
+      {
+        "path": "sample1-route-budget-binding-v1.json",
+        "bytes": 1452,
+        "sha256": "8abd8595d050e1e88a915903e8111455119568234d22c596038cdeb44af0e25d"
+      },
+      {
+        "path": "sample1-unsigned-approval-request-v1.json",
+        "bytes": 1885,
+        "sha256": "e39a654b28b006eff1301bbd4f951f3a44584107dea63a87616ca5f188c9be52"
+      }
+    ]
+  },
+  "definition_sha256": "82fe47de12f7fcff0021f01187101fff85e91b12c24150c9022d8c83bd893790"
+}

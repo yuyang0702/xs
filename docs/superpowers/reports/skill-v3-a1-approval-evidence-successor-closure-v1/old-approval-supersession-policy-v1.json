@@ -1,0 +1,14 @@
+{
+  "schema": "SkillV3A1OldApprovalSupersessionPolicyV1",
+  "status": "STALE_BY_EXPIRY_AND_SUCCESSOR_HEAD",
+  "old_approval_id": "skill-v3-a1-d1fe5c81-0aa7-4446-b323-d33fb703cdca",
+  "old_approval_usage_status_preserved": "unused",
+  "old_approval_marked_consumed": false,
+  "old_approval_provider_dispatch_count": 0,
+  "old_approval_nonce_count": 0,
+  "old_approval_reusable_on_successor_head": false,
+  "old_approval_can_authorize_a1_execution": false,
+  "historical_evidence_rewritten": false,
+  "successor_approval_requires_new_same_conversation_user_authorization": true
+}
+

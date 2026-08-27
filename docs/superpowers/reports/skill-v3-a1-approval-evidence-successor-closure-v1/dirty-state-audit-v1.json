@@ -1,0 +1,15 @@
+{
+  "schema": "SkillV3A1ApprovalDirtyStateAuditV1",
+  "status": "PASS",
+  "branch": "r1-ptr3/planning-repair-finding-propagation-20260817",
+  "old_head": "483796e46129750e35111b51bb8d1395c2a777c4",
+  "expected_dirty_state": "ONLY_UNTRACKED_A1_APPROVAL_EVIDENCE",
+  "dirty_root": "docs/superpowers/reports/skill-v3-character-heavy-pilot-sample1-fresh-user-approval-v1/",
+  "dirty_entry_count": 17,
+  "dirty_paths_outside_expected_root": [],
+  "tracked_source_change_count": 0,
+  "tracked_baml_change_count": 0,
+  "old_approval_provider_dispatch_count": 0,
+  "old_approval_nonce_count": 0
+}
+

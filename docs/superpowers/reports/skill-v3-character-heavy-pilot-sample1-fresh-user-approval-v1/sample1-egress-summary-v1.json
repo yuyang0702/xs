@@ -1,0 +1,21 @@
+{
+  "schema": "SkillV3Sample1EgressSummaryV1",
+  "status": "BOUNDED",
+  "story_data_egress_required": true,
+  "required_egress_scope": [
+    "exact sealed A1 system/context packet",
+    "A1 authority/task/story slice",
+    "frozen non-Skill project guidance",
+    "A-arm Skill context",
+    "structured output contract"
+  ],
+  "raw_ref_model_visible": false,
+  "distill_direct_model_visible": false,
+  "learn_node_direct_model_visible": false,
+  "project_style_sample_planning_visible": false,
+  "raw_prompt_persisted_in_phase_a_evidence": false,
+  "raw_story_persisted_in_phase_a_evidence": false,
+  "credential_or_secret_persisted_in_phase_a_evidence": false,
+  "bounded_notice": "The exact sealed A1 story and task content is necessarily part of the future Provider request."
+}
+

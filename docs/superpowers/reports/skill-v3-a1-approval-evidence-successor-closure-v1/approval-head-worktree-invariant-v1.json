@@ -1,0 +1,18 @@
+{
+  "schema": "SkillV3A1ApprovalHeadWorktreeInvariantV1",
+  "status": "PASS_OFFLINE",
+  "clean_head_symbol": "H_SUCCESSOR",
+  "signed_approval_creation_changes_git_head": false,
+  "signed_approval_creation_dirties_worktree": false,
+  "signed_approval_head_binding_equals_execution_head": true,
+  "approval_evidence_head_cycle_possible": false,
+  "store_inside_git_worktree_rejected": true,
+  "dirty_worktree_rejected_before_approval_write": true,
+  "head_change_invalidates_approval": true,
+  "sample_or_lock_mismatch_rejected": true,
+  "duplicate_active_approval_rejected": true,
+  "consumed_approval_reuse_rejected": true,
+  "nonce_created_during_approval": false,
+  "external_action_capability_present": false
+}
+

@@ -1,0 +1,19 @@
+{
+  "schema": "SkillV3Sample1FreshApprovalPrivacyScanV1",
+  "status": "PASS",
+  "scanned_scope": "Phase A and Phase B approval evidence root",
+  "privacy_match_count": 0,
+  "matches": [],
+  "credential_values_persisted": 0,
+  "auth_headers_persisted": 0,
+  "secret_provider_urls_persisted": 0,
+  "raw_prompt_or_system_context_persisted": 0,
+  "raw_story_or_task_content_persisted": 0,
+  "raw_reference_corpus_persisted": 0,
+  "raw_user_authorization_text_persisted": 0,
+  "user_authorization_hash_only": true,
+  "signed_approval_persisted": 1,
+  "real_nonce_persisted": 0,
+  "unrelated_chat_content_persisted": 0
+}
+

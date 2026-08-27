@@ -1,0 +1,18 @@
+{
+  "schema": "SkillV3A1ApprovalStorageLifecycleAuditV1",
+  "status": "PASS_AFTER_PILOT_SCOPED_CLOSURE",
+  "approval_canonical_storage_before": "NONE; caller-supplied mapping only",
+  "approval_canonical_storage_after": "NOVEL_FLYWHEEL_DATA_DIR/canary-approval-ledgers/skill-v3-character-heavy-multi-sample-v1/signed-approvals-v1",
+  "approval_report_materialization_path": "docs/superpowers/reports/skill-v3-character-heavy-pilot-sample1-fresh-user-approval-v1/",
+  "signed_approval_runtime_lookup_path": "tools.canary.skill_v3_pilot_approval_store.load_successor_signed_approval_v1",
+  "signed_approval_head_binding": "repository_head",
+  "worktree_dirty_cause": "Phase B wrote canonical-looking signed approval evidence into an untracked repository report directory",
+  "signed_approval_can_exist_outside_git_worktree": true,
+  "approval_report_runtime_required": false,
+  "approval_report_can_be_deferred_until_after_execution": true,
+  "existing_authority_reused": "NOVEL_FLYWHEEL_DATA_DIR runtime data root and content-addressed exclusive-write ledger pattern",
+  "second_story_or_production_authority_created": false,
+  "ordinary_short_approval_architecture_changed": false,
+  "production_runtime_changed": false
+}
+

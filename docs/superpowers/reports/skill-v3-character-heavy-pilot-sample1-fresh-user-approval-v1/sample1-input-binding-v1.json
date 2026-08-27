@@ -1,0 +1,21 @@
+{
+  "schema": "SkillV3Sample1InputBindingV1",
+  "status": "EXACT",
+  "reference_distill_binding": "PASS",
+  "exact_rendered_advisory_provenance": "PASS",
+  "production_model_input_identity": "PASS",
+  "uncontrolled_variable_count": 0,
+  "advisory_truncation_occurred": false,
+  "advisory_shedding_occurred": false,
+  "system_sha256": "e1d254599d24721965a53246da5a61418e51bb923b0204c4d620785568fd5294",
+  "user_sha256": "015096c5ce7ac69323377efa87b2730b1bf23bc7e5fc33d4e7b0703fd2513ac9",
+  "wire_input_sha256": "47d7e240783edf70528dc05b1c6694271a4228677fee2ef358db398d35a406f5",
+  "model_input_component_binding_sha256": "d215fdf2590b39e43f63e28944a09f244b55177f09039acb67ebb87008acae85",
+  "non_skill_guidance_snapshot_sha256": "82ab7881d58764552de2371e08c6ffd23b2d13dc2523cc1a9c8dbb96f227c303",
+  "a_skill_context_sha256": "7d0f6309ede2261f2f6a1098d394937948bf5b50eb9248266ab350fd91da9adc",
+  "current_project_drift": false,
+  "current_reference_drift": false,
+  "current_skill_drift": false,
+  "current_model_input_drift": false
+}
+

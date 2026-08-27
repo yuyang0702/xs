@@ -1,0 +1,28 @@
+{
+  "schema": "SkillV3Sample1UserAuthorizationBindingV1",
+  "status": "EXACT",
+  "authorization_received_in_same_codex_conversation": true,
+  "named_approver": "USER_PROJECT_OWNER",
+  "authorization_text_canonicalization": "UTF-8_NFC_TRIM_OUTER_WHITESPACE_V1",
+  "user_authorization_message_sha256": "3ee55a6aa2b5ca179c3d2518d4d7dfbf713cab4901d1999ead414deeb91dfa10",
+  "user_authorization_context_kind": "THIS_SAME_CODEX_CONVERSATION",
+  "user_authorization_context_identity_sha256": "2d2d2f22812048634289c85e77ebfbefa87bc2245d176fbebe09bc5faf9d99cd",
+  "pilot_id": "skill-v3-character-heavy-multi-sample-v1-4d47410b0144360d",
+  "sample_scope": "A1_ONLY",
+  "sample_id": "sv3s-089dd120ad568f87e7ef",
+  "credential_lookup_permission": true,
+  "network_permission": true,
+  "one_paid_provider_request_permission": true,
+  "necessary_request_data_egress_permission": true,
+  "retry_permission": false,
+  "fallback_permission": false,
+  "route_switch_permission": false,
+  "resume_permission": false,
+  "second_dispatch_permission": false,
+  "other_sample_permission": false,
+  "skill_v3_cutover_permission": false,
+  "planning_v2_cutover_permission": false,
+  "full_short_permission": false,
+  "authorization_scope_result": "A1_EXACT_SCOPE"
+}
+

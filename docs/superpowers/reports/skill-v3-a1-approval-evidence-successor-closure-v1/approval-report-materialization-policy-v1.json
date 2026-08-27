@@ -1,0 +1,18 @@
+{
+  "schema": "SkillV3A1ApprovalReportMaterializationPolicyV1",
+  "status": "SEALED",
+  "pre_execution_signed_approval_report_policy": "CANONICAL_SIGNED_APPROVAL_IN_NON_WORKTREE_RUNTIME_STORE; REPO_REPORT_DEFERRED_UNTIL_POST_EXECUTION",
+  "successor_approval_repo_report_materialization": "DEFER_UNTIL_POST_EXECUTION",
+  "repo_report_is_runtime_authority": false,
+  "repo_report_required_before_dispatch": false,
+  "git_commit_after_fresh_approval_allowed": false,
+  "approval_to_untracked_report_to_commit_cycle_allowed": false,
+  "future_post_execution_evidence_may_include": [
+    "successor authorization binding",
+    "successor approval binding",
+    "execution receipt",
+    "approval consumption",
+    "nonce finalization"
+  ]
+}
+

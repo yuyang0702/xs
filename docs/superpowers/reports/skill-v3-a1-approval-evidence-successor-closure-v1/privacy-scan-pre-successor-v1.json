@@ -1,0 +1,16 @@
+{
+  "schema": "SkillV3A1ApprovalSuccessorPreCommitPrivacyScanV1",
+  "status": "PASS",
+  "privacy_match_count": 0,
+  "matches": [],
+  "credential_values_persisted": 0,
+  "auth_headers_persisted": 0,
+  "secret_provider_urls_persisted": 0,
+  "raw_prompt_or_system_context_persisted": 0,
+  "raw_story_or_task_content_persisted": 0,
+  "raw_reference_corpus_persisted": 0,
+  "raw_user_authorization_text_persisted": 0,
+  "real_nonce_persisted": 0,
+  "provider_response_content_persisted": 0,
+  "external_actions": 0
+}

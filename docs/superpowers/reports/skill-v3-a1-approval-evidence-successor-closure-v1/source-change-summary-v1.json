@@ -1,0 +1,25 @@
+{
+  "schema": "SkillV3A1ApprovalSuccessorSourceChangeSummaryV1",
+  "status": "BOUNDED",
+  "old_head": "483796e46129750e35111b51bb8d1395c2a777c4",
+  "successor_head": "COMMIT_CONTAINING_THIS_NON_SELF_REFERENTIAL_EVIDENCE",
+  "changed_canary_tooling": [
+    "tools/canary/skill_v3_pilot_approval_store.py"
+  ],
+  "changed_lifecycle_tests": [
+    "tests/canary/test_skill_v3_pilot_approval_store.py"
+  ],
+  "sealed_historical_evidence_root": "docs/superpowers/reports/skill-v3-character-heavy-pilot-sample1-fresh-user-approval-v1/",
+  "closure_evidence_root": "docs/superpowers/reports/skill-v3-a1-approval-evidence-successor-closure-v1/",
+  "production_source_diff_count": 0,
+  "baml_src_diff_count": 0,
+  "prompt_changed": false,
+  "model_or_route_changed": false,
+  "sampling_changed": false,
+  "output_cap_changed": false,
+  "validator_changed": false,
+  "skill_context_changed": false,
+  "story_or_authority_changed": false,
+  "rollback": "Revert the single successor commit; historical evidence remains content-addressed and no successor approval exists in this commit."
+}
+
