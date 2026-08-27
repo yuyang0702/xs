@@ -28,6 +28,13 @@ from novel_flywheel.structured_artifacts import (
 from tools.canary import skill_v3_character_heavy_pilot as pilot
 from tools.canary import skill_v3_pilot_approval_store as approvals
 from tools.canary import slice1_phase_b_current_skill as current_arm
+from tools.canary.skill_v3_a1_destination_binding import (
+    DestinationBindingV1,
+    a1_egress_policy_v1,
+    request_target_is_exact_v1,
+    resolve_a1_destination_binding_v1,
+    validate_destination_authority_v1,
+)
 from tools.canary.skill_v3_pilot_nonce_store import (
     DurablePilotNonceStoreV1,
     NONCE_POLICY_VERSION,
@@ -101,6 +108,7 @@ class RealPilotDispatcherV1:
         route_database: Path,
         execution_root: Path,
         offline_dependencies: OfflineDispatchDependenciesV1 | None = None,
+        approved_destination_authority: Mapping[str, Any] | None = None,
     ) -> None:
         self.repo_root = repo_root.resolve(strict=True)
         self.route_database = route_database.resolve(strict=True)
@@ -119,6 +127,22 @@ class RealPilotDispatcherV1:
         self._nonce_store: Any | None = None
         self._nonce_binding: dict[str, str] | None = None
         self._preflight = self._preflight_route()
+        self.destination_binding = resolve_a1_destination_binding_v1(
+            repo_root=self.repo_root,
+            route_database=self.route_database,
+        )
+        self.destination_check_count = 1
+        self._approved_destination_authority = dict(
+            approved_destination_authority or {},
+        )
+        if self._approved_destination_authority:
+            validate_destination_authority_v1(
+                self._approved_destination_authority,
+                destination=self.destination_binding,
+                egress_policy_sha256=str(
+                    self._approved_destination_authority.get("egress_policy_sha256") or "",
+                ),
+            )
         selected = self._preflight["routes"][0]
         self.route_fingerprint = str(selected["route_fingerprint"])
         self.provider_descriptor_sha256 = str(selected["provider_descriptor_sha256"])
@@ -164,6 +188,28 @@ class RealPilotDispatcherV1:
     ) -> str:
         if self._nonce_binding is None:
             raise pilot.PilotBoundaryError("MISSING_DURABLE_NONCE_BINDING")
+        current_destination = resolve_a1_destination_binding_v1(
+            repo_root=self.repo_root,
+            route_database=self.route_database,
+        )
+        self.destination_check_count += 1
+        if current_destination != self.destination_binding:
+            raise pilot.PilotBoundaryError(
+                "SKILL_V3_A1_REAL_DISPATCH_NO_GO_DESTINATION_DRIFT",
+            )
+        if self._approved_destination_authority:
+            try:
+                validate_destination_authority_v1(
+                    self._approved_destination_authority,
+                    destination=current_destination,
+                    egress_policy_sha256=str(
+                        self._approved_destination_authority.get("egress_policy_sha256") or "",
+                    ),
+                )
+            except Exception as exc:
+                raise pilot.PilotBoundaryError(
+                    "SKILL_V3_A1_REAL_DISPATCH_NO_GO_DESTINATION_DRIFT",
+                ) from exc
         if (
             model_input.route_fingerprint != self.route_fingerprint
             or model_input.provider_descriptor_sha256 != self.provider_descriptor_sha256
@@ -200,6 +246,23 @@ class RealPilotDispatcherV1:
                 if resolved.route_fingerprint != outer.route_fingerprint:
                     raise pilot.PilotBoundaryError("WRONG_ROUTE")
                 self.last_adapter = resolved.adapter
+                target_path = (
+                    "messages"
+                    if resolved.adapter.base_url.endswith("/v1")
+                    else "v1/messages"
+                )
+                target_url = f"{resolved.adapter.base_url}/{target_path}"
+                if not request_target_is_exact_v1(
+                    target_url, outer.destination_binding,
+                ):
+                    raise pilot.PilotBoundaryError(
+                        "SKILL_V3_A1_REAL_DISPATCH_NO_GO_DESTINATION_DRIFT",
+                    )
+                outer.destination_check_count += 1
+                if getattr(resolved.adapter.client, "follow_redirects", True):
+                    raise pilot.PilotBoundaryError("CROSS_ORIGIN_REDIRECT")
+                if getattr(resolved.adapter.client, "_mounts", None):
+                    raise pilot.PilotBoundaryError("UNBOUND_PROXY_ROUTE")
                 if dependencies is not None:
                     self.replaced_client = getattr(resolved.adapter, "client", None)
                     resolved.adapter.client = dependencies.client_factory()
@@ -271,12 +334,16 @@ class RealPilotExecutionEnvironmentV1:
             execution_parent_root=settings.data_dir / REAL_EXECUTION_ROOT_RELATIVE,
         )
 
-    def dispatcher_for(self, approval_id: str) -> RealPilotDispatcherV1:
+    def dispatcher_for(
+        self, approval_id: str,
+        *, approved_destination_authority: Mapping[str, Any] | None = None,
+    ) -> RealPilotDispatcherV1:
         execution_key = hashlib.sha256(approval_id.encode("utf-8")).hexdigest()
         return RealPilotDispatcherV1(
             repo_root=self.repo_root,
             route_database=self.route_database,
             execution_root=self.execution_parent_root / execution_key,
+            approved_destination_authority=approved_destination_authority,
         )
 
     def nonce_store(self) -> DurablePilotNonceStoreV1:
@@ -294,13 +361,67 @@ def canonical_real_execution_environment_v1(
     return RealPilotExecutionEnvironmentV1.canonical(repo_root)
 
 
+class DestinationBoundNonceStoreV2Adapter:
+    """Bind the V3 approval destination into the atomic durable nonce receipt."""
+
+    def __init__(
+        self,
+        *,
+        delegate: DurablePilotNonceStoreV1,
+        destination: DestinationBindingV1,
+        approval: Mapping[str, Any],
+    ) -> None:
+        self.delegate = delegate
+        self.destination = destination
+        self.approval = dict(approval)
+        validate_destination_authority_v1(
+            self.approval,
+            destination=self.destination,
+            egress_policy_sha256=str(
+                a1_egress_policy_v1(self.delegate.repo_root)["egress_policy_sha256"],
+            ),
+        )
+
+    def reserve(self, **bindings: Any) -> Mapping[str, Any]:
+        if (
+            bindings.get("signed_approval_sha256")
+            != self.approval.get("signed_approval_sha256")
+            or bindings.get("route_fingerprint")
+            != self.destination.route_fingerprint
+        ):
+            raise pilot.PilotBoundaryError("NONCE_DESTINATION_SHA_MISMATCH")
+        return self.delegate.reserve_destination_bound_v2(
+            **bindings,
+            approved_destination_origin=self.destination.origin,
+            approved_destination_origin_sha256=self.destination.destination_origin_sha256,
+            approved_destination_path_or_prefix=self.destination.api_path,
+            egress_policy_sha256=str(self.approval["egress_policy_sha256"]),
+            cross_origin_redirect_allowed=False,
+            unbound_proxy_route_allowed=False,
+        )
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self.delegate, name)
+
+
 async def launch_real_a1_once_v1(
     *,
     repo_root: Path,
     permission: Mapping[str, Any],
     approval_id: str,
 ) -> dict[str, Any]:
-    """Future explicit real gate.  Never called by normal application wiring."""
+    """Legacy V2 approval entry; destination-unbound execution is disabled."""
+
+    raise pilot.PilotBoundaryError("DESTINATION_BOUND_APPROVAL_V3_REQUIRED")
+
+
+async def launch_real_a1_once_v3(
+    *,
+    repo_root: Path,
+    permission: Mapping[str, Any],
+    approval_id: str,
+) -> dict[str, Any]:
+    """Destination-bound A1 launcher for a separately authorized future task."""
 
     environment = canonical_real_execution_environment_v1(repo_root)
     sealed = pilot.load_sealed_pilot(environment.repo_root)
@@ -308,7 +429,12 @@ async def launch_real_a1_once_v1(
     model_input = pilot.reconstruct_sample_input(
         environment.repo_root, str(lock["sample_id"]),
     )
-    approval = approvals.load_successor_signed_approval_v2(
+    destination = resolve_a1_destination_binding_v1(
+        repo_root=environment.repo_root,
+        route_database=environment.route_database,
+    )
+    egress = a1_egress_policy_v1(environment.repo_root)
+    approval = approvals.load_successor_signed_approval_v3(
         repo_root=environment.repo_root,
         store_root=environment.approval_store_root,
         approval_id=approval_id,
@@ -325,9 +451,38 @@ async def launch_real_a1_once_v1(
         expected_max_output_tokens=model_input.output_cap,
         expected_nonce_policy_version=NONCE_POLICY_VERSION,
         expected_real_dispatcher_version=REAL_DISPATCHER_VERSION,
+        expected_destination_origin=destination.origin,
+        expected_destination_origin_sha256=destination.destination_origin_sha256,
+        expected_destination_path_or_prefix=destination.api_path,
+        expected_destination_operator_class=destination.operator_class,
+        expected_egress_policy_sha256=str(egress["egress_policy_sha256"]),
     )
-    dispatcher = environment.dispatcher_for(approval_id)
-    nonce_store = environment.nonce_store()
+    destination_authority = {
+        field: approval[field]
+        for field in (
+            "destination_origin",
+            "destination_origin_sha256",
+            "destination_path_or_prefix",
+            "destination_operator_class",
+            "egress_policy_sha256",
+            "cross_origin_redirect_allowed",
+            "unbound_proxy_route_allowed",
+        )
+    }
+    validate_destination_authority_v1(
+        destination_authority,
+        destination=destination,
+        egress_policy_sha256=str(egress["egress_policy_sha256"]),
+    )
+    dispatcher = environment.dispatcher_for(
+        approval_id,
+        approved_destination_authority=destination_authority,
+    )
+    nonce_store = DestinationBoundNonceStoreV2Adapter(
+        delegate=environment.nonce_store(),
+        destination=destination,
+        approval=approval,
+    )
     output_root = dispatcher.execution_root / "output"
     try:
         result = await pilot.launch_one_sealed_sample(

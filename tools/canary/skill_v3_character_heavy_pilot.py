@@ -57,7 +57,7 @@ PERMISSION_SCOPES = (
     "necessary_request_data_egress",
 )
 HARD_CAP_REASON = "SKILL_V3_PILOT_SINGLE_DISPATCH_HARD_CAP_REACHED"
-REAL_DISPATCHER_VERSION = "skill-v3-real-pilot-dispatcher-v1"
+REAL_DISPATCHER_VERSION = "skill-v3-real-pilot-dispatcher-v2"
 NONCE_POLICY_VERSION = "skill-v3-pilot-durable-nonce-policy-v1"
 
 

@@ -29,11 +29,15 @@ from . import skill_v3_character_heavy_pilot as pilot
 
 SIGNED_APPROVAL_SCHEMA = "SkillV3PilotSuccessorSignedApprovalV1"
 SIGNED_APPROVAL_SCHEMA_V2 = "SkillV3PilotRealBoundarySuccessorSignedApprovalV2"
+SIGNED_APPROVAL_SCHEMA_V3 = "SkillV3PilotDestinationBoundSuccessorSignedApprovalV3"
 CONSUMPTION_SCHEMA = "SkillV3PilotSuccessorApprovalConsumptionV1"
 APPROVAL_SCOPE = "SKILL_V3_CHARACTER_HEAVY_MULTI_SAMPLE_PILOT_SAMPLE_1_A1_ONLY"
 SIGNED_APPROVAL_DOMAIN = "novel-flywheel-skill-v3-pilot-successor-signed-approval-v1"
 SIGNED_APPROVAL_DOMAIN_V2 = (
     "novel-flywheel-skill-v3-pilot-real-boundary-successor-signed-approval-v2"
+)
+SIGNED_APPROVAL_DOMAIN_V3 = (
+    "novel-flywheel-skill-v3-pilot-destination-bound-successor-signed-approval-v3"
 )
 CONSUMPTION_DOMAIN = "novel-flywheel-skill-v3-pilot-successor-approval-consumption-v1"
 DEFAULT_STORE_RELATIVE = Path(
@@ -108,6 +112,17 @@ _PAYLOAD_FIELDS_V2 = _PAYLOAD_FIELDS | {
     "real_dispatcher_version",
 }
 _SIGNED_FIELDS_V2 = (_SIGNED_FIELDS - _PAYLOAD_FIELDS) | _PAYLOAD_FIELDS_V2
+_DESTINATION_FIELDS_V3 = {
+    "destination_origin",
+    "destination_origin_sha256",
+    "destination_path_or_prefix",
+    "destination_operator_class",
+    "egress_policy_sha256",
+    "cross_origin_redirect_allowed",
+    "unbound_proxy_route_allowed",
+}
+_PAYLOAD_FIELDS_V3 = _PAYLOAD_FIELDS_V2 | _DESTINATION_FIELDS_V3
+_SIGNED_FIELDS_V3 = (_SIGNED_FIELDS_V2 - _PAYLOAD_FIELDS_V2) | _PAYLOAD_FIELDS_V3
 
 
 class SkillV3ApprovalStoreError(RuntimeError):
@@ -785,3 +800,229 @@ def successor_payload_from_sealed_a1_v2(
         "issued_at": issued_at,
         "expires_at": expires_at,
     }
+
+
+def _sealed_approval_v3(payload: Mapping[str, Any], branch: str) -> dict[str, Any]:
+    _require(set(payload) == _PAYLOAD_FIELDS_V3, "SIGNED_APPROVAL_FIELDS_UNEXPECTED")
+    v2_payload = {field: payload[field] for field in _PAYLOAD_FIELDS_V2}
+    body = _sealed_approval_v2(v2_payload, branch)
+    body.pop("signed_approval_sha256")
+    body["schema"] = SIGNED_APPROVAL_SCHEMA_V3
+    body["version"] = 3
+    body.update({field: deepcopy(payload[field]) for field in _DESTINATION_FIELDS_V3})
+    return {
+        **body,
+        "signed_approval_sha256": domain_sha256(SIGNED_APPROVAL_DOMAIN_V3, body),
+    }
+
+
+def validate_successor_signed_approval_v3(
+    value: Mapping[str, Any],
+    *,
+    expected_head: str,
+    expected_sample_id: str,
+    expected_sample_lock_sha256: str,
+    expected_parent_experiment_lock_sha256: str,
+    expected_wire_input_sha256: str,
+    expected_model_input_component_binding_sha256: str,
+    expected_provider_descriptor_sha256: str,
+    expected_model_binding_sha256: str,
+    expected_route_fingerprint: str,
+    expected_sampling_policy_sha256: str,
+    expected_validator_sha256: str,
+    expected_max_output_tokens: int,
+    expected_nonce_policy_version: str,
+    expected_real_dispatcher_version: str,
+    expected_destination_origin: str,
+    expected_destination_origin_sha256: str,
+    expected_destination_path_or_prefix: str,
+    expected_destination_operator_class: str,
+    expected_egress_policy_sha256: str,
+    expected_branch: str | None = None,
+    now: datetime | None = None,
+) -> dict[str, Any]:
+    _require(isinstance(value, Mapping), "SIGNED_APPROVAL_SCHEMA_MISMATCH")
+    _require(
+        value.get("schema") == SIGNED_APPROVAL_SCHEMA_V3 and value.get("version") == 3,
+        "SIGNED_APPROVAL_SCHEMA_MISMATCH",
+    )
+    _require(set(value) == _SIGNED_FIELDS_V3, "SIGNED_APPROVAL_FIELDS_UNEXPECTED")
+    for field in ("destination_origin_sha256", "egress_policy_sha256"):
+        _require(_HEX64.fullmatch(str(value.get(field))) is not None, f"{field.upper()}_INVALID")
+    _require(value.get("destination_origin") == expected_destination_origin, "APPROVAL_DESTINATION_ORIGIN_MISMATCH")
+    _require(value.get("destination_origin_sha256") == expected_destination_origin_sha256, "APPROVAL_DESTINATION_SHA_MISMATCH")
+    _require(value.get("destination_path_or_prefix") == expected_destination_path_or_prefix, "APPROVAL_DESTINATION_PATH_MISMATCH")
+    _require(value.get("destination_operator_class") == expected_destination_operator_class, "APPROVAL_DESTINATION_OPERATOR_MISMATCH")
+    _require(value.get("egress_policy_sha256") == expected_egress_policy_sha256, "EGRESS_POLICY_SHA_MISMATCH")
+    _require(value.get("cross_origin_redirect_allowed") is False, "CROSS_ORIGIN_REDIRECT")
+    _require(value.get("unbound_proxy_route_allowed") is False, "UNBOUND_PROXY_ROUTE")
+
+    projection = dict(value)
+    for field in _DESTINATION_FIELDS_V3:
+        projection.pop(field)
+    projection["schema"] = SIGNED_APPROVAL_SCHEMA_V2
+    projection["version"] = 2
+    projection.pop("signed_approval_sha256")
+    projection["signed_approval_sha256"] = domain_sha256(
+        SIGNED_APPROVAL_DOMAIN_V2, projection,
+    )
+    validate_successor_signed_approval_v2(
+        projection,
+        expected_head=expected_head,
+        expected_sample_id=expected_sample_id,
+        expected_sample_lock_sha256=expected_sample_lock_sha256,
+        expected_parent_experiment_lock_sha256=expected_parent_experiment_lock_sha256,
+        expected_wire_input_sha256=expected_wire_input_sha256,
+        expected_model_input_component_binding_sha256=expected_model_input_component_binding_sha256,
+        expected_provider_descriptor_sha256=expected_provider_descriptor_sha256,
+        expected_model_binding_sha256=expected_model_binding_sha256,
+        expected_route_fingerprint=expected_route_fingerprint,
+        expected_sampling_policy_sha256=expected_sampling_policy_sha256,
+        expected_validator_sha256=expected_validator_sha256,
+        expected_max_output_tokens=expected_max_output_tokens,
+        expected_nonce_policy_version=expected_nonce_policy_version,
+        expected_real_dispatcher_version=expected_real_dispatcher_version,
+        expected_branch=expected_branch,
+        now=now,
+    )
+    body = dict(value)
+    digest = body.pop("signed_approval_sha256", None)
+    _require(
+        digest == domain_sha256(SIGNED_APPROVAL_DOMAIN_V3, body),
+        "SIGNED_APPROVAL_SHA256_MISMATCH",
+    )
+    return deepcopy(dict(value))
+
+
+def create_successor_signed_approval_v3(
+    *, repo_root: Path, store_root: Path, payload: Mapping[str, Any],
+    now: datetime | None = None,
+) -> dict[str, Any]:
+    before_head, branch = _clean_git_identity(repo_root)
+    _require(payload.get("repository_head") == before_head, "STALE_APPROVAL_HEAD")
+    root = _exact_store_root(repo_root, store_root)
+    current = now or datetime.now(timezone.utc)
+    value = validate_successor_signed_approval_v3(
+        _sealed_approval_v3(payload, branch),
+        expected_head=before_head,
+        expected_sample_id=str(payload["sample_id"]),
+        expected_sample_lock_sha256=str(payload["sample_lock_sha256"]),
+        expected_parent_experiment_lock_sha256=str(payload["parent_experiment_lock_sha256"]),
+        expected_wire_input_sha256=str(payload["wire_input_sha256"]),
+        expected_model_input_component_binding_sha256=str(payload["model_input_component_binding_sha256"]),
+        expected_provider_descriptor_sha256=str(payload["provider_descriptor_sha256"]),
+        expected_model_binding_sha256=str(payload["model_binding_sha256"]),
+        expected_route_fingerprint=str(payload["route_fingerprint"]),
+        expected_sampling_policy_sha256=str(payload["sampling_policy_sha256"]),
+        expected_validator_sha256=str(payload["validator_sha256"]),
+        expected_max_output_tokens=int(payload["max_output_tokens"]),
+        expected_nonce_policy_version=str(payload["nonce_policy_version"]),
+        expected_real_dispatcher_version=str(payload["real_dispatcher_version"]),
+        expected_destination_origin=str(payload["destination_origin"]),
+        expected_destination_origin_sha256=str(payload["destination_origin_sha256"]),
+        expected_destination_path_or_prefix=str(payload["destination_path_or_prefix"]),
+        expected_destination_operator_class=str(payload["destination_operator_class"]),
+        expected_egress_policy_sha256=str(payload["egress_policy_sha256"]),
+        expected_branch=branch,
+        now=current,
+    )
+    _require(not _active_approval_exists(root, value, current), "ACTIVE_APPROVAL_ALREADY_EXISTS")
+    _exclusive_write(_approval_path(root, str(value["approval_id"])), value, "APPROVAL_ID_ALREADY_EXISTS")
+    after_head, after_branch = _clean_git_identity(repo_root)
+    _require(after_head == before_head and after_branch == branch, "APPROVAL_CHANGED_GIT_STATE")
+    return value
+
+
+def load_successor_signed_approval_v3(
+    *, repo_root: Path, store_root: Path, approval_id: str,
+    expected_sample_id: str, expected_sample_lock_sha256: str,
+    expected_parent_experiment_lock_sha256: str,
+    expected_wire_input_sha256: str,
+    expected_model_input_component_binding_sha256: str,
+    expected_provider_descriptor_sha256: str,
+    expected_model_binding_sha256: str,
+    expected_route_fingerprint: str,
+    expected_sampling_policy_sha256: str,
+    expected_validator_sha256: str,
+    expected_max_output_tokens: int,
+    expected_nonce_policy_version: str,
+    expected_real_dispatcher_version: str,
+    expected_destination_origin: str,
+    expected_destination_origin_sha256: str,
+    expected_destination_path_or_prefix: str,
+    expected_destination_operator_class: str,
+    expected_egress_policy_sha256: str,
+    now: datetime | None = None,
+) -> dict[str, Any]:
+    head, branch = _clean_git_identity(repo_root)
+    root = _exact_store_root(repo_root, store_root)
+    _require(not _consumption_path(root, approval_id).exists(), "APPROVAL_REUSE")
+    value = _read_json(_approval_path(root, approval_id), "SIGNED_APPROVAL_NOT_FOUND")
+    return validate_successor_signed_approval_v3(
+        value,
+        expected_head=head,
+        expected_sample_id=expected_sample_id,
+        expected_sample_lock_sha256=expected_sample_lock_sha256,
+        expected_parent_experiment_lock_sha256=expected_parent_experiment_lock_sha256,
+        expected_wire_input_sha256=expected_wire_input_sha256,
+        expected_model_input_component_binding_sha256=expected_model_input_component_binding_sha256,
+        expected_provider_descriptor_sha256=expected_provider_descriptor_sha256,
+        expected_model_binding_sha256=expected_model_binding_sha256,
+        expected_route_fingerprint=expected_route_fingerprint,
+        expected_sampling_policy_sha256=expected_sampling_policy_sha256,
+        expected_validator_sha256=expected_validator_sha256,
+        expected_max_output_tokens=expected_max_output_tokens,
+        expected_nonce_policy_version=expected_nonce_policy_version,
+        expected_real_dispatcher_version=expected_real_dispatcher_version,
+        expected_destination_origin=expected_destination_origin,
+        expected_destination_origin_sha256=expected_destination_origin_sha256,
+        expected_destination_path_or_prefix=expected_destination_path_or_prefix,
+        expected_destination_operator_class=expected_destination_operator_class,
+        expected_egress_policy_sha256=expected_egress_policy_sha256,
+        expected_branch=branch,
+        now=now,
+    )
+
+
+def successor_payload_from_sealed_a1_v3(
+    *, repo_root: Path, approval_id: str,
+    user_authorization_message_sha256: str,
+    user_authorization_context_identity_sha256: str,
+    issued_at: str, expires_at: str,
+) -> dict[str, Any]:
+    from .skill_v3_a1_destination_binding import (
+        a1_egress_policy_v1,
+        resolve_a1_destination_binding_v1,
+    )
+    from .skill_v3_real_execution_boundary import (
+        REAL_DISPATCHER_VERSION,
+        canonical_real_execution_environment_v1,
+    )
+    from .skill_v3_pilot_nonce_store import NONCE_POLICY_VERSION
+
+    repo = repo_root.resolve(strict=True)
+    environment = canonical_real_execution_environment_v1(repo)
+    destination = resolve_a1_destination_binding_v1(
+        repo_root=repo, route_database=environment.route_database,
+    )
+    egress = a1_egress_policy_v1(repo)
+    payload = successor_payload_from_sealed_a1_v2(
+        repo_root=repo,
+        approval_id=approval_id,
+        user_authorization_message_sha256=user_authorization_message_sha256,
+        user_authorization_context_identity_sha256=user_authorization_context_identity_sha256,
+        issued_at=issued_at,
+        expires_at=expires_at,
+    )
+    _require(payload["nonce_policy_version"] == NONCE_POLICY_VERSION, "NONCE_POLICY_MISMATCH")
+    _require(payload["real_dispatcher_version"] == REAL_DISPATCHER_VERSION, "REAL_DISPATCHER_VERSION_MISMATCH")
+    payload.update({
+        "destination_origin": destination.origin,
+        "destination_origin_sha256": destination.destination_origin_sha256,
+        "destination_path_or_prefix": destination.api_path,
+        "destination_operator_class": destination.operator_class,
+        "egress_policy_sha256": egress["egress_policy_sha256"],
+        "cross_origin_redirect_allowed": False,
+        "unbound_proxy_route_allowed": False,
+    })
+    return payload

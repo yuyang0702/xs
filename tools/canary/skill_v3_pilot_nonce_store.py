@@ -26,8 +26,10 @@ from novel_flywheel.runtime_fingerprint_build import (
 
 
 NONCE_SCHEMA = "SkillV3PilotDurableNonceV1"
+NONCE_SCHEMA_V2 = "SkillV3PilotDestinationBoundDurableNonceV2"
 NONCE_POLICY_VERSION = "skill-v3-pilot-durable-nonce-policy-v1"
 NONCE_DOMAIN = "novel-flywheel-skill-v3-pilot-durable-nonce-v1"
+NONCE_DOMAIN_V2 = "novel-flywheel-skill-v3-pilot-destination-bound-durable-nonce-v2"
 DEFAULT_STORE_RELATIVE = Path(
     "canary-nonce-ledgers/skill-v3-character-heavy-multi-sample-v1/nonces-v1"
 )
@@ -152,15 +154,21 @@ class DurablePilotNonceStoreV1:
 
     @staticmethod
     def _seal(body: Mapping[str, Any]) -> dict[str, Any]:
+        domain = NONCE_DOMAIN_V2 if body.get("schema") == NONCE_SCHEMA_V2 else NONCE_DOMAIN
         return {
             **deepcopy(dict(body)),
-            "nonce_receipt_sha256": domain_sha256(NONCE_DOMAIN, body),
+            "nonce_receipt_sha256": domain_sha256(domain, body),
         }
 
     @staticmethod
     def _validate(value: Mapping[str, Any]) -> dict[str, Any]:
-        _require(value.get("schema") == NONCE_SCHEMA, "NONCE_SCHEMA_MISMATCH")
-        _require(value.get("version") == 1, "NONCE_SCHEMA_MISMATCH")
+        schema = value.get("schema")
+        version = value.get("version")
+        _require(
+            (schema == NONCE_SCHEMA and version == 1)
+            or (schema == NONCE_SCHEMA_V2 and version == 2),
+            "NONCE_SCHEMA_MISMATCH",
+        )
         _require(
             value.get("canonicalization_version") == CANONICALIZATION_VERSION,
             "NONCE_CANONICALIZATION_UNSUPPORTED",
@@ -180,10 +188,32 @@ class DurablePilotNonceStoreV1:
             "route_fingerprint",
         ):
             _require(_HEX64.fullmatch(str(value.get(field))) is not None, f"{field.upper()}_INVALID")
+        if schema == NONCE_SCHEMA_V2:
+            for field in (
+                "approved_destination_origin_sha256",
+                "egress_policy_sha256",
+            ):
+                _require(
+                    _HEX64.fullmatch(str(value.get(field))) is not None,
+                    f"{field.upper()}_INVALID",
+                )
+            _require(
+                isinstance(value.get("approved_destination_origin"), str)
+                and str(value["approved_destination_origin"]).startswith("https://"),
+                "NONCE_DESTINATION_ORIGIN_INVALID",
+            )
+            _require(
+                isinstance(value.get("approved_destination_path_or_prefix"), str)
+                and str(value["approved_destination_path_or_prefix"]).startswith("/"),
+                "NONCE_DESTINATION_PATH_INVALID",
+            )
+            _require(value.get("cross_origin_redirect_allowed") is False, "CROSS_ORIGIN_REDIRECT")
+            _require(value.get("unbound_proxy_route_allowed") is False, "UNBOUND_PROXY_ROUTE")
         _require(_HEX40.fullmatch(str(value.get("execution_head"))) is not None, "STALE_NONCE_HEAD")
         body = dict(value)
         digest = body.pop("nonce_receipt_sha256", None)
-        _require(digest == domain_sha256(NONCE_DOMAIN, body), "NONCE_RECEIPT_SHA256_MISMATCH")
+        domain = NONCE_DOMAIN_V2 if schema == NONCE_SCHEMA_V2 else NONCE_DOMAIN
+        _require(digest == domain_sha256(domain, body), "NONCE_RECEIPT_SHA256_MISMATCH")
         return deepcopy(dict(value))
 
     @staticmethod
@@ -243,6 +273,66 @@ class DurablePilotNonceStoreV1:
             "signed_approval_sha256": signed_approval_sha256,
             "model_input_component_binding_sha256": model_input_component_binding_sha256,
             "route_fingerprint": route_fingerprint,
+            "max_provider_request_attempts": 1,
+            "max_network_request_attempts": 1,
+            "provider_dispatch_attempts": 0,
+            "network_request_attempts": 0,
+            "created_at": now,
+            "reserved_at": now,
+            "dispatch_attempted_at": None,
+            "finalized_at": None,
+            "state": "RESERVED",
+            "single_use": True,
+            "final_reason": None,
+        }
+        value = self._validate(self._seal(body))
+        with self._locked():
+            _require(not path.exists(), "NONCE_REUSE")
+            self._exclusive_write(path, value)
+        return value
+
+    def reserve_destination_bound_v2(
+        self,
+        *,
+        pilot_id: str,
+        sample_id: str,
+        sample_lock_sha256: str,
+        parent_experiment_lock_sha256: str,
+        execution_head: str,
+        approval_id: str,
+        signed_approval_sha256: str,
+        model_input_component_binding_sha256: str,
+        route_fingerprint: str,
+        approved_destination_origin: str,
+        approved_destination_origin_sha256: str,
+        approved_destination_path_or_prefix: str,
+        egress_policy_sha256: str,
+        cross_origin_redirect_allowed: bool,
+        unbound_proxy_route_allowed: bool,
+    ) -> dict[str, Any]:
+        path = self._path(pilot_id, sample_id, approval_id)
+        now = _utc_now()
+        body = {
+            "schema": NONCE_SCHEMA_V2,
+            "version": 2,
+            "canonicalization_version": CANONICALIZATION_VERSION,
+            "nonce_policy_version": NONCE_POLICY_VERSION,
+            "nonce_id": f"sv3n-{secrets.token_hex(16)}",
+            "pilot_id": pilot_id,
+            "sample_id": sample_id,
+            "sample_lock_sha256": sample_lock_sha256,
+            "parent_experiment_lock_sha256": parent_experiment_lock_sha256,
+            "execution_head": execution_head,
+            "signed_approval_id": approval_id,
+            "signed_approval_sha256": signed_approval_sha256,
+            "model_input_component_binding_sha256": model_input_component_binding_sha256,
+            "route_fingerprint": route_fingerprint,
+            "approved_destination_origin": approved_destination_origin,
+            "approved_destination_origin_sha256": approved_destination_origin_sha256,
+            "approved_destination_path_or_prefix": approved_destination_path_or_prefix,
+            "egress_policy_sha256": egress_policy_sha256,
+            "cross_origin_redirect_allowed": cross_origin_redirect_allowed,
+            "unbound_proxy_route_allowed": unbound_proxy_route_allowed,
             "max_provider_request_attempts": 1,
             "max_network_request_attempts": 1,
             "provider_dispatch_attempts": 0,
