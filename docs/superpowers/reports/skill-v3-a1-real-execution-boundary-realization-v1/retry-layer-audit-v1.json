@@ -1,0 +1,20 @@
+{
+  "branch": "r1-ptr3/planning-repair-finding-propagation-20260817",
+  "baseline_head": "12ae672583edd45313fe082efd11807f61aa6df6",
+  "real_boundary_source_head": "ccee27cd278b974e0fc48c8e13e7569bc62ea95d",
+  "pilot_id": "skill-v3-character-heavy-multi-sample-v1-4d47410b0144360d",
+  "sample_id": "sv3s-089dd120ad568f87e7ef",
+  "real_external_actions": 0,
+  "schema": "SkillV3A1RetryLayerAuditV1",
+  "layers": {
+    "pilot_launcher": "disabled",
+    "model_gateway": "single route only",
+    "provider_adapter": "transport policy forces one attempt",
+    "http_client": "automatic retry absent in injected client and hard capped at outbound observer",
+    "structured_contract_recovery": "no second dispatch",
+    "fallback": "disabled",
+    "route_switch": "disabled",
+    "task_retry_resume": "disabled"
+  },
+  "ordinary_runtime_retry_behavior_changed": false
+}

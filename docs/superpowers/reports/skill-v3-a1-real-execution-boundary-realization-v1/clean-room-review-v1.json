@@ -1,0 +1,31 @@
+{
+  "branch": "r1-ptr3/planning-repair-finding-propagation-20260817",
+  "baseline_head": "12ae672583edd45313fe082efd11807f61aa6df6",
+  "real_boundary_source_head": "ccee27cd278b974e0fc48c8e13e7569bc62ea95d",
+  "pilot_id": "skill-v3-character-heavy-multi-sample-v1-4d47410b0144360d",
+  "sample_id": "sv3s-089dd120ad568f87e7ef",
+  "real_external_actions": 0,
+  "schema": "SkillV3A1RealBoundaryCleanRoomReviewV1",
+  "mode": "single_agent_clean_room",
+  "independence_claimed": false,
+  "status": "PASS",
+  "reviewed_paths": [
+    "src/novel_flywheel/providers/http.py",
+    "src/novel_flywheel/providers/registry.py",
+    "tools/canary/skill_v3_character_heavy_pilot.py",
+    "tools/canary/skill_v3_pilot_approval_store.py",
+    "tools/canary/skill_v3_pilot_nonce_store.py",
+    "tools/canary/skill_v3_real_execution_boundary.py"
+  ],
+  "review_focus": [
+    "permission/approval/nonce ordering",
+    "atomic restart-safe single use",
+    "exact route and contract transitive binding",
+    "credential deferral",
+    "lowest outbound hard cap",
+    "all terminal failures remain one-shot",
+    "ordinary runtime isolation"
+  ],
+  "new_hard_issue_count": 0,
+  "note": "No independent-review claim is made."
+}

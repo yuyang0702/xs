@@ -1,0 +1,15 @@
+{
+  "branch": "r1-ptr3/planning-repair-finding-propagation-20260817",
+  "baseline_head": "12ae672583edd45313fe082efd11807f61aa6df6",
+  "real_boundary_source_head": "ccee27cd278b974e0fc48c8e13e7569bc62ea95d",
+  "pilot_id": "skill-v3-character-heavy-multi-sample-v1-4d47410b0144360d",
+  "sample_id": "sv3s-089dd120ad568f87e7ef",
+  "real_external_actions": 0,
+  "schema": "SkillV3A1BlockedDispositionV1",
+  "prior_state": "BLOCKED_PRE_DISPATCH",
+  "counts_as_real_sample": false,
+  "counts_as_provider_request": false,
+  "artifact_eligible_for_blind_eval": false,
+  "experimental_a1_prose_slot_consumed": false,
+  "a1_next_eligible_after_fresh_approval": true
+}

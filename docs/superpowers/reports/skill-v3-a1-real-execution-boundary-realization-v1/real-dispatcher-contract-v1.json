@@ -1,0 +1,22 @@
+{
+  "branch": "r1-ptr3/planning-repair-finding-propagation-20260817",
+  "baseline_head": "12ae672583edd45313fe082efd11807f61aa6df6",
+  "real_boundary_source_head": "ccee27cd278b974e0fc48c8e13e7569bc62ea95d",
+  "pilot_id": "skill-v3-character-heavy-multi-sample-v1-4d47410b0144360d",
+  "sample_id": "sv3s-089dd120ad568f87e7ef",
+  "real_external_actions": 0,
+  "schema": "SkillV3A1RealDispatcherContractV1",
+  "implementation": "tools/canary/skill_v3_real_execution_boundary.py::RealPilotDispatcherV1",
+  "version": "skill-v3-real-pilot-dispatcher-v1",
+  "protocol": "Dispatcher",
+  "production_components": [
+    "ProviderRegistry",
+    "ModelGateway",
+    "AnthropicAdapter",
+    "structured contract runtime"
+  ],
+  "route_preflight_before_credentials": true,
+  "credential_lookup_deferred_to_dispatch": true,
+  "maximum_actual_dispatches": 1,
+  "called_in_this_task": false
+}

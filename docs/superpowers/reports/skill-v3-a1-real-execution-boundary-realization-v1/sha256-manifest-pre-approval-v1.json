@@ -1,0 +1,140 @@
+{
+  "schema": "SkillV3A1RealBoundaryPreApprovalManifestEnvelopeV1",
+  "definition": {
+    "schema": "SkillV3A1RealBoundaryPreApprovalManifestV1",
+    "entry_count": 26,
+    "entries": [
+      {
+        "path": "README.md",
+        "bytes": 535,
+        "sha256": "0854cb95d375e4eb5b9fe107b5e165fcc6c0b3924c63b8e1617bcd02fcd039b2"
+      },
+      {
+        "path": "approval-nonce-decoupling-v1.json",
+        "bytes": 873,
+        "sha256": "0b4e48983c61e84ff0715a747f20c8fa2cb7fcd58b825fb7763d532800bd4537"
+      },
+      {
+        "path": "baseline-binding-v1.json",
+        "bytes": 512,
+        "sha256": "098304d9c1aaa1cdfd76f93dcaa397cb0e3dcf1707d5c22445406e83b84b8cef"
+      },
+      {
+        "path": "blocked-a1-disposition-v1.json",
+        "bytes": 659,
+        "sha256": "01cb2f9e003dff64c2d18fe0950a5bcb9063a6830630aae1ca81a5a5dc6f1c4a"
+      },
+      {
+        "path": "blocked-pre-dispatch-binding-v1.json",
+        "bytes": 1049,
+        "sha256": "3a4037bfc3099b5f4722b1ce8d815bc99f39dfa489d953d277ec701c4ecea766"
+      },
+      {
+        "path": "clean-room-review-v1.json",
+        "bytes": 1205,
+        "sha256": "5aa84a0898789b42f5dde67a1e32b124b1c48cf3b6f478a21479da1156ef7505"
+      },
+      {
+        "path": "credential-boundary-v1.json",
+        "bytes": 685,
+        "sha256": "39d528ced56356f3718168af19ebc60613a6d06f61cfc30adc85a189f3922ff2"
+      },
+      {
+        "path": "execution-seam-audit-v1.json",
+        "bytes": 1347,
+        "sha256": "edb9db0050b92a750a2357f271971739e2ff5a5456381f39d2c6245b2602aa97"
+      },
+      {
+        "path": "experiment-identity-v1.json",
+        "bytes": 1518,
+        "sha256": "3447e762961817126f7803593425d222e5ae87e4fa037ecaf5fc3195145f05c9"
+      },
+      {
+        "path": "failure-simulation-matrix-v1.json",
+        "bytes": 4370,
+        "sha256": "6ad30e6f0a779f077ca6f3f768ed43b10ab116235a6cb255e440d1268fb28f47"
+      },
+      {
+        "path": "final-report-pre-approval-v1.md",
+        "bytes": 5110,
+        "sha256": "4b5013115137fcfd6be7f12ad74953ff150967b32233a5afb892373076fa549d"
+      },
+      {
+        "path": "forward-risk-report-v2.json",
+        "bytes": 7993,
+        "sha256": "d6dd49534f134b37392803a00cfef8ae7070e16f025523a94ec2b6ea934d37ac"
+      },
+      {
+        "path": "nonce-atomicity-restart-v1.json",
+        "bytes": 854,
+        "sha256": "c7b86cf091f55489f90a9491d3519074f2817c8e17131fa1f21516a25ad92a05"
+      },
+      {
+        "path": "nonce-store-contract-v1.json",
+        "bytes": 988,
+        "sha256": "64df557c88b847e0b5ec3bdefb94edf9092af87e11b3ab48bed6750a828459e5"
+      },
+      {
+        "path": "old-approval-disposition-v1.json",
+        "bytes": 744,
+        "sha256": "c09b115ac58f8287a25d8fe05ba4a83dac093b7e50fb6a3aa3bbb7dcaae41977"
+      },
+      {
+        "path": "privacy-scan-v1.json",
+        "bytes": 746,
+        "sha256": "8fa0ef6e6542578dc7fb3e774752b65422ca493e73bb3a97b3869ab08526dd47"
+      },
+      {
+        "path": "production-isolation-v1.json",
+        "bytes": 801,
+        "sha256": "3d7dd70a7efa4938c4c8520dcfb68142dc4b8f498c2f53a40d94a6832074ec31"
+      },
+      {
+        "path": "real-dispatcher-contract-v1.json",
+        "bytes": 878,
+        "sha256": "5b3d791957be80f24c5265942c3a858e2d851827679867b081e251cbcd3f183a"
+      },
+      {
+        "path": "real-dispatcher-offline-simulation-v1.json",
+        "bytes": 781,
+        "sha256": "61bb8473687fea16d1c4330cd610800e805d649d0a754cec69505a4e8fe589c3"
+      },
+      {
+        "path": "real-execution-environment-binding-v1.json",
+        "bytes": 741,
+        "sha256": "90afacdb7bd959aa5b7740532b50515e8e739e866f017162e5b71194817cbd6e"
+      },
+      {
+        "path": "retry-layer-audit-v1.json",
+        "bytes": 865,
+        "sha256": "e72258415603525c03eddcface7679dc4be309d2077a57d021b287498b3d8020"
+      },
+      {
+        "path": "route-binding-v1.json",
+        "bytes": 832,
+        "sha256": "bfbc5aef8a90ee8c96265e0ad4b2e0bbf03a63992e69b043e70858f13048e0df"
+      },
+      {
+        "path": "single-dispatch-real-boundary-v1.json",
+        "bytes": 859,
+        "sha256": "34c7a9bcca921ae9e3cb8a879696be2623159846580521b1996872f31cc3943c"
+      },
+      {
+        "path": "six-sample-offline-real-dispatcher-v1.json",
+        "bytes": 1487,
+        "sha256": "8666e815532d36242deb1ae21fc37196c3e3b9dbd27fc67f43320fbfeaaea007"
+      },
+      {
+        "path": "strict-l3-receipt-v1.json",
+        "bytes": 749,
+        "sha256": "83d614388ab2a0c9de611118abd4c41a4639a240309298a330a8552ad1241f3e"
+      },
+      {
+        "path": "test-receipt-v1.json",
+        "bytes": 996,
+        "sha256": "30f9f5c7613b3a416fc33617ebd6f2c7bd607965a170cf8939f05d8dd2e5952d"
+      }
+    ]
+  },
+  "definition_sha256": "84a29b5c4f578c2cdd2c34020686115cb3cce97ba9c0441e4b0c2440c44c5a8f"
+}

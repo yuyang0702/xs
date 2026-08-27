@@ -1,0 +1,63 @@
+{
+  "branch": "r1-ptr3/planning-repair-finding-propagation-20260817",
+  "baseline_head": "12ae672583edd45313fe082efd11807f61aa6df6",
+  "real_boundary_source_head": "ccee27cd278b974e0fc48c8e13e7569bc62ea95d",
+  "pilot_id": "skill-v3-character-heavy-multi-sample-v1-4d47410b0144360d",
+  "sample_id": "sv3s-089dd120ad568f87e7ef",
+  "real_external_actions": 0,
+  "schema": "SkillV3A1SixSampleOfflineRealDispatcherV1",
+  "status": "PASS",
+  "execution_order": [
+    "A1",
+    "B1",
+    "A2",
+    "B2",
+    "A3",
+    "B3"
+  ],
+  "samples": [
+    {
+      "slot": "A1",
+      "status": "PASS",
+      "fake_outbound_count": 1,
+      "second_attempt_count": 0,
+      "real_network_count": 0
+    },
+    {
+      "slot": "B1",
+      "status": "PASS",
+      "fake_outbound_count": 1,
+      "second_attempt_count": 0,
+      "real_network_count": 0
+    },
+    {
+      "slot": "A2",
+      "status": "PASS",
+      "fake_outbound_count": 1,
+      "second_attempt_count": 0,
+      "real_network_count": 0
+    },
+    {
+      "slot": "B2",
+      "status": "PASS",
+      "fake_outbound_count": 1,
+      "second_attempt_count": 0,
+      "real_network_count": 0
+    },
+    {
+      "slot": "A3",
+      "status": "PASS",
+      "fake_outbound_count": 1,
+      "second_attempt_count": 0,
+      "real_network_count": 0
+    },
+    {
+      "slot": "B3",
+      "status": "PASS",
+      "fake_outbound_count": 1,
+      "second_attempt_count": 0,
+      "real_network_count": 0
+    }
+  ],
+  "worktree_after_each": "CLEAN"
+}

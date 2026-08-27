@@ -1,0 +1,36 @@
+{
+  "branch": "r1-ptr3/planning-repair-finding-propagation-20260817",
+  "baseline_head": "12ae672583edd45313fe082efd11807f61aa6df6",
+  "real_boundary_source_head": "ccee27cd278b974e0fc48c8e13e7569bc62ea95d",
+  "pilot_id": "skill-v3-character-heavy-multi-sample-v1-4d47410b0144360d",
+  "sample_id": "sv3s-089dd120ad568f87e7ef",
+  "real_external_actions": 0,
+  "schema": "SkillV3A1ExecutionSeamAuditV1",
+  "current_execution_entry": "execute_one_sealed_sample",
+  "current_launcher": "launch_one_sealed_sample",
+  "approval_store": "canonical worktree-external content-addressed approval store",
+  "nonce_protocol": [
+    "reserve",
+    "load",
+    "is_reusable",
+    "mark_dispatch_attempt",
+    "note_network_attempt",
+    "consume",
+    "invalidate"
+  ],
+  "dispatcher_protocol": "Dispatcher",
+  "real_dispatcher": "RealPilotDispatcherV1",
+  "route_resolution_path": "RealPilotDispatcherV1._preflight_route -> resolve_route_binding -> ProviderRegistry",
+  "credential_boundary": "RealPilotDispatcherV1.dispatch after permission/approval/nonce/post-nonce preflight",
+  "lowest_dispatch_boundary": "HttpProvider._before_http_post_attempt",
+  "implicit_retry_points_audited": [
+    "launcher",
+    "ModelGateway",
+    "provider adapter",
+    "HttpProvider",
+    "structured contract recovery",
+    "fallback",
+    "route switch",
+    "resume"
+  ]
+}

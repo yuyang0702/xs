@@ -1,0 +1,27 @@
+{
+  "branch": "r1-ptr3/planning-repair-finding-propagation-20260817",
+  "baseline_head": "12ae672583edd45313fe082efd11807f61aa6df6",
+  "real_boundary_source_head": "ccee27cd278b974e0fc48c8e13e7569bc62ea95d",
+  "pilot_id": "skill-v3-character-heavy-multi-sample-v1-4d47410b0144360d",
+  "sample_id": "sv3s-089dd120ad568f87e7ef",
+  "real_external_actions": 0,
+  "schema": "SkillV3A1BlockedPreDispatchBindingV1",
+  "historical_result": "SKILL_V3_CHARACTER_HEAVY_MULTI_SAMPLE_PILOT_SAMPLE_1_REAL_EXECUTION_BLOCKED_PRE_DISPATCH",
+  "historical_evidence_exact": true,
+  "nonce_counts": {
+    "created": 0,
+    "reserved": 0,
+    "consumed": 0
+  },
+  "credential_lookup_count": 0,
+  "provider_request_attempts": 0,
+  "network_calls": 0,
+  "model_calls": 0,
+  "paid_calls": 0,
+  "a1_real_execution": "NOT_EXECUTED",
+  "blockers": [
+    "DEDICATED_LAUNCHER_CANNOT_VALIDATE_SUCCESSOR_APPROVAL_WITHOUT_INLINE_NONCE",
+    "CANONICAL_PERSISTENT_NONCE_LEDGER_NOT_BOUND_TO_SKILL_V3_SUCCESSOR_LAUNCHER",
+    "REAL_PROVIDER_DISPATCHER_NOT_IMPLEMENTED_OR_BOUND"
+  ]
+}

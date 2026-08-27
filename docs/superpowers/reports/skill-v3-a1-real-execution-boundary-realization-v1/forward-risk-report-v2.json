@@ -1,0 +1,107 @@
+{
+  "version": 2,
+  "original_requirement": "Realize the sealed Skill V3 A1 real execution boundary without performing a real request: decouple approval from nonce reservation, add a durable worktree-external single-use nonce ledger, bind a canonical one-shot real dispatcher to the exact frozen route, and preserve production and experiment identity.",
+  "scope_classification": "closed_world",
+  "operational_definition": "The change is complete when the one sealed A1 pilot family and all six frozen sample identities can traverse the real dispatcher code path through an injected counting transport with one or fewer outbound attempts, while authorization, nonce, route, credential, retry, restart, concurrency, and production-isolation invariants fail closed offline.",
+  "forbidden_narrowing": [
+    "Do not treat FakeDispatcher-only coverage as proof of the real boundary.",
+    "Do not create or reserve a real nonce during realization or readiness validation.",
+    "Do not read credentials, create a real provider client, or access the network.",
+    "Do not alter A1 prompt, skill context, non-skill guidance, route identity, sampling, validator, output cap, or ordinary runtime retry behavior.",
+    "Do not allow retry, fallback, route switch, resume dispatch, or a second outbound attempt after any dispatch marker."
+  ],
+  "resolution_status": "case_fixed",
+  "closed_world_justification": "The authorized scope is the finite sealed Skill V3 character-heavy pilot, its six enumerated samples, its exact route/model/provider/contract identities, and its dedicated launcher. The implementation is intentionally not a system-wide canary nonce or retry redesign.",
+  "constraint_traceability": [
+    {
+      "requirement": "Approval authorizes future nonce reservation but contains no executable nonce.",
+      "implementation": "SkillV3PilotRealBoundarySuccessorSignedApprovalV2 and launcher ordering in tools/canary/skill_v3_pilot_approval_store.py and tools/canary/skill_v3_character_heavy_pilot.py.",
+      "test_paths": [
+        "tests/canary/test_skill_v3_real_execution_boundary.py"
+      ],
+      "evidence": "Focused approval/nonce lifecycle tests verify permission then approval then reserve and reject historical inline-nonce reuse."
+    },
+    {
+      "requirement": "Durable atomic worktree-external nonce ledger is single-use across restart and concurrency.",
+      "implementation": "SkillV3PilotDurableNonceV1 in tools/canary/skill_v3_pilot_nonce_store.py.",
+      "test_paths": [
+        "tests/canary/test_skill_v3_real_execution_boundary.py"
+      ],
+      "evidence": "Owning tests cover reserve/load/dispatch-attempt/consume/invalidate, duplicate reservation, double consume, restart recovery, concurrency, and clean-worktree invariants."
+    },
+    {
+      "requirement": "The real dispatcher is exact-bound and cannot issue more than one provider/network attempt.",
+      "implementation": "RealPilotDispatcherV1 and SingleDispatchTransportPolicyV1 in tools/canary/skill_v3_real_execution_boundary.py, with the outbound observer seam in src/novel_flywheel/providers/http.py and src/novel_flywheel/providers/registry.py.",
+      "test_paths": [
+        "tests/canary/test_skill_v3_real_execution_boundary.py",
+        "tests/providers/test_single_dispatch_transport_guard.py"
+      ],
+      "evidence": "Production-shaped counting-transport tests enter the real dispatcher path below request construction and prove second-attempt rejection before network I/O."
+    },
+    {
+      "requirement": "Ordinary runtime and A1 experiment identity remain unchanged.",
+      "implementation": "Attempt observer defaults to None; the canonical real pilot factory is not imported or invoked by normal application construction; sealed request components are loaded rather than caller-overridden.",
+      "test_paths": [
+        "tests/canary/test_skill_v3_real_execution_boundary.py",
+        "tests/canary/test_sc_ic1_import_closure.py",
+        "tests/providers/test_single_dispatch_transport_guard.py"
+      ],
+      "evidence": "Identity and import-closure regressions verify exact wire/skill/non-skill hashes, baml diff zero, ordinary retry behavior unchanged, and no generic canary dependency fan-out."
+    }
+  ],
+  "historical_incident_families_checked": [
+    "Inline approval nonce coupling caused correct A1 pre-dispatch block.",
+    "FakeNonceStore and FakeDispatcher were previously mistaken for real-boundary closure.",
+    "Generic canary import closure can accidentally import optional provider dependencies.",
+    "Application, gateway, adapter, HTTP, fallback, and resume layers can each create a second request.",
+    "Dirty worktree and post-seal HEAD drift can invalidate signed approval authority."
+  ],
+  "projected_failure_mechanisms": [
+    "Route or model drift before credential lookup.",
+    "Credential lookup before permission, approval, nonce, or post-nonce preflight.",
+    "Concurrent duplicate nonce reservation.",
+    "Process restart after reservation or after dispatch-attempt marker.",
+    "Transport timeout, HTTP error, empty output, parse/schema/local validation failure attempting a retry.",
+    "Gateway retry, adapter retry, HTTP auto-retry, fallback, route switch, resume, or caller second dispatch.",
+    "Test-only third-party imports leaking into generic Short canary closure."
+  ],
+  "model_output_boundary_changed": false,
+  "model_output_not_applicable_evidence": "No provider response adapter, structured parser, generated contract, schema, validator, prompt, or literary model-output semantics changed. The pilot dispatcher uses the existing ModelGateway/Anthropic structured-output path; injected counting-transport tests cover success, empty output, parse failure, schema failure, and local validation failure only to prove one-shot terminal behavior.",
+  "why_previous_tests_missed": "Earlier tests exercised the dedicated launcher with FakeNonceStore and FakeDispatcher, so they proved local sequencing but never crossed the production-shaped route-resolution, credential deferral, request construction, and lowest outbound attempt boundary.",
+  "sibling_boundaries": [
+    {
+      "boundary": "All six frozen pilot sample identities",
+      "disposition": "fixed_and_tested",
+      "evidence": "A1,B1,A2,B2,A3,B3 each pass the real-dispatcher offline counting-transport simulation with exactly one fake outbound attempt."
+    },
+    {
+      "boundary": "Normal application and Full Short runtime",
+      "disposition": "tested_not_susceptible",
+      "evidence": "The real pilot factory is opt-in, observer defaults are inert, and generic Short closure/import regression remains green."
+    },
+    {
+      "boundary": "Historical V1 signed approvals",
+      "disposition": "tested_not_susceptible",
+      "evidence": "Historical approval remains parseable evidence but is stale, unused, non-consumed, and non-reusable after HEAD drift."
+    },
+    {
+      "boundary": "Other samples and later production cutovers",
+      "disposition": "not_applicable",
+      "evidence": "This task creates no approval, nonce, request, execution, cutover, or auto-advance authority for B1 or any later sample."
+    }
+  ],
+  "production_shaped_tests": [
+    "tests/canary/test_skill_v3_real_execution_boundary.py",
+    "tests/providers/test_single_dispatch_transport_guard.py"
+  ],
+  "next_authoritative_boundary_tests": [
+    "tests/canary/test_skill_v3_real_execution_boundary.py",
+    "tests/canary/test_skill_v3_character_heavy_pilot.py",
+    "tests/canary/test_skill_v3_pilot_approval_store.py"
+  ],
+  "remaining_risks": [
+    "A fresh same-conversation user authorization and external signed approval are still required before any real nonce is created.",
+    "The first real provider request remains unexecuted; provider-side behavior can only be observed at the separately authorized execution gate.",
+    "This pilot-scoped case fix does not claim a system-wide nonce or retry architecture for unrelated workflows."
+  ]
+}

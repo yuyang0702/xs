@@ -1,0 +1,25 @@
+{
+  "branch": "r1-ptr3/planning-repair-finding-propagation-20260817",
+  "baseline_head": "12ae672583edd45313fe082efd11807f61aa6df6",
+  "real_boundary_source_head": "ccee27cd278b974e0fc48c8e13e7569bc62ea95d",
+  "pilot_id": "skill-v3-character-heavy-multi-sample-v1-4d47410b0144360d",
+  "sample_id": "sv3s-089dd120ad568f87e7ef",
+  "real_external_actions": 0,
+  "schema": "SkillV3PilotDurableNonceContractV1",
+  "implementation_schema": "SkillV3PilotDurableNonceV1",
+  "policy_version": "skill-v3-pilot-durable-nonce-policy-v1",
+  "implementation": "tools/canary/skill_v3_pilot_nonce_store.py::DurablePilotNonceStoreV1",
+  "storage_root_type": "configured user runtime data outside Git worktree",
+  "single_use": true,
+  "max_provider_request_attempts": 1,
+  "max_network_request_attempts": 1,
+  "allowed_states": [
+    "RESERVED",
+    "DISPATCH_ATTEMPTED",
+    "CONSUMED",
+    "INVALIDATED_PRE_DISPATCH",
+    "INVALIDATED_FAILED_DISPATCH",
+    "CLOSED"
+  ],
+  "real_nonce_created": false
+}

@@ -1,0 +1,16 @@
+{
+  "branch": "r1-ptr3/planning-repair-finding-propagation-20260817",
+  "baseline_head": "12ae672583edd45313fe082efd11807f61aa6df6",
+  "real_boundary_source_head": "ccee27cd278b974e0fc48c8e13e7569bc62ea95d",
+  "pilot_id": "skill-v3-character-heavy-multi-sample-v1-4d47410b0144360d",
+  "sample_id": "sv3s-089dd120ad568f87e7ef",
+  "real_external_actions": 0,
+  "schema": "SkillV3A1RouteBindingV1",
+  "provider_binding_sha256": "121cc6b0b4f77b0b08697f2782e0f67a29007183d65a2780b2051048da3a600f",
+  "model_binding_sha256": "5fd92d58fb34146b854ecf816dfe7622e24c233480149dfab9e327cff7f6b1ff",
+  "route_fingerprint": "30e9cbaf86fbb4b89b43614d71cc11b359ad41e7411e8ebda5d3ce4199879bf0",
+  "contract_and_sampling_bound": true,
+  "max_output_tokens": 4624,
+  "selected_route": "primary",
+  "route_drift_fails_before_credential_lookup": true
+}
