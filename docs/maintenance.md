@@ -1,5 +1,22 @@
 # Novel Flywheel Maintenance
 
+## Skill V3 pilot guidance provenance
+
+Planning's ordinary layered-context rendering remains byte-for-byte unchanged.
+Its `skills_loaded` event now includes a `RenderedAdvisoryProvenanceV1`
+hash-only receipt for the exact final advisory bytes, character count, and any
+truncation or capacity shedding. The receipt is observational and is not read by
+prompt assembly, authority, routing, validation, retry, or fallback decisions.
+
+The disabled Skill V3 multi-sample pilot uses
+`novel_flywheel.pilot_guidance.render_pilot_advisory_partition` to keep frozen
+project/reference-derived guidance in a separate deterministic partition from
+the A/B Skill context. This helper is pilot-only: it never compacts or sheds a
+component. If the complete partition does not fit its sealed character budget,
+it raises `ADVISORY_OVERFLOW` before any dispatch. No raw reference text is
+stored in its provenance manifests; stable artifact/version identities and
+SHA-256 values are required for every active model-visible contributor.
+
 ## Narrative Reliability Kernel V5 operations
 
 Planning fields now cross one `markdown-it-py` AST compiler before any local

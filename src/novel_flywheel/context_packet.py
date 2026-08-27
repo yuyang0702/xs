@@ -227,6 +227,7 @@ def build_stage_context_packet(
     advisory: str = "",
     output_reserve: int = 0,
     advisory_max_chars: int = 4000,
+    advisory_shedding_occurred: bool = False,
 ) -> StageContextPacket:
     if not str(stage or "").strip():
         raise ValueError("context packet stage must not be empty")
@@ -242,8 +243,11 @@ def build_stage_context_packet(
     )
     if not rules:
         raise ValueError("context packet contains no mandatory narrative rules")
-    advisory_excerpt = _advisory_excerpt(
-        _advisory_without_mandatory_rules(advisory, rules), advisory_max_chars,
+    filtered_advisory = _advisory_without_mandatory_rules(advisory, rules)
+    advisory_excerpt = _advisory_excerpt(filtered_advisory, advisory_max_chars)
+    advisory_truncation_occurred = bool(
+        str(filtered_advisory or "").strip()
+        and advisory_excerpt != str(filtered_advisory or "").strip()
     )
     layer_text = {
         "current_contract": _contract_text(current_contract),
@@ -266,6 +270,9 @@ def build_stage_context_packet(
         "output_reserve_tokens": max(0, int(output_reserve or 0)),
         "removed_duplicate_rules": duplicate_count,
         "filtered_advisory_characters": max(0, len(str(advisory or "")) - len(advisory_excerpt)),
+        "advisory_source_characters": len(str(advisory or "")),
+        "advisory_truncation_occurred": advisory_truncation_occurred,
+        "advisory_shedding_occurred": bool(advisory_shedding_occurred),
     }
     return StageContextPacket(
         stage=str(stage).strip(),
@@ -283,6 +290,37 @@ def build_stage_context_packet(
         },
         metrics=metrics,
     )
+
+
+def advisory_provenance(packet: StageContextPacket) -> dict[str, Any]:
+    """Return a hash-only receipt for the exact rendered advisory bytes.
+
+    The receipt is observational: it never feeds prompt construction, authority,
+    routing, validation, retry, or fallback decisions.
+    """
+
+    omitted_components = []
+    omission_reasons = []
+    if packet.metrics.get("advisory_truncation_occurred"):
+        omitted_components.append("ADVISORY_TAIL")
+        omission_reasons.append("ADVISORY_MAX_CHARS")
+    if packet.metrics.get("advisory_shedding_occurred"):
+        omitted_components.append("ADVISORY_CONTEXT")
+        omission_reasons.append("CONTEXT_CAPACITY_POLICY")
+    return {
+        "schema": "RenderedAdvisoryProvenanceV1",
+        "final_rendered_advisory_sha256": _source_hash(packet.advisory),
+        "final_rendered_advisory_chars": len(packet.advisory),
+        "advisory_omitted_components": omitted_components,
+        "advisory_omission_reasons": omission_reasons,
+        "advisory_truncation_occurred": bool(
+            packet.metrics.get("advisory_truncation_occurred")
+        ),
+        "advisory_shedding_occurred": bool(
+            packet.metrics.get("advisory_shedding_occurred")
+        ),
+        "raw_advisory_persisted": False,
+    }
 
 
 def render_stage_context_packet(packet: StageContextPacket) -> str:

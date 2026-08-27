@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 from dataclasses import replace
+import hashlib
 
 import pytest
 
 from novel_flywheel.context_packet import (
+    advisory_provenance,
     build_stage_context_packet,
     context_packet_sha256,
     extract_mandatory_rules,
@@ -171,6 +173,21 @@ def test_context_metrics_report_each_layer_without_guessing_provider_capacity() 
         "advisory",
     }
     assert "context_window" not in packet.metrics
+
+
+def test_rendered_advisory_provenance_is_hash_only_and_exact() -> None:
+    packet = build_packet()
+
+    receipt = advisory_provenance(packet)
+
+    assert receipt["schema"] == "RenderedAdvisoryProvenanceV1"
+    assert receipt["final_rendered_advisory_chars"] == len(packet.advisory)
+    assert receipt["final_rendered_advisory_sha256"] == hashlib.sha256(
+        packet.advisory.encode("utf-8")
+    ).hexdigest()
+    assert receipt["advisory_truncation_occurred"] is True
+    assert receipt["advisory_shedding_occurred"] is False
+    assert "rendered_text" not in receipt
 
 
 def test_system_layer_keeps_authority_without_duplicating_current_user_payload() -> None:

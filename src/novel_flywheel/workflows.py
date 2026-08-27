@@ -98,6 +98,7 @@ from novel_flywheel.execution_authority import (
     project_execution_fragment_authority,
 )
 from novel_flywheel.context_packet import (
+    advisory_provenance,
     build_stage_context_packet,
     context_packet_sha256,
     render_stage_system_context,
@@ -27260,6 +27261,7 @@ class WorkflowService:
                         advisory="",
                         output_reserve=preliminary_route_reserve,
                         advisory_max_chars=0,
+                        advisory_shedding_occurred=True,
                     )
                     coverage_issues = validate_rule_coverage(context_packet)
                     if coverage_issues:
@@ -27393,6 +27395,9 @@ class WorkflowService:
                         "filtered_advisory_characters": context_packet.metrics[
                             "filtered_advisory_characters"
                         ],
+                        "rendered_advisory_provenance": advisory_provenance(
+                            context_packet
+                        ),
                     } if context_packet else {}),
                 },
             )
