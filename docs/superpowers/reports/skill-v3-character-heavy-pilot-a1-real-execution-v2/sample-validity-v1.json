@@ -1,0 +1,11 @@
+{
+  "schema": "SkillV3A1V2SampleValidityV1",
+  "status": "BLOCKED_PRE_DISPATCH",
+  "sample_id": "sv3s-089dd120ad568f87e7ef",
+  "sample_validity": "NOT_EXECUTED",
+  "typed_reason": "EXPLICIT_CONCRETE_DESTINATION_AUTHORIZATION_NOT_PROVABLE",
+  "literary_artifact_present": false,
+  "literary_artifact_sha256": null,
+  "eligible_for_blind_evaluation": false,
+  "auto_advance_to_b1": false
+}

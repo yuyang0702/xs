@@ -1,0 +1,20 @@
+{
+  "schema": "SkillV3A1V2TestReceiptV1",
+  "status": "PASS",
+  "focused_command": "python -m pytest -q -p no:cacheprovider tests/canary/test_skill_v3_pilot_approval_store.py tests/canary/test_skill_v3_character_heavy_pilot.py tests/canary/test_skill_v3_real_execution_boundary.py tests/providers/test_single_dispatch_transport_guard.py",
+  "focused_result": "99 passed in 95.88s",
+  "coverage": [
+    "Approval V2 lifecycle",
+    "durable nonce lifecycle and restart safety",
+    "sample locks and eligibility",
+    "real execution boundary",
+    "single-dispatch transport guard"
+  ],
+  "provider_replay_count": 0,
+  "full_suite_rerun": false,
+  "full_suite_rerun_reason": "Evidence-only blocked pre-dispatch seal; no source, runtime, prompt, route, validator, budget, model input, or Provider output changed.",
+  "new_owning_source_regression_count": 0,
+  "strict_l3": "PASS",
+  "strict_l3_warnings": 0,
+  "strict_l3_blockers": 0
+}

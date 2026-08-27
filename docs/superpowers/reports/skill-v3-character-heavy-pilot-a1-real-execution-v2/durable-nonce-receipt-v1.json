@@ -1,0 +1,15 @@
+{
+  "schema": "SkillV3A1V2DurableNonceReceiptV1",
+  "status": "NOT_CREATED",
+  "nonce_policy_version": "skill-v3-pilot-durable-nonce-policy-v1",
+  "nonce_created": false,
+  "nonce_reserved": false,
+  "nonce_consumed": false,
+  "nonce_invalidated": false,
+  "nonce_closed": false,
+  "nonce_final_state": "NOT_CREATED",
+  "nonce_id": null,
+  "provider_dispatch_attempts": 0,
+  "network_request_attempts": 0,
+  "reason": "PROCESS_CREATION_REJECTED_BEFORE_CANONICAL_NONCE_RESERVATION"
+}

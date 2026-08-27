@@ -1,0 +1,32 @@
+{
+  "schema": "SkillV3A1V2Sha256ManifestV1",
+  "status": "EXACT",
+  "entry_count": 25,
+  "entries": [
+    {"path": "approval-final-state-v1.json", "sha256": "2388709293a3c965ea43ec42b82a6f5a556e40d27a66a7433d535d0ec3a6778d", "bytes": 435},
+    {"path": "approval-v2-binding-v1.json", "sha256": "e826e83081a8e3c51447558a98d77c49ceb9f8d1a68a5974557ff3877c9145ee", "bytes": 686},
+    {"path": "credential-boundary-receipt-v1.json", "sha256": "ba9cef4ede25dc8d3bbb5acb58ac732be92168bc989eafd09c1915f991ad9ff4", "bytes": 255},
+    {"path": "current-chat-permission-recheck-v1.json", "sha256": "39bc83530c195e33bebe68629d375a31422204a47fd5d8253d1dbe4392909dad", "bytes": 993},
+    {"path": "durable-nonce-receipt-v1.json", "sha256": "df4d3a6bad0999c751a125af2cb8c4e3d4f6c87b59e33641b1f8bc081cc59447", "bytes": 483},
+    {"path": "final-report-v1.md", "sha256": "4784989f8ad333a7faa9beb37385ad65a0638ddf6cbf24baba22ab8f4c63ebc1", "bytes": 3333},
+    {"path": "model-input-binding-v1.json", "sha256": "7571886dae138c1686daa0a3dbf84c2bbddf4b831f250873b0289efbf23d7a03", "bytes": 1127},
+    {"path": "nonce-final-state-v1.json", "sha256": "46a38a6a1bf94947a64a71a104acc8ad1dcd907b5e7c3cc87df777c84dc529f6", "bytes": 281},
+    {"path": "post-nonce-preflight-v1.json", "sha256": "47f434b212b3fd0b165683cfa8e62ebd826c6319a2eba1477042879b074da996", "bytes": 242},
+    {"path": "pre-execution-head-binding-v1.json", "sha256": "554d0760b13028caec75818c363dbcc2b3895da412a30f304894ce8f664a9691", "bytes": 388},
+    {"path": "privacy-scan-v1.json", "sha256": "8304770f72050c5ce01bef321b635f602f5a3f14dcd4b4bb12d5ec132a2a5c19", "bytes": 719},
+    {"path": "production-isolation-v1.json", "sha256": "f561ea0503b47597736c3058b0273a1289198ad4883c8ff6a191341d726ef90f", "bytes": 541},
+    {"path": "provider-result-shape-v1.json", "sha256": "42897734d678acf8f3879ce128cb27c8c523d1d361c358c730432a57c3890808", "bytes": 332},
+    {"path": "README.md", "sha256": "8ad4c2f1b145eeb021734f5845d7b1306a2f1539fbab77284259f9337bf8e609", "bytes": 523},
+    {"path": "real-boundary-binding-v1.json", "sha256": "2a19c3e045709955454a38364033660d68797c192cbf23a691f44b80a7bcaa5c", "bytes": 960},
+    {"path": "real-dispatch-attempt-receipt-v1.json", "sha256": "11f20581e00a2c47473ae7587e7cdc112d662bc6e5a40ad91131fab1c4072560", "bytes": 448},
+    {"path": "route-capacity-egress-v1.json", "sha256": "5ebceba57eca78c6e3d594e41cd50cf36c371b0728d4e46ba6c8647f59db6b41", "bytes": 796},
+    {"path": "sample-lock-binding-v1.json", "sha256": "b6b1b51c44bd0dd0fa39f8f2d9301b3f9b971d6a0afe1aa4a7c684a8e1af9ab8", "bytes": 688},
+    {"path": "sample-validity-v1.json", "sha256": "d5c1efcaf5c729236e9fe1d93e75e41c389fdb65810f6724f9af4d7203cbb732", "bytes": 388},
+    {"path": "signed-approval-v2-evidence.json", "sha256": "829ceae4849fdcc75964798f8f329ef6227e2672d51bb89993f22a72e3104abd", "bytes": 3192},
+    {"path": "single-dispatch-counter-receipt-v1.json", "sha256": "8ae713876cbedcdcd061a631463089e60a873469fc38cb211cd5bf8c9e2de9ca", "bytes": 503},
+    {"path": "strict-l3-receipt-v1.json", "sha256": "bf8d19357eb889c1bd64c8c95a7e4b9c9a328efc288b96366adfc350d2e236d3", "bytes": 465},
+    {"path": "terminal-local-pipeline-receipt-v1.json", "sha256": "e27c2665fa1f95f770e8ef69d349967a9b2880f9c9c3f268555ea015e536696f", "bytes": 456},
+    {"path": "test-receipt-v1.json", "sha256": "715a1a5a7e8a1e38c49f3bef8ab4a3f07d15752e73ad9427b21a48f4c2e6bf1c", "bytes": 935},
+    {"path": "wire-input-binding-v1.json", "sha256": "6973a0511f184c5e5a80d6fefb879dc05b0e3e5c8050ad7ecb2f8a7982de5c25", "bytes": 338}
+  ]
+}

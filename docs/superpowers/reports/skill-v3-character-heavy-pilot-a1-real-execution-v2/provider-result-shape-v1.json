@@ -1,0 +1,11 @@
+{
+  "schema": "SkillV3A1V2ProviderResultShapeV1",
+  "status": "NOT_AVAILABLE",
+  "provider_request_attempted": false,
+  "provider_result_present": false,
+  "input_tokens": 0,
+  "output_tokens": 0,
+  "finish_state_or_reason": "BLOCKED_PRE_DISPATCH",
+  "raw_provider_content_persisted": false,
+  "hidden_reasoning_persisted": false
+}

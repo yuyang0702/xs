@@ -1,0 +1,20 @@
+{
+  "schema": "SkillV3A1V2ProductionIsolationV1",
+  "status": "PASS",
+  "production_source_diff": 0,
+  "baml_src_diff": 0,
+  "prompt_changed": false,
+  "model_changed": false,
+  "route_changed": false,
+  "retry_changed": false,
+  "fallback_changed": false,
+  "budget_changed": false,
+  "validator_changed": false,
+  "story_state_mutation_count": 0,
+  "canon_mutation_count": 0,
+  "ready_mutation_count": 0,
+  "production_authority": false,
+  "skill_v3_cutover": false,
+  "planning_v2_cutover": false,
+  "full_short_canary": "NOT_EXECUTED"
+}

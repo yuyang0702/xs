@@ -1,0 +1,14 @@
+{
+  "schema": "SkillV3A1V2RealDispatchAttemptReceiptV1",
+  "status": "BLOCKED_PRE_DISPATCH",
+  "attempted_at": null,
+  "process_creation_started": false,
+  "canonical_launcher_entered": false,
+  "provider_dispatch_attempts": 0,
+  "http_post_attempts": 0,
+  "network_request_attempts": 0,
+  "model_logical_calls": 0,
+  "paid_calls": 0,
+  "typed_blocker": "EXPLICIT_CONCRETE_DESTINATION_AUTHORIZATION_NOT_PROVABLE",
+  "workaround_attempted": false
+}

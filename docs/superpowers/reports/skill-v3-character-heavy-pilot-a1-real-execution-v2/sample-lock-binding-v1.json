@@ -1,0 +1,17 @@
+{
+  "schema": "SkillV3A1V2SampleLockBindingV1",
+  "status": "EXACT",
+  "pilot_id": "skill-v3-character-heavy-multi-sample-v1-4d47410b0144360d",
+  "execution_sequence": ["A1", "B1", "A2", "B2", "A3", "B3"],
+  "sample_id": "sv3s-089dd120ad568f87e7ef",
+  "sample_slot": "A1",
+  "arm": "A",
+  "sample_index": 1,
+  "sample_lock_sha256": "8bc9c05794e1dbecb095a9a1b9937d9a277c5efa462b83c6b7e1e49495b862a7",
+  "parent_experiment_lock_sha256": "8a07c5106fec903952d4b622ab33702636c17d3add7eb380d3ac78071841fc9b",
+  "next_eligible_sample": "A1",
+  "a1_already_executed": false,
+  "a1_already_sealed": false,
+  "historical_blocked_a1_counts_as_real_sample": false,
+  "stop_condition_active": false
+}

@@ -1,0 +1,9 @@
+{
+  "schema": "SkillV3A1V2PostNoncePreflightV1",
+  "status": "NOT_REACHED",
+  "nonce_reserved": false,
+  "credential_lookup_count": 0,
+  "provider_client_creation_count": 0,
+  "provider_request_attempts": 0,
+  "network_request_attempts": 0
+}

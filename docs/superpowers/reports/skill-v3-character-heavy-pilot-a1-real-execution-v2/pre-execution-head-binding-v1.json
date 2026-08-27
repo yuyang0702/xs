@@ -1,0 +1,10 @@
+{
+  "schema": "SkillV3A1V2PreExecutionHeadBindingV1",
+  "status": "EXACT",
+  "branch": "r1-ptr3/planning-repair-finding-propagation-20260817",
+  "pre_execution_head": "be43a7ff70a3f4722daf8a610571185c68f08866",
+  "pre_execution_worktree": "CLEAN",
+  "checked_at": "2026-08-27T13:59:09Z",
+  "repo_file_write_count_before_terminal_block": 0,
+  "git_commit_count_before_terminal_block": 0
+}

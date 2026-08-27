@@ -1,0 +1,20 @@
+{
+  "schema": "SkillV3A1V2ModelInputBindingV1",
+  "status": "EXACT",
+  "model_input_component_binding_sha256": "d215fdf2590b39e43f63e28944a09f244b55177f09039acb67ebb87008acae85",
+  "a_skill_context_sha256": "7d0f6309ede2261f2f6a1098d394937948bf5b50eb9248266ab350fd91da9adc",
+  "non_skill_guidance_snapshot_sha256": "82ab7881d58764552de2371e08c6ffd23b2d13dc2523cc1a9c8dbb96f227c303",
+  "provider_binding_sha256": "121cc6b0b4f77b0b08697f2782e0f67a29007183d65a2780b2051048da3a600f",
+  "model_binding_sha256": "5fd92d58fb34146b854ecf816dfe7622e24c233480149dfab9e327cff7f6b1ff",
+  "sampling_policy_sha256": "455c8d67368d624cae5b33d20a4941ca06b14e56dcf5b1eb5d602db4fb7f6d49",
+  "validator_policy_sha256": "062dd052fd34949dd8b2369c0c5d5488e100d71ff4d905d9524711f5d14039e7",
+  "max_output_tokens": 4624,
+  "raw_ref_model_visible": false,
+  "distill_direct_model_visible": false,
+  "learn_node_direct_model_visible": false,
+  "project_style_sample_planning_visible": false,
+  "advisory_truncation_occurred": false,
+  "advisory_shedding_occurred": false,
+  "uncontrolled_variable_count": 0,
+  "production_model_input_identity": "PASS"
+}

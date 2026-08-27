@@ -1,0 +1,18 @@
+{
+  "schema": "SkillV3A1V2RouteCapacityEgressV1",
+  "status": "BLOCKED_BEFORE_EGRESS",
+  "route_preflight": "PASS",
+  "route_fingerprint": "30e9cbaf86fbb4b89b43614d71cc11b359ad41e7411e8ebda5d3ce4199879bf0",
+  "provider_binding_sha256": "121cc6b0b4f77b0b08697f2782e0f67a29007183d65a2780b2051048da3a600f",
+  "model_binding_sha256": "5fd92d58fb34146b854ecf816dfe7622e24c233480149dfab9e327cff7f6b1ff",
+  "capacity": "PASS",
+  "no_silent_truncation": true,
+  "allowed_egress_binding_validated": true,
+  "actual_egress_item_count": 0,
+  "raw_ref_corpus_egress": false,
+  "unrelated_project_data_egress": false,
+  "other_sample_data_egress": false,
+  "historical_blind_results_egress": false,
+  "credential_egress": false,
+  "typed_blocker": "EXPLICIT_CONCRETE_DESTINATION_AUTHORIZATION_NOT_PROVABLE"
+}

@@ -1,0 +1,15 @@
+{
+  "schema": "SkillV3A1V2ApprovalBindingV1",
+  "status": "EXACT_UNUSED",
+  "approval_id": "skill-v3-a1-real-boundary-20260827t134753z-5ef85b99b9335fc5",
+  "signed_approval_sha256": "ac322e6182e6b4ae0cb1c20f4663ca6d170cf81877dfa75bb79ac3c34cda55d5",
+  "user_authorization_message_sha256": "a40caf98c973fad7e654117533590f0e5eecbd5064ccb77592172626f7482972",
+  "valid_from": "2026-08-27T13:47:53Z",
+  "expires_at": "2026-08-27T15:47:53Z",
+  "current_time_within_window_at_preflight": true,
+  "scope": "SKILL_V3_CHARACTER_HEAVY_MULTI_SAMPLE_PILOT_SAMPLE_1_A1_ONLY",
+  "single_use": true,
+  "usage_status": "unused",
+  "nonce_state": "NOT_CREATED",
+  "consumption_receipt_present": false
+}

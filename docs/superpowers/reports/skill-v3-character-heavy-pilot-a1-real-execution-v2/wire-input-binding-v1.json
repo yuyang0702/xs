@@ -1,0 +1,10 @@
+{
+  "schema": "SkillV3A1V2WireInputBindingV1",
+  "status": "EXACT",
+  "wire_input_sha256": "47d7e240783edf70528dc05b1c6694271a4228677fee2ef358db398d35a406f5",
+  "a1_wire_input_identity": "PASS",
+  "production_model_input_identity": "PASS",
+  "caller_override_fields": [],
+  "raw_prompt_persisted": false,
+  "raw_story_persisted": false
+}

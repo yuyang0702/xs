@@ -1,0 +1,28 @@
+{
+  "schema": "SkillV3A1V2CurrentChatPermissionRecheckV1",
+  "status": "BLOCKED_ON_CONCRETE_DESTINATION_BINDING",
+  "same_conversation_authorization_present": true,
+  "user_authorization_message_sha256": "a40caf98c973fad7e654117533590f0e5eecbd5064ccb77592172626f7482972",
+  "authorized_general_actions": [
+    "credential_lookup",
+    "network_access",
+    "necessary_A1_request_data_egress",
+    "at_most_one_paid_provider_model_request"
+  ],
+  "forbidden_actions_preserved": [
+    "retry",
+    "transport_retry",
+    "fallback",
+    "route_switch",
+    "resume_dispatch",
+    "second_dispatch",
+    "other_sample",
+    "skill_v3_cutover",
+    "planning_v2_cutover",
+    "full_short"
+  ],
+  "route_fingerprint_bound": "30e9cbaf86fbb4b89b43614d71cc11b359ad41e7411e8ebda5d3ce4199879bf0",
+  "concrete_network_destination_explicitly_named_in_trusted_authorization": false,
+  "typed_blocker": "EXPLICIT_CONCRETE_DESTINATION_AUTHORIZATION_NOT_PROVABLE",
+  "execution_workaround_attempted": false
+}

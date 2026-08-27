@@ -1,0 +1,11 @@
+{
+  "schema": "SkillV3A1V2NonceFinalStateV1",
+  "status": "NOT_CREATED",
+  "nonce_created": false,
+  "nonce_reserved": false,
+  "nonce_consumed": false,
+  "nonce_invalidated": false,
+  "nonce_closed": false,
+  "nonce_final_state": "NOT_CREATED",
+  "reusable_nonce_exists": false
+}

@@ -1,0 +1,13 @@
+{
+  "schema": "SkillV3A1V2StrictL3ReceiptV1",
+  "status": "PASS",
+  "declared_level": "L3",
+  "automatic_level": "L1",
+  "warnings": 0,
+  "blockers": 0,
+  "source_changes": 0,
+  "authority_critical_source_changes": 0,
+  "review_mode": "SINGLE_AGENT_EVIDENCE_ONLY",
+  "split_review_required": false,
+  "reason": "Only new blocked-pre-dispatch evidence files changed; no source, test, prompt, route, model, validator, budget, or production authority path changed."
+}
