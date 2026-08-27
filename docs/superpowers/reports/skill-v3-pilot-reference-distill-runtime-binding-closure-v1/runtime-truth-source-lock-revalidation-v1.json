@@ -1,0 +1,13 @@
+{
+  "schema": "RuntimeTruthSourceLockRevalidationV1",
+  "status": "PASS",
+  "audit_source_lock": "248f786ffadb60224244343778fe6ca2ff3ab37e",
+  "baseline_head": "4826bb76197f278978f65ddfce98e6defeaf91dd",
+  "relevant_source_diff": [
+    "M\tsrc/novel_flywheel/workflows.py"
+  ],
+  "changed_relevant_paths": [
+    "src/novel_flywheel/workflows.py"
+  ],
+  "source_wins_reconstruction": "PASS"
+}

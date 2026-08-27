@@ -1,0 +1,15 @@
+{
+  "schema": "SkillV3ReferenceDistillBindingTestReceiptV1",
+  "focused_tests": "34 passed",
+  "related_tests": "48 passed, 433 deselected",
+  "full_suite": "3679 passed, 41 skipped, 6 xfailed, 52 failed, 72 errors in 2067.65s; known historical evidence/oracle/live-parity families; new owning-source regressions=0",
+  "strict_l3": "PASS",
+  "constraint_traceability": [],
+  "credential_lookup_count": 0,
+  "real_provider_request_attempts": 0,
+  "http_post_attempts": 0,
+  "network_calls": 0,
+  "model_calls": 0,
+  "paid_calls": 0,
+  "new_owning_source_regression_count": 0
+}

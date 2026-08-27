@@ -1,0 +1,9 @@
+{
+  "schema": "ABProjectGuidanceByteIdentityV1",
+  "status": "PASS",
+  "a_final_project_guidance_sha256": "94cfcd4f879232b18b389e6dbfe9595ac4a89a047e887f2fd7160046a1d738ba",
+  "b_final_project_guidance_sha256": "94cfcd4f879232b18b389e6dbfe9595ac4a89a047e887f2fd7160046a1d738ba",
+  "a_project_guidance_chars": 431,
+  "b_project_guidance_chars": 431,
+  "non_skill_model_visible_bytes_identical_across_arms": true
+}

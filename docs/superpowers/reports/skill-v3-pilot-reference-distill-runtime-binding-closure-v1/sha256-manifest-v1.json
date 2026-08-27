@@ -1,0 +1,105 @@
+{
+  "schema": "SkillV3ReferenceDistillBindingManifestEnvelopeV1",
+  "definition": {
+    "schema": "SkillV3ReferenceDistillBindingManifestV1",
+    "entry_count": 19,
+    "entries": [
+      {
+        "path": "a-b-project-guidance-byte-identity-v1.json",
+        "bytes": 413,
+        "sha256": "a79b7ca8b6976d7b994b47775d547b7eb3023331215fcd03b8b89ee4b7fbf3fe"
+      },
+      {
+        "path": "active-reference-derived-provenance-v1.json",
+        "bytes": 1868,
+        "sha256": "186f7f1bfff752ee5c7ac6aab1e5b9343350bb50109520760a4cbf023cd81597"
+      },
+      {
+        "path": "deferred-full-short-style-reference-gaps-v1.json",
+        "bytes": 1244,
+        "sha256": "f841660743be415cd270f79530a025de9cc93b3a35f6156cb8e6cb40230b3b60"
+      },
+      {
+        "path": "final-report-v1.md",
+        "bytes": 2990,
+        "sha256": "23ca49192ace5c912b7775d31c467252e3d43a2464697900f046cf200d725008"
+      },
+      {
+        "path": "forward-risk-report-v2.json",
+        "bytes": 4088,
+        "sha256": "75d2812f464059876fd8d7278f3d4b4fffc690a9694eaf517f8b7c6c7e41103f"
+      },
+      {
+        "path": "negative-binding-matrix-v1.json",
+        "bytes": 1382,
+        "sha256": "efdfcf00644e23e9e9ba0877a5ce971c111a61c75206558910b7b24e22b229c9"
+      },
+      {
+        "path": "no-silent-advisory-loss-v1.json",
+        "bytes": 1544,
+        "sha256": "4c3e7fdf92250a2575c29eb1ed28de8a75e91f4fe2b4ede83ce41d2ebe530c52"
+      },
+      {
+        "path": "pilot-advisory-partition-decision-v1.json",
+        "bytes": 2216,
+        "sha256": "7a7941033466b51ee5126ba3eeb56b07aed70b6dca1568dad1d74150e43b9948"
+      },
+      {
+        "path": "pilot-non-skill-guidance-snapshot-v1.json",
+        "bytes": 2020,
+        "sha256": "e7171c3bcdcd82b0d2ea131edf2ba5560415a3559696292c765cc067e7f2d972"
+      },
+      {
+        "path": "planning-reference-runtime-truth-v1.json",
+        "bytes": 834,
+        "sha256": "5c17fb3990361139278f715856be16baad2e1730466a402b20c3346b057956e3"
+      },
+      {
+        "path": "privacy-scan-v1.json",
+        "bytes": 202,
+        "sha256": "503616877d271fec5cb1f40e615d75e40489987ae29cf3176aa49cddfa9ac611"
+      },
+      {
+        "path": "production-model-input-identity-v1.json",
+        "bytes": 576,
+        "sha256": "96ed5019fa7c659dbd1a271961e57351848f18ad5add430d47a68ba8f587f6fb"
+      },
+      {
+        "path": "README.md",
+        "bytes": 203,
+        "sha256": "d8fbef5ccdb028517a7498debda314f28a266e2d75f0d26a339dc3a900827dff"
+      },
+      {
+        "path": "rendered-advisory-provenance-contract-v1.json",
+        "bytes": 754,
+        "sha256": "d3a84a0c6125ae8dcdbeac70a662f870c05f19ab1a6f309e90e9d8f65edc4ebc"
+      },
+      {
+        "path": "runtime-truth-source-lock-revalidation-v1.json",
+        "bytes": 392,
+        "sha256": "847553a8fc235f6ffb4851917be7fcc1ada53b0edccd09f0bb493492555151ca"
+      },
+      {
+        "path": "six-sample-model-input-component-matrix-v1.json",
+        "bytes": 6886,
+        "sha256": "61d63574ca097c706dfc804e9a877e5ea523a504853f6e9737a62cd31b35200c"
+      },
+      {
+        "path": "strict-l3-receipt-v1.json",
+        "bytes": 186,
+        "sha256": "bd2eb5a56e65fee04d406598e6c3cd7415c7833211edab418d459ad3b1e80569"
+      },
+      {
+        "path": "style-system-separation-v1.json",
+        "bytes": 438,
+        "sha256": "3d544fc12468f441075753916fd9351bafdb9f52dfc162d745736d955785ee84"
+      },
+      {
+        "path": "test-receipt-v1.json",
+        "bytes": 576,
+        "sha256": "90a3e057e4ddb0873658511736b67e73f2650228257dff5d949c94dbe8a4117b"
+      }
+    ]
+  },
+  "definition_sha256": "38b50965fcbe181d239971fe6a5fb83577f1ff498850532c28e4529a7c0b38df"
+}

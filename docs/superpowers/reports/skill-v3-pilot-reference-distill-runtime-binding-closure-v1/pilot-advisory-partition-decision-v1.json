@@ -1,0 +1,52 @@
+{
+  "schema": "PilotAdvisoryPartitionDecisionV1",
+  "status": "PASS",
+  "strategy": "PILOT_ONLY_DETERMINISTIC_SEPARATE_PARTITIONS_FAIL_CLOSED",
+  "arm_a": {
+    "schema": "PilotRenderedAdvisoryPartitionV1",
+    "rendered_advisory_sha256": "90868c82b120f7df4503d742f395ac2e3ca3baddb90871a2f6b3c2e8543b813b",
+    "rendered_advisory_chars": 3410,
+    "project_guidance_sha256": "94cfcd4f879232b18b389e6dbfe9595ac4a89a047e887f2fd7160046a1d738ba",
+    "project_guidance_chars": 431,
+    "skill_guidance_sha256": "7d0f6309ede2261f2f6a1098d394937948bf5b50eb9248266ab350fd91da9adc",
+    "skill_guidance_chars": 2925,
+    "style_guidance_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "style_guidance_chars": 0,
+    "style_profile_state": "NOT_MODEL_VISIBLE_IN_PLANNING",
+    "component_order": [
+      "ADVISORY_PROJECT_GUIDANCE",
+      "ADVISORY_SKILL_GUIDANCE",
+      "ADVISORY_STYLE_GUIDANCE"
+    ],
+    "truncation_occurred": false,
+    "shedding_occurred": false,
+    "omitted_components": [],
+    "omission_reasons": [],
+    "raw_advisory_persisted": false
+  },
+  "arm_b": {
+    "schema": "PilotRenderedAdvisoryPartitionV1",
+    "rendered_advisory_sha256": "e36cff1adf4aafd710685a8f250384ed5e991f59869b8592bc94e2a336482ff4",
+    "rendered_advisory_chars": 3041,
+    "project_guidance_sha256": "94cfcd4f879232b18b389e6dbfe9595ac4a89a047e887f2fd7160046a1d738ba",
+    "project_guidance_chars": 431,
+    "skill_guidance_sha256": "c830681f79526c44d9bd83430019d75cb886bde0affcad86714ee1fc1f41aedd",
+    "skill_guidance_chars": 2556,
+    "style_guidance_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "style_guidance_chars": 0,
+    "style_profile_state": "NOT_MODEL_VISIBLE_IN_PLANNING",
+    "component_order": [
+      "ADVISORY_PROJECT_GUIDANCE",
+      "ADVISORY_SKILL_GUIDANCE",
+      "ADVISORY_STYLE_GUIDANCE"
+    ],
+    "truncation_occurred": false,
+    "shedding_occurred": false,
+    "omitted_components": [],
+    "omission_reasons": [],
+    "raw_advisory_persisted": false
+  },
+  "separate_advisory_budgets_required_for_pilot": true,
+  "separate_advisory_budgets_required_for_future_production": "DEFER",
+  "global_production_order_changed": false
+}

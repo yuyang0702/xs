@@ -1,0 +1,9 @@
+{
+  "schema": "StyleSystemSeparationV1",
+  "status": "PASS",
+  "reference_distilled_guidance_path": "REF->DISTILL->LEARN->active Blueprint/prose baseline->constraints",
+  "project_style_sample_path": "StyleSampleService->profile.json/style-profile.md->ensure_style_profile",
+  "project_style_sample_profile_model_visible_in_planning": false,
+  "raw_ref_text_in_pilot_model_input": false,
+  "raw_ref_excerpt_in_pilot_model_input": false
+}

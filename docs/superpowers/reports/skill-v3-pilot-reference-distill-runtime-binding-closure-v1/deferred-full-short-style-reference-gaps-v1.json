@@ -1,0 +1,41 @@
+{
+  "schema": "DeferredFullShortStyleReferenceGapsV1",
+  "gaps": [
+    {
+      "gap": "style sample provenance incomplete",
+      "blocks_current_skill_v3_pilot": false,
+      "blocks_trustworthy_full_short": true,
+      "disposition": "DEFERRED"
+    },
+    {
+      "gap": "generic quality review lacks selected-reference fidelity",
+      "blocks_current_skill_v3_pilot": false,
+      "blocks_trustworthy_full_short": true,
+      "disposition": "DEFERRED"
+    },
+    {
+      "gap": "Draft style profile defaults to polish-only",
+      "blocks_current_skill_v3_pilot": false,
+      "blocks_trustworthy_full_short": true,
+      "disposition": "DEFERRED"
+    },
+    {
+      "gap": "CreativeRecipeV1 persisted but unused",
+      "blocks_current_skill_v3_pilot": false,
+      "blocks_trustworthy_full_short": false,
+      "disposition": "DEFERRED"
+    },
+    {
+      "gap": "initial editorial review samples 6000 chars",
+      "blocks_current_skill_v3_pilot": false,
+      "blocks_trustworthy_full_short": true,
+      "disposition": "DEFERRED"
+    },
+    {
+      "gap": "canonical V2 stronger gate feature-gated",
+      "blocks_current_skill_v3_pilot": false,
+      "blocks_trustworthy_full_short": true,
+      "disposition": "DEFERRED"
+    }
+  ]
+}

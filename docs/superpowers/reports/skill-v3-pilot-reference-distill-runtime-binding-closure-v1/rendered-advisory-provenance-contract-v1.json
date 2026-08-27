@@ -1,0 +1,26 @@
+{
+  "schema": "RenderedAdvisoryProvenanceContractV1",
+  "status": "PASS",
+  "ordinary_runtime_receipt": "RenderedAdvisoryProvenanceV1",
+  "pilot_partition_receipt": "PilotRenderedAdvisoryPartitionV1",
+  "required_hash_only_fields": [
+    "component_order",
+    "omission_reasons",
+    "omitted_components",
+    "project_guidance_chars",
+    "project_guidance_sha256",
+    "raw_advisory_persisted",
+    "rendered_advisory_chars",
+    "rendered_advisory_sha256",
+    "schema",
+    "shedding_occurred",
+    "skill_guidance_chars",
+    "skill_guidance_sha256",
+    "style_guidance_chars",
+    "style_guidance_sha256",
+    "style_profile_state",
+    "truncation_occurred"
+  ],
+  "raw_prompt_persisted": false,
+  "reconstructible_from_durable_sources": true
+}

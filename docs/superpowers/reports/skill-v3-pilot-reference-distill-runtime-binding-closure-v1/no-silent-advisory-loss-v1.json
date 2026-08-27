@@ -1,0 +1,54 @@
+{
+  "schema": "NoSilentAdvisoryLossV1",
+  "status": "PASS",
+  "samples": [
+    {
+      "sample_id": "A1",
+      "advisory_truncation_occurred": false,
+      "advisory_shedding_occurred": false,
+      "project_guidance_dropped": false,
+      "skill_guidance_dropped": false,
+      "mandatory_rule_dropped": false
+    },
+    {
+      "sample_id": "A2",
+      "advisory_truncation_occurred": false,
+      "advisory_shedding_occurred": false,
+      "project_guidance_dropped": false,
+      "skill_guidance_dropped": false,
+      "mandatory_rule_dropped": false
+    },
+    {
+      "sample_id": "A3",
+      "advisory_truncation_occurred": false,
+      "advisory_shedding_occurred": false,
+      "project_guidance_dropped": false,
+      "skill_guidance_dropped": false,
+      "mandatory_rule_dropped": false
+    },
+    {
+      "sample_id": "B1",
+      "advisory_truncation_occurred": false,
+      "advisory_shedding_occurred": false,
+      "project_guidance_dropped": false,
+      "skill_guidance_dropped": false,
+      "mandatory_rule_dropped": false
+    },
+    {
+      "sample_id": "B2",
+      "advisory_truncation_occurred": false,
+      "advisory_shedding_occurred": false,
+      "project_guidance_dropped": false,
+      "skill_guidance_dropped": false,
+      "mandatory_rule_dropped": false
+    },
+    {
+      "sample_id": "B3",
+      "advisory_truncation_occurred": false,
+      "advisory_shedding_occurred": false,
+      "project_guidance_dropped": false,
+      "skill_guidance_dropped": false,
+      "mandatory_rule_dropped": false
+    }
+  ]
+}

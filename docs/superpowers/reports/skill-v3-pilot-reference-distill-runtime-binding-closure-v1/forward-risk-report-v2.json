@@ -1,0 +1,104 @@
+{
+  "version": 2,
+  "original_requirement": "bind exact non-Skill guidance across the six-sample Skill V3 pilot without production semantic drift",
+  "scope_classification": "closed_world",
+  "operational_definition": "one sealed character-heavy 3A/3B pilot",
+  "forbidden_narrowing": [
+    "no silent advisory shedding",
+    "no unbound model-visible contributor"
+  ],
+  "resolution_status": "case_fixed",
+  "closed_world_justification": "the authorized scope is one sealed character-heavy pilot with exactly A1-A3 and B1-B3",
+  "constraint_traceability": [
+    {
+      "requirement": "exact rendered advisory hash",
+      "implementation": "context_packet.advisory_provenance",
+      "test_paths": [
+        "tests/test_context_packet.py"
+      ],
+      "evidence": "RenderedAdvisoryProvenanceV1 binds exact final bytes by SHA-256 and character count"
+    },
+    {
+      "requirement": "A/B non-Skill byte identity",
+      "implementation": "pilot_guidance.render_pilot_advisory_partition",
+      "test_paths": [
+        "tests/test_skill_v3_pilot_guidance_binding.py"
+      ],
+      "evidence": "both arm receipts contain the same project guidance SHA-256 and character count"
+    },
+    {
+      "requirement": "stale provenance fail-close",
+      "implementation": "pilot_guidance.validate_pilot_non_skill_guidance_snapshot",
+      "test_paths": [
+        "tests/test_skill_v3_pilot_guidance_binding.py"
+      ],
+      "evidence": "typed negative matrix rejects stale project, Blueprint, prose, reference, style, and order bindings"
+    }
+  ],
+  "historical_incident_families_checked": [
+    "context_input_capacity",
+    "stale_authority_binding",
+    "partial_checkpoint",
+    "provider_output_shape"
+  ],
+  "projected_failure_mechanisms": [
+    "shared advisory compaction",
+    "stale reference provenance",
+    "style-context ambiguity"
+  ],
+  "why_previous_tests_missed": "prior pilot locks hashed the non-Skill prefix but not exact rendered project advisory bytes",
+  "sibling_boundaries": [
+    {
+      "boundary": "causal_chain",
+      "disposition": "tested_not_susceptible",
+      "evidence": "pilot-only helper is not production-reachable; production model-input identity exact"
+    },
+    {
+      "boundary": "execution_manifest",
+      "disposition": "tested_not_susceptible",
+      "evidence": "pilot-only helper is not production-reachable; production model-input identity exact"
+    },
+    {
+      "boundary": "drafting",
+      "disposition": "tested_not_susceptible",
+      "evidence": "pilot-only helper is not production-reachable; production model-input identity exact"
+    },
+    {
+      "boundary": "split_merge",
+      "disposition": "tested_not_susceptible",
+      "evidence": "pilot-only helper is not production-reachable; production model-input identity exact"
+    },
+    {
+      "boundary": "polish",
+      "disposition": "tested_not_susceptible",
+      "evidence": "pilot-only helper is not production-reachable; production model-input identity exact"
+    },
+    {
+      "boundary": "targeted_manual_revision",
+      "disposition": "tested_not_susceptible",
+      "evidence": "pilot-only helper is not production-reachable; production model-input identity exact"
+    },
+    {
+      "boundary": "final_review",
+      "disposition": "tested_not_susceptible",
+      "evidence": "pilot-only helper is not production-reachable; production model-input identity exact"
+    },
+    {
+      "boundary": "formal_promotion",
+      "disposition": "tested_not_susceptible",
+      "evidence": "pilot-only helper is not production-reachable; production model-input identity exact"
+    }
+  ],
+  "model_output_boundary_changed": false,
+  "model_output_not_applicable_evidence": "only pre-dispatch context provenance and disabled pilot isolation changed",
+  "production_shaped_tests": [
+    "tests/test_context_packet.py",
+    "tests/test_skill_v3_pilot_guidance_binding.py"
+  ],
+  "next_authoritative_boundary_tests": [
+    "tests/test_skill_v3_reference_distill_binding_closure.py"
+  ],
+  "remaining_risks": [
+    "future production-wide separate budgets deferred"
+  ]
+}

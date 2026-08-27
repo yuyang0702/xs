@@ -1,0 +1,56 @@
+{
+  "schema": "SkillV3PilotNegativeBindingMatrixV1",
+  "status": "PASS",
+  "cases": [
+    {
+      "case": "STALE_PROJECT_GUIDANCE_SHA",
+      "observed": "STALE_PROJECT_GUIDANCE_SHA",
+      "status": "PASS"
+    },
+    {
+      "case": "STALE_BLUEPRINT_VERSION",
+      "observed": "STALE_BLUEPRINT_VERSION",
+      "status": "PASS"
+    },
+    {
+      "case": "STALE_PROSE_BASELINE_SHA",
+      "observed": "STALE_PROSE_BASELINE_SHA",
+      "status": "PASS"
+    },
+    {
+      "case": "STALE_REFERENCE_PROVENANCE_MANIFEST",
+      "observed": "STALE_REFERENCE_PROVENANCE_MANIFEST",
+      "status": "PASS"
+    },
+    {
+      "case": "UNBOUND_MODEL_VISIBLE_STYLE_CONTEXT",
+      "observed": "UNBOUND_MODEL_VISIBLE_STYLE_CONTEXT",
+      "status": "PASS"
+    },
+    {
+      "case": "WRONG_COMPONENT_ORDER",
+      "observed": "WRONG_COMPONENT_ORDER",
+      "status": "PASS"
+    },
+    {
+      "case": "DIFFERENT_A_B_PROJECT_GUIDANCE_BYTES",
+      "observed": "REJECTED_BY_SINGLE_SNAPSHOT_MATRIX",
+      "status": "PASS"
+    },
+    {
+      "case": "SILENT_PROJECT_GUIDANCE_SHEDDING",
+      "observed": "ADVISORY_OVERFLOW",
+      "status": "PASS"
+    },
+    {
+      "case": "UNKNOWN_MODEL_VISIBLE_REFERENCE_CONTEXT",
+      "observed": "FAIL_CLOSED",
+      "status": "PASS"
+    },
+    {
+      "case": "ADVISORY_OVERFLOW",
+      "observed": "ADVISORY_OVERFLOW",
+      "status": "PASS"
+    }
+  ]
+}

@@ -1,0 +1,51 @@
+{
+  "schema": "ActiveReferenceDerivedGuidanceProvenanceV1",
+  "contributors": [
+    {
+      "component_id": "ACTIVE_BLUEPRINT_GUIDANCE",
+      "model_visible": true,
+      "source_artifact_id": "pilot-blueprint-sanitized-v1",
+      "source_artifact_version": 1,
+      "source_sha256": "57037d18bb5cd9c255c6e0bc381e376d81690bd5f17def1bf01d1ef608fa59b3",
+      "reference_source_ids": [
+        "pilot-reference-sanitized-v1"
+      ],
+      "reference_version_ids": [
+        "pilot-reference-sanitized-v1-version-1"
+      ],
+      "reference_version_sha256": [
+        "46d5673af244a8d923ed50a5ad4376ae784aaa5566b598fdc489d6ae631e22e0"
+      ],
+      "learning_node_ids": [
+        "pilot-learning-node-blueprint-v1"
+      ],
+      "learning_node_revision_ids": [
+        "pilot-learning-revision-blueprint-v1"
+      ],
+      "project_adoption_ids": [
+        "pilot-project-adoption-blueprint-v1"
+      ],
+      "active_status": "ACTIVE",
+      "activation_identity": "active:pilot-blueprint-sanitized-v1:1"
+    },
+    {
+      "component_id": "ACTIVE_PROSE_BASELINE_GUIDANCE",
+      "model_visible": true,
+      "source_artifact_id": "pilot-prose-baseline-sanitized-v1",
+      "source_artifact_version": 1,
+      "source_sha256": "5a20a4fe0d8f1e9424305da66ea56bf81cabe55256e9063fcc4bc97929c40c1a",
+      "reference_source_ids": [],
+      "reference_version_ids": [],
+      "reference_version_sha256": [],
+      "learning_node_ids": [],
+      "learning_node_revision_ids": [],
+      "project_adoption_ids": [],
+      "active_status": "ACTIVE",
+      "activation_identity": "active:pilot-prose-baseline-sanitized-v1:1"
+    }
+  ],
+  "active_contributor_count": 2,
+  "raw_reference_text_persisted": false,
+  "active_reference_derived_guidance_provenance_complete": true,
+  "provenance_manifest_sha256": "41b9fe2c61e20cd68429f3451994c90bc0e450beb97cf7bf400b5e77a82620df"
+}

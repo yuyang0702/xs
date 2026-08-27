@@ -1,0 +1,23 @@
+{
+  "schema": "PlanningReferenceRuntimeTruthV1",
+  "status": "PASS",
+  "raw_ref_model_visible": false,
+  "distill_direct_model_visible": false,
+  "learn_node_direct_model_visible": false,
+  "creative_recipe_model_visible": false,
+  "active_blueprint_model_visible": "YES_INDIRECT_VIA_CONSTRAINTS",
+  "active_prose_baseline_model_visible": "YES_INDIRECT_VIA_CONSTRAINTS",
+  "project_style_profile_model_visible_in_planning": false,
+  "project_constraints_compacted_before_advisory": true,
+  "skill_compacted_before_advisory": true,
+  "ordinary_advisory_order": [
+    "compacted project constraints",
+    "compacted Skill instructions",
+    "optional Draft style profile"
+  ],
+  "ordinary_final_advisory_cap_chars": {
+    "normal": 8000,
+    "compact_input": 3000
+  },
+  "exact_rendered_advisory_sha_bound_by_successor_receipt": true
+}
