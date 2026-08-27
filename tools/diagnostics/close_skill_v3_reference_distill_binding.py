@@ -423,6 +423,12 @@ def materialize(output: Path, validation: dict[str, Any]) -> dict[str, Any]:
         "# Skill V3 pilot reference/distill runtime binding closure\n\nHash-only offline evidence for exact non-Skill pilot isolation. No Provider, network, approval, nonce, cutover, or Full Short action occurred.\n",
         encoding="utf-8", newline="\n",
     )
+    implementation_commits = git(
+        "log", "--reverse", "--format=%H", f"{BASELINE_HEAD}..HEAD",
+    ).splitlines()
+    implementation_commit_list = ", ".join(
+        f"`{commit}`" for commit in implementation_commits
+    )
     report = f"""# Skill V3 pilot reference/distill runtime binding closure
 
 `SKILL_V3_CHARACTER_HEAVY_MULTI_SAMPLE_PILOT_REFERENCE_DISTILL_RUNTIME_BINDING_CLOSED`
@@ -431,7 +437,7 @@ def materialize(output: Path, validation: dict[str, Any]) -> dict[str, Any]:
 2. Baseline HEAD: `{BASELINE_HEAD}`
 3. Runtime-truth audit source lock: `{AUDIT_SOURCE_LOCK}`
 4. Relevant source diff since audit: `workflows.py` only before this task; current behavior revalidated
-5. Implementation commits: `1a3edc6`, `be91a09`, `9826e00`; evidence seal commit contains this report
+5. Implementation commits: {implementation_commit_list}; evidence seal commit contains this report
 6. Final HEAD/worktree: evidence seal commit / clean after seal
 7. Raw REF / direct DISTILL / direct LEARN visibility: `NO / NO / NO`
 8. Blueprint / prose baseline: `PASS`, indirect via compacted constraints
