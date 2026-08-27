@@ -1,0 +1,19 @@
+{
+  "schema": "SkillV3PilotProductionIsolationV1",
+  "status": "PASS",
+  "production_behavior_diff": 0,
+  "production_model_input_identity": "PASS",
+  "production_prompt_sha_before": "414c5e37e182d65e1a4647b332127182fd37067156687bef12e5188e266c8f70",
+  "production_prompt_sha_after": "414c5e37e182d65e1a4647b332127182fd37067156687bef12e5188e266c8f70",
+  "production_model_input_sha_before": "5fe3b02b9a3fa4d7c333210ec3c5ba1f779ce1b705634f48fecae8074ba1b1e4",
+  "production_model_input_sha_after": "5fe3b02b9a3fa4d7c333210ec3c5ba1f779ce1b705634f48fecae8074ba1b1e4",
+  "baml_src_diff": 0,
+  "skill_v3_production_cutover": false,
+  "credential_lookup_count": 0,
+  "real_provider_client_creation_count": 0,
+  "real_provider_request_attempts": 0,
+  "http_post_attempts": 0,
+  "network_calls": 0,
+  "model_calls": 0,
+  "paid_calls": 0
+}

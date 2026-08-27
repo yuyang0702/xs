@@ -1,0 +1,39 @@
+{
+  "schema": "SkillV3PilotCapacityRecheckV1",
+  "status": "PASS",
+  "arms": [
+    {
+      "arm": "A",
+      "non_skill_input_estimate": 708,
+      "skill_context_chars": 2925,
+      "skill_context_token_estimate": 732,
+      "total_input_estimate": 1440,
+      "output_reserve": 4624,
+      "reasoning_or_ptr_reserve_if_any": "NOT_SEPARATELY_SEALED_WITHIN_HARD_CONTEXT_CAP",
+      "model_context_limit": 32768,
+      "maximum_total_input_tokens": 24576,
+      "wrapper_and_estimator_margin_tokens": 1024,
+      "available_skill_tokens": 18220,
+      "headroom": 17488,
+      "capacity_status": "PASS"
+    },
+    {
+      "arm": "B",
+      "non_skill_input_estimate": 708,
+      "skill_context_chars": 2556,
+      "skill_context_token_estimate": 639,
+      "total_input_estimate": 1347,
+      "output_reserve": 4624,
+      "reasoning_or_ptr_reserve_if_any": "NOT_SEPARATELY_SEALED_WITHIN_HARD_CONTEXT_CAP",
+      "model_context_limit": 32768,
+      "maximum_total_input_tokens": 24576,
+      "wrapper_and_estimator_margin_tokens": 1024,
+      "available_skill_tokens": 18220,
+      "headroom": 17581,
+      "capacity_status": "PASS"
+    }
+  ],
+  "a_capacity": "PASS",
+  "b_capacity": "PASS",
+  "no_silent_truncation": true
+}

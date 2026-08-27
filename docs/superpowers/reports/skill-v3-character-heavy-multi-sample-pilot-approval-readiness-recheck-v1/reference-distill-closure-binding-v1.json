@@ -1,0 +1,23 @@
+{
+  "schema": "SkillV3ReferenceDistillClosureReadinessBindingV1",
+  "status": "PASS",
+  "closure_gate": "SKILL_V3_CHARACTER_HEAVY_MULTI_SAMPLE_PILOT_REFERENCE_DISTILL_RUNTIME_BINDING_CLOSED",
+  "manifest": {
+    "status": "EXACT",
+    "failures": [],
+    "entry_count": 19,
+    "definition_sha256": "38b50965fcbe181d239971fe6a5fb83577f1ff498850532c28e4529a7c0b38df",
+    "file_sha256": "64be664261148d611f45017186e8bdadf40a0e4641e5d84bd7e9255a15daede6"
+  },
+  "raw_ref_model_visible": false,
+  "distill_direct_model_visible": false,
+  "learn_node_direct_model_visible": false,
+  "active_blueprint_guidance_binding": "PASS",
+  "active_prose_baseline_binding": "PASS",
+  "project_style_sample_planning_binding": "NOT_MODEL_VISIBLE",
+  "active_reference_derived_guidance_provenance_complete": true,
+  "exact_rendered_advisory_provenance": "PASS",
+  "production_model_input_identity": "PASS",
+  "advisory_truncation_occurred": false,
+  "advisory_shedding_occurred": false
+}

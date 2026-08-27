@@ -1,0 +1,24 @@
+{
+  "schema": "SkillV3PilotOfflineSixSampleDryRunV1",
+  "status": "PASS",
+  "sample_readiness_load_pass": "6/6",
+  "real_boundary_reached": 0,
+  "loaded_sample_ids": [
+    "sv3s-089dd120ad568f87e7ef",
+    "sv3s-cd80aa5d21e790079a06",
+    "sv3s-689f28e6be27dd416760",
+    "sv3s-86c1bce67d1e52ec2aa6",
+    "sv3s-32d61044ab8db7c9b145",
+    "sv3s-bbd71244a306271cd726"
+  ],
+  "nonce_created": 0,
+  "nonce_reserved": 0,
+  "nonce_consumed": 0,
+  "credential_lookup_count": 0,
+  "real_provider_client_creation_count": 0,
+  "real_provider_request_attempts": 0,
+  "http_post_attempts": 0,
+  "network_calls": 0,
+  "model_calls": 0,
+  "paid_calls": 0
+}

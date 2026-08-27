@@ -1,0 +1,22 @@
+{
+  "schema": "SkillV3PilotAggregationPolicyBindingV1",
+  "status": "PASS",
+  "sealed_aggregation_rule": "per dimension, take the median ordinal relation only when both evaluators agree on direction or at least 4 of 6 evaluator-by-batch votes support it; otherwise INCONCLUSIVE",
+  "equivalent_is_neutral": true,
+  "no_single_scalar_literary_score": true,
+  "variance_can_yield_inconclusive": true,
+  "critical_regressions_not_averaged_away_ad_hoc": true,
+  "single_sample_cannot_decide_architecture": true,
+  "aggregation_sanity": {
+    "schema": "SkillV3AggregationSanityReviewV1",
+    "status": "PASS",
+    "aggregation_rule": "per dimension, take the median ordinal relation only when both evaluators agree on direction or at least 4 of 6 evaluator-by-batch votes support it; otherwise INCONCLUSIVE",
+    "equivalent_is_not_inconclusive": true,
+    "equivalent_normalization": "EQUIVALENT maps to sealed TIE relation without changing the sealed relation vocabulary",
+    "variance_can_produce_inconclusive": true,
+    "critical_regressions_cannot_be_averaged_away": true,
+    "hidden_scalar_literary_score": false,
+    "prospective_not_retrospectively_tuned": true,
+    "aggregation_rule_internally_consistent": true
+  }
+}

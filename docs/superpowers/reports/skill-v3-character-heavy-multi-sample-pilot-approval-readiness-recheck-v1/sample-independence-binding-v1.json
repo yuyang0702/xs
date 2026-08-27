@@ -1,0 +1,18 @@
+{
+  "schema": "SkillV3PilotSampleIndependenceBindingV1",
+  "status": "PASS",
+  "unique_sample_id": true,
+  "unique_approval_required": true,
+  "unique_nonce_required": true,
+  "unique_execution_receipt_required": true,
+  "unique_provider_request_required": true,
+  "prior_sample_prose_in_input": false,
+  "prior_sample_result_in_input": false,
+  "prior_blind_result_in_input": false,
+  "cross_arm_prose_injection": false,
+  "retry_allowed": false,
+  "fallback_allowed": false,
+  "route_switch_allowed": false,
+  "resume_allowed": false,
+  "second_dispatch_allowed": false
+}

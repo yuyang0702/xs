@@ -1,0 +1,15 @@
+{
+  "schema": "SkillV3PilotPermissionBeforeNonceV1",
+  "status": "PASS",
+  "permission_before_nonce": true,
+  "required_permission_components": [
+    "credential_lookup",
+    "network_access",
+    "exactly_one_paid_provider_model_request",
+    "necessary_request_data_egress"
+  ],
+  "current_chat_external_permission_granted_by_this_gate": false,
+  "nonce_created": false,
+  "nonce_reserved": false,
+  "nonce_consumed": false
+}

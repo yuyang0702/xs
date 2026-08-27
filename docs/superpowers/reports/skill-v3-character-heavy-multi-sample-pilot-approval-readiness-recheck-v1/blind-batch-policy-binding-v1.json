@@ -1,0 +1,26 @@
+{
+  "schema": "SkillV3PilotBlindBatchPolicyBindingV1",
+  "status": "PASS",
+  "arm_identity_hidden_from_evaluator": true,
+  "evaluator_visible_sample_ids_are_anonymous": true,
+  "mapping_frozen_before_blind_evaluation": true,
+  "fresh_evaluator_context_required": true,
+  "mapping_created": false,
+  "blind_evaluation_executed": false,
+  "evaluator_topology": {
+    "schema": "SkillV3EvaluatorTopologyV1",
+    "status": "PASS_DESIGN_ONLY",
+    "primary_evaluator_context_count": 2,
+    "primary_contexts_fresh_and_independent": true,
+    "method": "setwise within each dimension, with paired task identity but shuffled sample order",
+    "third_evaluator": "ONLY_AS_PROSPECTIVELY_AUTHORIZED_TIE_BREAKER",
+    "forbidden_before_freeze": [
+      "arm mapping",
+      "engineering evidence",
+      "prior outcomes",
+      "profile version labels",
+      "private approval/nonce artifacts"
+    ],
+    "evaluation_executed": false
+  }
+}

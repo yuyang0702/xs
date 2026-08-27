@@ -1,0 +1,36 @@
+{
+  "schema": "SkillV3PilotNonSkillSnapshotReadinessBindingV1",
+  "status": "PASS",
+  "snapshot": {
+    "schema": "PilotNonSkillGuidanceSnapshotV1",
+    "pilot_id": "skill-v3-character-heavy-multi-sample-v1-4d47410b0144360d",
+    "case_id": "restored-character-heavy-v1",
+    "authority_context_sha256": "91e5fe89ae741233b983f344bb0aa517974a4341dab56c8341669a5233c2e3d4",
+    "task_context_sha256": "84bed63082c9b4abd588790f9292d29aa466ee14e8b085c403ebb47ded2ab0ad",
+    "story_slice_sha256": "7134e84052d6e15bdd0f3bbb75de41a45c9e8c083d09e896004f8228b71c47c7",
+    "non_skill_prompt_sha256": "26c789b6bc96e406337ef6a545818eeaec48165adcde9adb2310c5b047c31e85",
+    "project_constraints_source_sha256": "b1bcca9b02d51bef44ea3ce2b1bc3432457207edd0f58162fc3e8064a1883587",
+    "output_schema_sha256": "62aaa63cc39a5baaec5657a889e3e77cf32abecbbfa582795620e34bf4877bee",
+    "tool_contract_sha256": "84bed63082c9b4abd588790f9292d29aa466ee14e8b085c403ebb47ded2ab0ad",
+    "ptr9_policy_sha256": "f10b5c240f046405902988b62a95e669b4a465ea4775c8ceabdca80d9725b3ab",
+    "ptr12_policy_sha256": "6aed7918ffaee8eb373007bbd89f8fa7637c97cf5801b1cf3eee3b56a8e78a27",
+    "validator_policy_sha256": "062dd052fd34949dd8b2369c0c5d5488e100d71ff4d905d9524711f5d14039e7",
+    "route_model_policy_sha256": "c3b9bef17be892c4de4107707f2a5dc03f4dce8438bb74a0452c095a7e87f621",
+    "compacted_project_guidance_sha256": "94cfcd4f879232b18b389e6dbfe9595ac4a89a047e887f2fd7160046a1d738ba",
+    "compacted_project_guidance_chars": 431,
+    "blueprint_provenance_manifest_sha256": "41b9fe2c61e20cd68429f3451994c90bc0e450beb97cf7bf400b5e77a82620df",
+    "blueprint_sha256": "57037d18bb5cd9c255c6e0bc381e376d81690bd5f17def1bf01d1ef608fa59b3",
+    "prose_baseline_sha256": "5a20a4fe0d8f1e9424305da66ea56bf81cabe55256e9063fcc4bc97929c40c1a",
+    "style_profile_state": "NOT_MODEL_VISIBLE_IN_PLANNING",
+    "component_order": [
+      "ADVISORY_PROJECT_GUIDANCE",
+      "ADVISORY_SKILL_GUIDANCE",
+      "ADVISORY_STYLE_GUIDANCE"
+    ],
+    "raw_reference_text_present": false,
+    "raw_reference_excerpt_present": false,
+    "snapshot_sha256": "82ab7881d58764552de2371e08c6ffd23b2d13dc2523cc1a9c8dbb96f227c303"
+  },
+  "snapshot_file_sha256": "e7171c3bcdcd82b0d2ea131edf2ba5560415a3559696292c765cc067e7f2d972",
+  "same_non_skill_guidance_snapshot_for_a1_a2_a3_b1_b2_b3": true
+}

@@ -1,0 +1,15 @@
+{
+  "schema": "SkillV3PilotPlanReadinessBindingV1",
+  "status": "PASS",
+  "pilot_plan_sha256": "5c51f4507605bbb6f9138902009c6aa4a6a694c46546d6bd0f99df536503880a",
+  "pilot_id": "skill-v3-character-heavy-multi-sample-v1-4d47410b0144360d",
+  "pilot_plan_materialized": true,
+  "pilot_plan_disabled": true,
+  "execution_authorized": false,
+  "signed_approval_present": false,
+  "nonce_reserved": false,
+  "samples_per_a": 3,
+  "samples_per_b": 3,
+  "max_total_real_requests": 6,
+  "parent_experiment_lock_sha256": "8a07c5106fec903952d4b622ab33702636c17d3add7eb380d3ac78071841fc9b"
+}

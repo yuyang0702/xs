@@ -1,0 +1,8 @@
+{
+  "schema": "SkillV3HistoricalSampleReuseDecisionV1",
+  "historical_a_sample_reuse_allowed": "NO",
+  "historical_b_sample_reuse_allowed": "NO",
+  "basis": "sealed policy requires independent nonce/request identity and fresh evaluator contexts and does not explicitly authorize historical output reuse",
+  "fresh_independent_samples_required": true,
+  "status": "PASS"
+}

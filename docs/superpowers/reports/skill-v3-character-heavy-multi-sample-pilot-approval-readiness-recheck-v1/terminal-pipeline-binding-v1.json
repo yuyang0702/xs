@@ -1,0 +1,21 @@
+{
+  "schema": "SkillV3PilotTerminalPipelineBindingV1",
+  "status": "PASS_DESIGN_ONLY",
+  "terminal_local_pipeline_sha256": "f775d02a2329056be70ded6c1059a134f407120a3104eaa9052fbcbe4b39d7f1",
+  "required_stages": [
+    "PROVIDER_RETURN",
+    "PARSE_CONVERSION",
+    "AUTHORITY_NORMALIZATION",
+    "DOMAIN_VALIDATION",
+    "SCHEMA_VALIDATION",
+    "FREEZE",
+    "AUDIT_SERIALIZATION",
+    "OUTPUT_ISOLATION",
+    "PERSISTENCE"
+  ],
+  "story_state_mutation_count": 0,
+  "canon_mutation_count": 0,
+  "ready_mutation_count": 0,
+  "production_authority": false,
+  "invalid_samples_enter_blind_evaluation": false
+}

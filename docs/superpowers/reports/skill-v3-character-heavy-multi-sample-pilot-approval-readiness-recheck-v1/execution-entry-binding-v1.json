@@ -1,0 +1,10 @@
+{
+  "schema": "SkillV3PilotExecutionEntryBindingV1",
+  "status": "CONDITIONAL",
+  "a_execution_entry_binding": "NOT_SEALED",
+  "b_execution_entry_binding": "NOT_SEALED",
+  "b_selective_context_used_only_in_pilot_path": true,
+  "ordinary_production_skill_path_unchanged": true,
+  "skill_v3_production_cutover": false,
+  "condition": "MATERIALIZE_AND_SEAL_SKILL_V3_SPECIFIC_OFFLINE_EXECUTION_ENTRY"
+}

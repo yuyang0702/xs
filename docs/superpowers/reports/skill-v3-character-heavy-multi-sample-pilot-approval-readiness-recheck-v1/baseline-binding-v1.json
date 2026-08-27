@@ -1,0 +1,14 @@
+{
+  "schema": "SkillV3PilotReadinessBaselineBindingV1",
+  "status": "PASS",
+  "branch": "r1-ptr3/planning-repair-finding-propagation-20260817",
+  "baseline_head": "3e317192fe98601789d76d1751b9f3073f3a797c",
+  "starting_worktree": "CLEAN",
+  "credential_lookup_count": 0,
+  "real_provider_client_creation_count": 0,
+  "real_provider_request_attempts": 0,
+  "http_post_attempts": 0,
+  "network_calls": 0,
+  "model_calls": 0,
+  "paid_calls": 0
+}

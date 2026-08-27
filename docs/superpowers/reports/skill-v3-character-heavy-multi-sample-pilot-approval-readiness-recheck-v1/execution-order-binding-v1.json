@@ -1,0 +1,15 @@
+{
+  "schema": "SkillV3PilotExecutionOrderBindingV1",
+  "status": "PASS",
+  "execution_sequence": [
+    "A1",
+    "B1",
+    "A2",
+    "B2",
+    "A3",
+    "B3"
+  ],
+  "execution_sequence_sha256": "dd6f34e190140cc2d61344941e740d6d6f954983000f56630398cbe30097f929",
+  "first_eligible_sample_slot": "A1",
+  "first_eligible_sample_id": "sv3s-089dd120ad568f87e7ef"
+}

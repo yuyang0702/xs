@@ -1,0 +1,26 @@
+{
+  "schema": "SkillV3PilotStopConditionBindingV1",
+  "status": "PASS",
+  "sealed_stop_conditions": [
+    "any authority mutation",
+    "dispatch bound breach",
+    "privacy breach",
+    "contract-invalid output",
+    "critical safety regression",
+    "route/model parity mismatch"
+  ],
+  "stop_conditions_sha256": "0db289e592070cb95219b020a9d22eff0618effa61a44b69d4d2aa10bfcaffd1",
+  "expanded_fail_close_coverage": [
+    "stale lock",
+    "hard engineering failure",
+    "invalid sample",
+    "Provider/transport failure",
+    "nonce/accounting anomaly",
+    "privacy/egress violation",
+    "terminal local-pipeline failure",
+    "budget exhaustion",
+    "approval expiry",
+    "methodology contamination",
+    "cross-sample contamination"
+  ]
+}

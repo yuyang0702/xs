@@ -1,0 +1,7 @@
+{
+  "schema": "SkillV3PilotLauncherBindingV1",
+  "status": "CONDITIONAL",
+  "sealed_launcher_candidates": [],
+  "sealed_skill_v3_launcher_count": 0,
+  "condition": "NO_SKILL_V3_SPECIFIC_LAUNCHER_IS_SEALED; DO_NOT_REUSE_OR_INVENT_ANOTHER_LAUNCHER"
+}

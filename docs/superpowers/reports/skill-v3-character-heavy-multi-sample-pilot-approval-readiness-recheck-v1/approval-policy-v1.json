@@ -1,0 +1,7 @@
+{
+  "schema": "SkillV3PilotApprovalPolicyV1",
+  "status": "PASS",
+  "blanket_pilot_approval_allowed": false,
+  "fresh_signed_approval_required_per_sample": true,
+  "approval_created": false
+}

@@ -1,0 +1,12 @@
+{
+  "schema": "SkillV3PilotReadinessPrivacyScanV1",
+  "status": "PASS",
+  "scanned_artifact_count": 37,
+  "privacy_match_count": 0,
+  "matches": [],
+  "credential_values_persisted": 0,
+  "secret_provider_urls_persisted": 0,
+  "raw_provider_payloads_persisted": 0,
+  "hidden_reasoning_persisted": 0,
+  "raw_ref_corpus_persisted": 0
+}

@@ -1,0 +1,16 @@
+{
+  "schema": "SkillV3ABByteIdentityRecheckV1",
+  "status": "PASS",
+  "a_project_guidance_sha256": "94cfcd4f879232b18b389e6dbfe9595ac4a89a047e887f2fd7160046a1d738ba",
+  "b_project_guidance_sha256": "94cfcd4f879232b18b389e6dbfe9595ac4a89a047e887f2fd7160046a1d738ba",
+  "a_project_guidance_chars": 431,
+  "b_project_guidance_chars": 431,
+  "authority_bytes_identical": true,
+  "task_bytes_identical": true,
+  "non_skill_prompt_bytes_identical": true,
+  "project_reference_derived_guidance_bytes_identical": true,
+  "output_contract_identical": true,
+  "validator_policy_identical": true,
+  "model_route_policy_identical": true,
+  "only_skill_context_differs_by_arm": true
+}

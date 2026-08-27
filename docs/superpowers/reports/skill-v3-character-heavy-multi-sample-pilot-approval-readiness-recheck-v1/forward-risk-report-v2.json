@@ -1,0 +1,87 @@
+{
+  "version": 2,
+  "original_requirement": "offline readiness recheck for one sealed six-sample character-heavy Skill V3 pilot",
+  "scope_classification": "closed_world",
+  "operational_definition": "A1/B1/A2/B2/A3/B3 under one sealed experiment lock",
+  "forbidden_narrowing": [
+    "no invented launcher",
+    "no approval or nonce",
+    "no real sample execution"
+  ],
+  "resolution_status": "case_fixed",
+  "closed_world_justification": "the task names one pilot id, one experiment lock, and six prospective slots",
+  "constraint_traceability": [
+    {
+      "requirement": "bind all six inputs",
+      "implementation": "build_sample_locks",
+      "test_paths": [
+        "tests/test_skill_v3_multi_sample_pilot_approval_readiness.py"
+      ],
+      "evidence": "six-sample-locks-v1.json"
+    },
+    {
+      "requirement": "do not invent launcher",
+      "implementation": "load_sealed_state launcher scan",
+      "test_paths": [
+        "tests/test_skill_v3_multi_sample_pilot_approval_readiness.py"
+      ],
+      "evidence": "launcher-binding-v1.json"
+    }
+  ],
+  "historical_incident_families_checked": [
+    "stale_authority_binding",
+    "context_input_capacity",
+    "duplicate_dispatch",
+    "approval_nonce_order",
+    "privacy_egress"
+  ],
+  "projected_failure_mechanisms": [
+    "stale sample lock",
+    "cross-sample contamination",
+    "missing executable launcher guard"
+  ],
+  "why_previous_tests_missed": "the prior plan was disabled design evidence and did not seal a Skill-V3-specific execution entry",
+  "sibling_boundaries": [
+    {
+      "boundary": "causal_chain",
+      "disposition": "not_applicable",
+      "evidence": "offline readiness artifacts do not reach production workflow"
+    },
+    {
+      "boundary": "drafting",
+      "disposition": "not_applicable",
+      "evidence": "offline readiness artifacts do not reach production workflow"
+    },
+    {
+      "boundary": "split_merge",
+      "disposition": "not_applicable",
+      "evidence": "offline readiness artifacts do not reach production workflow"
+    },
+    {
+      "boundary": "polish",
+      "disposition": "not_applicable",
+      "evidence": "offline readiness artifacts do not reach production workflow"
+    },
+    {
+      "boundary": "final_review",
+      "disposition": "not_applicable",
+      "evidence": "offline readiness artifacts do not reach production workflow"
+    },
+    {
+      "boundary": "formal_promotion",
+      "disposition": "not_applicable",
+      "evidence": "offline readiness artifacts do not reach production workflow"
+    }
+  ],
+  "model_output_boundary_changed": false,
+  "model_output_not_applicable_evidence": "no Provider/model call or generated-output parser path changed",
+  "production_shaped_tests": [
+    "tests/test_skill_v3_multi_sample_pilot_approval_readiness.py"
+  ],
+  "next_authoritative_boundary_tests": [
+    "tests/test_skill_v3_multi_sample_pilot_approval_readiness.py"
+  ],
+  "remaining_risks": [
+    "Skill-V3-specific launcher and execution entry are not sealed"
+  ]
+}

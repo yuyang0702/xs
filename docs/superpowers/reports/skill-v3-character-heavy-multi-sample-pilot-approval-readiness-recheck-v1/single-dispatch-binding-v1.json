@@ -1,0 +1,14 @@
+{
+  "schema": "SkillV3PilotSingleDispatchBindingV1",
+  "status": "CONDITIONAL",
+  "model_logical_calls_hard_cap": 1,
+  "real_provider_request_attempts_hard_cap": 1,
+  "http_post_attempts_hard_cap": 1,
+  "network_request_attempts_hard_cap": 1,
+  "retry_allowed": false,
+  "fallback_allowed": false,
+  "route_switch_allowed": false,
+  "resume_allowed": false,
+  "second_dispatch_allowed": false,
+  "single_dispatch_guard": "DESIGN_PASS_EXECUTABLE_LAUNCHER_GUARD_NOT_SEALED"
+}

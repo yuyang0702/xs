@@ -1,0 +1,19 @@
+{
+  "schema": "SkillV3PilotModelRouteBindingV1",
+  "status": "PASS",
+  "logical_role": "planning_event_realization_shadow_v1",
+  "provider": "HASH_ONLY_PROVIDER_DESCRIPTOR",
+  "provider_descriptor_sha256": "121cc6b0b4f77b0b08697f2782e0f67a29007183d65a2780b2051048da3a600f",
+  "model": "HASH_ONLY_MODEL_BINDING",
+  "model_binding_sha256": "5fd92d58fb34146b854ecf816dfe7622e24c233480149dfab9e327cff7f6b1ff",
+  "route_kind": "primary",
+  "route_fingerprint": "30e9cbaf86fbb4b89b43614d71cc11b359ad41e7411e8ebda5d3ce4199879bf0",
+  "protocol": "anthropic",
+  "client_or_adapter": "AnthropicAdapter",
+  "sampling_policy_sha256": "455c8d67368d624cae5b33d20a4941ca06b14e56dcf5b1eb5d602db4fb7f6d49",
+  "seed_if_any": "NOT_SEALED",
+  "output_cap": 4624,
+  "contract_mode": "EventRealizationCandidateV1_STRICT_STRUCTURED_OUTPUT",
+  "fallback_binding": "NO_FALLBACK_ALLOWED_PER_SAMPLE",
+  "same_across_all_six": true
+}
