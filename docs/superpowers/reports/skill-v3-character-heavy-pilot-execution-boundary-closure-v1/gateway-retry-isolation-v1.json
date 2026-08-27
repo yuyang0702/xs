@@ -1,0 +1,19 @@
+{
+  "schema": "SkillV3PilotGatewayRetryIsolationV1",
+  "status": "PASS",
+  "implicit_gateway_transport_retry_disabled_for_pilot": true,
+  "adapter_library_retries": 0,
+  "ordinary_runtime_generic_retry_behavior_changed": false,
+  "source_bindings": [
+    {
+      "path": "src/novel_flywheel/providers/http.py",
+      "bytes": 9667,
+      "sha256": "f8ad414ff4a30b1725aa8a2ae2d0dec0300d530460ef5d5622b7ef2a5dfcbc73"
+    },
+    {
+      "path": "src/novel_flywheel/providers/registry.py",
+      "bytes": 9900,
+      "sha256": "93f2c8486df0d43f47ffedf3ce5a200564a85d1999e8ac55ee4705a2fbd6f1c3"
+    }
+  ]
+}

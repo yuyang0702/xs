@@ -1,0 +1,12 @@
+{
+  "schema": "SkillV3PilotSignedApprovalVerificationV1",
+  "status": "PASS",
+  "blanket_approval_allowed": false,
+  "fresh_signed_approval_required_per_sample": true,
+  "sample_id_match_required": true,
+  "sample_lock_match_required": true,
+  "pilot_lock_match_required": true,
+  "expiry_check_required": true,
+  "approval_reuse_allowed": false,
+  "signed_approval_created": false
+}

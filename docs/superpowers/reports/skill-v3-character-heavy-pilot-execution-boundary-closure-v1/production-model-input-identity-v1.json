@@ -1,0 +1,12 @@
+{
+  "schema": "SkillV3PilotProductionModelInputIdentityV1",
+  "production_prompt_sha_before": "414c5e37e182d65e1a4647b332127182fd37067156687bef12e5188e266c8f70",
+  "production_prompt_sha_after": "414c5e37e182d65e1a4647b332127182fd37067156687bef12e5188e266c8f70",
+  "production_model_input_sha_before": "5fe3b02b9a3fa4d7c333210ec3c5ba1f779ce1b705634f48fecae8074ba1b1e4",
+  "production_model_input_sha_after": "5fe3b02b9a3fa4d7c333210ec3c5ba1f779ce1b705634f48fecae8074ba1b1e4",
+  "production_model_input_identity": "PASS",
+  "fake_gateway_dispatch_count": 2,
+  "real_model_call_count": 0,
+  "production_source_diff": [],
+  "baml_src_diff": 0
+}

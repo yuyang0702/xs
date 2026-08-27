@@ -1,0 +1,21 @@
+{
+  "schema": "SkillV3PilotTerminalPipelineBindingV1",
+  "status": "PASS",
+  "stages": [
+    "PROVIDER_RETURN",
+    "PARSE_CONVERSION",
+    "AUTHORITY_NORMALIZATION",
+    "DOMAIN_VALIDATION",
+    "SCHEMA_VALIDATION",
+    "FREEZE",
+    "AUDIT_SERIALIZATION",
+    "OUTPUT_ISOLATION",
+    "PERSISTENCE",
+    "SAMPLE_RECEIPT_SEAL"
+  ],
+  "only_sealed_valid_enters_future_blind_evaluation": true,
+  "story_state_mutation_count": 0,
+  "canon_mutation_count": 0,
+  "ready_mutation_count": 0,
+  "production_authority": false
+}

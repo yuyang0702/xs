@@ -1,0 +1,9 @@
+{
+  "schema": "SkillV3PilotSampleValidityStateMachineV1",
+  "status": "PASS",
+  "valid_terminal": "SEALED_VALID",
+  "invalid_terminal": "SEALED_INVALID",
+  "provider_terminal": "PROVIDER_BOUNDARY_FAILED",
+  "local_terminal": "LOCAL_TERMINAL_FAILED",
+  "invalid_enters_blind_evaluation": false
+}

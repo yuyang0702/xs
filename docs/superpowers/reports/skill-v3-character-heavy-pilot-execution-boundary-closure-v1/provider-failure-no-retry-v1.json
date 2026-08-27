@@ -1,0 +1,9 @@
+{
+  "schema": "SkillV3PilotProviderFailureNoRetryV1",
+  "status": "PASS",
+  "provider_failure_can_trigger_second_request": false,
+  "parse_failure_can_trigger_second_provider_request": false,
+  "schema_failure_can_trigger_second_provider_request": false,
+  "semantic_failure_can_trigger_second_provider_request": false,
+  "local_validation_failure_can_trigger_second_provider_request": false
+}

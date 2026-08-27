@@ -1,0 +1,15 @@
+{
+  "schema": "SkillV3SealedExecutionInputsBindingV1",
+  "status": "EXACT",
+  "pilot_id": "skill-v3-character-heavy-multi-sample-v1-4d47410b0144360d",
+  "parent_experiment_lock_sha256": "8a07c5106fec903952d4b622ab33702636c17d3add7eb380d3ac78071841fc9b",
+  "sample_count": 6,
+  "sample_lock_sha256": [
+    "8bc9c05794e1dbecb095a9a1b9937d9a277c5efa462b83c6b7e1e49495b862a7",
+    "167306de3459b281734a73418e4d4f2ff1d4b66d69722eb01552d845c58fc936",
+    "7f4f5067f8c7ec8160da81751661f823795281133669c0ae373a4c904c33d1fb",
+    "842d6bb4005446188ea0e63ea9ebb5475ad652c654bcbd99b25b8db08c72f83b",
+    "c9bac561c843762ad3c69f60fed036c5bd2c601b3d91cfd43eaebade31a9af4c",
+    "9731b9f0ac2f866a116ce9102ebeb5396c1177f81858ff4d97682794374b64a6"
+  ]
+}

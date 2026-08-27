@@ -1,0 +1,17 @@
+{
+  "schema": "SkillV3PriorConditionalBindingV1",
+  "status": "PASS",
+  "prior_manifest": {
+    "status": "EXACT",
+    "failures": [],
+    "entry_count": 38,
+    "definition_sha256": "f1f3dba847990bbf2caca9e4645f9310316939787c508c164c5c1bb4f7cf46e4",
+    "file_sha256": "00baef1e9340c3ca4b9aabf24188b1f69c0be600014e3c724bb1ed487d182e81"
+  },
+  "prior_overall": "CONDITIONAL",
+  "sole_blockers": [
+    "EXECUTION_ENTRY",
+    "LAUNCHER",
+    "SINGLE_DISPATCH"
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "schema": "SkillV3PilotExecutionBoundaryPrivacyScanV1",
+  "status": "PASS",
+  "privacy_match_count": 0,
+  "matches": [],
+  "credential_values_persisted": 0,
+  "auth_headers_persisted": 0,
+  "secret_provider_urls_persisted": 0,
+  "raw_provider_payloads_persisted": 0,
+  "hidden_reasoning_persisted": 0,
+  "raw_reference_corpus_persisted": 0,
+  "real_approvals_persisted": 0,
+  "real_nonces_persisted": 0
+}

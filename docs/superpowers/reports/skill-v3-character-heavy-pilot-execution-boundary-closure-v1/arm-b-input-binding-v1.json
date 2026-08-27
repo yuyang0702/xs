@@ -1,0 +1,51 @@
+{
+  "schema": "SkillV3PilotArmBInputBindingV1",
+  "status": "PASS",
+  "compiler_version": "verbatim-selective-skill-compiler-shadow-v1",
+  "selector_version": "selective-section-selector-v1",
+  "selected_section_ids": [
+    "sv3-70a527462c32e7b6",
+    "sv3-faecc1466817d8aa",
+    "sv3-7633ad6f5c90db5e",
+    "sv3-3fb51ac3fed35bc0",
+    "sv3-4c6b004ecdd2077f",
+    "sv3-10e4ba0c5b7509b4",
+    "sv3-8e321726b4ebdcec",
+    "sv3-8afeb5229a4fe841",
+    "sv3-e92f0f3584d44b87"
+  ],
+  "selected_section_sha256": {
+    "sv3-70a527462c32e7b6": "f9d070a8b08fd62d02c97c20f71cf091a1414657d94524125693472998a530a0",
+    "sv3-faecc1466817d8aa": "ac802425007fdb56b8a1c835d3557607ca70537439ae082d8cecaf64a8d2fece",
+    "sv3-7633ad6f5c90db5e": "e7655b22821ec2d7cefc4ddd6ad8bad7518b1cc0a2900b4fb3377bd6566f57d8",
+    "sv3-3fb51ac3fed35bc0": "64c7922b0e7732ef54dd6ba1e7af1578849ed42418430d7bb183dbd45399acaa",
+    "sv3-4c6b004ecdd2077f": "d4511d12ba4a597051146baa1ed25a9776872ec91a0a16aec73d2930506133e3",
+    "sv3-10e4ba0c5b7509b4": "798c073d3b85fe59b34e26f99236059fb30315a17f3a8d8173c3ce0d608e6fcf",
+    "sv3-8e321726b4ebdcec": "fd55b33019a46b72b1e92d64f7d0f84967996307f60247e844608e214b51c6ae",
+    "sv3-8afeb5229a4fe841": "4739809792c7332bd0cda20ca3f755bc63f8aaac614b9ad7074db2b34f60996a",
+    "sv3-e92f0f3584d44b87": "8142de9c9898b1d2c03c8172203783a2a508211685a5c1ca73244d823bee0ce1"
+  },
+  "samples": [
+    {
+      "sample_id": "sv3s-cd80aa5d21e790079a06",
+      "system_sha256": "c85a337b8d95f805ac3f24d1f6096f98eac23b7f82a7561151415c5c6665a42e",
+      "user_sha256": "015096c5ce7ac69323377efa87b2730b1bf23bc7e5fc33d4e7b0703fd2513ac9",
+      "wire_input_sha256": "75106c9a5ece3a400432228dfa02bef229d44a772173c1b88da361a97d206eff",
+      "skill_context_sha256": "c830681f79526c44d9bd83430019d75cb886bde0affcad86714ee1fc1f41aedd"
+    },
+    {
+      "sample_id": "sv3s-86c1bce67d1e52ec2aa6",
+      "system_sha256": "c85a337b8d95f805ac3f24d1f6096f98eac23b7f82a7561151415c5c6665a42e",
+      "user_sha256": "015096c5ce7ac69323377efa87b2730b1bf23bc7e5fc33d4e7b0703fd2513ac9",
+      "wire_input_sha256": "75106c9a5ece3a400432228dfa02bef229d44a772173c1b88da361a97d206eff",
+      "skill_context_sha256": "c830681f79526c44d9bd83430019d75cb886bde0affcad86714ee1fc1f41aedd"
+    },
+    {
+      "sample_id": "sv3s-bbd71244a306271cd726",
+      "system_sha256": "c85a337b8d95f805ac3f24d1f6096f98eac23b7f82a7561151415c5c6665a42e",
+      "user_sha256": "015096c5ce7ac69323377efa87b2730b1bf23bc7e5fc33d4e7b0703fd2513ac9",
+      "wire_input_sha256": "75106c9a5ece3a400432228dfa02bef229d44a772173c1b88da361a97d206eff",
+      "skill_context_sha256": "c830681f79526c44d9bd83430019d75cb886bde0affcad86714ee1fc1f41aedd"
+    }
+  ]
+}

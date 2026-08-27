@@ -1,0 +1,15 @@
+{
+  "schema": "SkillV3PilotExecutionBoundaryTestReceiptV1",
+  "focused_tests": "51 passed",
+  "adjacent_tests": "94 passed, 2 skipped",
+  "full_suite": "3740 passed, 41 skipped, 6 xfailed, 52 failed, 72 errors",
+  "strict_l3": "PASS",
+  "new_owning_source_regression_count": 0,
+  "credential_lookup_count": 0,
+  "real_provider_client_creation_count": 0,
+  "real_provider_request_attempts": 0,
+  "http_post_attempts": 0,
+  "network_calls": 0,
+  "model_calls": 0,
+  "paid_calls": 0
+}

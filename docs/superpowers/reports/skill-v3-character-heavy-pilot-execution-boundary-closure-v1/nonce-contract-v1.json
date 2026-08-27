@@ -1,0 +1,15 @@
+{
+  "schema": "SkillV3PilotNonceContractV1",
+  "status": "PASS",
+  "unique_nonce_per_sample": true,
+  "reserved_after_permission_and_approval": true,
+  "reserved_before_provider_dispatch": true,
+  "binds_sample_lock": true,
+  "reuse_rejected": true,
+  "double_consume_rejected": true,
+  "cross_sample_share": false,
+  "cross_arm_share": false,
+  "real_nonce_created": 0,
+  "real_nonce_reserved": 0,
+  "real_nonce_consumed": 0
+}

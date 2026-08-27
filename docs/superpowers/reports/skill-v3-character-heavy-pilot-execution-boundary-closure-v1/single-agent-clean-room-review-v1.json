@@ -1,0 +1,19 @@
+{
+  "schema": "SkillV3PilotSingleAgentCleanRoomReviewV1",
+  "status": "PASS",
+  "independence_claimed": false,
+  "baseline_head": "7096c91adeb005acd0e31a2b6a9c0f7d1f9f51ae",
+  "final_diff_paths": [
+    "docs/maintenance.md",
+    "tests/canary/test_skill_v3_character_heavy_pilot.py",
+    "tools/canary/skill_v3_character_heavy_pilot.py",
+    "tools/diagnostics/materialize_skill_v3_pilot_execution_boundary_closure.py",
+    "tools/diagnostics/recheck_skill_v3_multi_sample_pilot_approval_readiness.py"
+  ],
+  "core_paths": [
+    "tools/canary/skill_v3_character_heavy_pilot.py",
+    "src/novel_flywheel/providers/http.py",
+    "tools/diagnostics/recheck_skill_v3_multi_sample_pilot_approval_readiness.py"
+  ],
+  "new_hard_issue_count": 0
+}

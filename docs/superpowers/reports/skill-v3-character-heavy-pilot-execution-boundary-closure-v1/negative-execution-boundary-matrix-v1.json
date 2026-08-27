@@ -1,0 +1,266 @@
+{
+  "schema": "SkillV3PilotNegativeExecutionBoundaryMatrixV1",
+  "status": "PASS",
+  "passed": 43,
+  "total": 43,
+  "rows": [
+    {
+      "case": "MISSING_CURRENT_CHAT_PERMISSION",
+      "status": "REJECTED",
+      "reason_code": "MISSING_CURRENT_CHAT_PERMISSION",
+      "real_boundary_reached": 0
+    },
+    {
+      "case": "PERMISSION_SCOPE_INCOMPLETE",
+      "status": "REJECTED",
+      "reason_code": "PERMISSION_SCOPE_INCOMPLETE",
+      "real_boundary_reached": 0
+    },
+    {
+      "case": "MISSING_SIGNED_APPROVAL",
+      "status": "REJECTED",
+      "reason_code": "MISSING_SIGNED_APPROVAL",
+      "real_boundary_reached": 0
+    },
+    {
+      "case": "STALE_APPROVAL",
+      "status": "REJECTED",
+      "reason_code": "STALE_APPROVAL",
+      "real_boundary_reached": 0
+    },
+    {
+      "case": "APPROVAL_FOR_WRONG_SAMPLE",
+      "status": "REJECTED",
+      "reason_code": "APPROVAL_FOR_WRONG_SAMPLE",
+      "real_boundary_reached": 0
+    },
+    {
+      "case": "APPROVAL_FOR_WRONG_SAMPLE_LOCK",
+      "status": "REJECTED",
+      "reason_code": "APPROVAL_FOR_WRONG_SAMPLE_LOCK",
+      "real_boundary_reached": 0
+    },
+    {
+      "case": "APPROVAL_REUSE",
+      "status": "REJECTED",
+      "reason_code": "APPROVAL_REUSE",
+      "real_boundary_reached": 0
+    },
+    {
+      "case": "NONCE_RESERVED_BEFORE_PERMISSION",
+      "status": "REJECTED",
+      "reason_code": "NONCE_RESERVED_BEFORE_PERMISSION",
+      "real_boundary_reached": 0
+    },
+    {
+      "case": "NONCE_REUSE",
+      "status": "REJECTED",
+      "reason_code": "NONCE_REUSE",
+      "real_boundary_reached": 0
+    },
+    {
+      "case": "NONCE_FOR_WRONG_SAMPLE",
+      "status": "REJECTED",
+      "reason_code": "NONCE_FOR_WRONG_SAMPLE",
+      "real_boundary_reached": 0
+    },
+    {
+      "case": "STALE_PARENT_EXPERIMENT_LOCK",
+      "status": "REJECTED",
+      "reason_code": "STALE_PARENT_EXPERIMENT_LOCK",
+      "real_boundary_reached": 0
+    },
+    {
+      "case": "STALE_SAMPLE_LOCK",
+      "status": "REJECTED",
+      "reason_code": "STALE_SAMPLE_LOCK",
+      "real_boundary_reached": 0
+    },
+    {
+      "case": "STALE_NON_SKILL_SNAPSHOT",
+      "status": "REJECTED",
+      "reason_code": "STALE_NON_SKILL_SNAPSHOT",
+      "real_boundary_reached": 0
+    },
+    {
+      "case": "STALE_REFERENCE_PROVENANCE",
+      "status": "REJECTED",
+      "reason_code": "STALE_REFERENCE_PROVENANCE",
+      "real_boundary_reached": 0
+    },
+    {
+      "case": "STALE_A_SKILL_CONTEXT",
+      "status": "REJECTED",
+      "reason_code": "STALE_A_SKILL_CONTEXT",
+      "real_boundary_reached": 0
+    },
+    {
+      "case": "STALE_B_COMPILER_VERSION",
+      "status": "REJECTED",
+      "reason_code": "STALE_B_COMPILER_VERSION",
+      "real_boundary_reached": 0
+    },
+    {
+      "case": "STALE_B_SECTION_SHA",
+      "status": "REJECTED",
+      "reason_code": "STALE_B_SECTION_SHA",
+      "real_boundary_reached": 0
+    },
+    {
+      "case": "WRONG_MODEL",
+      "status": "REJECTED",
+      "reason_code": "WRONG_MODEL",
+      "real_boundary_reached": 0
+    },
+    {
+      "case": "WRONG_PROVIDER",
+      "status": "REJECTED",
+      "reason_code": "WRONG_PROVIDER",
+      "real_boundary_reached": 0
+    },
+    {
+      "case": "WRONG_ROUTE",
+      "status": "REJECTED",
+      "reason_code": "WRONG_ROUTE",
+      "real_boundary_reached": 0
+    },
+    {
+      "case": "WRONG_CLIENT",
+      "status": "REJECTED",
+      "reason_code": "WRONG_CLIENT",
+      "real_boundary_reached": 0
+    },
+    {
+      "case": "WRONG_SAMPLING_POLICY",
+      "status": "REJECTED",
+      "reason_code": "WRONG_SAMPLING_POLICY",
+      "real_boundary_reached": 0
+    },
+    {
+      "case": "WRONG_OUTPUT_CAP",
+      "status": "REJECTED",
+      "reason_code": "WRONG_OUTPUT_CAP",
+      "real_boundary_reached": 0
+    },
+    {
+      "case": "WRONG_VALIDATOR_POLICY",
+      "status": "REJECTED",
+      "reason_code": "WRONG_VALIDATOR_POLICY",
+      "real_boundary_reached": 0
+    },
+    {
+      "case": "LATER_SAMPLE_BEFORE_TURN",
+      "status": "REJECTED",
+      "reason_code": "LATER_SAMPLE_BEFORE_TURN",
+      "real_boundary_reached": 0
+    },
+    {
+      "case": "ALREADY_SEALED_SAMPLE",
+      "status": "REJECTED",
+      "reason_code": "ALREADY_SEALED_SAMPLE",
+      "real_boundary_reached": 0
+    },
+    {
+      "case": "STOP_CONDITION_ALREADY_FIRED",
+      "status": "REJECTED",
+      "reason_code": "STOP_CONDITION_ALREADY_FIRED",
+      "real_boundary_reached": 0
+    },
+    {
+      "case": "SECOND_LOGICAL_MODEL_CALL",
+      "status": "REJECTED",
+      "reason_code": "SECOND_LOGICAL_MODEL_CALL",
+      "real_boundary_reached": 0
+    },
+    {
+      "case": "SECOND_PROVIDER_DISPATCH",
+      "status": "REJECTED",
+      "reason_code": "SECOND_PROVIDER_DISPATCH",
+      "real_boundary_reached": 0
+    },
+    {
+      "case": "SECOND_HTTP_POST",
+      "status": "REJECTED",
+      "reason_code": "SECOND_HTTP_POST",
+      "real_boundary_reached": 0
+    },
+    {
+      "case": "SECOND_NETWORK_ATTEMPT",
+      "status": "REJECTED",
+      "reason_code": "SECOND_NETWORK_ATTEMPT",
+      "real_boundary_reached": 0
+    },
+    {
+      "case": "TRANSPORT_RETRY_ATTEMPT",
+      "status": "REJECTED",
+      "reason_code": "TRANSPORT_RETRY_ATTEMPT",
+      "real_boundary_reached": 0
+    },
+    {
+      "case": "FALLBACK_ATTEMPT",
+      "status": "REJECTED",
+      "reason_code": "FALLBACK_ATTEMPT",
+      "real_boundary_reached": 0
+    },
+    {
+      "case": "ROUTE_SWITCH_ATTEMPT",
+      "status": "REJECTED",
+      "reason_code": "ROUTE_SWITCH_ATTEMPT",
+      "real_boundary_reached": 0
+    },
+    {
+      "case": "RESUME_DISPATCH_ATTEMPT",
+      "status": "REJECTED",
+      "reason_code": "RESUME_DISPATCH_ATTEMPT",
+      "real_boundary_reached": 0
+    },
+    {
+      "case": "ADAPTER_AUTO_RETRY_ATTEMPT",
+      "status": "REJECTED",
+      "reason_code": "ADAPTER_AUTO_RETRY_ATTEMPT",
+      "real_boundary_reached": 0
+    },
+    {
+      "case": "PROVIDER_FAILURE_RETRY_ATTEMPT",
+      "status": "REJECTED",
+      "reason_code": "PROVIDER_FAILURE_RETRY_ATTEMPT",
+      "real_boundary_reached": 0
+    },
+    {
+      "case": "PARSE_FAILURE_RETRY_ATTEMPT",
+      "status": "REJECTED",
+      "reason_code": "PARSE_FAILURE_RETRY_ATTEMPT",
+      "real_boundary_reached": 0
+    },
+    {
+      "case": "SCHEMA_FAILURE_RETRY_ATTEMPT",
+      "status": "REJECTED",
+      "reason_code": "SCHEMA_FAILURE_RETRY_ATTEMPT",
+      "real_boundary_reached": 0
+    },
+    {
+      "case": "LOCAL_VALIDATION_FAILURE_RETRY_ATTEMPT",
+      "status": "REJECTED",
+      "reason_code": "LOCAL_VALIDATION_FAILURE_RETRY_ATTEMPT",
+      "real_boundary_reached": 0
+    },
+    {
+      "case": "AUTO_ADVANCE_TO_NEXT_SAMPLE",
+      "status": "REJECTED",
+      "reason_code": "AUTO_ADVANCE_TO_NEXT_SAMPLE",
+      "real_boundary_reached": 0
+    },
+    {
+      "case": "PAIR2_TO_5_IDENTITY",
+      "status": "REJECTED",
+      "reason_code": "PAIR2_TO_5_IDENTITY",
+      "real_boundary_reached": 0
+    },
+    {
+      "case": "PRODUCTION_CUTOVER_REQUEST",
+      "status": "REJECTED",
+      "reason_code": "PRODUCTION_CUTOVER_REQUEST",
+      "real_boundary_reached": 0
+    }
+  ]
+}

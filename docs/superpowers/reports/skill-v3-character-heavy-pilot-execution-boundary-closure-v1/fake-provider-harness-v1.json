@@ -1,0 +1,20 @@
+{
+  "schema": "SkillV3PilotFakeProviderHarnessV1",
+  "status": "PASS",
+  "outcomes": [
+    "SUCCESS",
+    "TRANSPORT_ERROR_BEFORE_RESPONSE",
+    "TIMEOUT",
+    "HTTP_ERROR",
+    "EMPTY_OUTPUT",
+    "PARSE_ERROR",
+    "SCHEMA_ERROR",
+    "LOCAL_VALIDATION_ERROR",
+    "SECOND_DISPATCH_ATTEMPT",
+    "FALLBACK_ATTEMPT",
+    "ROUTE_SWITCH_ATTEMPT",
+    "ADAPTER_AUTO_RETRY_ATTEMPT"
+  ],
+  "offline_only": true,
+  "real_boundary_reached": 0
+}

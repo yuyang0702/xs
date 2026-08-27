@@ -1,0 +1,110 @@
+{
+  "version": 2,
+  "original_requirement": "close the dedicated Skill V3 pilot execution entry, launcher, and single-dispatch condition offline",
+  "scope_classification": "closed_world",
+  "operational_definition": "one sealed pilot and six fixed A1/B1/A2/B2/A3/B3 sample locks",
+  "forbidden_narrowing": [
+    "no caller prompt override",
+    "no retry/fallback/route switch",
+    "no production cutover",
+    "no approval or real nonce"
+  ],
+  "resolution_status": "case_fixed",
+  "closed_world_justification": "pilot, route, model, six locks, sequence, and caps are explicitly finite and sealed",
+  "constraint_traceability": [
+    {
+      "requirement": "single sealed sample entry",
+      "implementation": "execute_one_sealed_sample",
+      "test_paths": [
+        "tests/canary/test_skill_v3_character_heavy_pilot.py"
+      ],
+      "evidence": "dedicated-execution-entry-contract-v1.json"
+    },
+    {
+      "requirement": "permission approval nonce order",
+      "implementation": "launch_one_sealed_sample",
+      "test_paths": [
+        "tests/canary/test_skill_v3_character_heavy_pilot.py"
+      ],
+      "evidence": "permission-before-nonce-v1.json"
+    },
+    {
+      "requirement": "one dispatch hard cap",
+      "implementation": "AttemptGuard plus SingleDispatchTransportPolicyV1",
+      "test_paths": [
+        "tests/providers/test_single_dispatch_transport_guard.py"
+      ],
+      "evidence": "single-dispatch-guard-v1.json"
+    }
+  ],
+  "historical_incident_families_checked": [
+    "duplicate_dispatch",
+    "hidden_transport_retry",
+    "stale_authority_binding",
+    "approval_nonce_order",
+    "adapter_auto_retry",
+    "context_input_capacity",
+    "terminal_validation_rejection"
+  ],
+  "projected_failure_mechanisms": [
+    "stale lock",
+    "wrong route",
+    "post-dispatch retry",
+    "cross-sample contamination",
+    "invalid local artifact"
+  ],
+  "why_previous_tests_missed": "the prior task was readiness-only and intentionally had no executable Skill V3 launcher",
+  "sibling_boundaries": [
+    {
+      "boundary": "causal_chain",
+      "disposition": "tested_not_susceptible",
+      "evidence": "pilot tool is not imported by production; production identity and src/baml diff remain exact"
+    },
+    {
+      "boundary": "execution_manifest",
+      "disposition": "tested_not_susceptible",
+      "evidence": "pilot tool is not imported by production; production identity and src/baml diff remain exact"
+    },
+    {
+      "boundary": "drafting",
+      "disposition": "tested_not_susceptible",
+      "evidence": "pilot tool is not imported by production; production identity and src/baml diff remain exact"
+    },
+    {
+      "boundary": "split_merge",
+      "disposition": "tested_not_susceptible",
+      "evidence": "pilot tool is not imported by production; production identity and src/baml diff remain exact"
+    },
+    {
+      "boundary": "polish",
+      "disposition": "tested_not_susceptible",
+      "evidence": "pilot tool is not imported by production; production identity and src/baml diff remain exact"
+    },
+    {
+      "boundary": "targeted_manual_revision",
+      "disposition": "tested_not_susceptible",
+      "evidence": "pilot tool is not imported by production; production identity and src/baml diff remain exact"
+    },
+    {
+      "boundary": "final_review",
+      "disposition": "tested_not_susceptible",
+      "evidence": "pilot tool is not imported by production; production identity and src/baml diff remain exact"
+    },
+    {
+      "boundary": "formal_promotion",
+      "disposition": "tested_not_susceptible",
+      "evidence": "pilot tool is not imported by production; production identity and src/baml diff remain exact"
+    }
+  ],
+  "model_output_boundary_changed": false,
+  "model_output_not_applicable_evidence": "the existing EventRealizationCandidateV1 conversion/validator is reused unchanged; only a dormant canary orchestration boundary was added",
+  "production_shaped_tests": [
+    "tests/canary/test_skill_v3_character_heavy_pilot.py"
+  ],
+  "next_authoritative_boundary_tests": [
+    "tests/canary/test_skill_v3_character_heavy_pilot.py"
+  ],
+  "remaining_risks": [
+    "each real sample still needs fresh current-chat permission and separately sealed approval; no real execution validated by this task"
+  ]
+}

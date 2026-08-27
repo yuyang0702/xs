@@ -1,0 +1,14 @@
+{
+  "schema": "SkillV3PilotAttemptAccountingV1",
+  "status": "PASS",
+  "logical_model_call_count_max": 1,
+  "provider_dispatch_attempt_count_max": 1,
+  "http_post_attempt_count_max": 1,
+  "network_request_attempt_count_max": 1,
+  "attempted_increment_to_two": "SKILL_V3_PILOT_SINGLE_DISPATCH_HARD_CAP_REACHED",
+  "post_hoc_only": false,
+  "fallback_allowed": false,
+  "route_switch_allowed": false,
+  "resume_provider_dispatch_allowed": false,
+  "second_dispatch_allowed": false
+}

@@ -1,0 +1,15 @@
+{
+  "schema": "SkillV3PilotPermissionBeforeNonceV1",
+  "status": "PASS",
+  "permission_before_nonce": true,
+  "permission_before_credential_lookup": true,
+  "permission_before_network": true,
+  "permission_before_provider_client": true,
+  "required_scopes": [
+    "credential_lookup",
+    "network_access",
+    "exactly_one_paid_provider_model_request",
+    "necessary_request_data_egress"
+  ],
+  "real_permission_present": false
+}

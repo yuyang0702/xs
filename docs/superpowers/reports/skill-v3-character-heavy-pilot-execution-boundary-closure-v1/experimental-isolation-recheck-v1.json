@@ -1,0 +1,10 @@
+{
+  "schema": "SkillV3PilotExperimentalIsolationRecheckV1",
+  "status": "PASS",
+  "all_non_skill_components_equal_across_6": true,
+  "non_skill_model_visible_bytes_identical_across_arms": true,
+  "primary_changed_variable": "SKILL_CONTEXT",
+  "advisory_truncation_occurred": false,
+  "advisory_shedding_occurred": false,
+  "uncontrolled_variable_count": 0
+}

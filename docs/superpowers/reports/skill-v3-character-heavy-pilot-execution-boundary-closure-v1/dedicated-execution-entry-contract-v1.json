@@ -1,0 +1,18 @@
+{
+  "schema": "SkillV3DedicatedExecutionEntryContractV1",
+  "status": "PASS",
+  "symbol": "tools.canary.skill_v3_character_heavy_pilot.execute_one_sealed_sample",
+  "signature": "(*, repo_root: 'Path', sample_id: 'str', dispatcher: 'Dispatcher', output_root: 'Path') -> 'dict[str, Any]'",
+  "caller_override_fields": [],
+  "protections": {
+    "caller_cannot_override_non_skill_guidance": true,
+    "caller_cannot_override_skill_context": true,
+    "caller_cannot_override_model_route": true,
+    "caller_cannot_override_sampling_policy": true,
+    "caller_cannot_override_output_cap": true,
+    "caller_cannot_override_validators": true,
+    "caller_cannot_enable_retry": true,
+    "caller_cannot_enable_fallback": true,
+    "caller_cannot_enable_second_dispatch": true
+  }
+}

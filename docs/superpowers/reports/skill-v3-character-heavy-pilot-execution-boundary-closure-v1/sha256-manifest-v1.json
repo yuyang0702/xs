@@ -1,0 +1,170 @@
+{
+  "schema": "SkillV3PilotExecutionBoundaryClosureManifestEnvelopeV1",
+  "definition": {
+    "schema": "SkillV3PilotExecutionBoundaryClosureManifestV1",
+    "entry_count": 32,
+    "entries": [
+      {
+        "path": "approval-readiness-delta-v1.json",
+        "bytes": 368,
+        "sha256": "aacfd1b9864338f92badf6ecabe42bf185e1b6a0ec5cc2077cc8b12094bf6f89"
+      },
+      {
+        "path": "arm-a-input-binding-v1.json",
+        "bytes": 1387,
+        "sha256": "4b390378f9898f71124ffa1374cf8fb61c468c425ba2c688b1c7d871e86b59f4"
+      },
+      {
+        "path": "arm-b-input-binding-v1.json",
+        "bytes": 2694,
+        "sha256": "5bbd94796445cbe4256e2252b57c3e0ef57ab91ba3627331caf5b80e2ae58359"
+      },
+      {
+        "path": "attempt-accounting-v1.json",
+        "bytes": 481,
+        "sha256": "c4cbef153f4cdbe5b9d10b6a8d49dbed06422fff11ff6e7e293149a697e76216"
+      },
+      {
+        "path": "baseline-binding-v1.json",
+        "bytes": 264,
+        "sha256": "dff4dd9274bfa3774628bdf4a8afb8c09fa4630448a4c773e1ba623a95cca91f"
+      },
+      {
+        "path": "dedicated-execution-entry-contract-v1.json",
+        "bytes": 777,
+        "sha256": "23c685e784209b05abe5229e264b87bceb13e83f4f1b720803c9dcdfc738df81"
+      },
+      {
+        "path": "execution-state-machine-v1.json",
+        "bytes": 782,
+        "sha256": "f06ed85885759928f5d6e7133033fbbdbaa3ba67a9a264b5ae28b8e3fc066cd9"
+      },
+      {
+        "path": "experimental-isolation-recheck-v1.json",
+        "bytes": 358,
+        "sha256": "7dd94d2f7b21bb6205b7cbfd1fc71440e4dbb274a5ee4b3db1d422f99fd4b261"
+      },
+      {
+        "path": "fake-provider-harness-v1.json",
+        "bytes": 439,
+        "sha256": "5ca611cc918e772f379e40482bec5392eaaf8ddb608a93a1037436166290a59f"
+      },
+      {
+        "path": "final-report-v1.md",
+        "bytes": 3127,
+        "sha256": "904ffad9b51c6fa388f1723946df6fa78df9d60e1c1e8b2a21240ea4c345f7c0"
+      },
+      {
+        "path": "forward-risk-report-v2.json",
+        "bytes": 4292,
+        "sha256": "4affa530487b2191e9858ddd05efb4bbc684c016096331bcd070aec4142952ec"
+      },
+      {
+        "path": "gateway-retry-isolation-v1.json",
+        "bytes": 602,
+        "sha256": "abc0761a275683e7bd08faed17929b17130fa6450c572409c277fb11121e3db9"
+      },
+      {
+        "path": "launcher-contract-v1.json",
+        "bytes": 592,
+        "sha256": "3e08c3496c9f615da24330107b5eab49aa05c82b09e437ec2daf0e6c4a8bf865"
+      },
+      {
+        "path": "negative-execution-boundary-matrix-v1.json",
+        "bytes": 7078,
+        "sha256": "e14e007c37241282884136eb85c718536f686afaf1d5d9b22f817140f147c6b6"
+      },
+      {
+        "path": "nonce-contract-v1.json",
+        "bytes": 428,
+        "sha256": "f84237a2d3b37e3376e6f5c8c4f3300fed142168788286bc5df0646414b0f1dc"
+      },
+      {
+        "path": "permission-before-nonce-v1.json",
+        "bytes": 432,
+        "sha256": "dcf245806d7cf939288cd2e1d2ba2dc057135dfd3458e38df8ecb86288144ef2"
+      },
+      {
+        "path": "pilot-isolation-v1.json",
+        "bytes": 467,
+        "sha256": "f1847c0dbe0ef009dcf525cc129db7ba7be3c1c8e198368b980ddf4650b4b43c"
+      },
+      {
+        "path": "prior-readiness-conditional-binding-v1.json",
+        "bytes": 464,
+        "sha256": "081409b93e133212f36ff9ad71c037090827263044e36b3f7e2908f8372f4cdb"
+      },
+      {
+        "path": "privacy-scan-v1.json",
+        "bytes": 409,
+        "sha256": "76d8fa51033a56ca8f083fe2cd92c14a4d1215defc33784491bc04fbb16092f3"
+      },
+      {
+        "path": "production-model-input-identity-v1.json",
+        "bytes": 642,
+        "sha256": "bff37d0ed428f951ab30ac2e9b46c79d04206c083398ecf8bbd484c2d1673cbb"
+      },
+      {
+        "path": "provider-failure-no-retry-v1.json",
+        "bytes": 394,
+        "sha256": "439af6196f67aac44adcfc6d93b59bbf075233ba432709a8d5ce483c79418642"
+      },
+      {
+        "path": "README.md",
+        "bytes": 238,
+        "sha256": "b53685e28f4d780945ffdd3fc251bc4169c5a48600d276fe06a31237733ef74a"
+      },
+      {
+        "path": "sample-validity-state-machine-v1.json",
+        "bytes": 295,
+        "sha256": "22819312236b2fb45fbb32e4ca64462551500b05ed1d011f2dc4a75ce4b80cf1"
+      },
+      {
+        "path": "sealed-execution-inputs-binding-v1.json",
+        "bytes": 738,
+        "sha256": "3b266ed627a81d5ba9b17dccc8b97d75aea494e9b14b11ac27d481185631920f"
+      },
+      {
+        "path": "sequential-eligibility-v1.json",
+        "bytes": 515,
+        "sha256": "eed8ad26eb45cc41923f6f52ac84c39da94f3620bb84fbfd9df69bba04d53a99"
+      },
+      {
+        "path": "signed-approval-verification-v1.json",
+        "bytes": 384,
+        "sha256": "a76f58842692c1a089fd40f3ce95cfd364a6a459ee3008b58ce2ec9315bdc83f"
+      },
+      {
+        "path": "single-agent-clean-room-review-v1.json",
+        "bytes": 740,
+        "sha256": "d8970d535d7fa8a71f39710b9292d84758297c3acfd1a3a193d955e6dfe36fac"
+      },
+      {
+        "path": "single-dispatch-guard-v1.json",
+        "bytes": 661,
+        "sha256": "e9b3a3cfa9ec9bb40d1651acb0dbe464d707e077e5cb4116d363b564b2976329"
+      },
+      {
+        "path": "six-sample-fake-execution-v1.json",
+        "bytes": 3036,
+        "sha256": "0c5f44f19e39226fbec295a777a762a73ee5a481d9ace0fa7c9d083dbb1787a5"
+      },
+      {
+        "path": "strict-l3-receipt-v1.json",
+        "bytes": 185,
+        "sha256": "7e4a8329af16ce519acf215045cd55877ab6dac96ffc6fd10eb659b42809d7f5"
+      },
+      {
+        "path": "terminal-pipeline-binding-v1.json",
+        "bytes": 519,
+        "sha256": "956bf8d1cf82b16f3542369fd7904d265acc1bc16446513c2ceb4b70b7e7154a"
+      },
+      {
+        "path": "test-receipt-v1.json",
+        "bytes": 482,
+        "sha256": "53225c0a653a2ad80ef87d5230d60e3aba3cb5343a2b856738775881edf09271"
+      }
+    ]
+  },
+  "definition_sha256": "ce231e8bb8ee239277b34b7ad6018b856bebbd5b57142e8149d5aba5a7a6227d"
+}

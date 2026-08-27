@@ -1,0 +1,23 @@
+{
+  "schema": "SkillV3PilotSequentialEligibilityV1",
+  "status": "PASS",
+  "execution_sequence": [
+    "A1",
+    "B1",
+    "A2",
+    "B2",
+    "A3",
+    "B3"
+  ],
+  "sample_ids_in_order": [
+    "sv3s-089dd120ad568f87e7ef",
+    "sv3s-cd80aa5d21e790079a06",
+    "sv3s-689f28e6be27dd416760",
+    "sv3s-86c1bce67d1e52ec2aa6",
+    "sv3s-32d61044ab8db7c9b145",
+    "sv3s-bbd71244a306271cd726"
+  ],
+  "next_sample_eligibility_enforced": true,
+  "auto_advance_to_next_sample": false,
+  "batch_execute_all_samples": false
+}

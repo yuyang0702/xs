@@ -1,0 +1,16 @@
+{
+  "schema": "SkillV3PilotSingleSampleLauncherContractV1",
+  "status": "PASS",
+  "symbol": "tools.canary.skill_v3_character_heavy_pilot.launch_one_sealed_sample",
+  "source": {
+    "path": "tools/canary/skill_v3_character_heavy_pilot.py",
+    "bytes": 28690,
+    "sha256": "4e99a0cfe7c0e713a34716317565d7ffce9289a17ddbb73fa979ec7534348134"
+  },
+  "accepts_exactly_one_sealed_sample": true,
+  "auto_advance_to_next_sample": false,
+  "batch_execute_all_samples": false,
+  "final_preflight_after_nonce": true,
+  "credential_capable_import_executed": false,
+  "production_auto_install": false
+}

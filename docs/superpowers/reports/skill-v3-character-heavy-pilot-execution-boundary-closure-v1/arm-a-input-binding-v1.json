@@ -1,0 +1,27 @@
+{
+  "schema": "SkillV3PilotArmAInputBindingV1",
+  "status": "PASS",
+  "samples": [
+    {
+      "sample_id": "sv3s-089dd120ad568f87e7ef",
+      "system_sha256": "e1d254599d24721965a53246da5a61418e51bb923b0204c4d620785568fd5294",
+      "user_sha256": "015096c5ce7ac69323377efa87b2730b1bf23bc7e5fc33d4e7b0703fd2513ac9",
+      "wire_input_sha256": "47d7e240783edf70528dc05b1c6694271a4228677fee2ef358db398d35a406f5",
+      "skill_context_sha256": "7d0f6309ede2261f2f6a1098d394937948bf5b50eb9248266ab350fd91da9adc"
+    },
+    {
+      "sample_id": "sv3s-689f28e6be27dd416760",
+      "system_sha256": "e1d254599d24721965a53246da5a61418e51bb923b0204c4d620785568fd5294",
+      "user_sha256": "015096c5ce7ac69323377efa87b2730b1bf23bc7e5fc33d4e7b0703fd2513ac9",
+      "wire_input_sha256": "47d7e240783edf70528dc05b1c6694271a4228677fee2ef358db398d35a406f5",
+      "skill_context_sha256": "7d0f6309ede2261f2f6a1098d394937948bf5b50eb9248266ab350fd91da9adc"
+    },
+    {
+      "sample_id": "sv3s-32d61044ab8db7c9b145",
+      "system_sha256": "e1d254599d24721965a53246da5a61418e51bb923b0204c4d620785568fd5294",
+      "user_sha256": "015096c5ce7ac69323377efa87b2730b1bf23bc7e5fc33d4e7b0703fd2513ac9",
+      "wire_input_sha256": "47d7e240783edf70528dc05b1c6694271a4228677fee2ef358db398d35a406f5",
+      "skill_context_sha256": "7d0f6309ede2261f2f6a1098d394937948bf5b50eb9248266ab350fd91da9adc"
+    }
+  ]
+}

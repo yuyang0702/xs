@@ -1,0 +1,13 @@
+{
+  "schema": "SkillV3PilotIsolationV1",
+  "status": "PASS",
+  "ordinary_short_runtime_calls_pilot_entry": false,
+  "create_app_auto_installs_pilot_entry": false,
+  "skill_v3_production_context_changed": false,
+  "production_prompt_changed": false,
+  "production_model_input_changed": false,
+  "production_route_changed": false,
+  "production_validator_changed": false,
+  "production_authority_changed": false,
+  "b_selective_context_used_only_in_pilot_path": true
+}

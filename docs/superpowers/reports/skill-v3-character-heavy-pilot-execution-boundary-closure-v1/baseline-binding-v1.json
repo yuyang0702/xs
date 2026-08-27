@@ -1,0 +1,8 @@
+{
+  "schema": "SkillV3PilotBoundaryBaselineV1",
+  "status": "PASS",
+  "branch": "r1-ptr3/planning-repair-finding-propagation-20260817",
+  "baseline_head": "7096c91adeb005acd0e31a2b6a9c0f7d1f9f51ae",
+  "baseline_is_ancestor": true,
+  "starting_worktree": "CLEAN"
+}

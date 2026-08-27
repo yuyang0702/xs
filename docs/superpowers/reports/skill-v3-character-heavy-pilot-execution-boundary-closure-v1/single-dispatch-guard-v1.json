@@ -1,0 +1,19 @@
+{
+  "schema": "SkillV3PilotSingleDispatchGuardV1",
+  "status": "PASS",
+  "mechanical_checks": {
+    "explicit_httpx_transport_retries_zero": true,
+    "guarded_http_attempt_loop_one": true,
+    "pilot_uses_single_dispatch_policy": true,
+    "ordinary_default_policy_retained": true
+  },
+  "hard_caps": {
+    "logical_model_calls": 1,
+    "provider_dispatch_attempts": 1,
+    "http_post_attempts": 1,
+    "network_request_attempts": 1
+  },
+  "implicit_gateway_transport_retry_disabled_for_pilot": true,
+  "ordinary_runtime_generic_retry_behavior_changed": false,
+  "policy_definition_sha256": "c5d6166cfd262d86e9a7efa854d8c27ff4274f50fee7061833361435d103735d"
+}
