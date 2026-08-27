@@ -1,0 +1,12 @@
+{
+  "schema": "SkillV3A1NonceReceiptV1",
+  "status": "NOT_CREATED_PRE_DISPATCH_BLOCK",
+  "nonce_created": false,
+  "nonce_reserved": false,
+  "nonce_consumed": false,
+  "nonce_released_or_invalidated": false,
+  "nonce_final_state": "NOT_CREATED",
+  "reservation_count": 0,
+  "blocker": "CANONICAL_PERSISTENT_NONCE_LEDGER_NOT_BOUND_TO_SKILL_V3_SUCCESSOR_LAUNCHER"
+}
+

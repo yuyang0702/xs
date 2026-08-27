@@ -1,0 +1,10 @@
+{
+  "schema": "SkillV3A1PostNoncePreflightV1",
+  "status": "NOT_REACHED",
+  "nonce_reserved": false,
+  "credential_lookup_count": 0,
+  "provider_client_creation_count": 0,
+  "provider_dispatch_attempt_count": 0,
+  "reason": "PRE_NONCE_LAUNCHER_APPROVAL_NONCE_BINDING_BLOCKED"
+}
+

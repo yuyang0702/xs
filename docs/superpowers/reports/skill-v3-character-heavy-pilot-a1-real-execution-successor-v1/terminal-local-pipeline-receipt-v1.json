@@ -1,0 +1,15 @@
+{
+  "schema": "SkillV3A1TerminalLocalPipelineReceiptV1",
+  "status": "NOT_REACHED_NO_PROVIDER_RESULT",
+  "provider_return": "NOT_REACHED",
+  "parse_conversion": "NOT_REACHED",
+  "authority_normalization": "NOT_REACHED",
+  "domain_validation": "NOT_REACHED",
+  "schema_validation": "NOT_REACHED",
+  "freeze": "NOT_REACHED",
+  "audit_serialization": "NOT_REACHED",
+  "output_isolation": "NOT_REACHED",
+  "persistence": "NOT_REACHED",
+  "sample_receipt_seal": "BLOCKED_RECEIPT_ONLY"
+}
+

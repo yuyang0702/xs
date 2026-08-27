@@ -1,0 +1,12 @@
+{
+  "schema": "SkillV3A1ApprovalConsumptionReceiptV1",
+  "status": "NOT_CONSUMED_NO_PROVIDER_DISPATCH",
+  "approval_id": "skill-v3-a1-successor-519ac176-b439-4f91-8490-b3094367a438",
+  "signed_approval_sha256": "679c7d5ea54407f2d79284ef4e7657b51aa71914641123db9ad4ebbc2cb0fa2c",
+  "provider_dispatch_attempted": false,
+  "consumption_file_count": 0,
+  "usage_status_at_block": "unused",
+  "automatic_reuse_allowed": false,
+  "fresh_reissue_required_after_blocker_correction": true
+}
+

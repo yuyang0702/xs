@@ -1,0 +1,13 @@
+{
+  "schema": "SkillV3A1ProviderDispatchAttemptReceiptV1",
+  "status": "NOT_DISPATCHED",
+  "logical_model_call_count": 0,
+  "real_provider_request_attempt_count": 0,
+  "http_post_attempt_count": 0,
+  "network_request_attempt_count": 0,
+  "paid_call_count": 0,
+  "input_tokens": 0,
+  "output_tokens": 0,
+  "finish_state_or_reason": "BLOCKED_PRE_DISPATCH"
+}
+

@@ -1,0 +1,16 @@
+{
+  "schema": "SkillV3A1ProductionIsolationV1",
+  "status": "PASS",
+  "production_authority": false,
+  "story_state_mutation_count": 0,
+  "canon_mutation_count": 0,
+  "ready_mutation_count": 0,
+  "formal_manuscript_mutation_count": 0,
+  "provider_request_count": 0,
+  "other_sample_execution_count": 0,
+  "blind_evaluation_executed": false,
+  "skill_v3_cutover": false,
+  "planning_v2_cutover": false,
+  "full_short_canary": "NOT_EXECUTED"
+}
+

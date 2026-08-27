@@ -1,0 +1,22 @@
+{
+  "schema": "SkillV3A1CurrentChatPermissionRecheckV1",
+  "status": "PASS",
+  "same_codex_conversation": true,
+  "authorization_message_sha256": "82931ce411b869c56126af4732f6baaaf7e25d9a36f0ba8944de3e312cdcd9b6",
+  "authorization_context_identity_sha256": "5407ed028ee26a9796bf466c1b2d1c9ce11c4c862f605fedced6b6b1d034ea61",
+  "sample_scope": "A1_ONLY",
+  "credential_lookup_permission": true,
+  "network_permission": true,
+  "necessary_request_data_egress_permission": true,
+  "maximum_paid_provider_model_requests": 1,
+  "retry_permission": false,
+  "transport_retry_permission": false,
+  "fallback_permission": false,
+  "route_switch_permission": false,
+  "second_dispatch_permission": false,
+  "other_sample_permission": false,
+  "skill_v3_cutover_permission": false,
+  "planning_v2_cutover_permission": false,
+  "full_short_permission": false
+}
+

@@ -1,0 +1,18 @@
+{
+  "schema": "SkillV3A1EgressBindingV1",
+  "status": "PASS_NO_EGRESS_OCCURRED",
+  "authorized_if_dispatchable": [
+    "sealed A1 system/context",
+    "A1 authority/task/story slice",
+    "frozen non-Skill guidance",
+    "A-arm Skill context",
+    "output contract",
+    "provider-required metadata"
+  ],
+  "raw_ref_corpus_egress": false,
+  "unrelated_project_data_egress": false,
+  "other_sample_data_egress": false,
+  "credential_egress": false,
+  "actual_egress_count": 0
+}
+

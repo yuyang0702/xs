@@ -1,0 +1,11 @@
+{
+  "schema": "SkillV3A1SuccessorHeadBindingV1",
+  "status": "EXACT",
+  "branch": "r1-ptr3/planning-repair-finding-propagation-20260817",
+  "pre_execution_head": "6d3d014587e4722719589c2b9c1de3ecb5328c55",
+  "expected_head": "6d3d014587e4722719589c2b9c1de3ecb5328c55",
+  "pre_execution_worktree": "CLEAN",
+  "repo_file_write_count_before_block": 0,
+  "git_commit_count_before_block": 0
+}
+

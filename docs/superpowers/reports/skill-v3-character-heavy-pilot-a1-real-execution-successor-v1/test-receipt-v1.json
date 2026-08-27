@@ -1,0 +1,16 @@
+{
+  "schema": "SkillV3A1BlockedExecutionTestReceiptV1",
+  "status": "PASS",
+  "focused_command": "python -m pytest -q -p no:cacheprovider tests/canary/test_skill_v3_pilot_approval_store.py tests/canary/test_skill_v3_character_heavy_pilot.py",
+  "focused_result": "58 passed in 50.62s",
+  "related_command": "python -m pytest -q -p no:cacheprovider tests/test_skill_v3_multi_sample_pilot_approval_readiness.py tests/test_skill_v3_reference_distill_binding_closure.py tests/test_skill_v3_pilot_guidance_binding.py tests/canary/test_isolation_approval_network.py tests/canary/test_slice1_phase_b_single_dispatch.py tests/providers/test_single_dispatch_transport_guard.py",
+  "related_result": "58 passed, 2 skipped in 12.73s",
+  "provider_replay_count": 0,
+  "full_suite_rerun": false,
+  "full_suite_rerun_reason": "Evidence-only blocked pre-dispatch seal; no source, runtime, prompt, route, validator, budget, or model-output boundary changed.",
+  "same_head_prior_full_suite_result": "3747 passed, 41 skipped, 6 xfailed, 52 failed, 72 errors; historical non-green families unchanged",
+  "new_owning_source_regression_count": 0,
+  "strict_l3": "PASS",
+  "strict_l3_warnings": 0,
+  "strict_l3_blockers": 0
+}

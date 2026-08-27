@@ -1,0 +1,16 @@
+{
+  "schema": "SkillV3A1SampleValidityV1",
+  "status": "BLOCKED_PRE_DISPATCH",
+  "sample_id": "sv3s-089dd120ad568f87e7ef",
+  "sample_validity": "NOT_EXECUTED",
+  "typed_reason": "SKILL_V3_SUCCESSOR_EXECUTION_BOUNDARY_NOT_CLOSED",
+  "first_failing_invariant": "DEDICATED_LAUNCHER_CANNOT_VALIDATE_SUCCESSOR_APPROVAL_WITHOUT_INLINE_NONCE",
+  "contributing_blockers": [
+    "CANONICAL_PERSISTENT_NONCE_LEDGER_NOT_BOUND_TO_SKILL_V3_SUCCESSOR_LAUNCHER",
+    "REAL_PROVIDER_DISPATCHER_NOT_IMPLEMENTED_OR_BOUND"
+  ],
+  "literary_artifact_present": false,
+  "literary_artifact_sha256": null,
+  "auto_advance_to_b1": false
+}
+

@@ -1,0 +1,11 @@
+{
+  "schema": "SkillV3A1ProviderResultShapeV1",
+  "status": "ABSENT_NO_DISPATCH",
+  "provider_returned": false,
+  "finish_state_or_reason": "BLOCKED_PRE_DISPATCH",
+  "input_tokens": 0,
+  "output_tokens": 0,
+  "raw_provider_content_persisted": false,
+  "hidden_reasoning_persisted": false
+}
+

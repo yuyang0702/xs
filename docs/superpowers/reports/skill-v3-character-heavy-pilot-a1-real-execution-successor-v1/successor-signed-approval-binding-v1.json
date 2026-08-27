@@ -1,0 +1,21 @@
+{
+  "schema": "SkillV3A1SuccessorSignedApprovalBindingV1",
+  "status": "EXACT_UNUSED",
+  "approval_id": "skill-v3-a1-successor-519ac176-b439-4f91-8490-b3094367a438",
+  "signed_approval_sha256": "679c7d5ea54407f2d79284ef4e7657b51aa71914641123db9ad4ebbc2cb0fa2c",
+  "valid_from": "2026-08-27T10:05:31Z",
+  "expires_at": "2026-08-27T12:05:31Z",
+  "validated_at": "2026-08-27T10:35:19Z",
+  "single_use": true,
+  "usage_status": "unused",
+  "head_match": true,
+  "sample_match": true,
+  "sample_lock_match": true,
+  "parent_experiment_lock_match": true,
+  "model_input_component_binding_match": true,
+  "consumption_file_count": 0,
+  "approval_consumed": false,
+  "approval_reusable_for_future_execution": false,
+  "reissue_required_after_blocker_correction": true
+}
+

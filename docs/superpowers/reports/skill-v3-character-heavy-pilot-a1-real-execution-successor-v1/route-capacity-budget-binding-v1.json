@@ -1,0 +1,17 @@
+{
+  "schema": "SkillV3A1RouteCapacityBudgetBindingV1",
+  "status": "PASS",
+  "provider_binding_sha256": "121cc6b0b4f77b0b08697f2782e0f67a29007183d65a2780b2051048da3a600f",
+  "model_binding_sha256": "5fd92d58fb34146b854ecf816dfe7622e24c233480149dfab9e327cff7f6b1ff",
+  "route_fingerprint": "30e9cbaf86fbb4b89b43614d71cc11b359ad41e7411e8ebda5d3ce4199879bf0",
+  "validator_policy_sha256": "062dd052fd34949dd8b2369c0c5d5488e100d71ff4d905d9524711f5d14039e7",
+  "sampling_policy_sha256": "455c8d67368d624cae5b33d20a4941ca06b14e56dcf5b1eb5d602db4fb7f6d49",
+  "max_output_tokens": 4624,
+  "capacity": "PASS",
+  "no_silent_truncation": true,
+  "single_dispatch_guard": "PASS",
+  "pilot_transport_retry_disabled": true,
+  "ordinary_runtime_generic_retry_behavior_changed": false,
+  "cost_cap": "UNKNOWN"
+}
+
