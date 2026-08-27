@@ -33,6 +33,17 @@ def test_closure_materializes_exact_six_sample_non_skill_lock(tmp_path: Path) ->
     assert len(matrix["samples"]) == 6
     assert all(not row["advisory_truncation_occurred"] for row in loss["samples"])
     assert all(not row["advisory_shedding_occurred"] for row in loss["samples"])
+    partition = load(tmp_path, "pilot-advisory-partition-decision-v1.json")
+    lock = load(
+        Path("docs/superpowers/reports/skill-v3-selective-compiler-shadow-review-pilot-readiness-v1"),
+        "real-pilot-experiment-lock-v1.json",
+    )
+    assert partition["arm_a"]["skill_guidance_sha256"] == lock[
+        "skill_context_arms"
+    ]["A"]["context_sha256"]
+    assert partition["arm_b"]["skill_guidance_sha256"] == lock[
+        "skill_context_arms"
+    ]["B"]["context_sha256"]
 
 
 def test_closure_is_private_offline_and_manifest_exact(tmp_path: Path) -> None:

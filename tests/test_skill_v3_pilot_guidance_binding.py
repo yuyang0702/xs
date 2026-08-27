@@ -97,7 +97,7 @@ def test_pilot_partition_preserves_project_bytes_across_unequal_skill_lengths() 
         style_guidance="", maximum_chars=8000,
     )
 
-    assert a.project_guidance_sha256 == b.project_guidance_sha256 == sha(project.strip())
+    assert a.project_guidance_sha256 == b.project_guidance_sha256 == sha(project)
     assert a.project_guidance_chars == b.project_guidance_chars
     assert a.skill_guidance_sha256 != b.skill_guidance_sha256
     assert a.truncation_occurred is b.truncation_occurred is False

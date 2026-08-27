@@ -160,14 +160,14 @@ def render_pilot_advisory_partition(
 ) -> PilotAdvisoryPartition:
     """Render an isolated pilot advisory without compaction or shedding."""
 
-    project = str(project_guidance or "").strip()
-    skill = str(skill_guidance or "").strip()
-    style = str(style_guidance or "").strip()
-    if not project:
+    project = str(project_guidance or "")
+    skill = str(skill_guidance or "")
+    style = str(style_guidance or "")
+    if not project.strip():
         raise PilotGuidanceBindingError(
             "UNKNOWN_MODEL_VISIBLE_REFERENCE_CONTEXT", "project guidance absent",
         )
-    if not skill:
+    if not skill.strip():
         raise PilotGuidanceBindingError("UNKNOWN_SKILL_CONTEXT")
     sections = [
         f"{COMPONENT_ORDER[0]}:\n{project}",
@@ -225,8 +225,8 @@ def build_pilot_non_skill_guidance_snapshot(
         "active_reference_derived_guidance_provenance_complete"
     ) is not True:
         raise PilotGuidanceBindingError("UNKNOWN_MODEL_VISIBLE_REFERENCE_CONTEXT")
-    project = str(compacted_project_guidance or "").strip()
-    if not project:
+    project = str(compacted_project_guidance or "")
+    if not project.strip():
         raise PilotGuidanceBindingError("STALE_PROJECT_GUIDANCE_SHA")
     contributors = list(reference_provenance.get("contributors") or [])
     blueprint = next((item for item in contributors if item.get(
