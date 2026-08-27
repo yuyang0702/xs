@@ -168,9 +168,9 @@ def build_artifacts(validation: Mapping[str, Any]) -> dict[str, Any]:
             "historical_incident_families_checked": ["duplicate_dispatch", "hidden_transport_retry", "stale_authority_binding", "approval_nonce_order", "adapter_auto_retry", "context_input_capacity", "terminal_validation_rejection"],
             "projected_failure_mechanisms": ["stale lock", "wrong route", "post-dispatch retry", "cross-sample contamination", "invalid local artifact"],
             "why_previous_tests_missed": "the prior task was readiness-only and intentionally had no executable Skill V3 launcher",
-            "sibling_boundaries": [{"boundary": name, "disposition": "not_susceptible", "evidence": "pilot tool is not imported by production; production identity and src/baml diff remain exact"} for name in ("causal_chain", "execution_manifest", "drafting", "split_merge", "polish", "targeted_manual_revision", "final_review", "formal_promotion")],
+            "sibling_boundaries": [{"boundary": name, "disposition": "tested_not_susceptible", "evidence": "pilot tool is not imported by production; production identity and src/baml diff remain exact"} for name in ("causal_chain", "execution_manifest", "drafting", "split_merge", "polish", "targeted_manual_revision", "final_review", "formal_promotion")],
             "model_output_boundary_changed": False, "model_output_not_applicable_evidence": "the existing EventRealizationCandidateV1 conversion/validator is reused unchanged; only a dormant canary orchestration boundary was added",
-            "production_shaped_tests": ["tests/canary/test_skill_v3_character_heavy_pilot.py"], "next_authoritative_boundary_tests": ["tests/canary/test_skill_v3_character_heavy_pilot.py::test_fake_success_executes_each_sample_independently"],
+            "production_shaped_tests": ["tests/canary/test_skill_v3_character_heavy_pilot.py"], "next_authoritative_boundary_tests": ["tests/canary/test_skill_v3_character_heavy_pilot.py"],
             "remaining_risks": ["each real sample still needs fresh current-chat permission and separately sealed approval; no real execution validated by this task"],
         },
     }
