@@ -1,0 +1,17 @@
+{
+  "schema": "SkillV3SecondIndependentJudgmentsFreezeV1",
+  "frozen_at": "2026-08-28T10:21:09.1858998+08:00",
+  "judgment_set_sha256": "d06eeb647b6a172067c10c8bfdb37c2cd9b940c156367266128b42529c464772",
+  "second_independent_judgments_frozen": true,
+  "first_blind_judgments_read_before_second_freeze": false,
+  "evaluator_1_evidence_root_read_before_second_freeze": false,
+  "mapping_revealed": false,
+  "mapping_root_read": false,
+  "literary_policy_drift": false,
+  "second_evaluator_by_batch_vote_count": 3,
+  "provider_request_attempts": 0,
+  "network_calls": 0,
+  "project_model_calls": 0,
+  "paid_calls": 0,
+  "status": "FROZEN"
+}

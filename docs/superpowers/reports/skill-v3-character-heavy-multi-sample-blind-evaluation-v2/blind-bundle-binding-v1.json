@@ -1,0 +1,20 @@
+{
+  "schema": "SkillV3SecondBlindBundleBindingV1",
+  "bundle_root": "docs/superpowers/reports/skill-v3-character-heavy-multi-sample-blind-bundle-v1/",
+  "bundle_definition_sha256": "2b98b26ffa25928783b4bffc5a7c8ffcf79fd604bd74c5443eeee56d0b5ddebd",
+  "bundle_manifest_sha256": "c5aedf848d9b6c74029318ecb1d051893147aa7c10f6a20f511395fe9cf29a62",
+  "blind_batch_sha256": "0dbac2b15ed9a1ae7cb0f6c6b4d4731c04b96089b2b4692ac2fc928f32677bd7",
+  "anonymous_sample_count": 6,
+  "anonymous_pair_count": 3,
+  "anonymous_sample_ids": [
+    "blind-f72b8680d396280f",
+    "blind-eeae3135bca45598",
+    "blind-5f084ba2aa794cd5",
+    "blind-645c2c2eadf86a6e",
+    "blind-12cb88bb3573ce5c",
+    "blind-d0a798450ae880c2"
+  ],
+  "manifest_entry_validation": "PASS",
+  "mapping_read": false,
+  "status": "EXACT"
+}

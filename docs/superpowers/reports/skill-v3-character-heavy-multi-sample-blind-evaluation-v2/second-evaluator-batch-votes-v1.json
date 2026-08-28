@@ -1,0 +1,56 @@
+{
+  "schema": "SkillV3SecondEvaluatorBatchVotesV1",
+  "evaluator_id": "anonymous-evaluator-2",
+  "vote_unit": "one evaluator-by-batch vote containing eight sealed dimension relations",
+  "second_evaluator_by_batch_vote_count": 3,
+  "expected_second_evaluator_by_batch_vote_count": 3,
+  "votes": [
+    {
+      "anonymous_pair_id": "blind-pair-1",
+      "first_listed_anonymous_sample_id": "blind-f72b8680d396280f",
+      "second_listed_anonymous_sample_id": "blind-eeae3135bca45598",
+      "dimension_relations": {
+        "character_agency": "B_BETTER",
+        "causal_coherence": "B_BETTER",
+        "subtext_support": "B_BETTER",
+        "specificity": "B_BETTER",
+        "scene_pressure": "B_BETTER",
+        "setup_payoff_integrity": "B_BETTER",
+        "voice_readiness": "B_BETTER",
+        "anti_template_risk": "A_BETTER"
+      }
+    },
+    {
+      "anonymous_pair_id": "blind-pair-2",
+      "first_listed_anonymous_sample_id": "blind-5f084ba2aa794cd5",
+      "second_listed_anonymous_sample_id": "blind-645c2c2eadf86a6e",
+      "dimension_relations": {
+        "character_agency": "B_BETTER",
+        "causal_coherence": "B_BETTER",
+        "subtext_support": "B_BETTER",
+        "specificity": "B_BETTER",
+        "scene_pressure": "B_BETTER",
+        "setup_payoff_integrity": "B_BETTER",
+        "voice_readiness": "B_BETTER",
+        "anti_template_risk": "B_BETTER"
+      }
+    },
+    {
+      "anonymous_pair_id": "blind-pair-3",
+      "first_listed_anonymous_sample_id": "blind-12cb88bb3573ce5c",
+      "second_listed_anonymous_sample_id": "blind-d0a798450ae880c2",
+      "dimension_relations": {
+        "character_agency": "B_BETTER",
+        "causal_coherence": "B_BETTER",
+        "subtext_support": "B_BETTER",
+        "specificity": "B_BETTER",
+        "scene_pressure": "B_BETTER",
+        "setup_payoff_integrity": "B_BETTER",
+        "voice_readiness": "B_BETTER",
+        "anti_template_risk": "B_BETTER"
+      }
+    }
+  ],
+  "mapping_revealed": false,
+  "status": "COMPLETE"
+}

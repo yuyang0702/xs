@@ -1,0 +1,12 @@
+{
+  "schema": "SkillV3SecondBlindBaselineBindingV1",
+  "exact_task": "SKILL_V3_SECOND_FRESH_BLIND_EVALUATOR_AND_COMBINED_AGGREGATION",
+  "expected_branch": "r1-ptr3/planning-repair-finding-propagation-20260817",
+  "observed_branch": "r1-ptr3/planning-repair-finding-propagation-20260817",
+  "expected_start_head": "fdc387fa90e18745ced9b67447fd9e35e3f631a8",
+  "observed_start_head": "fdc387fa90e18745ced9b67447fd9e35e3f631a8",
+  "expected_worktree": "CLEAN",
+  "observed_worktree": "CLEAN",
+  "reset_stash_discard_rebase_performed": false,
+  "status": "PASS"
+}

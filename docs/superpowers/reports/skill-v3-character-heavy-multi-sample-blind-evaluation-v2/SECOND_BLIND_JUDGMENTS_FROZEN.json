@@ -1,0 +1,9 @@
+{
+  "schema": "SkillV3SecondBlindJudgmentsFrozenMarkerV1",
+  "SECOND_INDEPENDENT_JUDGMENTS_FROZEN": "YES",
+  "FIRST_BLIND_JUDGMENTS_READ_BEFORE_SECOND_FREEZE": "NO",
+  "MAPPING_REVEALED": "NO",
+  "LITERARY_POLICY_DRIFT": "NO",
+  "evaluator_2_freeze_sha256": "9c4c5ce98c78cd33c4404363476bce3a70f1b6b55be6211d82060b021f5d2dc6",
+  "status": "FROZEN"
+}

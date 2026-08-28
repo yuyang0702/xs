@@ -1,0 +1,16 @@
+{
+  "schema": "SkillV3SecondBlindPerSampleJudgmentV1",
+  "anonymous_sample_id": "blind-12cb88bb3573ce5c",
+  "anonymous_pair_id": "blind-pair-3",
+  "paired_anonymous_sample_id": "blind-d0a798450ae880c2",
+  "judgments": {
+    "character_agency": {"judgment": "WEAKER_THAN_PAIRED_SAMPLE", "paired_relation": "B_BETTER", "evidence": ["Mara withholds a useful fact and risks contempt; Iven chooses whether to accept the conditional protection.", "The promised disclosure and its consequences occur after the excerpt, limiting the visible completion of both choices."], "criticality": "CRITICAL", "confidence_or_insufficiency": "MEDIUM_CONFIDENCE"},
+    "causal_coherence": {"judgment": "WEAKER_THAN_PAIRED_SAMPLE", "paired_relation": "B_BETTER", "evidence": ["The missing ledger page enables accusation and Mara's conditional testimony produces a closed hearing.", "Control of Iven's seal and removal of Mara's name are not fully clarified, and the identifying evidence is never delivered on page."], "criticality": "CRITICAL", "confidence_or_insufficiency": "MEDIUM_CONFIDENCE"},
+    "subtext_support": {"judgment": "WEAKER_THAN_PAIRED_SAMPLE", "paired_relation": "B_BETTER", "evidence": ["Dry exchanges about rescuing an enemy carry affection, suspicion, and withheld guilt.", "The final sentence explicitly explains that the bargain was the apology."], "criticality": "NONCRITICAL", "confidence_or_insufficiency": "MEDIUM_CONFIDENCE"},
+    "specificity": {"judgment": "WEAKER_THAN_PAIRED_SAMPLE", "paired_relation": "B_BETTER", "evidence": ["The ledger, missing page, magistrate, archive, seal, report, and evidence box define a concrete hearing.", "The setting has fewer sensory and kinetic particulars than the paired corridor."], "criticality": "NONCRITICAL", "confidence_or_insufficiency": "HIGH_CONFIDENCE"},
+    "scene_pressure": {"judgment": "WEAKER_THAN_PAIRED_SAMPLE", "paired_relation": "B_BETTER", "evidence": ["A convenient accusation and threat of contempt create institutional pressure.", "The hearing pauses once Mara secures closure, and the decisive truth is deferred."], "criticality": "NONCRITICAL", "confidence_or_insufficiency": "HIGH_CONFIDENCE"},
+    "setup_payoff_integrity": {"judgment": "WEAKER_THAN_PAIRED_SAMPLE", "paired_relation": "B_BETTER", "evidence": ["The seal and evidence box support the bargain's exchange.", "The missing page, Mara's identified culprit, and the promised account do not receive an observable payoff within the artifact."], "criticality": "CRITICAL", "confidence_or_insufficiency": "HIGH_CONFIDENCE"},
+    "voice_readiness": {"judgment": "WEAKER_THAN_PAIRED_SAMPLE", "paired_relation": "B_BETTER", "evidence": ["Mara and Iven have differentiated, restrained dialogue.", "Explanatory framing around the exchange keeps some passages at synopsis distance."], "criticality": "NONCRITICAL", "confidence_or_insufficiency": "MEDIUM_CONFIDENCE"},
+    "anti_template_risk": {"judgment": "WEAKER_THAN_PAIRED_SAMPLE", "paired_relation": "B_BETTER", "evidence": ["Named characters and institutional detail reduce genericity.", "The closing summary still restates the required bargain, non-alliance, and concealed apology in checklist order."], "criticality": "NONCRITICAL", "confidence_or_insufficiency": "MEDIUM_CONFIDENCE"}
+  }
+}

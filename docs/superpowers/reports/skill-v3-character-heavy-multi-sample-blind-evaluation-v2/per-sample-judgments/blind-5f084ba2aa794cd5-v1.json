@@ -1,0 +1,16 @@
+{
+  "schema": "SkillV3SecondBlindPerSampleJudgmentV1",
+  "anonymous_sample_id": "blind-5f084ba2aa794cd5",
+  "anonymous_pair_id": "blind-pair-2",
+  "paired_anonymous_sample_id": "blind-645c2c2eadf86a6e",
+  "judgments": {
+    "character_agency": {"judgment": "WEAKER_THAN_PAIRED_SAMPLE", "paired_relation": "B_BETTER", "evidence": ["The protector accepts public suspicion and the rival supplies a containment route.", "The decisive hearing actions are summarized, and the rival's handling of the seal is not fully staged."], "criticality": "CRITICAL", "confidence_or_insufficiency": "HIGH_CONFIDENCE"},
+    "causal_coherence": {"judgment": "WEAKER_THAN_PAIRED_SAMPLE", "paired_relation": "B_BETTER", "evidence": ["A damaged seal, a witness, a guarantee, and a containment route support the broad logic.", "Who controls the seal and how giving it up both proves involvement and frees the rival remain hazy."], "criticality": "CRITICAL", "confidence_or_insufficiency": "HIGH_CONFIDENCE"},
+    "subtext_support": {"judgment": "WEAKER_THAN_PAIRED_SAMPLE", "paired_relation": "B_BETTER", "evidence": ["The expensive-apology exchange and refusal to confess establish the intended emotional layer.", "Narration repeatedly explains concealed loyalty, apology, and conditional trust."], "criticality": "NONCRITICAL", "confidence_or_insufficiency": "MEDIUM_CONFIDENCE"},
+    "specificity": {"judgment": "WEAKER_THAN_PAIRED_SAMPLE", "paired_relation": "B_BETTER", "evidence": ["The damaged seal and hearing are concrete anchors.", "People, official, protector, and stolen information remain generic compared with the paired checkpoint procedure."], "criticality": "NONCRITICAL", "confidence_or_insufficiency": "HIGH_CONFIDENCE"},
+    "scene_pressure": {"judgment": "WEAKER_THAN_PAIRED_SAMPLE", "paired_relation": "B_BETTER", "evidence": ["The official's move to seize the rival supplies a turning point.", "Summary presentation keeps the threatened punishment and public cost at a distance."], "criticality": "NONCRITICAL", "confidence_or_insufficiency": "HIGH_CONFIDENCE"},
+    "setup_payoff_integrity": {"judgment": "WEAKER_THAN_PAIRED_SAMPLE", "paired_relation": "B_BETTER", "evidence": ["The seal and route recur in the bargain.", "The final returned weapon and unlocked exit arrive without earlier setup, while the seal transaction stays ambiguous."], "criticality": "CRITICAL", "confidence_or_insufficiency": "HIGH_CONFIDENCE"},
+    "voice_readiness": {"judgment": "WEAKER_THAN_PAIRED_SAMPLE", "paired_relation": "B_BETTER", "evidence": ["The two dialogue lines have restrained bite.", "Generic roles, a numbered segment map, and explanatory narration make this feel pre-draft."], "criticality": "NONCRITICAL", "confidence_or_insufficiency": "HIGH_CONFIDENCE"},
+    "anti_template_risk": {"judgment": "WEAKER_THAN_PAIRED_SAMPLE", "paired_relation": "B_BETTER", "evidence": ["The opening segment map and obligation-by-obligation narration expose a strong template footprint."], "criticality": "NONCRITICAL", "confidence_or_insufficiency": "HIGH_CONFIDENCE"}
+  }
+}

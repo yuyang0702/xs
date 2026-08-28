@@ -1,0 +1,16 @@
+{
+  "schema": "SkillV3SecondBlindPerSampleJudgmentV1",
+  "anonymous_sample_id": "blind-d0a798450ae880c2",
+  "anonymous_pair_id": "blind-pair-3",
+  "paired_anonymous_sample_id": "blind-12cb88bb3573ce5c",
+  "judgments": {
+    "character_agency": {"judgment": "BETTER_THAN_PAIRED_SAMPLE", "paired_relation": "B_BETTER", "evidence": ["Mara refuses the demanded confession, offers bounded rescue, spends her coat, and opens the grille.", "Iven tests the bargain, then uses his injured shoulder and chooses not to run alone."], "criticality": "CRITICAL", "confidence_or_insufficiency": "HIGH_CONFIDENCE"},
+    "causal_coherence": {"judgment": "BETTER_THAN_PAIRED_SAMPLE", "paired_relation": "B_BETTER", "evidence": ["The access seal creates capture risk, approaching boots and gate impacts close time, and the seized grille requires cooperation.", "Plugging the pipe is a modestly connected beat, but the escape chain remains legible."], "criticality": "CRITICAL", "confidence_or_insufficiency": "MEDIUM_CONFIDENCE"},
+    "subtext_support": {"judgment": "BETTER_THAN_PAIRED_SAMPLE", "paired_relation": "B_BETTER", "evidence": ["Iven presses for words while Mara substitutes practical terms and physical support.", "Keeping the seal and the supporting hand makes distrust and care coexist without declaring trust."], "criticality": "NONCRITICAL", "confidence_or_insufficiency": "HIGH_CONFIDENCE"},
+    "specificity": {"judgment": "BETTER_THAN_PAIRED_SAMPLE", "paired_relation": "B_BETTER", "evidence": ["The struck outer gate, cracked pipe, bucket, bloody access seal, drain plaster, emergency grille, wet coat, and injured shoulder all localize the action."], "criticality": "NONCRITICAL", "confidence_or_insufficiency": "HIGH_CONFIDENCE"},
+    "scene_pressure": {"judgment": "BETTER_THAN_PAIRED_SAMPLE", "paired_relation": "B_BETTER", "evidence": ["Impacts, boots, rising water, a clogging drain, and a seized latch keep choices under immediate physical pressure."], "criticality": "NONCRITICAL", "confidence_or_insufficiency": "HIGH_CONFIDENCE"},
+    "setup_payoff_integrity": {"judgment": "BETTER_THAN_PAIRED_SAMPLE", "paired_relation": "B_BETTER", "evidence": ["The disputed seal remains with Iven, the west-stairs condition governs the exit, and his injured shoulder becomes the means of opening the grille.", "The earlier checkpoint reference gives the unspoken protection a concrete history."], "criticality": "CRITICAL", "confidence_or_insufficiency": "MEDIUM_CONFIDENCE"},
+    "voice_readiness": {"judgment": "BETTER_THAN_PAIRED_SAMPLE", "paired_relation": "B_BETTER", "evidence": ["Distinct dialogue, interruptions, gestures, and sensory timing sustain restrained irony under fear.", "The scene requires little conversion from explanatory summary to dramatized prose."], "criticality": "NONCRITICAL", "confidence_or_insufficiency": "HIGH_CONFIDENCE"},
+    "anti_template_risk": {"judgment": "BETTER_THAN_PAIRED_SAMPLE", "paired_relation": "B_BETTER", "evidence": ["Obligations emerge through recurring objects and contested dialogue rather than editorial labels or an explicit closing checklist."], "criticality": "NONCRITICAL", "confidence_or_insufficiency": "HIGH_CONFIDENCE"}
+  }
+}

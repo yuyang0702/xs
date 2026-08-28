@@ -1,0 +1,16 @@
+{
+  "schema": "SkillV3SecondBlindPerSampleJudgmentV1",
+  "anonymous_sample_id": "blind-f72b8680d396280f",
+  "anonymous_pair_id": "blind-pair-1",
+  "paired_anonymous_sample_id": "blind-eeae3135bca45598",
+  "judgments": {
+    "character_agency": {"judgment": "WEAKER_THAN_PAIRED_SAMPLE", "paired_relation": "B_BETTER", "evidence": ["The protagonist chooses self-implicating forgery, while the rival chooses silence and a partial return of the key.", "Those choices are consequential but are mostly summarized rather than made under unfolding physical constraints."], "criticality": "CRITICAL", "confidence_or_insufficiency": "HIGH_CONFIDENCE"},
+    "causal_coherence": {"judgment": "WEAKER_THAN_PAIRED_SAMPLE", "paired_relation": "B_BETTER", "evidence": ["The forged inventory redirects the search and creates personal exposure, but its relationship to the initially described clearing evidence is compressed.", "The final renegotiation follows logically from the rival's silence."], "criticality": "CRITICAL", "confidence_or_insufficiency": "MEDIUM_CONFIDENCE"},
+    "subtext_support": {"judgment": "WEAKER_THAN_PAIRED_SAMPLE", "paired_relation": "B_BETTER", "evidence": ["The transaction dialogue carries concern and apology indirectly.", "Later narration explicitly names both the concealed apology and conditional trust, reducing the remaining subtext."], "criticality": "NONCRITICAL", "confidence_or_insufficiency": "HIGH_CONFIDENCE"},
+    "specificity": {"judgment": "WEAKER_THAN_PAIRED_SAMPLE", "paired_relation": "B_BETTER", "evidence": ["The sealed case, east-passage key, forged inventory, and wardens provide concrete anchors.", "Spatial and procedural detail remains broad compared with the paired gate mechanism."], "criticality": "NONCRITICAL", "confidence_or_insufficiency": "HIGH_CONFIDENCE"},
+    "scene_pressure": {"judgment": "WEAKER_THAN_PAIRED_SAMPLE", "paired_relation": "B_BETTER", "evidence": ["The imminent accusation and warden arrival provide stakes.", "Most escalation is reported in summary, so pressure is less immediate than in the paired sample."], "criticality": "NONCRITICAL", "confidence_or_insufficiency": "HIGH_CONFIDENCE"},
+    "setup_payoff_integrity": {"judgment": "WEAKER_THAN_PAIRED_SAMPLE", "paired_relation": "B_BETTER", "evidence": ["The passage key returns in the final conditional bargain and silence pays off the protagonist's costly lie.", "The opening evidence and later forged inventory are not fully joined on the page."], "criticality": "CRITICAL", "confidence_or_insufficiency": "MEDIUM_CONFIDENCE"},
+    "voice_readiness": {"judgment": "WEAKER_THAN_PAIRED_SAMPLE", "paired_relation": "B_BETTER", "evidence": ["Restrained irony is present in the transaction dialogue.", "Generic role nouns and explanatory closing clauses make the passage read more like a polished synopsis than a finished scene."], "criticality": "NONCRITICAL", "confidence_or_insufficiency": "MEDIUM_CONFIDENCE"},
+    "anti_template_risk": {"judgment": "BETTER_THAN_PAIRED_SAMPLE", "paired_relation": "A_BETTER", "evidence": ["The passage follows a visible obligation sequence and repeats some task language.", "It nevertheless avoids the paired sample's explicit Approach, Pressure, Reversal, and Outcome scaffolding."], "criticality": "NONCRITICAL", "confidence_or_insufficiency": "MEDIUM_CONFIDENCE"}
+  }
+}

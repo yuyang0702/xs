@@ -1,0 +1,18 @@
+{
+  "schema": "SkillV3SecondBlindEvaluationPrivacyScanV1",
+  "scan_scope": "docs/superpowers/reports/skill-v3-character-heavy-multi-sample-blind-evaluation-v2/",
+  "anonymous_ids_only": true,
+  "actual_arm_mapping_visible": false,
+  "actual_skill_context_visible": false,
+  "actual_selective_compiler_identity_visible": false,
+  "actual_route_provider_cost_metadata_visible": false,
+  "actual_approval_nonce_metadata_visible": false,
+  "raw_prospective_sample_id_value_matches": 0,
+  "mapping_contamination": 0,
+  "secret_matches": {
+    "bearer_token": 0,
+    "private_key": 0,
+    "provider_credential": 0
+  },
+  "status": "PASS"
+}

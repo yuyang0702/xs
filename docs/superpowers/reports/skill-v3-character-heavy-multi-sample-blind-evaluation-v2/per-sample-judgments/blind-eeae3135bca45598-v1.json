@@ -1,0 +1,16 @@
+{
+  "schema": "SkillV3SecondBlindPerSampleJudgmentV1",
+  "anonymous_sample_id": "blind-eeae3135bca45598",
+  "anonymous_pair_id": "blind-pair-1",
+  "paired_anonymous_sample_id": "blind-f72b8680d396280f",
+  "judgments": {
+    "character_agency": {"judgment": "BETTER_THAN_PAIRED_SAMPLE", "paired_relation": "B_BETTER", "evidence": ["The keeper spends the one-use charge, stays at the exposed wheel, and gives up the safer escape.", "The rival independently returns, frees the keeper, and divides control of the key and route."], "criticality": "CRITICAL", "confidence_or_insufficiency": "HIGH_CONFIDENCE"},
+    "causal_coherence": {"judgment": "BETTER_THAN_PAIRED_SAMPLE", "paired_relation": "B_BETTER", "evidence": ["Rising water, the sluice wheel, the smoke charge, pursuit, and the gate form a legible action chain.", "Each choice changes the next available escape option."], "criticality": "CRITICAL", "confidence_or_insufficiency": "HIGH_CONFIDENCE"},
+    "subtext_support": {"judgment": "BETTER_THAN_PAIRED_SAMPLE", "paired_relation": "B_BETTER", "evidence": ["The bargain substitutes for confession, and shared control of the key physically encodes conditional trust.", "The rival's dry accusation and the keeper's transaction language carry the emotional history."], "criticality": "NONCRITICAL", "confidence_or_insufficiency": "HIGH_CONFIDENCE"},
+    "specificity": {"judgment": "BETTER_THAN_PAIRED_SAMPLE", "paired_relation": "B_BETTER", "evidence": ["The flooded gatehouse, iron bridge, arrow slits, sluice wheel, smoke charge, bolt, and chain are mutually functional details."], "criticality": "NONCRITICAL", "confidence_or_insufficiency": "HIGH_CONFIDENCE"},
+    "scene_pressure": {"judgment": "BETTER_THAN_PAIRED_SAMPLE", "paired_relation": "B_BETTER", "evidence": ["Boots approach while water rises and the gate mechanism exposes its operator.", "The keeper must finish the turns after the rival reaches safety."], "criticality": "NONCRITICAL", "confidence_or_insufficiency": "HIGH_CONFIDENCE"},
+    "setup_payoff_integrity": {"judgment": "BETTER_THAN_PAIRED_SAMPLE", "paired_relation": "B_BETTER", "evidence": ["The disputed cipher key, one-use charge, exposed wheel, and three-turn instruction all receive visible payoffs.", "The final shared chain converts the initial refusal into bounded cooperation."], "criticality": "CRITICAL", "confidence_or_insufficiency": "HIGH_CONFIDENCE"},
+    "voice_readiness": {"judgment": "BETTER_THAN_PAIRED_SAMPLE", "paired_relation": "B_BETTER", "evidence": ["Dialogue sustains restrained irony while physical beats keep the exchange playable as a scene.", "The underlying prose is vivid despite its editorial labels."], "criticality": "NONCRITICAL", "confidence_or_insufficiency": "MEDIUM_CONFIDENCE"},
+    "anti_template_risk": {"judgment": "WEAKER_THAN_PAIRED_SAMPLE", "paired_relation": "A_BETTER", "evidence": ["Literal labels such as Approach, Pressure, Reversal, Costly choice, Observable change, and Outcome expose the generation scaffold."], "criticality": "NONCRITICAL", "confidence_or_insufficiency": "HIGH_CONFIDENCE"}
+  }
+}

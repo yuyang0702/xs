@@ -1,0 +1,21 @@
+{
+  "schema": "SkillV3SecondBlindFirewallScanV1",
+  "scan_scope": "docs/superpowers/reports/skill-v3-character-heavy-multi-sample-blind-bundle-v1/",
+  "anonymous_sample_count": 6,
+  "a_b_label_leak_count": 0,
+  "arm_name_leak_count": 0,
+  "skill_context_identity_leak_count": 0,
+  "selective_compiler_identity_leak_count": 0,
+  "route_provider_cost_leak_count": 0,
+  "approval_nonce_leak_count": 0,
+  "mapping_reference_leak_count": 0,
+  "raw_prospective_sample_id_leak_count": 0,
+  "route_word_disambiguation": {
+    "ordinary_narrative_word_matches": 3,
+    "route_fingerprint_value_matches": 0,
+    "reason": "The English story word 'route' is not provider, routing, cost, or route-fingerprint metadata."
+  },
+  "bundle_privacy_scan_status": "PASS",
+  "mapping_contamination": 0,
+  "status": "PASS"
+}

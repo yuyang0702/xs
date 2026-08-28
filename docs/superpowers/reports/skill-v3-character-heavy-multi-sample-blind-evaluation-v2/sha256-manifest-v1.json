@@ -1,0 +1,24 @@
+{
+  "schema": "SkillV3SecondBlindEvaluationSha256ManifestV1",
+  "definition_sha256": "4ecdb2b55645ed050e614de60f2a43535d40c51ed2f0e1eabe38f31833dc7aaa",
+  "entries": [
+    {"path": "blind-bundle-binding-v1.json", "bytes": 795, "sha256": "0f57edc4c9b382b352e8cd24d043f85eefa4e946482f2ae8bbbf0c942a0e8d51"},
+    {"path": "final-second-blind-report-v1.md", "bytes": 1846, "sha256": "71510bb831072449a8802e446d3f807234f917a5b7426ad718ec734cbdea1429"},
+    {"path": "literary-policy-binding-v1.json", "bytes": 1506, "sha256": "a6ba7ae8d3de49a051c71872c025e6c03d3f32abafdc5b06617486afd66702e6"},
+    {"path": "per-sample-judgments/blind-12cb88bb3573ce5c-v1.json", "bytes": 3272, "sha256": "84d3be683073482a5eafc1dc96606c37b525bf662761482aa0cd1aef332928ed"},
+    {"path": "per-sample-judgments/blind-5f084ba2aa794cd5-v1.json", "bytes": 3056, "sha256": "de09fd10354f006dbf76d911a6211532c32c7d87fdb059ca560f85611a0832ba"},
+    {"path": "per-sample-judgments/blind-645c2c2eadf86a6e-v1.json", "bytes": 3246, "sha256": "0249ddb524f25c876e818a2a48c4cdfe241b7cb090c84fcb27e4ccbfe4d6939c"},
+    {"path": "per-sample-judgments/blind-d0a798450ae880c2-v1.json", "bytes": 3189, "sha256": "a52fbee59978d79407f0382d6a749dcddd277b640bbd9b302648521c061753eb"},
+    {"path": "per-sample-judgments/blind-eeae3135bca45598-v1.json", "bytes": 3087, "sha256": "3f7359c7a112247f810f44510b63c6a0c1b80bc0132818101d89c9daac2b4c9e"},
+    {"path": "per-sample-judgments/blind-f72b8680d396280f-v1.json", "bytes": 3331, "sha256": "9a219c67feaacb00767d651c0dabacf3eb9998d75577c88ef6732c667c824989"},
+    {"path": "privacy-scan-v1.json", "bytes": 634, "sha256": "b2032cc96897c6e88d7c125f9797d411ed94c9e5970b03dd0837eca8434c4aed"},
+    {"path": "README.md", "bytes": 494, "sha256": "d912b2bc5dac7ec6ccc4098b50a08da0ae014a78812501601515b3bcecfa65d7"},
+    {"path": "SECOND_BLIND_JUDGMENTS_FROZEN.json", "bytes": 349, "sha256": "6835e3ec2918adcb0ebcd91e3d21507f0e3405619dfc97b1dbc972247e587498"},
+    {"path": "second-blind-baseline-binding-v1.json", "bytes": 561, "sha256": "c2ff63ce3ace20916bbaa1c0bd76c182de8d3e3283373235657318af863dc84b"},
+    {"path": "second-blind-firewall-scan-v1.json", "bytes": 804, "sha256": "2878202a31a0bf09ebc15cd1b1c708e3392f2ed73b186a02c25e44634d91e9c7"},
+    {"path": "second-evaluator-batch-votes-v1.json", "bytes": 2005, "sha256": "1a72ac6b6f5b0519c5fb5ba53426403ff9ad7efe0e630571e2612c530b16dd7a"},
+    {"path": "second-independent-judgments-freeze-v1.json", "bytes": 639, "sha256": "9c4c5ce98c78cd33c4404363476bce3a70f1b6b55be6211d82060b021f5d2dc6"}
+  ],
+  "entry_count": 16,
+  "status": "EXACT"
+}

@@ -1,0 +1,16 @@
+{
+  "schema": "SkillV3SecondBlindPerSampleJudgmentV1",
+  "anonymous_sample_id": "blind-645c2c2eadf86a6e",
+  "anonymous_pair_id": "blind-pair-2",
+  "paired_anonymous_sample_id": "blind-5f084ba2aa794cd5",
+  "judgments": {
+    "character_agency": {"judgment": "BETTER_THAN_PAIRED_SAMPLE", "paired_relation": "B_BETTER", "evidence": ["The protagonist volunteers their stamped passage, persists when the arrest cord appears, and exposes the hidden insignia.", "The rival first refuses, then accepts the message only after seeing the cost."], "criticality": "CRITICAL", "confidence_or_insufficiency": "HIGH_CONFIDENCE"},
+    "causal_coherence": {"judgment": "BETTER_THAN_PAIRED_SAMPLE", "paired_relation": "B_BETTER", "evidence": ["The missing seal triggers inspection; the shared-permit lie triggers confiscation and review; exposed insignia makes the lie punishable.", "Those consequences create the service-gate escape and delayed responsibility."], "criticality": "CRITICAL", "confidence_or_insufficiency": "HIGH_CONFIDENCE"},
+    "subtext_support": {"judgment": "BETTER_THAN_PAIRED_SAMPLE", "paired_relation": "B_BETTER", "evidence": ["The rival calls the bargain purchased absolution, and the protagonist answers with irreversible exposure rather than confession.", "The message and debt carry a continuing relational condition."], "criticality": "NONCRITICAL", "confidence_or_insufficiency": "MEDIUM_CONFIDENCE"},
+    "specificity": {"judgment": "BETTER_THAN_PAIRED_SAMPLE", "paired_relation": "B_BETTER", "evidence": ["Stamped passage, travel permit, arrest cord, empty document case, hidden insignia, sealed message, and service gate make the checkpoint procedure tangible."], "criticality": "NONCRITICAL", "confidence_or_insufficiency": "HIGH_CONFIDENCE"},
+    "scene_pressure": {"judgment": "BETTER_THAN_PAIRED_SAMPLE", "paired_relation": "B_BETTER", "evidence": ["The guard reaches for the cord while the line is searched, forcing the protagonist to escalate the self-implicating proof."], "criticality": "NONCRITICAL", "confidence_or_insufficiency": "HIGH_CONFIDENCE"},
+    "setup_payoff_integrity": {"judgment": "BETTER_THAN_PAIRED_SAMPLE", "paired_relation": "B_BETTER", "evidence": ["The document problem produces confiscation, the hidden insignia turns the lie into a cost, and the message becomes the condition of escape.", "The final debt grows directly from those choices."], "criticality": "CRITICAL", "confidence_or_insufficiency": "HIGH_CONFIDENCE"},
+    "voice_readiness": {"judgment": "BETTER_THAN_PAIRED_SAMPLE", "paired_relation": "B_BETTER", "evidence": ["The dialogue is dry without becoming weightless, and gestures interrupt explanation at the critical moments.", "The scene is closer to publishable narrative despite an over-explicit interior gloss."], "criticality": "NONCRITICAL", "confidence_or_insufficiency": "HIGH_CONFIDENCE"},
+    "anti_template_risk": {"judgment": "BETTER_THAN_PAIRED_SAMPLE", "paired_relation": "B_BETTER", "evidence": ["No editorial segment labels remain, and document procedure individualizes the obligation sequence.", "One explicit paraphrase of the concealed apology still exposes some prompt logic."], "criticality": "NONCRITICAL", "confidence_or_insufficiency": "HIGH_CONFIDENCE"}
+  }
+}

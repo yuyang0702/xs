@@ -1,0 +1,41 @@
+{
+  "schema": "SkillV3SecondBlindLiteraryPolicyBindingV1",
+  "literary_rubric_path": "docs/superpowers/reports/skill-v3-character-heavy-multi-sample-blind-bundle-v1/sealed-literary-rubric-v1.json",
+  "literary_policy_sha256": "d93c95af9ed15d4c3f1193b00e319f364fb57176190e96e9e5d2fcd19eec0b21",
+  "criticality_policy_sha256": "f918ef05462d69bd0e471e2090e5658b452db768367124175e25ce91d8c19216",
+  "required_evaluator_count": 2,
+  "batch_count": 3,
+  "required_evaluator_by_batch_votes": 6,
+  "first_evaluator_expected_votes": 3,
+  "second_evaluator_expected_votes": 3,
+  "dimensions": [
+    "character_agency",
+    "causal_coherence",
+    "subtext_support",
+    "specificity",
+    "scene_pressure",
+    "setup_payoff_integrity",
+    "voice_readiness",
+    "anti_template_risk"
+  ],
+  "critical_dimensions": [
+    "character_agency",
+    "causal_coherence",
+    "setup_payoff_integrity"
+  ],
+  "allowed_relations": [
+    "A_BETTER",
+    "B_BETTER",
+    "TIE",
+    "INCOMPARABLE"
+  ],
+  "support_rule": "per dimension, take the median ordinal relation only when both evaluators agree on direction or at least 4 of 6 evaluator-by-batch votes support it; otherwise INCONCLUSIVE",
+  "equivalent_is_neutral": true,
+  "no_single_scalar_literary_score": true,
+  "variance_can_yield_inconclusive": true,
+  "critical_regressions_not_averaged_away_ad_hoc": true,
+  "single_sample_cannot_decide_architecture": true,
+  "retrospective_tuning_allowed": false,
+  "literary_policy_drift": false,
+  "status": "SEALED_EXACT"
+}
