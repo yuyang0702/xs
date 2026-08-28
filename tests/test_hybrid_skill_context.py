@@ -220,6 +220,15 @@ def test_character_packet_closes_known_semantic_and_boundary_gaps() -> None:
     assert result.receipt["ACTIONABILITY_DISTRIBUTION"]["LOW_ACTIONABILITY"] == 2
     assert result.receipt["ACTIONABILITY_DISTRIBUTION"]["HIGH_ACTIONABILITY"] > 2
 
+    for packet_receipt in result.receipt["SUPPLEMENT_PACKET_RECEIPTS"]:
+        packet_id = packet_receipt["PACKET_ID"]
+        roots = set(index.packets[packet_id].root_section_ids)
+        packet_sections = set(packet_receipt["ORDERED_SECTION_IDS"])
+        packet_dependencies = set(packet_receipt["DEPENDENCY_SECTION_IDS"])
+        assert roots <= packet_sections
+        assert packet_dependencies == packet_sections - roots
+        assert packet_sections <= selected
+
 
 def test_verbatim_fidelity_and_exact_ownership_exception() -> None:
     index = _index()
@@ -334,6 +343,19 @@ def test_receipt_serialization_and_unexpected_exception_are_bounded() -> None:
     unexpected = HybridSkillContextShadowObserverV1(BrokenCompiler())(_request(index))
     assert unexpected["FAILURE_CODE"] == "UNEXPECTED_COMPILER_EXCEPTION"
     assert "PRIVATE" not in json.dumps(unexpected)
+
+
+def test_process_level_interrupt_is_not_swallowed_by_shadow_observer() -> None:
+    index = _index()
+
+    class InterruptedCompiler:
+        def materialize(self, _request):
+            raise KeyboardInterrupt
+
+    with pytest.raises(KeyboardInterrupt):
+        HybridSkillContextShadowObserverV1(InterruptedCompiler())(
+            _request(index)
+        )
 
 
 class _Gateway:

@@ -865,10 +865,23 @@ class HybridSkillContextCompilerV1:
             "NO_RUBRIC_HACKS": "YES",
         }
         packet_receipts = []
+        dependency_ids_by_root: dict[str, set[str]] = {}
+        for edge in used_edges:
+            dependency_ids_by_root.setdefault(edge.from_section_id, set()).add(
+                edge.to_section_id
+            )
         for packet_id in packet_ids:
             packet = self.index.packets[packet_id]
+            packet_closure = set(packet.root_section_ids)
+            pending = list(packet.root_section_ids)
+            while pending:
+                source_id = pending.pop()
+                for dependency_id in dependency_ids_by_root.get(source_id, ()):
+                    if dependency_id not in packet_closure:
+                        packet_closure.add(dependency_id)
+                        pending.append(dependency_id)
             packet_sections = [
-                item for item in sections if item.section_id in packet.root_section_ids
+                item for item in sections if item.section_id in packet_closure
             ]
             packet_render = SelectiveSkillCompilerV1.render(packet_sections)
             packet_receipts.append({
@@ -877,7 +890,10 @@ class HybridSkillContextCompilerV1:
                 "ROOT_SECTION_IDS": list(packet.root_section_ids),
                 "DEPENDENCY_SECTION_IDS": [
                     item.section_id for item in sections
-                    if item.section_id not in root_ids
+                    if (
+                        item.section_id in packet_closure
+                        and item.section_id not in packet.root_section_ids
+                    )
                 ],
                 "SOURCE_SKILLS": list(dict.fromkeys(
                     item.skill_id for item in packet_sections
@@ -1047,7 +1063,7 @@ def hash_only_hybrid_projection(
 
 def _failure_projection(
     request: HybridShadowInputV1,
-    exc: BaseException,
+    exc: Exception,
     *,
     code_override: str | None = None,
 ) -> dict[str, object]:
@@ -1105,12 +1121,12 @@ class HybridSkillContextShadowObserverV1:
         try:
             materialization = self.compiler.materialize(request)
             projection = hash_only_hybrid_projection(materialization)
-        except BaseException as exc:  # bounded observer boundary, never dispatch
+        except Exception as exc:  # bounded observer boundary, never dispatch
             projection = _failure_projection(request, exc)
         else:
             try:
                 self.serializer(projection)
-            except BaseException as exc:
+            except Exception as exc:
                 projection = _failure_projection(
                     request, exc,
                     code_override="RECEIPT_SERIALIZATION_FAILURE",
@@ -1118,7 +1134,7 @@ class HybridSkillContextShadowObserverV1:
         if self.sink is not None:
             try:
                 self.sink(projection)
-            except BaseException as exc:  # sink is observability, never authority
+            except Exception as exc:  # sink is observability, never authority
                 projection = _failure_projection(
                     request, exc, code_override="RECEIPT_SERIALIZATION_FAILURE",
                 )

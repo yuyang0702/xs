@@ -170,7 +170,7 @@ OVERLAP = {
     "sv3-82ca2fdf9c28183b": "QUALIFIER_RESTORATION",
     "sv3-972a75cb8ca8f0bd": "DETAIL_ENRICHMENT",
     "sv3-faecc1466817d8aa": "BENEFICIAL_REINFORCEMENT",
-    "sv3-6e4a0b2625a01274": "APPLICATION_BRIDGE_RESTORATION",
+    "sv3-6e4a0b2625a01274": "QUALIFIER_RESTORATION",
 }
 
 EDGES = [
@@ -233,11 +233,6 @@ def build_payload(repo: Path) -> dict[str, Any]:
             ),
             "cycle_group_id": None,
         }
-    # The sealed class is QUALIFIER_RESTORATION; keep the label within the
-    # architecture's exact overlap vocabulary.
-    policies["sv3-6e4a0b2625a01274"]["overlap_classification"] = (
-        "QUALIFIER_RESTORATION"
-    )
     edge_rows = [
         {
             "from_section_id": left,

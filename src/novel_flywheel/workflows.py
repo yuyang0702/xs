@@ -945,7 +945,7 @@ class WorkflowService:
             if status != "PASS":
                 self.hybrid_skill_context_shadow_failure_count += 1
             self.hybrid_skill_context_shadow_records.append(safe)
-        except BaseException as exc:
+        except Exception as exc:
             self.hybrid_skill_context_shadow_failure_count += 1
             self.hybrid_skill_context_shadow_records.append({
                 "schema": "WorkflowHybridSkillContextShadowRecordV1",
