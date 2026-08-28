@@ -27247,8 +27247,12 @@ class WorkflowService:
                         ),
                     },
                     resolved_skill_ids=tuple(skills),
-                    resolved_skill_source_hashes=tuple(
-                        (receipt.skill_name, receipt.content_hash)
+                    resolved_skill_source_sha256=tuple(
+                        (receipt.skill_name, receipt.resolved_source_sha256)
+                        for receipt in skill_run.receipts
+                    ),
+                    primary_skill_document_sha256=tuple(
+                        (receipt.skill_name, receipt.primary_document_sha256)
                         for receipt in skill_run.receipts
                     ),
                     authority_fact_hashes=(
@@ -27258,8 +27262,12 @@ class WorkflowService:
                     production_baseline_context=model_skill_prompt,
                     baseline_source_receipt={
                         "resolved_skill_ids": tuple(skills),
-                        "resolved_skill_source_hashes": tuple(
-                            (receipt.skill_name, receipt.content_hash)
+                        "resolved_skill_source_sha256": tuple(
+                            (receipt.skill_name, receipt.resolved_source_sha256)
+                            for receipt in skill_run.receipts
+                        ),
+                        "primary_skill_document_sha256": tuple(
+                            (receipt.skill_name, receipt.primary_document_sha256)
                             for receipt in skill_run.receipts
                         ),
                         "full_skill_prompt_sha256": hashlib.sha256(

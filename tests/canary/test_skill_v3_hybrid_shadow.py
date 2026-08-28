@@ -13,6 +13,7 @@ from novel_flywheel.hybrid_skill_context import (
     HybridSkillContextShadowObserverV1,
     HybridSkillSectionIndexV2,
 )
+from novel_flywheel.skills import SkillScanner
 from tools.diagnostics.materialize_skill_v3_hybrid_shadow_evidence import (
     NEXT_GATE,
     OUTPUT,
@@ -46,6 +47,23 @@ def _artifacts() -> dict[str, bytes]:
         strict_l3="PASS warnings=0 blockers=0",
         new_regression_count=0,
     )
+
+
+def test_materializer_uses_production_resolved_identity_not_index_document_hash() -> None:
+    index = _index()
+    request, _ = request_for(ROOT, index, "character-heavy")
+    resolved = {
+        skill.name: skill
+        for skill in SkillScanner([
+            ROOT / index.source_index.source_root
+        ]).scan()
+    }
+    package_hashes = dict(request.resolved_skill_source_sha256)
+    primary_hashes = dict(request.primary_skill_document_sha256)
+    for skill_id in request.resolved_skill_ids:
+        assert package_hashes[skill_id] == resolved[skill_id].resolved_source_sha256
+        assert primary_hashes[skill_id] == resolved[skill_id].primary_document_sha256
+        assert package_hashes[skill_id] != primary_hashes[skill_id]
 
 
 def test_evidence_materializer_covers_exact_required_root_and_readiness() -> None:
@@ -138,7 +156,7 @@ def test_verbatim_mutation_is_detected_before_receipt_acceptance() -> None:
     projection = HybridSkillContextShadowObserverV1(
         HybridSkillContextCompilerV1(index)
     )(request)
-    assert projection["FAILURE_CODE"] == "VERBATIM_MISMATCH"
+    assert projection["FAILURE_CODE"] == "SECTION_CONTENT_IDENTITY_MISMATCH"
     assert projection["PRODUCTION_MODEL_INPUT_UNCHANGED"] == "YES"
 
 

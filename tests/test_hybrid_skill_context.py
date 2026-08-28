@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import shutil
 from dataclasses import replace
 from pathlib import Path
 
@@ -17,6 +18,7 @@ from novel_flywheel.hybrid_skill_context import (
     HybridCapacityError,
     HybridDependencyEdgeV1,
     HybridDependencyError,
+    HybridIndexError,
     HybridProtectedBudgetV1,
     HybridShadowInputV1,
     HybridSkillContextCompilerV1,
@@ -24,12 +26,14 @@ from novel_flywheel.hybrid_skill_context import (
     HybridSkillSectionIndexV2,
     extract_demand_features_v1,
 )
+from novel_flywheel.selective_skill_compiler import SectionIndexError
 from novel_flywheel.models import ModelResult
 from novel_flywheel.runtime_skill_profiles import (
     SkillLoadDecisionInputsV1,
     build_planning_v2_event_realization_profile_demand_aware,
     render_skill_context,
 )
+from novel_flywheel.skills import SkillGate, SkillScanner
 from test_phase05_evidence_closure import _service
 
 
@@ -77,6 +81,13 @@ def _baseline(demand: str = "character-heavy") -> str:
     return text
 
 
+def _resolved_skills() -> dict[str, object]:
+    return {
+        skill.name: skill
+        for skill in SkillScanner([ROOT / "vendor/novel-skills/source"]).scan()
+    }
+
+
 def _request(
     index: HybridSkillSectionIndexV2,
     demand: str = "character-heavy",
@@ -84,6 +95,7 @@ def _request(
 ) -> HybridShadowInputV1:
     baseline = _baseline(demand)
     reference = "REFERENCE-DERIVED GUIDANCE\nNON-SKILL ADVISORY\n"
+    resolved = _resolved_skills()
     base = HybridShadowInputV1(
         stage="planning",
         substage="event_realization",
@@ -102,8 +114,12 @@ def _request(
             "anti_template_required": demand in {"character-heavy", "mixed"},
         },
         resolved_skill_ids=index.source_index.skill_ids,
-        resolved_skill_source_hashes=tuple(
-            (skill, index.source_index.skill_source_sha256[skill])
+        resolved_skill_source_sha256=tuple(
+            (skill, resolved[skill].resolved_source_sha256)
+            for skill in index.source_index.skill_ids
+        ),
+        primary_skill_document_sha256=tuple(
+            (skill, resolved[skill].primary_document_sha256)
             for skill in index.source_index.skill_ids
         ),
         authority_fact_hashes=(("authority", "2" * 64),),
@@ -128,6 +144,160 @@ def _request(
     return replace(base, **changes)
 
 
+def test_real_planning_skill_resolver_identity_reaches_hybrid_shadow_seam() -> None:
+    """The Hybrid seam must consume the exact identity emitted by SkillScanner."""
+
+    index = _index()
+    planning_ids = (
+        "story-init", "plot-structure", "character-management", "worldbuilding",
+    )
+    resolved = _resolved_skills()
+    projection = HybridSkillContextShadowObserverV1(
+        HybridSkillContextCompilerV1(index)
+    )(_request(
+        index,
+        resolved_skill_ids=planning_ids,
+        resolved_skill_source_sha256=tuple(
+            (skill_id, resolved[skill_id].resolved_source_sha256)
+            for skill_id in planning_ids
+        ),
+        primary_skill_document_sha256=tuple(
+            (skill_id, resolved[skill_id].primary_document_sha256)
+            for skill_id in planning_ids
+        ),
+    ))
+
+    assert projection["SHADOW_RESULT"] == "PASS"
+
+
+def test_identity_domains_are_independent_and_fail_observably() -> None:
+    index = _index()
+    request = _request(index)
+    observer = HybridSkillContextShadowObserverV1(
+        HybridSkillContextCompilerV1(index)
+    )
+
+    bad_resolved = list(request.resolved_skill_source_sha256)
+    bad_resolved[0] = (bad_resolved[0][0], "0" * 64)
+    resolved_projection = observer(replace(
+        request, resolved_skill_source_sha256=tuple(bad_resolved),
+    ))
+    assert resolved_projection["FAILURE_CODE"] == (
+        "RESOLVED_SKILL_SOURCE_IDENTITY_MISMATCH"
+    )
+
+    bad_primary = list(request.primary_skill_document_sha256)
+    bad_primary[0] = (bad_primary[0][0], "0" * 64)
+    primary_projection = observer(replace(
+        request, primary_skill_document_sha256=tuple(bad_primary),
+    ))
+    assert primary_projection["FAILURE_CODE"] == (
+        "PRIMARY_SKILL_DOCUMENT_IDENTITY_MISMATCH"
+    )
+
+    section_id = "sv3-10e4ba0c5b7509b4"
+    original = index.source_index.by_id[section_id]
+    index.source_index.by_id[section_id] = replace(
+        original, source_text=original.source_text + "identity mutation\n",
+    )
+    section_projection = observer(request)
+    assert section_projection["FAILURE_CODE"] == (
+        "SECTION_CONTENT_IDENTITY_MISMATCH"
+    )
+
+    for projection in (
+        resolved_projection, primary_projection, section_projection,
+    ):
+        assert projection["FAILURE_OBSERVABLE"] == "YES"
+        assert projection["PRODUCTION_MODEL_INPUT_UNCHANGED"] == "YES"
+        assert projection["NO_EXTERNAL_CALL"] == "YES"
+
+
+def test_project_override_with_same_primary_document_changes_package_identity(
+    tmp_path: Path,
+) -> None:
+    source_root = ROOT / "vendor/novel-skills/source"
+    override_root = tmp_path / "override"
+    shutil.copytree(source_root / "story-init", override_root / "story-init")
+    (override_root / "story-init" / "identity-bearing-extra.txt").write_text(
+        "different resolved package state", encoding="utf-8",
+    )
+    baseline = {skill.name: skill for skill in SkillScanner([source_root]).scan()}
+    resolved = {
+        skill.name: skill
+        for skill in SkillScanner([source_root, override_root]).scan()
+    }
+    assert (
+        resolved["story-init"].primary_document_sha256
+        == baseline["story-init"].primary_document_sha256
+    )
+    assert (
+        resolved["story-init"].resolved_source_sha256
+        != baseline["story-init"].resolved_source_sha256
+    )
+
+    index = _index()
+    request = _request(index)
+    hashes = dict(request.resolved_skill_source_sha256)
+    hashes["story-init"] = resolved["story-init"].resolved_source_sha256
+    projection = HybridSkillContextShadowObserverV1(
+        HybridSkillContextCompilerV1(index)
+    )(replace(
+        request,
+        resolved_skill_source_sha256=tuple(
+            (skill_id, hashes[skill_id])
+            for skill_id in request.resolved_skill_ids
+        ),
+    ))
+    assert projection["FAILURE_CODE"] == (
+        "RESOLVED_SKILL_SOURCE_IDENTITY_MISMATCH"
+    )
+
+
+def test_stale_primary_document_index_fails_closed(tmp_path: Path) -> None:
+    copied_root = tmp_path / "repo"
+    source_root = copied_root / "vendor/novel-skills/source"
+    shutil.copytree(ROOT / "vendor/novel-skills/source", source_root)
+    index_root = copied_root / "vendor/novel-skills"
+    shutil.copy2(INDEX_V1, index_root / INDEX_V1.name)
+    shutil.copy2(INDEX_V2, index_root / INDEX_V2.name)
+    primary = source_root / "story-init/SKILL.md"
+    primary.write_text(
+        primary.read_text(encoding="utf-8") + "\n<!-- stale index -->\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(
+        SectionIndexError, match="PRIMARY_SKILL_DOCUMENT_IDENTITY_MISMATCH",
+    ):
+        HybridSkillSectionIndexV2.load(
+            index_root / INDEX_V2.name,
+            index_root / INDEX_V1.name,
+            copied_root,
+        )
+
+
+def test_stale_package_index_fails_with_unchanged_primary_document(
+    tmp_path: Path,
+) -> None:
+    copied_root = tmp_path / "repo"
+    source_root = copied_root / "vendor/novel-skills/source"
+    shutil.copytree(ROOT / "vendor/novel-skills/source", source_root)
+    index_root = copied_root / "vendor/novel-skills"
+    shutil.copy2(INDEX_V1, index_root / INDEX_V1.name)
+    shutil.copy2(INDEX_V2, index_root / INDEX_V2.name)
+    (source_root / "story-init/identity-bearing-extra.txt").write_text(
+        "stale resolved package index", encoding="utf-8",
+    )
+    with pytest.raises(
+        HybridIndexError, match="RESOLVED_SKILL_SOURCE_IDENTITY_MISMATCH",
+    ):
+        HybridSkillSectionIndexV2.load(
+            index_root / INDEX_V2.name,
+            index_root / INDEX_V1.name,
+            copied_root,
+        )
+
+
 def _replace_index(
     index: HybridSkillSectionIndexV2,
     *,
@@ -136,6 +306,7 @@ def _replace_index(
 ) -> HybridSkillSectionIndexV2:
     return HybridSkillSectionIndexV2(
         source_index=index.source_index,
+        resolved_skill_source_sha256=index.resolved_skill_source_sha256,
         definition_sha256=index.definition_sha256,
         design_manifest_definition_sha256=index.design_manifest_definition_sha256,
         root_cause_manifest_definition_sha256=index.root_cause_manifest_definition_sha256,
@@ -153,7 +324,7 @@ def test_hybrid_shadow_contract_and_index_bind_sealed_design() -> None:
     design = json.loads((DESIGN_ROOT / "architecture-decision-v1.json").read_text(encoding="utf-8"))
     assert HYBRID_CONTEXT_VERSION == "hybrid-skill-context-shadow-v1"
     assert DEFAULT_HYBRID_SKILL_CONTEXT_SHADOW_ENABLED is False
-    assert index.definition_sha256 == "bce8d4ba48b17f050f935238fa9b4be14fe2abfb1aef88ede2222da91eaa0e68"
+    assert index.definition_sha256 == "0916ed45d01636d74f7c4e6be8217c135956bb41fac62b5928b3391e51f2e62a"
     assert design["hybrid_architecture_decision"] == HYBRID_ARCHITECTURE_DECISION
     assert index.design_manifest_definition_sha256 == "e490accef7716d20d60060fe2e7f82fde0e8374f22c19cfc19b97224df3e1505"
     assert index.root_cause_manifest_definition_sha256 == "7022b932ad873dfb6a6d20dbd95538dff59d2f1acb0ba2cd417d03240d3df4ed"
@@ -374,6 +545,46 @@ async def _run_planning(service, store, project, workflow: str) -> None:
         run_id, run_path, project, "planning", constraints, "same task",
         allow_tools=False,
     )
+
+
+@pytest.mark.asyncio
+async def test_workflow_real_four_skill_resolver_reaches_actual_hybrid_seam(
+    tmp_path: Path,
+) -> None:
+    gateway = _Gateway()
+    db, store, project, service = _service(
+        tmp_path, mode="short", gateway=gateway, title="Hybrid real seam",
+    )
+    service.skills = SkillGate(
+        db, SkillScanner([ROOT / "vendor/novel-skills/source"]),
+    )
+    project.metadata["creative_demand_class"] = "character-heavy"
+    project.metadata["actor_refs_present"] = True
+    project.metadata["relationship_pressure_present"] = True
+    project.metadata["causal_chain_present"] = True
+    project.metadata["dialogue_required"] = True
+    project.metadata["anti_template_required"] = True
+    index = _index()
+    actual_observer = HybridSkillContextShadowObserverV1(
+        HybridSkillContextCompilerV1(index)
+    )
+    seen: list[HybridShadowInputV1] = []
+
+    def observer(request: HybridShadowInputV1):
+        seen.append(request)
+        return actual_observer(request)
+
+    service.hybrid_skill_context_shadow_enabled = True
+    service.hybrid_skill_context_shadow_observer = observer
+    await _run_planning(service, store, project, "hybrid-real-four-skill-seam")
+
+    assert len(gateway.calls) == 1
+    assert len(seen) == 1
+    assert seen[0].resolved_skill_ids == (
+        "story-init", "plot-structure", "character-management", "worldbuilding",
+    )
+    assert service.hybrid_skill_context_shadow_records[0]["SHADOW_RESULT"] == "PASS"
+    assert service.hybrid_skill_context_shadow_failure_count == 0
 
 
 @pytest.mark.asyncio

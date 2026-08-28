@@ -22,6 +22,7 @@ from novel_flywheel.selective_skill_compiler import (
     SkillSectionV1,
     SelectiveSkillCompilerV1,
 )
+from novel_flywheel.skills import compute_resolved_skill_source_sha256
 
 
 HYBRID_CONTEXT_VERSION = "hybrid-skill-context-shadow-v1"
@@ -263,7 +264,8 @@ class HybridShadowInputV1:
     creative_demand_class: str
     demand_signals: Mapping[str, object]
     resolved_skill_ids: tuple[str, ...]
-    resolved_skill_source_hashes: tuple[tuple[str, str], ...]
+    resolved_skill_source_sha256: tuple[tuple[str, str], ...]
+    primary_skill_document_sha256: tuple[tuple[str, str], ...]
     authority_fact_hashes: tuple[tuple[str, str], ...]
     production_baseline_context: str
     baseline_source_receipt: Mapping[str, object]
@@ -292,6 +294,7 @@ class HybridSkillSectionIndexV2:
         self,
         *,
         source_index: SkillSectionIndexV1,
+        resolved_skill_source_sha256: Mapping[str, str],
         definition_sha256: str,
         design_manifest_definition_sha256: str,
         root_cause_manifest_definition_sha256: str,
@@ -303,6 +306,12 @@ class HybridSkillSectionIndexV2:
         signal_feature_map: Mapping[str, tuple[str, ...]],
     ) -> None:
         self.source_index = source_index
+        self.resolved_skill_source_sha256 = dict(
+            resolved_skill_source_sha256
+        )
+        self.primary_skill_document_sha256 = dict(
+            source_index.primary_skill_document_sha256
+        )
         self.definition_sha256 = definition_sha256
         self.design_manifest_definition_sha256 = (
             design_manifest_definition_sha256
@@ -348,6 +357,34 @@ class HybridSkillSectionIndexV2:
                 "HYBRID_INDEX_DEFINITION_HASH_MISMATCH",
                 "Hybrid index definition must be content addressed",
             )
+        resolved_skill_source_sha256 = dict(
+            payload.get("resolved_skill_source_sha256") or {}
+        )
+        if set(resolved_skill_source_sha256) != set(source_index.skill_ids):
+            raise HybridIndexError(
+                "RESOLVED_SKILL_SOURCE_IDENTITY_COVERAGE_INCOMPLETE",
+                "sealed resolved Skill package identity coverage",
+            )
+        if any(
+            not SHA256_RE.fullmatch(str(value))
+            for value in resolved_skill_source_sha256.values()
+        ):
+            raise HybridIndexError(
+                "RESOLVED_SKILL_SOURCE_IDENTITY_INVALID",
+                "sealed resolved Skill package identities must be SHA-256",
+            )
+        resolved_source_root = (
+            repository_root.resolve() / source_index.source_root
+        ).resolve()
+        for skill_id, expected in resolved_skill_source_sha256.items():
+            actual = compute_resolved_skill_source_sha256(
+                resolved_source_root / skill_id
+            )
+            if actual != expected:
+                raise HybridIndexError(
+                    "RESOLVED_SKILL_SOURCE_IDENTITY_MISMATCH",
+                    "sealed resolved Skill package identity",
+                )
         architecture = payload.get("architecture_binding") or {}
         if (
             architecture.get("decision") != HYBRID_ARCHITECTURE_DECISION
@@ -506,6 +543,7 @@ class HybridSkillSectionIndexV2:
             )
         return cls(
             source_index=source_index,
+            resolved_skill_source_sha256=resolved_skill_source_sha256,
             definition_sha256=expected_hash,
             design_manifest_definition_sha256=design_sha,
             root_cause_manifest_definition_sha256=root_sha,
@@ -581,17 +619,47 @@ class HybridSkillContextCompilerV1:
             )
         _require_sha(request.task_contract_schema_sha256, "task contract schema")
         _require_sha(request.production_model_input_sha256, "production model input")
-        hashes = dict(request.resolved_skill_source_hashes)
-        if set(hashes) != set(request.resolved_skill_ids):
+        resolved_source_hashes = dict(request.resolved_skill_source_sha256)
+        if set(resolved_source_hashes) != set(request.resolved_skill_ids):
             raise HybridIndexError(
-                "RESOLVED_SKILL_HASH_COVERAGE_INCOMPLETE",
-                "resolved Skill source hash coverage",
+                "RESOLVED_SKILL_SOURCE_IDENTITY_COVERAGE_INCOMPLETE",
+                "resolved Skill package identity coverage",
             )
-        for skill_id, expected in self.index.source_index.skill_source_sha256.items():
-            if skill_id in hashes and hashes[skill_id] != expected:
+        if any(
+            not SHA256_RE.fullmatch(value)
+            for value in resolved_source_hashes.values()
+        ):
+            raise HybridIndexError(
+                "RESOLVED_SKILL_SOURCE_IDENTITY_INVALID",
+                "resolved Skill package identities must be SHA-256",
+            )
+        for skill_id in request.resolved_skill_ids:
+            expected = self.index.resolved_skill_source_sha256[skill_id]
+            if resolved_source_hashes[skill_id] != expected:
                 raise HybridIndexError(
-                    "RESOLVED_SKILL_SOURCE_HASH_MISMATCH",
-                    "resolved Skill source exact identity",
+                    "RESOLVED_SKILL_SOURCE_IDENTITY_MISMATCH",
+                    "resolved Skill package identity",
+                )
+        primary_document_hashes = dict(request.primary_skill_document_sha256)
+        if set(primary_document_hashes) != set(request.resolved_skill_ids):
+            raise HybridIndexError(
+                "PRIMARY_SKILL_DOCUMENT_IDENTITY_COVERAGE_INCOMPLETE",
+                "primary Skill document identity coverage",
+            )
+        if any(
+            not SHA256_RE.fullmatch(value)
+            for value in primary_document_hashes.values()
+        ):
+            raise HybridIndexError(
+                "PRIMARY_SKILL_DOCUMENT_IDENTITY_INVALID",
+                "primary Skill document identities must be SHA-256",
+            )
+        for skill_id in request.resolved_skill_ids:
+            expected = self.index.primary_skill_document_sha256[skill_id]
+            if primary_document_hashes[skill_id] != expected:
+                raise HybridIndexError(
+                    "PRIMARY_SKILL_DOCUMENT_IDENTITY_MISMATCH",
+                    "primary Skill document identity",
                 )
         for name, value in request.authority_fact_hashes:
             if not name:
@@ -825,7 +893,8 @@ class HybridSkillContextCompilerV1:
         )
         if mismatch:
             raise HybridVerbatimError(
-                "VERBATIM_MISMATCH", "original source section bytes",
+                "SECTION_CONTENT_IDENTITY_MISMATCH",
+                "selected section content identity",
             )
         supplement_tokens = estimate_input_tokens(
             SUPPLEMENT_SEPARATOR + rendered.text
@@ -917,6 +986,7 @@ class HybridSkillContextCompilerV1:
         receipt: dict[str, object] = {
             "schema": "HybridSkillContextReceiptV1",
             "HYBRID_CONTEXT_VERSION": HYBRID_CONTEXT_VERSION,
+            "IDENTITY_CONTRACT_VERSION": "hybrid-skill-identity-contract-v1",
             "ARCHITECTURE_DECISION": HYBRID_ARCHITECTURE_DECISION,
             "INDEX_DEFINITION_SHA256": self.index.definition_sha256,
             "DESIGN_MANIFEST_DEFINITION_SHA256": (
@@ -937,6 +1007,12 @@ class HybridSkillContextCompilerV1:
                 dict(request.baseline_compactor_receipt)
             ),
             "REFERENCE_GUIDANCE_SHA": reference_sha,
+            "RESOLVED_SKILL_SOURCE_SHA256": dict(
+                request.resolved_skill_source_sha256
+            ),
+            "PRIMARY_SKILL_DOCUMENT_SHA256": dict(
+                request.primary_skill_document_sha256
+            ),
             "DEMAND_FEATURES": {
                 "creative_demand_class": features.creative_demand_class,
                 "active_features": list(features.active_features),
@@ -1015,7 +1091,12 @@ def _input_binding_projection(request: HybridShadowInputV1) -> dict[str, object]
         "creative_demand_class": request.creative_demand_class,
         "demand_signals": dict(request.demand_signals),
         "resolved_skill_ids": list(request.resolved_skill_ids),
-        "resolved_skill_source_hashes": list(request.resolved_skill_source_hashes),
+        "resolved_skill_source_sha256": list(
+            request.resolved_skill_source_sha256
+        ),
+        "primary_skill_document_sha256": list(
+            request.primary_skill_document_sha256
+        ),
         "authority_fact_hashes": list(request.authority_fact_hashes),
         "baseline_context_sha256": _sha_text(request.production_baseline_context),
         "reference_guidance_sha256": _sha_text(

@@ -27,10 +27,12 @@ from novel_flywheel.hybrid_skill_context import (
     HybridSkillSectionIndexV2,
 )
 from novel_flywheel.runtime_skill_profiles import (
+    PLANNING_SKILL_IDS,
     SkillLoadDecisionInputsV1,
     build_planning_v2_event_realization_profile_demand_aware,
     render_skill_context,
 )
+from novel_flywheel.skills import SkillScanner
 from tools.diagnostics.close_skill_v3_reference_distill_binding import (
     frozen_project_guidance,
 )
@@ -228,6 +230,12 @@ def request_for(
 ) -> tuple[HybridShadowInputV1, dict[str, Any]]:
     baseline, baseline_row = baseline_for(repo, demand)
     guidance, provenance, sources = frozen_project_guidance()
+    resolved = {
+        skill.name: skill
+        for skill in SkillScanner([
+            repo / index.source_index.source_root
+        ]).scan()
+    }
     request = HybridShadowInputV1(
         stage="planning",
         substage="event_realization",
@@ -236,10 +244,14 @@ def request_for(
         task_contract_schema_sha256="1" * 64,
         creative_demand_class=demand,
         demand_signals=demand_signals(demand),
-        resolved_skill_ids=index.source_index.skill_ids,
-        resolved_skill_source_hashes=tuple(
-            (skill, index.source_index.skill_source_sha256[skill])
-            for skill in index.source_index.skill_ids
+        resolved_skill_ids=PLANNING_SKILL_IDS,
+        resolved_skill_source_sha256=tuple(
+            (skill, resolved[skill].resolved_source_sha256)
+            for skill in PLANNING_SKILL_IDS
+        ),
+        primary_skill_document_sha256=tuple(
+            (skill, resolved[skill].primary_document_sha256)
+            for skill in PLANNING_SKILL_IDS
         ),
         authority_fact_hashes=(
             ("authority", "2" * 64), ("task", "3" * 64),
@@ -286,6 +298,7 @@ def _replace_index(
 ) -> HybridSkillSectionIndexV2:
     return HybridSkillSectionIndexV2(
         source_index=index.source_index,
+        resolved_skill_source_sha256=index.resolved_skill_source_sha256,
         definition_sha256=index.definition_sha256,
         design_manifest_definition_sha256=index.design_manifest_definition_sha256,
         root_cause_manifest_definition_sha256=index.root_cause_manifest_definition_sha256,

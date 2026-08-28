@@ -20,6 +20,13 @@ class Skill:
     content_hash: str
     executable: bool
     has_scripts: bool
+    primary_document_sha256: str
+
+    @property
+    def resolved_source_sha256(self) -> str:
+        """Canonical identity of the resolved Skill package/directory."""
+
+        return self.content_hash
 
 
 @dataclass(frozen=True)
@@ -28,12 +35,36 @@ class SkillReceipt:
     content_hash: str
     status: str
     output: str
+    primary_document_sha256: str
+
+    @property
+    def resolved_source_sha256(self) -> str:
+        """Canonical package identity emitted by the production resolver."""
+
+        return self.content_hash
 
 
 @dataclass(frozen=True)
 class SkillRun:
     prompt: str
     receipts: list[SkillReceipt]
+
+
+def compute_resolved_skill_source_sha256(skill_root: Path) -> str:
+    """Hash one resolved Skill package using the production scanner contract."""
+
+    files = sorted(path for path in skill_root.rglob("*") if path.is_file())
+    digest = hashlib.sha256()
+    for path in files:
+        digest.update(path.relative_to(skill_root).as_posix().encode())
+        digest.update(path.read_bytes())
+    return digest.hexdigest()
+
+
+def compute_primary_skill_document_sha256(skill_root: Path) -> str:
+    """Hash only the primary SKILL.md document; this is not a package identity."""
+
+    return hashlib.sha256((skill_root / "SKILL.md").read_bytes()).hexdigest()
 
 
 class SkillScanner:
@@ -50,10 +81,6 @@ class SkillScanner:
                 match = re.search(r"(?m)^name:\s*['\"]?([^'\"\r\n]+)", instructions)
                 name = match.group(1).strip() if match else manifest.parent.name
                 files = sorted(path for path in manifest.parent.rglob("*") if path.is_file())
-                digest = hashlib.sha256()
-                for path in files:
-                    digest.update(path.relative_to(manifest.parent).as_posix().encode())
-                    digest.update(path.read_bytes())
                 scripts = [
                     path.relative_to(manifest.parent).as_posix()
                     for path in files
@@ -61,7 +88,15 @@ class SkillScanner:
                 ]
                 executable = any(script in instructions for script in scripts)
                 found[name] = Skill(
-                    name, manifest.parent, instructions, digest.hexdigest(), executable, bool(scripts),
+                    name=name,
+                    path=manifest.parent,
+                    instructions=instructions,
+                    content_hash=compute_resolved_skill_source_sha256(manifest.parent),
+                    executable=executable,
+                    has_scripts=bool(scripts),
+                    primary_document_sha256=(
+                        compute_primary_skill_document_sha256(manifest.parent)
+                    ),
                 )
         return list(found.values())
 
@@ -164,7 +199,13 @@ class SkillGate:
         return bundled[-1] if bundled else None
 
     def _record(self, stage: str, skill: Skill, status: str, output: str) -> SkillReceipt:
-        receipt = SkillReceipt(skill.name, skill.content_hash, status, output)
+        receipt = SkillReceipt(
+            skill_name=skill.name,
+            content_hash=skill.content_hash,
+            status=status,
+            output=output,
+            primary_document_sha256=skill.primary_document_sha256,
+        )
         self.db.save_skill_receipt(
             str(uuid.uuid4()), stage, skill.name, skill.content_hash, status, output,
         )

@@ -2165,3 +2165,12 @@ receipt serializer, or observer produces a typed hash-only record and cannot
 alter or block the production request. This shadow path grants no Provider,
 sample, approval, nonce, Skill V3 cutover, Planning V2 cutover, or Full Short
 authority.
+
+Hybrid provenance uses three non-interchangeable SHA-256 domains. The
+production resolver's `resolved_source_sha256` covers the ordered relative path
+and bytes of every file in the selected Skill directory. The separately named
+`primary_document_sha256` covers only that Skill's exact `SKILL.md` bytes, while
+`section_content_sha256` covers one canonical indexed section. The Hybrid seam
+compares each value only with an expectation from the same domain; a package
+override, stale primary document, or changed section therefore produces its own
+typed, hash-only failure without changing the production model input.

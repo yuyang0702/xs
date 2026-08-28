@@ -85,10 +85,24 @@ def test_stale_source_sha_rejects_the_index(tmp_path: Path) -> None:
     shutil.copy2(INDEX, copied / "vendor/novel-skills/skill-section-index-v1.json")
     target = copied / "vendor/novel-skills/source/plot-structure/SKILL.md"
     target.write_text(target.read_text(encoding="utf-8") + "\n<!-- stale -->\n", encoding="utf-8")
-    with pytest.raises(SectionIndexError, match="source file hash mismatch"):
+    with pytest.raises(
+        SectionIndexError, match="PRIMARY_SKILL_DOCUMENT_IDENTITY_MISMATCH",
+    ):
         SkillSectionIndexV1.load(
             copied / "vendor/novel-skills/skill-section-index-v1.json", copied,
         )
+
+
+def test_stale_section_content_identity_rejects_the_index(tmp_path: Path) -> None:
+    payload = json.loads(INDEX.read_text(encoding="utf-8"))
+    payload["sections"][0]["section_content_sha256"] = "0" * 64
+    _refresh_index_definition(payload)
+    stale = tmp_path / "stale-section-index.json"
+    stale.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
+    with pytest.raises(
+        SectionIndexError, match="SECTION_CONTENT_IDENTITY_MISMATCH",
+    ):
+        SkillSectionIndexV1.load(stale, ROOT)
 
 
 def test_selector_is_repeatable_and_catalog_order_independent(tmp_path: Path) -> None:

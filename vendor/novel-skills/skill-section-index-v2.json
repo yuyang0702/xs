@@ -12,6 +12,19 @@
     "path": "vendor/novel-skills/skill-section-index-v1.json",
     "index_definition_sha256": "d5f6f5def4281045ef7f291f3407e5bbe73a686ff2f2bee4c8922dc8a7745399"
   },
+  "resolved_skill_source_sha256": {
+    "story-init": "77d0a75c0ccdd959218a75f02852cb6654aebf0e645e427dd8ef86514ffbd6a9",
+    "plot-structure": "97bd7c6985867076a1b53b461db4549fefff4d1e3c2afad17de2b0a67a1cb9b9",
+    "character-management": "3debd36a3da4a430f4f71292280d4824bfab0436234a2ace68be939773062be5",
+    "worldbuilding": "434e8f9f37a54b4f15e4f1b6978862eaa40eb1ec37d02e778336bda485950678",
+    "revision-continuity": "871b8120d117bcd7cb7f9a8854ebf83b7e7d61e80b493c774e8704126f2bd324",
+    "chapter-writing": "63fff73e7c4779d9d84ecad003883a4baed3d88aedebab47ccc11bcc0c92a2b3",
+    "novel-writing": "44bf94f6fe2d049ff322bc2c8489b8548d7b4f237c41c88229e17969306da0b0",
+    "dialogue": "f1548bb75946872952adf1e003e9360053fd9d8d0640ec7a7d3663f87fddffde",
+    "humanizer-zh": "7bd195e3bcdcc24f078dfd4e3b3e37e8ac321c36f410a41241fc4175eab1825a",
+    "story-maintenance": "c59ebbaf78b700c032958f236908d82389b8b6bf56c1733b235ece31310a6172",
+    "better-writing": "51cdceea3f688e5ee57bfee01f3ed4e2b6e4521a831eb7707d58282c48c5bfc7"
+  },
   "evidence_binding": {
     "design_manifest_definition_sha256": "e490accef7716d20d60060fe2e7f82fde0e8374f22c19cfc19b97224df3e1505",
     "root_cause_manifest_definition_sha256": "7022b932ad873dfb6a6d20dbd95538dff59d2f1acb0ba2cd417d03240d3df4ed"
@@ -468,5 +481,5 @@
   "wrong_layer_behavior": "FAIL_CLOSED_NO_SUPPLEMENT_DISPATCH",
   "raw_prompt_or_story_dependency": false,
   "sample_pair_or_evaluator_rule_count": 0,
-  "index_definition_sha256": "bce8d4ba48b17f050f935238fa9b4be14fe2abfb1aef88ede2222da91eaa0e68"
+  "index_definition_sha256": "0916ed45d01636d74f7c4e6be8217c135956bb41fac62b5928b3391e51f2e62a"
 }

@@ -16,6 +16,7 @@ from pathlib import Path
 from typing import Any, ClassVar, Iterable, Mapping, Sequence
 
 from novel_flywheel.context_policy import estimate_input_tokens
+from novel_flywheel.skills import compute_primary_skill_document_sha256
 
 
 INDEX_SCHEMA = "SkillSectionIndexV1"
@@ -253,6 +254,9 @@ class SkillSectionIndexV1:
         self.source_root = source_root
         self.skill_ids = skill_ids
         self.skill_source_sha256 = dict(skill_source_sha256)
+        # V1 persisted this field under an ambiguous name.  Its actual domain is
+        # the exact primary SKILL.md document, not the resolved Skill package.
+        self.primary_skill_document_sha256 = dict(skill_source_sha256)
         self.sections = sections
         self.known_planning_wrong_layer_ids = known_planning_wrong_layer_ids
         self.planning_shared_subset_exception_ids = (
@@ -288,6 +292,25 @@ class SkillSectionIndexV1:
         for value in skill_hashes.values():
             if not SHA256_RE.fullmatch(str(value)):
                 raise SectionIndexError("Skill source hash is not SHA-256")
+        source_root_path = (repository_root / source_root).resolve()
+        if not source_root_path.is_relative_to(repository_root):
+            raise SectionIndexError("Skill source root escapes repository")
+        for skill_id in skill_ids:
+            skill_root = (source_root_path / skill_id).resolve()
+            if (
+                not skill_root.is_relative_to(source_root_path)
+                or not (skill_root / "SKILL.md").is_file()
+            ):
+                raise SectionIndexError(
+                    f"primary Skill document unavailable for {skill_id}"
+                )
+            if (
+                compute_primary_skill_document_sha256(skill_root)
+                != skill_hashes[skill_id]
+            ):
+                raise SectionIndexError(
+                    f"PRIMARY_SKILL_DOCUMENT_IDENTITY_MISMATCH:{skill_id}"
+                )
 
         raw_sections = payload.get("sections")
         if not isinstance(raw_sections, list) or not raw_sections:
@@ -328,7 +351,7 @@ class SkillSectionIndexV1:
             expected_section_hash = str(raw.get("section_content_sha256") or "")
             if _sha256_text(source_text) != expected_section_hash:
                 raise SectionIndexError(
-                    f"section content hash mismatch for {section_id}"
+                    f"SECTION_CONTENT_IDENTITY_MISMATCH:{section_id}"
                 )
             heading_path = tuple(raw.get("heading_path") or ())
             heading_line = source_text.splitlines()[0] if source_text else ""

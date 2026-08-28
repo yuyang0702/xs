@@ -13,6 +13,7 @@ from novel_flywheel.hybrid_skill_context import (
     HYBRID_INDEX_SCHEMA,
     HYBRID_INDEX_VERSION,
 )
+from novel_flywheel.skills import compute_resolved_skill_source_sha256
 
 
 INDEX_V1 = Path("vendor/novel-skills/skill-section-index-v1.json")
@@ -205,6 +206,11 @@ def build_payload(repo: Path) -> dict[str, Any]:
     design = _read(repo / DESIGN_MANIFEST)
     root_cause = _read(repo / ROOT_CAUSE_MANIFEST)
     sections = {row["section_id"]: row for row in source["sections"]}
+    source_root = repo / source["source_root"]
+    resolved_skill_source_sha256 = {
+        skill_id: compute_resolved_skill_source_sha256(source_root / skill_id)
+        for skill_id in source["short_used_skill_ids"]
+    }
     if set(ACTIONABILITY) != set(SECTION_FUNCTIONS):
         raise RuntimeError("hybrid section policy coverage mismatch")
     missing = set(ACTIONABILITY) - set(sections)
@@ -261,6 +267,7 @@ def build_payload(repo: Path) -> dict[str, Any]:
             "path": INDEX_V1.as_posix(),
             "index_definition_sha256": source["index_definition_sha256"],
         },
+        "resolved_skill_source_sha256": resolved_skill_source_sha256,
         "evidence_binding": {
             "design_manifest_definition_sha256": design["definition_sha256"],
             "root_cause_manifest_definition_sha256": root_cause[
