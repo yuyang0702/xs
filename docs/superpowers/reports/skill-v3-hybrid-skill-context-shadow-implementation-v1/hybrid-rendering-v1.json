@@ -1,0 +1,18 @@
+{
+  "schema": "SkillV3HybridRenderingV1",
+  "render_order": [
+    "PROTECTED_NON_SKILL_PREFIX",
+    "EXACT_BASELINE_SKILL_FOUNDATION",
+    "HYBRID_VERBATIM_SUPPLEMENT"
+  ],
+  "wrapper_version": "hybrid-verbatim-supplement-wrapper-v1",
+  "delimiter_version": "hybrid-supplement-delimiter-v1",
+  "per_demand_final_candidate_sha256": {
+    "character-heavy": "d974fffb4b98beb045d60b550ec60ca81b0cafce46f28195f4faeb627b3375e8",
+    "world-heavy": "c2f87c1f871105d207f678dd5a49ae918b8f0c8fac251c2ac06a0e7963e943e5",
+    "conflict-pacing-heavy": "6534d860ede43510886b69d9af01000eb1eb7ef4de1c9168a68f01743298d281",
+    "setup-payoff-heavy": "95a4d3e10251412a1a62f00581af162a2981ef968f3e96a3f045283c6c64023b",
+    "mixed": "debeda6dec3f77f362fecef035c92c42bce7466b9412c49c39c1ce547afb645b"
+  },
+  "rendered_candidate_dispatched": false
+}

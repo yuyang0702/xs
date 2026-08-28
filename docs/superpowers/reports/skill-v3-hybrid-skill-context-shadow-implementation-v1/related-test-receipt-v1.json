@@ -1,0 +1,17 @@
+{
+  "schema": "SkillV3HybridRelatedTestReceiptV1",
+  "result": "149 passed in 39.24s",
+  "status": "PASS",
+  "external_actions": {
+    "CREDENTIAL_LOOKUP_COUNT": 0,
+    "REAL_PROVIDER_CLIENT_CREATION_COUNT": 0,
+    "REAL_PROVIDER_REQUEST_ATTEMPTS": 0,
+    "HTTP_POST_ATTEMPTS": 0,
+    "NETWORK_CALLS": 0,
+    "MODEL_CALLS": 0,
+    "PAID_CALLS": 0,
+    "SIGNED_APPROVAL_CREATED": "NO",
+    "REAL_NONCE_CREATED": "NO",
+    "NEW_REAL_SAMPLE_COUNT": 0
+  }
+}

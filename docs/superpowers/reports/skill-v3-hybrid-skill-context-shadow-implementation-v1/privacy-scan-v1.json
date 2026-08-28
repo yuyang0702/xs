@@ -1,0 +1,20 @@
+{
+  "schema": "SkillV3HybridShadowPrivacyScanV1",
+  "status": "PASS",
+  "scanned_paths": [
+    "src/novel_flywheel/hybrid_skill_context.py",
+    "src/novel_flywheel/workflows.py",
+    "vendor/novel-skills/skill-section-index-v2.json",
+    "tests/test_hybrid_skill_context.py",
+    "tests/canary/test_skill_v3_hybrid_shadow.py",
+    "tools/diagnostics/build_skill_v3_hybrid_index_v2.py",
+    "tools/diagnostics/materialize_skill_v3_hybrid_shadow_evidence.py"
+  ],
+  "forbidden_matches": [],
+  "raw_prompt_count": 0,
+  "raw_story_count": 0,
+  "raw_skill_text_in_receipts_count": 0,
+  "credential_count": 0,
+  "provider_response_count": 0,
+  "absolute_machine_path_count": 0
+}

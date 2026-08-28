@@ -1,0 +1,109 @@
+{
+  "schema": "SkillV3HybridShadowFailureObservabilityV1",
+  "rows": [
+    {
+      "case": "baseline_identity_mismatch",
+      "failure_code": "BASELINE_IDENTITY_MISMATCH",
+      "production_model_input_unchanged": "YES",
+      "failure_observable": "YES",
+      "no_external_call": "YES",
+      "raw_content_persisted": "NO",
+      "receipt_sha256": "e160577bef9f71e6f2c441b7a0e4eefc430067130c71d853f676208bbaffc281"
+    },
+    {
+      "case": "reference_guidance_identity_mismatch",
+      "failure_code": "REFERENCE_GUIDANCE_IDENTITY_MISMATCH",
+      "production_model_input_unchanged": "YES",
+      "failure_observable": "YES",
+      "no_external_call": "YES",
+      "raw_content_persisted": "NO",
+      "receipt_sha256": "4d8d8ce969b1ca1fbfbe54fe7dff54f1a9bcdbe391600bbec3307bb401400d2c"
+    },
+    {
+      "case": "capacity_overflow",
+      "failure_code": "HYBRID_SUPPLEMENT_CAPACITY_NO_GO",
+      "production_model_input_unchanged": "YES",
+      "failure_observable": "YES",
+      "no_external_call": "YES",
+      "raw_content_persisted": "NO",
+      "receipt_sha256": "40fefc876b012b2542dad2649ace726d1fe8103f11c46b42cf0259825e7174d0"
+    },
+    {
+      "case": "ownership_violation",
+      "failure_code": "OWNERSHIP_VIOLATION",
+      "production_model_input_unchanged": "YES",
+      "failure_observable": "YES",
+      "no_external_call": "YES",
+      "raw_content_persisted": "NO",
+      "receipt_sha256": "aa8ceeb0cd8a64797a6870b974e1e118e4916b838392aafe78ddbe1ec58e33bd"
+    },
+    {
+      "case": "unresolved_contradiction",
+      "failure_code": "UNRESOLVED_CONTRADICTION",
+      "production_model_input_unchanged": "YES",
+      "failure_observable": "YES",
+      "no_external_call": "YES",
+      "raw_content_persisted": "NO",
+      "receipt_sha256": "fb84002602fa5b9493535eb66286df24da53649539fc311260e0567edd46cf02"
+    },
+    {
+      "case": "missing_dependency_target",
+      "failure_code": "MISSING_DEPENDENCY_TARGET",
+      "production_model_input_unchanged": "YES",
+      "failure_observable": "YES",
+      "no_external_call": "YES",
+      "raw_content_persisted": "NO",
+      "receipt_sha256": "050dda063a0fcb75b5dd9780dd9d3207b4a6513f91648b34028394983249e145"
+    },
+    {
+      "case": "dependency_cycle",
+      "failure_code": "DEPENDENCY_CYCLE",
+      "production_model_input_unchanged": "YES",
+      "failure_observable": "YES",
+      "no_external_call": "YES",
+      "raw_content_persisted": "NO",
+      "receipt_sha256": "abc60449f88fc09c55e65bc30166caa52177ed0366a231f8a9f325ae73511cc0"
+    },
+    {
+      "case": "receipt_serialization_failure",
+      "failure_code": "RECEIPT_SERIALIZATION_FAILURE",
+      "production_model_input_unchanged": "YES",
+      "failure_observable": "YES",
+      "no_external_call": "YES",
+      "raw_content_persisted": "NO",
+      "receipt_sha256": "915e79f3f7961815eb52392ec06a172daaa1a990694fd5a406595e052088e1c0"
+    },
+    {
+      "case": "unexpected_compiler_exception",
+      "failure_code": "UNEXPECTED_COMPILER_EXCEPTION",
+      "production_model_input_unchanged": "YES",
+      "failure_observable": "YES",
+      "no_external_call": "YES",
+      "raw_content_persisted": "NO",
+      "receipt_sha256": "13be4e8fb956b06805f54706a27c4c76a0b3961919fa2433379c894e8f943c83"
+    },
+    {
+      "case": "malformed_skill_section_identity",
+      "failure_code": "MALFORMED_SKILL_SECTION_IDENTITY",
+      "production_model_input_unchanged": "YES",
+      "failure_observable": "YES",
+      "no_external_call": "YES",
+      "raw_content_persisted": "NO",
+      "receipt_sha256": "b0290064923f4a53e19ad832a2f7669651e69d472ffc889dcfcaf79e5e4cb903"
+    },
+    {
+      "case": "verbatim_mismatch",
+      "failure_code": "VERBATIM_MISMATCH",
+      "production_model_input_unchanged": "YES",
+      "failure_observable": "YES",
+      "no_external_call": "YES",
+      "raw_content_persisted": "NO",
+      "receipt_sha256": "e5f423d47dcd32ae24412387b3f809bc07214abc47160931501a28ef66819cfe"
+    }
+  ],
+  "negative_injection_count": 11,
+  "all_production_model_input_unchanged": true,
+  "all_failure_observable": true,
+  "all_no_external_call": true,
+  "FAILURE_OBSERVABILITY_PASS": "YES"
+}

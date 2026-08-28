@@ -1,0 +1,58 @@
+{
+  "schema": "SkillV3HybridCapacityResultsV1",
+  "rows": [
+    {
+      "demand_class": "character-heavy",
+      "baseline_chars": 2925,
+      "baseline_tokens": 732,
+      "supplement_chars": 3656,
+      "supplement_tokens": 933,
+      "available_supplement_tokens": 17380,
+      "headroom_tokens": 16447,
+      "capacity_status": "PASS"
+    },
+    {
+      "demand_class": "world-heavy",
+      "baseline_chars": 2742,
+      "baseline_tokens": 686,
+      "supplement_chars": 3006,
+      "supplement_tokens": 771,
+      "available_supplement_tokens": 17426,
+      "headroom_tokens": 16655,
+      "capacity_status": "PASS"
+    },
+    {
+      "demand_class": "conflict-pacing-heavy",
+      "baseline_chars": 2742,
+      "baseline_tokens": 686,
+      "supplement_chars": 3656,
+      "supplement_tokens": 933,
+      "available_supplement_tokens": 17426,
+      "headroom_tokens": 16493,
+      "capacity_status": "PASS"
+    },
+    {
+      "demand_class": "setup-payoff-heavy",
+      "baseline_chars": 2742,
+      "baseline_tokens": 686,
+      "supplement_chars": 2501,
+      "supplement_tokens": 645,
+      "available_supplement_tokens": 17426,
+      "headroom_tokens": 16781,
+      "capacity_status": "PASS"
+    },
+    {
+      "demand_class": "mixed",
+      "baseline_chars": 2742,
+      "baseline_tokens": 686,
+      "supplement_chars": 4161,
+      "supplement_tokens": 1060,
+      "available_supplement_tokens": 17426,
+      "headroom_tokens": 16366,
+      "capacity_status": "PASS"
+    }
+  ],
+  "ALL_REQUIRED_SCENARIOS_CAPACITY_PASS": "YES",
+  "baseline_or_reference_truncated": false,
+  "baseline_or_reference_shed": false
+}

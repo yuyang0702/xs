@@ -1,0 +1,23 @@
+{
+  "schema": "SkillV3HybridShadowImplementationSurfaceV1",
+  "modules": {
+    "src/novel_flywheel/hybrid_skill_context.py": [
+      "extract_demand_features_v1",
+      "HybridSkillSectionIndexV2.load",
+      "HybridSkillContextCompilerV1._packet_ids",
+      "HybridSkillContextCompilerV1._close_dependencies",
+      "HybridSkillContextCompilerV1.materialize",
+      "HybridSkillContextShadowObserverV1.__call__"
+    ],
+    "src/novel_flywheel/workflows.py": [
+      "WorkflowService._observe_hybrid_skill_context_shadow",
+      "WorkflowService._stage exact post-compactor shadow seam"
+    ],
+    "vendor/novel-skills/skill-section-index-v2.json": [
+      "data-only actionability/semantic-function/packet/dependency/ownership bindings"
+    ]
+  },
+  "production_authority_writer_added": false,
+  "provider_or_model_boundary_changed": false,
+  "rollback": "revert implementation commits to e70415744fd61ac4d68c88ed6a1bd355166f3540"
+}

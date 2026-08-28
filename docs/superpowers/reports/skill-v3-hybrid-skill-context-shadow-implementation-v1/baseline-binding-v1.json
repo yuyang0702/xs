@@ -1,0 +1,39 @@
+{
+  "schema": "SkillV3HybridShadowBaselineBindingV1",
+  "branch": "r1-ptr3/planning-repair-finding-propagation-20260817",
+  "start_head": "e70415744fd61ac4d68c88ed6a1bd355166f3540",
+  "implementation_commits": [
+    "9361b47892b80cd61fde0c6396e3a3bde0f0a79e",
+    "409ebb317c2726f1fe2ac7414ba367c9c032336f",
+    "a1832dadcf724c353a7593a1d9413c7d20faef33",
+    "d2567e1a86c7487fba6380ed8ef72b7db3a6cb83"
+  ],
+  "design_evidence": {
+    "path": "C:/小说/novel-flywheel-console/docs/superpowers/reports/skill-v3-hybrid-skill-context-architecture-design-v1",
+    "manifest_file_sha256": "f0da1a567186adc712661298b175d4e55d1ea1ef96c239e4a6e5b052be71dc81",
+    "manifest_definition_sha256": "e490accef7716d20d60060fe2e7f82fde0e8374f22c19cfc19b97224df3e1505",
+    "entry_count": 26,
+    "status": "EXACT"
+  },
+  "root_cause_evidence": {
+    "path": "C:/小说/novel-flywheel-console/docs/superpowers/reports/skill-v3-selective-compiler-multi-sample-quality-root-cause-v1",
+    "manifest_file_sha256": "4fc742fe66d8a0a111da7974b4f8d8a6e9c919c950c903b68e9ac0fe7cdd7af8",
+    "manifest_definition_sha256": "7022b932ad873dfb6a6d20dbd95538dff59d2f1acb0ba2cd417d03240d3df4ed",
+    "entry_count": 24,
+    "status": "EXACT"
+  },
+  "index_v2_definition_sha256": "bce8d4ba48b17f050f935238fa9b4be14fe2abfb1aef88ede2222da91eaa0e68",
+  "worktree_expected_after_seal": "CLEAN",
+  "external_actions": {
+    "CREDENTIAL_LOOKUP_COUNT": 0,
+    "REAL_PROVIDER_CLIENT_CREATION_COUNT": 0,
+    "REAL_PROVIDER_REQUEST_ATTEMPTS": 0,
+    "HTTP_POST_ATTEMPTS": 0,
+    "NETWORK_CALLS": 0,
+    "MODEL_CALLS": 0,
+    "PAID_CALLS": 0,
+    "SIGNED_APPROVAL_CREATED": "NO",
+    "REAL_NONCE_CREATED": "NO",
+    "NEW_REAL_SAMPLE_COUNT": 0
+  }
+}

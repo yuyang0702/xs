@@ -1,0 +1,12 @@
+{
+  "schema": "SkillV3HybridStageOwnershipSafetyV1",
+  "exact_exception": {
+    "section_id": "sv3-b75227453c1cc26a",
+    "exception": "PLANNING_CREATIVE_SUPPLEMENT_EXACT_SUBRANGE_V1",
+    "source_sha256": "6fed87b6d18784ceaf3271bd4cbd2374ee9173540789ac1645af787fbfee2f83"
+  },
+  "mixed_operational_parent_relaxation_count": 0,
+  "AUTHORITY_CONTENT_IN_SUPPLEMENT": 0,
+  "WRONG_LAYER_SECTION_COUNT": 0,
+  "UNSEALED_OWNERSHIP_EXCEPTION_COUNT": 0
+}

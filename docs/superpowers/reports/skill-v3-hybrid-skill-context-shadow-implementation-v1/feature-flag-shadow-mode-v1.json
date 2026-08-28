@@ -1,0 +1,9 @@
+{
+  "schema": "SkillV3HybridShadowModeV1",
+  "flag": "WorkflowService.hybrid_skill_context_shadow_enabled",
+  "DEFAULT_ENABLED": "NO",
+  "PRODUCTION_CUTOVER": "NO",
+  "HYBRID_MODEL_VISIBLE": "NO",
+  "SHADOW_COMPUTE_ONLY": "YES",
+  "observer_result_consumed_by_production": false
+}

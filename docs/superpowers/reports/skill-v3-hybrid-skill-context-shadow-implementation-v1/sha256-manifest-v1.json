@@ -1,0 +1,158 @@
+{
+  "schema": "SkillV3HybridShadowSha256ManifestV1",
+  "definition": {
+    "schema": "SkillV3HybridShadowSha256ManifestDefinitionV1",
+    "entry_count": 29,
+    "entries": [
+      {
+        "path": "README.md",
+        "bytes": 469,
+        "sha256": "8f0c5cd6aab8cb7fa26b807aa7315786747ef75f698985e5620c6544a2c00060"
+      },
+      {
+        "path": "actionability-classification-v1.json",
+        "bytes": 7346,
+        "sha256": "31b9ae338e4da004949021c1999733229682b61c720214de58ed63d5a0acb898"
+      },
+      {
+        "path": "baseline-binding-v1.json",
+        "bytes": 1706,
+        "sha256": "5a82e9b2193d76230daaf66a293f43330801c0f1c81babae5a0889ca5f8c0136"
+      },
+      {
+        "path": "baseline-identity-v1.json",
+        "bytes": 4152,
+        "sha256": "01bcb4103913aaa36b4de84917bcb738ab4429ddbf1613d8b2bcbc2f062280e1"
+      },
+      {
+        "path": "capacity-results-v1.json",
+        "bytes": 1623,
+        "sha256": "1023baa86318bc21a7e7cf7cf96ec32754b26daf8a629343e969b22fbddde32e"
+      },
+      {
+        "path": "character-heavy-forensic-replay-v1.json",
+        "bytes": 1492,
+        "sha256": "38aed36cf95eddb27b0b58049d06eb4e2c8c1c8dfde3490affe50361b9b7f2a3"
+      },
+      {
+        "path": "cross-demand-replay-v1.json",
+        "bytes": 40200,
+        "sha256": "cd9c7be4584c6e83a6d81a703506f4896fc0eff1cff883db0665014142080cb1"
+      },
+      {
+        "path": "cross-skill-packet-compiler-v1.json",
+        "bytes": 4687,
+        "sha256": "133fd4e5ba9d3c975d7daf001c098092a46bf8bdea3fb9ff515efbc51844de60"
+      },
+      {
+        "path": "demand-feature-schema-v1.json",
+        "bytes": 1702,
+        "sha256": "2c6e45bd2443f21aef155d159caee275d6aacacefb09b6ec1fc1bcdf6a414ddb"
+      },
+      {
+        "path": "design-binding-v1.json",
+        "bytes": 590,
+        "sha256": "c93c363476d7362f28d88e310a73d2763a840ab7f485cd52b0ccca889f254f81"
+      },
+      {
+        "path": "disabled-production-identity-v1.json",
+        "bytes": 537,
+        "sha256": "660f6ca888e3cb85198f721d1148dcbfc431df8f6dd604268b703172883483cb"
+      },
+      {
+        "path": "feature-flag-shadow-mode-v1.json",
+        "bytes": 281,
+        "sha256": "dd915420efc25b96c454e804dfb76a493b1cb8596e566a169d2ca6283029305c"
+      },
+      {
+        "path": "final-report-v1.md",
+        "bytes": 5319,
+        "sha256": "120c1824fa44a351fa0d48412f324d5c52fecc32b6d9e240e319de534360fd3e"
+      },
+      {
+        "path": "focused-test-receipt-v1.json",
+        "bytes": 558,
+        "sha256": "087d8ca47c2fbc89cf6307745ffd4c802216c3e3e2613e49cf2fd395f71bb261"
+      },
+      {
+        "path": "full-suite-receipt-v1.json",
+        "bytes": 821,
+        "sha256": "5cd105aaa177d449363a53750ed14c811d8156a4e7a3da8b9ec4587c00f11a91"
+      },
+      {
+        "path": "hybrid-rendering-v1.json",
+        "bytes": 830,
+        "sha256": "5b6198952451739d2ff997a92dbbe3a8582520f26e4f2dbbb72f8f7976068640"
+      },
+      {
+        "path": "implementation-surface-v1.json",
+        "bytes": 934,
+        "sha256": "412a4e85a22ca1b13b02591107f39ec0ec4ee8fa9e04856d70aaf8814b810b02"
+      },
+      {
+        "path": "offline-readiness-v1.json",
+        "bytes": 966,
+        "sha256": "21ed2cb4ed402bda3a3445b411c835706afb0979ac20071323e102da192e9d5a"
+      },
+      {
+        "path": "overlap-reinforcement-v1.json",
+        "bytes": 1313,
+        "sha256": "83c7b28509683f64bdf69ede2dcd7a6d491d9527d990b6553701709d4fd34a87"
+      },
+      {
+        "path": "privacy-scan-v1.json",
+        "bytes": 674,
+        "sha256": "3ab967b0cb24e401b813e32768ad289157d5b5f00979ed6d0d96ac98079cbc30"
+      },
+      {
+        "path": "protected-budget-runtime-v1.json",
+        "bytes": 540,
+        "sha256": "424dab35c05df4cd3161644aaab762b505cc0f7f4f51c971b8be77e4fc4c04ac"
+      },
+      {
+        "path": "provenance-receipts-v1.json",
+        "bytes": 3029,
+        "sha256": "171543ac0b3ce854478dd2047d87cea45608f8d0b78d4431dd07cc70794cd6f6"
+      },
+      {
+        "path": "reference-guidance-identity-v1.json",
+        "bytes": 501,
+        "sha256": "e56db5364a0130bc0604c1fb253e01892a2c83dadf339f69910740fec14d771e"
+      },
+      {
+        "path": "related-test-receipt-v1.json",
+        "bytes": 454,
+        "sha256": "d245ab8255d2c9334581be4ba425581e0e73233f16fa4567429fe84d45726175"
+      },
+      {
+        "path": "semantic-atom-coverage-replay-v1.json",
+        "bytes": 5818,
+        "sha256": "5f42eedf85357e7ddb205f8bed675243e0707fca66d5eac79ca89f6d0a3552ee"
+      },
+      {
+        "path": "shadow-failure-observability-v1.json",
+        "bytes": 4140,
+        "sha256": "9203bde0143e6e13bfafcd73e7b42df562671f93086aabdf6a51555be285b93a"
+      },
+      {
+        "path": "stage-ownership-safety-v1.json",
+        "bytes": 446,
+        "sha256": "a5d783730e4b4d3f6685a07a0c2bba6e8a8918f23a55d3a8b61369a6fb4ff8e8"
+      },
+      {
+        "path": "strict-l3-receipt-v1.json",
+        "bytes": 328,
+        "sha256": "69d132584cbfe4a53df6242265ca26ed316310070e0a1a271d89dc4c273c2411"
+      },
+      {
+        "path": "typed-dependency-closure-v1.json",
+        "bytes": 4781,
+        "sha256": "4415c83bea8d64842b635c6d6f61d20b2585c40de1bb87b6bc038412249fc007"
+      }
+    ]
+  },
+  "definition_sha256": "e00edd4b451bab5e7f312dfbbcbe02997081732a3f397ef69960e4cafd4e05f2",
+  "entry_hash_mode": "UTF8_CANONICAL_LF_V1",
+  "coverage": "all evidence files except the manifest itself",
+  "status": "EXACT"
+}

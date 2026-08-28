@@ -1,0 +1,110 @@
+{
+  "schema": "SkillV3CrossSkillPacketCompilerV1",
+  "compiler_version": "hybrid-skill-context-shadow-v1",
+  "packet_definitions": {
+    "CHARACTER_CHOICE_VOICE_PACKET_V1": {
+      "PACKET_ID": "CHARACTER_CHOICE_VOICE_PACKET_V1",
+      "ROOT_SECTION_IDS": [
+        "sv3-10e4ba0c5b7509b4",
+        "sv3-b75227453c1cc26a",
+        "sv3-8e321726b4ebdcec"
+      ],
+      "SEMANTIC_FUNCTIONS": [
+        "character_agency_motivation",
+        "relationship_consequence",
+        "subtext_dramatization",
+        "voice_readiness",
+        "anti_template_realization"
+      ],
+      "PRIORITY": 10
+    },
+    "CAUSAL_PRESSURE_PACKET_V1": {
+      "PACKET_ID": "CAUSAL_PRESSURE_PACKET_V1",
+      "ROOT_SECTION_IDS": [
+        "sv3-13580b3cdbef263e",
+        "sv3-5f738df332e0919f",
+        "sv3-60d4bee497e4c0dc"
+      ],
+      "SEMANTIC_FUNCTIONS": [
+        "causal_coherence",
+        "scene_pressure"
+      ],
+      "PRIORITY": 20
+    },
+    "SETUP_PAYOFF_CLOSURE_PACKET_V1": {
+      "PACKET_ID": "SETUP_PAYOFF_CLOSURE_PACKET_V1",
+      "ROOT_SECTION_IDS": [
+        "sv3-ac7aa3aed8a7d237",
+        "sv3-972a75cb8ca8f0bd",
+        "sv3-6e4a0b2625a01274",
+        "sv3-ad3871e96cc16876"
+      ],
+      "SEMANTIC_FUNCTIONS": [
+        "setup_payoff"
+      ],
+      "PRIORITY": 30
+    },
+    "WORLD_AFFORDANCE_PRESSURE_PACKET_V1": {
+      "PACKET_ID": "WORLD_AFFORDANCE_PRESSURE_PACKET_V1",
+      "ROOT_SECTION_IDS": [
+        "sv3-2985467b5f2bf929",
+        "sv3-60d4bee497e4c0dc",
+        "sv3-5f738df332e0919f",
+        "sv3-f998823d27d7086b",
+        "sv3-b4583d410167ab14",
+        "sv3-ad3871e96cc16876",
+        "sv3-0933e75cb694edca"
+      ],
+      "SEMANTIC_FUNCTIONS": [
+        "specificity"
+      ],
+      "PRIORITY": 15
+    }
+  },
+  "demand_receipts": {
+    "character-heavy": {
+      "receipt_sha256": "78da2aae10c86b2d517729a4ce5e3774a2eb5159b8eaf03862d56c3d1fa6f580",
+      "baseline_sha256": "7d0f6309ede2261f2f6a1098d394937948bf5b50eb9248266ab350fd91da9adc",
+      "reference_guidance_sha256": "94cfcd4f879232b18b389e6dbfe9595ac4a89a047e887f2fd7160046a1d738ba",
+      "supplement_sha256": "7f4ef3b8d320fdf7521b3d309b8e32208c89fa8953d85c2d44059c5cb52f8c81",
+      "final_hybrid_advisory_sha256": "d974fffb4b98beb045d60b550ec60ca81b0cafce46f28195f4faeb627b3375e8",
+      "raw_content_persisted": false
+    },
+    "world-heavy": {
+      "receipt_sha256": "3f7c8d8e18796084fe14a76855e013eb4f1d9ac8c9f59a909d81c7c81e44b0b9",
+      "baseline_sha256": "e7828db2dc18eceabe06b9d1068b2683d117617fb0bd1257a26e7747fbe02772",
+      "reference_guidance_sha256": "94cfcd4f879232b18b389e6dbfe9595ac4a89a047e887f2fd7160046a1d738ba",
+      "supplement_sha256": "63c85976570f0982cb2ddc1b12c2a78aed06aaac2f3a49a036a5ba8c165ac7fa",
+      "final_hybrid_advisory_sha256": "c2f87c1f871105d207f678dd5a49ae918b8f0c8fac251c2ac06a0e7963e943e5",
+      "raw_content_persisted": false
+    },
+    "conflict-pacing-heavy": {
+      "receipt_sha256": "300e45c47e66f0b0eea29646c026911e525c337916d40be92a1790c815b88490",
+      "baseline_sha256": "e7828db2dc18eceabe06b9d1068b2683d117617fb0bd1257a26e7747fbe02772",
+      "reference_guidance_sha256": "94cfcd4f879232b18b389e6dbfe9595ac4a89a047e887f2fd7160046a1d738ba",
+      "supplement_sha256": "7f4ef3b8d320fdf7521b3d309b8e32208c89fa8953d85c2d44059c5cb52f8c81",
+      "final_hybrid_advisory_sha256": "6534d860ede43510886b69d9af01000eb1eb7ef4de1c9168a68f01743298d281",
+      "raw_content_persisted": false
+    },
+    "setup-payoff-heavy": {
+      "receipt_sha256": "15f0e7a96d174bfc42b6090f32e8540cce20acdaa6f88811069c329bb6a7151e",
+      "baseline_sha256": "e7828db2dc18eceabe06b9d1068b2683d117617fb0bd1257a26e7747fbe02772",
+      "reference_guidance_sha256": "94cfcd4f879232b18b389e6dbfe9595ac4a89a047e887f2fd7160046a1d738ba",
+      "supplement_sha256": "9d6cf2791dd1926bd0d3ceb825d8f28db217f2a2d4c01c80c59e1bfd7828f27f",
+      "final_hybrid_advisory_sha256": "95a4d3e10251412a1a62f00581af162a2981ef968f3e96a3f045283c6c64023b",
+      "raw_content_persisted": false
+    },
+    "mixed": {
+      "receipt_sha256": "3aeca133b2d2b1024f17d404405214d86410b0c3349e0df12cccc0ac6fbc3b68",
+      "baseline_sha256": "e7828db2dc18eceabe06b9d1068b2683d117617fb0bd1257a26e7747fbe02772",
+      "reference_guidance_sha256": "94cfcd4f879232b18b389e6dbfe9595ac4a89a047e887f2fd7160046a1d738ba",
+      "supplement_sha256": "4785c0eadb98aba02858a95a579c0694251d68fe62451019773d99639e20e5d7",
+      "final_hybrid_advisory_sha256": "debeda6dec3f77f362fecef035c92c42bce7466b9412c49c39c1ce547afb645b",
+      "raw_content_persisted": false
+    }
+  },
+  "VERBATIM_MISMATCH": 0,
+  "NO_CREATIVE_PARAPHRASE": "YES",
+  "NO_SUMMARY_TO_FIT": "YES",
+  "CROSS_SKILL_PACKET_COMPILER_PASS": "YES"
+}

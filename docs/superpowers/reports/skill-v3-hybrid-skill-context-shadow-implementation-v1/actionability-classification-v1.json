@@ -1,0 +1,186 @@
+{
+  "schema": "SkillV3HybridActionabilityClassificationV1",
+  "classes": [
+    "HIGH_ACTIONABILITY",
+    "LOW_ACTIONABILITY",
+    "MEDIUM_ACTIONABILITY"
+  ],
+  "sections": {
+    "sv3-0933e75cb694edca": {
+      "SECTION_ID": "sv3-0933e75cb694edca",
+      "SOURCE_SKILL": "worldbuilding",
+      "ACTIONABILITY_CLASS": "MEDIUM_ACTIONABILITY",
+      "ACTIONABILITY_REASON": "exact section supplies a concrete field, qualifier, or sequence used by an executable neighbor",
+      "TARGET_SEMANTIC_FUNCTIONS": [
+        "specificity",
+        "causal_coherence"
+      ]
+    },
+    "sv3-10e4ba0c5b7509b4": {
+      "SECTION_ID": "sv3-10e4ba0c5b7509b4",
+      "SOURCE_SKILL": "character-management",
+      "ACTIONABILITY_CLASS": "HIGH_ACTIONABILITY",
+      "ACTIONABILITY_REASON": "exact section provides an executable scene, causal, reaction, voice, pressure, or setup/payoff operation",
+      "TARGET_SEMANTIC_FUNCTIONS": [
+        "character_agency_motivation"
+      ]
+    },
+    "sv3-13580b3cdbef263e": {
+      "SECTION_ID": "sv3-13580b3cdbef263e",
+      "SOURCE_SKILL": "plot-structure",
+      "ACTIONABILITY_CLASS": "HIGH_ACTIONABILITY",
+      "ACTIONABILITY_REASON": "exact section provides an executable scene, causal, reaction, voice, pressure, or setup/payoff operation",
+      "TARGET_SEMANTIC_FUNCTIONS": [
+        "causal_coherence",
+        "scene_pressure"
+      ]
+    },
+    "sv3-2985467b5f2bf929": {
+      "SECTION_ID": "sv3-2985467b5f2bf929",
+      "SOURCE_SKILL": "worldbuilding",
+      "ACTIONABILITY_CLASS": "MEDIUM_ACTIONABILITY",
+      "ACTIONABILITY_REASON": "exact section supplies a concrete field, qualifier, or sequence used by an executable neighbor",
+      "TARGET_SEMANTIC_FUNCTIONS": [
+        "specificity",
+        "scene_pressure"
+      ]
+    },
+    "sv3-2ced894267dc51e3": {
+      "SECTION_ID": "sv3-2ced894267dc51e3",
+      "SOURCE_SKILL": "plot-structure",
+      "ACTIONABILITY_CLASS": "LOW_ACTIONABILITY",
+      "ACTIONABILITY_REASON": "thin taxonomy/template leaf retained only as a required typed dependency",
+      "TARGET_SEMANTIC_FUNCTIONS": [
+        "setup_payoff"
+      ]
+    },
+    "sv3-4c39329c602fd48e": {
+      "SECTION_ID": "sv3-4c39329c602fd48e",
+      "SOURCE_SKILL": "character-management",
+      "ACTIONABILITY_CLASS": "MEDIUM_ACTIONABILITY",
+      "ACTIONABILITY_REASON": "exact section supplies a concrete field, qualifier, or sequence used by an executable neighbor",
+      "TARGET_SEMANTIC_FUNCTIONS": [
+        "character_agency_motivation"
+      ]
+    },
+    "sv3-5f738df332e0919f": {
+      "SECTION_ID": "sv3-5f738df332e0919f",
+      "SOURCE_SKILL": "worldbuilding",
+      "ACTIONABILITY_CLASS": "HIGH_ACTIONABILITY",
+      "ACTIONABILITY_REASON": "exact section provides an executable scene, causal, reaction, voice, pressure, or setup/payoff operation",
+      "TARGET_SEMANTIC_FUNCTIONS": [
+        "causal_coherence",
+        "scene_pressure",
+        "specificity"
+      ]
+    },
+    "sv3-60d4bee497e4c0dc": {
+      "SECTION_ID": "sv3-60d4bee497e4c0dc",
+      "SOURCE_SKILL": "worldbuilding",
+      "ACTIONABILITY_CLASS": "HIGH_ACTIONABILITY",
+      "ACTIONABILITY_REASON": "exact section provides an executable scene, causal, reaction, voice, pressure, or setup/payoff operation",
+      "TARGET_SEMANTIC_FUNCTIONS": [
+        "scene_pressure",
+        "specificity"
+      ]
+    },
+    "sv3-6e4a0b2625a01274": {
+      "SECTION_ID": "sv3-6e4a0b2625a01274",
+      "SOURCE_SKILL": "plot-structure",
+      "ACTIONABILITY_CLASS": "MEDIUM_ACTIONABILITY",
+      "ACTIONABILITY_REASON": "exact section supplies a concrete field, qualifier, or sequence used by an executable neighbor",
+      "TARGET_SEMANTIC_FUNCTIONS": [
+        "setup_payoff",
+        "causal_coherence"
+      ]
+    },
+    "sv3-82ca2fdf9c28183b": {
+      "SECTION_ID": "sv3-82ca2fdf9c28183b",
+      "SOURCE_SKILL": "plot-structure",
+      "ACTIONABILITY_CLASS": "LOW_ACTIONABILITY",
+      "ACTIONABILITY_REASON": "thin taxonomy/template leaf retained only as a required typed dependency",
+      "TARGET_SEMANTIC_FUNCTIONS": [
+        "setup_payoff"
+      ]
+    },
+    "sv3-8e321726b4ebdcec": {
+      "SECTION_ID": "sv3-8e321726b4ebdcec",
+      "SOURCE_SKILL": "character-management",
+      "ACTIONABILITY_CLASS": "MEDIUM_ACTIONABILITY",
+      "ACTIONABILITY_REASON": "exact section supplies a concrete field, qualifier, or sequence used by an executable neighbor",
+      "TARGET_SEMANTIC_FUNCTIONS": [
+        "character_agency_motivation",
+        "relationship_consequence"
+      ]
+    },
+    "sv3-972a75cb8ca8f0bd": {
+      "SECTION_ID": "sv3-972a75cb8ca8f0bd",
+      "SOURCE_SKILL": "plot-structure",
+      "ACTIONABILITY_CLASS": "HIGH_ACTIONABILITY",
+      "ACTIONABILITY_REASON": "exact section provides an executable scene, causal, reaction, voice, pressure, or setup/payoff operation",
+      "TARGET_SEMANTIC_FUNCTIONS": [
+        "setup_payoff",
+        "causal_coherence"
+      ]
+    },
+    "sv3-ac7aa3aed8a7d237": {
+      "SECTION_ID": "sv3-ac7aa3aed8a7d237",
+      "SOURCE_SKILL": "plot-structure",
+      "ACTIONABILITY_CLASS": "HIGH_ACTIONABILITY",
+      "ACTIONABILITY_REASON": "exact section provides an executable scene, causal, reaction, voice, pressure, or setup/payoff operation",
+      "TARGET_SEMANTIC_FUNCTIONS": [
+        "setup_payoff"
+      ]
+    },
+    "sv3-ad3871e96cc16876": {
+      "SECTION_ID": "sv3-ad3871e96cc16876",
+      "SOURCE_SKILL": "worldbuilding",
+      "ACTIONABILITY_CLASS": "HIGH_ACTIONABILITY",
+      "ACTIONABILITY_REASON": "exact section provides an executable scene, causal, reaction, voice, pressure, or setup/payoff operation",
+      "TARGET_SEMANTIC_FUNCTIONS": [
+        "setup_payoff",
+        "specificity"
+      ]
+    },
+    "sv3-b4583d410167ab14": {
+      "SECTION_ID": "sv3-b4583d410167ab14",
+      "SOURCE_SKILL": "worldbuilding",
+      "ACTIONABILITY_CLASS": "MEDIUM_ACTIONABILITY",
+      "ACTIONABILITY_REASON": "exact section supplies a concrete field, qualifier, or sequence used by an executable neighbor",
+      "TARGET_SEMANTIC_FUNCTIONS": [
+        "specificity"
+      ]
+    },
+    "sv3-b75227453c1cc26a": {
+      "SECTION_ID": "sv3-b75227453c1cc26a",
+      "SOURCE_SKILL": "character-management",
+      "ACTIONABILITY_CLASS": "HIGH_ACTIONABILITY",
+      "ACTIONABILITY_REASON": "exact section provides an executable scene, causal, reaction, voice, pressure, or setup/payoff operation",
+      "TARGET_SEMANTIC_FUNCTIONS": [
+        "voice_readiness",
+        "subtext_dramatization"
+      ]
+    },
+    "sv3-f998823d27d7086b": {
+      "SECTION_ID": "sv3-f998823d27d7086b",
+      "SOURCE_SKILL": "worldbuilding",
+      "ACTIONABILITY_CLASS": "HIGH_ACTIONABILITY",
+      "ACTIONABILITY_REASON": "exact section provides an executable scene, causal, reaction, voice, pressure, or setup/payoff operation",
+      "TARGET_SEMANTIC_FUNCTIONS": [
+        "scene_pressure"
+      ]
+    },
+    "sv3-faecc1466817d8aa": {
+      "SECTION_ID": "sv3-faecc1466817d8aa",
+      "SOURCE_SKILL": "plot-structure",
+      "ACTIONABILITY_CLASS": "MEDIUM_ACTIONABILITY",
+      "ACTIONABILITY_REASON": "exact section supplies a concrete field, qualifier, or sequence used by an executable neighbor",
+      "TARGET_SEMANTIC_FUNCTIONS": [
+        "causal_coherence",
+        "scene_pressure"
+      ]
+    }
+  },
+  "low_actionability_seed_count": 0,
+  "LOW_ACTIONABILITY_LEAF_DOMINANCE": "NO"
+}

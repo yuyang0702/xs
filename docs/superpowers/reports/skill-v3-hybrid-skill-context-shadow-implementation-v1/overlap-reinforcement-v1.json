@@ -1,0 +1,34 @@
+{
+  "schema": "SkillV3HybridOverlapReinforcementV1",
+  "allowed_classes": [
+    "ANTI_PATTERN_RESTORATION",
+    "BENEFICIAL_REINFORCEMENT",
+    "CONTRADICTORY_RESTATEMENT",
+    "DETAIL_ENRICHMENT",
+    "QUALIFIER_RESTORATION",
+    "REDUNDANT_DUPLICATION"
+  ],
+  "section_classification": {
+    "sv3-0933e75cb694edca": "DETAIL_ENRICHMENT",
+    "sv3-10e4ba0c5b7509b4": "DETAIL_ENRICHMENT",
+    "sv3-13580b3cdbef263e": "DETAIL_ENRICHMENT",
+    "sv3-2985467b5f2bf929": "DETAIL_ENRICHMENT",
+    "sv3-2ced894267dc51e3": "QUALIFIER_RESTORATION",
+    "sv3-4c39329c602fd48e": "DETAIL_ENRICHMENT",
+    "sv3-5f738df332e0919f": "DETAIL_ENRICHMENT",
+    "sv3-60d4bee497e4c0dc": "DETAIL_ENRICHMENT",
+    "sv3-6e4a0b2625a01274": "QUALIFIER_RESTORATION",
+    "sv3-82ca2fdf9c28183b": "QUALIFIER_RESTORATION",
+    "sv3-8e321726b4ebdcec": "DETAIL_ENRICHMENT",
+    "sv3-972a75cb8ca8f0bd": "DETAIL_ENRICHMENT",
+    "sv3-ac7aa3aed8a7d237": "DETAIL_ENRICHMENT",
+    "sv3-ad3871e96cc16876": "DETAIL_ENRICHMENT",
+    "sv3-b4583d410167ab14": "DETAIL_ENRICHMENT",
+    "sv3-b75227453c1cc26a": "ANTI_PATTERN_RESTORATION",
+    "sv3-f998823d27d7086b": "DETAIL_ENRICHMENT",
+    "sv3-faecc1466817d8aa": "BENEFICIAL_REINFORCEMENT"
+  },
+  "lexical_similarity_only": false,
+  "UNRESOLVED_CONTRADICTION_COUNT": 0,
+  "baseline_bytes_removed": false
+}

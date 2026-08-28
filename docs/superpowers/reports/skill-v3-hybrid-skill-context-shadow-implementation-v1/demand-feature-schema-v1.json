@@ -1,0 +1,72 @@
+{
+  "schema": "SkillV3HybridDemandFeatureSchemaV1",
+  "extractor": "deterministic local; no LLM",
+  "demand_class_features": {
+    "character-heavy": [
+      "character_agency_motivation",
+      "relationship_consequence",
+      "causal_coherence",
+      "subtext_dramatization",
+      "scene_pressure",
+      "setup_payoff",
+      "voice_readiness",
+      "anti_template_realization"
+    ],
+    "world-heavy": [
+      "specificity",
+      "causal_coherence",
+      "setup_payoff"
+    ],
+    "conflict-pacing-heavy": [
+      "causal_coherence",
+      "scene_pressure",
+      "character_agency_motivation",
+      "setup_payoff"
+    ],
+    "setup-payoff-heavy": [
+      "setup_payoff",
+      "causal_coherence"
+    ],
+    "mixed": [
+      "character_agency_motivation",
+      "relationship_consequence",
+      "causal_coherence",
+      "subtext_dramatization",
+      "scene_pressure",
+      "specificity",
+      "setup_payoff",
+      "voice_readiness",
+      "anti_template_realization"
+    ]
+  },
+  "signal_feature_map": {
+    "actor_refs_present": [
+      "character_agency_motivation"
+    ],
+    "relationship_pressure_present": [
+      "relationship_consequence",
+      "subtext_dramatization"
+    ],
+    "causal_chain_present": [
+      "causal_coherence"
+    ],
+    "dialogue_required": [
+      "subtext_dramatization",
+      "voice_readiness"
+    ],
+    "opposition_present": [
+      "scene_pressure"
+    ],
+    "world_refs_present": [
+      "specificity"
+    ],
+    "setup_payoff_present": [
+      "setup_payoff"
+    ],
+    "anti_template_required": [
+      "anti_template_realization"
+    ]
+  },
+  "stable_identical_input": "IDENTICAL_FEATURES_AND_SHA",
+  "sample_pair_evaluator_rule_count": 0
+}

@@ -1,0 +1,12 @@
+{
+  "schema": "SkillV3HybridDisabledProductionIdentityV1",
+  "proof_test": "tests/test_hybrid_skill_context.py::test_disabled_and_enabled_shadow_never_change_production_model_input",
+  "PRODUCTION_PROMPT_BYTES_UNCHANGED": "YES",
+  "PRODUCTION_MODEL_INPUT_IDENTITY": "YES",
+  "PRODUCTION_ROUTE_IDENTITY": "YES",
+  "PRODUCTION_SAMPLING_IDENTITY": "YES",
+  "PRODUCTION_OUTPUT_CAP_IDENTITY": "YES",
+  "PRODUCTION_VALIDATOR_IDENTITY": "YES",
+  "REFERENCE_GUIDANCE_IDENTITY": "YES",
+  "PRODUCTION_MODEL_INPUT_UNCHANGED_WHEN_DISABLED": "YES"
+}

@@ -1,0 +1,79 @@
+{
+  "schema": "SkillV3HybridBaselineIdentityV1",
+  "boundary": "WorkflowService._stage post SkillPromptCompactor output",
+  "same_runtime_boundary_as_production": true,
+  "rows": {
+    "character-heavy": {
+      "demand_class": "character-heavy",
+      "profile_id": "RESTORED_SKILL_V2_CHARACTER_CORE_V2",
+      "profile_sha256": "d7b40816db895bd0ae44329863d9be084986ffd030357873f455393e191c2398",
+      "baseline_context_sha256": "7d0f6309ede2261f2f6a1098d394937948bf5b50eb9248266ab350fd91da9adc",
+      "baseline_context_char_count": 2925,
+      "baseline_context_token_estimate": 732,
+      "mandatory_rule_count": 8,
+      "advisory_rule_count": 12,
+      "baseline_source_receipt_sha256": "8a07be65297828f8710a724ccf18fbc609e78c05b3b64e0ba0b2d060f586a8cf",
+      "baseline_compactor_receipt_sha256": "56aa50a403015d9f74ca934a164c3e689caa9db615a205ec8edf69f3915f302d",
+      "truncation_occurred": false,
+      "shedding_occurred": false
+    },
+    "world-heavy": {
+      "demand_class": "world-heavy",
+      "profile_id": "PLANNING_V2_EVENT_REALIZATION_PROFILE_V1",
+      "profile_sha256": "a5a94a7f0c11206851e66202331714758f2605fcbaba15fec2385197ef063597",
+      "baseline_context_sha256": "e7828db2dc18eceabe06b9d1068b2683d117617fb0bd1257a26e7747fbe02772",
+      "baseline_context_char_count": 2742,
+      "baseline_context_token_estimate": 686,
+      "mandatory_rule_count": 8,
+      "advisory_rule_count": 12,
+      "baseline_source_receipt_sha256": "8a07be65297828f8710a724ccf18fbc609e78c05b3b64e0ba0b2d060f586a8cf",
+      "baseline_compactor_receipt_sha256": "1840dd44f33d687ed283d7805d3763fe0844420628430b6e11694f31caffadcc",
+      "truncation_occurred": false,
+      "shedding_occurred": false
+    },
+    "conflict-pacing-heavy": {
+      "demand_class": "conflict-pacing-heavy",
+      "profile_id": "PLANNING_V2_EVENT_REALIZATION_PROFILE_V1",
+      "profile_sha256": "a5a94a7f0c11206851e66202331714758f2605fcbaba15fec2385197ef063597",
+      "baseline_context_sha256": "e7828db2dc18eceabe06b9d1068b2683d117617fb0bd1257a26e7747fbe02772",
+      "baseline_context_char_count": 2742,
+      "baseline_context_token_estimate": 686,
+      "mandatory_rule_count": 8,
+      "advisory_rule_count": 12,
+      "baseline_source_receipt_sha256": "8a07be65297828f8710a724ccf18fbc609e78c05b3b64e0ba0b2d060f586a8cf",
+      "baseline_compactor_receipt_sha256": "1840dd44f33d687ed283d7805d3763fe0844420628430b6e11694f31caffadcc",
+      "truncation_occurred": false,
+      "shedding_occurred": false
+    },
+    "setup-payoff-heavy": {
+      "demand_class": "setup-payoff-heavy",
+      "profile_id": "PLANNING_V2_EVENT_REALIZATION_PROFILE_V1",
+      "profile_sha256": "a5a94a7f0c11206851e66202331714758f2605fcbaba15fec2385197ef063597",
+      "baseline_context_sha256": "e7828db2dc18eceabe06b9d1068b2683d117617fb0bd1257a26e7747fbe02772",
+      "baseline_context_char_count": 2742,
+      "baseline_context_token_estimate": 686,
+      "mandatory_rule_count": 8,
+      "advisory_rule_count": 12,
+      "baseline_source_receipt_sha256": "8a07be65297828f8710a724ccf18fbc609e78c05b3b64e0ba0b2d060f586a8cf",
+      "baseline_compactor_receipt_sha256": "1840dd44f33d687ed283d7805d3763fe0844420628430b6e11694f31caffadcc",
+      "truncation_occurred": false,
+      "shedding_occurred": false
+    },
+    "mixed": {
+      "demand_class": "mixed",
+      "profile_id": "PLANNING_V2_EVENT_REALIZATION_PROFILE_V1",
+      "profile_sha256": "a5a94a7f0c11206851e66202331714758f2605fcbaba15fec2385197ef063597",
+      "baseline_context_sha256": "e7828db2dc18eceabe06b9d1068b2683d117617fb0bd1257a26e7747fbe02772",
+      "baseline_context_char_count": 2742,
+      "baseline_context_token_estimate": 686,
+      "mandatory_rule_count": 8,
+      "advisory_rule_count": 12,
+      "baseline_source_receipt_sha256": "8a07be65297828f8710a724ccf18fbc609e78c05b3b64e0ba0b2d060f586a8cf",
+      "baseline_compactor_receipt_sha256": "1840dd44f33d687ed283d7805d3763fe0844420628430b6e11694f31caffadcc",
+      "truncation_occurred": false,
+      "shedding_occurred": false
+    }
+  },
+  "HYBRID_BASELINE_BYTES_EXACTLY_EQUAL_PRODUCTION_BASELINE_BYTES": "YES",
+  "BASELINE_FOUNDATION_PRESERVED": "YES"
+}
