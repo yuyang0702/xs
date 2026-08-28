@@ -2142,3 +2142,26 @@ contract, and `SingleDispatchTransportPolicyV1`; its optional outbound attempt
 observer is absent by default, so ordinary Runtime retry and transport behavior
 remain unchanged. No normal application entry imports or constructs this pilot
 environment.
+
+## Skill V3 Hybrid Skill-context shadow
+
+`HybridSkillContextCompilerV1` is an offline, deterministic, default-disabled
+shadow compiler. It binds the exact Skill bytes produced at the existing
+production compactor boundary, preserves the existing non-Skill/reference
+prefix, and appends only complete original-verbatim semantic packets from the
+content-addressed `skill-section-index-v2.json`. Packet roots favor executable
+high/medium-actionability guidance; lower-actionability taxonomy or template
+leaves may enter only through typed dependency closure. Ownership, source hash,
+verbatim fidelity, contradiction, and protected capacity checks all fail closed
+for the treatment while leaving production untouched.
+
+`WorkflowService.hybrid_skill_context_shadow_enabled` defaults to `False`.
+When false, no Hybrid observer is called and production Prompt/model-input,
+route, sampling, output cap, validator, retry, authority, and checkpoint paths
+are unchanged. When explicitly enabled in offline validation, the observer runs
+only after the production baseline has been formed; its result is discarded and
+only bounded hash/count/status evidence may be retained. A failed compiler,
+receipt serializer, or observer produces a typed hash-only record and cannot
+alter or block the production request. This shadow path grants no Provider,
+sample, approval, nonce, Skill V3 cutover, Planning V2 cutover, or Full Short
+authority.

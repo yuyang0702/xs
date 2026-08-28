@@ -410,6 +410,10 @@ from novel_flywheel.legacy_short_promotion import (
 )
 from novel_flywheel.style_context import character_fingerprints, ensure_style_profile
 from novel_flywheel.skill_prompts import ConstraintPromptCompactor, SkillPromptCompactor
+from novel_flywheel.hybrid_skill_context import (
+    HybridProtectedBudgetV1,
+    HybridShadowInputV1,
+)
 from novel_flywheel.skills import SkillGate
 from novel_flywheel.storage import ProjectSnapshot, atomic_write
 from novel_flywheel.story_state import StoryStateStore, validate_locked_facts
@@ -857,6 +861,10 @@ class WorkflowService:
                  local_nlp=None, references=None,
                  skill_context_shadow_observer: (
                      Callable[[dict[str, object]], object] | None
+                 ) = None,
+                 hybrid_skill_context_shadow_enabled: bool = False,
+                 hybrid_skill_context_shadow_observer: (
+                     Callable[[HybridShadowInputV1], object] | None
                  ) = None) -> None:
         self.db = db
         self.projects = projects
@@ -870,6 +878,19 @@ class WorkflowService:
         self.local_nlp = local_nlp
         self.references = references
         self.skill_context_shadow_observer = skill_context_shadow_observer
+        self.hybrid_skill_context_shadow_enabled = bool(
+            hybrid_skill_context_shadow_enabled
+        )
+        self.hybrid_skill_context_shadow_observer = (
+            hybrid_skill_context_shadow_observer
+        )
+        # Hybrid results are bounded, hash-only, instance-local observations.
+        # They are never consulted by model input, routing, retry, validation,
+        # authority, checkpoint, or formal-write paths.
+        self.hybrid_skill_context_shadow_failure_count = 0
+        self.hybrid_skill_context_shadow_records: deque[
+            dict[str, object]
+        ] = deque(maxlen=64)
         # Instance-local operational evidence only. It is bounded and is not
         # consulted by production prompt, routing, authority, retry, or model
         # execution decisions.
@@ -881,6 +902,70 @@ class WorkflowService:
         self.generated_artifacts = GeneratedArtifactGateway()
         self.protocol_route_circuit = ProtocolRouteCircuitBreaker()
         self.coordinator = WorkflowCoordinator(self)
+
+    def _observe_hybrid_skill_context_shadow(
+        self,
+        request: HybridShadowInputV1,
+    ) -> None:
+        """Run one local Hybrid observer without consuming its result."""
+
+        if not self.hybrid_skill_context_shadow_enabled:
+            return
+        try:
+            if self.hybrid_skill_context_shadow_observer is None:
+                raise RuntimeError("hybrid shadow observer is not configured")
+            raw = self.hybrid_skill_context_shadow_observer(request)
+            projection = raw if isinstance(raw, Mapping) else {}
+            status = str(projection.get("SHADOW_RESULT") or "NO_GO")
+            safe = {
+                "schema": "WorkflowHybridSkillContextShadowRecordV1",
+                "SHADOW_RESULT": status,
+                "RECEIPT_SHA256": projection.get("RECEIPT_SHA256"),
+                "FAILURE_RECEIPT_SHA256": projection.get(
+                    "FAILURE_RECEIPT_SHA256"
+                ),
+                "FAILURE_CODE": projection.get("FAILURE_CODE"),
+                "BASELINE_CONTEXT_SHA": projection.get(
+                    "BASELINE_CONTEXT_SHA"
+                ),
+                "REFERENCE_GUIDANCE_SHA": projection.get(
+                    "REFERENCE_GUIDANCE_SHA"
+                ),
+                "SUPPLEMENT_RENDER_SHA": projection.get(
+                    "SUPPLEMENT_RENDER_SHA"
+                ),
+                "FINAL_HYBRID_ADVISORY_SHA": projection.get(
+                    "FINAL_HYBRID_ADVISORY_SHA"
+                ),
+                "PRODUCTION_MODEL_INPUT_SHA": request.production_model_input_sha256,
+                "PRODUCTION_MODEL_INPUT_UNCHANGED": "YES",
+                "HYBRID_MODEL_VISIBLE": "NO",
+                "RAW_CONTENT_RETAINED": "NO",
+            }
+            if status != "PASS":
+                self.hybrid_skill_context_shadow_failure_count += 1
+            self.hybrid_skill_context_shadow_records.append(safe)
+        except BaseException as exc:
+            self.hybrid_skill_context_shadow_failure_count += 1
+            self.hybrid_skill_context_shadow_records.append({
+                "schema": "WorkflowHybridSkillContextShadowRecordV1",
+                "SHADOW_RESULT": "NO_GO",
+                "FAILURE_CODE": "UNEXPECTED_OBSERVER_EXCEPTION",
+                "ERROR_CLASS": type(exc).__name__[:128],
+                "ERROR_MESSAGE_SHA256": hashlib.sha256(
+                    (
+                        f"{type(exc).__module__}.{type(exc).__qualname__}:"
+                        f"{str(exc)}"
+                    ).encode("utf-8", errors="replace")
+                ).hexdigest(),
+                "PRODUCTION_MODEL_INPUT_SHA": request.production_model_input_sha256,
+                "PRODUCTION_MODEL_INPUT_UNCHANGED": "YES",
+                "FAILURE_OBSERVABLE": "YES",
+                "HYBRID_MODEL_VISIBLE": "NO",
+                "RAW_EXCEPTION_PERSISTED": "NO",
+                "TRACEBACK_PERSISTED": "NO",
+                "RAW_CONTENT_RETAINED": "NO",
+            })
 
     def _record_skill_v3_shadow_failure(
         self,
@@ -27100,6 +27185,135 @@ class WorkflowService:
                     f"{stage_system}\n\nHARD CONSTRAINTS:\n{model_constraints}"
                     f"\n\n{model_skill_prompt}{style}"
                 )
+            if self.hybrid_skill_context_shadow_enabled and stage == "planning":
+                # The exact production compactor output is captured only after
+                # it exists.  The observer receives it in local memory, returns
+                # hash-only evidence, and its result is deliberately discarded.
+                reference_tokens = estimate_input_tokens(model_constraints)
+                output_contract_tokens = (
+                    estimate_input_tokens(json.dumps(
+                        structured_contract.provider_schema(),
+                        ensure_ascii=False,
+                        sort_keys=True,
+                        separators=(",", ":"),
+                    ))
+                    if structured_contract is not None else 0
+                )
+                production_model_input_sha256 = hashlib.sha256(
+                    (system + "\n" + user).encode("utf-8")
+                ).hexdigest()
+                self._observe_hybrid_skill_context_shadow(HybridShadowInputV1(
+                    stage="planning",
+                    substage="event_realization",
+                    task_case="runtime-planning-hybrid-shadow",
+                    task_contract_id=(
+                        f"{structured_contract.name}@{structured_contract.version}"
+                        if structured_contract is not None
+                        else "planning-stage-default-v1"
+                    ),
+                    task_contract_schema_sha256=(
+                        structured_contract.schema_sha256()
+                        if structured_contract is not None
+                        else hashlib.sha256(json.dumps(
+                            {"stage": stage, "model_role": gateway_role},
+                            ensure_ascii=False,
+                            sort_keys=True,
+                            separators=(",", ":"),
+                        ).encode("utf-8")).hexdigest()
+                    ),
+                    creative_demand_class=str(
+                        project.metadata.get("creative_demand_class") or ""
+                    ),
+                    demand_signals={
+                        "actor_refs_present": bool(
+                            project.metadata.get("actor_refs_present")
+                        ),
+                        "relationship_pressure_present": bool(
+                            project.metadata.get("relationship_pressure_present")
+                        ),
+                        "causal_chain_present": bool(
+                            project.metadata.get("causal_chain_present")
+                        ),
+                        "dialogue_required": bool(
+                            project.metadata.get("dialogue_required")
+                        ),
+                        "opposition_present": bool(
+                            project.metadata.get("opposition_present")
+                        ),
+                        "world_refs_present": bool(
+                            project.metadata.get("world_refs_present")
+                        ),
+                        "setup_payoff_present": bool(
+                            project.metadata.get("setup_payoff_present")
+                        ),
+                        "anti_template_required": bool(
+                            project.metadata.get("anti_template_required")
+                        ),
+                    },
+                    resolved_skill_ids=tuple(skills),
+                    resolved_skill_source_hashes=tuple(
+                        (receipt.skill_name, receipt.content_hash)
+                        for receipt in skill_run.receipts
+                    ),
+                    authority_fact_hashes=(
+                        ("node_authority", node_authority_sha256),
+                        ("node_input", node_input_sha256),
+                    ),
+                    production_baseline_context=model_skill_prompt,
+                    baseline_source_receipt={
+                        "resolved_skill_ids": tuple(skills),
+                        "resolved_skill_source_hashes": tuple(
+                            (receipt.skill_name, receipt.content_hash)
+                            for receipt in skill_run.receipts
+                        ),
+                        "full_skill_prompt_sha256": hashlib.sha256(
+                            skill_run.prompt.encode("utf-8")
+                        ).hexdigest(),
+                    },
+                    baseline_compactor_receipt={
+                        "class": type(self.skill_prompts).__name__,
+                        "maximum_characters": getattr(
+                            self.skill_prompts, "max_chars", None
+                        ),
+                        "input_sha256": hashlib.sha256(
+                            skill_run.prompt.encode("utf-8")
+                        ).hexdigest(),
+                        "output_sha256": hashlib.sha256(
+                            model_skill_prompt.encode("utf-8")
+                        ).hexdigest(),
+                    },
+                    protected_non_skill_prefix=(
+                        model_constraints
+                        + "\n\nSkill instructions (advisory):\n"
+                    ),
+                    reference_guidance_context=model_constraints,
+                    production_model_input_sha256=production_model_input_sha256,
+                    budget=HybridProtectedBudgetV1(
+                        safe_context_window_tokens=(
+                            self._route_safe_context_window(
+                                gateway_role,
+                                prefer_configured_fallback=(
+                                    prefer_configured_fallback
+                                ),
+                                include_configured_fallback=(
+                                    route_capacity_guard
+                                    and not prefer_configured_fallback
+                                    and not primary_only
+                                ),
+                            )
+                        ),
+                        output_reserve_tokens=preliminary_route_reserve,
+                        mandatory_authority_tokens=estimate_input_tokens(
+                            stage_system + "\n" + user
+                        ),
+                        reference_guidance_tokens=reference_tokens,
+                        baseline_skill_foundation_tokens=estimate_input_tokens(
+                            model_skill_prompt
+                        ),
+                        output_contract_tokens=output_contract_tokens,
+                        wrapper_and_estimator_margin_tokens=1024,
+                    ),
+                ))
             estimated_input_tokens = estimate_input_tokens(system + "\n" + user)
             if compact_input and not layered_context:
                 model_constraints = ConstraintPromptCompactor(max_chars=4000).compact_for_stage(

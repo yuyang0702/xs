@@ -1,0 +1,472 @@
+{
+  "schema": "HybridSkillSectionIndexV2",
+  "version": 2,
+  "architecture_binding": {
+    "decision": "COMPOSED_HYBRID_CROSS_SKILL_SCENE_PACKET_WITH_VERBATIM_NEIGHBORHOOD_CLOSURE",
+    "baseline_foundation_protected": "YES",
+    "supplement_replaces_baseline": "NO",
+    "selective_replacement_path_retired": "YES",
+    "new_real_campaign_justified_now": "NO"
+  },
+  "source_index_v1_binding": {
+    "path": "vendor/novel-skills/skill-section-index-v1.json",
+    "index_definition_sha256": "d5f6f5def4281045ef7f291f3407e5bbe73a686ff2f2bee4c8922dc8a7745399"
+  },
+  "evidence_binding": {
+    "design_manifest_definition_sha256": "e490accef7716d20d60060fe2e7f82fde0e8374f22c19cfc19b97224df3e1505",
+    "root_cause_manifest_definition_sha256": "7022b932ad873dfb6a6d20dbd95538dff59d2f1acb0ba2cd417d03240d3df4ed"
+  },
+  "signal_feature_map": {
+    "actor_refs_present": [
+      "character_agency_motivation"
+    ],
+    "relationship_pressure_present": [
+      "relationship_consequence",
+      "subtext_dramatization"
+    ],
+    "causal_chain_present": [
+      "causal_coherence"
+    ],
+    "dialogue_required": [
+      "subtext_dramatization",
+      "voice_readiness"
+    ],
+    "opposition_present": [
+      "scene_pressure"
+    ],
+    "world_refs_present": [
+      "specificity"
+    ],
+    "setup_payoff_present": [
+      "setup_payoff"
+    ],
+    "anti_template_required": [
+      "anti_template_realization"
+    ]
+  },
+  "demand_class_features": {
+    "character-heavy": [
+      "character_agency_motivation",
+      "relationship_consequence",
+      "causal_coherence",
+      "subtext_dramatization",
+      "scene_pressure",
+      "setup_payoff",
+      "voice_readiness",
+      "anti_template_realization"
+    ],
+    "world-heavy": [
+      "specificity",
+      "causal_coherence",
+      "setup_payoff"
+    ],
+    "conflict-pacing-heavy": [
+      "causal_coherence",
+      "scene_pressure",
+      "character_agency_motivation",
+      "setup_payoff"
+    ],
+    "setup-payoff-heavy": [
+      "setup_payoff",
+      "causal_coherence"
+    ],
+    "mixed": [
+      "character_agency_motivation",
+      "relationship_consequence",
+      "causal_coherence",
+      "subtext_dramatization",
+      "scene_pressure",
+      "specificity",
+      "setup_payoff",
+      "voice_readiness",
+      "anti_template_realization"
+    ]
+  },
+  "demand_packet_order": {
+    "character-heavy": [
+      "CHARACTER_CHOICE_VOICE_PACKET_V1",
+      "CAUSAL_PRESSURE_PACKET_V1",
+      "SETUP_PAYOFF_CLOSURE_PACKET_V1"
+    ],
+    "world-heavy": [
+      "WORLD_AFFORDANCE_PRESSURE_PACKET_V1",
+      "CAUSAL_PRESSURE_PACKET_V1",
+      "SETUP_PAYOFF_CLOSURE_PACKET_V1"
+    ],
+    "conflict-pacing-heavy": [
+      "CAUSAL_PRESSURE_PACKET_V1",
+      "CHARACTER_CHOICE_VOICE_PACKET_V1",
+      "SETUP_PAYOFF_CLOSURE_PACKET_V1"
+    ],
+    "setup-payoff-heavy": [
+      "SETUP_PAYOFF_CLOSURE_PACKET_V1",
+      "CAUSAL_PRESSURE_PACKET_V1"
+    ],
+    "mixed": [
+      "CHARACTER_CHOICE_VOICE_PACKET_V1",
+      "WORLD_AFFORDANCE_PRESSURE_PACKET_V1",
+      "CAUSAL_PRESSURE_PACKET_V1",
+      "SETUP_PAYOFF_CLOSURE_PACKET_V1"
+    ]
+  },
+  "actionability_classes": {
+    "HIGH_ACTIONABILITY": "executable scene/causal/reaction/subtext/application guidance",
+    "MEDIUM_ACTIONABILITY": "concrete qualifier or sequence supporting an executable root",
+    "LOW_ACTIONABILITY": "dependency-only taxonomy/template context"
+  },
+  "section_policies": {
+    "sv3-0933e75cb694edca": {
+      "actionability_class": "MEDIUM_ACTIONABILITY",
+      "actionability_reason": "exact section supplies a concrete field, qualifier, or sequence used by an executable neighbor",
+      "target_semantic_functions": [
+        "specificity",
+        "causal_coherence"
+      ],
+      "overlap_classification": "DETAIL_ENRICHMENT",
+      "stage_ownership_exception": null,
+      "cycle_group_id": null
+    },
+    "sv3-10e4ba0c5b7509b4": {
+      "actionability_class": "HIGH_ACTIONABILITY",
+      "actionability_reason": "exact section provides an executable scene, causal, reaction, voice, pressure, or setup/payoff operation",
+      "target_semantic_functions": [
+        "character_agency_motivation"
+      ],
+      "overlap_classification": "DETAIL_ENRICHMENT",
+      "stage_ownership_exception": null,
+      "cycle_group_id": null
+    },
+    "sv3-13580b3cdbef263e": {
+      "actionability_class": "HIGH_ACTIONABILITY",
+      "actionability_reason": "exact section provides an executable scene, causal, reaction, voice, pressure, or setup/payoff operation",
+      "target_semantic_functions": [
+        "causal_coherence",
+        "scene_pressure"
+      ],
+      "overlap_classification": "DETAIL_ENRICHMENT",
+      "stage_ownership_exception": null,
+      "cycle_group_id": null
+    },
+    "sv3-2985467b5f2bf929": {
+      "actionability_class": "MEDIUM_ACTIONABILITY",
+      "actionability_reason": "exact section supplies a concrete field, qualifier, or sequence used by an executable neighbor",
+      "target_semantic_functions": [
+        "specificity",
+        "scene_pressure"
+      ],
+      "overlap_classification": "DETAIL_ENRICHMENT",
+      "stage_ownership_exception": null,
+      "cycle_group_id": null
+    },
+    "sv3-2ced894267dc51e3": {
+      "actionability_class": "LOW_ACTIONABILITY",
+      "actionability_reason": "thin taxonomy/template leaf retained only as a required typed dependency",
+      "target_semantic_functions": [
+        "setup_payoff"
+      ],
+      "overlap_classification": "QUALIFIER_RESTORATION",
+      "stage_ownership_exception": null,
+      "cycle_group_id": null
+    },
+    "sv3-4c39329c602fd48e": {
+      "actionability_class": "MEDIUM_ACTIONABILITY",
+      "actionability_reason": "exact section supplies a concrete field, qualifier, or sequence used by an executable neighbor",
+      "target_semantic_functions": [
+        "character_agency_motivation"
+      ],
+      "overlap_classification": "DETAIL_ENRICHMENT",
+      "stage_ownership_exception": null,
+      "cycle_group_id": null
+    },
+    "sv3-5f738df332e0919f": {
+      "actionability_class": "HIGH_ACTIONABILITY",
+      "actionability_reason": "exact section provides an executable scene, causal, reaction, voice, pressure, or setup/payoff operation",
+      "target_semantic_functions": [
+        "causal_coherence",
+        "scene_pressure",
+        "specificity"
+      ],
+      "overlap_classification": "DETAIL_ENRICHMENT",
+      "stage_ownership_exception": null,
+      "cycle_group_id": null
+    },
+    "sv3-60d4bee497e4c0dc": {
+      "actionability_class": "HIGH_ACTIONABILITY",
+      "actionability_reason": "exact section provides an executable scene, causal, reaction, voice, pressure, or setup/payoff operation",
+      "target_semantic_functions": [
+        "scene_pressure",
+        "specificity"
+      ],
+      "overlap_classification": "DETAIL_ENRICHMENT",
+      "stage_ownership_exception": null,
+      "cycle_group_id": null
+    },
+    "sv3-6e4a0b2625a01274": {
+      "actionability_class": "MEDIUM_ACTIONABILITY",
+      "actionability_reason": "exact section supplies a concrete field, qualifier, or sequence used by an executable neighbor",
+      "target_semantic_functions": [
+        "setup_payoff",
+        "causal_coherence"
+      ],
+      "overlap_classification": "QUALIFIER_RESTORATION",
+      "stage_ownership_exception": null,
+      "cycle_group_id": null
+    },
+    "sv3-82ca2fdf9c28183b": {
+      "actionability_class": "LOW_ACTIONABILITY",
+      "actionability_reason": "thin taxonomy/template leaf retained only as a required typed dependency",
+      "target_semantic_functions": [
+        "setup_payoff"
+      ],
+      "overlap_classification": "QUALIFIER_RESTORATION",
+      "stage_ownership_exception": null,
+      "cycle_group_id": null
+    },
+    "sv3-8e321726b4ebdcec": {
+      "actionability_class": "MEDIUM_ACTIONABILITY",
+      "actionability_reason": "exact section supplies a concrete field, qualifier, or sequence used by an executable neighbor",
+      "target_semantic_functions": [
+        "character_agency_motivation",
+        "relationship_consequence"
+      ],
+      "overlap_classification": "DETAIL_ENRICHMENT",
+      "stage_ownership_exception": null,
+      "cycle_group_id": null
+    },
+    "sv3-972a75cb8ca8f0bd": {
+      "actionability_class": "HIGH_ACTIONABILITY",
+      "actionability_reason": "exact section provides an executable scene, causal, reaction, voice, pressure, or setup/payoff operation",
+      "target_semantic_functions": [
+        "setup_payoff",
+        "causal_coherence"
+      ],
+      "overlap_classification": "DETAIL_ENRICHMENT",
+      "stage_ownership_exception": null,
+      "cycle_group_id": null
+    },
+    "sv3-ac7aa3aed8a7d237": {
+      "actionability_class": "HIGH_ACTIONABILITY",
+      "actionability_reason": "exact section provides an executable scene, causal, reaction, voice, pressure, or setup/payoff operation",
+      "target_semantic_functions": [
+        "setup_payoff"
+      ],
+      "overlap_classification": "DETAIL_ENRICHMENT",
+      "stage_ownership_exception": null,
+      "cycle_group_id": null
+    },
+    "sv3-ad3871e96cc16876": {
+      "actionability_class": "HIGH_ACTIONABILITY",
+      "actionability_reason": "exact section provides an executable scene, causal, reaction, voice, pressure, or setup/payoff operation",
+      "target_semantic_functions": [
+        "setup_payoff",
+        "specificity"
+      ],
+      "overlap_classification": "DETAIL_ENRICHMENT",
+      "stage_ownership_exception": null,
+      "cycle_group_id": null
+    },
+    "sv3-b4583d410167ab14": {
+      "actionability_class": "MEDIUM_ACTIONABILITY",
+      "actionability_reason": "exact section supplies a concrete field, qualifier, or sequence used by an executable neighbor",
+      "target_semantic_functions": [
+        "specificity"
+      ],
+      "overlap_classification": "DETAIL_ENRICHMENT",
+      "stage_ownership_exception": null,
+      "cycle_group_id": null
+    },
+    "sv3-b75227453c1cc26a": {
+      "actionability_class": "HIGH_ACTIONABILITY",
+      "actionability_reason": "exact section provides an executable scene, causal, reaction, voice, pressure, or setup/payoff operation",
+      "target_semantic_functions": [
+        "voice_readiness",
+        "subtext_dramatization"
+      ],
+      "overlap_classification": "ANTI_PATTERN_RESTORATION",
+      "stage_ownership_exception": "PLANNING_CREATIVE_SUPPLEMENT_EXACT_SUBRANGE_V1",
+      "cycle_group_id": null
+    },
+    "sv3-f998823d27d7086b": {
+      "actionability_class": "HIGH_ACTIONABILITY",
+      "actionability_reason": "exact section provides an executable scene, causal, reaction, voice, pressure, or setup/payoff operation",
+      "target_semantic_functions": [
+        "scene_pressure"
+      ],
+      "overlap_classification": "DETAIL_ENRICHMENT",
+      "stage_ownership_exception": null,
+      "cycle_group_id": null
+    },
+    "sv3-faecc1466817d8aa": {
+      "actionability_class": "MEDIUM_ACTIONABILITY",
+      "actionability_reason": "exact section supplies a concrete field, qualifier, or sequence used by an executable neighbor",
+      "target_semantic_functions": [
+        "causal_coherence",
+        "scene_pressure"
+      ],
+      "overlap_classification": "BENEFICIAL_REINFORCEMENT",
+      "stage_ownership_exception": null,
+      "cycle_group_id": null
+    }
+  },
+  "packet_definitions": {
+    "CHARACTER_CHOICE_VOICE_PACKET_V1": {
+      "root_section_ids": [
+        "sv3-10e4ba0c5b7509b4",
+        "sv3-b75227453c1cc26a",
+        "sv3-8e321726b4ebdcec"
+      ],
+      "semantic_functions": [
+        "character_agency_motivation",
+        "relationship_consequence",
+        "subtext_dramatization",
+        "voice_readiness",
+        "anti_template_realization"
+      ],
+      "priority": 10
+    },
+    "CAUSAL_PRESSURE_PACKET_V1": {
+      "root_section_ids": [
+        "sv3-13580b3cdbef263e",
+        "sv3-5f738df332e0919f",
+        "sv3-60d4bee497e4c0dc"
+      ],
+      "semantic_functions": [
+        "causal_coherence",
+        "scene_pressure"
+      ],
+      "priority": 20
+    },
+    "SETUP_PAYOFF_CLOSURE_PACKET_V1": {
+      "root_section_ids": [
+        "sv3-ac7aa3aed8a7d237",
+        "sv3-972a75cb8ca8f0bd",
+        "sv3-6e4a0b2625a01274",
+        "sv3-ad3871e96cc16876"
+      ],
+      "semantic_functions": [
+        "setup_payoff"
+      ],
+      "priority": 30
+    },
+    "WORLD_AFFORDANCE_PRESSURE_PACKET_V1": {
+      "root_section_ids": [
+        "sv3-2985467b5f2bf929",
+        "sv3-60d4bee497e4c0dc",
+        "sv3-5f738df332e0919f",
+        "sv3-f998823d27d7086b",
+        "sv3-b4583d410167ab14",
+        "sv3-ad3871e96cc16876",
+        "sv3-0933e75cb694edca"
+      ],
+      "semantic_functions": [
+        "specificity"
+      ],
+      "priority": 15
+    }
+  },
+  "dependency_edges": [
+    {
+      "from_section_id": "sv3-10e4ba0c5b7509b4",
+      "to_section_id": "sv3-4c39329c602fd48e",
+      "dependency_type": "PARENT_CONTEXT_DEPENDENCY",
+      "source_of_truth": "skill-v3-hybrid-skill-context-architecture-design-v1/semantic-dependency-model-v1",
+      "reason": "Motivation requires the bound character traits context.",
+      "cycle_allowed": false
+    },
+    {
+      "from_section_id": "sv3-10e4ba0c5b7509b4",
+      "to_section_id": "sv3-b75227453c1cc26a",
+      "dependency_type": "APPLICATION_BRIDGE_DEPENDENCY",
+      "source_of_truth": "skill-v3-hybrid-skill-context-architecture-design-v1/semantic-dependency-model-v1",
+      "reason": "Motivation becomes scene-usable through exact voice behavior.",
+      "cycle_allowed": false
+    },
+    {
+      "from_section_id": "sv3-b75227453c1cc26a",
+      "to_section_id": "sv3-8e321726b4ebdcec",
+      "dependency_type": "QUALIFIER_DEPENDENCY",
+      "source_of_truth": "skill-v3-hybrid-skill-context-architecture-design-v1/semantic-dependency-model-v1",
+      "reason": "Voice choices must remain aligned with the character arc.",
+      "cycle_allowed": false
+    },
+    {
+      "from_section_id": "sv3-b75227453c1cc26a",
+      "to_section_id": "sv3-4c39329c602fd48e",
+      "dependency_type": "ANTI_PATTERN_DEPENDENCY",
+      "source_of_truth": "skill-v3-hybrid-skill-context-architecture-design-v1/semantic-dependency-model-v1",
+      "reason": "Trait context prevents generic voice templating.",
+      "cycle_allowed": false
+    },
+    {
+      "from_section_id": "sv3-13580b3cdbef263e",
+      "to_section_id": "sv3-faecc1466817d8aa",
+      "dependency_type": "FORMAL_DEPENDENCY",
+      "source_of_truth": "skill-v3-hybrid-skill-context-architecture-design-v1/semantic-dependency-model-v1",
+      "reason": "Plot points realize the rising-action progression.",
+      "cycle_allowed": false
+    },
+    {
+      "from_section_id": "sv3-13580b3cdbef263e",
+      "to_section_id": "sv3-2985467b5f2bf929",
+      "dependency_type": "SCENE_REALIZATION_DEPENDENCY",
+      "source_of_truth": "skill-v3-hybrid-skill-context-architecture-design-v1/semantic-dependency-model-v1",
+      "reason": "Causal plot pressure needs a concrete location affordance.",
+      "cycle_allowed": false
+    },
+    {
+      "from_section_id": "sv3-13580b3cdbef263e",
+      "to_section_id": "sv3-5f738df332e0919f",
+      "dependency_type": "CROSS_SKILL_SEMANTIC_DEPENDENCY",
+      "source_of_truth": "skill-v3-hybrid-skill-context-architecture-design-v1/semantic-dependency-model-v1",
+      "reason": "Causal escalation needs explicit world-system costs and limits.",
+      "cycle_allowed": false
+    },
+    {
+      "from_section_id": "sv3-5f738df332e0919f",
+      "to_section_id": "sv3-60d4bee497e4c0dc",
+      "dependency_type": "EXAMPLE_DEPENDENCY",
+      "source_of_truth": "skill-v3-hybrid-skill-context-architecture-design-v1/semantic-dependency-model-v1",
+      "reason": "Rules become actionable through concrete notable features.",
+      "cycle_allowed": false
+    },
+    {
+      "from_section_id": "sv3-ac7aa3aed8a7d237",
+      "to_section_id": "sv3-2ced894267dc51e3",
+      "dependency_type": "PARENT_CONTEXT_DEPENDENCY",
+      "source_of_truth": "skill-v3-hybrid-skill-context-architecture-design-v1/semantic-dependency-model-v1",
+      "reason": "Foreshadowing retains its setup identity.",
+      "cycle_allowed": false
+    },
+    {
+      "from_section_id": "sv3-ac7aa3aed8a7d237",
+      "to_section_id": "sv3-972a75cb8ca8f0bd",
+      "dependency_type": "APPLICATION_BRIDGE_DEPENDENCY",
+      "source_of_truth": "skill-v3-hybrid-skill-context-architecture-design-v1/semantic-dependency-model-v1",
+      "reason": "Foreshadowing must yield observable evidence.",
+      "cycle_allowed": false
+    },
+    {
+      "from_section_id": "sv3-972a75cb8ca8f0bd",
+      "to_section_id": "sv3-82ca2fdf9c28183b",
+      "dependency_type": "EXAMPLE_DEPENDENCY",
+      "source_of_truth": "skill-v3-hybrid-skill-context-architecture-design-v1/semantic-dependency-model-v1",
+      "reason": "Evidence is retained through its payoff target.",
+      "cycle_allowed": false
+    },
+    {
+      "from_section_id": "sv3-972a75cb8ca8f0bd",
+      "to_section_id": "sv3-6e4a0b2625a01274",
+      "dependency_type": "QUALIFIER_DEPENDENCY",
+      "source_of_truth": "skill-v3-hybrid-skill-context-architecture-design-v1/semantic-dependency-model-v1",
+      "reason": "Evidence requires a bounded resolution plan.",
+      "cycle_allowed": false
+    }
+  ],
+  "cycle_policy": "only exact same-owner cycle_group_id SCCs with cycle_allowed edges; all other cycles fail closed",
+  "ordering_policy": "packet priority then dependency-before-dependent then resolver Skill order then source order then section ID",
+  "unknown_feature_behavior": "FAIL_CLOSED_NO_SUPPLEMENT_DISPATCH",
+  "wrong_layer_behavior": "FAIL_CLOSED_NO_SUPPLEMENT_DISPATCH",
+  "raw_prompt_or_story_dependency": false,
+  "sample_pair_or_evaluator_rule_count": 0,
+  "index_definition_sha256": "bce8d4ba48b17f050f935238fa9b4be14fe2abfb1aef88ede2222da91eaa0e68"
+}
