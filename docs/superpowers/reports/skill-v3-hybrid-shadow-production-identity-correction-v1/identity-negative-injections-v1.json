@@ -1,0 +1,33 @@
+{
+  "schema": "SkillV3HybridIdentityNegativeInjectionsV1",
+  "IDENTITY_NEGATIVE_INJECTIONS_PASS": "YES",
+  "cases": [
+    {
+      "case": "A",
+      "failure_code": "RESOLVED_SKILL_SOURCE_IDENTITY_MISMATCH",
+      "status": "PASS"
+    },
+    {
+      "case": "B",
+      "failure_code": "PRIMARY_SKILL_DOCUMENT_IDENTITY_MISMATCH",
+      "status": "PASS"
+    },
+    {
+      "case": "C",
+      "failure_code": "SECTION_CONTENT_IDENTITY_MISMATCH",
+      "status": "PASS"
+    },
+    {
+      "case": "D",
+      "failure_code": "RESOLVED_SKILL_SOURCE_IDENTITY_MISMATCH",
+      "status": "PASS",
+      "test": "project/repo override and stale source root"
+    },
+    {
+      "case": "E",
+      "failure_code": "RESOLVED_SKILL_SOURCE_IDENTITY_MISMATCH",
+      "status": "PASS",
+      "test": "same SKILL.md plus different identity-bearing directory state"
+    }
+  ]
+}

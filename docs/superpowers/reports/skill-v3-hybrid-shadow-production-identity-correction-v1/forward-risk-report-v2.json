@@ -1,0 +1,99 @@
+{
+  "version": 2,
+  "original_requirement": "Correct the Hybrid shadow production identity seam by separating resolved package, primary document, and selected section SHA domains.",
+  "scope_classification": "closed_world",
+  "closed_world_justification": "The correction is limited to the checked-in Hybrid shadow identity contract and the four fixed Planning Skill IDs selected by production.",
+  "operational_definition": "The real SkillScanner/SkillGate identity must pass the actual Hybrid shadow seam, while stale values in each independent hash domain fail closed.",
+  "forbidden_narrowing": [
+    "do not skip identity checks",
+    "do not compare package and SKILL.md hashes interchangeably",
+    "do not change production prompt, routing, budget, validators, or literary semantics"
+  ],
+  "resolution_status": "systemically_resolved",
+  "constraint_traceability": [
+    {
+      "requirement": "same-domain production seam identity",
+      "implementation": "skills.py resolver fields plus Hybrid input/index validation",
+      "test_paths": [
+        "tests/test_hybrid_skill_context.py"
+      ],
+      "evidence": "real four-Skill WorkflowService._stage replay passes"
+    },
+    {
+      "requirement": "independent primary document and section provenance",
+      "implementation": "SkillSectionIndexV1 primary document check and Hybrid section check",
+      "test_paths": [
+        "tests/test_hybrid_skill_context.py",
+        "tests/test_selective_skill_compiler.py"
+      ],
+      "evidence": "domain-specific negative injections fail closed"
+    },
+    {
+      "requirement": "materializer uses production resolver identity",
+      "implementation": "materialize_skill_v3_hybrid_shadow_evidence.request_for",
+      "test_paths": [
+        "tests/canary/test_skill_v3_hybrid_shadow.py"
+      ],
+      "evidence": "package and document hashes originate from SkillScanner"
+    }
+  ],
+  "historical_incident_families_checked": [
+    "stale authority/hash binding",
+    "shadow observability failure",
+    "project/repo Skill override precedence",
+    "production model-input drift",
+    "historical sealed evidence drift"
+  ],
+  "projected_failure_mechanisms": [
+    "package/document hash-domain confusion",
+    "stale primary document index",
+    "stale section content",
+    "source-root or override identity drift",
+    "observer construction or serialization failure"
+  ],
+  "model_output_boundary_changed": false,
+  "model_output_not_applicable_evidence": "The diff changes only deterministic local Skill identity metadata, index validation, shadow evidence, and tests; Provider output parsing and all model-generated artifact contracts are unchanged.",
+  "why_previous_tests_missed": "The prior request helper and materializer injected the single-file index SHA directly instead of using SkillScanner/SkillGate receipts from the production workflow seam.",
+  "sibling_boundaries": [
+    {
+      "boundary": "Skill approval and executable Skill gate",
+      "disposition": "tested_not_susceptible",
+      "evidence": "content_hash remains the canonical package identity and SkillGate tests pass"
+    },
+    {
+      "boundary": "Selective Skill compiler shadow",
+      "disposition": "tested_not_susceptible",
+      "evidence": "V1 compatibility remains and selective compiler tests pass"
+    },
+    {
+      "boundary": "Planning WorkflowService model input",
+      "disposition": "fixed_and_tested",
+      "evidence": "enabled/disabled fake-gateway bytes remain equal and actual Hybrid seam passes"
+    },
+    {
+      "boundary": "Draft, review, polish, maintenance",
+      "disposition": "not_applicable",
+      "evidence": "Hybrid seam remains stage/substage restricted to planning/event_realization"
+    },
+    {
+      "boundary": "StoryState, Canon, candidates, promotion",
+      "disposition": "not_applicable",
+      "evidence": "shadow result is discarded and has no writer or authority path"
+    },
+    {
+      "boundary": "Provider route, retry, fallback, output budget",
+      "disposition": "not_applicable",
+      "evidence": "no related production source or configuration changed"
+    }
+  ],
+  "production_shaped_tests": [
+    "tests/test_hybrid_skill_context.py"
+  ],
+  "next_authoritative_boundary_tests": [
+    "tests/test_hybrid_skill_context.py",
+    "tests/test_workflows.py"
+  ],
+  "remaining_risks": [
+    "Pilot readiness remains subject to a new independent review from the corrected HEAD."
+  ]
+}

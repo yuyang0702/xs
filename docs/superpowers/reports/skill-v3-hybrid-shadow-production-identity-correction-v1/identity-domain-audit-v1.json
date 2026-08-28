@@ -1,0 +1,38 @@
+{
+  "schema": "SkillV3HybridIdentityDomainAuditV1",
+  "domains": [
+    {
+      "IDENTITY_FIELD": "resolved_source_sha256",
+      "HASH_DOMAIN": "ordered relative paths plus bytes for every file in one resolved Skill directory",
+      "SEMANTIC_MEANING": "production-selected Skill package identity",
+      "COMPUTATION_SOURCE": "compute_resolved_skill_source_sha256 / SkillScanner",
+      "CONSUMERS": [
+        "SkillGate",
+        "WorkflowService Hybrid seam"
+      ],
+      "MUST_EQUAL_WHAT": "Hybrid V2 sealed resolved_skill_source_sha256 for the same Skill ID"
+    },
+    {
+      "IDENTITY_FIELD": "primary_document_sha256",
+      "HASH_DOMAIN": "exact SKILL.md bytes",
+      "SEMANTIC_MEANING": "primary Skill document provenance",
+      "COMPUTATION_SOURCE": "compute_primary_skill_document_sha256",
+      "CONSUMERS": [
+        "SkillSectionIndexV1",
+        "Hybrid seam"
+      ],
+      "MUST_EQUAL_WHAT": "source-index primary Skill document SHA for the same Skill ID"
+    },
+    {
+      "IDENTITY_FIELD": "section_content_sha256",
+      "HASH_DOMAIN": "canonical exact selected section text",
+      "SEMANTIC_MEANING": "selected section provenance",
+      "COMPUTATION_SOURCE": "SkillSectionIndexV1.load",
+      "CONSUMERS": [
+        "Hybrid compiler",
+        "verbatim receipt"
+      ],
+      "MUST_EQUAL_WHAT": "selected section source_text SHA"
+    }
+  ]
+}

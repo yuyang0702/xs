@@ -1,0 +1,35 @@
+{
+  "schema": "SkillV3PrimaryDocumentProvenanceIdentityV1",
+  "algorithm": "SHA-256 over exact SKILL.md bytes",
+  "rows": [
+    {
+      "SKILL_ID": "story-init",
+      "PRIMARY_SKILL_DOCUMENT_SHA": "9ace3dec9fd2ca22e9f6a96a9cf54ea4f498ee6d4522301fd775bc87bd2511d6",
+      "HYBRID_EXPECTED_PRIMARY_DOCUMENT_SHA": "9ace3dec9fd2ca22e9f6a96a9cf54ea4f498ee6d4522301fd775bc87bd2511d6",
+      "MATCH": true,
+      "DIFFERS_FROM_RESOLVED_SOURCE_SHA": true
+    },
+    {
+      "SKILL_ID": "plot-structure",
+      "PRIMARY_SKILL_DOCUMENT_SHA": "54a38f07a5d0106c66e30058a7e375867f3ca1924aef8208a4428c205d73146c",
+      "HYBRID_EXPECTED_PRIMARY_DOCUMENT_SHA": "54a38f07a5d0106c66e30058a7e375867f3ca1924aef8208a4428c205d73146c",
+      "MATCH": true,
+      "DIFFERS_FROM_RESOLVED_SOURCE_SHA": true
+    },
+    {
+      "SKILL_ID": "character-management",
+      "PRIMARY_SKILL_DOCUMENT_SHA": "bc21410cc846d00b766a8c465c30e48af859083c83d2f731bd7eb415c76c578a",
+      "HYBRID_EXPECTED_PRIMARY_DOCUMENT_SHA": "bc21410cc846d00b766a8c465c30e48af859083c83d2f731bd7eb415c76c578a",
+      "MATCH": true,
+      "DIFFERS_FROM_RESOLVED_SOURCE_SHA": true
+    },
+    {
+      "SKILL_ID": "worldbuilding",
+      "PRIMARY_SKILL_DOCUMENT_SHA": "6085390c930309c1e9f3182c50c30e9d746d0f054000f2808147a80807b2b279",
+      "HYBRID_EXPECTED_PRIMARY_DOCUMENT_SHA": "6085390c930309c1e9f3182c50c30e9d746d0f054000f2808147a80807b2b279",
+      "MATCH": true,
+      "DIFFERS_FROM_RESOLVED_SOURCE_SHA": true
+    }
+  ],
+  "section_content_identity_retained": "YES"
+}

@@ -1,0 +1,31 @@
+{
+  "schema": "SkillV3ResolvedSourceIdentityV1",
+  "algorithm": "SHA-256 over sorted relative POSIX path bytes then exact file bytes",
+  "included_path_set": "all files recursively under resolved Skill directory",
+  "rows": [
+    {
+      "SKILL_ID": "story-init",
+      "PRODUCTION_RESOLVED_SOURCE_SHA": "77d0a75c0ccdd959218a75f02852cb6654aebf0e645e427dd8ef86514ffbd6a9",
+      "HYBRID_EXPECTED_RESOLVED_SOURCE_SHA": "77d0a75c0ccdd959218a75f02852cb6654aebf0e645e427dd8ef86514ffbd6a9",
+      "MATCH": true
+    },
+    {
+      "SKILL_ID": "plot-structure",
+      "PRODUCTION_RESOLVED_SOURCE_SHA": "97bd7c6985867076a1b53b461db4549fefff4d1e3c2afad17de2b0a67a1cb9b9",
+      "HYBRID_EXPECTED_RESOLVED_SOURCE_SHA": "97bd7c6985867076a1b53b461db4549fefff4d1e3c2afad17de2b0a67a1cb9b9",
+      "MATCH": true
+    },
+    {
+      "SKILL_ID": "character-management",
+      "PRODUCTION_RESOLVED_SOURCE_SHA": "3debd36a3da4a430f4f71292280d4824bfab0436234a2ace68be939773062be5",
+      "HYBRID_EXPECTED_RESOLVED_SOURCE_SHA": "3debd36a3da4a430f4f71292280d4824bfab0436234a2ace68be939773062be5",
+      "MATCH": true
+    },
+    {
+      "SKILL_ID": "worldbuilding",
+      "PRODUCTION_RESOLVED_SOURCE_SHA": "434e8f9f37a54b4f15e4f1b6978862eaa40eb1ec37d02e778336bda485950678",
+      "HYBRID_EXPECTED_RESOLVED_SOURCE_SHA": "434e8f9f37a54b4f15e4f1b6978862eaa40eb1ec37d02e778336bda485950678",
+      "MATCH": true
+    }
+  ]
+}

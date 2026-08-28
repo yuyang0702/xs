@@ -1,0 +1,7 @@
+{
+  "schema": "HybridSkillIdentityContractV1",
+  "CANONICAL_PRODUCTION_SEAM_IDENTITY": "resolved_source_sha256",
+  "SECTION_PROVENANCE_IDENTITY": "primary_document_sha256 + section_content_sha256",
+  "HASH_DOMAIN_COLLISION_OR_CONFUSION_FIXED": "YES",
+  "checks_are_interchangeable": "NO"
+}

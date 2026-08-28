@@ -1,0 +1,116 @@
+{
+  "schema": "SkillV3HybridIdentityCorrectionManifestDefinitionV1",
+  "definition_sha256": "6eb39d25b106cee4f370a6a3bc7b219ab10cb6909d8cdbde00ccab6b574b6bd6",
+  "entries": [
+    {
+      "path": "README.md",
+      "sha256": "76bed5975481a710e88bed08084a2a09d155c244cd2654fa6b5d92891312ba48",
+      "bytes": 284
+    },
+    {
+      "path": "baseline-binding-v1.json",
+      "sha256": "45a2e4ad2801cc62121bcc2df8b15c48ce839f3b6a5192328043d1e140a66c5f",
+      "bytes": 288
+    },
+    {
+      "path": "canonical-identity-contract-v1.json",
+      "sha256": "c6b94c9e47e702c913316387d5f0b388ec8b6e5e2f52d975fdfb96a7681c24a6",
+      "bytes": 290
+    },
+    {
+      "path": "disabled-production-identity-v1.json",
+      "sha256": "5c4b654b1031876a0d3853cfd9373739979f0ff3f7f116c9125b9616a08049db",
+      "bytes": 572
+    },
+    {
+      "path": "failure-observability-v1.json",
+      "sha256": "d374802565859923ee4288fb3f17bca7570407173450921d3f209d507f4f2dcc",
+      "bytes": 444
+    },
+    {
+      "path": "final-report-v1.md",
+      "sha256": "008bb2f62f847aa775583cdf857cf9aa54096caf39c89f1af3a32a1fe713bfd6",
+      "bytes": 4485
+    },
+    {
+      "path": "focused-test-receipt-v1.json",
+      "sha256": "f6d176038857b5cf141611fc4cee3f2a04dc2a71da8dff5750be8b16ce0aa21c",
+      "bytes": 423
+    },
+    {
+      "path": "forward-risk-report-v2.json",
+      "sha256": "9ef0e7f66efa09ead7d32db198d665fb5c92a9f4ceced30e508718eb789f8d81",
+      "bytes": 4438
+    },
+    {
+      "path": "full-suite-receipt-v1.json",
+      "sha256": "cbd296ff6304d079f5690a273e165898f2df21d5d3a63358890731ec65e04c8a",
+      "bytes": 570
+    },
+    {
+      "path": "hybrid-shadow-semantics-regression-check-v1.json",
+      "sha256": "a359291167b55a2fb03e9224304e68275ef9dad82f052102b842acfc8002bad8",
+      "bytes": 316
+    },
+    {
+      "path": "identity-domain-audit-v1.json",
+      "sha256": "ada48722e0a495b13db5fa09940e0bc5e760bd9bb3c4bcafb79e4eda295824b9",
+      "bytes": 1374
+    },
+    {
+      "path": "identity-negative-injections-v1.json",
+      "sha256": "cb59a7157744cb33a51df6149a2b99286702249b7c314e4902ced6d281aa277a",
+      "bytes": 858
+    },
+    {
+      "path": "implementation-surface-v1.json",
+      "sha256": "e428b0f593fe206c3191c391e8f4231d50da1966564a4af545ecc30f91529203",
+      "bytes": 742
+    },
+    {
+      "path": "independent-review-blocker-binding-v1.json",
+      "sha256": "b534e9f32bd0bada79d5a0dd2e9abc1dc081fe55d6770322f5f763b38272dc1a",
+      "bytes": 217
+    },
+    {
+      "path": "materializer-production-seam-v1.json",
+      "sha256": "7326a850151c80554415a254da668918ac54b470015943dbae2eed9110769981",
+      "bytes": 398
+    },
+    {
+      "path": "planning-real-seam-4-skill-replay-v1.json",
+      "sha256": "d909d8f602750fbd9fc33c40618d8d3baf74a8fe902d354867a7b204642f84b9",
+      "bytes": 1945
+    },
+    {
+      "path": "primary-document-provenance-identity-v1.json",
+      "sha256": "eb62139110a7afa5fae6e61428b24b244a1b71a4d1eebd9e7df7f042bc15e988",
+      "bytes": 1516
+    },
+    {
+      "path": "privacy-scan-v1.json",
+      "sha256": "4a49e043239d2f15760ecd0f8205eca4118a521014d5bcdc8f38f92a5f0a135f",
+      "bytes": 591
+    },
+    {
+      "path": "related-test-receipt-v1.json",
+      "sha256": "d5b5d31b6b94bff04c6a3624f6ce04a86beb11b75ead337a52f33680c94efc58",
+      "bytes": 400
+    },
+    {
+      "path": "resolved-source-identity-v1.json",
+      "sha256": "3b7ce97bfe0e2b6448d61c8a01bf803635548d2962a77952b86a86081dc66061",
+      "bytes": 1392
+    },
+    {
+      "path": "single-agent-clean-room-review-v1.json",
+      "sha256": "7503d47a38a99fcb21ec1eb18256892071b0f345fe003dacbee22ce75cbc4bbd",
+      "bytes": 548
+    },
+    {
+      "path": "strict-l3-receipt-v1.json",
+      "sha256": "3610eb3161b793072c5cce6707842ac526721e2284322a315a0490507c69fe1e",
+      "bytes": 281
+    }
+  ]
+}

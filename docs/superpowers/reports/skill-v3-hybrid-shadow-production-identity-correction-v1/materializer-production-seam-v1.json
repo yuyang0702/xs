@@ -1,0 +1,12 @@
+{
+  "schema": "SkillV3HybridMaterializerProductionSeamV1",
+  "MATERIALIZER_USES_PRODUCTION_RESOLVED_SOURCE_IDENTITY": "YES",
+  "MATERIALIZER_DIRECT_INDEX_HASH_INJECTION": "NO",
+  "resolved_skill_ids": [
+    "story-init",
+    "plot-structure",
+    "character-management",
+    "worldbuilding"
+  ],
+  "materializer_binding_sha256": "2ab269b50e078f6164b2ac0aa35082f8d092f0aebef2f1064a1a67a59956759f"
+}

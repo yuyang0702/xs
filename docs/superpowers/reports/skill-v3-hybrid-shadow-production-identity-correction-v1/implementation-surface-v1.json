@@ -1,0 +1,18 @@
+{
+  "schema": "SkillV3HybridIdentityCorrectionSurfaceV1",
+  "files": [
+    "docs/maintenance.md",
+    "src/novel_flywheel/hybrid_skill_context.py",
+    "src/novel_flywheel/selective_skill_compiler.py",
+    "src/novel_flywheel/skills.py",
+    "src/novel_flywheel/workflows.py",
+    "tests/canary/test_skill_v3_hybrid_shadow.py",
+    "tests/test_hybrid_skill_context.py",
+    "tests/test_selective_skill_compiler.py",
+    "tools/diagnostics/build_skill_v3_hybrid_index_v2.py",
+    "tools/diagnostics/materialize_skill_v3_hybrid_shadow_evidence.py",
+    "vendor/novel-skills/skill-section-index-v2.json"
+  ],
+  "production_change_scope": "identity metadata and shadow validation only",
+  "rollback": "7f2fbcdafbdbaae221ce9ebb840c7bb57d889f72"
+}

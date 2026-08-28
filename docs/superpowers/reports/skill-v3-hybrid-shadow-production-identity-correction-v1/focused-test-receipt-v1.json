@@ -1,0 +1,7 @@
+{
+  "schema": "SkillV3HybridIdentityFocusedTestReceiptV1",
+  "command": "pytest tests/test_hybrid_skill_context.py tests/canary/test_skill_v3_hybrid_shadow.py tests/test_skills.py tests/test_selective_skill_compiler.py tests/canary/test_skill_v3_hybrid_identity_correction_evidence.py -q",
+  "result": "62 passed in 29.32s",
+  "implementation_focused_subset": "59 passed",
+  "NEW_IDENTITY_CORRECTION_REGRESSION_COUNT": 0
+}

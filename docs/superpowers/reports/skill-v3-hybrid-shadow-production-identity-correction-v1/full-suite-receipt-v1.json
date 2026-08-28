@@ -1,0 +1,17 @@
+{
+  "schema": "SkillV3HybridIdentityFullSuiteReceiptV1",
+  "command": "pytest -q --tb=no",
+  "result": "3856 passed, 41 skipped, 6 xfailed, 54 failed, 81 errors in 2419.18s (0:40:19)",
+  "classification": {
+    "NEW_IDENTITY_CORRECTION_REGRESSION_COUNT": 0,
+    "NEW_OWNING_SOURCE_REGRESSION_COUNT": 0,
+    "HISTORICAL_SEALED_ORACLE_LIVE_PARITY_NON_GREEN": 135,
+    "families": [
+      "approval/materialization",
+      "historical PTR/SC successor",
+      "Planning Skill fixed oracle",
+      "R0E live parity",
+      "historical evidence exact-byte gates"
+    ]
+  }
+}

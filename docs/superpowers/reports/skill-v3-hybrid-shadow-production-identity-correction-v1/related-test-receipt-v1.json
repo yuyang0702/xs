@@ -1,0 +1,6 @@
+{
+  "schema": "SkillV3HybridIdentityRelatedTestReceiptV1",
+  "command": "pytest tests/test_runtime_skill_profiles.py tests/test_skill_v3_shadow_review_pilot_readiness.py tests/canary/test_skill_v3_hybrid_context_architecture.py tests/canary/test_skill_v3_multi_sample_quality_root_cause.py tests/test_workflows.py -q",
+  "result": "451 passed in 472.93s",
+  "NEW_OWNING_SOURCE_REGRESSION_COUNT": 0
+}

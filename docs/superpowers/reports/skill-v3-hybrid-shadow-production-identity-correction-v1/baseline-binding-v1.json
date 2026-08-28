@@ -1,0 +1,7 @@
+{
+  "schema": "SkillV3HybridIdentityCorrectionBaselineV1",
+  "branch": "r1-ptr3/planning-repair-finding-propagation-20260817",
+  "start_head": "7f2fbcdafbdbaae221ce9ebb840c7bb57d889f72",
+  "implementation_commit": "c29e7da652c86a0e701dc820918a817ab8389df6",
+  "start_worktree": "CLEAN"
+}

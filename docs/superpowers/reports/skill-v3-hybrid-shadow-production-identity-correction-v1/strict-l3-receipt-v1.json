@@ -1,0 +1,9 @@
+{
+  "schema": "SkillV3HybridIdentityStrictL3ReceiptV1",
+  "STRICT_L3": "PASS",
+  "warnings": 0,
+  "blockers": 0,
+  "review_mode": "single_agent_clean_room",
+  "independence_claimed": false,
+  "core_tree_sha256": "cc87d9bfc3b4c369c635f44f5494f9916d94411e07a4d232e612cf44f8fa3431"
+}
