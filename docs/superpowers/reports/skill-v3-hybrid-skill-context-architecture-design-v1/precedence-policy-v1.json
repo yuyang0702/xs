@@ -1,0 +1,21 @@
+{
+  "schema": "SkillV3HybridPrecedencePolicyV1",
+  "highest_to_lowest": [
+    "LOCKED_AUTHORITY",
+    "OUTLINE_PLATFORM_RULES",
+    "MANDATORY_NARRATIVE_RULES",
+    "TASK_PAYLOAD_AND_EXPLICIT_TASK_CONTRACT",
+    "OUTPUT_CONTRACT",
+    "REFERENCE_DERIVED_PROSE_BASELINE",
+    "CREATIVE_BLUEPRINT",
+    "MARKET_ADVISORY",
+    "BASELINE_SKILL_FOUNDATION",
+    "VERBATIM_SUPPLEMENT"
+  ],
+  "task_payload_position_note": "payload is later in transport order but authoritative over all advisory layers",
+  "supplement_can_override_authority": "NO",
+  "supplement_can_override_explicit_task_contract": "NO",
+  "supplement_can_mutate_storystate": "NO",
+  "supplement_can_mutate_canon_ready": "NO",
+  "conflict_behavior": "typed fail closed before model dispatch"
+}

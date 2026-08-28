@@ -1,0 +1,143 @@
+{
+  "schema": "SkillV3HybridArchitectureSha256ManifestV1",
+  "definition": {
+    "schema": "SkillV3HybridArchitectureSha256ManifestDefinitionV1",
+    "entry_count": 26,
+    "entries": [
+      {
+        "path": "README.md",
+        "bytes": 571,
+        "sha256": "0265b517ea4494d96082e324217f0d1aac672b76cb4bc2acf730600ced67cfcb"
+      },
+      {
+        "path": "actionability-model-v1.json",
+        "bytes": 2773,
+        "sha256": "fc863888f57314c0fb6d39b46c7f908d0e89e814d38924725ed5d954e2b34a91"
+      },
+      {
+        "path": "architecture-decision-v1.json",
+        "bytes": 792,
+        "sha256": "a2d943eb6edf8e2b75968880bc931186c77137f798637cc2c1bed4afcd66c911"
+      },
+      {
+        "path": "baseline-binding-v1.json",
+        "bytes": 4038,
+        "sha256": "1c8a56d4f0c5fedf5527f53a6cfbb438a75df57b344bf8f57fc91cb4c517a5b3"
+      },
+      {
+        "path": "baseline-foundation-invariant-v1.json",
+        "bytes": 1164,
+        "sha256": "c05e60cf4815b4c219038aa2df828b2ede7463f9b97865d840dedc7c8dfbc676"
+      },
+      {
+        "path": "capacity-study-v1.json",
+        "bytes": 25181,
+        "sha256": "ec0301fc73481eb3cdcaf55eecbb23e858a2382eeaeb85f2282619014ee01f09"
+      },
+      {
+        "path": "character-heavy-forensic-replay-spec-v1.json",
+        "bytes": 1230,
+        "sha256": "5b04b3650302fe6f2d8bfa38858313a183b642a0d89e73cdb3362dc293b4e6b1"
+      },
+      {
+        "path": "cross-demand-anti-overfit-replay-spec-v1.json",
+        "bytes": 2465,
+        "sha256": "e7bd69c10d2a3e8a15142f64ea66768401fdf6aecdf9e651d79a87eff975bde6"
+      },
+      {
+        "path": "final-report-v1.md",
+        "bytes": 5237,
+        "sha256": "6684b306a274d0ab017b24ed9c8bc8943f44e1e5ce643b04a7eca02cceed85c9"
+      },
+      {
+        "path": "hybrid-candidate-comparison-v1.json",
+        "bytes": 4873,
+        "sha256": "583cb20734730aa60f1710a3958ee1d1037213470992d2bfc1d130189159c1a3"
+      },
+      {
+        "path": "implementation-plan-v1.json",
+        "bytes": 2192,
+        "sha256": "547d9ec9bda4b925aa90a9834db89154010c3642ab66ecffb1ef9f0331e501a9"
+      },
+      {
+        "path": "overlap-duplication-policy-v1.json",
+        "bytes": 944,
+        "sha256": "a3a43e02054ba0a539aeeca36cefd14fce07a748ebfd36d7bbfadafbd97158a9"
+      },
+      {
+        "path": "precedence-policy-v1.json",
+        "bytes": 757,
+        "sha256": "2715180d6f3cc224aaaeb00ba1204b2c345be4a900603f2c24b75430336560a3"
+      },
+      {
+        "path": "privacy-scan-v1.json",
+        "bytes": 676,
+        "sha256": "75072eb3913822662de4bedca21b3793137b9505aefdc3fa98d1043c223d82cb"
+      },
+      {
+        "path": "protected-budget-design-v1.json",
+        "bytes": 1530,
+        "sha256": "f64c32fdb0fd48a7f0b1c47abc8e24606a5f6f92d2cb713285b79b4c97ef1f07"
+      },
+      {
+        "path": "provenance-observability-schema-v1.json",
+        "bytes": 1272,
+        "sha256": "8dc75375402db6d27d41e1aad299636258bc20af3398daab89ecdabddb050e75"
+      },
+      {
+        "path": "real-campaign-prerequisites-v1.json",
+        "bytes": 941,
+        "sha256": "c45e77f2bdb4b28de23fd48585f0b07e3f4904456dcc614529d537edc5605ea7"
+      },
+      {
+        "path": "reference-guidance-preservation-v1.json",
+        "bytes": 1282,
+        "sha256": "f1fe94501ef4793a09113df8d9898b469faa9e7f12daa80ae8f4e324fdc9dbed"
+      },
+      {
+        "path": "render-order-salience-v1.json",
+        "bytes": 1342,
+        "sha256": "9ad63db3898840eb337d3685835e94beb09eea932c14ea84351660baf1d8ba3f"
+      },
+      {
+        "path": "root-cause-to-requirements-v1.json",
+        "bytes": 4241,
+        "sha256": "45d79c96375de8c0ea3c370f0217257da9f9fa72b45deb25861e9ad6274136cc"
+      },
+      {
+        "path": "section-packet-granularity-v1.json",
+        "bytes": 884,
+        "sha256": "deac4fdcdd83ebec4e15ebe4aa3af95c4ec073282598a78b6e66ee7c0dd38137"
+      },
+      {
+        "path": "semantic-dependency-model-v1.json",
+        "bytes": 2498,
+        "sha256": "f481e1d01d981daa03ad21cb7820d09c1ad9215b6e6ee006f42a21feb6db4941"
+      },
+      {
+        "path": "strict-l3-receipt-v1.json",
+        "bytes": 999,
+        "sha256": "c4a3cb71e9ce567f1cc82a59274dfcf8f1b8e58ad331b07aa35612f3f5c40b86"
+      },
+      {
+        "path": "successor-experiment-design-v1.json",
+        "bytes": 1049,
+        "sha256": "183896f7d127bfb14edebf87d602679bed3b9a5c184f660e264326dde8b2b251"
+      },
+      {
+        "path": "supplement-demand-model-v1.json",
+        "bytes": 4178,
+        "sha256": "c914850b45b660f76ea80ec4c3886df3d63914432fe4c28b8214ed688f54d63a"
+      },
+      {
+        "path": "test-receipt-v1.json",
+        "bytes": 1149,
+        "sha256": "72cdde0bcf845964329ff310cb2cd3908154b606569c942f25f3b5696aa8b21e"
+      }
+    ]
+  },
+  "definition_sha256": "e490accef7716d20d60060fe2e7f82fde0e8374f22c19cfc19b97224df3e1505",
+  "entry_hash_mode": "UTF8_CANONICAL_LF_V1",
+  "coverage": "all evidence files except the manifest itself",
+  "status": "EXACT"
+}

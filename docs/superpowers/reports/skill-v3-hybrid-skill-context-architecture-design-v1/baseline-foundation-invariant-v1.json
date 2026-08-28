@@ -1,0 +1,17 @@
+{
+  "schema": "SkillV3BaselineFoundationInvariantV1",
+  "baseline_foundation_kind": "DEMAND_AWARE_V2_LAST_KNOWN_BEST_COMPRESSED_BASELINE",
+  "baseline_foundation_source": "src/novel_flywheel/runtime_skill_profiles.py::build_planning_v2_event_realization_profile_demand_aware(character-heavy)",
+  "baseline_foundation_rendering": "render_skill_context; 8 mandatory rules then 12 advisory rules; exact UTF-8 bytes",
+  "baseline_foundation_sha_binding_method": "SHA256(exact UTF-8 rendered Skill foundation bytes)",
+  "baseline_foundation_sha256": "7d0f6309ede2261f2f6a1098d394937948bf5b50eb9248266ab350fd91da9adc",
+  "baseline_foundation_char_count": 2925,
+  "baseline_foundation_token_estimate": 732,
+  "baseline_foundation_not_replaced": "YES",
+  "baseline_foundation_not_rewritten_by_hybrid_selector": "YES",
+  "baseline_foundation_not_truncated_to_make_room_for_supplement": "YES",
+  "baseline_foundation_not_shed_before_supplement": "YES",
+  "baseline_hard_rules_precedence_unchanged": "YES",
+  "prefix_identity_rule": "final existing advisory bytes before supplement separator must remain byte-identical",
+  "failure": "HYBRID_BASELINE_IDENTITY_FAIL_CLOSED"
+}

@@ -1,0 +1,18 @@
+{
+  "schema": "SkillV3HybridSuccessorExperimentDesignV1",
+  "executable": false,
+  "control_arm": "current demand-aware baseline with existing reference guidance; exact current advisory bytes",
+  "treatment_arm": "COMPOSED_HYBRID_CROSS_SKILL_SCENE_PACKET_WITH_VERBATIM_NEIGHBORHOOD_CLOSURE",
+  "primary_changed_variable": "append-only closed original-verbatim supplement after exact baseline prefix",
+  "non_skill_identity_requirement": "BYTE_EXACT",
+  "provider_model_route_identity": "BYTE_EXACT_HASH_LOCK_REQUIRED",
+  "sampling_identity": "SAME_SEALED_POLICY",
+  "output_cap_identity": "EXACT",
+  "validator_identity": "EXACT",
+  "reference_guidance_identity": "EXACT",
+  "blinding_requirement": "opaque arms; mapping sealed until two independent judgments finish",
+  "multi_sample_requirement": "at least three prospective independent samples per arm before campaign conclusion",
+  "two_evaluator_requirement": "YES; fresh independent contexts; no mapping/Skill metadata",
+  "approval_or_nonce_created": false,
+  "real_sample_executed": false
+}

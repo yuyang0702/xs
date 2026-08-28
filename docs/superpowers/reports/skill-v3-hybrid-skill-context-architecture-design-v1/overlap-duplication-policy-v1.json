@@ -1,0 +1,15 @@
+{
+  "schema": "SkillV3HybridOverlapDuplicationPolicyV1",
+  "classes": {
+    "BENEFICIAL_REINFORCEMENT": "same semantic function plus concrete method/example/qualifier; keep",
+    "REDUNDANT_DUPLICATION": "same operation, scope, qualifier, and effect with no added detail; omit supplement member before closure finalization",
+    "CONTRADICTORY_RESTATEMENT": "different obligation/precedence/allowed mutation; fail closed",
+    "DETAIL_ENRICHMENT": "original section adds concrete fields/behavior to baseline abstraction; keep",
+    "QUALIFIER_RESTORATION": "restores cost, observability, order, limitation, or boundary; keep",
+    "ANTI_PATTERN_RESTORATION": "adds prohibited pattern plus correction; keep"
+  },
+  "dedupe_key": "semantic function + operation + scope + qualifiers + effect + authority level",
+  "lexical_similarity_only_deduplication": false,
+  "baseline_bytes_ever_removed": false,
+  "contradiction_resolution_by_llm": false
+}

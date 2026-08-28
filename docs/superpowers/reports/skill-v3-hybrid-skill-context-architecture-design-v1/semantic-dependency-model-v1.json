@@ -1,0 +1,50 @@
+{
+  "schema": "SkillV3HybridSemanticDependencyModelV1",
+  "dependency_schema": {
+    "FORMAL_DEPENDENCY": "typed directed edge with source section/packet, target, reason, and source-of-truth hash",
+    "PARENT_CONTEXT_DEPENDENCY": "typed directed edge with source section/packet, target, reason, and source-of-truth hash",
+    "QUALIFIER_DEPENDENCY": "typed directed edge with source section/packet, target, reason, and source-of-truth hash",
+    "ANTI_PATTERN_DEPENDENCY": "typed directed edge with source section/packet, target, reason, and source-of-truth hash",
+    "EXAMPLE_DEPENDENCY": "typed directed edge with source section/packet, target, reason, and source-of-truth hash",
+    "APPLICATION_BRIDGE_DEPENDENCY": "typed directed edge with source section/packet, target, reason, and source-of-truth hash",
+    "SCENE_REALIZATION_DEPENDENCY": "typed directed edge with source section/packet, target, reason, and source-of-truth hash",
+    "CROSS_SKILL_SEMANTIC_DEPENDENCY": "typed directed edge with source section/packet, target, reason, and source-of-truth hash"
+  },
+  "dependency_source_of_truth": [
+    "index-v1 formal edges",
+    "sealed root-cause boundary audit",
+    "future checked-in index-v2 semantic edge table",
+    "packet membership"
+  ],
+  "known_gap_bindings": [
+    [
+      "sv3-faecc1466817d8aa",
+      "sv3-13580b3cdbef263e"
+    ],
+    [
+      "sv3-70a527462c32e7b6",
+      "sv3-2ced894267dc51e3"
+    ],
+    [
+      "sv3-3fb51ac3fed35bc0",
+      "sv3-82ca2fdf9c28183b"
+    ],
+    [
+      "sv3-3fb51ac3fed35bc0",
+      "sv3-6e4a0b2625a01274"
+    ]
+  ],
+  "closure_algorithm": [
+    "select semantic-function packets",
+    "expand packet members",
+    "depth-first expand all typed dependencies",
+    "validate ownership/hash/actionability",
+    "topologically order with deterministic source-order tie break",
+    "render only after full closure fits protected supplement bucket"
+  ],
+  "cycle_handling": "strongly connected components rendered once in deterministic source order; unknown or cross-authority cycles fail closed",
+  "ordering_rule": "packet priority -> dependency-before-dependent -> resolver Skill order -> source order -> section ID",
+  "max_closure_policy": "no arbitrary member/character cap; the sealed supplement bucket is the only bound",
+  "fail_closed_policy": "if complete closure does not fit, source drifts, or a wrong-layer member appears, render no supplement and block experimental dispatch",
+  "arbitrary_truncation_after_closure": false
+}

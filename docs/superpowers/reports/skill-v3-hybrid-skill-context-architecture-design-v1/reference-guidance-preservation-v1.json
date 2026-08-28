@@ -1,0 +1,25 @@
+{
+  "schema": "SkillV3ReferenceGuidancePreservationV1",
+  "active_blueprint_guidance": {
+    "blueprint_sha256": "57037d18bb5cd9c255c6e0bc381e376d81690bd5f17def1bf01d1ef608fa59b3",
+    "provenance_manifest_sha256": "41b9fe2c61e20cd68429f3451994c90bc0e450beb97cf7bf400b5e77a82620df",
+    "model_visibility": "YES_INDIRECT_VIA_CONSTRAINTS"
+  },
+  "active_prose_baseline": {
+    "sha256": "5a20a4fe0d8f1e9424305da66ea56bf81cabe55256e9063fcc4bc97929c40c1a",
+    "model_visibility": "YES_INDIRECT_VIA_CONSTRAINTS"
+  },
+  "reference_derived_provenance": "82ab7881d58764552de2371e08c6ffd23b2d13dc2523cc1a9c8dbb96f227c303",
+  "exact_rendered_advisory_provenance": {
+    "arm_a_sha256": "90868c82b120f7df4503d742f395ac2e3ca3baddb90871a2f6b3c2e8543b813b",
+    "arm_a_chars": 3410,
+    "project_guidance_sha256": "94cfcd4f879232b18b389e6dbfe9595ac4a89a047e887f2fd7160046a1d738ba",
+    "project_guidance_chars": 431
+  },
+  "reference_guidance_not_displaced_by_hybrid_supplement": "YES",
+  "raw_ref_model_visible": "NO",
+  "raw_distill_evidence_model_visible": "NO",
+  "learn_raw_evidence_model_visible": "NO",
+  "no_new_shared_budget_confound": "YES",
+  "protection": "existing reference/project-guidance bytes stay in their protected prefix bucket; supplement has its own capacity decision"
+}

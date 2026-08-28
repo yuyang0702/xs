@@ -1,0 +1,90 @@
+{
+  "schema": "SkillV3RootCauseToArchitectureRequirementsV1",
+  "primary_root_cause": "MULTI_FACTOR_WITH_PRIMARY_SELECTIVE_REPLACEMENT_ARCHITECTURE_MISMATCH",
+  "rows": [
+    {
+      "root_cause_finding": "SELECTIVE_REPLACEMENT_ARCHITECTURE_MISMATCH",
+      "literary_failure_link": "critical/noncritical regression in 6 dimensions",
+      "architecture_requirement": "make baseline an immutable prefix and supplement additive",
+      "must_preserve": "A baseline semantic atoms",
+      "must_change": "composition topology",
+      "must_not_do": "replace baseline",
+      "verification_method": "prefix SHA and atom replay"
+    },
+    {
+      "root_cause_finding": "BASELINE_CROSS_SKILL_SEMANTIC_ADVANTAGE",
+      "literary_failure_link": "A retained agency/causality/setup-payoff bridges",
+      "architecture_requirement": "protect complete cross-Skill baseline",
+      "must_preserve": "8 mandatory + 12 advisory rules",
+      "must_change": "nothing in baseline",
+      "must_not_do": "re-author or narrow baseline",
+      "verification_method": "exact SHA/chars/tokens"
+    },
+    {
+      "root_cause_finding": "LOW_ACTIONABILITY_LEAF_OVERREPRESENTATION",
+      "literary_failure_link": "B taxonomy/template dominance",
+      "architecture_requirement": "seed only high/medium actionability packets",
+      "must_preserve": "dependency leaves when required",
+      "must_change": "actionability admission",
+      "must_not_do": "let low leaves satisfy coverage",
+      "verification_method": "distribution receipt"
+    },
+    {
+      "root_cause_finding": "SELECTOR_UNDER_RECALL",
+      "literary_failure_link": "rubric-wide semantics missed by exact demand tags",
+      "architecture_requirement": "derive nine semantic features then cross-Skill packets",
+      "must_preserve": "determinism",
+      "must_change": "feature-to-packet rules",
+      "must_not_do": "label-only/sample-specific selection",
+      "verification_method": "five-demand replay"
+    },
+    {
+      "root_cause_finding": "SEMANTIC_DEPENDENCY_GAPS",
+      "literary_failure_link": "four known semantic neighbors absent",
+      "architecture_requirement": "typed semantic closure beyond formal edges",
+      "must_preserve": "formal dependencies",
+      "must_change": "closure graph",
+      "must_not_do": "post-closure truncation",
+      "verification_method": "closure receipt/tamper tests"
+    },
+    {
+      "root_cause_finding": "SECTION_GRANULARITY_WEAKNESS",
+      "literary_failure_link": "two coarse and one fine boundary failures",
+      "architecture_requirement": "select semantic packets and exact safe subranges",
+      "must_preserve": "original wording/source hashes",
+      "must_change": "index-v2 boundaries",
+      "must_not_do": "include mixed operational parents",
+      "verification_method": "verbatim/wrong-layer replay"
+    },
+    {
+      "root_cause_finding": "STAGE_OWNERSHIP_OVERRESTRICTION",
+      "literary_failure_link": "five relevant candidates filtered",
+      "architecture_requirement": "hash-bound creative-subrange exception only",
+      "must_preserve": "wrong-layer exclusion",
+      "must_change": "ownership evidence granularity",
+      "must_not_do": "broad ownership relaxation",
+      "verification_method": "wrong-layer count zero"
+    },
+    {
+      "root_cause_finding": "SALIENCE_ORDERING_AMPLIFICATION",
+      "literary_failure_link": "fragmented XML leaves lost reinforcement",
+      "architecture_requirement": "existing baseline prefix then coherent packet order",
+      "must_preserve": "current task distance",
+      "must_change": "named supplement layer",
+      "must_not_do": "supplement-first ordering",
+      "verification_method": "order hash and salience audit"
+    },
+    {
+      "root_cause_finding": "VARIANCE_NOT_PRIMARY",
+      "literary_failure_link": "pair 2 gain did not explain 2/3 regressions",
+      "architecture_requirement": "validate prospectively across multiple samples",
+      "must_preserve": "provider/method identity",
+      "must_change": "multi-sample treatment",
+      "must_not_do": "single-sample hill climbing",
+      "verification_method": "blind two-evaluator design"
+    }
+  ],
+  "required_finding_count": 9,
+  "covered_finding_count": 9,
+  "coverage_status": "PASS"
+}

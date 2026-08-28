@@ -1,0 +1,61 @@
+{
+  "schema": "SkillV3HybridShadowImplementationPlanV1",
+  "implementation_in_this_gate": false,
+  "default_disabled_kill_switch": "hybrid_skill_context_shadow_enabled=False",
+  "steps": [
+    {
+      "module": "src/novel_flywheel/hybrid_skill_context.py (new)",
+      "functions": [
+        "extract_demand_features_v1",
+        "select_semantic_packets_v1",
+        "close_semantic_dependencies_v1",
+        "render_verbatim_supplement_v1",
+        "simulate_protected_context_budget_v1",
+        "build_hybrid_receipt_v1"
+      ],
+      "behavior": "pure deterministic offline/shadow compiler"
+    },
+    {
+      "module": "vendor/novel-skills/skill-section-index-v2.json (new)",
+      "functions": [
+        "data-only exact semantic-function/actionability/dependency/source bindings"
+      ],
+      "behavior": "add exact creative-subrange identity; never relax parent ownership"
+    },
+    {
+      "module": "src/novel_flywheel/workflows.py::WorkflowService._stage",
+      "functions": [
+        "existing planning skill_context_shadow_observer seam"
+      ],
+      "behavior": "pass hash/count of actual compacted baseline after it is formed; observer result remains unused by production input"
+    },
+    {
+      "module": "src/novel_flywheel/context_packet.py",
+      "functions": [
+        "design-only future assemble_protected_hybrid_advisory_v1"
+      ],
+      "behavior": "not wired during shadow; future cutover requires separate authorization"
+    },
+    {
+      "module": "tests/test_hybrid_skill_context.py",
+      "functions": [
+        "five-demand selector/closure/capacity/determinism/tamper/disabled identity tests"
+      ],
+      "behavior": "offline only"
+    },
+    {
+      "module": "tests/canary/test_skill_v3_hybrid_shadow.py",
+      "functions": [
+        "baseline/reference identity, wrong-layer, failure observability, production byte parity"
+      ],
+      "behavior": "offline canary"
+    }
+  ],
+  "when_disabled": {
+    "production_prompt_bytes_unchanged": "YES",
+    "production_model_input_identity": "YES",
+    "route_model_retry_budget_validator_identity": "YES"
+  },
+  "shadow_output_consumed_by_model": false,
+  "production_cutover_in_plan": false
+}

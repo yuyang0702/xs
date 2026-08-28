@@ -1,0 +1,20 @@
+{
+  "schema": "SkillV3HybridSectionPacketGranularityV1",
+  "decision": "CROSS_SKILL_SEMANTIC_PACKET_WITH_TYPED_VERBATIM_NEIGHBORHOOD_CLOSURE",
+  "rejected_as_primary_units": [
+    "individual section",
+    "whole selected Skill",
+    "taxonomy leaf bundle"
+  ],
+  "unit": "packet seed plus complete typed dependency neighborhood",
+  "index_v2_requirement": {
+    "voice_section": "sv3-b75227453c1cc26a exact reference section becomes a hash-bound PLANNING_CREATIVE_SUPPLEMENT exception",
+    "mixed_operational_parents": "remain excluded; creative subranges require separate exact index nodes before future use",
+    "relationship_taxonomy": "not selected without a scene-application bridge"
+  },
+  "original_wording_preserved": "YES",
+  "no_creative_paraphrase": "YES",
+  "no_summary_to_fit": "YES",
+  "no_silent_truncation": "YES",
+  "wrong_layer_authority_content_allowed": "NO"
+}

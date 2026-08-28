@@ -1,0 +1,150 @@
+{
+  "schema": "SkillV3HybridSupplementDemandModelV1",
+  "demand_signal_sources": [
+    "sealed task contract fields",
+    "authority fact presence/status only",
+    "creative demand class",
+    "resolved Skill identities",
+    "output schema capability requirements"
+  ],
+  "demand_feature_schema": {
+    "character_agency_motivation": {
+      "signals": [
+        "actor refs present",
+        "want/need conflict",
+        "costly choice",
+        "opposed tactics"
+      ],
+      "required_packets": [
+        "CHARACTER_CHOICE_VOICE_PACKET_V1",
+        "CAUSAL_PRESSURE_PACKET_V1"
+      ]
+    },
+    "relationship_consequence": {
+      "signals": [
+        "two or more actor refs",
+        "relationship/trust/role pressure",
+        "reaction changes available action"
+      ],
+      "required_packets": [
+        "CHARACTER_CHOICE_VOICE_PACKET_V1",
+        "CAUSAL_PRESSURE_PACKET_V1"
+      ]
+    },
+    "causal_coherence": {
+      "signals": [
+        "cause/effect chain",
+        "obstacle/reaction/reversal",
+        "state transition"
+      ],
+      "required_packets": [
+        "CAUSAL_PRESSURE_PACKET_V1"
+      ]
+    },
+    "subtext_dramatization": {
+      "signals": [
+        "dialogue/evasion/gesture",
+        "withheld explanation",
+        "relationship pressure"
+      ],
+      "required_packets": [
+        "CHARACTER_CHOICE_VOICE_PACKET_V1"
+      ]
+    },
+    "scene_pressure": {
+      "signals": [
+        "opposition",
+        "deadline/cost/limit",
+        "resistance/reversal"
+      ],
+      "required_packets": [
+        "CAUSAL_PRESSURE_PACKET_V1"
+      ]
+    },
+    "specificity": {
+      "signals": [
+        "location/system/artifact refs",
+        "interactive feature",
+        "sensory/mechanical affordance"
+      ],
+      "required_packets": [
+        "WORLD_AFFORDANCE_PRESSURE_PACKET_V1"
+      ]
+    },
+    "setup_payoff": {
+      "signals": [
+        "promise/question/foreshadowing",
+        "dependency",
+        "later action payoff"
+      ],
+      "required_packets": [
+        "SETUP_PAYOFF_CLOSURE_PACKET_V1"
+      ]
+    },
+    "voice_readiness": {
+      "signals": [
+        "speaker identity",
+        "diction/rhythm/tic",
+        "dialogue realization"
+      ],
+      "required_packets": [
+        "CHARACTER_CHOICE_VOICE_PACKET_V1"
+      ]
+    },
+    "anti_template_realization": {
+      "signals": [
+        "taxonomy/summary risk",
+        "behavioral evidence required",
+        "concrete terminal image"
+      ],
+      "required_packets": [
+        "CHARACTER_CHOICE_VOICE_PACKET_V1",
+        "CAUSAL_PRESSURE_PACKET_V1"
+      ]
+    }
+  },
+  "semantic_function_schema": [
+    "character_agency_motivation",
+    "relationship_consequence",
+    "causal_coherence",
+    "subtext_dramatization",
+    "scene_pressure",
+    "specificity",
+    "setup_payoff",
+    "voice_readiness",
+    "anti_template_realization"
+  ],
+  "cross_skill_match_rules": {
+    "character-heavy": [
+      "CHARACTER_CHOICE_VOICE_PACKET_V1",
+      "CAUSAL_PRESSURE_PACKET_V1",
+      "SETUP_PAYOFF_CLOSURE_PACKET_V1"
+    ],
+    "world-heavy": [
+      "WORLD_AFFORDANCE_PRESSURE_PACKET_V1",
+      "CAUSAL_PRESSURE_PACKET_V1",
+      "SETUP_PAYOFF_CLOSURE_PACKET_V1"
+    ],
+    "conflict-pacing-heavy": [
+      "CAUSAL_PRESSURE_PACKET_V1",
+      "CHARACTER_CHOICE_VOICE_PACKET_V1",
+      "SETUP_PAYOFF_CLOSURE_PACKET_V1"
+    ],
+    "setup-payoff-heavy": [
+      "SETUP_PAYOFF_CLOSURE_PACKET_V1",
+      "CAUSAL_PRESSURE_PACKET_V1"
+    ],
+    "mixed": [
+      "CHARACTER_CHOICE_VOICE_PACKET_V1",
+      "WORLD_AFFORDANCE_PRESSURE_PACKET_V1",
+      "CAUSAL_PRESSURE_PACKET_V1",
+      "SETUP_PAYOFF_CLOSURE_PACKET_V1"
+    ]
+  },
+  "false_negative_defense": "union all signaled semantic functions, add cross-Skill packet requirements, then close typed dependencies; demand tags cannot veto rubric-wide functions",
+  "false_positive_defense": "only sealed deterministic signals; every packet must cover an active function; wrong-layer and source-hash gates precede rendering",
+  "llm_selector": "NO",
+  "sample_id_or_pair_specific_rules": "NO",
+  "filesystem_iteration_order_dependency": "NO",
+  "unknown_feature_behavior": "FAIL_CLOSED_NO_SUPPLEMENT_DISPATCH"
+}

@@ -1,0 +1,21 @@
+{
+  "schema": "SkillV3HybridRenderOrderSalienceV1",
+  "alternatives": {
+    "baseline_then_supplement": "SELECTED; preserves current advisory as exact prefix and puts detail after foundation",
+    "baseline_region_then_related_packet": "REJECTED_FOR_V1; interleaving changes baseline bytes and weakens prefix proof",
+    "supplement_then_baseline": "REJECTED; repeats B salience failure and distances foundation",
+    "separate_named_advisory_layers": "SELECTED_AS_APPEND_ONLY_LAYER_BOUNDARY"
+  },
+  "render_order": [
+    "EXISTING_REFERENCE_PLUS_BASELINE_ADVISORY_EXACT_BYTES",
+    "SUPPLEMENT_SEPARATOR",
+    "CLOSED_VERBATIM_PACKET_BYTES"
+  ],
+  "wrapper_text": "\n\nOriginal Skill supplement (advisory; enriches the protected baseline and cannot override authority or task):\n",
+  "delimiters": "existing baseline format unchanged; supplement retains deterministic <skill-section> wrappers",
+  "packet_order": "semantic priority from demand model, then deterministic packet ID tie-break",
+  "within_packet_order": "dependency-before-dependent, resolver Skill order, source order, section ID",
+  "task_distance": "unchanged from current transport assembly",
+  "output_contract_distance": "unchanged",
+  "reinforcement_policy": "baseline first; concrete qualifier/example/application immediately follows as one coherent supplement layer"
+}

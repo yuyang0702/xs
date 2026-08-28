@@ -1,0 +1,28 @@
+{
+  "schema": "SkillV3HybridArchitectureStrictL3ReceiptV1",
+  "declared_level": "L3",
+  "status": "PASS",
+  "result": "PASS; warnings=0; blockers=0",
+  "warnings": 0,
+  "blockers": 0,
+  "review_mode": "MAIN_CODEX_SINGLE_AGENT_NO_INDEPENDENCE_CLAIM",
+  "scope_classification": "OPEN_WORLD_FIVE_DEMAND_ARCHITECTURE_DESIGN",
+  "forbidden_narrowing": [
+    "single sample",
+    "character-only selector",
+    "exact demand label only",
+    "3000-char cap",
+    "replacement architecture"
+  ],
+  "resolution_status": "DESIGN_COMPLETE_IMPLEMENTATION_NOT_STARTED",
+  "topology_classes": [
+    "character-heavy",
+    "world-heavy",
+    "conflict-pacing-heavy",
+    "setup-payoff-heavy",
+    "mixed"
+  ],
+  "unseen_valid_variants": "supported only when deterministic known demand features and complete packet closure fit; otherwise fail closed",
+  "unknown_variant_behavior": "FAIL_CLOSED_NO_TREATMENT_DISPATCH",
+  "requirement_to_evidence_traceability": "root-cause-to-requirements-v1.json plus manifest"
+}

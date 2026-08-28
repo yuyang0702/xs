@@ -1,0 +1,73 @@
+{
+  "schema": "SkillV3HybridActionabilityModelV1",
+  "classes": {
+    "HIGH_ACTIONABILITY": {
+      "criteria": [
+        "imperative or executable scene operation",
+        "binds cause to observable action/reaction/consequence",
+        "provides dramatization, voice, pressure, or setup/payoff method",
+        "anti-pattern paired with a concrete correction"
+      ],
+      "examples": [
+        "sv3-b75227453c1cc26a",
+        "sv3-13580b3cdbef263e",
+        "sv3-5f738df332e0919f",
+        "sv3-972a75cb8ca8f0bd"
+      ]
+    },
+    "MEDIUM_ACTIONABILITY": {
+      "criteria": [
+        "concrete field or sequence that constrains realization",
+        "usable qualifier/example but not a complete operation on its own"
+      ],
+      "examples": [
+        "sv3-10e4ba0c5b7509b4",
+        "sv3-8e321726b4ebdcec",
+        "sv3-2985467b5f2bf929",
+        "sv3-ad3871e96cc16876"
+      ]
+    },
+    "LOW_ACTIONABILITY": {
+      "criteria": [
+        "taxonomy label, abstract category, heading, or thin template leaf",
+        "cannot satisfy a demand feature without a higher-actionability neighbor"
+      ],
+      "examples": [
+        "sv3-2ced894267dc51e3",
+        "sv3-82ca2fdf9c28183b"
+      ],
+      "admission": "DEPENDENCY_ONLY; never a seed and never sole coverage"
+    }
+  },
+  "section_classifications": {
+    "sv3-2ced894267dc51e3": "LOW_ACTIONABILITY",
+    "sv3-82ca2fdf9c28183b": "LOW_ACTIONABILITY",
+    "sv3-972a75cb8ca8f0bd": "HIGH_ACTIONABILITY",
+    "sv3-faecc1466817d8aa": "MEDIUM_ACTIONABILITY",
+    "sv3-6e4a0b2625a01274": "MEDIUM_ACTIONABILITY",
+    "sv3-13580b3cdbef263e": "HIGH_ACTIONABILITY",
+    "sv3-ac7aa3aed8a7d237": "HIGH_ACTIONABILITY",
+    "sv3-4c39329c602fd48e": "MEDIUM_ACTIONABILITY",
+    "sv3-10e4ba0c5b7509b4": "HIGH_ACTIONABILITY",
+    "sv3-b75227453c1cc26a": "HIGH_ACTIONABILITY",
+    "sv3-8e321726b4ebdcec": "MEDIUM_ACTIONABILITY",
+    "sv3-2985467b5f2bf929": "MEDIUM_ACTIONABILITY",
+    "sv3-b4583d410167ab14": "MEDIUM_ACTIONABILITY",
+    "sv3-5f738df332e0919f": "HIGH_ACTIONABILITY",
+    "sv3-ad3871e96cc16876": "HIGH_ACTIONABILITY",
+    "sv3-0933e75cb694edca": "MEDIUM_ACTIONABILITY",
+    "sv3-60d4bee497e4c0dc": "HIGH_ACTIONABILITY",
+    "sv3-f998823d27d7086b": "HIGH_ACTIONABILITY"
+  },
+  "admission_policy": {
+    "seed": [
+      "HIGH_ACTIONABILITY",
+      "MEDIUM_ACTIONABILITY"
+    ],
+    "low_actionability": "dependency-only; cannot count as feature coverage",
+    "packet_requirement": "each active semantic function has at least one HIGH or MEDIUM executable member",
+    "dominance_guard": "LOW members cannot exceed HIGH+MEDIUM members and cannot be first/last salience anchors"
+  },
+  "grounding": "section IDs bind exact checked-in Skill text; no inferred sample prose",
+  "taxonomy_domination_allowed": false
+}

@@ -1,0 +1,95 @@
+{
+  "schema": "SkillV3HybridArchitectureBaselineBindingV1",
+  "branch": "r1-ptr3/planning-repair-finding-propagation-20260817",
+  "start_head": "d385d1c1878e8894b411669416b4b485d6e7c504",
+  "expected_entry_worktree": "CLEAN",
+  "exact_gate": "SKILL_V3_HYBRID_SKILL_CONTEXT_ARCHITECTURE_DESIGN",
+  "scope": "OFFLINE_ARCHITECTURE_EVIDENCE_DESIGN_ONLY",
+  "root_cause_evidence": {
+    "path": "C:/小说/novel-flywheel-console/docs/superpowers/reports/skill-v3-selective-compiler-multi-sample-quality-root-cause-v1",
+    "manifest_file_sha256": "4fc742fe66d8a0a111da7974b4f8d8a6e9c919c950c903b68e9ac0fe7cdd7af8",
+    "manifest_definition_sha256": "7022b932ad873dfb6a6d20dbd95538dff59d2f1acb0ba2cd417d03240d3df4ed",
+    "entry_count": 24,
+    "status": "EXACT"
+  },
+  "failed_pilot_baseline": {
+    "profile_id": "RESTORED_SKILL_V2_CHARACTER_CORE_V2",
+    "profile_sha256": "d7b40816db895bd0ae44329863d9be084986ffd030357873f455393e191c2398",
+    "rendered_sha256": "7d0f6309ede2261f2f6a1098d394937948bf5b50eb9248266ab350fd91da9adc",
+    "chars": 2925,
+    "token_estimate": 732,
+    "mandatory_rule_count": 8,
+    "advisory_rule_count": 12,
+    "truncation_occurred": false,
+    "shedding_occurred": false
+  },
+  "all_current_demand_baselines": {
+    "character-heavy": {
+      "profile_id": "RESTORED_SKILL_V2_CHARACTER_CORE_V2",
+      "profile_sha256": "d7b40816db895bd0ae44329863d9be084986ffd030357873f455393e191c2398",
+      "rendered_sha256": "7d0f6309ede2261f2f6a1098d394937948bf5b50eb9248266ab350fd91da9adc",
+      "chars": 2925,
+      "token_estimate": 732,
+      "mandatory_rule_count": 8,
+      "advisory_rule_count": 12,
+      "truncation_occurred": false,
+      "shedding_occurred": false
+    },
+    "world-heavy": {
+      "profile_id": "PLANNING_V2_EVENT_REALIZATION_PROFILE_V1",
+      "profile_sha256": "a5a94a7f0c11206851e66202331714758f2605fcbaba15fec2385197ef063597",
+      "rendered_sha256": "e7828db2dc18eceabe06b9d1068b2683d117617fb0bd1257a26e7747fbe02772",
+      "chars": 2742,
+      "token_estimate": 686,
+      "mandatory_rule_count": 8,
+      "advisory_rule_count": 12,
+      "truncation_occurred": false,
+      "shedding_occurred": false
+    },
+    "conflict-pacing-heavy": {
+      "profile_id": "PLANNING_V2_EVENT_REALIZATION_PROFILE_V1",
+      "profile_sha256": "a5a94a7f0c11206851e66202331714758f2605fcbaba15fec2385197ef063597",
+      "rendered_sha256": "e7828db2dc18eceabe06b9d1068b2683d117617fb0bd1257a26e7747fbe02772",
+      "chars": 2742,
+      "token_estimate": 686,
+      "mandatory_rule_count": 8,
+      "advisory_rule_count": 12,
+      "truncation_occurred": false,
+      "shedding_occurred": false
+    },
+    "setup-payoff-heavy": {
+      "profile_id": "PLANNING_V2_EVENT_REALIZATION_PROFILE_V1",
+      "profile_sha256": "a5a94a7f0c11206851e66202331714758f2605fcbaba15fec2385197ef063597",
+      "rendered_sha256": "e7828db2dc18eceabe06b9d1068b2683d117617fb0bd1257a26e7747fbe02772",
+      "chars": 2742,
+      "token_estimate": 686,
+      "mandatory_rule_count": 8,
+      "advisory_rule_count": 12,
+      "truncation_occurred": false,
+      "shedding_occurred": false
+    },
+    "mixed": {
+      "profile_id": "PLANNING_V2_EVENT_REALIZATION_PROFILE_V1",
+      "profile_sha256": "a5a94a7f0c11206851e66202331714758f2605fcbaba15fec2385197ef063597",
+      "rendered_sha256": "e7828db2dc18eceabe06b9d1068b2683d117617fb0bd1257a26e7747fbe02772",
+      "chars": 2742,
+      "token_estimate": 686,
+      "mandatory_rule_count": 8,
+      "advisory_rule_count": 12,
+      "truncation_occurred": false,
+      "shedding_occurred": false
+    }
+  },
+  "production_src_tree_sha256_binding": "dfd84c3be0c1aec8ccf083a50e61ed87458ab27a",
+  "production_baml_tree_sha256_binding": "32d97f9a738755a03d9b7bcb4fd49adef6ab2beb",
+  "production_model_visible_prompt_changed": false,
+  "authorization_approval_nonce_created": false,
+  "external_actions": {
+    "credential_lookup_count": 0,
+    "provider_client_creation_count": 0,
+    "real_provider_calls": 0,
+    "network_calls": 0,
+    "model_calls": 0,
+    "paid_calls": 0
+  }
+}

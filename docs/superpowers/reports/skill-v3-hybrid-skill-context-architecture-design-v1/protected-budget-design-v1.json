@@ -1,0 +1,43 @@
+{
+  "schema": "SkillV3HybridProtectedBudgetDesignV1",
+  "buckets": [
+    {
+      "name": "MANDATORY_AUTHORITY_BUCKET",
+      "protection": "ABSOLUTE",
+      "shed": false,
+      "truncate": false
+    },
+    {
+      "name": "REFERENCE_DERIVED_GUIDANCE_BUCKET",
+      "protection": "SEALED_IDENTITY",
+      "shed": false,
+      "truncate": false
+    },
+    {
+      "name": "BASELINE_SKILL_FOUNDATION_BUCKET",
+      "protection": "EXACT_PREFIX_SHA",
+      "shed": false,
+      "truncate": false
+    },
+    {
+      "name": "VERBATIM_SUPPLEMENT_BUCKET",
+      "protection": "ALL_OR_NOTHING_CLOSED_PACKET",
+      "shed": false,
+      "truncate": false
+    },
+    {
+      "name": "OUTPUT_CONTRACT_BUCKET",
+      "protection": "ABSOLUTE",
+      "shed": false,
+      "truncate": false
+    }
+  ],
+  "normal_mode_capacity": "safe_context=32768; input precheck=24576; output reserve=4624; margin=1024",
+  "compact_mode_behavior": "hybrid experiments do not enter the ordinary 3000-char shared advisory compactor; recompute protected buckets and fail closed if exact prefix+closed supplement cannot fit",
+  "shedding_priority": "NONE_IN_EXPERIMENT; no bucket is silently shed",
+  "truncation_policy": "NONE; no baseline/supplement summarization, partial section, or whole-rule drop",
+  "overflow_policy": "HYBRID_CONTEXT_CAPACITY_FAIL_CLOSED; do not mutate control semantics and do not dispatch treatment",
+  "baseline_displaced_by_supplement": false,
+  "reference_displaced_by_supplement": false,
+  "arbitrary_3000_character_target": false
+}

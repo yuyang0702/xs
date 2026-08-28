@@ -1,0 +1,28 @@
+{
+  "schema": "SkillV3HybridArchitecturePrivacyScanV1",
+  "status": "PASS",
+  "patterns": [
+    "\"api_key\":",
+    "authorization: bearer",
+    "sk-ant-",
+    "\"raw_story_text\":",
+    "\"raw_prompt_text\":",
+    "\"provider_raw_content\":",
+    "c:\\users\\",
+    ".codex\\attachments"
+  ],
+  "matches": [],
+  "total_matches": 0,
+  "raw_prompt_persisted": false,
+  "raw_story_persisted": false,
+  "raw_provider_content_persisted": false,
+  "credentials_persisted": false,
+  "external_actions": {
+    "credential_lookup_count": 0,
+    "provider_client_creation_count": 0,
+    "real_provider_calls": 0,
+    "network_calls": 0,
+    "model_calls": 0,
+    "paid_calls": 0
+  }
+}

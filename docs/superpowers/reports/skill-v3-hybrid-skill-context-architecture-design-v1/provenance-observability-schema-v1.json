@@ -1,0 +1,33 @@
+{
+  "schema": "SkillV3HybridProvenanceObservabilitySchemaV1",
+  "receipt_schema": "HybridSkillContextReceiptV1",
+  "required_fields": [
+    "HYBRID_CONTEXT_VERSION",
+    "BASELINE_CONTEXT_SHA",
+    "BASELINE_CONTEXT_CHAR_COUNT",
+    "BASELINE_CONTEXT_TOKEN_ESTIMATE",
+    "SUPPLEMENT_SECTION_OR_PACKET_IDS",
+    "SUPPLEMENT_SOURCE_SKILLS",
+    "SUPPLEMENT_SOURCE_SHAS",
+    "SUPPLEMENT_RENDER_SHA",
+    "SUPPLEMENT_CHAR_COUNT",
+    "SUPPLEMENT_TOKEN_ESTIMATE",
+    "REFERENCE_GUIDANCE_SHA",
+    "FINAL_ADVISORY_SHA",
+    "FINAL_MODEL_VISIBLE_INPUT_SHA",
+    "BUDGET_ALLOCATION",
+    "TRUNCATION_OCCURRED",
+    "SHEDDING_OCCURRED",
+    "OVERLAP_CLASSIFICATION",
+    "SEMANTIC_DEPENDENCY_CLOSURE_RECEIPT",
+    "ACTIONABILITY_DISTRIBUTION",
+    "DEMAND_FEATURES",
+    "SELECTOR_TRACE"
+  ],
+  "field_count": 21,
+  "exact_bytes_reconstruction": "baseline/source/profile SHA + ordered packet section SHAs + exact wrapper version reconstruct final advisory; runtime additionally hashes final model-visible bytes",
+  "raw_prompt_persisted": false,
+  "raw_story_persisted": false,
+  "raw_skill_text_persisted_in_receipt": false,
+  "failure_observability": "bounded hash-only HybridSkillContextFailureReceiptV1; reason, stage, input binding SHA, failed invariant, no raw content"
+}

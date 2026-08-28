@@ -1,0 +1,78 @@
+{
+  "schema": "SkillV3CrossDemandAntiOverfitReplaySpecV1",
+  "demands": [
+    "character-heavy",
+    "world-heavy",
+    "conflict-pacing-heavy",
+    "setup-payoff-heavy",
+    "mixed"
+  ],
+  "per_demand": {
+    "character-heavy": {
+      "packets": [
+        "CHARACTER_CHOICE_VOICE_PACKET_V1",
+        "CAUSAL_PRESSURE_PACKET_V1",
+        "SETUP_PAYOFF_CLOSURE_PACKET_V1"
+      ],
+      "supplement_sha256": "0802bf5af1f2f9454f1281f560d50133074c4623095db485d86d1088ffc6c98b",
+      "capacity_status": "PASS",
+      "baseline_preserved": true,
+      "wrong_layer_count": 0,
+      "verbatim_mismatch": 0
+    },
+    "world-heavy": {
+      "packets": [
+        "WORLD_AFFORDANCE_PRESSURE_PACKET_V1",
+        "CAUSAL_PRESSURE_PACKET_V1",
+        "SETUP_PAYOFF_CLOSURE_PACKET_V1"
+      ],
+      "supplement_sha256": "07e41c4acfa2fcf025f0351d9512b4a7c1d80108be2417c689850218dee66968",
+      "capacity_status": "PASS",
+      "baseline_preserved": true,
+      "wrong_layer_count": 0,
+      "verbatim_mismatch": 0
+    },
+    "conflict-pacing-heavy": {
+      "packets": [
+        "CAUSAL_PRESSURE_PACKET_V1",
+        "CHARACTER_CHOICE_VOICE_PACKET_V1",
+        "SETUP_PAYOFF_CLOSURE_PACKET_V1"
+      ],
+      "supplement_sha256": "0802bf5af1f2f9454f1281f560d50133074c4623095db485d86d1088ffc6c98b",
+      "capacity_status": "PASS",
+      "baseline_preserved": true,
+      "wrong_layer_count": 0,
+      "verbatim_mismatch": 0
+    },
+    "setup-payoff-heavy": {
+      "packets": [
+        "SETUP_PAYOFF_CLOSURE_PACKET_V1",
+        "CAUSAL_PRESSURE_PACKET_V1"
+      ],
+      "supplement_sha256": "440cfd9e0488440768c9d13c9b97794896ab526dd3e79c09e9cfbe3366839db2",
+      "capacity_status": "PASS",
+      "baseline_preserved": true,
+      "wrong_layer_count": 0,
+      "verbatim_mismatch": 0
+    },
+    "mixed": {
+      "packets": [
+        "CHARACTER_CHOICE_VOICE_PACKET_V1",
+        "WORLD_AFFORDANCE_PRESSURE_PACKET_V1",
+        "CAUSAL_PRESSURE_PACKET_V1",
+        "SETUP_PAYOFF_CLOSURE_PACKET_V1"
+      ],
+      "supplement_sha256": "4f61ff6af02057f9d35eb80872da9b8ef489b96b387454e57676bbb5c8b0cb22",
+      "capacity_status": "PASS",
+      "baseline_preserved": true,
+      "wrong_layer_count": 0,
+      "verbatim_mismatch": 0
+    }
+  },
+  "no_pair_specific_rules": true,
+  "no_anonymous_sample_specific_rules": true,
+  "no_current_prose_memorization": true,
+  "no_rubric_hacks": true,
+  "no_criticality_change": true,
+  "unknown_demand": "FAIL_CLOSED_NO_TREATMENT_DISPATCH"
+}

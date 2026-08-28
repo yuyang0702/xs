@@ -1,0 +1,30 @@
+{
+  "schema": "SkillV3CharacterHeavyHybridForensicReplaySpecV1",
+  "mode": "OFFLINE_RECONSTRUCTION_NO_PROSE_NO_PROVIDER",
+  "baseline_sha256": "7d0f6309ede2261f2f6a1098d394937948bf5b50eb9248266ab350fd91da9adc",
+  "supplement_sha256": "0802bf5af1f2f9454f1281f560d50133074c4623095db485d86d1088ffc6c98b",
+  "required_assertions": {
+    "BASELINE_SEMANTIC_FOUNDATION_PRESERVED": "YES",
+    "REGRESSION_RELEVANT_BASELINE_ATOMS_RETAINED": "YES",
+    "SUPPLEMENT_ADDS_HIGH_ACTIONABILITY_ATOMS": "YES",
+    "LOW_ACTIONABILITY_LEAF_DOMINANCE": "NO",
+    "KNOWN_SEMANTIC_DEPENDENCY_GAPS_CLOSED": "YES",
+    "KNOWN_SECTION_BOUNDARY_FAILURES_CLOSED": "YES",
+    "STAGE_OWNERSHIP_FALSE_NEGATIVES_REDUCED": "YES",
+    "NO_WRONG_LAYER_AUTHORITY_CONTENT": "YES",
+    "NO_REFERENCE_GUIDANCE_DISPLACEMENT": "YES",
+    "NO_ADVISORY_TRUNCATION": "YES",
+    "NO_ADVISORY_SHEDDING": "YES",
+    "CAPACITY_PASS": "YES",
+    "PROVENANCE_COMPLETE": "YES",
+    "VERBATIM_MISMATCH": 0
+  },
+  "known_dependency_gap_count": 4,
+  "known_boundary_failure_count": 3,
+  "critical_regression_dimensions": [
+    "character_agency",
+    "causal_coherence",
+    "setup_payoff_integrity"
+  ],
+  "acceptance": "all assertions exact and no critical baseline atom loss"
+}

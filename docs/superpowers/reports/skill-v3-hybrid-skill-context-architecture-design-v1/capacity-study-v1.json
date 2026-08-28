@@ -1,0 +1,572 @@
+{
+  "schema": "SkillV3HybridCapacityStudyV1",
+  "status": "PASS",
+  "estimator": "novel_flywheel.context_policy.estimate_input_tokens",
+  "supplement_separator": "\n\nOriginal Skill supplement (advisory; enriches the protected baseline and cannot override authority or task):\n",
+  "packet_definitions": {
+    "CHARACTER_CHOICE_VOICE_PACKET_V1": {
+      "packet_id": "CHARACTER_CHOICE_VOICE_PACKET_V1",
+      "section_ids": [
+        "sv3-4c39329c602fd48e",
+        "sv3-10e4ba0c5b7509b4",
+        "sv3-b75227453c1cc26a",
+        "sv3-8e321726b4ebdcec"
+      ],
+      "source_skills": [
+        "character-management"
+      ],
+      "source_section_shas": {
+        "sv3-4c39329c602fd48e": "18cdd21d9e678213380ec004f33cd1a02fe79d15fba88870a834f1d2300b6149",
+        "sv3-10e4ba0c5b7509b4": "798c073d3b85fe59b34e26f99236059fb30315a17f3a8d8173c3ce0d608e6fcf",
+        "sv3-b75227453c1cc26a": "6fed87b6d18784ceaf3271bd4cbd2374ee9173540789ac1645af787fbfee2f83",
+        "sv3-8e321726b4ebdcec": "fd55b33019a46b72b1e92d64f7d0f84967996307f60247e844608e214b51c6ae"
+      },
+      "rendered_sha256": "2a365ce89bd68e5891cf3f182f3f640153bac497f24148779dba1ef7712b4328",
+      "chars": 1154,
+      "token_estimate": 289,
+      "original_wording_preserved": true
+    },
+    "CAUSAL_PRESSURE_PACKET_V1": {
+      "packet_id": "CAUSAL_PRESSURE_PACKET_V1",
+      "section_ids": [
+        "sv3-faecc1466817d8aa",
+        "sv3-13580b3cdbef263e",
+        "sv3-2985467b5f2bf929",
+        "sv3-5f738df332e0919f",
+        "sv3-60d4bee497e4c0dc"
+      ],
+      "source_skills": [
+        "plot-structure",
+        "worldbuilding"
+      ],
+      "source_section_shas": {
+        "sv3-faecc1466817d8aa": "ac802425007fdb56b8a1c835d3557607ca70537439ae082d8cecaf64a8d2fece",
+        "sv3-13580b3cdbef263e": "73c2b160147666820490daac3c8263c83616be1d6b7553dbe4c7ad59c1deecd5",
+        "sv3-2985467b5f2bf929": "6fafb45c97b2c08902b03097f3f06f2dc1d9e9c9465b9489e1f5b37c209dad41",
+        "sv3-5f738df332e0919f": "adf59ba8ee504efb755dee11f2ac4264c7ce806f7777ac0e3d39aec16048a406",
+        "sv3-60d4bee497e4c0dc": "62fd1ac8a3c40cd681447b1e42ab7cb35d30a3c7dc8622553167db894983259a"
+      },
+      "rendered_sha256": "8328ee0c2b3ac0a436df9f7e95b434abbaedc20d173dc3713f60dcd25eecc435",
+      "chars": 1371,
+      "token_estimate": 343,
+      "original_wording_preserved": true
+    },
+    "SETUP_PAYOFF_CLOSURE_PACKET_V1": {
+      "packet_id": "SETUP_PAYOFF_CLOSURE_PACKET_V1",
+      "section_ids": [
+        "sv3-2ced894267dc51e3",
+        "sv3-82ca2fdf9c28183b",
+        "sv3-972a75cb8ca8f0bd",
+        "sv3-6e4a0b2625a01274",
+        "sv3-ac7aa3aed8a7d237",
+        "sv3-ad3871e96cc16876"
+      ],
+      "source_skills": [
+        "plot-structure",
+        "worldbuilding"
+      ],
+      "source_section_shas": {
+        "sv3-2ced894267dc51e3": "a7f8ff1660501aa2f0a7add1f59ebb57f10974b69bef32cabfac0fdb6edb39d8",
+        "sv3-82ca2fdf9c28183b": "0fa3af2eb8e48d88855a740fd829235839d2cb20c39eb8979da9ef5cbd005483",
+        "sv3-972a75cb8ca8f0bd": "0ff2b2bf8144d3715869f1c7f63f594a22afe08558117c797c928ac7e1318c5f",
+        "sv3-6e4a0b2625a01274": "38571a839a3723fbc27dfa75db7110e677ebe15f07d6b282a1baa4491a12f80c",
+        "sv3-ac7aa3aed8a7d237": "8598c41dcc56bea1ab0987381230b8a39a088748ca1f942f0f4c84df24d7acd0",
+        "sv3-ad3871e96cc16876": "b2e8d32ed90de3f9711ee25d1938d41e4670352b470cffec67cf31f9ef19db32"
+      },
+      "rendered_sha256": "158d7c4bea1509013ce35b6108cbbb437f26ee1817f69da27455a6586c546544",
+      "chars": 1129,
+      "token_estimate": 283,
+      "original_wording_preserved": true
+    },
+    "WORLD_AFFORDANCE_PRESSURE_PACKET_V1": {
+      "packet_id": "WORLD_AFFORDANCE_PRESSURE_PACKET_V1",
+      "section_ids": [
+        "sv3-2985467b5f2bf929",
+        "sv3-b4583d410167ab14",
+        "sv3-5f738df332e0919f",
+        "sv3-ad3871e96cc16876",
+        "sv3-0933e75cb694edca",
+        "sv3-60d4bee497e4c0dc",
+        "sv3-f998823d27d7086b"
+      ],
+      "source_skills": [
+        "worldbuilding"
+      ],
+      "source_section_shas": {
+        "sv3-2985467b5f2bf929": "6fafb45c97b2c08902b03097f3f06f2dc1d9e9c9465b9489e1f5b37c209dad41",
+        "sv3-b4583d410167ab14": "19774b377ffd9e5701d895780388e36914061720205580f8d23011d654b50b39",
+        "sv3-5f738df332e0919f": "adf59ba8ee504efb755dee11f2ac4264c7ce806f7777ac0e3d39aec16048a406",
+        "sv3-ad3871e96cc16876": "b2e8d32ed90de3f9711ee25d1938d41e4670352b470cffec67cf31f9ef19db32",
+        "sv3-0933e75cb694edca": "c165a583a6cab8a92ee5f622a0f4b289339281a0421e2212e7896b4e72bf9653",
+        "sv3-60d4bee497e4c0dc": "62fd1ac8a3c40cd681447b1e42ab7cb35d30a3c7dc8622553167db894983259a",
+        "sv3-f998823d27d7086b": "0cef23e02e1c059e5b6c7a91c55b4ecd29949716fa95d821dd090ee4ee1f5223"
+      },
+      "rendered_sha256": "91125f282944047cd27a5e4b5f1fde1017766b424d92c2fb173e70b57a63e840",
+      "chars": 1468,
+      "token_estimate": 367,
+      "original_wording_preserved": true
+    }
+  },
+  "demand_supplements": {
+    "character-heavy": {
+      "demand_class": "character-heavy",
+      "packet_ids": [
+        "CHARACTER_CHOICE_VOICE_PACKET_V1",
+        "CAUSAL_PRESSURE_PACKET_V1",
+        "SETUP_PAYOFF_CLOSURE_PACKET_V1"
+      ],
+      "section_ids": [
+        "sv3-2ced894267dc51e3",
+        "sv3-82ca2fdf9c28183b",
+        "sv3-972a75cb8ca8f0bd",
+        "sv3-faecc1466817d8aa",
+        "sv3-6e4a0b2625a01274",
+        "sv3-13580b3cdbef263e",
+        "sv3-ac7aa3aed8a7d237",
+        "sv3-4c39329c602fd48e",
+        "sv3-10e4ba0c5b7509b4",
+        "sv3-b75227453c1cc26a",
+        "sv3-8e321726b4ebdcec",
+        "sv3-2985467b5f2bf929",
+        "sv3-5f738df332e0919f",
+        "sv3-ad3871e96cc16876",
+        "sv3-60d4bee497e4c0dc"
+      ],
+      "section_count": 15,
+      "source_skills": [
+        "plot-structure",
+        "character-management",
+        "worldbuilding"
+      ],
+      "source_section_shas": {
+        "sv3-2ced894267dc51e3": "a7f8ff1660501aa2f0a7add1f59ebb57f10974b69bef32cabfac0fdb6edb39d8",
+        "sv3-82ca2fdf9c28183b": "0fa3af2eb8e48d88855a740fd829235839d2cb20c39eb8979da9ef5cbd005483",
+        "sv3-972a75cb8ca8f0bd": "0ff2b2bf8144d3715869f1c7f63f594a22afe08558117c797c928ac7e1318c5f",
+        "sv3-faecc1466817d8aa": "ac802425007fdb56b8a1c835d3557607ca70537439ae082d8cecaf64a8d2fece",
+        "sv3-6e4a0b2625a01274": "38571a839a3723fbc27dfa75db7110e677ebe15f07d6b282a1baa4491a12f80c",
+        "sv3-13580b3cdbef263e": "73c2b160147666820490daac3c8263c83616be1d6b7553dbe4c7ad59c1deecd5",
+        "sv3-ac7aa3aed8a7d237": "8598c41dcc56bea1ab0987381230b8a39a088748ca1f942f0f4c84df24d7acd0",
+        "sv3-4c39329c602fd48e": "18cdd21d9e678213380ec004f33cd1a02fe79d15fba88870a834f1d2300b6149",
+        "sv3-10e4ba0c5b7509b4": "798c073d3b85fe59b34e26f99236059fb30315a17f3a8d8173c3ce0d608e6fcf",
+        "sv3-b75227453c1cc26a": "6fed87b6d18784ceaf3271bd4cbd2374ee9173540789ac1645af787fbfee2f83",
+        "sv3-8e321726b4ebdcec": "fd55b33019a46b72b1e92d64f7d0f84967996307f60247e844608e214b51c6ae",
+        "sv3-2985467b5f2bf929": "6fafb45c97b2c08902b03097f3f06f2dc1d9e9c9465b9489e1f5b37c209dad41",
+        "sv3-5f738df332e0919f": "adf59ba8ee504efb755dee11f2ac4264c7ce806f7777ac0e3d39aec16048a406",
+        "sv3-ad3871e96cc16876": "b2e8d32ed90de3f9711ee25d1938d41e4670352b470cffec67cf31f9ef19db32",
+        "sv3-60d4bee497e4c0dc": "62fd1ac8a3c40cd681447b1e42ab7cb35d30a3c7dc8622553167db894983259a"
+      },
+      "rendered_sha256": "0802bf5af1f2f9454f1281f560d50133074c4623095db485d86d1088ffc6c98b",
+      "chars": 3656,
+      "token_estimate": 914,
+      "actionability_distribution": {
+        "HIGH_ACTIONABILITY": 8,
+        "MEDIUM_ACTIONABILITY": 5,
+        "LOW_ACTIONABILITY": 2
+      },
+      "actionability_source_chars": {
+        "HIGH_ACTIONABILITY": 1309,
+        "MEDIUM_ACTIONABILITY": 675,
+        "LOW_ACTIONABILITY": 93
+      },
+      "low_actionability_dependency_only": true,
+      "verbatim_mismatch": 0,
+      "creative_paraphrase_count": 0,
+      "summary_to_fit_count": 0,
+      "silent_truncation_count": 0
+    },
+    "world-heavy": {
+      "demand_class": "world-heavy",
+      "packet_ids": [
+        "WORLD_AFFORDANCE_PRESSURE_PACKET_V1",
+        "CAUSAL_PRESSURE_PACKET_V1",
+        "SETUP_PAYOFF_CLOSURE_PACKET_V1"
+      ],
+      "section_ids": [
+        "sv3-2ced894267dc51e3",
+        "sv3-82ca2fdf9c28183b",
+        "sv3-972a75cb8ca8f0bd",
+        "sv3-faecc1466817d8aa",
+        "sv3-6e4a0b2625a01274",
+        "sv3-13580b3cdbef263e",
+        "sv3-ac7aa3aed8a7d237",
+        "sv3-2985467b5f2bf929",
+        "sv3-b4583d410167ab14",
+        "sv3-5f738df332e0919f",
+        "sv3-ad3871e96cc16876",
+        "sv3-0933e75cb694edca",
+        "sv3-60d4bee497e4c0dc",
+        "sv3-f998823d27d7086b"
+      ],
+      "section_count": 14,
+      "source_skills": [
+        "plot-structure",
+        "worldbuilding"
+      ],
+      "source_section_shas": {
+        "sv3-2ced894267dc51e3": "a7f8ff1660501aa2f0a7add1f59ebb57f10974b69bef32cabfac0fdb6edb39d8",
+        "sv3-82ca2fdf9c28183b": "0fa3af2eb8e48d88855a740fd829235839d2cb20c39eb8979da9ef5cbd005483",
+        "sv3-972a75cb8ca8f0bd": "0ff2b2bf8144d3715869f1c7f63f594a22afe08558117c797c928ac7e1318c5f",
+        "sv3-faecc1466817d8aa": "ac802425007fdb56b8a1c835d3557607ca70537439ae082d8cecaf64a8d2fece",
+        "sv3-6e4a0b2625a01274": "38571a839a3723fbc27dfa75db7110e677ebe15f07d6b282a1baa4491a12f80c",
+        "sv3-13580b3cdbef263e": "73c2b160147666820490daac3c8263c83616be1d6b7553dbe4c7ad59c1deecd5",
+        "sv3-ac7aa3aed8a7d237": "8598c41dcc56bea1ab0987381230b8a39a088748ca1f942f0f4c84df24d7acd0",
+        "sv3-2985467b5f2bf929": "6fafb45c97b2c08902b03097f3f06f2dc1d9e9c9465b9489e1f5b37c209dad41",
+        "sv3-b4583d410167ab14": "19774b377ffd9e5701d895780388e36914061720205580f8d23011d654b50b39",
+        "sv3-5f738df332e0919f": "adf59ba8ee504efb755dee11f2ac4264c7ce806f7777ac0e3d39aec16048a406",
+        "sv3-ad3871e96cc16876": "b2e8d32ed90de3f9711ee25d1938d41e4670352b470cffec67cf31f9ef19db32",
+        "sv3-0933e75cb694edca": "c165a583a6cab8a92ee5f622a0f4b289339281a0421e2212e7896b4e72bf9653",
+        "sv3-60d4bee497e4c0dc": "62fd1ac8a3c40cd681447b1e42ab7cb35d30a3c7dc8622553167db894983259a",
+        "sv3-f998823d27d7086b": "0cef23e02e1c059e5b6c7a91c55b4ecd29949716fa95d821dd090ee4ee1f5223"
+      },
+      "rendered_sha256": "07e41c4acfa2fcf025f0351d9512b4a7c1d80108be2417c689850218dee66968",
+      "chars": 3006,
+      "token_estimate": 752,
+      "actionability_distribution": {
+        "HIGH_ACTIONABILITY": 7,
+        "MEDIUM_ACTIONABILITY": 5,
+        "LOW_ACTIONABILITY": 2
+      },
+      "actionability_source_chars": {
+        "HIGH_ACTIONABILITY": 963,
+        "MEDIUM_ACTIONABILITY": 508,
+        "LOW_ACTIONABILITY": 93
+      },
+      "low_actionability_dependency_only": true,
+      "verbatim_mismatch": 0,
+      "creative_paraphrase_count": 0,
+      "summary_to_fit_count": 0,
+      "silent_truncation_count": 0
+    },
+    "conflict-pacing-heavy": {
+      "demand_class": "conflict-pacing-heavy",
+      "packet_ids": [
+        "CAUSAL_PRESSURE_PACKET_V1",
+        "CHARACTER_CHOICE_VOICE_PACKET_V1",
+        "SETUP_PAYOFF_CLOSURE_PACKET_V1"
+      ],
+      "section_ids": [
+        "sv3-2ced894267dc51e3",
+        "sv3-82ca2fdf9c28183b",
+        "sv3-972a75cb8ca8f0bd",
+        "sv3-faecc1466817d8aa",
+        "sv3-6e4a0b2625a01274",
+        "sv3-13580b3cdbef263e",
+        "sv3-ac7aa3aed8a7d237",
+        "sv3-4c39329c602fd48e",
+        "sv3-10e4ba0c5b7509b4",
+        "sv3-b75227453c1cc26a",
+        "sv3-8e321726b4ebdcec",
+        "sv3-2985467b5f2bf929",
+        "sv3-5f738df332e0919f",
+        "sv3-ad3871e96cc16876",
+        "sv3-60d4bee497e4c0dc"
+      ],
+      "section_count": 15,
+      "source_skills": [
+        "plot-structure",
+        "character-management",
+        "worldbuilding"
+      ],
+      "source_section_shas": {
+        "sv3-2ced894267dc51e3": "a7f8ff1660501aa2f0a7add1f59ebb57f10974b69bef32cabfac0fdb6edb39d8",
+        "sv3-82ca2fdf9c28183b": "0fa3af2eb8e48d88855a740fd829235839d2cb20c39eb8979da9ef5cbd005483",
+        "sv3-972a75cb8ca8f0bd": "0ff2b2bf8144d3715869f1c7f63f594a22afe08558117c797c928ac7e1318c5f",
+        "sv3-faecc1466817d8aa": "ac802425007fdb56b8a1c835d3557607ca70537439ae082d8cecaf64a8d2fece",
+        "sv3-6e4a0b2625a01274": "38571a839a3723fbc27dfa75db7110e677ebe15f07d6b282a1baa4491a12f80c",
+        "sv3-13580b3cdbef263e": "73c2b160147666820490daac3c8263c83616be1d6b7553dbe4c7ad59c1deecd5",
+        "sv3-ac7aa3aed8a7d237": "8598c41dcc56bea1ab0987381230b8a39a088748ca1f942f0f4c84df24d7acd0",
+        "sv3-4c39329c602fd48e": "18cdd21d9e678213380ec004f33cd1a02fe79d15fba88870a834f1d2300b6149",
+        "sv3-10e4ba0c5b7509b4": "798c073d3b85fe59b34e26f99236059fb30315a17f3a8d8173c3ce0d608e6fcf",
+        "sv3-b75227453c1cc26a": "6fed87b6d18784ceaf3271bd4cbd2374ee9173540789ac1645af787fbfee2f83",
+        "sv3-8e321726b4ebdcec": "fd55b33019a46b72b1e92d64f7d0f84967996307f60247e844608e214b51c6ae",
+        "sv3-2985467b5f2bf929": "6fafb45c97b2c08902b03097f3f06f2dc1d9e9c9465b9489e1f5b37c209dad41",
+        "sv3-5f738df332e0919f": "adf59ba8ee504efb755dee11f2ac4264c7ce806f7777ac0e3d39aec16048a406",
+        "sv3-ad3871e96cc16876": "b2e8d32ed90de3f9711ee25d1938d41e4670352b470cffec67cf31f9ef19db32",
+        "sv3-60d4bee497e4c0dc": "62fd1ac8a3c40cd681447b1e42ab7cb35d30a3c7dc8622553167db894983259a"
+      },
+      "rendered_sha256": "0802bf5af1f2f9454f1281f560d50133074c4623095db485d86d1088ffc6c98b",
+      "chars": 3656,
+      "token_estimate": 914,
+      "actionability_distribution": {
+        "HIGH_ACTIONABILITY": 8,
+        "MEDIUM_ACTIONABILITY": 5,
+        "LOW_ACTIONABILITY": 2
+      },
+      "actionability_source_chars": {
+        "HIGH_ACTIONABILITY": 1309,
+        "MEDIUM_ACTIONABILITY": 675,
+        "LOW_ACTIONABILITY": 93
+      },
+      "low_actionability_dependency_only": true,
+      "verbatim_mismatch": 0,
+      "creative_paraphrase_count": 0,
+      "summary_to_fit_count": 0,
+      "silent_truncation_count": 0
+    },
+    "setup-payoff-heavy": {
+      "demand_class": "setup-payoff-heavy",
+      "packet_ids": [
+        "SETUP_PAYOFF_CLOSURE_PACKET_V1",
+        "CAUSAL_PRESSURE_PACKET_V1"
+      ],
+      "section_ids": [
+        "sv3-2ced894267dc51e3",
+        "sv3-82ca2fdf9c28183b",
+        "sv3-972a75cb8ca8f0bd",
+        "sv3-faecc1466817d8aa",
+        "sv3-6e4a0b2625a01274",
+        "sv3-13580b3cdbef263e",
+        "sv3-ac7aa3aed8a7d237",
+        "sv3-2985467b5f2bf929",
+        "sv3-5f738df332e0919f",
+        "sv3-ad3871e96cc16876",
+        "sv3-60d4bee497e4c0dc"
+      ],
+      "section_count": 11,
+      "source_skills": [
+        "plot-structure",
+        "worldbuilding"
+      ],
+      "source_section_shas": {
+        "sv3-2ced894267dc51e3": "a7f8ff1660501aa2f0a7add1f59ebb57f10974b69bef32cabfac0fdb6edb39d8",
+        "sv3-82ca2fdf9c28183b": "0fa3af2eb8e48d88855a740fd829235839d2cb20c39eb8979da9ef5cbd005483",
+        "sv3-972a75cb8ca8f0bd": "0ff2b2bf8144d3715869f1c7f63f594a22afe08558117c797c928ac7e1318c5f",
+        "sv3-faecc1466817d8aa": "ac802425007fdb56b8a1c835d3557607ca70537439ae082d8cecaf64a8d2fece",
+        "sv3-6e4a0b2625a01274": "38571a839a3723fbc27dfa75db7110e677ebe15f07d6b282a1baa4491a12f80c",
+        "sv3-13580b3cdbef263e": "73c2b160147666820490daac3c8263c83616be1d6b7553dbe4c7ad59c1deecd5",
+        "sv3-ac7aa3aed8a7d237": "8598c41dcc56bea1ab0987381230b8a39a088748ca1f942f0f4c84df24d7acd0",
+        "sv3-2985467b5f2bf929": "6fafb45c97b2c08902b03097f3f06f2dc1d9e9c9465b9489e1f5b37c209dad41",
+        "sv3-5f738df332e0919f": "adf59ba8ee504efb755dee11f2ac4264c7ce806f7777ac0e3d39aec16048a406",
+        "sv3-ad3871e96cc16876": "b2e8d32ed90de3f9711ee25d1938d41e4670352b470cffec67cf31f9ef19db32",
+        "sv3-60d4bee497e4c0dc": "62fd1ac8a3c40cd681447b1e42ab7cb35d30a3c7dc8622553167db894983259a"
+      },
+      "rendered_sha256": "440cfd9e0488440768c9d13c9b97794896ab526dd3e79c09e9cfbe3366839db2",
+      "chars": 2501,
+      "token_estimate": 626,
+      "actionability_distribution": {
+        "HIGH_ACTIONABILITY": 6,
+        "MEDIUM_ACTIONABILITY": 3,
+        "LOW_ACTIONABILITY": 2
+      },
+      "actionability_source_chars": {
+        "HIGH_ACTIONABILITY": 905,
+        "MEDIUM_ACTIONABILITY": 372,
+        "LOW_ACTIONABILITY": 93
+      },
+      "low_actionability_dependency_only": true,
+      "verbatim_mismatch": 0,
+      "creative_paraphrase_count": 0,
+      "summary_to_fit_count": 0,
+      "silent_truncation_count": 0
+    },
+    "mixed": {
+      "demand_class": "mixed",
+      "packet_ids": [
+        "CHARACTER_CHOICE_VOICE_PACKET_V1",
+        "WORLD_AFFORDANCE_PRESSURE_PACKET_V1",
+        "CAUSAL_PRESSURE_PACKET_V1",
+        "SETUP_PAYOFF_CLOSURE_PACKET_V1"
+      ],
+      "section_ids": [
+        "sv3-2ced894267dc51e3",
+        "sv3-82ca2fdf9c28183b",
+        "sv3-972a75cb8ca8f0bd",
+        "sv3-faecc1466817d8aa",
+        "sv3-6e4a0b2625a01274",
+        "sv3-13580b3cdbef263e",
+        "sv3-ac7aa3aed8a7d237",
+        "sv3-4c39329c602fd48e",
+        "sv3-10e4ba0c5b7509b4",
+        "sv3-b75227453c1cc26a",
+        "sv3-8e321726b4ebdcec",
+        "sv3-2985467b5f2bf929",
+        "sv3-b4583d410167ab14",
+        "sv3-5f738df332e0919f",
+        "sv3-ad3871e96cc16876",
+        "sv3-0933e75cb694edca",
+        "sv3-60d4bee497e4c0dc",
+        "sv3-f998823d27d7086b"
+      ],
+      "section_count": 18,
+      "source_skills": [
+        "plot-structure",
+        "character-management",
+        "worldbuilding"
+      ],
+      "source_section_shas": {
+        "sv3-2ced894267dc51e3": "a7f8ff1660501aa2f0a7add1f59ebb57f10974b69bef32cabfac0fdb6edb39d8",
+        "sv3-82ca2fdf9c28183b": "0fa3af2eb8e48d88855a740fd829235839d2cb20c39eb8979da9ef5cbd005483",
+        "sv3-972a75cb8ca8f0bd": "0ff2b2bf8144d3715869f1c7f63f594a22afe08558117c797c928ac7e1318c5f",
+        "sv3-faecc1466817d8aa": "ac802425007fdb56b8a1c835d3557607ca70537439ae082d8cecaf64a8d2fece",
+        "sv3-6e4a0b2625a01274": "38571a839a3723fbc27dfa75db7110e677ebe15f07d6b282a1baa4491a12f80c",
+        "sv3-13580b3cdbef263e": "73c2b160147666820490daac3c8263c83616be1d6b7553dbe4c7ad59c1deecd5",
+        "sv3-ac7aa3aed8a7d237": "8598c41dcc56bea1ab0987381230b8a39a088748ca1f942f0f4c84df24d7acd0",
+        "sv3-4c39329c602fd48e": "18cdd21d9e678213380ec004f33cd1a02fe79d15fba88870a834f1d2300b6149",
+        "sv3-10e4ba0c5b7509b4": "798c073d3b85fe59b34e26f99236059fb30315a17f3a8d8173c3ce0d608e6fcf",
+        "sv3-b75227453c1cc26a": "6fed87b6d18784ceaf3271bd4cbd2374ee9173540789ac1645af787fbfee2f83",
+        "sv3-8e321726b4ebdcec": "fd55b33019a46b72b1e92d64f7d0f84967996307f60247e844608e214b51c6ae",
+        "sv3-2985467b5f2bf929": "6fafb45c97b2c08902b03097f3f06f2dc1d9e9c9465b9489e1f5b37c209dad41",
+        "sv3-b4583d410167ab14": "19774b377ffd9e5701d895780388e36914061720205580f8d23011d654b50b39",
+        "sv3-5f738df332e0919f": "adf59ba8ee504efb755dee11f2ac4264c7ce806f7777ac0e3d39aec16048a406",
+        "sv3-ad3871e96cc16876": "b2e8d32ed90de3f9711ee25d1938d41e4670352b470cffec67cf31f9ef19db32",
+        "sv3-0933e75cb694edca": "c165a583a6cab8a92ee5f622a0f4b289339281a0421e2212e7896b4e72bf9653",
+        "sv3-60d4bee497e4c0dc": "62fd1ac8a3c40cd681447b1e42ab7cb35d30a3c7dc8622553167db894983259a",
+        "sv3-f998823d27d7086b": "0cef23e02e1c059e5b6c7a91c55b4ecd29949716fa95d821dd090ee4ee1f5223"
+      },
+      "rendered_sha256": "4f61ff6af02057f9d35eb80872da9b8ef489b96b387454e57676bbb5c8b0cb22",
+      "chars": 4161,
+      "token_estimate": 1041,
+      "actionability_distribution": {
+        "HIGH_ACTIONABILITY": 9,
+        "MEDIUM_ACTIONABILITY": 7,
+        "LOW_ACTIONABILITY": 2
+      },
+      "actionability_source_chars": {
+        "HIGH_ACTIONABILITY": 1367,
+        "MEDIUM_ACTIONABILITY": 811,
+        "LOW_ACTIONABILITY": 93
+      },
+      "low_actionability_dependency_only": true,
+      "verbatim_mismatch": 0,
+      "creative_paraphrase_count": 0,
+      "summary_to_fit_count": 0,
+      "silent_truncation_count": 0
+    }
+  },
+  "rows": [
+    {
+      "demand_class": "character-heavy",
+      "baseline_chars": 2925,
+      "baseline_tokens": 732,
+      "reference_guidance_chars": 431,
+      "reference_guidance_tokens": 108,
+      "supplement_chars": 3656,
+      "supplement_tokens": 914,
+      "supplement_wrapper_chars": 111,
+      "supplement_wrapper_tokens": 28,
+      "incremental_advisory_tokens": 942,
+      "existing_advisory_sha256": "90868c82b120f7df4503d742f395ac2e3ca3baddb90871a2f6b3c2e8543b813b",
+      "total_advisory_chars": 7177,
+      "total_advisory_tokens": 1795,
+      "total_prompt_estimate": 2382,
+      "headroom_to_provider_context_limit": 24738,
+      "headroom_to_local_precheck_limit": 16546,
+      "safe_context_window_tokens": 32768,
+      "maximum_total_input_tokens": 24576,
+      "output_reserve_tokens": 4624,
+      "non_skill_input_tokens_including_reference_guidance": 708,
+      "wrapper_and_estimator_margin_tokens": 1024,
+      "truncation_occurred": false,
+      "shedding_occurred": false,
+      "capacity_status": "PASS"
+    },
+    {
+      "demand_class": "world-heavy",
+      "baseline_chars": 2742,
+      "baseline_tokens": 686,
+      "reference_guidance_chars": 431,
+      "reference_guidance_tokens": 108,
+      "supplement_chars": 3006,
+      "supplement_tokens": 752,
+      "supplement_wrapper_chars": 111,
+      "supplement_wrapper_tokens": 28,
+      "incremental_advisory_tokens": 779,
+      "existing_advisory_sha256": "b439713e92c93aef27a96db234647be164ac8ecbb8fa7ec7845c5702c2174a03",
+      "total_advisory_chars": 6344,
+      "total_advisory_tokens": 1586,
+      "total_prompt_estimate": 2173,
+      "headroom_to_provider_context_limit": 24947,
+      "headroom_to_local_precheck_limit": 16755,
+      "safe_context_window_tokens": 32768,
+      "maximum_total_input_tokens": 24576,
+      "output_reserve_tokens": 4624,
+      "non_skill_input_tokens_including_reference_guidance": 708,
+      "wrapper_and_estimator_margin_tokens": 1024,
+      "truncation_occurred": false,
+      "shedding_occurred": false,
+      "capacity_status": "PASS"
+    },
+    {
+      "demand_class": "conflict-pacing-heavy",
+      "baseline_chars": 2742,
+      "baseline_tokens": 686,
+      "reference_guidance_chars": 431,
+      "reference_guidance_tokens": 108,
+      "supplement_chars": 3656,
+      "supplement_tokens": 914,
+      "supplement_wrapper_chars": 111,
+      "supplement_wrapper_tokens": 28,
+      "incremental_advisory_tokens": 942,
+      "existing_advisory_sha256": "b439713e92c93aef27a96db234647be164ac8ecbb8fa7ec7845c5702c2174a03",
+      "total_advisory_chars": 6994,
+      "total_advisory_tokens": 1749,
+      "total_prompt_estimate": 2336,
+      "headroom_to_provider_context_limit": 24784,
+      "headroom_to_local_precheck_limit": 16592,
+      "safe_context_window_tokens": 32768,
+      "maximum_total_input_tokens": 24576,
+      "output_reserve_tokens": 4624,
+      "non_skill_input_tokens_including_reference_guidance": 708,
+      "wrapper_and_estimator_margin_tokens": 1024,
+      "truncation_occurred": false,
+      "shedding_occurred": false,
+      "capacity_status": "PASS"
+    },
+    {
+      "demand_class": "setup-payoff-heavy",
+      "baseline_chars": 2742,
+      "baseline_tokens": 686,
+      "reference_guidance_chars": 431,
+      "reference_guidance_tokens": 108,
+      "supplement_chars": 2501,
+      "supplement_tokens": 626,
+      "supplement_wrapper_chars": 111,
+      "supplement_wrapper_tokens": 28,
+      "incremental_advisory_tokens": 653,
+      "existing_advisory_sha256": "b439713e92c93aef27a96db234647be164ac8ecbb8fa7ec7845c5702c2174a03",
+      "total_advisory_chars": 5839,
+      "total_advisory_tokens": 1460,
+      "total_prompt_estimate": 2047,
+      "headroom_to_provider_context_limit": 25073,
+      "headroom_to_local_precheck_limit": 16881,
+      "safe_context_window_tokens": 32768,
+      "maximum_total_input_tokens": 24576,
+      "output_reserve_tokens": 4624,
+      "non_skill_input_tokens_including_reference_guidance": 708,
+      "wrapper_and_estimator_margin_tokens": 1024,
+      "truncation_occurred": false,
+      "shedding_occurred": false,
+      "capacity_status": "PASS"
+    },
+    {
+      "demand_class": "mixed",
+      "baseline_chars": 2742,
+      "baseline_tokens": 686,
+      "reference_guidance_chars": 431,
+      "reference_guidance_tokens": 108,
+      "supplement_chars": 4161,
+      "supplement_tokens": 1041,
+      "supplement_wrapper_chars": 111,
+      "supplement_wrapper_tokens": 28,
+      "incremental_advisory_tokens": 1068,
+      "existing_advisory_sha256": "b439713e92c93aef27a96db234647be164ac8ecbb8fa7ec7845c5702c2174a03",
+      "total_advisory_chars": 7499,
+      "total_advisory_tokens": 1875,
+      "total_prompt_estimate": 2462,
+      "headroom_to_provider_context_limit": 24658,
+      "headroom_to_local_precheck_limit": 16466,
+      "safe_context_window_tokens": 32768,
+      "maximum_total_input_tokens": 24576,
+      "output_reserve_tokens": 4624,
+      "non_skill_input_tokens_including_reference_guidance": 708,
+      "wrapper_and_estimator_margin_tokens": 1024,
+      "truncation_occurred": false,
+      "shedding_occurred": false,
+      "capacity_status": "PASS"
+    }
+  ],
+  "minimum_provider_headroom": 24658,
+  "minimum_local_precheck_headroom": 16466,
+  "baseline_or_reference_truncated": false,
+  "baseline_or_reference_shed": false
+}
