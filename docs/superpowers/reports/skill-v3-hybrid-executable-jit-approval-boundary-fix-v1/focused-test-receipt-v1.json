@@ -1,0 +1,6 @@
+{
+  "schema": "SkillV3HybridJitFocusedTestReceiptV1",
+  "status": "PASS",
+  "summary": "36 passed in 27.13s",
+  "new_jit_boundary_regression_count": 0
+}

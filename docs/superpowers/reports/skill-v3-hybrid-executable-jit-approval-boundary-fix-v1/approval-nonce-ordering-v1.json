@@ -1,0 +1,15 @@
+{
+  "schema": "SkillV3HybridApprovalNonceOrderingEvidenceV1",
+  "status": "PASS",
+  "order": [
+    "VALID_ACTIVE_CAMPAIGN_PERMISSION",
+    "JIT_SAMPLE_APPROVAL_CREATED",
+    "JIT_SAMPLE_APPROVAL_VERIFIED",
+    "DURABLE_NONCE_ABSENCE_VERIFIED",
+    "DURABLE_NONCE_RESERVED",
+    "ONE_SHOT_DISPATCH"
+  ],
+  "nonce_before_approval": "IMPOSSIBLE",
+  "nonce_after_invalid_approval": "IMPOSSIBLE",
+  "later_sample_nonce_precreation": "IMPOSSIBLE"
+}

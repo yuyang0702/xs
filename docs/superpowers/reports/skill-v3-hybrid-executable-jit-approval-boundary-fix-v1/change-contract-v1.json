@@ -1,0 +1,23 @@
+{
+  "schema": "SkillV3HybridJitBoundaryChangeContractV1",
+  "level": "L3",
+  "authorization": "OFFLINE_IMPLEMENTATION_VALIDATION_AND_EVIDENCE_ONLY",
+  "allowed": [
+    "new Hybrid approval namespace",
+    "new single-sample runner wrapper",
+    "tests",
+    "maintenance contract",
+    "successor evidence"
+  ],
+  "forbidden": [
+    "production src or baml change",
+    "Prompt/model/route/destination change",
+    "real approval or nonce",
+    "credential lookup",
+    "network/model/paid call",
+    "campaign execution",
+    "cutover",
+    "Full Short"
+  ],
+  "rollback_head": "f3967c9d18a9942a65703db7f3edbf4f72b16864"
+}

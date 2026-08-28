@@ -1,0 +1,17 @@
+{
+  "schema": "SkillV3HybridDurableApprovalStoreEvidenceV1",
+  "status": "PASS",
+  "store_namespace": "canary-approval-ledgers/skill-v3-hybrid-character-heavy-v1/jit-approvals-v1",
+  "inside_worktree_allowed": false,
+  "atomic_create": true,
+  "atomic_lifecycle_replace": true,
+  "file_lock": true,
+  "restart_safe": true,
+  "duplicate_approval_id_rejected": true,
+  "duplicate_active_sample_approval_rejected": true,
+  "immutable_signed_body": true,
+  "terminal_reactivation_allowed": false,
+  "lifecycle_schema": "SkillV3HybridSampleApprovalLifecycleV1",
+  "lifecycle_domain": "novel-flywheel-skill-v3-hybrid-sample-approval-lifecycle-v1",
+  "secret_material_stored": false
+}

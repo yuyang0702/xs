@@ -1,0 +1,12 @@
+{
+  "schema": "SkillV3HybridFailureObservabilityV1",
+  "status": "PASS",
+  "failure_schema": "SkillV3HybridApprovalBoundaryFailureV1",
+  "failure_domain": "novel-flywheel-skill-v3-hybrid-approval-boundary-failure-v1",
+  "bounded_hash_only": true,
+  "domain_specific_reason": true,
+  "exception_swallowed": false,
+  "silent_failure_path_count": 0,
+  "external_call_count": 0,
+  "raw_content_included": false
+}

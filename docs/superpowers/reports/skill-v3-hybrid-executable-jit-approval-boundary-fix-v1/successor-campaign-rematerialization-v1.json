@@ -1,0 +1,47 @@
+{
+  "schema": "SkillV3HybridSuccessorCampaignRematerializationV1",
+  "status": "EXACT",
+  "successor_head": "04089881033c0a090f0a01334248d341624585d8",
+  "pilot_id": "skill-v3-hybrid-character-heavy-v1-5e5cbfd1e6296ec8878b",
+  "experiment_lock_sha256": "de49d3353abe641f49dbb697d929a13bb30cc6c4fafe9bcf11f0a6d6ea19bafc",
+  "sample_identity_policy": "PRESERVED_AFTER_NON_MODEL_VISIBLE_BOUNDARY_FIX",
+  "sample_ids_preserved": true,
+  "sample_locks_preserved": true,
+  "sample_ids": [
+    "sv3hs-0901efa55a2b11f3456f",
+    "sv3hs-63c2c291b989e2a3e48c",
+    "sv3hs-7725333044fdaae559a2",
+    "sv3hs-aae6112339a439d43750",
+    "sv3hs-8f00799be335c4ccaf76",
+    "sv3hs-84e695ee4e02665555cf"
+  ],
+  "sample_locks": [
+    "edd6d501eec1c102ad30fcb5f4aa56ec0aa9ae56b1516241d58e79d72d87470c",
+    "e5c180c915d22d176e54da147b096e741259e2a304dec13c561ae81bd01e18e9",
+    "1adfc2826f129c31d67a71cb424269c1cdd79c37f2f006d2d39f1352f2e7632a",
+    "a157b27243c6e8b178981c65f3fce9864ce8cf18361ed7df0b8a6c72be210c57",
+    "9aa81b929e3d6564d8ab68216f8dfee3566eda4da66c79f089c3ff483380328b",
+    "031791507f9b4c2cd70a9f3af123d6df5a1e7194e7483618d630fe5065b11b44"
+  ],
+  "execution_sequence": [
+    "CONTROL_1",
+    "HYBRID_1",
+    "CONTROL_2",
+    "HYBRID_2",
+    "CONTROL_3",
+    "HYBRID_3"
+  ],
+  "egress_policy_sha256s": [
+    "58470e41d92a1f0acad35c6b543e3a6faaa54eeaa550a20672d3d0b5c387e34c",
+    "6aa183aca58e1fb67348d66862c023240e1f7f97bddc35bc18f360fd14291507",
+    "cb26522fe2dbd9aba30c9c45fd9cb1d18a01e2e14433a6bccb07109f19fff256",
+    "57d3ba94669de627b01fe0ec72ae51be18d905f819ef7f40127ccb1bb99cb27a",
+    "0ccfffe2f65bdefe74cf362d75b33e9d1c37c83cdb4a81519a471d66cc18478f",
+    "10dea0857ebee6142a8c1b708484b8abbf8f3a5f848fd19d8bd7154a1c570d09"
+  ],
+  "pair_identity_recheck": "PASS",
+  "cross_sample_contamination": 0,
+  "capacity_recheck": "PASS",
+  "blind_policy": "UNCHANGED",
+  "stop_loss": "HYBRID_AS_QUALITY_ENHANCEMENT_DOES_NOT_AUTO_ITERATE"
+}

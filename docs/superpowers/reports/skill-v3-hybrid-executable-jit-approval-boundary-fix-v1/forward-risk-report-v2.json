@@ -1,0 +1,101 @@
+{
+  "version": 2,
+  "original_requirement": "Implement an exact reusable Hybrid JIT signed approval and one-sample runner boundary without weakening historical Selective authority.",
+  "scope_classification": "closed_world",
+  "closed_world_justification": "The domain is the six sealed Hybrid sample identities and one fixed one-shot execution route; unknown pilots, roles, samples, fields, destinations, and states fail closed.",
+  "operational_definition": "Only the next eligible sealed Hybrid sample can receive one immutable signed approval; only after exact verification may one durable destination-bound nonce be reserved.",
+  "forbidden_narrowing": [
+    "do not broaden Selective V4",
+    "do not accept ad-hoc approval mappings",
+    "do not create batch approvals or later nonces",
+    "do not change model-visible inputs"
+  ],
+  "resolution_status": "systemically_resolved",
+  "constraint_traceability": [
+    {
+      "requirement": "closed schema and exact domain validation",
+      "implementation": "skill_v3_hybrid_jit_approval validators",
+      "test_paths": [
+        "tests/canary/test_skill_v3_hybrid_jit_approval.py"
+      ],
+      "evidence": "malformed, drifted, cross-namespace, stale, and nonzero-state injections fail closed"
+    },
+    {
+      "requirement": "durable single-use lifecycle",
+      "implementation": "DurableHybridApprovalStoreV1",
+      "test_paths": [
+        "tests/canary/test_skill_v3_hybrid_jit_approval.py"
+      ],
+      "evidence": "restart, tamper, expiration, active duplicate, and double-consume tests pass"
+    },
+    {
+      "requirement": "approval before nonce before one-shot dispatch",
+      "implementation": "execute_one_hybrid_sealed_sample",
+      "test_paths": [
+        "tests/canary/test_skill_v3_hybrid_jit_approval.py"
+      ],
+      "evidence": "six-role production-shaped offline replay and invalid-approval no-nonce test pass"
+    }
+  ],
+  "historical_incident_families_checked": [
+    "approval/current-HEAD successor drift",
+    "historical-root acceptance",
+    "post-seal test binding drift",
+    "nonce replay",
+    "transport retry leakage",
+    "launcher authority tuple mismatch",
+    "silent preflight failure"
+  ],
+  "projected_failure_mechanisms": [
+    "old pilot role coupling",
+    "missing or extra critical field",
+    "canonical hash tamper",
+    "same-sample duplicate approval",
+    "later-sample precreation",
+    "nonce before approval",
+    "dirty worktree",
+    "destination or egress drift",
+    "expired permission"
+  ],
+  "model_output_boundary_changed": false,
+  "model_output_not_applicable_evidence": "The change is a dormant canary authorization wrapper; Provider output parsing, production Prompt, and generated artifact contracts are unchanged.",
+  "why_previous_tests_missed": "The prior Hybrid suite intentionally exercised only HybridOfflineFakeSignedApprovalV1 and therefore never required an executable Hybrid approval namespace.",
+  "sibling_boundaries": [
+    {
+      "boundary": "Selective V1-V4 approvals",
+      "disposition": "tested_not_susceptible",
+      "evidence": "source unchanged and old approval tests pass"
+    },
+    {
+      "boundary": "durable nonce V2",
+      "disposition": "fixed_and_tested",
+      "evidence": "verified approval destination adapter binds exact origin/path/egress"
+    },
+    {
+      "boundary": "real one-shot dispatcher",
+      "disposition": "tested_not_susceptible",
+      "evidence": "existing dispatcher contract tests pass without dispatch"
+    },
+    {
+      "boundary": "production model input",
+      "disposition": "not_applicable",
+      "evidence": "src and baml diffs are zero; six wire hashes are exact"
+    },
+    {
+      "boundary": "StoryState Canon READY",
+      "disposition": "not_applicable",
+      "evidence": "no production writer or authority source changed"
+    }
+  ],
+  "production_shaped_tests": [
+    "tests/canary/test_skill_v3_hybrid_jit_approval.py",
+    "tests/canary/test_skill_v3_real_execution_boundary.py"
+  ],
+  "next_authoritative_boundary_tests": [
+    "tests/canary/test_skill_v3_hybrid_jit_approval.py",
+    "tests/canary/test_skill_v3_hybrid_multi_sample_pilot_materialization.py"
+  ],
+  "remaining_risks": [
+    "A fresh exact user authorization is still required before any executable campaign permission, approval, nonce, or dispatch may exist."
+  ]
+}

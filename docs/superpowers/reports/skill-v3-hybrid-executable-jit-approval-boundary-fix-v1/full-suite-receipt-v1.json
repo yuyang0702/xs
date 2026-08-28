@@ -1,0 +1,9 @@
+{
+  "schema": "SkillV3HybridJitFullSuiteReceiptV1",
+  "status": "HISTORICAL_NON_GREEN_ONLY",
+  "summary": "3907 passed, 41 skipped, 6 xfailed, 54 failed, 81 errors in 2224.36s",
+  "new_jit_boundary_regression_count": 0,
+  "new_owning_source_regression_count": 0,
+  "historical_sealed_oracle_live_parity_failure_count": 54,
+  "historical_sealed_oracle_live_parity_error_count": 81
+}

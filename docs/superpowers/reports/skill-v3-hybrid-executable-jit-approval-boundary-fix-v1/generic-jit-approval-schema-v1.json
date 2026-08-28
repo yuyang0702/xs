@@ -1,0 +1,28 @@
+{
+  "schema": "SkillV3HybridJitApprovalSchemaEvidenceV1",
+  "status": "PASS",
+  "approval_schema": "SkillV3HybridSampleJitSignedApprovalV1",
+  "approval_version": 1,
+  "approval_domain": "novel-flywheel-skill-v3-hybrid-sample-jit-signed-approval-v1",
+  "approval_scope": "SKILL_V3_HYBRID_CHARACTER_HEAVY_SINGLE_SAMPLE_JIT_ONLY",
+  "closed_schema": true,
+  "permissive_defaults": false,
+  "hash_signature": "domain-separated canonical SHA-256",
+  "usage_states": [
+    "UNUSED",
+    "CONSUMED",
+    "INVALID",
+    "EXPIRED"
+  ],
+  "required_binding_families": [
+    "identity/time/single-use",
+    "pilot/experiment/git",
+    "sample/pair/arm",
+    "model-visible component hashes",
+    "provider/model/protocol/route",
+    "destination/operator/egress",
+    "sampling/validator/caps",
+    "campaign permission/scope/expiry",
+    "nonce NOT_CREATED"
+  ]
+}

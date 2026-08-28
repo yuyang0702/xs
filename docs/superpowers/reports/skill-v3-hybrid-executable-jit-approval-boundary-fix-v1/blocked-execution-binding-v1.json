@@ -1,0 +1,23 @@
+{
+  "schema": "SkillV3HybridBlockedExecutionBindingV1",
+  "status": "EXACT",
+  "fresh_user_campaign_permission": "VALID_HISTORICAL",
+  "execution_preflight": "BLOCKED",
+  "blocker": "HYBRID_EXECUTABLE_JIT_SIGNED_APPROVAL_BOUNDARY_NOT_IMPLEMENTED",
+  "prior_authorization_sha256": "6cfaaab876d9a903e4dc695e0e264469d4cedfe7ea6e723f54717bfe85994f6a",
+  "prior_authorization_disposition": "NON_REUSABLE_FOR_FUTURE_SUCCESSOR",
+  "signed_approval_created": false,
+  "real_nonce_created": false,
+  "campaign_executed": false,
+  "CREDENTIAL_LOOKUP_COUNT": 0,
+  "REAL_PROVIDER_CLIENT_CREATION_COUNT": 0,
+  "REAL_PROVIDER_REQUEST_ATTEMPTS": 0,
+  "HTTP_POST_ATTEMPTS": 0,
+  "NETWORK_CALLS": 0,
+  "MODEL_CALLS": 0,
+  "PAID_CALLS": 0,
+  "REAL_NONCE_CREATED": 0,
+  "REAL_NONCE_RESERVED": 0,
+  "REAL_NONCE_CONSUMED": 0,
+  "REAL_SAMPLE_DISPATCH_COUNT": 0
+}

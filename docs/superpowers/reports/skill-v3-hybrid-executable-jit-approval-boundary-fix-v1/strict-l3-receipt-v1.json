@@ -1,0 +1,7 @@
+{
+  "schema": "SkillV3HybridJitStrictL3ReceiptV1",
+  "status": "PASS",
+  "warnings": 0,
+  "blockers": 0,
+  "summary": "isolated parent-to-implementation diff; warnings=0 blockers=0"
+}

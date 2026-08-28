@@ -1,0 +1,17 @@
+{
+  "schema": "SkillV3HybridSixRoleOfflineReplayV1",
+  "status": "PASS",
+  "roles": [
+    "CONTROL_1",
+    "HYBRID_1",
+    "CONTROL_2",
+    "HYBRID_2",
+    "CONTROL_3",
+    "HYBRID_3"
+  ],
+  "role_case_count": 6,
+  "role_approval_path_pass": "6/6",
+  "offline_test_only": true,
+  "real_boundary_reached_count": 0,
+  "nonce_reservations": "temporary_fake_only"
+}

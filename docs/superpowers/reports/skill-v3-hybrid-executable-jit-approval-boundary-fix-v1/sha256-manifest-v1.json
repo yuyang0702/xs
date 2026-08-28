@@ -1,0 +1,154 @@
+{
+  "schema": "SkillV3HybridJitBoundarySHA256ManifestV1",
+  "status": "EXACT",
+  "algorithm": "sha256",
+  "self_excluded": "sha256-manifest-v1.json",
+  "entry_count": 26,
+  "entries": [
+    {
+      "path": "README.md",
+      "bytes": 241,
+      "sha256": "4c0658b29bd1ddd17b1e3863b2c03cd49b8748d52a3a5e29ed48ba0837cc5c75"
+    },
+    {
+      "path": "approval-domain-validator-v1.json",
+      "bytes": 475,
+      "sha256": "824797aef764235246eb7c3a9237e135ffff78738c7377a123796375ee2e6a95"
+    },
+    {
+      "path": "approval-nonce-ordering-v1.json",
+      "bytes": 443,
+      "sha256": "17be8d7fa323a7dd9608c765c25b33ddb32c25ca89e0cc911296650662152de7"
+    },
+    {
+      "path": "approval-readiness-packet-v2.json",
+      "bytes": 3032,
+      "sha256": "f05f044157baf9927100d3ee2cd3498926ac37f54ca8cb2d15db73d87961367a"
+    },
+    {
+      "path": "baseline-binding-v1.json",
+      "bytes": 1246,
+      "sha256": "73eb9bc56c105f03ca0e772ad79d186860ea784329bb4b5e7809bf0b89cfd6b2"
+    },
+    {
+      "path": "blocked-execution-binding-v1.json",
+      "bytes": 841,
+      "sha256": "17d0ac36e9ca186b3f899d04a184ccfb26e83cab2856d67bb02cca6c040586b7"
+    },
+    {
+      "path": "campaign-authorization-plaintext-v2.txt",
+      "bytes": 3297,
+      "sha256": "4b2722488bd1843a286fb7a4902e8dd0c9d86341fcbacdc96fe47841989f5d24"
+    },
+    {
+      "path": "change-contract-v1.json",
+      "bytes": 624,
+      "sha256": "82e8c0f5d802834335b6c4931ba7e1aca0e70a2b9a8d7826417b0a33d5d91826"
+    },
+    {
+      "path": "durable-approval-store-v1.json",
+      "bytes": 678,
+      "sha256": "38236e9b7a71ca1af0c6358445489453dfcbbcc50c88fe651ae319ae91f7b264"
+    },
+    {
+      "path": "existing-approval-boundary-audit-v1.json",
+      "bytes": 1175,
+      "sha256": "52761d2a6e072219a5b5f80d8e44c3a9ed9215d869d8a2699df1b1cc20239a7a"
+    },
+    {
+      "path": "failure-observability-v1.json",
+      "bytes": 409,
+      "sha256": "51d18e8a8ed950760f982fea4a69cdb972864da42fb4812b1116945142b45f35"
+    },
+    {
+      "path": "final-report-v1.md",
+      "bytes": 5209,
+      "sha256": "55f3fc7eb0a0c40b443c9f236d3807e22b8093d1cfac0949112ad6a3f684f64a"
+    },
+    {
+      "path": "focused-test-receipt-v1.json",
+      "bytes": 153,
+      "sha256": "f6d5b98ecc08156e9a852127887e478bc637b3c03fe58900541d3f5a3f4e5d1e"
+    },
+    {
+      "path": "forward-risk-report-v2.json",
+      "bytes": 4348,
+      "sha256": "0a90b06d5d2f2e2b1f57a2b7f7fd45cdc80c14ad3c78637a8d96d5a9676c8d92"
+    },
+    {
+      "path": "full-suite-receipt-v1.json",
+      "bytes": 382,
+      "sha256": "94fe17ddbc3077ec8e5f5bbd34dbff28ef810bba3cfa1d9a848f948d94bc334b"
+    },
+    {
+      "path": "generic-jit-approval-schema-v1.json",
+      "bytes": 855,
+      "sha256": "4c85509beb2e8e2dc5beadb37ab85c4107462d7cf6cb829966f3807be63e0258"
+    },
+    {
+      "path": "hybrid-runner-boundary-v1.json",
+      "bytes": 370,
+      "sha256": "042f0b99f4a3b47a1194bdc4fb1cc602f0deb80da08adcea2fe88b1925952ecd"
+    },
+    {
+      "path": "model-visible-identity-regression-v1.json",
+      "bytes": 3637,
+      "sha256": "876844ee17c9cc72f5b58cd3e36b3a8f577387dacb5371f0989128fd90918048"
+    },
+    {
+      "path": "negative-injections-v1.json",
+      "bytes": 801,
+      "sha256": "cb93cb217ece69fd756b6e88b166d2267d492f94512c0ffc55f4afe2e47d31ff"
+    },
+    {
+      "path": "old-pilot-compatibility-v1.json",
+      "bytes": 304,
+      "sha256": "4e840ef56a6f6fe3a10bef709c06eb18da6380a6ae7990084cc3810a30fb550e"
+    },
+    {
+      "path": "privacy-scan-v1.json",
+      "bytes": 318,
+      "sha256": "9276a719ca188ee2fb39c59056962d319b67527f6b7e915bce1809e8894f66c4"
+    },
+    {
+      "path": "related-test-receipt-v1.json",
+      "bytes": 160,
+      "sha256": "c0b5198d254a0db0666ccb0f9bfff35fcc50aea6f05679eeca035be1b1933756"
+    },
+    {
+      "path": "single-sample-jit-api-v1.json",
+      "bytes": 351,
+      "sha256": "dd4549d5608f15fd7918dc3d70343f01d4e5b242b1cb7a3c3ceb19a68d967a4c"
+    },
+    {
+      "path": "six-role-offline-replay-v1.json",
+      "bytes": 362,
+      "sha256": "112de10907e9be5d77fe451cbec1420d91e63417420d43747fbf3f241edbca42"
+    },
+    {
+      "path": "strict-l3-receipt-v1.json",
+      "bytes": 184,
+      "sha256": "982a41759665ca326b76b5bda7bc4219562cd83d1dab3a7de5c0708b24d84903"
+    },
+    {
+      "path": "successor-campaign-rematerialization-v1.json",
+      "bytes": 1943,
+      "sha256": "d661fa11547599476d869c6edf965be5976d4ec39fe4a2c433a82886b3941456"
+    }
+  ],
+  "external_actions": {
+    "CREDENTIAL_LOOKUP_COUNT": 0,
+    "REAL_PROVIDER_CLIENT_CREATION_COUNT": 0,
+    "REAL_PROVIDER_REQUEST_ATTEMPTS": 0,
+    "HTTP_POST_ATTEMPTS": 0,
+    "NETWORK_CALLS": 0,
+    "MODEL_CALLS": 0,
+    "PAID_CALLS": 0,
+    "REAL_NONCE_CREATED": 0,
+    "REAL_NONCE_RESERVED": 0,
+    "REAL_NONCE_CONSUMED": 0,
+    "REAL_SAMPLE_DISPATCH_COUNT": 0
+  },
+  "execution_authorized": false,
+  "definition_sha256": "e8c1e174138e0c41fffd725ef1eb8557b7624b7a9c43817b958a4ab78f390d62"
+}

@@ -1,0 +1,62 @@
+{
+  "schema": "SkillV3HybridExistingApprovalBoundaryAuditV1",
+  "status": "COMPLETE",
+  "columns": [
+    "component",
+    "current_scope",
+    "reusable",
+    "old_pilot_coupling",
+    "required_hybrid_change",
+    "production_behavior_risk"
+  ],
+  "rows": [
+    [
+      "canonical_json/domain_sha256",
+      "all approval generations",
+      "YES",
+      "none",
+      "reuse",
+      "LOW"
+    ],
+    [
+      "Selective V1-V3 validators",
+      "historical A1",
+      "NO",
+      "A1-only",
+      "none",
+      "NONE"
+    ],
+    [
+      "Selective V4 validator/store",
+      "B1,A2,B2,A3,B3",
+      "NO",
+      "fixed old roles/pilot",
+      "new namespace",
+      "LOW"
+    ],
+    [
+      "durable nonce store V2",
+      "destination-bound sample nonce",
+      "YES",
+      "binding data supplied by caller",
+      "adapter",
+      "LOW"
+    ],
+    [
+      "RealPilotDispatcherV1",
+      "one-shot sealed request",
+      "YES",
+      "sampling/cap injected",
+      "wrapper",
+      "LOW"
+    ],
+    [
+      "Hybrid legacy launcher",
+      "sealed six inputs + fake approval",
+      "YES",
+      "literary lock",
+      "verified projection wrapper",
+      "LOW"
+    ]
+  ]
+}

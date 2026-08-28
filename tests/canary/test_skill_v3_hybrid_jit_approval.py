@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from copy import deepcopy
 from datetime import datetime, timedelta, timezone
+import hashlib
 import json
 from pathlib import Path
 
@@ -26,6 +27,7 @@ from tools.canary.skill_v3_hybrid_jit_approval import (
     validate_approval_schema_v1,
     validate_campaign_permission_v1,
 )
+from tools.diagnostics import materialize_skill_v3_hybrid_jit_boundary_fix as materializer
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -403,3 +405,34 @@ def test_hybrid_boundary_source_has_no_silent_failure_or_external_capability() -
     assert "httpx." not in combined
     assert "credential" not in approval_source.lower()
     assert "SkillV3RemainingCampaignJitSignedApprovalV4" not in combined
+
+
+def test_successor_materialization_is_deterministic_and_manifest_exact() -> None:
+    evidence_root = ROOT / materializer.REPORT_ROOT
+    validation = {}
+    for key, filename in (
+        ("focused", "focused-test-receipt-v1.json"),
+        ("related", "related-test-receipt-v1.json"),
+        ("full", "full-suite-receipt-v1.json"),
+        ("strict_l3", "strict-l3-receipt-v1.json"),
+    ):
+        value = json.loads((evidence_root / filename).read_text(encoding="utf-8"))
+        value.pop("schema")
+        validation[key] = value
+    expected = materializer.build_artifacts(ROOT, validation)
+    actual = {
+        path.name: path.read_bytes() for path in evidence_root.iterdir()
+        if path.is_file()
+    }
+    assert expected == actual
+    manifest = json.loads(
+        (evidence_root / "sha256-manifest-v1.json").read_text(encoding="utf-8")
+    )
+    assert manifest["status"] == "EXACT"
+    assert manifest["entry_count"] == len(actual) - 1
+    assert manifest["execution_authorized"] is False
+    for row in manifest["entries"]:
+        data = (evidence_root / row["path"]).read_bytes()
+        assert data == expected[row["path"]]
+        assert len(data) == row["bytes"]
+        assert hashlib.sha256(data).hexdigest() == row["sha256"]

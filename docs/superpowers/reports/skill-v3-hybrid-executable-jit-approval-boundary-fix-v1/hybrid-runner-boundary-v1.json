@@ -1,0 +1,11 @@
+{
+  "schema": "SkillV3HybridRunnerBoundaryEvidenceV1",
+  "status": "PASS",
+  "entry": "execute_one_hybrid_sealed_sample",
+  "one_exact_sample_only": true,
+  "approval_verified_before_nonce": true,
+  "destination_bound_nonce_adapter": true,
+  "existing_one_shot_dispatcher_reused": true,
+  "stop_entire_campaign_on_failure": true,
+  "real_dispatch_in_this_gate": false
+}

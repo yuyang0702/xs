@@ -1,0 +1,23 @@
+{
+  "schema": "SkillV3HybridJitBoundaryBaselineBindingV1",
+  "status": "EXACT",
+  "branch": "r1-ptr3/planning-repair-finding-propagation-20260817",
+  "start_head": "f3967c9d18a9942a65703db7f3edbf4f72b16864",
+  "implementation_head": "04089881033c0a090f0a01334248d341624585d8",
+  "current_head_is_implementation_descendant": true,
+  "prior_pilot_id": "skill-v3-hybrid-character-heavy-v1-5e5cbfd1e6296ec8878b",
+  "prior_experiment_lock_sha256": "de49d3353abe641f49dbb697d929a13bb30cc6c4fafe9bcf11f0a6d6ea19bafc",
+  "prior_materialization_manifest": {
+    "status": "EXACT",
+    "entry_count": 31,
+    "definition_sha256": "ff6ecc76d28f634b9ce8e5674712497257525d8d10fd5ed664f8921e6cd3cc35"
+  },
+  "production_src_diff_file_count": 0,
+  "baml_src_diff_file_count": 0,
+  "source_hashes": {
+    "tools/canary/skill_v3_hybrid_jit_approval.py": "dd502e9995a6351c2e30392934cc159546b05be4a26b46a32d7a181f40bb596b",
+    "tools/canary/skill_v3_hybrid_campaign.py": "ab3da85f0c408212e6614fe5ee8efad34f33caab6bd4dd511ecc16c55ea14011",
+    "tests/canary/test_skill_v3_hybrid_jit_approval.py": "c0d701787a47fd873f8c4934656ac7432dd00fa866baf7e841884597cc30e9de",
+    "docs/maintenance.md": "c12d7c19d77239a0412c7e901ef06d358cd2919c9e5b733bd447ad76e76d8b87"
+  }
+}

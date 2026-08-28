@@ -1,0 +1,11 @@
+{
+  "schema": "SkillV3HybridSingleSampleJitApiEvidenceV1",
+  "status": "PASS",
+  "entry": "create_one_hybrid_sample_jit_approval",
+  "requires_active_permission": true,
+  "next_eligible_only": true,
+  "creates_exactly_one_approval": true,
+  "batch_generation": false,
+  "later_sample_precreation": false,
+  "nonce_state_after_return": "NOT_CREATED"
+}

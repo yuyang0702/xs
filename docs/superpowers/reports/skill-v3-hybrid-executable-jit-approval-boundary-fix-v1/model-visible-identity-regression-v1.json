@@ -1,0 +1,68 @@
+{
+  "schema": "SkillV3HybridModelVisibleIdentityRegressionV1",
+  "status": "PASS",
+  "rows": [
+    {
+      "sample_id": "sv3hs-0901efa55a2b11f3456f",
+      "sample_slot": "CONTROL_1",
+      "wire_input_sha256": "486dd076a9e10de26b054538b6832660cacdeb39dc5ec0f71d828fe4ca5cd714",
+      "expected_wire_input_sha256": "486dd076a9e10de26b054538b6832660cacdeb39dc5ec0f71d828fe4ca5cd714",
+      "model_input_component_sha256": "de4dfffc9b70bb5216dd6eeddc27619938d788532affb01af77a8b1209a32331",
+      "expected_model_input_component_sha256": "de4dfffc9b70bb5216dd6eeddc27619938d788532affb01af77a8b1209a32331",
+      "status": "EXACT"
+    },
+    {
+      "sample_id": "sv3hs-63c2c291b989e2a3e48c",
+      "sample_slot": "HYBRID_1",
+      "wire_input_sha256": "e413b0c32fcc7c9f50000146f4ce37a1bf5aaf007d491e56709bb8ed02238321",
+      "expected_wire_input_sha256": "e413b0c32fcc7c9f50000146f4ce37a1bf5aaf007d491e56709bb8ed02238321",
+      "model_input_component_sha256": "e7c1806be6a99a5ee08815441c6884c41c2c834e9589ce002850f4c2f6e626e6",
+      "expected_model_input_component_sha256": "e7c1806be6a99a5ee08815441c6884c41c2c834e9589ce002850f4c2f6e626e6",
+      "status": "EXACT"
+    },
+    {
+      "sample_id": "sv3hs-7725333044fdaae559a2",
+      "sample_slot": "CONTROL_2",
+      "wire_input_sha256": "486dd076a9e10de26b054538b6832660cacdeb39dc5ec0f71d828fe4ca5cd714",
+      "expected_wire_input_sha256": "486dd076a9e10de26b054538b6832660cacdeb39dc5ec0f71d828fe4ca5cd714",
+      "model_input_component_sha256": "8386f3906889e2de81f839743e07343079a883bac8ae789d02c3079e6b10bf79",
+      "expected_model_input_component_sha256": "8386f3906889e2de81f839743e07343079a883bac8ae789d02c3079e6b10bf79",
+      "status": "EXACT"
+    },
+    {
+      "sample_id": "sv3hs-aae6112339a439d43750",
+      "sample_slot": "HYBRID_2",
+      "wire_input_sha256": "e413b0c32fcc7c9f50000146f4ce37a1bf5aaf007d491e56709bb8ed02238321",
+      "expected_wire_input_sha256": "e413b0c32fcc7c9f50000146f4ce37a1bf5aaf007d491e56709bb8ed02238321",
+      "model_input_component_sha256": "98e3939598dd0229551acb3bb57d233c18ddaa60d382c9452c68cfdacb94f80b",
+      "expected_model_input_component_sha256": "98e3939598dd0229551acb3bb57d233c18ddaa60d382c9452c68cfdacb94f80b",
+      "status": "EXACT"
+    },
+    {
+      "sample_id": "sv3hs-8f00799be335c4ccaf76",
+      "sample_slot": "CONTROL_3",
+      "wire_input_sha256": "486dd076a9e10de26b054538b6832660cacdeb39dc5ec0f71d828fe4ca5cd714",
+      "expected_wire_input_sha256": "486dd076a9e10de26b054538b6832660cacdeb39dc5ec0f71d828fe4ca5cd714",
+      "model_input_component_sha256": "3a33c2acf0c65cbbe7bcfba481ddff937c09e909b3dbd3d56b992c0ca4611796",
+      "expected_model_input_component_sha256": "3a33c2acf0c65cbbe7bcfba481ddff937c09e909b3dbd3d56b992c0ca4611796",
+      "status": "EXACT"
+    },
+    {
+      "sample_id": "sv3hs-84e695ee4e02665555cf",
+      "sample_slot": "HYBRID_3",
+      "wire_input_sha256": "e413b0c32fcc7c9f50000146f4ce37a1bf5aaf007d491e56709bb8ed02238321",
+      "expected_wire_input_sha256": "e413b0c32fcc7c9f50000146f4ce37a1bf5aaf007d491e56709bb8ed02238321",
+      "model_input_component_sha256": "77bf5fae2b87642f3452c26bcc73d5516dfb1b40a75af668911ce1f20336cf76",
+      "expected_model_input_component_sha256": "77bf5fae2b87642f3452c26bcc73d5516dfb1b40a75af668911ce1f20336cf76",
+      "status": "EXACT"
+    }
+  ],
+  "model_visible_sample_bytes_unchanged_by_jit_boundary_fix": true,
+  "primary_changed_variable_unchanged": true,
+  "literary_policy_unchanged": true,
+  "prompt_changed": false,
+  "route_model_changed": false,
+  "sampling_changed": false,
+  "output_cap_changed": false,
+  "validator_changed": false
+}

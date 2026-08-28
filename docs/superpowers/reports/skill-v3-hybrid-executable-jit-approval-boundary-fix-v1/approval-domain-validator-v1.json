@@ -1,0 +1,16 @@
+{
+  "schema": "SkillV3HybridApprovalDomainValidatorEvidenceV1",
+  "status": "PASS",
+  "strict_schema": true,
+  "exact_sealed_campaign_lookup": true,
+  "next_eligible_only": true,
+  "clean_worktree_for_executable": true,
+  "zero_attempt_counters_required": {
+    "logical_model_call_count": 0,
+    "provider_request_attempt_count": 0,
+    "http_post_attempt_count": 0,
+    "network_attempt_count": 0
+  },
+  "preexisting_nonce_rejected": true,
+  "warning_downgrade_count": 0
+}

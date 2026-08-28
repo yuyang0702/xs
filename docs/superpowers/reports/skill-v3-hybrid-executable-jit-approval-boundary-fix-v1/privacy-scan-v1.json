@@ -1,0 +1,12 @@
+{
+  "schema": "SkillV3HybridJitPrivacyScanV1",
+  "status": "PASS",
+  "scanned_artifact_count": 25,
+  "secret_match_count": 0,
+  "secret_matches": [],
+  "raw_prompt_included": false,
+  "raw_story_included": false,
+  "raw_provider_content_included": false,
+  "credential_included": false,
+  "external_action_count": 0
+}

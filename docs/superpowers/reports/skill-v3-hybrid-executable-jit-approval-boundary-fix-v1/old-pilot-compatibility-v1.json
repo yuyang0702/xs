@@ -1,0 +1,9 @@
+{
+  "schema": "SkillV3HybridOldPilotCompatibilityV1",
+  "status": "PASS",
+  "old_selective_pilot_approval_behavior_unchanged": true,
+  "old_v1_v2_v3_v4_source_changed": false,
+  "hybrid_pilot_approval_scope_exact": true,
+  "arbitrary_sample_approval": false,
+  "cross_namespace_negative_tests": "PASS"
+}
