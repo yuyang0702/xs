@@ -1,0 +1,10 @@
+{
+  "schema": "SkillV3HybridPilotBaselineBindingV1",
+  "branch": "r1-ptr3/planning-repair-finding-propagation-20260817",
+  "start_head": "96cb5a96cd97ae7cbdc6d9c03e4c371e89f3d048",
+  "expected_worktree_at_gate_entry": "CLEAN",
+  "PARENT_HYBRID_REVIEW_HEAD": "96cb5a96cd97ae7cbdc6d9c03e4c371e89f3d048",
+  "production_source_diff": 0,
+  "baml_src_diff": 0,
+  "live_parity": "EXACT_METADATA_ONLY"
+}

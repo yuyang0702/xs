@@ -1,0 +1,20 @@
+{
+  "schema": "SkillV3HybridPilotCampaignStopPolicyV1",
+  "STOP_ON_FIRST_FAILURE": "YES",
+  "stop_conditions": [
+    "BLOCKED_PRE_DISPATCH",
+    "APPROVAL_OR_NONCE_INVALID",
+    "HEAD_OR_WORKTREE_DRIFT",
+    "EXPERIMENT_OR_SAMPLE_OR_INPUT_OR_WIRE_DRIFT",
+    "ROUTE_OR_DESTINATION_OR_EGRESS_DRIFT",
+    "CAPACITY_DRIFT",
+    "CREDENTIAL_OR_NETWORK_OR_PROVIDER_OR_HTTP_FAILURE",
+    "PARSE_SCHEMA_DOMAIN_OR_LOCAL_TERMINAL_FAILURE",
+    "PRIVACY_FAILURE",
+    "BUDGET_EXCEEDED",
+    "CAMPAIGN_EXPIRY"
+  ],
+  "replacement_sample_allowed": false,
+  "continue_after_failure_allowed": false,
+  "auto_advance_without_active_campaign_permission": false
+}

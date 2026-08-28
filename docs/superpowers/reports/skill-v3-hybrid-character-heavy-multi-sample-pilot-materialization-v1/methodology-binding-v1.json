@@ -1,0 +1,28 @@
+{
+  "schema": "SkillV3HybridPilotMethodologyBindingV1",
+  "status": "EXACT",
+  "LITERARY_POLICY_SHA256": "d93c95af9ed15d4c3f1193b00e319f364fb57176190e96e9e5d2fcd19eec0b21",
+  "CRITICAL_DIMENSIONS": [
+    "character_agency",
+    "causal_coherence",
+    "setup_payoff_integrity"
+  ],
+  "NONCRITICAL_DIMENSIONS": [
+    "subtext_support",
+    "specificity",
+    "scene_pressure",
+    "voice_readiness",
+    "anti_template_risk"
+  ],
+  "PAIR_DISPOSITION_RULE": "per evaluator and dimension, freeze one ordinal relation for each anonymous matched pair",
+  "MULTI_SAMPLE_AGGREGATION_RULE": "per dimension, take the median ordinal relation only when both evaluators agree on direction or at least 4 of 6 evaluator-by-batch votes support it; otherwise INCONCLUSIVE",
+  "EQUIVALENT_IS_NEUTRAL": true,
+  "CRITICAL_REGRESSION_HANDLING": "any supported A_BETTER result on a critical dimension is a critical B regression and blocks pass",
+  "VARIANCE_HANDLING": "high dispersion or evaluator disagreement yields INCONCLUSIVE",
+  "INCONCLUSIVE_HANDLING": "blocks non-inferiority and cutover claims",
+  "REQUIRED_BLIND_EVALUATOR_COUNT": 2,
+  "BATCH_COUNT": 3,
+  "REQUIRED_EVALUATOR_BY_BATCH_VOTES": 6,
+  "SCALAR_AVERAGE_ALLOWED": false,
+  "RETROSPECTIVE_TUNING_ALLOWED": false
+}

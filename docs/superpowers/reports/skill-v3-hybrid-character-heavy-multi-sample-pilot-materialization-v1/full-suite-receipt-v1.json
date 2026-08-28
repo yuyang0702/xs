@@ -1,0 +1,15 @@
+{
+  "schema": "SkillV3HybridPilotFullSuiteReceiptV1",
+  "status": "PASS_WITH_HISTORICAL_NON_GREEN",
+  "command": ".venv/Scripts/python.exe -m pytest -q",
+  "summary": "3871 passed, 41 skipped, 6 xfailed, 54 failed, 81 errors, 1 warning in 2179.15s",
+  "new_materialization_regression_count": 0,
+  "new_owning_source_regression_count": 0,
+  "historical_non_green_count": 135,
+  "historical_non_green_classification": [
+    "historical approval/hash/materialization gates",
+    "historical live-parity/oracle gates",
+    "historical Planning Skill profile oracles",
+    "historical Skill V2 evidence successors"
+  ]
+}

@@ -1,0 +1,175 @@
+{
+  "schema": "SkillV3HybridSixSampleEgressPolicyV1",
+  "status": "PASS",
+  "sample_policies": [
+    {
+      "schema": "SkillV3HybridSampleEgressPolicyV1",
+      "sample_id": "sv3hs-b34df3dd6cd2dfa99ac2",
+      "sample_slot": "CONTROL_1",
+      "allowed_components": [
+        "SYSTEM_CONTEXT_REQUIRED_BY_SAMPLE",
+        "TASK",
+        "AUTHORITY",
+        "STORY_SLICE",
+        "REFERENCE_DERIVED_NON_SKILL_GUIDANCE_ALREADY_MODEL_VISIBLE",
+        "CONTROL_ARM_SKILL_CONTEXT",
+        "OUTPUT_CONTRACT",
+        "REQUIRED_PROVIDER_REQUEST_METADATA"
+      ],
+      "excluded": {
+        "RAW_REF_EGRESS": "NO",
+        "RAW_DISTILL_EGRESS": "NO",
+        "PRIOR_SAMPLE_OUTPUT_EGRESS": "NO",
+        "BLIND_RESULT_EGRESS": "NO",
+        "CREDENTIAL_EGRESS": "NO",
+        "ABSOLUTE_LOCAL_PATH_EGRESS": "NO",
+        "UNNEEDED_MAPPING_METADATA_EGRESS": "NO"
+      },
+      "destination_origin": "https://lingsuan.org",
+      "wire_input_sha256": "486dd076a9e10de26b054538b6832660cacdeb39dc5ec0f71d828fe4ca5cd714",
+      "EGRESS_POLICY_SHA256": "3ceadc8dab763321432b59cd5cde19aca8ea350ba5cef8622f61900cdc44ea07"
+    },
+    {
+      "schema": "SkillV3HybridSampleEgressPolicyV1",
+      "sample_id": "sv3hs-d6a98c9e81ffa5d0ca15",
+      "sample_slot": "HYBRID_1",
+      "allowed_components": [
+        "SYSTEM_CONTEXT_REQUIRED_BY_SAMPLE",
+        "TASK",
+        "AUTHORITY",
+        "STORY_SLICE",
+        "REFERENCE_DERIVED_NON_SKILL_GUIDANCE_ALREADY_MODEL_VISIBLE",
+        "HYBRID_ARM_SKILL_CONTEXT",
+        "OUTPUT_CONTRACT",
+        "REQUIRED_PROVIDER_REQUEST_METADATA"
+      ],
+      "excluded": {
+        "RAW_REF_EGRESS": "NO",
+        "RAW_DISTILL_EGRESS": "NO",
+        "PRIOR_SAMPLE_OUTPUT_EGRESS": "NO",
+        "BLIND_RESULT_EGRESS": "NO",
+        "CREDENTIAL_EGRESS": "NO",
+        "ABSOLUTE_LOCAL_PATH_EGRESS": "NO",
+        "UNNEEDED_MAPPING_METADATA_EGRESS": "NO"
+      },
+      "destination_origin": "https://lingsuan.org",
+      "wire_input_sha256": "e413b0c32fcc7c9f50000146f4ce37a1bf5aaf007d491e56709bb8ed02238321",
+      "EGRESS_POLICY_SHA256": "268eb31d341b02918c96cdd9124a1ad5a236ef09dcae4c8f675e01b68ddb4643"
+    },
+    {
+      "schema": "SkillV3HybridSampleEgressPolicyV1",
+      "sample_id": "sv3hs-3566942b4958aed0303a",
+      "sample_slot": "CONTROL_2",
+      "allowed_components": [
+        "SYSTEM_CONTEXT_REQUIRED_BY_SAMPLE",
+        "TASK",
+        "AUTHORITY",
+        "STORY_SLICE",
+        "REFERENCE_DERIVED_NON_SKILL_GUIDANCE_ALREADY_MODEL_VISIBLE",
+        "CONTROL_ARM_SKILL_CONTEXT",
+        "OUTPUT_CONTRACT",
+        "REQUIRED_PROVIDER_REQUEST_METADATA"
+      ],
+      "excluded": {
+        "RAW_REF_EGRESS": "NO",
+        "RAW_DISTILL_EGRESS": "NO",
+        "PRIOR_SAMPLE_OUTPUT_EGRESS": "NO",
+        "BLIND_RESULT_EGRESS": "NO",
+        "CREDENTIAL_EGRESS": "NO",
+        "ABSOLUTE_LOCAL_PATH_EGRESS": "NO",
+        "UNNEEDED_MAPPING_METADATA_EGRESS": "NO"
+      },
+      "destination_origin": "https://lingsuan.org",
+      "wire_input_sha256": "486dd076a9e10de26b054538b6832660cacdeb39dc5ec0f71d828fe4ca5cd714",
+      "EGRESS_POLICY_SHA256": "adc749b6537d6fd28cae62a5a771f81819b4bc3311f9ca08ab47740fb2a6e145"
+    },
+    {
+      "schema": "SkillV3HybridSampleEgressPolicyV1",
+      "sample_id": "sv3hs-49f67d7f0f9e0c5cfe18",
+      "sample_slot": "HYBRID_2",
+      "allowed_components": [
+        "SYSTEM_CONTEXT_REQUIRED_BY_SAMPLE",
+        "TASK",
+        "AUTHORITY",
+        "STORY_SLICE",
+        "REFERENCE_DERIVED_NON_SKILL_GUIDANCE_ALREADY_MODEL_VISIBLE",
+        "HYBRID_ARM_SKILL_CONTEXT",
+        "OUTPUT_CONTRACT",
+        "REQUIRED_PROVIDER_REQUEST_METADATA"
+      ],
+      "excluded": {
+        "RAW_REF_EGRESS": "NO",
+        "RAW_DISTILL_EGRESS": "NO",
+        "PRIOR_SAMPLE_OUTPUT_EGRESS": "NO",
+        "BLIND_RESULT_EGRESS": "NO",
+        "CREDENTIAL_EGRESS": "NO",
+        "ABSOLUTE_LOCAL_PATH_EGRESS": "NO",
+        "UNNEEDED_MAPPING_METADATA_EGRESS": "NO"
+      },
+      "destination_origin": "https://lingsuan.org",
+      "wire_input_sha256": "e413b0c32fcc7c9f50000146f4ce37a1bf5aaf007d491e56709bb8ed02238321",
+      "EGRESS_POLICY_SHA256": "4266bd8a4384d0525ed22842dc4641af60f947313fb0665559d57fde99f4aa02"
+    },
+    {
+      "schema": "SkillV3HybridSampleEgressPolicyV1",
+      "sample_id": "sv3hs-bec4f35c0f17e76342a4",
+      "sample_slot": "CONTROL_3",
+      "allowed_components": [
+        "SYSTEM_CONTEXT_REQUIRED_BY_SAMPLE",
+        "TASK",
+        "AUTHORITY",
+        "STORY_SLICE",
+        "REFERENCE_DERIVED_NON_SKILL_GUIDANCE_ALREADY_MODEL_VISIBLE",
+        "CONTROL_ARM_SKILL_CONTEXT",
+        "OUTPUT_CONTRACT",
+        "REQUIRED_PROVIDER_REQUEST_METADATA"
+      ],
+      "excluded": {
+        "RAW_REF_EGRESS": "NO",
+        "RAW_DISTILL_EGRESS": "NO",
+        "PRIOR_SAMPLE_OUTPUT_EGRESS": "NO",
+        "BLIND_RESULT_EGRESS": "NO",
+        "CREDENTIAL_EGRESS": "NO",
+        "ABSOLUTE_LOCAL_PATH_EGRESS": "NO",
+        "UNNEEDED_MAPPING_METADATA_EGRESS": "NO"
+      },
+      "destination_origin": "https://lingsuan.org",
+      "wire_input_sha256": "486dd076a9e10de26b054538b6832660cacdeb39dc5ec0f71d828fe4ca5cd714",
+      "EGRESS_POLICY_SHA256": "0ef7ef8f983d7c3c4566d0caafd373631b0903ab038261d9bfad573e2ec1b6a2"
+    },
+    {
+      "schema": "SkillV3HybridSampleEgressPolicyV1",
+      "sample_id": "sv3hs-98917fd664e40789703a",
+      "sample_slot": "HYBRID_3",
+      "allowed_components": [
+        "SYSTEM_CONTEXT_REQUIRED_BY_SAMPLE",
+        "TASK",
+        "AUTHORITY",
+        "STORY_SLICE",
+        "REFERENCE_DERIVED_NON_SKILL_GUIDANCE_ALREADY_MODEL_VISIBLE",
+        "HYBRID_ARM_SKILL_CONTEXT",
+        "OUTPUT_CONTRACT",
+        "REQUIRED_PROVIDER_REQUEST_METADATA"
+      ],
+      "excluded": {
+        "RAW_REF_EGRESS": "NO",
+        "RAW_DISTILL_EGRESS": "NO",
+        "PRIOR_SAMPLE_OUTPUT_EGRESS": "NO",
+        "BLIND_RESULT_EGRESS": "NO",
+        "CREDENTIAL_EGRESS": "NO",
+        "ABSOLUTE_LOCAL_PATH_EGRESS": "NO",
+        "UNNEEDED_MAPPING_METADATA_EGRESS": "NO"
+      },
+      "destination_origin": "https://lingsuan.org",
+      "wire_input_sha256": "e413b0c32fcc7c9f50000146f4ce37a1bf5aaf007d491e56709bb8ed02238321",
+      "EGRESS_POLICY_SHA256": "d54c73069c8b51440ebac48ceb276e03fca7963c9ef21cdfe89e39f40464dc55"
+    }
+  ],
+  "ALL_EGRESS_POLICIES_BOUND": "YES",
+  "RAW_REF_EGRESS": "NO",
+  "RAW_DISTILL_EGRESS": "NO",
+  "PRIOR_SAMPLE_OUTPUT_EGRESS": "NO",
+  "BLIND_RESULT_EGRESS": "NO",
+  "CREDENTIAL_EGRESS": "NO",
+  "ABSOLUTE_LOCAL_PATH_EGRESS": "NO"
+}

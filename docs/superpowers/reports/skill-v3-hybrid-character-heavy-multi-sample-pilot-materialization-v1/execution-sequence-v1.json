@@ -1,0 +1,14 @@
+{
+  "schema": "SkillV3HybridPilotExecutionSequenceV1",
+  "SEALED_EXECUTION_SEQUENCE": [
+    "CONTROL_1",
+    "HYBRID_1",
+    "CONTROL_2",
+    "HYBRID_2",
+    "CONTROL_3",
+    "HYBRID_3"
+  ],
+  "SEQUENCE_SHA256": "d8319b014df68d5442c8ce7823393a9637223e424148faf9c4c2794d71583c64",
+  "alternating": true,
+  "auto_advance": false
+}

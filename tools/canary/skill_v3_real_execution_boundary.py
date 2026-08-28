@@ -109,6 +109,8 @@ class RealPilotDispatcherV1:
         execution_root: Path,
         offline_dependencies: OfflineDispatchDependenciesV1 | None = None,
         approved_destination_authority: Mapping[str, Any] | None = None,
+        expected_sampling_policy_sha256: str | None = None,
+        expected_output_cap: int | None = None,
     ) -> None:
         self.repo_root = repo_root.resolve(strict=True)
         self.route_database = route_database.resolve(strict=True)
@@ -147,10 +149,19 @@ class RealPilotDispatcherV1:
         self.route_fingerprint = str(selected["route_fingerprint"])
         self.provider_descriptor_sha256 = str(selected["provider_descriptor_sha256"])
         self.model_binding_sha256 = str(selected["model_binding_sha256"])
-        lock = pilot.load_sealed_pilot(self.repo_root)["state"]["lock"][
-            "route_model_provider_client"
-        ]
-        self.sampling_policy_sha256 = str(lock["sampling_policy_sha256"])
+        if expected_sampling_policy_sha256 is None or expected_output_cap is None:
+            sealed = pilot.load_sealed_pilot(self.repo_root)
+            route_lock = sealed["state"]["lock"]["route_model_provider_client"]
+            expected_sampling_policy_sha256 = str(
+                route_lock["sampling_policy_sha256"]
+            )
+            expected_output_cap = int(sealed["locks"][0]["output_cap"])
+        if len(str(expected_sampling_policy_sha256)) != 64:
+            raise pilot.PilotBoundaryError("WRONG_SAMPLING_POLICY")
+        if int(expected_output_cap) <= 0:
+            raise pilot.PilotBoundaryError("WRONG_OUTPUT_CAP")
+        self.sampling_policy_sha256 = str(expected_sampling_policy_sha256)
+        self.output_cap = int(expected_output_cap)
 
     def _preflight_route(self) -> dict[str, Any]:
         try:
@@ -215,7 +226,7 @@ class RealPilotDispatcherV1:
             or model_input.provider_descriptor_sha256 != self.provider_descriptor_sha256
             or model_input.model_binding_sha256 != self.model_binding_sha256
             or model_input.sampling_policy_sha256 != self.sampling_policy_sha256
-            or model_input.output_cap != 4624
+            or model_input.output_cap != self.output_cap
         ):
             raise pilot.PilotBoundaryError("WRONG_ROUTE")
         # The exact metadata-only route check above happened before this point.
@@ -337,6 +348,8 @@ class RealPilotExecutionEnvironmentV1:
     def dispatcher_for(
         self, approval_id: str,
         *, approved_destination_authority: Mapping[str, Any] | None = None,
+        expected_sampling_policy_sha256: str | None = None,
+        expected_output_cap: int | None = None,
     ) -> RealPilotDispatcherV1:
         execution_key = hashlib.sha256(approval_id.encode("utf-8")).hexdigest()
         return RealPilotDispatcherV1(
@@ -344,6 +357,8 @@ class RealPilotExecutionEnvironmentV1:
             route_database=self.route_database,
             execution_root=self.execution_parent_root / execution_key,
             approved_destination_authority=approved_destination_authority,
+            expected_sampling_policy_sha256=expected_sampling_policy_sha256,
+            expected_output_cap=expected_output_cap,
         )
 
     def nonce_store(self) -> DurablePilotNonceStoreV1:

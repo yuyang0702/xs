@@ -1,0 +1,18 @@
+SKILL V3 HYBRID CHARACTER-HEAVY MULTI-SAMPLE PILOT — FRESH USER AUTHORIZATION
+
+This text is an authorization template only. It is not authorization until the user sends it as a fresh explicit message.
+
+SUCCESSOR_HEAD=96cb5a96cd97ae7cbdc6d9c03e4c371e89f3d048
+PILOT_ID=skill-v3-hybrid-character-heavy-v1-46519c079a8bf54a4c14
+EXPERIMENT_LOCK_SHA256=397dee209ebfc0407945269b3190959fa6e52f936feed456edca1cae11035077
+EXECUTION_SEQUENCE=CONTROL_1,HYBRID_1,CONTROL_2,HYBRID_2,CONTROL_3,HYBRID_3
+SAMPLE_IDS=sv3hs-b34df3dd6cd2dfa99ac2,sv3hs-d6a98c9e81ffa5d0ca15,sv3hs-3566942b4958aed0303a,sv3hs-49f67d7f0f9e0c5cfe18,sv3hs-bec4f35c0f17e76342a4,sv3hs-98917fd664e40789703a
+DESTINATION=https://lingsuan.org:443/v1/messages
+OPERATOR_CLASSIFICATION=THIRD_PARTY_RELAY_LOCAL_METADATA_ONLY
+I explicitly authorize the six sealed samples above, in the exact order above, with at most one paid request per sample and at most six paid requests total. I authorize only each sample's required system/context, task, authority, story slice, already model-visible reference-derived non-Skill guidance, its arm Skill context, output contract, and required Provider request metadata to be sent to the exact destination. I accept actual-fee risk because no trustworthy USD/CNY cap is sealed.
+PER_SAMPLE_OUTPUT_TOKEN_HARD_CAP=4624
+TOTAL_SIX_SAMPLE_OUTPUT_TOKEN_HARD_CAP=27744
+MAX_PROVIDER_REQUESTS_PER_SAMPLE=1
+TOTAL_PROVIDER_REQUESTS=6
+MAX_CAMPAIGN_ELAPSED_HOURS=10
+Each next-eligible sample still requires a separate JIT signed approval followed by a separate fresh durable single-use nonce. Later approvals/nonces must not be precreated. No retry, transport retry, fallback, route switch, resume, second dispatch, alternate destination, cross-origin redirect, or replacement sample is authorized. Stop on the first blocked, invalid, drifted, failed, privacy-failed, or budget-exceeded state, or when the campaign expires. No Skill V3 cutover, Planning V2 cutover, or Full Short is authorized.

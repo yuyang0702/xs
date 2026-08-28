@@ -1,0 +1,47 @@
+{
+  "schema": "SkillV3HybridPilotArmIdentitiesV1",
+  "CONTROL_ARM": {
+    "kind": "CURRENT_PRODUCTION_BASELINE",
+    "skill_context_sha256": "c7916de36e67f380f2e10f30f169bcdbe04440cc8bd01bbf2626d26a7cdf49b7",
+    "chars": 8927,
+    "tokens": 2232
+  },
+  "TREATMENT_ARM": {
+    "kind": "SEALED_HYBRID_BASELINE_PLUS_CROSS_SKILL_SCENE_PACKET_WITH_VERBATIM_NEIGHBORHOOD_CLOSURE",
+    "baseline_prefix_sha256": "c7916de36e67f380f2e10f30f169bcdbe04440cc8bd01bbf2626d26a7cdf49b7",
+    "supplement_render_sha256": "7f4ef3b8d320fdf7521b3d309b8e32208c89fa8953d85c2d44059c5cb52f8c81",
+    "skill_context_sha256": "ae28e77b3a3b5931efb98e7613bd2827f841269c6b17cce2ee4259500a76eaff",
+    "baseline_chars": 8927,
+    "supplement_chars": 3732,
+    "supplement_tokens": 933,
+    "chars": 12659,
+    "tokens": 3165,
+    "packet_ids": [
+      "CHARACTER_CHOICE_VOICE_PACKET_V1",
+      "CAUSAL_PRESSURE_PACKET_V1",
+      "SETUP_PAYOFF_CLOSURE_PACKET_V1"
+    ],
+    "section_ids": [
+      "sv3-faecc1466817d8aa",
+      "sv3-2985467b5f2bf929",
+      "sv3-60d4bee497e4c0dc",
+      "sv3-5f738df332e0919f",
+      "sv3-13580b3cdbef263e",
+      "sv3-2ced894267dc51e3",
+      "sv3-82ca2fdf9c28183b",
+      "sv3-6e4a0b2625a01274",
+      "sv3-972a75cb8ca8f0bd",
+      "sv3-ac7aa3aed8a7d237",
+      "sv3-4c39329c602fd48e",
+      "sv3-8e321726b4ebdcec",
+      "sv3-b75227453c1cc26a",
+      "sv3-10e4ba0c5b7509b4",
+      "sv3-ad3871e96cc16876"
+    ]
+  },
+  "CONTROL_REFERENCE_GUIDANCE_SHA": "94cfcd4f879232b18b389e6dbfe9595ac4a89a047e887f2fd7160046a1d738ba",
+  "TREATMENT_REFERENCE_GUIDANCE_SHA": "94cfcd4f879232b18b389e6dbfe9595ac4a89a047e887f2fd7160046a1d738ba",
+  "TREATMENT_BASELINE_PREFIX_SHA": "c7916de36e67f380f2e10f30f169bcdbe04440cc8bd01bbf2626d26a7cdf49b7",
+  "SUPPLEMENT_REPLACES_BASELINE": "NO",
+  "REFERENCE_GUIDANCE_IDENTICAL_ACROSS_ARMS": "YES"
+}

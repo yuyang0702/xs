@@ -1,0 +1,20 @@
+{
+  "schema": "SkillV3HybridPilotBlindBundlePolicyV1",
+  "materialize_only_after": "all six future samples SEALED_VALID",
+  "fresh_anonymous_evaluator_ids": 6,
+  "mapping_storage": "separate MAIN-only evidence",
+  "bundle_excludes": [
+    "arm names",
+    "Skill SHA",
+    "route/provider/cost",
+    "approvals/nonces",
+    "implementation metadata",
+    "real sample IDs"
+  ],
+  "MAPPING_HIDDEN_UNTIL_BLIND_FREEZE": "YES",
+  "TWO_FRESH_BLIND_EVALUATORS_REQUIRED": "YES",
+  "REQUIRED_VOTE_SET_COMPLETE_BEFORE_REVEAL": "YES",
+  "RUBRIC_UNCHANGED": "YES",
+  "CRITICALITY_UNCHANGED": "YES",
+  "scalar_literary_score": "FORBIDDEN"
+}

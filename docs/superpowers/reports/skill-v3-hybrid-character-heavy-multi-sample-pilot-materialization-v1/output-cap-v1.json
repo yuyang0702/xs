@@ -1,0 +1,10 @@
+{
+  "schema": "SkillV3HybridPilotOutputCapV1",
+  "derivation": "scoped_creative_output_budget_v1(current expected_output_characters=1600)",
+  "runtime_derived_value": 4624,
+  "route_requested_max_output_tokens": 4624,
+  "PER_SAMPLE_OUTPUT_TOKEN_HARD_CAP": 4624,
+  "TOTAL_SIX_SAMPLE_OUTPUT_TOKEN_HARD_CAP": 27744,
+  "OUTPUT_CAP_IDENTICAL_ACROSS_6": "YES",
+  "old_value_blindly_reused": false
+}

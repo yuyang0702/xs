@@ -1,0 +1,9 @@
+{
+  "schema": "SkillV3HybridPilotStopLossPolicyV1",
+  "critical_regression_trigger": "any supported A_BETTER result on a critical dimension is a critical B regression and blocks pass",
+  "on_trigger": "HYBRID_AS_QUALITY_ENHANCEMENT_DOES_NOT_AUTO_ITERATE",
+  "NEXT_ACTION_CLASS": "ARCHITECTURE_DISPOSITION_NOT_PROMPT_HILL_CLIMBING",
+  "automatic_extra_samples": "NO",
+  "automatic_v4_v5_micro_tuning": "NO",
+  "pass_scope": "character-heavy only; no generalized Skill V3 or production cutover claim"
+}

@@ -1,0 +1,31 @@
+{
+  "schema": "SkillV3HybridPilotRealExecutionBoundaryReadinessV1",
+  "status": "PASS_OFFLINE_ONLY",
+  "REAL_BOUNDARY_SUPPORTS_NEW_PILOT": "YES",
+  "reconstruction_entry": "tools.canary.skill_v3_hybrid_character_heavy_pilot.reconstruct_sample_input",
+  "future_execution_entry": "tools.canary.skill_v3_hybrid_character_heavy_pilot.launch_one_sealed_hybrid_sample",
+  "dispatcher": "tools.canary.skill_v3_real_execution_boundary.RealPilotDispatcherV1",
+  "dispatcher_sampling_and_cap_binding": "exact caller-sealed values; legacy defaults preserved",
+  "execution_boundary_source_bindings": {
+    "tools/canary/skill_v3_hybrid_character_heavy_pilot.py": "5ceca949c798758a43064bd7cc91bbd8541ca465e105f79769cdda58062819d3",
+    "tools/canary/skill_v3_real_execution_boundary.py": "7a1af73be72ce34a84000845d640f56476d4672944cc46866f6b5638c7954fbe",
+    "tools/canary/skill_v3_character_heavy_pilot.py": "4dc62cbf90bc8436a9594e48304fa77c2162864a21d8e7b24d2cd783a6648ae8",
+    "tools/canary/skill_v3_pilot_approval_store.py": "041ad15aafde4d5b9897b601eeb21fc1321b8d492cee48677c3016c3515e2f0c",
+    "tools/canary/skill_v3_pilot_nonce_store.py": "f7e392247de150642ac666dff1035fc48c70c22f4a2ee8554c709aa809ba0e90",
+    "src/novel_flywheel/providers/http.py": "038bd12376c0cdccaa5687d6404a7676de85489d6cd3360592bf9d197a609ab1",
+    "src/novel_flywheel/planning_v2_slice1.py": "28bd1656f2452bea03bbe8c0778847e973d5f3dca807121e028f17af747ce201"
+  },
+  "PER_SAMPLE_ONE_SHOT_ENFORCED": "YES",
+  "DESTINATION_BOUND": "YES",
+  "EGRESS_BOUND": "YES",
+  "DURABLE_NONCE_SINGLE_USE": "YES",
+  "NO_AUTO_ADVANCE_WITHOUT_ACTIVE_CAMPAIGN_PERMISSION": "YES",
+  "NO_EXTERNAL_CALL_IN_THIS_GATE": "YES",
+  "CREDENTIAL_LOOKUP_COUNT": 0,
+  "REAL_PROVIDER_CLIENT_CREATION_COUNT": 0,
+  "REAL_PROVIDER_REQUEST_ATTEMPTS": 0,
+  "HTTP_POST_ATTEMPTS": 0,
+  "NETWORK_CALLS": 0,
+  "MODEL_CALLS": 0,
+  "PAID_CALLS": 0
+}

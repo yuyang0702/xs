@@ -1,0 +1,6 @@
+{
+  "schema": "SkillV3HybridPilotFocusedTestReceiptV1",
+  "status": "PASS",
+  "command": ".venv/Scripts/python.exe -m pytest tests/canary/test_skill_v3_hybrid_multi_sample_pilot_materialization.py -q",
+  "summary": "10 passed in 13.45s"
+}

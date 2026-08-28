@@ -1,0 +1,168 @@
+{
+  "schema": "SkillV3HybridPilotMaterializationManifestV1",
+  "definition": {
+    "schema": "SkillV3HybridPilotMaterializationManifestDefinitionV1",
+    "entry_count": 31,
+    "entries": [
+      {
+        "path": "README.md",
+        "bytes": 248,
+        "sha256": "2f0ec6f5109b9b95973bac10c377edace3ea8ff2f3f48d688bdbe1bd3fe45c54"
+      },
+      {
+        "path": "approval-readiness-packet-v1.json",
+        "bytes": 3316,
+        "sha256": "060e8c0cdbc11fbbbf7a4d23ccda7e6766e45382f26256cce4f3328929b2d7d7"
+      },
+      {
+        "path": "arm-identities-v1.json",
+        "bytes": 1829,
+        "sha256": "45715022b64e1f9949aa6d725e8488d522aa29fca42a341ecbbf7cca22a052e3"
+      },
+      {
+        "path": "baseline-binding-v1.json",
+        "bytes": 396,
+        "sha256": "e57c0acf53abbfd8026a595526a015f22ec264f9bffcf6cfddef1afa798c39d9"
+      },
+      {
+        "path": "blind-bundle-policy-v1.json",
+        "bytes": 629,
+        "sha256": "490dc284321a26cb085070cf56765f1ae230dce1240b73f57b565efdd23f7937"
+      },
+      {
+        "path": "budget-policy-v1.json",
+        "bytes": 794,
+        "sha256": "26624cb62206fc4da2c2e89fb0a4fc5808230c0cf8dea2aefd3175009c3d3170"
+      },
+      {
+        "path": "campaign-authorization-plaintext-v1.txt",
+        "bytes": 1966,
+        "sha256": "b73cff24ba7c5464008ebe82a521eea8c6a26c0eea85de375b713133a488c43d"
+      },
+      {
+        "path": "campaign-stop-policy-v1.json",
+        "bytes": 647,
+        "sha256": "3155be40cbea7fd04cb0a3486839885608d5bdfc32d4132542ee157755cc74a2"
+      },
+      {
+        "path": "capacity-preflight-v1.json",
+        "bytes": 3217,
+        "sha256": "bbf1fb038c75517ee8623cc23894447cf4263ba29f57f029c63df5a59b4f7f41"
+      },
+      {
+        "path": "cross-sample-contamination-v1.json",
+        "bytes": 495,
+        "sha256": "2110dc2e497a2cacc60f8ba7f98c87083664c4c5704b7024d5bf702e7bb2716b"
+      },
+      {
+        "path": "destination-binding-v1.json",
+        "bytes": 614,
+        "sha256": "ff53e488fddb3f7caf9efe55bbcf530c04d27af385e64e361d0b9e36ee069a14"
+      },
+      {
+        "path": "egress-policy-v1.json",
+        "bytes": 6458,
+        "sha256": "a9eeabcb6fc9225357f43f61f59dc63219c092aad645f5e7ff530d9ce2761a39"
+      },
+      {
+        "path": "execution-sequence-v1.json",
+        "bytes": 329,
+        "sha256": "ce820a3004b1d6caeab108ca5776f7b9aaae86e6470dce6a84b52cfc895acb56"
+      },
+      {
+        "path": "experiment-lock-v1.json",
+        "bytes": 5764,
+        "sha256": "e87f169afe8c51e2ac275a1fa15c80af26e1b2e2d347acc6471600f00c5d80aa"
+      },
+      {
+        "path": "final-report-v1.md",
+        "bytes": 2437,
+        "sha256": "3d11a40a5f4c94c6490ea9d7473fa02f34e449c9b0db78edd75483f62d4756a6"
+      },
+      {
+        "path": "focused-test-receipt-v1.json",
+        "bytes": 239,
+        "sha256": "1eec3819892563b7f7e83a998c765e5e809fdd621bafb9f737425652071e7b18"
+      },
+      {
+        "path": "fresh-sample-manifest-v1.json",
+        "bytes": 16388,
+        "sha256": "9c07df7046e1ebb0a8fc7ebb09f090329712d986abcdf04217bc516018a45ede"
+      },
+      {
+        "path": "full-suite-receipt-v1.json",
+        "bytes": 616,
+        "sha256": "87091c34fc05ce34091860661b5886433eda93a96cf5b3ec820394302da33a17"
+      },
+      {
+        "path": "independent-review-binding-v1.json",
+        "bytes": 1357,
+        "sha256": "8d8c344c65b7c530b8a9165a7d7cfe677dcfd0e0d435314563200b4a244ea258"
+      },
+      {
+        "path": "jit-approval-nonce-policy-v1.json",
+        "bytes": 571,
+        "sha256": "ecbc728b14125ece0c6aba4f2ee45db8aaa2b3a461abc1dc190e210f885f5f20"
+      },
+      {
+        "path": "matched-pair-identity-v1.json",
+        "bytes": 3067,
+        "sha256": "77c3713f67640334976e8a5b3064fc3972cc2cdf9f98c45d99f83b23a9e79110"
+      },
+      {
+        "path": "methodology-binding-v1.json",
+        "bytes": 1263,
+        "sha256": "64b670cb1b25e85fe26ae82f58f7acfb6194c0acc83ccce66f7ce316d4c99399"
+      },
+      {
+        "path": "output-cap-v1.json",
+        "bytes": 393,
+        "sha256": "3d910607eebf9fa57fea1c681560ae71e7f0e0b32cf6cc3e3433fe536d813397"
+      },
+      {
+        "path": "pilot-identity-v1.json",
+        "bytes": 743,
+        "sha256": "0b97acd693c871ca792bc06e45d6c4e028a658a08dab9ab9c93716357e24ad33"
+      },
+      {
+        "path": "primary-changed-variable-v1.json",
+        "bytes": 470,
+        "sha256": "836c5538e07ce51cc7a1937651c31490473a71b74a3454397f8521e311e94356"
+      },
+      {
+        "path": "privacy-scan-v1.json",
+        "bytes": 548,
+        "sha256": "5c7380f73358e29bc98d017762b7e90a2ebc12e0f255f6f79ec8947538ed5dc2"
+      },
+      {
+        "path": "provider-model-route-binding-v1.json",
+        "bytes": 697,
+        "sha256": "74f98d74b9b4c6dc7b10e0d96f024f08b5481511015bc2d778f7de6639b8f403"
+      },
+      {
+        "path": "real-execution-boundary-readiness-v1.json",
+        "bytes": 1880,
+        "sha256": "628d6fe5e702978461ddbf1df21f1e7bac3fc29b7a234eb8d79b05f645a0c4fb"
+      },
+      {
+        "path": "related-test-receipt-v1.json",
+        "bytes": 435,
+        "sha256": "f04d30c23f82f466df0f1da02a40c67679b03c5d9a1bf1d5fb5ff151399adff1"
+      },
+      {
+        "path": "stop-loss-policy-v1.json",
+        "bytes": 501,
+        "sha256": "5d07cef7df4542456be9dee6b7a91643b4542dae554c56457ce8c2c4019f084d"
+      },
+      {
+        "path": "strict-l3-receipt-v1.json",
+        "bytes": 215,
+        "sha256": "881130172b4d9ab345d19a4da77a6bd73311bd20d553b7d716485fd1f2d8ab2f"
+      }
+    ]
+  },
+  "definition_sha256": "12eb8702cfedbc0b3c9a74d3f4bd10fee315e58a9c735e5d71011d90afce9ba5",
+  "entry_hash_mode": "EXACT_FILE_BYTES_SHA256",
+  "coverage": "all evidence files except manifest itself",
+  "status": "EXACT"
+}

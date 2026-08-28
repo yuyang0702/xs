@@ -1,0 +1,13 @@
+{
+  "schema": "SkillV3HybridPilotJitApprovalNoncePolicyV1",
+  "BLANKET_MULTI_USE_SIGNED_APPROVAL": "NO",
+  "PRECREATE_LATER_SAMPLE_APPROVALS": "NO",
+  "PRECREATE_LATER_NONCES": "NO",
+  "PER_SAMPLE_JIT_APPROVAL": "YES",
+  "PER_SAMPLE_JIT_DURABLE_NONCE": "YES",
+  "approval_order": "active permission -> next eligible -> exact recheck -> JIT approval -> durable nonce -> one dispatch",
+  "approval_consumption": "permanent after dispatch attempt",
+  "nonce_consumption": "permanent after dispatch attempt",
+  "SIGNED_APPROVAL_CREATED": "NO",
+  "REAL_NONCE_CREATED": "NO"
+}

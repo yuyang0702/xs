@@ -1,0 +1,9 @@
+{
+  "schema": "SkillV3HybridPilotStrictL3ReceiptV1",
+  "status": "PASS",
+  "warnings": 0,
+  "blockers": 0,
+  "declared_level": "L3",
+  "automatic_level": "L1",
+  "forward_risk_resolution": "systemically_resolved"
+}

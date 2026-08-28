@@ -1,0 +1,12 @@
+{
+  "schema": "SkillV3HybridCrossSampleContaminationV1",
+  "PRIOR_SAMPLE_PROSE_IN_FUTURE_INPUTS": "NO",
+  "PRIOR_SAMPLE_RESULT_IN_FUTURE_INPUTS": "NO",
+  "PRIOR_BLIND_RESULT_IN_FUTURE_INPUTS": "NO",
+  "PRIOR_MAPPING_IN_FUTURE_INPUTS": "NO",
+  "OLD_SELECTIVE_PILOT_OUTPUT_REUSE": "NO",
+  "CURRENT_FAILED_PAIR_SPECIFIC_TEXT_REUSE": "NO",
+  "NO_OUTPUT_FEEDBACK_LOOP": "YES",
+  "CROSS_SAMPLE_CONTAMINATION": 0,
+  "shared_input_basis": "repository-owned sanitized fixture only; no generated prose"
+}

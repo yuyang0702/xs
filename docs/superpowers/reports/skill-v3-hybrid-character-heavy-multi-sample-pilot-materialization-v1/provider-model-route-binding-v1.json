@@ -1,0 +1,15 @@
+{
+  "schema": "SkillV3HybridProviderModelRouteBindingV1",
+  "status": "EXACT_OFFLINE",
+  "PROVIDER": "lingsuan_gpt",
+  "PROVIDER_DESCRIPTOR_SHA256": "121cc6b0b4f77b0b08697f2782e0f67a29007183d65a2780b2051048da3a600f",
+  "MODEL": "gpt-5.6-sol",
+  "MODEL_BINDING_SHA256": "5fd92d58fb34146b854ecf816dfe7622e24c233480149dfab9e327cff7f6b1ff",
+  "ROUTE_FINGERPRINT": "30e9cbaf86fbb4b89b43614d71cc11b359ad41e7411e8ebda5d3ce4199879bf0",
+  "PROTOCOL": "anthropic",
+  "ADAPTER": "AnthropicAdapter",
+  "SAMPLING_FINGERPRINT": "455c8d67368d624cae5b33d20a4941ca06b14e56dcf5b1eb5d602db4fb7f6d49",
+  "FALLBACK_POLICY": "NO_FALLBACK_ALLOWED_PER_SAMPLE",
+  "credential_lookup_count": 0,
+  "network_call_count": 0
+}
