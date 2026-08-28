@@ -1,0 +1,32 @@
+{
+  "schema": "SkillV3MultiSampleBlindLiteraryEvaluationFrozenV1",
+  "status": "SKILL_V3_MULTI_SAMPLE_BLIND_LITERARY_EVALUATION_FROZEN",
+  "exact_gate": "SKILL_V3_MULTI_SAMPLE_FRESH_BLIND_LITERARY_EVALUATION",
+  "exact_next_gate": "SKILL_V3_MULTI_SAMPLE_MAPPING_REVEAL_AND_ENGINEERING_DECISION",
+  "anonymous_sample_count": 6,
+  "mapping_revealed": false,
+  "mapping_contamination": 0,
+  "six_independent_sample_judgments_frozen": true,
+  "blind_aggregation_complete": true,
+  "literary_policy_drift": false,
+  "provider_request_attempts": 0,
+  "network_calls": 0,
+  "project_model_calls": 0,
+  "paid_calls": 0,
+  "skill_v3_cutover": false,
+  "planning_v2_cutover": false,
+  "full_short": "NOT_EXECUTED",
+  "independent_judgments_root_sha256": "45927989be4cd126dd567393da3efebe59880ec239e9716a720ea2e54b66bd3b",
+  "receipts": {
+    "readme_sha256": "5f09509dc1d8503d7fa5c3686efdeb18570792ade1e1272b60782d9d1853769a",
+    "baseline_binding_sha256": "726897837f77089b8df6260ae6da271cca8f9872fb38a8fe38e22f4c22286399",
+    "firewall_scan_sha256": "acced4e6e26ab00692c12219b124053867bfe936481d5f8aec9486aacd4c7154",
+    "bundle_binding_sha256": "7ad49126247fb3e446f544c5e96b040699ec134e602201d78f5125b6b2ced261",
+    "literary_policy_binding_sha256": "d187b4b2bf04d66e8f3f1bba79da18245cc94defb1c892a26a26db43103cb775",
+    "independent_judgments_freeze_receipt_sha256": "780f365ffd28faad95e2f966cea3e86f78e39013eb60baa9e4057dc54df10ec0",
+    "blind_aggregation_sha256": "84a87424a1d7e0e8fe649497ddabf269cdda7856b0a718fd1bfb752dc8fb2059",
+    "literary_variance_review_sha256": "3d6a1053bc49f5198265da98031476f576f57009d5c365de318d97769d19ea69",
+    "privacy_scan_sha256": "8a2562ae9dece6fff488bc92b5ca79446c81f4f0443a11b9e40f5e8dab94ea99",
+    "final_blind_report_sha256": "eb22bc9ef7212db1f544be0a492a4c4434bfb069e07c9c94e1ff06d17d037b40"
+  }
+}

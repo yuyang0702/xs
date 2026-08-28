@@ -1,0 +1,12 @@
+{
+  "schema": "SkillV3BlindEvaluationBaselineBindingV1",
+  "status": "PASS",
+  "repository_root": "C:/小说/novel-flywheel-console",
+  "expected_branch": "r1-ptr3/planning-repair-finding-propagation-20260817",
+  "observed_branch": "r1-ptr3/planning-repair-finding-propagation-20260817",
+  "expected_start_head": "fa8fc7d911a22d8c821623bd41af61eb818ba30f",
+  "observed_start_head": "fa8fc7d911a22d8c821623bd41af61eb818ba30f",
+  "expected_worktree": "CLEAN",
+  "observed_worktree_before_evaluation": "CLEAN",
+  "baseline_drift": false
+}

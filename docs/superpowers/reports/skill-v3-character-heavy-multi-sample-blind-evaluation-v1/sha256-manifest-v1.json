@@ -1,0 +1,26 @@
+{
+  "schema": "SkillV3BlindEvaluationSha256ManifestV1",
+  "status": "EXACT",
+  "canonicalization": "sorted relative path, tab, bytes, tab, lowercase sha256, LF; final LF; manifest excludes itself",
+  "evidence_root_sha256": "5d4282a55b929cfad8aac99cb9ade9d635bf7d8f7e58e269737817b2f77f464a",
+  "entry_count": 17,
+  "entries": [
+    {"path": "BLIND_JUDGMENTS_FROZEN.json", "bytes": 1842, "sha256": "11c524c72f8080ef6783fdc06932165f6c9115c684995887dbeb41cec9cb1241"},
+    {"path": "blind-aggregation-v1.json", "bytes": 8916, "sha256": "84a87424a1d7e0e8fe649497ddabf269cdda7856b0a718fd1bfb752dc8fb2059"},
+    {"path": "blind-baseline-binding-v1.json", "bytes": 536, "sha256": "726897837f77089b8df6260ae6da271cca8f9872fb38a8fe38e22f4c22286399"},
+    {"path": "blind-bundle-binding-v1.json", "bytes": 938, "sha256": "7ad49126247fb3e446f544c5e96b040699ec134e602201d78f5125b6b2ced261"},
+    {"path": "blind-firewall-scan-v1.json", "bytes": 773, "sha256": "acced4e6e26ab00692c12219b124053867bfe936481d5f8aec9486aacd4c7154"},
+    {"path": "final-blind-report-v1.md", "bytes": 4195, "sha256": "eb22bc9ef7212db1f544be0a492a4c4434bfb069e07c9c94e1ff06d17d037b40"},
+    {"path": "independent-judgments-freeze-v1.json", "bytes": 1782, "sha256": "780f365ffd28faad95e2f966cea3e86f78e39013eb60baa9e4057dc54df10ec0"},
+    {"path": "literary-policy-binding-v1.json", "bytes": 1002, "sha256": "d187b4b2bf04d66e8f3f1bba79da18245cc94defb1c892a26a26db43103cb775"},
+    {"path": "literary-variance-review-v1.json", "bytes": 1911, "sha256": "3d6a1053bc49f5198265da98031476f576f57009d5c365de318d97769d19ea69"},
+    {"path": "per-sample-judgments/blind-12cb88bb3573ce5c.json", "bytes": 4378, "sha256": "79720b4ea3874dda09337fc461ecc181f6fb4f360121800c79f236cd72123f4e"},
+    {"path": "per-sample-judgments/blind-5f084ba2aa794cd5.json", "bytes": 4358, "sha256": "46210569999b73b77cb6aa401ab0593326e359fc74a9d5b39e67bb02533ee61e"},
+    {"path": "per-sample-judgments/blind-645c2c2eadf86a6e.json", "bytes": 4514, "sha256": "5dff5fd44829c353b04bc57166f72c73d35eeef62467da7ab4e855991e0afaad"},
+    {"path": "per-sample-judgments/blind-d0a798450ae880c2.json", "bytes": 4540, "sha256": "361aa4f07cfb3362311ae5543c413eb26f4dc277db4f0c98b5ebc747feefbe59"},
+    {"path": "per-sample-judgments/blind-eeae3135bca45598.json", "bytes": 4271, "sha256": "f077972c21d4a7616cba0bbd569c4cf104f1dabe3fbb502043a481e3376ed3e0"},
+    {"path": "per-sample-judgments/blind-f72b8680d396280f.json", "bytes": 4525, "sha256": "160a115a4a2eb74be5114d1518761093d83df5969603a9f1989626ea3415b669"},
+    {"path": "privacy-scan-v1.json", "bytes": 727, "sha256": "8a2562ae9dece6fff488bc92b5ca79446c81f4f0443a11b9e40f5e8dab94ea99"},
+    {"path": "README.md", "bytes": 834, "sha256": "5f09509dc1d8503d7fa5c3686efdeb18570792ade1e1272b60782d9d1853769a"}
+  ]
+}

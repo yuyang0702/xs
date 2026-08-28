@@ -1,0 +1,40 @@
+{
+  "schema": "SkillV3BlindLiteraryPolicyBindingV1",
+  "status": "SEALED_EXACT",
+  "dimensions": [
+    "character_agency",
+    "causal_coherence",
+    "subtext_support",
+    "specificity",
+    "scene_pressure",
+    "setup_payoff_integrity",
+    "voice_readiness",
+    "anti_template_risk"
+  ],
+  "critical_dimensions": [
+    "character_agency",
+    "causal_coherence",
+    "setup_payoff_integrity"
+  ],
+  "noncritical_dimensions": [
+    "subtext_support",
+    "specificity",
+    "scene_pressure",
+    "voice_readiness",
+    "anti_template_risk"
+  ],
+  "pairwise_relation_values": [
+    "A_BETTER",
+    "B_BETTER",
+    "TIE",
+    "INCOMPARABLE"
+  ],
+  "equivalent_is_neutral": true,
+  "no_single_scalar_literary_score": true,
+  "variance_can_yield_inconclusive": true,
+  "critical_regressions_not_averaged_away_ad_hoc": true,
+  "single_sample_cannot_decide_architecture": true,
+  "retrospective_tuning_allowed": false,
+  "judgment_policy_changed_during_evaluation": false,
+  "mapping_revealed": false
+}

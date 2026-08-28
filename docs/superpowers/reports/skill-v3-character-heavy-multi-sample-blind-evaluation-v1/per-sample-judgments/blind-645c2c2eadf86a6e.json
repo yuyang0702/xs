@@ -1,0 +1,66 @@
+{
+  "schema": "SkillV3IndependentSampleLiteraryJudgmentV1",
+  "anonymous_sample_id": "blind-645c2c2eadf86a6e",
+  "artifact_sha256": "9712745c3fe0a2fd005ed771093ae277d4104c8cad85bf98317724f84ad5cf29",
+  "independent_of_cross_sample_comparison": true,
+  "scalar_score": null,
+  "dimensions": [
+    {
+      "dimension": "character_agency",
+      "judgment": "The protagonist initiates a punishable lie, converts fear into a bargain, exposes the insignia, and remains with the guards; the rival refuses, then accepts a bounded task without granting absolution.",
+      "evidence": ["the protagonist places their own stamped passage on the counter", "the rival refuses at first", "the protagonist faces the guards alone"],
+      "criticality": "CRITICAL",
+      "confidence_or_insufficiency": "HIGH_CONFIDENCE"
+    },
+    {
+      "dimension": "causal_coherence",
+      "judgment": "The permit defect, covering lie, confiscation, bargain, and separation broadly connect, but being trapped on opposite sides of the inspection line conflicts with their close interaction, and the service-gate escape and punishable insignia are not fully grounded.",
+      "evidence": ["trapped on opposite sides of the inspection line", "conversation and object exchange occur at the same counter", "the hidden insignia suddenly makes the lie punishable", "the rival vanishes through a service gate"],
+      "criticality": "CRITICAL",
+      "confidence_or_insufficiency": "HIGH_CONFIDENCE"
+    },
+    {
+      "dimension": "subtext_support",
+      "judgment": "The practical-punitive terms plausibly carry remorse, but the narration translates them into a direct first-person apology and the rival explicitly calls the act an apology, so concealment is only partial.",
+      "evidence": ["You always did prefer losing on your own terms", "I should have protected you before; I am doing it now", "If this is your apology"],
+      "criticality": "NONCRITICAL",
+      "confidence_or_insufficiency": "HIGH_CONFIDENCE"
+    },
+    {
+      "dimension": "specificity",
+      "judgment": "The missing permit seal, stamped passage, arrest cord, empty document case, torn coat, hidden insignia, message, and service gate make the event tangible, though the institutional setting remains lightly sketched.",
+      "evidence": ["seal missing from the travel permit", "arrest cord", "empty document case", "hidden insignia"],
+      "criticality": "NONCRITICAL",
+      "confidence_or_insufficiency": "HIGH_CONFIDENCE"
+    },
+    {
+      "dimension": "scene_pressure",
+      "judgment": "A closed checkpoint, imminent search, arrest cord, and the protagonist's irreversible exposure provide active pressure and a tightening sequence.",
+      "evidence": ["the checkpoint closed before dusk", "the guard reaches for the arrest cord", "the guards begin searching the line"],
+      "criticality": "NONCRITICAL",
+      "confidence_or_insufficiency": "HIGH_CONFIDENCE"
+    },
+    {
+      "dimension": "setup_payoff_integrity",
+      "judgment": "The missing seal, covering document, confiscation, and final solitary confrontation complete the protection arc; the sealed message is introduced as a transactional device but its significance and delivery remain outside the artifact.",
+      "evidence": ["the only safe passage document is confiscated", "the rival takes the sealed message", "the protagonist faces the guards alone"],
+      "criticality": "CRITICAL",
+      "confidence_or_insufficiency": "HIGH_CONFIDENCE"
+    },
+    {
+      "dimension": "voice_readiness",
+      "judgment": "The rival's dry line and the protagonist's answer establish a restrained adversarial voice, but explanatory sentences repeatedly interpret fear, apology, and trust for the reader.",
+      "evidence": ["Only when the alternatives are badly written", "Fear made the choice visible", "Trust had not returned; it had acquired a condition"],
+      "criticality": "NONCRITICAL",
+      "confidence_or_insufficiency": "HIGH_CONFIDENCE"
+    },
+    {
+      "dimension": "anti_template_risk",
+      "judgment": "The artifact avoids visible planning headers and has several concrete scene objects, but obligation-shaped formulations and an abstract concluding triad still create noticeable template residue.",
+      "evidence": ["Fear made the choice visible", "an apology neither could safely name", "a condition, a task, and a debt"],
+      "criticality": "NONCRITICAL",
+      "confidence_or_insufficiency": "HIGH_CONFIDENCE"
+    }
+  ],
+  "insufficient_evidence_dimensions": []
+}

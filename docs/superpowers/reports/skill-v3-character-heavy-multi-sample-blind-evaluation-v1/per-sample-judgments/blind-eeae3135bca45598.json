@@ -1,0 +1,66 @@
+{
+  "schema": "SkillV3IndependentSampleLiteraryJudgmentV1",
+  "anonymous_sample_id": "blind-eeae3135bca45598",
+  "artifact_sha256": "faa85277bb2ef3b15f720de4150f3c73a96c89ebb0254f6bce1ed85754ff034e",
+  "independent_of_cross_sample_comparison": true,
+  "scalar_score": null,
+  "dimensions": [
+    {
+      "dimension": "character_agency",
+      "judgment": "Agency is reciprocal and observable: the keeper spends the escape resource and remains exposed, while the rival first withholds the key and later returns to free the keeper while retaining route control.",
+      "evidence": ["the keeper ignites the one-use smoke charge and stays at the wheel", "the rival returns from cover", "You carry it. I choose the road"],
+      "criticality": "CRITICAL",
+      "confidence_or_insufficiency": "HIGH_CONFIDENCE"
+    },
+    {
+      "dimension": "causal_coherence",
+      "judgment": "The floodgate mechanics, pursuit, three required turns, spent smoke charge, pinned sleeve, and divided escape control form a strongly linked action chain.",
+      "evidence": ["each turn exposes the operator to the arrow slits", "three turns are required to open the sluice", "the rival cuts the pinned sleeve free"],
+      "criticality": "CRITICAL",
+      "confidence_or_insufficiency": "HIGH_CONFIDENCE"
+    },
+    {
+      "dimension": "subtext_support",
+      "judgment": "Distrust, apology, and conditional cooperation are carried by bargaining diction, the returned rescue, and shared possession of the key chain, with only modest explanatory overstatement at the end.",
+      "evidence": ["the luxury of doubting me somewhere dry", "the rival presses the key into the keeper's palm but keeps hold of the chain", "the bargain has paid its price"],
+      "criticality": "NONCRITICAL",
+      "confidence_or_insufficiency": "HIGH_CONFIDENCE"
+    },
+    {
+      "dimension": "specificity",
+      "judgment": "Physical and tactical detail is consistently concrete: the half-flooded gatehouse, rusted sluice wheel, bridge arrow slits, one-use charge, bolt-torn sleeve, and drainage ledge all affect choices.",
+      "evidence": ["cold water rises through the floor grating", "smoke charge beneath the bridge gears", "drainage ledge"],
+      "criticality": "NONCRITICAL",
+      "confidence_or_insufficiency": "HIGH_CONFIDENCE"
+    },
+    {
+      "dimension": "scene_pressure",
+      "judgment": "Rising water, approaching boots, exposure at the wheel, and a gate that will seize produce continuous escalating pressure with a visible clock.",
+      "evidence": ["pursuit boots hammer across the bridge", "the pursuit reaches the gate", "the jammed wheel shudders under pursuit"],
+      "criticality": "NONCRITICAL",
+      "confidence_or_insufficiency": "HIGH_CONFIDENCE"
+    },
+    {
+      "dimension": "setup_payoff_integrity",
+      "judgment": "The wheel's exposure, three turns, single-use smoke charge, cipher key, and sleeve injury all return as causal payoffs, ending in divided control rather than declared reconciliation.",
+      "evidence": ["the one-use smoke charge is established as the keeper's escape", "the third turn destroys that safer route", "the chain remains held by both"],
+      "criticality": "CRITICAL",
+      "confidence_or_insufficiency": "HIGH_CONFIDENCE"
+    },
+    {
+      "dimension": "voice_readiness",
+      "judgment": "The dialogue has dry pressure-tested irony and the images are vivid, but visible drafting labels such as Approach, Pressure, Reversal, Costly choice, Observable change, and Outcome prevent the artifact from reading as finished literary prose.",
+      "evidence": ["Segment map — Approach", "Reversal", "Observable change", "An inconvenient time to renegotiate"],
+      "criticality": "NONCRITICAL",
+      "confidence_or_insufficiency": "HIGH_CONFIDENCE"
+    },
+    {
+      "dimension": "anti_template_risk",
+      "judgment": "The scene's unique mechanics resist genericity, but explicit structural labels expose a strong template scaffold inside the prose artifact.",
+      "evidence": ["Approach", "Pressure", "Reversal", "Costly choice", "Outcome", "the key-chain image is scene-specific"],
+      "criticality": "NONCRITICAL",
+      "confidence_or_insufficiency": "HIGH_CONFIDENCE"
+    }
+  ],
+  "insufficient_evidence_dimensions": []
+}

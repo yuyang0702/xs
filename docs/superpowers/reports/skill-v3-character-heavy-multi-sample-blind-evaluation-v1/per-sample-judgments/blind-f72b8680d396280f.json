@@ -1,0 +1,66 @@
+{
+  "schema": "SkillV3IndependentSampleLiteraryJudgmentV1",
+  "anonymous_sample_id": "blind-f72b8680d396280f",
+  "artifact_sha256": "bffc7bd9109a5d00631a64f3cb0602dbcc7f4b7690f51faa107063487c3bb65f",
+  "independent_of_cross_sample_comparison": true,
+  "scalar_score": null,
+  "dimensions": [
+    {
+      "dimension": "character_agency",
+      "judgment": "Both characters make legible consequential choices: the protagonist accepts personal exposure, and the rival chooses silence and later limits cooperation rather than granting forgiveness.",
+      "evidence": ["the protagonist steps into the wardens' path with a forged inventory bearing their own mark", "the rival could expose the forgery but stays silent", "the rival returns the key only halfway"],
+      "criticality": "CRITICAL",
+      "confidence_or_insufficiency": "HIGH_CONFIDENCE"
+    },
+    {
+      "dimension": "causal_coherence",
+      "judgment": "The refusal, bargain, costly intervention, reciprocal silence, and conditional truce form a clear chain, but the initially decisive clearing evidence and sealed case are abandoned, and the forged inventory's power to redirect the search is under-specified.",
+      "evidence": ["the evidence that could clear the rival is introduced but not used", "the forged inventory redirects the search toward the protagonist's quarters"],
+      "criticality": "CRITICAL",
+      "confidence_or_insufficiency": "HIGH_CONFIDENCE"
+    },
+    {
+      "dimension": "subtext_support",
+      "judgment": "The transactional dialogue and half-returned key carry apology and distrust indirectly, but the narrator repeatedly names the concealed meaning, reducing the work left to gesture and dialogue.",
+      "evidence": ["I dislike unfinished transactions", "the key is returned only halfway", "the narration labels the revised bargain as an apology concealed as terms and conditions"],
+      "criticality": "NONCRITICAL",
+      "confidence_or_insufficiency": "HIGH_CONFIDENCE"
+    },
+    {
+      "dimension": "specificity",
+      "judgment": "The checkpoint, east-passage key, sealed case, and forged inventory provide usable anchors, yet institutions, bodies, and surroundings remain generic and are mostly reported at synopsis distance.",
+      "evidence": ["checkpoint", "east passage", "sealed case", "wardens and inventory are not further individuated"],
+      "criticality": "NONCRITICAL",
+      "confidence_or_insufficiency": "HIGH_CONFIDENCE"
+    },
+    {
+      "dimension": "scene_pressure",
+      "judgment": "An imminent arrest and arriving wardens create a real deadline, but summary narration compresses the confrontation and blunts moment-to-moment escalation.",
+      "evidence": ["one accusation away from being taken", "when the wardens arrive", "danger is summarized as being absorbed rather than dramatized"],
+      "criticality": "NONCRITICAL",
+      "confidence_or_insufficiency": "HIGH_CONFIDENCE"
+    },
+    {
+      "dimension": "setup_payoff_integrity",
+      "judgment": "The east-passage bargain, the rival's power to speak, and the partial return of the key pay off coherently; the unused clearing evidence and sealed case remain a material loose setup.",
+      "evidence": ["access to the east passage is the opening price", "silence protects the forgery", "the key returns only halfway", "the clearing evidence never re-enters the action"],
+      "criticality": "CRITICAL",
+      "confidence_or_insufficiency": "HIGH_CONFIDENCE"
+    },
+    {
+      "dimension": "voice_readiness",
+      "judgment": "The dry transactional dialogue supports restrained irony, while the surrounding narrator speaks in generalized analytical conclusions rather than a fully inhabited story voice.",
+      "evidence": ["How generous. You've finally found a way to charge interest on a rescue", "I dislike unfinished transactions", "the ending explains the exact trust category in abstract terms"],
+      "criticality": "NONCRITICAL",
+      "confidence_or_insufficiency": "HIGH_CONFIDENCE"
+    },
+    {
+      "dimension": "anti_template_risk",
+      "judgment": "Template risk is material because obligation language and contrast formulas are surfaced almost verbatim, despite several effective transactional images.",
+      "evidence": ["protects the rival without confessing guilt", "not reconciliation, not loyalty declared aloud", "conditional trust is explicitly named"],
+      "criticality": "NONCRITICAL",
+      "confidence_or_insufficiency": "HIGH_CONFIDENCE"
+    }
+  ],
+  "insufficient_evidence_dimensions": []
+}

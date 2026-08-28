@@ -1,0 +1,66 @@
+{
+  "schema": "SkillV3IndependentSampleLiteraryJudgmentV1",
+  "anonymous_sample_id": "blind-12cb88bb3573ce5c",
+  "artifact_sha256": "61c4de6199ad6f42cc6c274fb5b6655ed52cf1594cbd861b81c20ffdca3e0bff",
+  "independent_of_cross_sample_comparison": true,
+  "scalar_score": null,
+  "dimensions": [
+    {
+      "dimension": "character_agency",
+      "judgment": "Mara controls testimony, withstands contempt, and lets Iven decide whether to accept the bargain; Iven's refusal and acceptance matter, but Mara's supposed personal cost remains more asserted than demonstrated.",
+      "evidence": ["Mara conditions identification on a closed hearing and restored seal", "Mara nearly lets Iven's accusation stand but offers the box", "Iven accepts"],
+      "criticality": "CRITICAL",
+      "confidence_or_insufficiency": "HIGH_CONFIDENCE"
+    },
+    {
+      "dimension": "causal_coherence",
+      "judgment": "The accusation, conditional testimony, contempt threat, counteroffer, acceptance, and cleared room progress cleanly; the evidence box's exact contents and the cost Mara pays are insufficiently specified inside that chain.",
+      "evidence": ["the ledger's missing page supports the charge", "Mara offers the evidence box", "Iven's acceptance closes the room", "the final claimed price paid by Mara is not concretely identified"],
+      "criticality": "CRITICAL",
+      "confidence_or_insufficiency": "HIGH_CONFIDENCE"
+    },
+    {
+      "dimension": "subtext_support",
+      "judgment": "The dry enemy-preservation exchange effectively disguises concern as utility, but the final paragraph explicitly interprets the act as an apology and narrows the ambiguity.",
+      "evidence": ["I'm only preserving the value of having an enemy", "Mara takes the box without apology", "The apology had already been made"],
+      "criticality": "NONCRITICAL",
+      "confidence_or_insufficiency": "HIGH_CONFIDENCE"
+    },
+    {
+      "dimension": "specificity",
+      "judgment": "Named characters, a magistrate, ledger figures, missing page, seal, evidence box, testimony, and contempt threat create a distinct institutional scene.",
+      "evidence": ["Mara and Iven", "ledger beneath the magistrate's hand", "missing page", "evidence box"],
+      "criticality": "NONCRITICAL",
+      "confidence_or_insufficiency": "HIGH_CONFIDENCE"
+    },
+    {
+      "dimension": "scene_pressure",
+      "judgment": "A hearing designed for an easy verdict, a contempt threat, and Iven's binary choice keep the scene tense, although the consequences of Mara's own exposure are less immediate than claimed.",
+      "evidence": ["the hearing was meant to name Iven as saboteur", "the magistrate threatens contempt", "accept the bargain or leave the accusation settled"],
+      "criticality": "NONCRITICAL",
+      "confidence_or_insufficiency": "HIGH_CONFIDENCE"
+    },
+    {
+      "dimension": "setup_payoff_integrity",
+      "judgment": "The accusation, Iven's seal, and demand for a closed hearing receive procedural payoffs, but the missing ledger page and evidence box never resolve into a specific revelation, and Mara's paid price remains unshown.",
+      "evidence": ["Iven's seal is restored before testimony", "the room is cleared", "the ledger flaw and box contents remain unrevealed"],
+      "criticality": "CRITICAL",
+      "confidence_or_insufficiency": "HIGH_CONFIDENCE"
+    },
+    {
+      "dimension": "voice_readiness",
+      "judgment": "Mara and Iven have a coherent dry adversarial register, and the narration sustains a poised hearing-room tone, with some late abstract explanation.",
+      "evidence": ["the archive will treasure the distinction", "Don't be ambitious", "preserving the value of having an enemy"],
+      "criticality": "NONCRITICAL",
+      "confidence_or_insufficiency": "HIGH_CONFIDENCE"
+    },
+    {
+      "dimension": "anti_template_risk",
+      "judgment": "Specific names and institutional maneuvering reduce genericity, though the ending's symmetrical abstraction and explicit explanation of apology retain a recognizable generated-prose pattern.",
+      "evidence": ["not trusting her, but recognizing the cost", "without thanks / without apology", "the price she demanded and the fact that she had paid one herself"],
+      "criticality": "NONCRITICAL",
+      "confidence_or_insufficiency": "HIGH_CONFIDENCE"
+    }
+  ],
+  "insufficient_evidence_dimensions": []
+}

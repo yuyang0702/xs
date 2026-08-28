@@ -1,0 +1,66 @@
+{
+  "schema": "SkillV3IndependentSampleLiteraryJudgmentV1",
+  "anonymous_sample_id": "blind-d0a798450ae880c2",
+  "artifact_sha256": "c1329c9bc246f09b41d6def74eedff819cf64d322ac31b773028ac63d58eba13",
+  "independent_of_cross_sample_comparison": true,
+  "scalar_score": null,
+  "dimensions": [
+    {
+      "dimension": "character_agency",
+      "judgment": "Mara chooses continued protection without receiving the seal or confession she seeks, while Iven tests the offer, assists at the seized grille, keeps control of the seal, and accepts only bounded physical reliance.",
+      "evidence": ["Mara could let the wardens take Iven but does not", "Iven braces his injured shoulder against the grille", "Iven keeps the seal while Mara supports him"],
+      "criticality": "CRITICAL",
+      "confidence_or_insufficiency": "HIGH_CONFIDENCE"
+    },
+    {
+      "dimension": "causal_coherence",
+      "judgment": "The damaged corridor, approaching wardens, contested seal, rising water, seized grille, mutual push, and escape route create a coherent physical sequence; the coat sacrifice delays discomfort rather than clearly enabling the escape, so its claimed cost has limited causal weight.",
+      "evidence": ["boots scrape over the grate", "the drain clogs with plaster", "the emergency grille seizes", "the coat is pressed to the leaking pipe"],
+      "criticality": "CRITICAL",
+      "confidence_or_insufficiency": "HIGH_CONFIDENCE"
+    },
+    {
+      "dimension": "subtext_support",
+      "judgment": "Glances, refusal to state the needed words, dry bargaining, physical support, and retained possession carry guilt and conditional trust well; the direct question about saying sorry makes the apology less fully concealed.",
+      "evidence": ["That is not what I asked / It is what I'm offering", "I'm saving it until you can afford to believe me", "Mara keeps her hand beneath his elbow"],
+      "criticality": "NONCRITICAL",
+      "confidence_or_insufficiency": "HIGH_CONFIDENCE"
+    },
+    {
+      "dimension": "specificity",
+      "judgment": "The cracked pipe, bucket, bent corridor light, blood-edged seal, clogging drain, cold coat, seized latch, injured shoulder, and west stairs produce an embodied and spatially legible scene.",
+      "evidence": ["water ticks into the bucket", "his thumb rubs blood from the seal's edge", "the corridor light bends", "the drain clogs with plaster"],
+      "criticality": "NONCRITICAL",
+      "confidence_or_insufficiency": "HIGH_CONFIDENCE"
+    },
+    {
+      "dimension": "scene_pressure",
+      "judgment": "Every exchange occurs against a visible countdown: the outer gate takes impacts, wardens approach, water rises, and the grille may not open before the gate fails.",
+      "evidence": ["each drop measures the time left", "the next impact bends the light", "the gate buckles behind them"],
+      "criticality": "NONCRITICAL",
+      "confidence_or_insufficiency": "HIGH_CONFIDENCE"
+    },
+    {
+      "dimension": "setup_payoff_integrity",
+      "judgment": "The contested seal, west-stairs promise, rising water, injured shoulder, and emergency grille all feed the escape and final division of control; the protective cost is emotionally clear but materially smaller than the setup implies.",
+      "evidence": ["Iven initially refuses to hand over the seal and retains it at the end", "west stairs is repeated as the boundary", "the injured shoulder is spent to open the grille"],
+      "criticality": "CRITICAL",
+      "confidence_or_insufficiency": "HIGH_CONFIDENCE"
+    },
+    {
+      "dimension": "voice_readiness",
+      "judgment": "Restrained irony, short refusals, sensory narration, and distinct Mara/Iven rhythms are integrated into scene action and read as finished prose.",
+      "evidence": ["An ambitious promise from someone who brought me a locked door", "If I swear, you'll call it another bargain", "I'm saving it until you can afford to believe me"],
+      "criticality": "NONCRITICAL",
+      "confidence_or_insufficiency": "HIGH_CONFIDENCE"
+    },
+    {
+      "dimension": "anti_template_risk",
+      "judgment": "Scene-specific physical behavior and dialogue keep template risk relatively contained, though the final neither/nor construction is a familiar summarizing cadence.",
+      "evidence": ["blood rubbed from the seal's edge", "coat against the leaking joint", "Neither called it trust, but neither let go"],
+      "criticality": "NONCRITICAL",
+      "confidence_or_insufficiency": "HIGH_CONFIDENCE"
+    }
+  ],
+  "insufficient_evidence_dimensions": []
+}

@@ -1,0 +1,70 @@
+{
+  "schema": "SkillV3BlindAggregationV1",
+  "status": "COMPLETE_INCONCLUSIVE_FOR_POLICY_SUPPORT",
+  "blind_aggregation_complete": true,
+  "mapping_revealed": false,
+  "independent_judgments_root_sha256": "45927989be4cd126dd567393da3efebe59880ec239e9716a720ea2e54b66bd3b",
+  "pair_position_semantics": "A and B name only the first and second anonymous sample positions listed for a pair; they do not identify engineering arms.",
+  "pair_judgments": [
+    {
+      "anonymous_pair_id": "blind-pair-1",
+      "position_a_anonymous_sample_id": "blind-f72b8680d396280f",
+      "position_b_anonymous_sample_id": "blind-eeae3135bca45598",
+      "dimensions": {
+        "character_agency": {"relation": "B_BETTER", "basis": "Position B realizes reciprocal choice through the wheel, charge, return, and divided key control; position A's choices are clear but more summarized."},
+        "causal_coherence": {"relation": "B_BETTER", "basis": "Position B's physical action chain pays through; position A drops the initially decisive clearing evidence and under-specifies the search redirection."},
+        "subtext_support": {"relation": "B_BETTER", "basis": "Position B lets the chain and reciprocal rescue carry distrust more consistently, while position A repeatedly names the concealed apology and trust state."},
+        "specificity": {"relation": "B_BETTER", "basis": "Position B's floodgate mechanics and tactical objects actively govern choice; position A's institutional elements remain generic."},
+        "scene_pressure": {"relation": "B_BETTER", "basis": "Position B maintains rising water, pursuit, exposure, and a seizing gate as concurrent pressure; position A compresses its wardens into synopsis."},
+        "setup_payoff_integrity": {"relation": "B_BETTER", "basis": "Position B returns the turns, charge, key, sleeve injury, and escape control; position A leaves the sealed clearing evidence unused."},
+        "voice_readiness": {"relation": "A_BETTER", "basis": "Position A is generic but continuous prose; position B's visible Approach/Pressure/Reversal/Outcome labels prevent finished-prose readiness."},
+        "anti_template_risk": {"relation": "TIE", "basis": "Position A exposes obligation-shaped summary language, while position B exposes a structural segment template; their different template signatures are comparably material."}
+      }
+    },
+    {
+      "anonymous_pair_id": "blind-pair-2",
+      "position_a_anonymous_sample_id": "blind-5f084ba2aa794cd5",
+      "position_b_anonymous_sample_id": "blind-645c2c2eadf86a6e",
+      "dimensions": {
+        "character_agency": {"relation": "B_BETTER", "basis": "Position B enacts the covering lie, refusal, exposure, and separation more concretely; position A reports equivalent choices at outline distance."},
+        "causal_coherence": {"relation": "B_BETTER", "basis": "Despite spatial and insignia ambiguities, position B's permit-to-confiscation-to-bargain chain is clearer than position A's ambiguous seal ownership and route function."},
+        "subtext_support": {"relation": "TIE", "basis": "Both contain effective adversarial irony but then explicitly translate the bargain into apology, leaving comparable concealment weakness."},
+        "specificity": {"relation": "B_BETTER", "basis": "Position B uses more concrete procedural and bodily anchors; position A relies on generic hearing and stolen-information abstractions."},
+        "scene_pressure": {"relation": "B_BETTER", "basis": "Position B stages the closing checkpoint, arrest cord, and active search; position A summarizes a seizure inside labeled beats."},
+        "setup_payoff_integrity": {"relation": "TIE", "basis": "Each pays a central protection token but leaves one consequential device outside the scene: the route in position A and sealed message in position B."},
+        "voice_readiness": {"relation": "B_BETTER", "basis": "Position B sustains a more continuous literary scene; position A begins with an explicit numbered segment map and remains analytical."},
+        "anti_template_risk": {"relation": "B_BETTER", "basis": "Position B retains formulaic explanation but no visible segment scaffold; position A exposes both the scaffold and task-obligation phrasing."}
+      }
+    },
+    {
+      "anonymous_pair_id": "blind-pair-3",
+      "position_a_anonymous_sample_id": "blind-12cb88bb3573ce5c",
+      "position_b_anonymous_sample_id": "blind-d0a798450ae880c2",
+      "dimensions": {
+        "character_agency": {"relation": "B_BETTER", "basis": "Position B gives both characters concrete, reciprocal actions with retained control; position A's choices are clear but Mara's asserted personal cost is not demonstrated."},
+        "causal_coherence": {"relation": "B_BETTER", "basis": "Position B's corridor mechanics form a more complete cause-and-effect chain; position A leaves the evidence box and Mara's price under-specified."},
+        "subtext_support": {"relation": "B_BETTER", "basis": "Position B more often lets refusals, looks, possession, and physical support carry meaning; position A resolves its ambiguity through a final explanatory declaration."},
+        "specificity": {"relation": "B_BETTER", "basis": "Both are specific, but position B's sensory and spatial details continuously affect action, rather than mainly furnishing an institutional setting."},
+        "scene_pressure": {"relation": "B_BETTER", "basis": "Position B couples every exchange to impacts, approaching boots, water, and a seized exit; position A's hearing pressure is strong but less continuously embodied."},
+        "setup_payoff_integrity": {"relation": "B_BETTER", "basis": "Position B returns the seal, west stairs, water, shoulder injury, and grille in the escape; position A leaves the ledger flaw and box contents unresolved."},
+        "voice_readiness": {"relation": "B_BETTER", "basis": "Position B integrates distinct dialogue and sensory narration into finished scene prose; position A is poised but ends in heavier abstraction."},
+        "anti_template_risk": {"relation": "B_BETTER", "basis": "Position B's scene-specific behavior outweighs its familiar closing cadence; position A more strongly exposes symmetrical explanatory formulas."}
+      }
+    }
+  ],
+  "per_dimension_distributions": {
+    "character_agency": {"A_BETTER": 0, "B_BETTER": 3, "TIE": 0, "INCOMPARABLE": 0, "available_votes": 3, "required_vote_capacity": 6, "aggregate_relation": "INCONCLUSIVE", "reason": "Only one of two required fresh evaluator contexts is present; three votes cannot meet the sealed four-of-six support threshold."},
+    "causal_coherence": {"A_BETTER": 0, "B_BETTER": 3, "TIE": 0, "INCOMPARABLE": 0, "available_votes": 3, "required_vote_capacity": 6, "aggregate_relation": "INCONCLUSIVE", "reason": "Only one of two required fresh evaluator contexts is present; three votes cannot meet the sealed four-of-six support threshold."},
+    "subtext_support": {"A_BETTER": 0, "B_BETTER": 2, "TIE": 1, "INCOMPARABLE": 0, "available_votes": 3, "required_vote_capacity": 6, "aggregate_relation": "INCONCLUSIVE", "reason": "Evaluator coverage is incomplete and the available pair judgments also vary between B_BETTER and TIE."},
+    "specificity": {"A_BETTER": 0, "B_BETTER": 3, "TIE": 0, "INCOMPARABLE": 0, "available_votes": 3, "required_vote_capacity": 6, "aggregate_relation": "INCONCLUSIVE", "reason": "Only one of two required fresh evaluator contexts is present; three votes cannot meet the sealed four-of-six support threshold."},
+    "scene_pressure": {"A_BETTER": 0, "B_BETTER": 3, "TIE": 0, "INCOMPARABLE": 0, "available_votes": 3, "required_vote_capacity": 6, "aggregate_relation": "INCONCLUSIVE", "reason": "Only one of two required fresh evaluator contexts is present; three votes cannot meet the sealed four-of-six support threshold."},
+    "setup_payoff_integrity": {"A_BETTER": 0, "B_BETTER": 2, "TIE": 1, "INCOMPARABLE": 0, "available_votes": 3, "required_vote_capacity": 6, "aggregate_relation": "INCONCLUSIVE", "reason": "Evaluator coverage is incomplete and the available pair judgments also vary between B_BETTER and TIE."},
+    "voice_readiness": {"A_BETTER": 1, "B_BETTER": 2, "TIE": 0, "INCOMPARABLE": 0, "available_votes": 3, "required_vote_capacity": 6, "aggregate_relation": "INCONCLUSIVE", "reason": "Evaluator coverage is incomplete and the available judgments contain opposed directions."},
+    "anti_template_risk": {"A_BETTER": 0, "B_BETTER": 2, "TIE": 1, "INCOMPARABLE": 0, "available_votes": 3, "required_vote_capacity": 6, "aggregate_relation": "INCONCLUSIVE", "reason": "Evaluator coverage is incomplete and the available pair judgments also vary between B_BETTER and TIE."}
+  },
+  "fresh_evaluator_contexts_observed": 1,
+  "fresh_evaluator_contexts_required": 2,
+  "critical_supported_a_better_regression_count": 0,
+  "sealed_minimum_support_satisfied": false,
+  "architecture_decision": "NOT_PERMITTED_IN_BLIND_EVALUATION"
+}

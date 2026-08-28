@@ -1,0 +1,30 @@
+{
+  "schema": "SkillV3LiteraryVarianceReviewV1",
+  "status": "COMPLETE",
+  "mapping_revealed": false,
+  "sample_level_insufficient_evidence_flags": [],
+  "aggregate_level_insufficient_evidence_dimensions": [
+    "character_agency",
+    "causal_coherence",
+    "subtext_support",
+    "specificity",
+    "scene_pressure",
+    "setup_payoff_integrity",
+    "voice_readiness",
+    "anti_template_risk"
+  ],
+  "aggregate_insufficiency_reason": "Only one of the two sealed fresh evaluator contexts is represented, leaving three of six evaluator-by-batch votes available.",
+  "dimension_reviews": {
+    "character_agency": {"inter_pair_variance": false, "directional_inconsistency": false, "observed_relations": ["B_BETTER", "B_BETTER", "B_BETTER"]},
+    "causal_coherence": {"inter_pair_variance": false, "directional_inconsistency": false, "observed_relations": ["B_BETTER", "B_BETTER", "B_BETTER"]},
+    "subtext_support": {"inter_pair_variance": true, "directional_inconsistency": false, "observed_relations": ["B_BETTER", "TIE", "B_BETTER"]},
+    "specificity": {"inter_pair_variance": false, "directional_inconsistency": false, "observed_relations": ["B_BETTER", "B_BETTER", "B_BETTER"]},
+    "scene_pressure": {"inter_pair_variance": false, "directional_inconsistency": false, "observed_relations": ["B_BETTER", "B_BETTER", "B_BETTER"]},
+    "setup_payoff_integrity": {"inter_pair_variance": true, "directional_inconsistency": false, "observed_relations": ["B_BETTER", "TIE", "B_BETTER"]},
+    "voice_readiness": {"inter_pair_variance": true, "directional_inconsistency": true, "observed_relations": ["A_BETTER", "B_BETTER", "B_BETTER"]},
+    "anti_template_risk": {"inter_pair_variance": true, "directional_inconsistency": false, "observed_relations": ["TIE", "B_BETTER", "B_BETTER"]}
+  },
+  "equivalent_results_kept_neutral": true,
+  "critical_results_averaged_away": false,
+  "scalar_score_created": false
+}

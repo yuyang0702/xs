@@ -1,0 +1,16 @@
+{
+  "schema": "SkillV3BlindEvaluationBundleBindingV1",
+  "status": "EXACT",
+  "bundle_root": "docs/superpowers/reports/skill-v3-character-heavy-multi-sample-blind-bundle-v1/",
+  "bundle_definition_sha256": "2b98b26ffa25928783b4bffc5a7c8ffcf79fd604bd74c5443eeee56d0b5ddebd",
+  "bundle_manifest_sha256": "c5aedf848d9b6c74029318ecb1d051893147aa7c10f6a20f511395fe9cf29a62",
+  "manifest_entry_count": 16,
+  "manifest_mismatch_count": 0,
+  "anonymous_sample_count": 6,
+  "anonymous_pair_count": 3,
+  "minimal_task_context_sha256": "d86f8fa05bface1d0aa740a9214e936ad586908ca6d51e4d975e90acd05ddd3f",
+  "sealed_literary_rubric_sha256": "d93c95af9ed15d4c3f1193b00e319f364fb57176190e96e9e5d2fcd19eec0b21",
+  "sealed_criticality_policy_sha256": "f918ef05462d69bd0e471e2090e5658b452db768367124175e25ce91d8c19216",
+  "sealed_aggregation_policy_sha256": "d93c95af9ed15d4c3f1193b00e319f364fb57176190e96e9e5d2fcd19eec0b21",
+  "mapping_revealed": false
+}

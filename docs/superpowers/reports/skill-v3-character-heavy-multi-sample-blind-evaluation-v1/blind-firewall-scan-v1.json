@@ -1,0 +1,25 @@
+{
+  "schema": "SkillV3BlindEvaluationFirewallScanV1",
+  "status": "PASS",
+  "scan_scope": "evaluator-visible anonymous bundle only",
+  "scan_performed_before_prose_read": true,
+  "anonymous_sample_count": 6,
+  "a_b_label_leak_count": 0,
+  "arm_name_leak_count": 0,
+  "skill_context_identity_leak_count": 0,
+  "selective_compiler_identity_leak_count": 0,
+  "route_provider_cost_leak_count": 0,
+  "approval_nonce_leak_count": 0,
+  "mapping_reference_leak_count": 0,
+  "raw_prospective_sample_id_leak_count": 0,
+  "artifact_allowed_top_level_keys": [
+    "anonymous_sample_id",
+    "narrative",
+    "schema",
+    "title"
+  ],
+  "artifact_unexpected_metadata_field_count": 0,
+  "bundle_privacy_scan_status": "PASS",
+  "mapping_contamination": 0,
+  "mapping_inspected": false
+}

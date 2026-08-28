@@ -1,0 +1,66 @@
+{
+  "schema": "SkillV3IndependentSampleLiteraryJudgmentV1",
+  "anonymous_sample_id": "blind-5f084ba2aa794cd5",
+  "artifact_sha256": "102a8336cd48e1f171915a241aefbd4970607e72beefb86a7254cd214f18fb9b",
+  "independent_of_cross_sample_comparison": true,
+  "scalar_score": null,
+  "dimensions": [
+    {
+      "dimension": "character_agency",
+      "judgment": "The protector repeatedly chooses public exposure over self-protection, while the rival resists, then limits harm by supplying the route; the decisions are consequential but are mostly reported rather than dramatized.",
+      "evidence": ["the protector stands where a thrown blade would reach first", "the protector blocks the official", "the rival gives the route without absolution"],
+      "criticality": "CRITICAL",
+      "confidence_or_insufficiency": "HIGH_CONFIDENCE"
+    },
+    {
+      "dimension": "causal_coherence",
+      "judgment": "The hearing bargain and transfer of suspicion have a readable broad sequence, but the seal's ownership and evidentiary function, the pronoun in 'He takes the seal,' and the route's relation to the stolen information remain under-defined.",
+      "evidence": ["a damaged seal and a single witness establish the accusation", "the protector gives up the seal that could prove involvement", "He takes the seal, then gives the route"],
+      "criticality": "CRITICAL",
+      "confidence_or_insufficiency": "HIGH_CONFIDENCE"
+    },
+    {
+      "dimension": "subtext_support",
+      "judgment": "The strongest dialogue conceals apology inside mockery, but narration soon explains the exact emotional function and thus weakens the subtext.",
+      "evidence": ["You always did prefer expensive apologies", "I'm trying to improve my manners", "The bargain carries the apology"],
+      "criticality": "NONCRITICAL",
+      "confidence_or_insufficiency": "HIGH_CONFIDENCE"
+    },
+    {
+      "dimension": "specificity",
+      "judgment": "A damaged seal, arrest cord, returned weapon, and unlocked exit offer concrete tokens, while the hearing, officials, route, and stolen information remain generic abstractions.",
+      "evidence": ["damaged seal", "single witness", "returned weapon and unlocked exit", "the people who can punish him"],
+      "criticality": "NONCRITICAL",
+      "confidence_or_insufficiency": "HIGH_CONFIDENCE"
+    },
+    {
+      "dimension": "scene_pressure",
+      "judgment": "The threat of seizure and public transfer of responsibility create stakes, but the segment-map framing and synopsis distance flatten the escalation.",
+      "evidence": ["an official moves to seize the rival", "the protector blocks the way", "events are summarized across labeled beats"],
+      "criticality": "NONCRITICAL",
+      "confidence_or_insufficiency": "HIGH_CONFIDENCE"
+    },
+    {
+      "dimension": "setup_payoff_integrity",
+      "judgment": "The seal and public guarantee pay into the protector's exposure, and the returned weapon/unlocked exit mark conditional trust; the named containment route and stolen-information problem do not receive a full within-scene payoff.",
+      "evidence": ["the damaged seal begins the accusation", "the seal shifts suspicion", "the rival gives the route", "returned weapon and unlocked exit appear only at the end"],
+      "criticality": "CRITICAL",
+      "confidence_or_insufficiency": "HIGH_CONFIDENCE"
+    },
+    {
+      "dimension": "voice_readiness",
+      "judgment": "Two dialogue lines carry restrained irony, but the narrative voice remains generic and explanatory, and an explicit segment map makes the artifact feel like a planning output rather than finished prose.",
+      "evidence": ["expensive apologies", "I'm trying to improve my manners", "Segment map — 1) pressure and offer"],
+      "criticality": "NONCRITICAL",
+      "confidence_or_insufficiency": "HIGH_CONFIDENCE"
+    },
+    {
+      "dimension": "anti_template_risk",
+      "judgment": "Template risk is high because structural stage labels and exact task-obligation language dominate the realization.",
+      "evidence": ["pressure and offer; resistance and exposure; costly protection; conditional truce and exit", "Fear shows in the protector's choices", "The bargain carries the apology"],
+      "criticality": "NONCRITICAL",
+      "confidence_or_insufficiency": "HIGH_CONFIDENCE"
+    }
+  ],
+  "insufficient_evidence_dimensions": []
+}
