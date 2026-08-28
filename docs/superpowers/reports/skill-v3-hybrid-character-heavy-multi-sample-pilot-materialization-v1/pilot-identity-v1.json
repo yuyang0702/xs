@@ -1,12 +1,13 @@
 {
   "schema": "SkillV3HybridPilotIdentityV1",
-  "PILOT_ID": "skill-v3-hybrid-character-heavy-v1-46519c079a8bf54a4c14",
+  "PILOT_ID": "skill-v3-hybrid-character-heavy-v1-5e5cbfd1e6296ec8878b",
   "PILOT_ID_FRESH": "YES",
   "PILOT_SCHEMA_VERSION": "skill-v3-hybrid-character-heavy-pilot-v1",
   "PARENT_HYBRID_REVIEW_HEAD": "96cb5a96cd97ae7cbdc6d9c03e4c371e89f3d048",
+  "CURRENT_SUCCESSOR_HEAD": "057f4d91c41132bca0ad45ac3b11562861b0082b",
   "PARENT_HYBRID_REVIEW_EVIDENCE_SHA": "5310d5542c87132d8a0e56515c6717a560b121891c7240682f9154af77787bd0",
   "HYBRID_IMPLEMENTATION_HEAD": "9361b47892b80cd61fde0c6396e3a3bde0f0a79e",
   "HYBRID_IDENTITY_CORRECTION_HEAD": "c29e7da652c86a0e701dc820918a817ab8389df6",
   "LITERARY_POLICY_SHA": "d93c95af9ed15d4c3f1193b00e319f364fb57176190e96e9e5d2fcd19eec0b21",
-  "identity_seed_sha256": "46519c079a8bf54a4c14f59a181faa9c181eaa15d024dc6bc0b69446a632e3a6"
+  "identity_seed_sha256": "5e5cbfd1e6296ec8878b6e207ebc3da45dad41b488c81f62bae1d08f7a836a11"
 }

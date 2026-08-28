@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import subprocess
 from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Any, Mapping, Protocol
@@ -73,6 +74,18 @@ def _read_json(path: Path) -> dict[str, Any]:
 def _require(value: bool, reason: str) -> None:
     if not value:
         raise prior.PilotBoundaryError(reason)
+
+
+def _git(repo_root: Path, *args: str) -> str:
+    result = subprocess.run(
+        ["git", "-C", str(repo_root), *args],
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        check=False,
+    )
+    _require(result.returncode == 0, "HEAD_OR_WORKTREE_DRIFT")
+    return result.stdout.strip()
 
 
 def verify_manifest(root: Path) -> dict[str, Any]:
@@ -304,6 +317,7 @@ class HybridPilotLedger:
 
 
 def fake_permission(lock: Mapping[str, Any], pilot_id: str) -> dict[str, Any]:
+    sealed = load_sealed_pilot(Path(__file__).resolve().parents[2])
     return {
         "schema": "HybridOfflineFakePermissionV1",
         "non_executable": True,
@@ -311,6 +325,7 @@ def fake_permission(lock: Mapping[str, Any], pilot_id: str) -> dict[str, Any]:
         "pilot_id": pilot_id,
         "sample_id": lock["SAMPLE_ID"],
         "experiment_lock_sha256": lock["EXPERIMENT_LOCK_SHA256"],
+        "successor_head": sealed["approval"]["CURRENT_SUCCESSOR_HEAD"],
         "scopes": list(PERMISSION_SCOPES),
     }
 
@@ -394,6 +409,25 @@ async def launch_one_sealed_hybrid_sample(
     offline_fake: bool,
 ) -> dict[str, Any]:
     sealed = load_sealed_pilot(repo_root)
+    current_head = _git(repo_root, "rev-parse", "HEAD")
+    _require(
+        _git(
+            repo_root,
+            "merge-base",
+            "--is-ancestor",
+            str(sealed["approval"]["CURRENT_SUCCESSOR_HEAD"]),
+            current_head,
+        ) == "",
+        "HEAD_OR_WORKTREE_DRIFT",
+    )
+    _require(
+        _git(repo_root, "branch", "--show-current")
+        == "r1-ptr3/planning-repair-finding-propagation-20260817",
+        "HEAD_OR_WORKTREE_DRIFT",
+    )
+    if not offline_fake:
+        _require(not _git(repo_root, "status", "--porcelain"),
+                 "HEAD_OR_WORKTREE_DRIFT")
     _require(pilot_id == sealed["identity"]["PILOT_ID"], "WRONG_PILOT")
     lock = next(
         (row for row in sealed["samples"] if row["SAMPLE_ID"] == sample_id), None,
@@ -411,6 +445,11 @@ async def launch_one_sealed_hybrid_sample(
     _require(permission.get("sample_id") == sample_id, "PERMISSION_SCOPE_INCOMPLETE")
     _require(permission.get("experiment_lock_sha256") == expected_experiment_lock_sha256,
              "PERMISSION_SCOPE_INCOMPLETE")
+    _require(
+        permission.get("successor_head")
+        == sealed["approval"]["CURRENT_SUCCESSOR_HEAD"],
+        "PERMISSION_SCOPE_INCOMPLETE",
+    )
     _require(set(permission.get("scopes") or ()) == set(PERMISSION_SCOPES),
              "PERMISSION_SCOPE_INCOMPLETE")
     _require(bool(signed_approval), "MISSING_SIGNED_APPROVAL")
@@ -430,6 +469,9 @@ async def launch_one_sealed_hybrid_sample(
                  "PERMISSION_SCOPE_INCOMPLETE")
         _require(approval.get("non_executable") is True, "MISSING_SIGNED_APPROVAL")
         _require(dispatcher.offline_fake, "PRODUCTION_CUTOVER_REQUEST")
+    else:
+        _require(approval.get("repository_head") == current_head,
+                 "HEAD_OR_WORKTREE_DRIFT")
     model_input = reconstruct_sample_input(repo_root, sample_id)
     for approval_key, expected in (
         ("model_input_component_binding_sha256", model_input.model_input_component_binding_sha256),

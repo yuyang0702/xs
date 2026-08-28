@@ -1,11 +1,12 @@
 {
   "schema": "SkillV3HybridExperimentLockV1",
-  "PILOT_ID": "skill-v3-hybrid-character-heavy-v1-46519c079a8bf54a4c14",
+  "PILOT_ID": "skill-v3-hybrid-character-heavy-v1-5e5cbfd1e6296ec8878b",
   "definition": {
     "schema": "SkillV3HybridExperimentLockDefinitionV1",
-    "PILOT_ID": "skill-v3-hybrid-character-heavy-v1-46519c079a8bf54a4c14",
+    "PILOT_ID": "skill-v3-hybrid-character-heavy-v1-5e5cbfd1e6296ec8878b",
     "PILOT_SCHEMA_VERSION": "skill-v3-hybrid-character-heavy-pilot-v1",
     "PARENT_HYBRID_REVIEW_HEAD": "96cb5a96cd97ae7cbdc6d9c03e4c371e89f3d048",
+    "CURRENT_SUCCESSOR_HEAD": "057f4d91c41132bca0ad45ac3b11562861b0082b",
     "PARENT_HYBRID_REVIEW_EVIDENCE_SHA": "5310d5542c87132d8a0e56515c6717a560b121891c7240682f9154af77787bd0",
     "HYBRID_IMPLEMENTATION_HEAD": "9361b47892b80cd61fde0c6396e3a3bde0f0a79e",
     "HYBRID_IDENTITY_CORRECTION_HEAD": "c29e7da652c86a0e701dc820918a817ab8389df6",
@@ -51,17 +52,17 @@
     },
     "PRIMARY_CHANGED_VARIABLE": "SKILL_CONTEXT_TREATMENT_LAYER_ONLY",
     "PAIR_IDS": [
-      "sv3hp-79ac1da2976805416b6a",
-      "sv3hp-ce2c715c22f449e9c705",
-      "sv3hp-98231a6eb346dd2f9162"
+      "sv3hp-2957a89923aac514cfa4",
+      "sv3hp-189b3448c22d1be80c4e",
+      "sv3hp-48fe92445a8ad16bdfce"
     ],
     "SAMPLE_IDS_IN_ORDER": [
-      "sv3hs-b34df3dd6cd2dfa99ac2",
-      "sv3hs-d6a98c9e81ffa5d0ca15",
-      "sv3hs-3566942b4958aed0303a",
-      "sv3hs-49f67d7f0f9e0c5cfe18",
-      "sv3hs-bec4f35c0f17e76342a4",
-      "sv3hs-98917fd664e40789703a"
+      "sv3hs-0901efa55a2b11f3456f",
+      "sv3hs-63c2c291b989e2a3e48c",
+      "sv3hs-7725333044fdaae559a2",
+      "sv3hs-aae6112339a439d43750",
+      "sv3hs-8f00799be335c4ccaf76",
+      "sv3hs-84e695ee4e02665555cf"
     ],
     "SEQUENCE": [
       "CONTROL_1",
@@ -84,12 +85,12 @@
       "operator_class": "THIRD_PARTY_RELAY_LOCAL_METADATA_ONLY"
     },
     "EGRESS_POLICY_SHA256S": [
-      "3ceadc8dab763321432b59cd5cde19aca8ea350ba5cef8622f61900cdc44ea07",
-      "268eb31d341b02918c96cdd9124a1ad5a236ef09dcae4c8f675e01b68ddb4643",
-      "adc749b6537d6fd28cae62a5a771f81819b4bc3311f9ca08ab47740fb2a6e145",
-      "4266bd8a4384d0525ed22842dc4641af60f947313fb0665559d57fde99f4aa02",
-      "0ef7ef8f983d7c3c4566d0caafd373631b0903ab038261d9bfad573e2ec1b6a2",
-      "d54c73069c8b51440ebac48ceb276e03fca7963c9ef21cdfe89e39f40464dc55"
+      "58470e41d92a1f0acad35c6b543e3a6faaa54eeaa550a20672d3d0b5c387e34c",
+      "6aa183aca58e1fb67348d66862c023240e1f7f97bddc35bc18f360fd14291507",
+      "cb26522fe2dbd9aba30c9c45fd9cb1d18a01e2e14433a6bccb07109f19fff256",
+      "57d3ba94669de627b01fe0ec72ae51be18d905f819ef7f40127ccb1bb99cb27a",
+      "0ccfffe2f65bdefe74cf362d75b33e9d1c37c83cdb4a81519a471d66cc18478f",
+      "10dea0857ebee6142a8c1b708484b8abbf8f3a5f848fd19d8bd7154a1c570d09"
     ],
     "OUTPUT_CAP": 4624,
     "TOTAL_OUTPUT_CAP": 27744,
@@ -108,7 +109,7 @@
     "JIT_APPROVAL_POLICY": "ONE_FRESH_SINGLE_SAMPLE_APPROVAL_AT_NEXT_ELIGIBLE_SAMPLE_ONLY",
     "NONCE_POLICY": "ONE_DURABLE_SINGLE_USE_NONCE_AFTER_APPROVAL_PER_SAMPLE",
     "EXECUTION_BOUNDARY_SOURCE_BINDINGS": {
-      "tools/canary/skill_v3_hybrid_character_heavy_pilot.py": "5ceca949c798758a43064bd7cc91bbd8541ca465e105f79769cdda58062819d3",
+      "tools/canary/skill_v3_hybrid_character_heavy_pilot.py": "fe3d79c7b757975dfcfff320fb7c35f974c570f31b64cbb4bdcaaee8334d7855",
       "tools/canary/skill_v3_real_execution_boundary.py": "7a1af73be72ce34a84000845d640f56476d4672944cc46866f6b5638c7954fbe",
       "tools/canary/skill_v3_character_heavy_pilot.py": "4dc62cbf90bc8436a9594e48304fa77c2162864a21d8e7b24d2cd783a6648ae8",
       "tools/canary/skill_v3_pilot_approval_store.py": "041ad15aafde4d5b9897b601eeb21fc1321b8d492cee48677c3016c3515e2f0c",
@@ -119,6 +120,6 @@
     "BLIND_METHODOLOGY_SHA256": "d93c95af9ed15d4c3f1193b00e319f364fb57176190e96e9e5d2fcd19eec0b21",
     "STOP_LOSS": "HYBRID_AS_QUALITY_ENHANCEMENT_DOES_NOT_AUTO_ITERATE"
   },
-  "EXPERIMENT_LOCK_SHA256": "397dee209ebfc0407945269b3190959fa6e52f936feed456edca1cae11035077",
+  "EXPERIMENT_LOCK_SHA256": "de49d3353abe641f49dbb697d929a13bb30cc6c4fafe9bcf11f0a6d6ea19bafc",
   "EXPERIMENT_LOCK_SEALED": "YES"
 }

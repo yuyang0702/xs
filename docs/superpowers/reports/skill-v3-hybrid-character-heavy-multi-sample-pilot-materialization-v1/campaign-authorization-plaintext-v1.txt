@@ -2,11 +2,11 @@ SKILL V3 HYBRID CHARACTER-HEAVY MULTI-SAMPLE PILOT — FRESH USER AUTHORIZATION
 
 This text is an authorization template only. It is not authorization until the user sends it as a fresh explicit message.
 
-SUCCESSOR_HEAD=96cb5a96cd97ae7cbdc6d9c03e4c371e89f3d048
-PILOT_ID=skill-v3-hybrid-character-heavy-v1-46519c079a8bf54a4c14
-EXPERIMENT_LOCK_SHA256=397dee209ebfc0407945269b3190959fa6e52f936feed456edca1cae11035077
+SUCCESSOR_HEAD=057f4d91c41132bca0ad45ac3b11562861b0082b
+PILOT_ID=skill-v3-hybrid-character-heavy-v1-5e5cbfd1e6296ec8878b
+EXPERIMENT_LOCK_SHA256=de49d3353abe641f49dbb697d929a13bb30cc6c4fafe9bcf11f0a6d6ea19bafc
 EXECUTION_SEQUENCE=CONTROL_1,HYBRID_1,CONTROL_2,HYBRID_2,CONTROL_3,HYBRID_3
-SAMPLE_IDS=sv3hs-b34df3dd6cd2dfa99ac2,sv3hs-d6a98c9e81ffa5d0ca15,sv3hs-3566942b4958aed0303a,sv3hs-49f67d7f0f9e0c5cfe18,sv3hs-bec4f35c0f17e76342a4,sv3hs-98917fd664e40789703a
+SAMPLE_IDS=sv3hs-0901efa55a2b11f3456f,sv3hs-63c2c291b989e2a3e48c,sv3hs-7725333044fdaae559a2,sv3hs-aae6112339a439d43750,sv3hs-8f00799be335c4ccaf76,sv3hs-84e695ee4e02665555cf
 DESTINATION=https://lingsuan.org:443/v1/messages
 OPERATOR_CLASSIFICATION=THIRD_PARTY_RELAY_LOCAL_METADATA_ONLY
 I explicitly authorize the six sealed samples above, in the exact order above, with at most one paid request per sample and at most six paid requests total. I authorize only each sample's required system/context, task, authority, story slice, already model-visible reference-derived non-Skill guidance, its arm Skill context, output contract, and required Provider request metadata to be sent to the exact destination. I accept actual-fee risk because no trustworthy USD/CNY cap is sealed.

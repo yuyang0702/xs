@@ -2,5 +2,5 @@
   "schema": "SkillV3HybridPilotRelatedTestReceiptV1",
   "status": "PASS",
   "command": ".venv/Scripts/python.exe -m pytest tests/canary/test_skill_v3_real_execution_boundary.py tests/canary/test_skill_v3_character_heavy_pilot.py tests/canary/test_skill_v3_hybrid_multi_sample_pilot_materialization.py tests/test_hybrid_skill_context.py tests/test_skill_v3_shadow_review_pilot_readiness.py -q",
-  "summary": "117 passed in 106.62s"
+  "summary": "117 passed in 107.02s"
 }

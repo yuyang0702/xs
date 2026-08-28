@@ -5,7 +5,7 @@
   "SAFE_CONTEXT_WINDOW_TOKEN_CAP": 32768,
   "rows": [
     {
-      "SAMPLE_ID": "sv3hs-b34df3dd6cd2dfa99ac2",
+      "SAMPLE_ID": "sv3hs-0901efa55a2b11f3456f",
       "SAMPLE_SLOT": "CONTROL_1",
       "ESTIMATED_INPUT_TOKENS": 2771,
       "OUTPUT_RESERVE_TOKENS": 4624,
@@ -19,7 +19,7 @@
       "HYBRID_DEPENDENCY_DROP": "NO"
     },
     {
-      "SAMPLE_ID": "sv3hs-d6a98c9e81ffa5d0ca15",
+      "SAMPLE_ID": "sv3hs-63c2c291b989e2a3e48c",
       "SAMPLE_SLOT": "HYBRID_1",
       "ESTIMATED_INPUT_TOKENS": 3704,
       "OUTPUT_RESERVE_TOKENS": 4624,
@@ -33,7 +33,7 @@
       "HYBRID_DEPENDENCY_DROP": "NO"
     },
     {
-      "SAMPLE_ID": "sv3hs-3566942b4958aed0303a",
+      "SAMPLE_ID": "sv3hs-7725333044fdaae559a2",
       "SAMPLE_SLOT": "CONTROL_2",
       "ESTIMATED_INPUT_TOKENS": 2771,
       "OUTPUT_RESERVE_TOKENS": 4624,
@@ -47,7 +47,7 @@
       "HYBRID_DEPENDENCY_DROP": "NO"
     },
     {
-      "SAMPLE_ID": "sv3hs-49f67d7f0f9e0c5cfe18",
+      "SAMPLE_ID": "sv3hs-aae6112339a439d43750",
       "SAMPLE_SLOT": "HYBRID_2",
       "ESTIMATED_INPUT_TOKENS": 3704,
       "OUTPUT_RESERVE_TOKENS": 4624,
@@ -61,7 +61,7 @@
       "HYBRID_DEPENDENCY_DROP": "NO"
     },
     {
-      "SAMPLE_ID": "sv3hs-bec4f35c0f17e76342a4",
+      "SAMPLE_ID": "sv3hs-8f00799be335c4ccaf76",
       "SAMPLE_SLOT": "CONTROL_3",
       "ESTIMATED_INPUT_TOKENS": 2771,
       "OUTPUT_RESERVE_TOKENS": 4624,
@@ -75,7 +75,7 @@
       "HYBRID_DEPENDENCY_DROP": "NO"
     },
     {
-      "SAMPLE_ID": "sv3hs-98917fd664e40789703a",
+      "SAMPLE_ID": "sv3hs-84e695ee4e02665555cf",
       "SAMPLE_SLOT": "HYBRID_3",
       "ESTIMATED_INPUT_TOKENS": 3704,
       "OUTPUT_RESERVE_TOKENS": 4624,

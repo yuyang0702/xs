@@ -4,6 +4,7 @@
   "start_head": "96cb5a96cd97ae7cbdc6d9c03e4c371e89f3d048",
   "expected_worktree_at_gate_entry": "CLEAN",
   "PARENT_HYBRID_REVIEW_HEAD": "96cb5a96cd97ae7cbdc6d9c03e4c371e89f3d048",
+  "materialization_commit": "057f4d91c41132bca0ad45ac3b11562861b0082b",
   "production_source_diff": 0,
   "baml_src_diff": 0,
   "live_parity": "EXACT_METADATA_ONLY"

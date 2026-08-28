@@ -12,7 +12,7 @@
       {
         "path": "approval-readiness-packet-v1.json",
         "bytes": 3316,
-        "sha256": "060e8c0cdbc11fbbbf7a4d23ccda7e6766e45382f26256cce4f3328929b2d7d7"
+        "sha256": "9902b714deb5314352a75aaf11d43c6baa55f1a9f3114788f3399235d5ce29e5"
       },
       {
         "path": "arm-identities-v1.json",
@@ -21,8 +21,8 @@
       },
       {
         "path": "baseline-binding-v1.json",
-        "bytes": 396,
-        "sha256": "e57c0acf53abbfd8026a595526a015f22ec264f9bffcf6cfddef1afa798c39d9"
+        "bytes": 468,
+        "sha256": "9ab2d1aa6bccff9db12ceb957421b6f2a5a5f484774ec36d7a8f1bcb99ab6b54"
       },
       {
         "path": "blind-bundle-policy-v1.json",
@@ -37,7 +37,7 @@
       {
         "path": "campaign-authorization-plaintext-v1.txt",
         "bytes": 1966,
-        "sha256": "b73cff24ba7c5464008ebe82a521eea8c6a26c0eea85de375b713133a488c43d"
+        "sha256": "6cfaaab876d9a903e4dc695e0e264469d4cedfe7ea6e723f54717bfe85994f6a"
       },
       {
         "path": "campaign-stop-policy-v1.json",
@@ -47,7 +47,7 @@
       {
         "path": "capacity-preflight-v1.json",
         "bytes": 3217,
-        "sha256": "bbf1fb038c75517ee8623cc23894447cf4263ba29f57f029c63df5a59b4f7f41"
+        "sha256": "9ceb093690b0bd8d76b7f96344b135b6c12941d5a833ddf8eb077cef188dc455"
       },
       {
         "path": "cross-sample-contamination-v1.json",
@@ -62,7 +62,7 @@
       {
         "path": "egress-policy-v1.json",
         "bytes": 6458,
-        "sha256": "a9eeabcb6fc9225357f43f61f59dc63219c092aad645f5e7ff530d9ce2761a39"
+        "sha256": "657f3f6c2468156dc9f1e5b53dcc34ec219d14a09a076996f2e2a82bec52dbf5"
       },
       {
         "path": "execution-sequence-v1.json",
@@ -71,28 +71,28 @@
       },
       {
         "path": "experiment-lock-v1.json",
-        "bytes": 5764,
-        "sha256": "e87f169afe8c51e2ac275a1fa15c80af26e1b2e2d347acc6471600f00c5d80aa"
+        "bytes": 5838,
+        "sha256": "b793f04d03bedbb16cf01bd2eac81f747004b7cde98bd80f3e8d000d082ba2a3"
       },
       {
         "path": "final-report-v1.md",
-        "bytes": 2437,
-        "sha256": "3d11a40a5f4c94c6490ea9d7473fa02f34e449c9b0db78edd75483f62d4756a6"
+        "bytes": 2516,
+        "sha256": "c9509d3cf29b74bc79045cad09333788176fb9ae3fd3bc190a2700f8fe4324fa"
       },
       {
         "path": "focused-test-receipt-v1.json",
         "bytes": 239,
-        "sha256": "1eec3819892563b7f7e83a998c765e5e809fdd621bafb9f737425652071e7b18"
+        "sha256": "4a44f73d92260917e3ffc57c745954d6d84b008d37e61f1838581ffa3cc0b2d0"
       },
       {
         "path": "fresh-sample-manifest-v1.json",
         "bytes": 16388,
-        "sha256": "9c07df7046e1ebb0a8fc7ebb09f090329712d986abcdf04217bc516018a45ede"
+        "sha256": "057818cea9b4c03ad1adb692f5994951ee930affa0540928f328d5540c7f59f4"
       },
       {
         "path": "full-suite-receipt-v1.json",
-        "bytes": 616,
-        "sha256": "87091c34fc05ce34091860661b5886433eda93a96cf5b3ec820394302da33a17"
+        "bytes": 753,
+        "sha256": "2e3188f8bcb3566589849a0dc82c42726715142e2f357554b1338a33e6841247"
       },
       {
         "path": "independent-review-binding-v1.json",
@@ -107,7 +107,7 @@
       {
         "path": "matched-pair-identity-v1.json",
         "bytes": 3067,
-        "sha256": "77c3713f67640334976e8a5b3064fc3972cc2cdf9f98c45d99f83b23a9e79110"
+        "sha256": "85b48ed007f225735d7ba288a7e7d15388b0ae38cdf2cadc523086cd5471e827"
       },
       {
         "path": "methodology-binding-v1.json",
@@ -121,8 +121,8 @@
       },
       {
         "path": "pilot-identity-v1.json",
-        "bytes": 743,
-        "sha256": "0b97acd693c871ca792bc06e45d6c4e028a658a08dab9ab9c93716357e24ad33"
+        "bytes": 815,
+        "sha256": "315a034c74f44030aec3fa52971ea6e8b769b3eba4fdeb212d0185c550543263"
       },
       {
         "path": "primary-changed-variable-v1.json",
@@ -142,12 +142,12 @@
       {
         "path": "real-execution-boundary-readiness-v1.json",
         "bytes": 1880,
-        "sha256": "628d6fe5e702978461ddbf1df21f1e7bac3fc29b7a234eb8d79b05f645a0c4fb"
+        "sha256": "e89395ba2fb13bc1b68240f1165732838bc7173b5beb516d69393af7ba0c83a5"
       },
       {
         "path": "related-test-receipt-v1.json",
         "bytes": 435,
-        "sha256": "f04d30c23f82f466df0f1da02a40c67679b03c5d9a1bf1d5fb5ff151399adff1"
+        "sha256": "1c38a3281476f8607deee8ceb3b63cff1d98dd5f91761778ceeed2aebb2543f4"
       },
       {
         "path": "stop-loss-policy-v1.json",
@@ -161,7 +161,7 @@
       }
     ]
   },
-  "definition_sha256": "12eb8702cfedbc0b3c9a74d3f4bd10fee315e58a9c735e5d71011d90afce9ba5",
+  "definition_sha256": "ff6ecc76d28f634b9ce8e5674712497257525d8d10fd5ed664f8921e6cd3cc35",
   "entry_hash_mode": "EXACT_FILE_BYTES_SHA256",
   "coverage": "all evidence files except manifest itself",
   "status": "EXACT"

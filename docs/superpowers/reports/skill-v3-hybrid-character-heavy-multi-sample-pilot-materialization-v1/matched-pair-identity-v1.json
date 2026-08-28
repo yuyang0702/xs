@@ -4,9 +4,9 @@
   "pair_count": 3,
   "pairs": [
     {
-      "PAIR_ID": "sv3hp-79ac1da2976805416b6a",
-      "CONTROL_SAMPLE_ID": "sv3hs-b34df3dd6cd2dfa99ac2",
-      "HYBRID_SAMPLE_ID": "sv3hs-d6a98c9e81ffa5d0ca15",
+      "PAIR_ID": "sv3hp-2957a89923aac514cfa4",
+      "CONTROL_SAMPLE_ID": "sv3hs-0901efa55a2b11f3456f",
+      "HYBRID_SAMPLE_ID": "sv3hs-63c2c291b989e2a3e48c",
       "NON_SKILL_MODEL_VISIBLE_BYTES_IDENTICAL": "YES",
       "AUTHORITY_BYTES_IDENTICAL": "YES",
       "TASK_BYTES_IDENTICAL": "YES",
@@ -24,9 +24,9 @@
       "HYBRID_WIRE_INPUT_SHA256": "e413b0c32fcc7c9f50000146f4ce37a1bf5aaf007d491e56709bb8ed02238321"
     },
     {
-      "PAIR_ID": "sv3hp-ce2c715c22f449e9c705",
-      "CONTROL_SAMPLE_ID": "sv3hs-3566942b4958aed0303a",
-      "HYBRID_SAMPLE_ID": "sv3hs-49f67d7f0f9e0c5cfe18",
+      "PAIR_ID": "sv3hp-189b3448c22d1be80c4e",
+      "CONTROL_SAMPLE_ID": "sv3hs-7725333044fdaae559a2",
+      "HYBRID_SAMPLE_ID": "sv3hs-aae6112339a439d43750",
       "NON_SKILL_MODEL_VISIBLE_BYTES_IDENTICAL": "YES",
       "AUTHORITY_BYTES_IDENTICAL": "YES",
       "TASK_BYTES_IDENTICAL": "YES",
@@ -44,9 +44,9 @@
       "HYBRID_WIRE_INPUT_SHA256": "e413b0c32fcc7c9f50000146f4ce37a1bf5aaf007d491e56709bb8ed02238321"
     },
     {
-      "PAIR_ID": "sv3hp-98231a6eb346dd2f9162",
-      "CONTROL_SAMPLE_ID": "sv3hs-bec4f35c0f17e76342a4",
-      "HYBRID_SAMPLE_ID": "sv3hs-98917fd664e40789703a",
+      "PAIR_ID": "sv3hp-48fe92445a8ad16bdfce",
+      "CONTROL_SAMPLE_ID": "sv3hs-8f00799be335c4ccaf76",
+      "HYBRID_SAMPLE_ID": "sv3hs-84e695ee4e02665555cf",
       "NON_SKILL_MODEL_VISIBLE_BYTES_IDENTICAL": "YES",
       "AUTHORITY_BYTES_IDENTICAL": "YES",
       "TASK_BYTES_IDENTICAL": "YES",

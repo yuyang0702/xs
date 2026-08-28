@@ -49,6 +49,7 @@ from tools.diagnostics.materialize_skill_v3_hybrid_independent_review_v2 import 
 
 BRANCH = "r1-ptr3/planning-repair-finding-propagation-20260817"
 START_HEAD = "96cb5a96cd97ae7cbdc6d9c03e4c371e89f3d048"
+MATERIALIZATION_HEAD = "057f4d91c41132bca0ad45ac3b11562861b0082b"
 HYBRID_IMPLEMENTATION_HEAD = "9361b47892b80cd61fde0c6396e3a3bde0f0a79e"
 HYBRID_IDENTITY_CORRECTION_HEAD = "c29e7da652c86a0e701dc820918a817ab8389df6"
 REVIEW_ROOT = Path(
@@ -334,6 +335,7 @@ def build_materialization(repo_root: Path, validation: Mapping[str, Any]) -> dic
     pilot_seed = {
         "schema": "SkillV3HybridPilotIdentitySeedV1",
         "parent_head": START_HEAD,
+        "materialization_head": MATERIALIZATION_HEAD,
         "review_evidence_sha256": review_evidence_sha,
         "hybrid_implementation_head": HYBRID_IMPLEMENTATION_HEAD,
         "hybrid_identity_correction_head": HYBRID_IDENTITY_CORRECTION_HEAD,
@@ -492,6 +494,7 @@ def build_materialization(repo_root: Path, validation: Mapping[str, Any]) -> dic
         "PILOT_ID": pilot_id,
         "PILOT_SCHEMA_VERSION": "skill-v3-hybrid-character-heavy-pilot-v1",
         "PARENT_HYBRID_REVIEW_HEAD": START_HEAD,
+        "CURRENT_SUCCESSOR_HEAD": MATERIALIZATION_HEAD,
         "PARENT_HYBRID_REVIEW_EVIDENCE_SHA": review_evidence_sha,
         "HYBRID_IMPLEMENTATION_HEAD": HYBRID_IMPLEMENTATION_HEAD,
         "HYBRID_IDENTITY_CORRECTION_HEAD": HYBRID_IDENTITY_CORRECTION_HEAD,
@@ -628,7 +631,7 @@ def build_materialization(repo_root: Path, validation: Mapping[str, Any]) -> dic
         "SKILL V3 HYBRID CHARACTER-HEAVY MULTI-SAMPLE PILOT — FRESH USER AUTHORIZATION\n\n"
         "This text is an authorization template only. It is not authorization until the user "
         "sends it as a fresh explicit message.\n\n"
-        f"SUCCESSOR_HEAD={START_HEAD}\n"
+        f"SUCCESSOR_HEAD={MATERIALIZATION_HEAD}\n"
         f"PILOT_ID={pilot_id}\n"
         f"EXPERIMENT_LOCK_SHA256={experiment_lock_sha}\n"
         "EXECUTION_SEQUENCE=" + ",".join(SEQUENCE) + "\n"
@@ -668,6 +671,7 @@ def build_materialization(repo_root: Path, validation: Mapping[str, Any]) -> dic
         "start_head": START_HEAD,
         "expected_worktree_at_gate_entry": "CLEAN",
         "PARENT_HYBRID_REVIEW_HEAD": START_HEAD,
+        "materialization_commit": MATERIALIZATION_HEAD,
         "production_source_diff": 0,
         "baml_src_diff": 0,
         "live_parity": "EXACT_METADATA_ONLY",
@@ -691,6 +695,7 @@ def build_materialization(repo_root: Path, validation: Mapping[str, Any]) -> dic
         "PILOT_ID_FRESH": "YES",
         "PILOT_SCHEMA_VERSION": "skill-v3-hybrid-character-heavy-pilot-v1",
         "PARENT_HYBRID_REVIEW_HEAD": START_HEAD,
+        "CURRENT_SUCCESSOR_HEAD": MATERIALIZATION_HEAD,
         "PARENT_HYBRID_REVIEW_EVIDENCE_SHA": review_evidence_sha,
         "HYBRID_IMPLEMENTATION_HEAD": HYBRID_IMPLEMENTATION_HEAD,
         "HYBRID_IDENTITY_CORRECTION_HEAD": HYBRID_IDENTITY_CORRECTION_HEAD,
@@ -934,7 +939,7 @@ def build_materialization(repo_root: Path, validation: Mapping[str, Any]) -> dic
         "schema": "SkillV3HybridPilotApprovalReadinessPacketV1",
         "PILOT_ID": pilot_id,
         "EXPERIMENT_LOCK_SHA256": experiment_lock_sha,
-        "CURRENT_SUCCESSOR_HEAD": START_HEAD,
+        "CURRENT_SUCCESSOR_HEAD": MATERIALIZATION_HEAD,
         "SAMPLE_IDS": [sample_ids[slot] for slot in SEQUENCE],
         "SAMPLE_LOCK_SHA256S": [row["SAMPLE_LOCK_SHA256"] for row in samples],
         "SEALED_EXECUTION_SEQUENCE": list(SEQUENCE),
@@ -993,6 +998,7 @@ def build_materialization(repo_root: Path, validation: Mapping[str, Any]) -> dic
     files["final-report-v1.md"] = (
         "# Skill V3 Hybrid character-heavy multi-sample pilot materialization\n\n"
         f"- Branch/start HEAD: `{branch}` / `{START_HEAD}`\n"
+        f"- Materialization successor commit: `{MATERIALIZATION_HEAD}`\n"
         f"- Pilot ID: `{pilot_id}`\n"
         f"- Experiment lock: `{experiment_lock_sha}`\n"
         f"- Literary policy: `{LITERARY_POLICY_SHA256}`\n"
