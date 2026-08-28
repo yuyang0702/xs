@@ -1,0 +1,20 @@
+{
+  "schema": "SkillV3CombinedBlindAggregationSha256ManifestV1",
+  "status": "EXACT",
+  "canonicalization": "sorted relative path, tab, bytes, tab, lowercase sha256, LF; final LF; manifest excludes itself",
+  "evidence_root_sha256": "84c6af106b38257350f79fe0b7b184be69fc491f66458429ff9ddb33f342ce1d",
+  "entry_count": 11,
+  "entries": [
+    {"path":"blind-policy-compatibility-v1.json","bytes":1334,"sha256":"01fb6d0d0e4d2d82979e02d3b30c7df6d73fb4efbf3ba93c8067bd110cf081a9"},
+    {"path":"COMBINED_BLIND_AGGREGATION_FROZEN.json","bytes":598,"sha256":"2f62486345368b7bafe4fcbe685eaecdce78d9f42df8ec073dabcf5683050e8a"},
+    {"path":"combined-literary-freeze-v1.json","bytes":1150,"sha256":"c9be76be273049ec55c772298ceddb99964a1101abbc25edb2062523e93d4d4b"},
+    {"path":"combined-per-dimension-aggregation-v1.json","bytes":5006,"sha256":"0f14f3ce83813c0a79937c1cece9269ff59ffd83bfe2e3a285e894c54825f12c"},
+    {"path":"combined-variance-review-v1.json","bytes":2055,"sha256":"8fd70572f5545e7b87aa33c57839c211401ac5e3d954e2441422ea8f09df888d"},
+    {"path":"complete-vote-set-v1.json","bytes":3863,"sha256":"81fb8c626722e8759885a0d2a051b7866d22e178d20f3495e4b64f05720d8664"},
+    {"path":"evaluator1-freeze-binding-v1.json","bytes":832,"sha256":"2fb2d706a2fb2ce1102ad0ad1eb0c80cc6d4fb2d2e84067b31a682499a367be0"},
+    {"path":"evaluator2-freeze-binding-v1.json","bytes":901,"sha256":"32d04e30aea947eee31f22cfe39367ca09931e1f2fba6b201a13a6fdfe88a219"},
+    {"path":"final-combined-blind-report-v1.md","bytes":3942,"sha256":"5bb2a3346b9bdc4cf77fed356d9e43538b5a118d6555f04415b0ef6241de2bb5"},
+    {"path":"privacy-scan-v1.json","bytes":808,"sha256":"698e075cd43d433d76300a74c2e6e6113541c57a46fc0004d560b9aa01e4abd5"},
+    {"path":"README.md","bytes":557,"sha256":"f914e2170a7c0bf27a1acaa9f3f46d12afe4fbacfcd886ae7b737bc800ea0642"}
+  ]
+}

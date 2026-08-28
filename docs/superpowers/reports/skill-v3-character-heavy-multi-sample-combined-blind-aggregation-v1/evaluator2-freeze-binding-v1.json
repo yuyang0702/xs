@@ -1,0 +1,16 @@
+{
+  "schema": "SkillV3CombinedBlindEvaluator2FreezeBindingV1",
+  "evaluator_id": "anonymous-evaluator-2",
+  "evidence_root": "docs/superpowers/reports/skill-v3-character-heavy-multi-sample-blind-evaluation-v2/",
+  "evidence_commit": "fec3607b6ad52f3e917f3d6bcad32e7224928720",
+  "evidence_commit_time": "2026-08-28T10:30:14+08:00",
+  "manifest_sha256": "bfdbb764031dafc31011bf3c431851b7ce2f8537959e450e34db5a8fbc560f94",
+  "evidence_root_definition_sha256": "4ecdb2b55645ed050e614de60f2a43535d40c51ed2f0e1eabe38f31833dc7aaa",
+  "judgment_set_sha256": "d06eeb647b6a172067c10c8bfdb37c2cd9b940c156367266128b42529c464772",
+  "independent_judgments_freeze_sha256": "9c4c5ce98c78cd33c4404363476bce3a70f1b6b55be6211d82060b021f5d2dc6",
+  "evaluator_by_batch_vote_count": 3,
+  "freeze_valid": true,
+  "first_blind_judgments_read_before_second_freeze": false,
+  "mapping_revealed": false,
+  "status": "VALID"
+}

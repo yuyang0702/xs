@@ -1,0 +1,28 @@
+{
+  "schema": "SkillV3CombinedBlindVarianceReviewV1",
+  "required_vote_set_complete": true,
+  "opposed_direction_dimensions": ["voice_readiness","anti_template_risk"],
+  "direction_tie_variance_dimensions": ["subtext_support","setup_payoff_integrity","anti_template_risk"],
+  "evaluator_disagreement_count": 4,
+  "evaluator_disagreements": [
+    {"anonymous_pair_id":"blind-pair-1","dimension":"voice_readiness","evaluator_1":"A_BETTER","evaluator_2":"B_BETTER","kind":"OPPOSED_DIRECTION"},
+    {"anonymous_pair_id":"blind-pair-1","dimension":"anti_template_risk","evaluator_1":"TIE","evaluator_2":"A_BETTER","kind":"DIRECTION_VS_TIE"},
+    {"anonymous_pair_id":"blind-pair-2","dimension":"subtext_support","evaluator_1":"TIE","evaluator_2":"B_BETTER","kind":"DIRECTION_VS_TIE"},
+    {"anonymous_pair_id":"blind-pair-2","dimension":"setup_payoff_integrity","evaluator_1":"TIE","evaluator_2":"B_BETTER","kind":"DIRECTION_VS_TIE"}
+  ],
+  "sample_level_variance": [
+    {"anonymous_pair_id":"blind-pair-1","finding":"Visible structural labels caused the only direct evaluator opposition in voice readiness and a TIE-versus-A_BETTER disagreement in anti-template risk."},
+    {"anonymous_pair_id":"blind-pair-2","finding":"Evaluators differed between neutral equivalence and B_BETTER for subtext support and setup/payoff integrity."},
+    {"anonymous_pair_id":"blind-pair-3","finding":"Both evaluators returned B_BETTER on all eight dimensions."}
+  ],
+  "sample_level_insufficient_evidence_count": 0,
+  "aggregate_insufficient_evidence_count": 0,
+  "missing_vote_insufficiency_count": 0,
+  "variance_changed_supported_direction_ad_hoc": false,
+  "equivalent_results_kept_neutral": true,
+  "critical_results_averaged_away": false,
+  "scalar_score_created": false,
+  "blind_safe_conclusion": "Variance remains material in four dimensions, especially voice readiness and anti-template risk, but each dimension still has at least four of six votes in the same pair-position direction under the sealed rule.",
+  "mapping_revealed": false,
+  "status": "COMPLETE"
+}

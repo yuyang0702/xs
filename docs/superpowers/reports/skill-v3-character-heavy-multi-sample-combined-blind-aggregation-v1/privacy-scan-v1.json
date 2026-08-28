@@ -1,0 +1,19 @@
+{
+  "schema": "SkillV3CombinedBlindAggregationPrivacyScanV1",
+  "scan_scope": "docs/superpowers/reports/skill-v3-character-heavy-multi-sample-combined-blind-aggregation-v1/",
+  "anonymous_and_group_neutral_ids_only": true,
+  "actual_arm_identity_visible": false,
+  "mapping_revealed": false,
+  "mapping_artifact_path_or_content_present": false,
+  "engineering_identity_present": false,
+  "skill_context_identity_present": false,
+  "selective_compiler_identity_present": false,
+  "route_provider_cost_metadata_present": false,
+  "approval_nonce_evidence_present": false,
+  "raw_prospective_sample_id_present": false,
+  "pair_position_relation_labels_present": true,
+  "pair_position_relation_labels_are_arm_identities": false,
+  "secret_pattern_matches": 0,
+  "mapping_contamination": 0,
+  "status": "PASS"
+}
