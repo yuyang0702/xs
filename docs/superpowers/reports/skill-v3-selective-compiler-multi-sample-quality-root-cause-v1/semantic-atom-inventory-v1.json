@@ -1,0 +1,723 @@
+{
+  "schema": "SkillV3SemanticAtomInventoryV1",
+  "status": "LOCAL_SOURCE_GROUNDED",
+  "method": "manual semantic-unit decomposition of exact reconstructed A rules and exact indexed B/candidate source spans; no model call",
+  "atom_count": 36,
+  "a_present_atom_count": 28,
+  "b_present_atom_count": 9,
+  "rows": [
+    {
+      "atom_id": "atom-formative-pressure-to-present-motive",
+      "source_skill": "character-management",
+      "source_section": "MOTIVE_ACTION",
+      "source_file": "src/novel_flywheel/runtime_skill_profiles.py",
+      "source_text_range": "rendered-context-rule:MOTIVE_ACTION",
+      "source_text_sha256": "c9ddb92a628fe1d4943ab727f9b0a120fb8533f64aa588eda03ad9796682db9c",
+      "semantic_function": "bind biography to present motive",
+      "target_dimensions": [
+        "character_agency",
+        "causal_coherence"
+      ],
+      "actionability": "HIGH",
+      "specificity": "HIGH",
+      "level": "CHARACTER_LEVEL",
+      "present_in_a": true,
+      "present_in_b": true,
+      "wording_identity": "DIFFERENT"
+    },
+    {
+      "atom_id": "atom-want-need-conflict",
+      "source_skill": "character-management",
+      "source_section": "MOTIVE_ACTION",
+      "source_file": "src/novel_flywheel/runtime_skill_profiles.py",
+      "source_text_range": "rendered-context-rule:MOTIVE_ACTION",
+      "source_text_sha256": "c9ddb92a628fe1d4943ab727f9b0a120fb8533f64aa588eda03ad9796682db9c",
+      "semantic_function": "create internal/external conflict",
+      "target_dimensions": [
+        "character_agency",
+        "subtext_support"
+      ],
+      "actionability": "HIGH",
+      "specificity": "MEDIUM",
+      "level": "CHARACTER_LEVEL",
+      "present_in_a": true,
+      "present_in_b": true,
+      "wording_identity": "DIFFERENT"
+    },
+    {
+      "atom_id": "atom-opposed-tactics-costly-choice",
+      "source_skill": "character-management",
+      "source_section": "MOTIVE_ACTION",
+      "source_file": "src/novel_flywheel/runtime_skill_profiles.py",
+      "source_text_range": "rendered-context-rule:MOTIVE_ACTION",
+      "source_text_sha256": "c9ddb92a628fe1d4943ab727f9b0a120fb8533f64aa588eda03ad9796682db9c",
+      "semantic_function": "externalize motive as tactics and cost",
+      "target_dimensions": [
+        "character_agency",
+        "scene_pressure"
+      ],
+      "actionability": "HIGH",
+      "specificity": "HIGH",
+      "level": "SCENE_LEVEL",
+      "present_in_a": true,
+      "present_in_b": false,
+      "wording_identity": "NA"
+    },
+    {
+      "atom_id": "atom-observable-reaction-next-beat-consequence",
+      "source_skill": "character-management",
+      "source_section": "MOTIVE_ACTION",
+      "source_file": "src/novel_flywheel/runtime_skill_profiles.py",
+      "source_text_range": "rendered-context-rule:MOTIVE_ACTION",
+      "source_text_sha256": "c9ddb92a628fe1d4943ab727f9b0a120fb8533f64aa588eda03ad9796682db9c",
+      "semantic_function": "close action consequence chain",
+      "target_dimensions": [
+        "character_agency",
+        "causal_coherence"
+      ],
+      "actionability": "HIGH",
+      "specificity": "HIGH",
+      "level": "HANDOFF",
+      "present_in_a": true,
+      "present_in_b": false,
+      "wording_identity": "NA"
+    },
+    {
+      "atom_id": "atom-distinct-voice-diction-rhythm",
+      "source_skill": "character-management",
+      "source_section": "VOICE_RELATION",
+      "source_file": "src/novel_flywheel/runtime_skill_profiles.py",
+      "source_text_range": "rendered-context-rule:VOICE_RELATION",
+      "source_text_sha256": "7c0ad85841a7e5bc904d5126df1583aa809e75b41ef6fb3cf2811906b9b4936f",
+      "semantic_function": "differentiate voice surface",
+      "target_dimensions": [
+        "voice_readiness",
+        "specificity"
+      ],
+      "actionability": "HIGH",
+      "specificity": "HIGH",
+      "level": "CHARACTER_LEVEL",
+      "present_in_a": true,
+      "present_in_b": false,
+      "wording_identity": "NA"
+    },
+    {
+      "atom_id": "atom-evasion-gesture-withheld-explanation",
+      "source_skill": "character-management",
+      "source_section": "VOICE_RELATION",
+      "source_file": "src/novel_flywheel/runtime_skill_profiles.py",
+      "source_text_range": "rendered-context-rule:VOICE_RELATION",
+      "source_text_sha256": "7c0ad85841a7e5bc904d5126df1583aa809e75b41ef6fb3cf2811906b9b4936f",
+      "semantic_function": "dramatize subtext",
+      "target_dimensions": [
+        "subtext_support",
+        "anti_template_risk"
+      ],
+      "actionability": "HIGH",
+      "specificity": "HIGH",
+      "level": "SCENE_LEVEL",
+      "present_in_a": true,
+      "present_in_b": false,
+      "wording_identity": "NA"
+    },
+    {
+      "atom_id": "atom-relationship-pressure-changes-action",
+      "source_skill": "character-management",
+      "source_section": "VOICE_RELATION",
+      "source_file": "src/novel_flywheel/runtime_skill_profiles.py",
+      "source_text_range": "rendered-context-rule:VOICE_RELATION",
+      "source_text_sha256": "7c0ad85841a7e5bc904d5126df1583aa809e75b41ef6fb3cf2811906b9b4936f",
+      "semantic_function": "turn relationship into causal pressure",
+      "target_dimensions": [
+        "character_agency",
+        "subtext_support",
+        "scene_pressure"
+      ],
+      "actionability": "HIGH",
+      "specificity": "HIGH",
+      "level": "CHARACTER_LEVEL",
+      "present_in_a": true,
+      "present_in_b": false,
+      "wording_identity": "NA"
+    },
+    {
+      "atom_id": "atom-sensory-mechanical-affordance-constrains-action",
+      "source_skill": "worldbuilding",
+      "source_section": "CAUSAL_AFFORDANCE",
+      "source_file": "src/novel_flywheel/runtime_skill_profiles.py",
+      "source_text_range": "rendered-context-rule:CAUSAL_AFFORDANCE",
+      "source_text_sha256": "0a7c19cb5c7474af1c9c9098573965a6fda93ce3ec1fd12a03ab75dd5d28541d",
+      "semantic_function": "make setting causal and specific",
+      "target_dimensions": [
+        "causal_coherence",
+        "specificity",
+        "scene_pressure"
+      ],
+      "actionability": "HIGH",
+      "specificity": "HIGH",
+      "level": "SCENE_LEVEL",
+      "present_in_a": true,
+      "present_in_b": false,
+      "wording_identity": "NA"
+    },
+    {
+      "atom_id": "atom-interactive-affordance-later-payoff",
+      "source_skill": "worldbuilding",
+      "source_section": "CAUSAL_AFFORDANCE",
+      "source_file": "src/novel_flywheel/runtime_skill_profiles.py",
+      "source_text_range": "rendered-context-rule:CAUSAL_AFFORDANCE",
+      "source_text_sha256": "0a7c19cb5c7474af1c9c9098573965a6fda93ce3ec1fd12a03ab75dd5d28541d",
+      "semantic_function": "bridge setting to payoff",
+      "target_dimensions": [
+        "setup_payoff_integrity",
+        "causal_coherence"
+      ],
+      "actionability": "HIGH",
+      "specificity": "HIGH",
+      "level": "STRUCTURAL",
+      "present_in_a": true,
+      "present_in_b": false,
+      "wording_identity": "NA"
+    },
+    {
+      "atom_id": "atom-opposed-escalation-reaction-reversal",
+      "source_skill": "plot-structure",
+      "source_section": "PRESSURE_BEATS",
+      "source_file": "src/novel_flywheel/runtime_skill_profiles.py",
+      "source_text_range": "rendered-context-rule:PRESSURE_BEATS",
+      "source_text_sha256": "1336342b98c96d8a382e116eaf2ff92ceefc3ab89524786eae484be375c15db7",
+      "semantic_function": "build causal pressure beats",
+      "target_dimensions": [
+        "scene_pressure",
+        "causal_coherence"
+      ],
+      "actionability": "HIGH",
+      "specificity": "HIGH",
+      "level": "SCENE_LEVEL",
+      "present_in_a": true,
+      "present_in_b": true,
+      "wording_identity": "DIFFERENT"
+    },
+    {
+      "atom_id": "atom-behavior-over-explanatory-summary",
+      "source_skill": "plot-structure",
+      "source_section": "PRESSURE_BEATS",
+      "source_file": "src/novel_flywheel/runtime_skill_profiles.py",
+      "source_text_range": "rendered-context-rule:PRESSURE_BEATS",
+      "source_text_sha256": "1336342b98c96d8a382e116eaf2ff92ceefc3ab89524786eae484be375c15db7",
+      "semantic_function": "prevent synopsis-distance explanation",
+      "target_dimensions": [
+        "subtext_support",
+        "anti_template_risk",
+        "scene_pressure"
+      ],
+      "actionability": "HIGH",
+      "specificity": "HIGH",
+      "level": "HANDOFF",
+      "present_in_a": true,
+      "present_in_b": false,
+      "wording_identity": "NA"
+    },
+    {
+      "atom_id": "atom-setup-dependency-payoff-through-action",
+      "source_skill": "plot-structure",
+      "source_section": "SETUP_PAYOFF",
+      "source_file": "src/novel_flywheel/runtime_skill_profiles.py",
+      "source_text_range": "rendered-context-rule:SETUP_PAYOFF",
+      "source_text_sha256": "44d9f7a76835de0148006a0f4b37b673f41748f13f014d89dea958989d8c0680",
+      "semantic_function": "preserve and resolve setup causally",
+      "target_dimensions": [
+        "setup_payoff_integrity",
+        "causal_coherence"
+      ],
+      "actionability": "HIGH",
+      "specificity": "HIGH",
+      "level": "STRUCTURAL",
+      "present_in_a": true,
+      "present_in_b": false,
+      "wording_identity": "NA"
+    },
+    {
+      "atom_id": "atom-confirmed-frame-bridge",
+      "source_skill": "story-init",
+      "source_section": "FRAME_BRIDGE",
+      "source_file": "src/novel_flywheel/runtime_skill_profiles.py",
+      "source_text_range": "rendered-context-rule:FRAME_BRIDGE",
+      "source_text_sha256": "429e48b691cb5b8d24e6b7bdbecb4cc577e18eaeec0116bc3709ddf3eebf8580",
+      "semantic_function": "bind tone genre POV tense without invention",
+      "target_dimensions": [
+        "voice_readiness",
+        "causal_coherence"
+      ],
+      "actionability": "MEDIUM",
+      "specificity": "HIGH",
+      "level": "HANDOFF",
+      "present_in_a": true,
+      "present_in_b": false,
+      "wording_identity": "NA"
+    },
+    {
+      "atom_id": "atom-draft-usable-spatial-microchain",
+      "source_skill": "cross-skill",
+      "source_section": "DRAFT_SCENE",
+      "source_file": "src/novel_flywheel/runtime_skill_profiles.py",
+      "source_text_range": "rendered-context-rule:DRAFT_SCENE",
+      "source_text_sha256": "b9c6b7c95d00190b43f43bf176ae052cdc2af079bdadc316a884ab2b0e859941",
+      "semantic_function": "create continuous scene-ready beat chain",
+      "target_dimensions": [
+        "scene_pressure",
+        "causal_coherence",
+        "specificity"
+      ],
+      "actionability": "HIGH",
+      "specificity": "HIGH",
+      "level": "HANDOFF",
+      "present_in_a": true,
+      "present_in_b": false,
+      "wording_identity": "NA"
+    },
+    {
+      "atom_id": "atom-terminal-image",
+      "source_skill": "cross-skill",
+      "source_section": "DRAFT_SCENE",
+      "source_file": "src/novel_flywheel/runtime_skill_profiles.py",
+      "source_text_range": "rendered-context-rule:DRAFT_SCENE",
+      "source_text_sha256": "b9c6b7c95d00190b43f43bf176ae052cdc2af079bdadc316a884ab2b0e859941",
+      "semantic_function": "end bounded event on concrete image",
+      "target_dimensions": [
+        "specificity",
+        "anti_template_risk"
+      ],
+      "actionability": "HIGH",
+      "specificity": "HIGH",
+      "level": "HANDOFF",
+      "present_in_a": true,
+      "present_in_b": false,
+      "wording_identity": "NA"
+    },
+    {
+      "atom_id": "atom-labels-reasoning-only",
+      "source_skill": "cross-skill",
+      "source_section": "ANTI_TAXONOMY",
+      "source_file": "src/novel_flywheel/runtime_skill_profiles.py",
+      "source_text_range": "rendered-context-rule:ANTI_TAXONOMY",
+      "source_text_sha256": "1e4fe91f4d6ef0c151d81aaa85914c2186577603628dc0d556714fb9dd74e08f",
+      "semantic_function": "prevent taxonomy prose",
+      "target_dimensions": [
+        "anti_template_risk",
+        "subtext_support"
+      ],
+      "actionability": "HIGH",
+      "specificity": "HIGH",
+      "level": "OTHER",
+      "present_in_a": true,
+      "present_in_b": false,
+      "wording_identity": "NA"
+    },
+    {
+      "atom_id": "atom-replace-abstraction-with-choice-dialogue-consequence",
+      "source_skill": "cross-skill",
+      "source_section": "ANTI_TAXONOMY",
+      "source_file": "src/novel_flywheel/runtime_skill_profiles.py",
+      "source_text_range": "rendered-context-rule:ANTI_TAXONOMY",
+      "source_text_sha256": "1e4fe91f4d6ef0c151d81aaa85914c2186577603628dc0d556714fb9dd74e08f",
+      "semantic_function": "convert labels into dramatized evidence",
+      "target_dimensions": [
+        "anti_template_risk",
+        "subtext_support",
+        "character_agency"
+      ],
+      "actionability": "HIGH",
+      "specificity": "HIGH",
+      "level": "SCENE_LEVEL",
+      "present_in_a": true,
+      "present_in_b": false,
+      "wording_identity": "NA"
+    },
+    {
+      "atom_id": "atom-actor-choice-action-state-change",
+      "source_skill": "plot-structure",
+      "source_section": "PLOT_CAUSAL_ESCALATION",
+      "source_file": "src/novel_flywheel/runtime_skill_profiles.py",
+      "source_text_range": "rendered-context-rule:PLOT_CAUSAL_ESCALATION",
+      "source_text_sha256": "aec7612d0a5c5f76525a71e900d9478b3c7a63d0a81fda83a6c0686d2e3742e8",
+      "semantic_function": "bind actor action to local result",
+      "target_dimensions": [
+        "character_agency",
+        "causal_coherence"
+      ],
+      "actionability": "HIGH",
+      "specificity": "HIGH",
+      "level": "STRUCTURAL",
+      "present_in_a": true,
+      "present_in_b": true,
+      "wording_identity": "DIFFERENT"
+    },
+    {
+      "atom_id": "atom-foreshadowing-intent-across-plan",
+      "source_skill": "plot-structure",
+      "source_section": "PLOT_SETUP_PAYOFF_INTENT",
+      "source_file": "src/novel_flywheel/runtime_skill_profiles.py",
+      "source_text_range": "rendered-context-rule:PLOT_SETUP_PAYOFF_INTENT",
+      "source_text_sha256": "4fc015b6c7282d06703deda8b6a48c483f393e3f74eccd275f206579685395a2",
+      "semantic_function": "retain setup/payoff intent",
+      "target_dimensions": [
+        "setup_payoff_integrity"
+      ],
+      "actionability": "MEDIUM",
+      "specificity": "MEDIUM",
+      "level": "STRUCTURAL",
+      "present_in_a": true,
+      "present_in_b": false,
+      "wording_identity": "NA"
+    },
+    {
+      "atom_id": "atom-pacing-without-authority-change",
+      "source_skill": "plot-structure",
+      "source_section": "PLOT_PACING_INTENT",
+      "source_file": "src/novel_flywheel/runtime_skill_profiles.py",
+      "source_text_range": "rendered-context-rule:PLOT_PACING_INTENT",
+      "source_text_sha256": "de6a1ae5a05e25a1e528d0a987cf1577f110fdae7f6084cacc24665c611b02d0",
+      "semantic_function": "pace while preserving event authority",
+      "target_dimensions": [
+        "scene_pressure",
+        "causal_coherence"
+      ],
+      "actionability": "MEDIUM",
+      "specificity": "HIGH",
+      "level": "STRUCTURAL",
+      "present_in_a": true,
+      "present_in_b": false,
+      "wording_identity": "NA"
+    },
+    {
+      "atom_id": "atom-voice-vocabulary-sentence-habits-tone",
+      "source_skill": "character-management",
+      "source_section": "CHARACTER_VOICE",
+      "source_file": "src/novel_flywheel/runtime_skill_profiles.py",
+      "source_text_range": "rendered-context-rule:CHARACTER_VOICE",
+      "source_text_sha256": "a9e7cedd487821388908fc11bf8311ea8577d859b9fe93da1a078bc424e10959",
+      "semantic_function": "bind observable voice features",
+      "target_dimensions": [
+        "voice_readiness",
+        "specificity"
+      ],
+      "actionability": "HIGH",
+      "specificity": "HIGH",
+      "level": "CHARACTER_LEVEL",
+      "present_in_a": true,
+      "present_in_b": false,
+      "wording_identity": "NA"
+    },
+    {
+      "atom_id": "atom-arc-start-turning-end",
+      "source_skill": "character-management",
+      "source_section": "CHARACTER_ARC",
+      "source_file": "src/novel_flywheel/runtime_skill_profiles.py",
+      "source_text_range": "rendered-context-rule:CHARACTER_ARC",
+      "source_text_sha256": "62e601a97d3d52070868730ba6fba21cae19acbdd4c82a219f8c90897c0a2d53",
+      "semantic_function": "preserve character arc trajectory",
+      "target_dimensions": [
+        "character_agency",
+        "causal_coherence"
+      ],
+      "actionability": "MEDIUM",
+      "specificity": "MEDIUM",
+      "level": "STRUCTURAL",
+      "present_in_a": true,
+      "present_in_b": true,
+      "wording_identity": "DIFFERENT"
+    },
+    {
+      "atom_id": "atom-relationship-role-pressure-trust-subtext",
+      "source_skill": "character-management",
+      "source_section": "CHARACTER_RELATIONSHIP_NUANCE",
+      "source_file": "src/novel_flywheel/runtime_skill_profiles.py",
+      "source_text_range": "rendered-context-rule:CHARACTER_RELATIONSHIP_NUANCE",
+      "source_text_sha256": "bb7d7bfc42bb51951e166b8f6f78684f7c9fd41187fa3990e6e096ec354ebd28",
+      "semantic_function": "apply relationship role to scene behavior",
+      "target_dimensions": [
+        "subtext_support",
+        "scene_pressure",
+        "character_agency"
+      ],
+      "actionability": "HIGH",
+      "specificity": "HIGH",
+      "level": "CHARACTER_LEVEL",
+      "present_in_a": true,
+      "present_in_b": false,
+      "wording_identity": "NA"
+    },
+    {
+      "atom_id": "atom-concrete-interactive-location-detail",
+      "source_skill": "worldbuilding",
+      "source_section": "WORLD_SENSORY_SPECIFICITY",
+      "source_file": "src/novel_flywheel/runtime_skill_profiles.py",
+      "source_text_range": "rendered-context-rule:WORLD_SENSORY_SPECIFICITY",
+      "source_text_sha256": "474c61627e8a3c23eccf28260354f0dd204f4a8b73bdccd731b042eac179fd21",
+      "semantic_function": "ground action in local setting",
+      "target_dimensions": [
+        "specificity",
+        "scene_pressure"
+      ],
+      "actionability": "HIGH",
+      "specificity": "HIGH",
+      "level": "SCENE_LEVEL",
+      "present_in_a": true,
+      "present_in_b": false,
+      "wording_identity": "NA"
+    },
+    {
+      "atom_id": "atom-specific-cost-limit-consequence",
+      "source_skill": "worldbuilding",
+      "source_section": "WORLD_COST_AND_LIMIT",
+      "source_file": "src/novel_flywheel/runtime_skill_profiles.py",
+      "source_text_range": "rendered-context-rule:WORLD_COST_AND_LIMIT",
+      "source_text_sha256": "2a434bbc079717d438f0b2952b3e3f4a49753b58625f4859e75a2f9d9dce719c",
+      "semantic_function": "make systems constrain action",
+      "target_dimensions": [
+        "causal_coherence",
+        "scene_pressure",
+        "specificity"
+      ],
+      "actionability": "HIGH",
+      "specificity": "HIGH",
+      "level": "STRUCTURAL",
+      "present_in_a": true,
+      "present_in_b": false,
+      "wording_identity": "NA"
+    },
+    {
+      "atom_id": "atom-faction-conflict-as-local-pressure",
+      "source_skill": "worldbuilding",
+      "source_section": "WORLD_FACTION_PRESSURE",
+      "source_file": "src/novel_flywheel/runtime_skill_profiles.py",
+      "source_text_range": "rendered-context-rule:WORLD_FACTION_PRESSURE",
+      "source_text_sha256": "44bdf4d137bfbee08f8939f66e77ef23f20a4b0694f4b0a26989c0115e4d40fe",
+      "semantic_function": "turn faction facts into pressure",
+      "target_dimensions": [
+        "scene_pressure",
+        "causal_coherence"
+      ],
+      "actionability": "HIGH",
+      "specificity": "MEDIUM",
+      "level": "SCENE_LEVEL",
+      "present_in_a": true,
+      "present_in_b": false,
+      "wording_identity": "NA"
+    },
+    {
+      "atom_id": "atom-history-culture-current-tension",
+      "source_skill": "worldbuilding",
+      "source_section": "WORLD_CURRENT_STATE",
+      "source_file": "src/novel_flywheel/runtime_skill_profiles.py",
+      "source_text_range": "rendered-context-rule:WORLD_CURRENT_STATE",
+      "source_text_sha256": "138501b4c767428adc4761ea7a1d2858c8b3aa080c069e56afb473ec85ef283e",
+      "semantic_function": "ground realization in current world state",
+      "target_dimensions": [
+        "specificity",
+        "causal_coherence"
+      ],
+      "actionability": "MEDIUM",
+      "specificity": "MEDIUM",
+      "level": "STRUCTURAL",
+      "present_in_a": true,
+      "present_in_b": false,
+      "wording_identity": "NA"
+    },
+    {
+      "atom_id": "atom-artifact-form-function-history-risk",
+      "source_skill": "worldbuilding",
+      "source_section": "WORLD_ARTIFACT_DETAIL",
+      "source_file": "src/novel_flywheel/runtime_skill_profiles.py",
+      "source_text_range": "rendered-context-rule:WORLD_ARTIFACT_DETAIL",
+      "source_text_sha256": "cb11f67274cfd827806c7de66e8e128e0e4e682c60116a138570ce0feaf8390a",
+      "semantic_function": "make objects recognizable and consequential",
+      "target_dimensions": [
+        "specificity",
+        "setup_payoff_integrity"
+      ],
+      "actionability": "HIGH",
+      "specificity": "HIGH",
+      "level": "SCENE_LEVEL",
+      "present_in_a": true,
+      "present_in_b": false,
+      "wording_identity": "NA"
+    },
+    {
+      "atom_id": "atom-initial-state-inciting-incident",
+      "source_skill": "plot-structure",
+      "source_section": "sv3-70a527462c32e7b6",
+      "source_file": "vendor/novel-skills/source/plot-structure/references/arc-template.md",
+      "source_text_range": {
+        "start_line": 19,
+        "end_line": 22
+      },
+      "source_text_sha256": "f9d070a8b08fd62d02c97c20f71cf091a1414657d94524125693472998a530a0",
+      "semantic_function": "name initial state and trigger",
+      "target_dimensions": [
+        "causal_coherence"
+      ],
+      "actionability": "MEDIUM",
+      "specificity": "MEDIUM",
+      "level": "STRUCTURAL",
+      "present_in_a": false,
+      "present_in_b": true,
+      "wording_identity": "NA"
+    },
+    {
+      "atom_id": "atom-climax-highest-tension-outcome",
+      "source_skill": "plot-structure",
+      "source_section": "sv3-7633ad6f5c90db5e",
+      "source_file": "vendor/novel-skills/source/plot-structure/references/arc-template.md",
+      "source_text_range": {
+        "start_line": 31,
+        "end_line": 34
+      },
+      "source_text_sha256": "e7655b22821ec2d7cefc4ddd6ad8bad7518b1cc0a2900b4fb3377bd6566f57d8",
+      "semantic_function": "name outcome-deciding turn",
+      "target_dimensions": [
+        "scene_pressure",
+        "causal_coherence"
+      ],
+      "actionability": "MEDIUM",
+      "specificity": "LOW",
+      "level": "STRUCTURAL",
+      "present_in_a": false,
+      "present_in_b": true,
+      "wording_identity": "NA"
+    },
+    {
+      "atom_id": "atom-social-relationship-taxonomy",
+      "source_skill": "character-management",
+      "source_section": "sv3-8afeb5229a4fe841",
+      "source_file": "vendor/novel-skills/source/character-management/references/relationship-types.md",
+      "source_text_range": {
+        "start_line": 23,
+        "end_line": 36
+      },
+      "source_text_sha256": "4739809792c7332bd0cda20ca3f755bc63f8aaac614b9ad7074db2b34f60996a",
+      "semantic_function": "enumerate relationship labels",
+      "target_dimensions": [
+        "subtext_support"
+      ],
+      "actionability": "LOW",
+      "specificity": "LOW",
+      "level": "CHARACTER_LEVEL",
+      "present_in_a": false,
+      "present_in_b": true,
+      "wording_identity": "NA"
+    },
+    {
+      "atom_id": "atom-story-role-taxonomy",
+      "source_skill": "character-management",
+      "source_section": "sv3-e92f0f3584d44b87",
+      "source_file": "vendor/novel-skills/source/character-management/references/relationship-types.md",
+      "source_text_range": {
+        "start_line": 37,
+        "end_line": 46
+      },
+      "source_text_sha256": "8142de9c9898b1d2c03c8172203783a2a508211685a5c1ca73244d823bee0ce1",
+      "semantic_function": "enumerate story-role labels",
+      "target_dimensions": [
+        "character_agency"
+      ],
+      "actionability": "LOW",
+      "specificity": "LOW",
+      "level": "CHARACTER_LEVEL",
+      "present_in_a": false,
+      "present_in_b": true,
+      "wording_identity": "NA"
+    },
+    {
+      "atom_id": "atom-known-clues-constraints-contradictions",
+      "source_skill": "plot-structure",
+      "source_section": "sv3-972a75cb8ca8f0bd",
+      "source_file": "vendor/novel-skills/source/plot-structure/references/question-template.md",
+      "source_text_range": {
+        "start_line": 20,
+        "end_line": 23
+      },
+      "source_text_sha256": "0ff2b2bf8144d3715869f1c7f63f594a22afe08558117c797c928ac7e1318c5f",
+      "semantic_function": "bind question to evidence",
+      "target_dimensions": [
+        "setup_payoff_integrity",
+        "causal_coherence"
+      ],
+      "actionability": "HIGH",
+      "specificity": "HIGH",
+      "level": "STRUCTURAL",
+      "present_in_a": false,
+      "present_in_b": false,
+      "wording_identity": "NA"
+    },
+    {
+      "atom_id": "atom-physical-distinguishing-scene-traits",
+      "source_skill": "character-management",
+      "source_section": "sv3-974421ec02a478fa",
+      "source_file": "vendor/novel-skills/source/character-management/references/character-template.md",
+      "source_text_range": {
+        "start_line": 28,
+        "end_line": 31
+      },
+      "source_text_sha256": "c69f591a2bf973ff30c514b44984ab30def405c6a3ce3b1f22337a444d2f3140",
+      "semantic_function": "ground character appearance",
+      "target_dimensions": [
+        "specificity",
+        "anti_template_risk"
+      ],
+      "actionability": "MEDIUM",
+      "specificity": "HIGH",
+      "level": "CHARACTER_LEVEL",
+      "present_in_a": false,
+      "present_in_b": false,
+      "wording_identity": "NA"
+    },
+    {
+      "atom_id": "atom-personality-habits-quirks-scene-memory",
+      "source_skill": "character-management",
+      "source_section": "sv3-4c39329c602fd48e",
+      "source_file": "vendor/novel-skills/source/character-management/references/character-template.md",
+      "source_text_range": {
+        "start_line": 32,
+        "end_line": 35
+      },
+      "source_text_sha256": "18cdd21d9e678213380ec004f33cd1a02fe79d15fba88870a834f1d2300b6149",
+      "semantic_function": "make character-specific behavior available",
+      "target_dimensions": [
+        "specificity",
+        "anti_template_risk",
+        "voice_readiness"
+      ],
+      "actionability": "MEDIUM",
+      "specificity": "HIGH",
+      "level": "CHARACTER_LEVEL",
+      "present_in_a": false,
+      "present_in_b": false,
+      "wording_identity": "NA"
+    },
+    {
+      "atom_id": "atom-voice-examples",
+      "source_skill": "character-management",
+      "source_section": "sv3-b75227453c1cc26a",
+      "source_file": "vendor/novel-skills/source/character-management/references/character-template.md",
+      "source_text_range": {
+        "start_line": 48,
+        "end_line": 54
+      },
+      "source_text_sha256": "6fed87b6d18784ceaf3271bd4cbd2374ee9173540789ac1645af787fbfee2f83",
+      "semantic_function": "provide concrete voice samples",
+      "target_dimensions": [
+        "voice_readiness",
+        "specificity"
+      ],
+      "actionability": "HIGH",
+      "specificity": "HIGH",
+      "level": "CHARACTER_LEVEL",
+      "present_in_a": false,
+      "present_in_b": false,
+      "wording_identity": "NA"
+    }
+  ],
+  "raw_atom_count_is_not_causal_proof": true
+}

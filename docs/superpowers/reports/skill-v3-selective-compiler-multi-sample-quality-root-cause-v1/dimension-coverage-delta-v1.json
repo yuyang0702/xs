@@ -1,0 +1,352 @@
+{
+  "schema": "SkillV3DimensionCoverageDeltaV1",
+  "status": "SUPPORTED",
+  "rows": [
+    {
+      "dimension": "character_agency",
+      "a_atom_count": 9,
+      "b_atom_count": 5,
+      "a_only_atoms": [
+        "atom-opposed-tactics-costly-choice",
+        "atom-observable-reaction-next-beat-consequence",
+        "atom-relationship-pressure-changes-action",
+        "atom-replace-abstraction-with-choice-dialogue-consequence",
+        "atom-relationship-role-pressure-trust-subtext"
+      ],
+      "b_only_atoms": [
+        "atom-story-role-taxonomy"
+      ],
+      "shared_atoms": [
+        "atom-formative-pressure-to-present-motive",
+        "atom-want-need-conflict",
+        "atom-actor-choice-action-state-change",
+        "atom-arc-start-turning-end"
+      ],
+      "a_only_high_actionability_atoms": [
+        "atom-opposed-tactics-costly-choice",
+        "atom-observable-reaction-next-beat-consequence",
+        "atom-relationship-pressure-changes-action",
+        "atom-replace-abstraction-with-choice-dialogue-consequence",
+        "atom-relationship-role-pressure-trust-subtext"
+      ],
+      "b_only_high_actionability_atoms": [],
+      "dependency_atoms_missing_from_b": [
+        "atom-relationship-pressure-changes-action",
+        "atom-observable-reaction-next-beat-consequence"
+      ],
+      "contextual_qualifiers_missing_from_b": [
+        "observable",
+        "costly",
+        "next-beat"
+      ],
+      "anti_pattern_guidance_missing_from_b": [
+        "atom-replace-abstraction-with-choice-dialogue-consequence"
+      ],
+      "scene_realization_bridge_missing_from_b": [
+        "atom-observable-reaction-next-beat-consequence"
+      ],
+      "causal_use_of_counts": "counts are descriptive; causal strength also requires mapped output evidence and mechanism-level text comparison"
+    },
+    {
+      "dimension": "causal_coherence",
+      "a_atom_count": 14,
+      "b_atom_count": 6,
+      "a_only_atoms": [
+        "atom-observable-reaction-next-beat-consequence",
+        "atom-sensory-mechanical-affordance-constrains-action",
+        "atom-interactive-affordance-later-payoff",
+        "atom-setup-dependency-payoff-through-action",
+        "atom-confirmed-frame-bridge",
+        "atom-draft-usable-spatial-microchain",
+        "atom-pacing-without-authority-change",
+        "atom-specific-cost-limit-consequence",
+        "atom-faction-conflict-as-local-pressure",
+        "atom-history-culture-current-tension"
+      ],
+      "b_only_atoms": [
+        "atom-initial-state-inciting-incident",
+        "atom-climax-highest-tension-outcome"
+      ],
+      "shared_atoms": [
+        "atom-formative-pressure-to-present-motive",
+        "atom-opposed-escalation-reaction-reversal",
+        "atom-actor-choice-action-state-change",
+        "atom-arc-start-turning-end"
+      ],
+      "a_only_high_actionability_atoms": [
+        "atom-observable-reaction-next-beat-consequence",
+        "atom-sensory-mechanical-affordance-constrains-action",
+        "atom-interactive-affordance-later-payoff",
+        "atom-setup-dependency-payoff-through-action",
+        "atom-draft-usable-spatial-microchain",
+        "atom-specific-cost-limit-consequence",
+        "atom-faction-conflict-as-local-pressure"
+      ],
+      "b_only_high_actionability_atoms": [],
+      "dependency_atoms_missing_from_b": [
+        "atom-observable-reaction-next-beat-consequence",
+        "atom-sensory-mechanical-affordance-constrains-action",
+        "atom-setup-dependency-payoff-through-action"
+      ],
+      "contextual_qualifiers_missing_from_b": [
+        "constrain action",
+        "resulting local state change"
+      ],
+      "anti_pattern_guidance_missing_from_b": [],
+      "scene_realization_bridge_missing_from_b": [
+        "atom-observable-reaction-next-beat-consequence",
+        "atom-confirmed-frame-bridge",
+        "atom-draft-usable-spatial-microchain"
+      ],
+      "causal_use_of_counts": "counts are descriptive; causal strength also requires mapped output evidence and mechanism-level text comparison"
+    },
+    {
+      "dimension": "subtext_support",
+      "a_atom_count": 7,
+      "b_atom_count": 2,
+      "a_only_atoms": [
+        "atom-evasion-gesture-withheld-explanation",
+        "atom-relationship-pressure-changes-action",
+        "atom-behavior-over-explanatory-summary",
+        "atom-labels-reasoning-only",
+        "atom-replace-abstraction-with-choice-dialogue-consequence",
+        "atom-relationship-role-pressure-trust-subtext"
+      ],
+      "b_only_atoms": [
+        "atom-social-relationship-taxonomy"
+      ],
+      "shared_atoms": [
+        "atom-want-need-conflict"
+      ],
+      "a_only_high_actionability_atoms": [
+        "atom-evasion-gesture-withheld-explanation",
+        "atom-relationship-pressure-changes-action",
+        "atom-behavior-over-explanatory-summary",
+        "atom-labels-reasoning-only",
+        "atom-replace-abstraction-with-choice-dialogue-consequence",
+        "atom-relationship-role-pressure-trust-subtext"
+      ],
+      "b_only_high_actionability_atoms": [],
+      "dependency_atoms_missing_from_b": [
+        "atom-evasion-gesture-withheld-explanation",
+        "atom-relationship-role-pressure-trust-subtext"
+      ],
+      "contextual_qualifiers_missing_from_b": [
+        "withheld explanation",
+        "without inventing authority"
+      ],
+      "anti_pattern_guidance_missing_from_b": [
+        "atom-evasion-gesture-withheld-explanation",
+        "atom-behavior-over-explanatory-summary",
+        "atom-labels-reasoning-only",
+        "atom-replace-abstraction-with-choice-dialogue-consequence"
+      ],
+      "scene_realization_bridge_missing_from_b": [
+        "atom-behavior-over-explanatory-summary"
+      ],
+      "causal_use_of_counts": "counts are descriptive; causal strength also requires mapped output evidence and mechanism-level text comparison"
+    },
+    {
+      "dimension": "specificity",
+      "a_atom_count": 9,
+      "b_atom_count": 0,
+      "a_only_atoms": [
+        "atom-distinct-voice-diction-rhythm",
+        "atom-sensory-mechanical-affordance-constrains-action",
+        "atom-draft-usable-spatial-microchain",
+        "atom-terminal-image",
+        "atom-voice-vocabulary-sentence-habits-tone",
+        "atom-concrete-interactive-location-detail",
+        "atom-specific-cost-limit-consequence",
+        "atom-history-culture-current-tension",
+        "atom-artifact-form-function-history-risk"
+      ],
+      "b_only_atoms": [],
+      "shared_atoms": [],
+      "a_only_high_actionability_atoms": [
+        "atom-distinct-voice-diction-rhythm",
+        "atom-sensory-mechanical-affordance-constrains-action",
+        "atom-draft-usable-spatial-microchain",
+        "atom-terminal-image",
+        "atom-voice-vocabulary-sentence-habits-tone",
+        "atom-concrete-interactive-location-detail",
+        "atom-specific-cost-limit-consequence",
+        "atom-artifact-form-function-history-risk"
+      ],
+      "b_only_high_actionability_atoms": [],
+      "dependency_atoms_missing_from_b": [
+        "atom-concrete-interactive-location-detail",
+        "atom-artifact-form-function-history-risk"
+      ],
+      "contextual_qualifiers_missing_from_b": [
+        "small number",
+        "interactive",
+        "recognizable form"
+      ],
+      "anti_pattern_guidance_missing_from_b": [
+        "atom-terminal-image"
+      ],
+      "scene_realization_bridge_missing_from_b": [
+        "atom-draft-usable-spatial-microchain",
+        "atom-terminal-image"
+      ],
+      "causal_use_of_counts": "counts are descriptive; causal strength also requires mapped output evidence and mechanism-level text comparison"
+    },
+    {
+      "dimension": "scene_pressure",
+      "a_atom_count": 11,
+      "b_atom_count": 2,
+      "a_only_atoms": [
+        "atom-opposed-tactics-costly-choice",
+        "atom-relationship-pressure-changes-action",
+        "atom-sensory-mechanical-affordance-constrains-action",
+        "atom-behavior-over-explanatory-summary",
+        "atom-draft-usable-spatial-microchain",
+        "atom-pacing-without-authority-change",
+        "atom-relationship-role-pressure-trust-subtext",
+        "atom-concrete-interactive-location-detail",
+        "atom-specific-cost-limit-consequence",
+        "atom-faction-conflict-as-local-pressure"
+      ],
+      "b_only_atoms": [
+        "atom-climax-highest-tension-outcome"
+      ],
+      "shared_atoms": [
+        "atom-opposed-escalation-reaction-reversal"
+      ],
+      "a_only_high_actionability_atoms": [
+        "atom-opposed-tactics-costly-choice",
+        "atom-relationship-pressure-changes-action",
+        "atom-sensory-mechanical-affordance-constrains-action",
+        "atom-behavior-over-explanatory-summary",
+        "atom-draft-usable-spatial-microchain",
+        "atom-relationship-role-pressure-trust-subtext",
+        "atom-concrete-interactive-location-detail",
+        "atom-specific-cost-limit-consequence",
+        "atom-faction-conflict-as-local-pressure"
+      ],
+      "b_only_high_actionability_atoms": [],
+      "dependency_atoms_missing_from_b": [
+        "atom-opposed-tactics-costly-choice",
+        "atom-draft-usable-spatial-microchain"
+      ],
+      "contextual_qualifiers_missing_from_b": [
+        "opposed",
+        "resistance",
+        "costly"
+      ],
+      "anti_pattern_guidance_missing_from_b": [
+        "atom-behavior-over-explanatory-summary"
+      ],
+      "scene_realization_bridge_missing_from_b": [
+        "atom-behavior-over-explanatory-summary",
+        "atom-draft-usable-spatial-microchain"
+      ],
+      "causal_use_of_counts": "counts are descriptive; causal strength also requires mapped output evidence and mechanism-level text comparison"
+    },
+    {
+      "dimension": "setup_payoff_integrity",
+      "a_atom_count": 4,
+      "b_atom_count": 0,
+      "a_only_atoms": [
+        "atom-interactive-affordance-later-payoff",
+        "atom-setup-dependency-payoff-through-action",
+        "atom-foreshadowing-intent-across-plan",
+        "atom-artifact-form-function-history-risk"
+      ],
+      "b_only_atoms": [],
+      "shared_atoms": [],
+      "a_only_high_actionability_atoms": [
+        "atom-interactive-affordance-later-payoff",
+        "atom-setup-dependency-payoff-through-action",
+        "atom-artifact-form-function-history-risk"
+      ],
+      "b_only_high_actionability_atoms": [],
+      "dependency_atoms_missing_from_b": [
+        "atom-interactive-affordance-later-payoff",
+        "atom-setup-dependency-payoff-through-action"
+      ],
+      "contextual_qualifiers_missing_from_b": [
+        "preserve dependency",
+        "through later action"
+      ],
+      "anti_pattern_guidance_missing_from_b": [],
+      "scene_realization_bridge_missing_from_b": [],
+      "causal_use_of_counts": "counts are descriptive; causal strength also requires mapped output evidence and mechanism-level text comparison"
+    },
+    {
+      "dimension": "voice_readiness",
+      "a_atom_count": 3,
+      "b_atom_count": 0,
+      "a_only_atoms": [
+        "atom-distinct-voice-diction-rhythm",
+        "atom-confirmed-frame-bridge",
+        "atom-voice-vocabulary-sentence-habits-tone"
+      ],
+      "b_only_atoms": [],
+      "shared_atoms": [],
+      "a_only_high_actionability_atoms": [
+        "atom-distinct-voice-diction-rhythm",
+        "atom-voice-vocabulary-sentence-habits-tone"
+      ],
+      "b_only_high_actionability_atoms": [],
+      "dependency_atoms_missing_from_b": [
+        "atom-distinct-voice-diction-rhythm",
+        "atom-voice-vocabulary-sentence-habits-tone"
+      ],
+      "contextual_qualifiers_missing_from_b": [
+        "evasion",
+        "verbal habits",
+        "relationship pressure"
+      ],
+      "anti_pattern_guidance_missing_from_b": [],
+      "scene_realization_bridge_missing_from_b": [
+        "atom-confirmed-frame-bridge"
+      ],
+      "causal_use_of_counts": "counts are descriptive; causal strength also requires mapped output evidence and mechanism-level text comparison"
+    },
+    {
+      "dimension": "anti_template_risk",
+      "a_atom_count": 5,
+      "b_atom_count": 0,
+      "a_only_atoms": [
+        "atom-evasion-gesture-withheld-explanation",
+        "atom-behavior-over-explanatory-summary",
+        "atom-terminal-image",
+        "atom-labels-reasoning-only",
+        "atom-replace-abstraction-with-choice-dialogue-consequence"
+      ],
+      "b_only_atoms": [],
+      "shared_atoms": [],
+      "a_only_high_actionability_atoms": [
+        "atom-evasion-gesture-withheld-explanation",
+        "atom-behavior-over-explanatory-summary",
+        "atom-terminal-image",
+        "atom-labels-reasoning-only",
+        "atom-replace-abstraction-with-choice-dialogue-consequence"
+      ],
+      "b_only_high_actionability_atoms": [],
+      "dependency_atoms_missing_from_b": [
+        "atom-behavior-over-explanatory-summary",
+        "atom-labels-reasoning-only"
+      ],
+      "contextual_qualifiers_missing_from_b": [
+        "reasoning only",
+        "replace abstractions with behavior"
+      ],
+      "anti_pattern_guidance_missing_from_b": [
+        "atom-evasion-gesture-withheld-explanation",
+        "atom-behavior-over-explanatory-summary",
+        "atom-terminal-image",
+        "atom-labels-reasoning-only",
+        "atom-replace-abstraction-with-choice-dialogue-consequence"
+      ],
+      "scene_realization_bridge_missing_from_b": [
+        "atom-behavior-over-explanatory-summary",
+        "atom-terminal-image"
+      ],
+      "causal_use_of_counts": "counts are descriptive; causal strength also requires mapped output evidence and mechanism-level text comparison"
+    }
+  ],
+  "atom_counts_are_not_used_alone_as_causal_proof": true
+}

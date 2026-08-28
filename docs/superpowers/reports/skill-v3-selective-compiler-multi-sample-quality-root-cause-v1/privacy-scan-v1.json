@@ -1,0 +1,18 @@
+{
+  "schema": "SkillV3QualityRootCausePrivacyScanV1",
+  "status": "PASS",
+  "scanned_file_count": 23,
+  "patterns": [
+    "credential_assignment",
+    "windows_absolute_path",
+    "raw_provider_content_value",
+    "raw_story_or_prompt_value"
+  ],
+  "total_matches": 0,
+  "matches": [],
+  "raw_prompt_persisted": false,
+  "raw_story_persisted": false,
+  "raw_provider_content_persisted": false,
+  "credentials_persisted": false,
+  "absolute_local_paths_persisted": false
+}

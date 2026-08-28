@@ -1,0 +1,15 @@
+{
+  "schema": "SkillV3AntiOverfitConstraintsV1",
+  "status": "BOUND",
+  "constraints": {
+    "NO_SAMPLE_PROSE_MEMORIZATION": true,
+    "NO_PAIR_SPECIFIC_RULES": true,
+    "NO_ANONYMOUS_SAMPLE_ID_RULES": true,
+    "NO_DIMENSION_HACKS_ONLY_FOR_CURRENT_ARTIFACTS": true,
+    "NO_RUBRIC_CHANGE": true,
+    "NO_CRITICALITY_CHANGE": true,
+    "NO_MODEL_CHANGE_TO_HIDE_SKILL_FAILURE": true,
+    "NO_RETRY_INCREASE": true,
+    "NO_REFERENCE_CONTEXT_CHANGE": true
+  }
+}

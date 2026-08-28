@@ -1,0 +1,21 @@
+{
+  "schema": "SkillV3PrimaryRootCauseV1",
+  "primary_root_cause": "MULTI_FACTOR_WITH_PRIMARY_SELECTIVE_REPLACEMENT_ARCHITECTURE_MISMATCH",
+  "confidence": "HIGH",
+  "mechanism": "B replaced an enriched, cross-cutting scene-realization semantic projection with exact but low-actionability leaf templates; the selector then further removed rubric-wide and semantically dependent sections by mutually exclusive demand tags, optional defaults, and coarse stage ownership",
+  "secondary_factors": [
+    "SELECTOR_SEMANTIC_RECALL_UNDERSPECIFIED",
+    "SEMANTIC_DEPENDENCY_CLOSURE_INCOMPLETE",
+    "SECTION_GRANULARITY_MISMATCH",
+    "STAGE_OWNERSHIP_FILTER_OVERRESTRICTIVE",
+    "CONTEXT_ORDERING_SALIENCE_REGRESSION"
+  ],
+  "disconfirmed_hypotheses": [
+    "STOCHASTIC_VARIANCE_DOMINANT",
+    "provider/model/route drift",
+    "validator drift",
+    "truncation or shedding",
+    "engineering invalidity"
+  ],
+  "resolution_status": "UNRESOLVED_DESIGN_ONLY"
+}

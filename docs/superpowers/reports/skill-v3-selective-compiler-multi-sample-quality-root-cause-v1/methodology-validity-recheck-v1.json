@@ -1,0 +1,92 @@
+{
+  "schema": "SkillV3RootCauseMethodologyValidityRecheckV1",
+  "status": "EXACT",
+  "total_real_samples": 6,
+  "valid_real_samples": 6,
+  "evaluators": 2,
+  "batches": 3,
+  "required_evaluator_by_batch_votes": 6,
+  "observed_evaluator_by_batch_votes": 6,
+  "mapping_contamination": 0,
+  "blind_policy_drift": 0,
+  "non_skill_bytes_identical_across_arms": "YES",
+  "provider_model_route_identical": "YES",
+  "validator_policy_identical": "YES",
+  "advisory_truncation": "NO",
+  "advisory_shedding": "NO",
+  "primary_changed_variable": "SKILL_CONTEXT",
+  "uncontrolled_variable_count": 0,
+  "parent_manifests": [
+    {
+      "root": "docs/superpowers/reports/skill-v3-character-heavy-multi-sample-pilot-approval-readiness-recheck-v1",
+      "status": "EXACT",
+      "entry_count": 38,
+      "manifest_file_sha256": "00baef1e9340c3ca4b9aabf24188b1f69c0be600014e3c724bb1ed487d182e81",
+      "definition_sha256": "f1f3dba847990bbf2caca9e4645f9310316939787c508c164c5c1bb4f7cf46e4"
+    },
+    {
+      "root": "docs/superpowers/reports/skill-v3-character-heavy-multi-sample-mapping-reveal-decision-v1",
+      "status": "EXACT",
+      "entry_count": 21,
+      "manifest_file_sha256": "1c9f0b69aab881b34319b2e424a286dc941ea537678fb898a649d647efb91e94",
+      "definition_sha256": "d87f820be279bc9540346e2e8019ca2ec1284218e6473a197d6ce5b52b0673f7"
+    },
+    {
+      "root": "docs/superpowers/reports/skill-v3-verbatim-selective-compiler-shadow-implementation-v1",
+      "status": "EXACT",
+      "entry_count": 34,
+      "manifest_file_sha256": "b35329ba873603e53445e0c65f2de60d35e3745eafb8d4c66cfd65773a0e259f",
+      "definition_sha256": "f189e47cce39d0798e6716982c6e25b53b7cd99a2dcf8c587643e7e97a21aad8"
+    },
+    {
+      "root": "docs/superpowers/reports/skill-v3-character-heavy-multi-sample-combined-blind-aggregation-v1",
+      "status": "EXACT",
+      "entry_count": 11,
+      "manifest_file_sha256": "a9051333900b0d26384a9270bcc0e80880779b4681a32f52933cff5ce0598fa7",
+      "definition_sha256": null
+    },
+    {
+      "root": "docs/superpowers/reports/skill-v3-character-heavy-multi-sample-blind-evaluation-v1",
+      "status": "EXACT",
+      "entry_count": 17,
+      "manifest_file_sha256": "4498c87ce1321f7c2e79b2820f0028771e52f00bf2cbc32c8b7943ef917ffa83",
+      "definition_sha256": null
+    },
+    {
+      "root": "docs/superpowers/reports/skill-v3-character-heavy-multi-sample-blind-evaluation-v2",
+      "status": "EXACT",
+      "entry_count": 16,
+      "manifest_file_sha256": "bfdbb764031dafc31011bf3c431851b7ce2f8537959e450e34db5a8fbc560f94",
+      "definition_sha256": "4ecdb2b55645ed050e614de60f2a43535d40c51ed2f0e1eabe38f31833dc7aaa"
+    },
+    {
+      "root": "docs/superpowers/reports/skill-v3-character-heavy-multi-sample-blind-bundle-v1",
+      "status": "EXACT",
+      "entry_count": 16,
+      "manifest_file_sha256": "c5aedf848d9b6c74029318ecb1d051893147aa7c10f6a20f511395fe9cf29a62",
+      "definition_sha256": "2b98b26ffa25928783b4bffc5a7c8ffcf79fd604bd74c5443eeee56d0b5ddebd"
+    },
+    {
+      "root": "docs/superpowers/reports/skill-v3-character-heavy-multi-sample-blind-mapping-v1",
+      "status": "EXACT",
+      "entry_count": 5,
+      "manifest_file_sha256": "3f6e7b4465a940ffa7448636c51b260ff4ec90f0baec8f0ebd3992514104618b",
+      "definition_sha256": "78a8e99479b7da6de68f68e08f805bbcfecc3e1b26205f03036219572b4d5808"
+    },
+    {
+      "root": "docs/superpowers/reports/skill-v3-character-heavy-multi-sample-real-campaign-v1",
+      "status": "EXACT",
+      "entry_count": 18,
+      "manifest_file_sha256": "0da358cc14b04b1463e41668b5593e5f53ac017f3c7677fdd131dd08a8488c54",
+      "definition_sha256": "3a4458f6c5959e30e674db6cff13763ded598da7bed1c898d62d7a1799fd6cb8"
+    }
+  ],
+  "bindings": {
+    "readiness_status": "CONDITIONAL",
+    "campaign_status": "EXACT",
+    "a_b_identity_status": "PASS",
+    "sealed_pilot_disposition": "SKILL_V3_CHARACTER_HEAVY_MULTI_SAMPLE_PILOT=NO_GO_QUALITY"
+  },
+  "causally_interpretable": true,
+  "failure_gate": "NOT_TRIGGERED"
+}

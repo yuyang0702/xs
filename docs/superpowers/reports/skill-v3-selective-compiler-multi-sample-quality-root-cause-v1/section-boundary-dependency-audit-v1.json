@@ -1,0 +1,80 @@
+{
+  "schema": "SkillV3SectionBoundaryDependencyAuditV1",
+  "status": "SUPPORTED",
+  "rows": [
+    {
+      "selected_section": "sv3-faecc1466817d8aa",
+      "missing_neighbor_section": "sv3-13580b3cdbef263e",
+      "semantic_dependency_kind": "SEMANTIC_DEPENDENCY_MISSING",
+      "why_dependency_graph_missed_it": "plot points tagged only conflict-pacing-heavy although causal pressure is rubric-wide",
+      "regression_dimension_link": [
+        "causal_coherence",
+        "scene_pressure"
+      ]
+    },
+    {
+      "selected_section": "sv3-70a527462c32e7b6",
+      "missing_neighbor_section": "sv3-2ced894267dc51e3",
+      "semantic_dependency_kind": "SEMANTIC_DEPENDENCY_MISSING",
+      "why_dependency_graph_missed_it": "setup/payoff candidate is gated to another demand class",
+      "regression_dimension_link": [
+        "setup_payoff_integrity"
+      ]
+    },
+    {
+      "selected_section": "sv3-3fb51ac3fed35bc0",
+      "missing_neighbor_section": "sv3-82ca2fdf9c28183b",
+      "semantic_dependency_kind": "SEMANTIC_DEPENDENCY_MISSING",
+      "why_dependency_graph_missed_it": "resolution has no reverse semantic edge to payoff",
+      "regression_dimension_link": [
+        "setup_payoff_integrity",
+        "causal_coherence"
+      ]
+    },
+    {
+      "selected_section": "sv3-3fb51ac3fed35bc0",
+      "missing_neighbor_section": "sv3-6e4a0b2625a01274",
+      "semantic_dependency_kind": "SEMANTIC_DEPENDENCY_MISSING",
+      "why_dependency_graph_missed_it": "resolution plan is not in character-heavy demand closure",
+      "regression_dimension_link": [
+        "setup_payoff_integrity"
+      ]
+    },
+    {
+      "selected_section": "sv3-10e4ba0c5b7509b4",
+      "missing_neighbor_section": "sv3-b75227453c1cc26a",
+      "semantic_dependency_kind": "SECTION_GRANULARITY_TOO_COARSE",
+      "why_dependency_graph_missed_it": "voice content is a useful creative leaf but its whole section is classified DRAFT and excluded",
+      "regression_dimension_link": [
+        "voice_readiness",
+        "subtext_support"
+      ]
+    },
+    {
+      "selected_section": "sv3-4c6b004ecdd2077f",
+      "missing_neighbor_section": "sv3-9e36963fe1a5a940",
+      "semantic_dependency_kind": "SECTION_GRANULARITY_TOO_COARSE",
+      "why_dependency_graph_missed_it": "mixed runtime/creative parent section is excluded as one node, losing its creative subrange",
+      "regression_dimension_link": [
+        "character_agency",
+        "specificity"
+      ]
+    },
+    {
+      "selected_section": "sv3-8afeb5229a4fe841",
+      "missing_neighbor_section": "sv3-fc9570e47e65f4a2",
+      "semantic_dependency_kind": "SECTION_GRANULARITY_TOO_FINE",
+      "why_dependency_graph_missed_it": "taxonomy leaf survives but application context is separated into an excluded operational section",
+      "regression_dimension_link": [
+        "subtext_support",
+        "scene_pressure"
+      ]
+    }
+  ],
+  "formal_dependency_missing_count": 0,
+  "semantic_dependency_missing_count": 4,
+  "section_granularity_too_coarse_count": 2,
+  "section_granularity_too_fine_count": 1,
+  "no_boundary_problem_count": 0,
+  "conclusion": "declared graph is structurally closed but semantically under-modelled"
+}

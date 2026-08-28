@@ -1,0 +1,132 @@
+{
+  "schema": "SkillV3QualityRootCauseSha256ManifestV1",
+  "definition": {
+    "schema": "SkillV3QualityRootCauseSha256ManifestDefinitionV1",
+    "entry_count": 24,
+    "entries": [
+      {
+        "path": "README.md",
+        "bytes": 609,
+        "sha256": "b3307a5579759f1d63e300cf2a32fa1a5b810ba6cc9c3bbe9fc7dfe56f7cd636"
+      },
+      {
+        "path": "anti-overfit-constraints-v1.json",
+        "bytes": 461,
+        "sha256": "27b3b4ad07353d7695291e6d616884f58cb6af24de44d8f23adb9cd987f5e8ec"
+      },
+      {
+        "path": "architecture-disposition-v1.json",
+        "bytes": 813,
+        "sha256": "25932a1d104b7905352884e696e1f04ac26386a977e58d5555907b6daec5b873"
+      },
+      {
+        "path": "baseline-binding-v1.json",
+        "bytes": 1618,
+        "sha256": "ff9dda96b7025c004879a93bd4fb320c8c20e7ed0106eb0c2928790b27fb9ce2"
+      },
+      {
+        "path": "baseline-compactor-forensics-v1.json",
+        "bytes": 1706,
+        "sha256": "d2907e953cc61c7beb2509595d932f60a8e5dd08452f766992a893bd6bad1011"
+      },
+      {
+        "path": "context-ordering-salience-audit-v1.json",
+        "bytes": 946,
+        "sha256": "427ad71625f0c0146a49979a9372905782ebf2d759ebbd04b51cd452624849ad"
+      },
+      {
+        "path": "dimension-coverage-delta-v1.json",
+        "bytes": 13644,
+        "sha256": "804e81bfe5ab03f7ffcce00e7b51912fc570474c65ec4a345a8fc959274ae356"
+      },
+      {
+        "path": "exact-a-b-skill-context-reconstruction-v1.json",
+        "bytes": 39096,
+        "sha256": "92b2521a944f9fc5a9a4ebfbf527fd44c82c46466761b628e0a6df6cd8a5a387"
+      },
+      {
+        "path": "final-report-v1.md",
+        "bytes": 4864,
+        "sha256": "66adc2156765dce5405706b34e6bc47513802f409feeb8dd69113192e7edd8d8"
+      },
+      {
+        "path": "hypothesis-matrix-v1.json",
+        "bytes": 3499,
+        "sha256": "4a56e81098618844ca7c62d69522737521569767d3994d400912a7d614ca69f1"
+      },
+      {
+        "path": "literary-evidence-input-traceback-v1.json",
+        "bytes": 24845,
+        "sha256": "bc67652c58c432f790f6f2dd062442793cbd1a034cadfd6ec93fb2044cf7b284"
+      },
+      {
+        "path": "mapped-literary-failure-matrix-v1.json",
+        "bytes": 11544,
+        "sha256": "56131b6aeb6d4a93f4c3038f4d4a9942460a9b3457861afb96e9a48dc39353ba"
+      },
+      {
+        "path": "methodology-validity-recheck-v1.json",
+        "bytes": 4002,
+        "sha256": "2896789780b42bbc262ad89a02b9dcd7621c28fe4e114d79ed7134cd431cd3c3"
+      },
+      {
+        "path": "minimal-fix-constraints-v1.json",
+        "bytes": 1114,
+        "sha256": "ab05fe459cd1f2cdc14411531794bfe274c8761f291ed682aa0972839aa4d65b"
+      },
+      {
+        "path": "next-experiment-readiness-v1.json",
+        "bytes": 813,
+        "sha256": "a40c65726a71fe3622b2558de353fdd34712ac43af7501a148dc0e909c1609cd"
+      },
+      {
+        "path": "primary-root-cause-v1.json",
+        "bytes": 956,
+        "sha256": "a8c0050ef3afdf48f69a76ae259ee69d6e10ad0671e4dc1fc45091ab810cea75"
+      },
+      {
+        "path": "privacy-scan-v1.json",
+        "bytes": 472,
+        "sha256": "e84db699fa86c5da1e9fc9e3d45f280371a93294aa72214d22e97815bf6cbe3f"
+      },
+      {
+        "path": "section-boundary-dependency-audit-v1.json",
+        "bytes": 3185,
+        "sha256": "e6e82774038d549d660c8502d3796ca7d331634e4941259805f96ae196ef2733"
+      },
+      {
+        "path": "selector-recall-audit-v1.json",
+        "bytes": 2458,
+        "sha256": "9e0466eb33d60ad866122395bf41061f2de01bf46a6e1a728a8ca8ddee08f785"
+      },
+      {
+        "path": "semantic-atom-inventory-v1.json",
+        "bytes": 27039,
+        "sha256": "9cf142f543bc5916112f204ee44e23a57cfa51e75de92ced969cc34ea83a96e1"
+      },
+      {
+        "path": "strict-l3-receipt-v1.json",
+        "bytes": 487,
+        "sha256": "c80de0bc25d69dbd1d6b9f02d9a77ac5b0df2d66e0b750dadefb7650fd1ead38"
+      },
+      {
+        "path": "test-receipt-v1.json",
+        "bytes": 617,
+        "sha256": "19a5d37b9505b25c8c99795eb01c5853ce5bfc8eb092ffd91d99906687aee270"
+      },
+      {
+        "path": "unselected-candidate-section-audit-v1.json",
+        "bytes": 100064,
+        "sha256": "0a97124e25d0eed5757480d5a5cc50f4896faab3ea731d5dcd39b32d29816cfd"
+      },
+      {
+        "path": "variance-analysis-v1.json",
+        "bytes": 1807,
+        "sha256": "13941d92fa332cf9bfcad4a6c6299bd2a31aa5a1e7dcea4acd765ec7c410fd7b"
+      }
+    ]
+  },
+  "definition_sha256": "7022b932ad873dfb6a6d20dbd95538dff59d2f1acb0ba2cd417d03240d3df4ed",
+  "coverage": "all evidence files except the manifest itself",
+  "status": "EXACT"
+}

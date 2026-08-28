@@ -1,0 +1,40 @@
+{
+  "schema": "SkillV3BaselineCompactorForensicsV1",
+  "status": "SUPPORTED",
+  "mechanism_truth": "A is T5/T6 deterministic rewritten RuntimeSkillProfile rules, not verbatim SkillPromptCompactor output",
+  "source_sections_represented": 41,
+  "source_skills_represented": [
+    "story-init",
+    "plot-structure",
+    "character-management",
+    "worldbuilding"
+  ],
+  "high_actionability_atoms_preserved": 23,
+  "anti_pattern_atoms_preserved": [
+    "atom-behavior-over-explanatory-summary",
+    "atom-labels-reasoning-only",
+    "atom-replace-abstraction-with-choice-dialogue-consequence"
+  ],
+  "scene_bridge_atoms_preserved": [
+    "atom-draft-usable-spatial-microchain",
+    "atom-terminal-image"
+  ],
+  "relationship_motivation_subtext_atoms_preserved": [
+    "atom-formative-pressure-to-present-motive",
+    "atom-relationship-pressure-changes-action",
+    "atom-evasion-gesture-withheld-explanation"
+  ],
+  "causal_pressure_setup_payoff_atoms_preserved": [
+    "atom-opposed-escalation-reaction-reversal",
+    "atom-setup-dependency-payoff-through-action",
+    "atom-actor-choice-action-state-change"
+  ],
+  "voice_specificity_anti_template_atoms_preserved": [
+    "atom-distinct-voice-diction-rhythm",
+    "atom-concrete-interactive-location-detail",
+    "atom-labels-reasoning-only"
+  ],
+  "baseline_compactor_semantic_recall_higher_than_selective_selector": "SUPPORTED",
+  "support": "A contains actionable transformation/bridge atoms absent from both B selection and some original verbatim source; mapped regressions align with those gaps",
+  "tradeoff": "semantic diversity advantage comes from deterministic reauthoring and reinforcement, so exact source fidelity alone cannot replace it"
+}

@@ -1,0 +1,8 @@
+{
+  "schema": "SkillV3QualityRootCauseTestReceiptV1",
+  "focused": "10 passed in 1.16s; final materialized recheck 10 passed in 1.11s",
+  "related": "80 passed in 15.34s; historical mapping self-seal probe: 80 passed, 9 baseline-gate errors in 16.18s",
+  "full_suite": "3810 passed, 41 skipped, 6 xfailed, 54 failed, 81 errors, 1 warning in 2275.74s; non-green families are historical sealed-evidence/materialization/Planning-Skill/R0E-R0F live-parity gates plus 9 expected pre-commit mapping exact-baseline errors; new owning-source regressions=0",
+  "new_owning_source_regression_count": 0,
+  "external_calls": 0
+}

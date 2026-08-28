@@ -1,0 +1,9 @@
+{
+  "schema": "SkillV3ArchitectureDispositionV1",
+  "selective_verbatim_architecture_disposition": "REPOSITION_AS_SUPPLEMENT_NOT_REPLACEMENT",
+  "rationale": "retain the demand-aware broad high-actionability semantic layer as the scene-realization baseline and use source-faithful selected sections as bounded provenance/examples/supplement; do not let the supplement replace absent semantic bridge atoms",
+  "is_3000_char_compressed_profile_restart_recommended": "NO",
+  "is_more_single_sample_prompt_hill_climbing_recommended": "NO",
+  "why_not_restart": "the old profile remains the last-known-best control, not a new hill-climbing architecture; the successor must be a coverage-bound hybrid with prospective multi-sample validation",
+  "exact_next_gate": "SKILL_V3_HYBRID_SKILL_CONTEXT_ARCHITECTURE_DESIGN"
+}

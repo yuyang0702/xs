@@ -1,0 +1,63 @@
+{
+  "schema": "SkillV3VarianceAnalysisV1",
+  "status": "BOUNDED",
+  "rows": [
+    {
+      "dimension": "voice_readiness",
+      "classification": [
+        "pair-specific realization",
+        "evaluator disagreement",
+        "stochastic model realization"
+      ],
+      "mapped_counts": {
+        "selective": 3,
+        "baseline": 3,
+        "tie": 0
+      },
+      "mechanism": "A has broader voice atoms but outcomes oppose in pair1 and balance overall"
+    },
+    {
+      "dimension": "anti_template_risk",
+      "classification": [
+        "mixed B strengths/weaknesses",
+        "evaluator disagreement",
+        "stochastic model realization"
+      ],
+      "mapped_counts": {
+        "selective": 3,
+        "baseline": 2,
+        "tie": 1
+      },
+      "mechanism": "B verbatim taxonomy can sometimes reduce rewritten-label artifacts but wrappers/labels also raise template salience"
+    },
+    {
+      "dimension": "subtext_support",
+      "classification": [
+        "pair-specific realization",
+        "evaluator disagreement"
+      ],
+      "mapped_counts": {
+        "selective": 1,
+        "baseline": 4,
+        "tie": 1
+      },
+      "mechanism": "one neutral pair2 vote does not erase supported baseline direction"
+    },
+    {
+      "dimension": "setup_payoff_integrity",
+      "classification": [
+        "pair-specific realization",
+        "evaluator disagreement"
+      ],
+      "mapped_counts": {
+        "selective": 1,
+        "baseline": 4,
+        "tie": 1
+      },
+      "mechanism": "one neutral pair2 vote does not erase critical regression"
+    }
+  ],
+  "insufficient_sample_count": "limits generalization but does not explain away the sealed character-heavy regressions",
+  "variance_is_primary_root_cause": "NO",
+  "critical_regressions_erased_by_variance": false
+}

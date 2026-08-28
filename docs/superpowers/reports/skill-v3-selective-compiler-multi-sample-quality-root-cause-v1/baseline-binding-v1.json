@@ -1,0 +1,48 @@
+{
+  "schema": "SkillV3MultiSampleQualityRootCauseBaselineBindingV1",
+  "branch": "r1-ptr3/planning-repair-finding-propagation-20260817",
+  "start_head": "41ccdf8f219072be1d246161803f627049a5d7a9",
+  "expected_initial_worktree": "CLEAN",
+  "sealed_result": {
+    "narrative_non_inferior": "NO",
+    "engineering_non_inferior": "YES",
+    "pilot": "NO_GO_QUALITY"
+  },
+  "authorization": "OFFLINE_FORENSIC_ANALYSIS_ONLY",
+  "risk_level": "L3",
+  "scope_classification": "closed_world_character_heavy_six_sample_root_cause",
+  "resolution_status": "unresolved_design_not_implemented",
+  "allowed_changes": [
+    "diagnostic evidence materializer",
+    "local-only tests",
+    "evidence artifacts"
+  ],
+  "protected_unchanged": [
+    "production runtime",
+    "Prompt",
+    "Provider/model/route",
+    "sampling",
+    "output cap",
+    "validators",
+    "StoryState/Canon/READY",
+    "multi-sample methodology",
+    "blind rubric"
+  ],
+  "authority_impact": {
+    "formal_manuscript": "not involved",
+    "current_candidate": "read-only sealed evidence",
+    "protected_best_candidate": "not involved",
+    "story_state": "not involved",
+    "formal_planning_authority": "not involved",
+    "revision_and_issue_ledgers": "not involved",
+    "project_metadata": "read-only",
+    "sqlite": "not involved",
+    "provider_model_bindings": "read-only hashes",
+    "runtime_story_skills": "read-only",
+    "run_events_checkpoints_resume": "read-only evidence",
+    "ui_api": "not involved",
+    "credentials_private_sources": "not involved"
+  },
+  "rollback": "revert the single evidence-only commit",
+  "external_actions": 0
+}

@@ -1,0 +1,28 @@
+{
+  "schema": "SkillV3ContextOrderingSalienceAuditV1",
+  "status": "SECONDARY_FACTOR_SUPPORTED",
+  "arm_a": {
+    "mandatory_rules_first": 8,
+    "advisory_rules_after": 12,
+    "line_delimiters": 20,
+    "semantic_clustering": "mandatory creative bridge then reinforced advisory"
+  },
+  "arm_b": {
+    "mandatory_core_sections_first": 4,
+    "demand_sections_after": 5,
+    "xml_section_delimiters": 9,
+    "wrapper_characters": 959,
+    "wrapper_share": 0.375196,
+    "semantic_clustering": "generic arc slots then character templates then taxonomies"
+  },
+  "classifications": {
+    "ORDERING_FRAGMENTATION": "SUPPORTED",
+    "EXCESSIVE_SECTION_DELIMITERS": "SUPPORTED",
+    "LOSS_OF_REINFORCEMENT": "SUPPORTED",
+    "UNHELPFUL_CLUSTERING": "SUPPORTED",
+    "TASK_DISTANCE": "NO_MEASURED_DIFFERENCE",
+    "WRAPPER_INTERFERENCE": "PARTIALLY_SUPPORTED",
+    "NO_ORDERING_PROBLEM": "NOT_SUPPORTED"
+  },
+  "causal_rank": "SECONDARY_NOT_PRIMARY"
+}

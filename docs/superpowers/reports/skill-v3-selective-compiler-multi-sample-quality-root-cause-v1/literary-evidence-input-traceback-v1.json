@@ -1,0 +1,561 @@
+{
+  "schema": "SkillV3LiteraryEvidenceInputTracebackV1",
+  "status": "CAUSAL_BRIDGE_SUPPORTED",
+  "rows": [
+    {
+      "dimension": "character_agency",
+      "observed_baseline_strength": "choice, tactics, cost, reaction, and relationship-pressure instructions",
+      "observed_selective_weakness": "want/need and role labels without an execution bridge",
+      "supporting_anonymous_sample_evidence": [
+        {
+          "evidence_id": "prose-evidence-6653a0836fdf78318677",
+          "vote_id": "anonymous-evaluator-1:blind-pair-1",
+          "pair_id": "blind-pair-1",
+          "evaluator_id": "anonymous-evaluator-1",
+          "evidence_binding_sha256": "6653a0836fdf783186774fd9822d418cc669c114fb88ac971cff5ab834c39732"
+        },
+        {
+          "evidence_id": "prose-evidence-39a06787ff1a29eed0ee",
+          "vote_id": "anonymous-evaluator-1:blind-pair-2",
+          "pair_id": "blind-pair-2",
+          "evaluator_id": "anonymous-evaluator-1",
+          "evidence_binding_sha256": "39a06787ff1a29eed0ee759e1ad78edff5df96ddd0a0f3816c203cb6a2276503"
+        },
+        {
+          "evidence_id": "prose-evidence-1f57417896d1177b32f8",
+          "vote_id": "anonymous-evaluator-1:blind-pair-3",
+          "pair_id": "blind-pair-3",
+          "evaluator_id": "anonymous-evaluator-1",
+          "evidence_binding_sha256": "1f57417896d1177b32f8b187937125745d3cf486d2b5dfb9a08f7427c40736de"
+        },
+        {
+          "evidence_id": "prose-evidence-8cd6674e4b9d44f811a2",
+          "vote_id": "anonymous-evaluator-2:blind-pair-1",
+          "pair_id": "blind-pair-1",
+          "evaluator_id": "anonymous-evaluator-2",
+          "evidence_binding_sha256": "8cd6674e4b9d44f811a2a9934fb7dfdee95a75cacd15a48476bd76768ff1c336"
+        },
+        {
+          "evidence_id": "prose-evidence-d1656c09f8269eead2d4",
+          "vote_id": "anonymous-evaluator-2:blind-pair-2",
+          "pair_id": "blind-pair-2",
+          "evaluator_id": "anonymous-evaluator-2",
+          "evidence_binding_sha256": "d1656c09f8269eead2d4a892c6bd477d7f2decb9b98260743de7fb7a0961885b"
+        },
+        {
+          "evidence_id": "prose-evidence-3b24d5de1b1aab02409e",
+          "vote_id": "anonymous-evaluator-2:blind-pair-3",
+          "pair_id": "blind-pair-3",
+          "evaluator_id": "anonymous-evaluator-2",
+          "evidence_binding_sha256": "3b24d5de1b1aab02409eacd213153c08eff1ad2c3e910cc8ec055c2b596f673b"
+        }
+      ],
+      "mapped_pairs": [
+        "blind-pair-1",
+        "blind-pair-2",
+        "blind-pair-3"
+      ],
+      "relevant_a_atoms": [
+        "atom-formative-pressure-to-present-motive",
+        "atom-want-need-conflict",
+        "atom-opposed-tactics-costly-choice",
+        "atom-observable-reaction-next-beat-consequence",
+        "atom-relationship-pressure-changes-action",
+        "atom-replace-abstraction-with-choice-dialogue-consequence",
+        "atom-actor-choice-action-state-change",
+        "atom-arc-start-turning-end",
+        "atom-relationship-role-pressure-trust-subtext"
+      ],
+      "relevant_b_atoms": [
+        "atom-formative-pressure-to-present-motive",
+        "atom-want-need-conflict",
+        "atom-actor-choice-action-state-change",
+        "atom-arc-start-turning-end",
+        "atom-story-role-taxonomy"
+      ],
+      "input_delta_explains_output": "STRONG",
+      "aggregate_result": "BASELINE_BETTER"
+    },
+    {
+      "dimension": "causal_coherence",
+      "observed_baseline_strength": "actor-action-result, constrained affordance, and next-beat consequence",
+      "observed_selective_weakness": "generic arc slots without evidence/dependency closure",
+      "supporting_anonymous_sample_evidence": [
+        {
+          "evidence_id": "prose-evidence-1634427b8fb1bdcd5cac",
+          "vote_id": "anonymous-evaluator-1:blind-pair-1",
+          "pair_id": "blind-pair-1",
+          "evaluator_id": "anonymous-evaluator-1",
+          "evidence_binding_sha256": "1634427b8fb1bdcd5cacb15c7ab6f408f10d60558ebea9139204905813a4aedf"
+        },
+        {
+          "evidence_id": "prose-evidence-bcdf0e29def1e87f1caa",
+          "vote_id": "anonymous-evaluator-1:blind-pair-2",
+          "pair_id": "blind-pair-2",
+          "evaluator_id": "anonymous-evaluator-1",
+          "evidence_binding_sha256": "bcdf0e29def1e87f1caa0f08c35f45cde8c23027935b41090275b92a8601bd8f"
+        },
+        {
+          "evidence_id": "prose-evidence-a08fb3eaf536b689b64d",
+          "vote_id": "anonymous-evaluator-1:blind-pair-3",
+          "pair_id": "blind-pair-3",
+          "evaluator_id": "anonymous-evaluator-1",
+          "evidence_binding_sha256": "a08fb3eaf536b689b64d16d4fafbcb64dc1e80aa77c21deba963bd9cd282e1dc"
+        },
+        {
+          "evidence_id": "prose-evidence-fb0d56b97e256781c53a",
+          "vote_id": "anonymous-evaluator-2:blind-pair-1",
+          "pair_id": "blind-pair-1",
+          "evaluator_id": "anonymous-evaluator-2",
+          "evidence_binding_sha256": "fb0d56b97e256781c53a58474586ae0e20dc195edf2ed118876918b5f5c4bab8"
+        },
+        {
+          "evidence_id": "prose-evidence-f1de9957a1a07311e526",
+          "vote_id": "anonymous-evaluator-2:blind-pair-2",
+          "pair_id": "blind-pair-2",
+          "evaluator_id": "anonymous-evaluator-2",
+          "evidence_binding_sha256": "f1de9957a1a07311e526012b852dc41514ad30ac8410c80aa46cb08e1225112e"
+        },
+        {
+          "evidence_id": "prose-evidence-9f659808c78b2395aa32",
+          "vote_id": "anonymous-evaluator-2:blind-pair-3",
+          "pair_id": "blind-pair-3",
+          "evaluator_id": "anonymous-evaluator-2",
+          "evidence_binding_sha256": "9f659808c78b2395aa321b69e70bb7753bf376cad280676018a20bafbb4db71a"
+        }
+      ],
+      "mapped_pairs": [
+        "blind-pair-1",
+        "blind-pair-2",
+        "blind-pair-3"
+      ],
+      "relevant_a_atoms": [
+        "atom-formative-pressure-to-present-motive",
+        "atom-observable-reaction-next-beat-consequence",
+        "atom-sensory-mechanical-affordance-constrains-action",
+        "atom-interactive-affordance-later-payoff",
+        "atom-opposed-escalation-reaction-reversal",
+        "atom-setup-dependency-payoff-through-action",
+        "atom-confirmed-frame-bridge",
+        "atom-draft-usable-spatial-microchain",
+        "atom-actor-choice-action-state-change",
+        "atom-pacing-without-authority-change",
+        "atom-arc-start-turning-end",
+        "atom-specific-cost-limit-consequence",
+        "atom-faction-conflict-as-local-pressure",
+        "atom-history-culture-current-tension"
+      ],
+      "relevant_b_atoms": [
+        "atom-formative-pressure-to-present-motive",
+        "atom-opposed-escalation-reaction-reversal",
+        "atom-actor-choice-action-state-change",
+        "atom-arc-start-turning-end",
+        "atom-initial-state-inciting-incident",
+        "atom-climax-highest-tension-outcome"
+      ],
+      "input_delta_explains_output": "STRONG",
+      "aggregate_result": "BASELINE_BETTER"
+    },
+    {
+      "dimension": "subtext_support",
+      "observed_baseline_strength": "evasion, withheld explanation, gesture, and behavior-over-summary",
+      "observed_selective_weakness": "relationship taxonomies without subtext application",
+      "supporting_anonymous_sample_evidence": [
+        {
+          "evidence_id": "prose-evidence-2b1bc367c7559466e6c0",
+          "vote_id": "anonymous-evaluator-1:blind-pair-1",
+          "pair_id": "blind-pair-1",
+          "evaluator_id": "anonymous-evaluator-1",
+          "evidence_binding_sha256": "2b1bc367c7559466e6c0bbd2f70b3e1f6967543a425e45f7abc4a4b86a9126a1"
+        },
+        {
+          "evidence_id": "prose-evidence-58803d1a035e2e3470e9",
+          "vote_id": "anonymous-evaluator-1:blind-pair-2",
+          "pair_id": "blind-pair-2",
+          "evaluator_id": "anonymous-evaluator-1",
+          "evidence_binding_sha256": "58803d1a035e2e3470e991e6a43b5b9f404ac44a88184967b1f77de0cc13b55f"
+        },
+        {
+          "evidence_id": "prose-evidence-faedfefa083affed088b",
+          "vote_id": "anonymous-evaluator-1:blind-pair-3",
+          "pair_id": "blind-pair-3",
+          "evaluator_id": "anonymous-evaluator-1",
+          "evidence_binding_sha256": "faedfefa083affed088b97c1bd2e5ebbd432c6ed5ae4874a0ddf04dd24266f02"
+        },
+        {
+          "evidence_id": "prose-evidence-caff8b4ca3fbe5d04b16",
+          "vote_id": "anonymous-evaluator-2:blind-pair-1",
+          "pair_id": "blind-pair-1",
+          "evaluator_id": "anonymous-evaluator-2",
+          "evidence_binding_sha256": "caff8b4ca3fbe5d04b16476697afd43d7f3e30ca879a9c4af108a12f8c34ddbe"
+        },
+        {
+          "evidence_id": "prose-evidence-2ba5141a5f851fd460fc",
+          "vote_id": "anonymous-evaluator-2:blind-pair-2",
+          "pair_id": "blind-pair-2",
+          "evaluator_id": "anonymous-evaluator-2",
+          "evidence_binding_sha256": "2ba5141a5f851fd460fc032d1b6690e537340fca7a17dd6e1d45680d5b9f93ff"
+        },
+        {
+          "evidence_id": "prose-evidence-572aedadace5c4f6e4d0",
+          "vote_id": "anonymous-evaluator-2:blind-pair-3",
+          "pair_id": "blind-pair-3",
+          "evaluator_id": "anonymous-evaluator-2",
+          "evidence_binding_sha256": "572aedadace5c4f6e4d0a8c2615e5d7513bb6ed8de609ae6483772a43f8d00b1"
+        }
+      ],
+      "mapped_pairs": [
+        "blind-pair-1",
+        "blind-pair-2",
+        "blind-pair-3"
+      ],
+      "relevant_a_atoms": [
+        "atom-want-need-conflict",
+        "atom-evasion-gesture-withheld-explanation",
+        "atom-relationship-pressure-changes-action",
+        "atom-behavior-over-explanatory-summary",
+        "atom-labels-reasoning-only",
+        "atom-replace-abstraction-with-choice-dialogue-consequence",
+        "atom-relationship-role-pressure-trust-subtext"
+      ],
+      "relevant_b_atoms": [
+        "atom-want-need-conflict",
+        "atom-social-relationship-taxonomy"
+      ],
+      "input_delta_explains_output": "STRONG",
+      "aggregate_result": "BASELINE_BETTER"
+    },
+    {
+      "dimension": "specificity",
+      "observed_baseline_strength": "sensory/mechanical affordance and recognizable object detail",
+      "observed_selective_weakness": "abstract template prompts; no selected setting or voice-detail section",
+      "supporting_anonymous_sample_evidence": [
+        {
+          "evidence_id": "prose-evidence-bbd967c5217cb16f3b06",
+          "vote_id": "anonymous-evaluator-1:blind-pair-1",
+          "pair_id": "blind-pair-1",
+          "evaluator_id": "anonymous-evaluator-1",
+          "evidence_binding_sha256": "bbd967c5217cb16f3b06e38761529c955e42217194998f6e4195654c112e3946"
+        },
+        {
+          "evidence_id": "prose-evidence-8e649d541359b8a2f3ba",
+          "vote_id": "anonymous-evaluator-1:blind-pair-2",
+          "pair_id": "blind-pair-2",
+          "evaluator_id": "anonymous-evaluator-1",
+          "evidence_binding_sha256": "8e649d541359b8a2f3bab641be0a1fb96fc4f76a0653293a50e685cc17252b8d"
+        },
+        {
+          "evidence_id": "prose-evidence-72c5a2e5ae2ae9d4bc0a",
+          "vote_id": "anonymous-evaluator-1:blind-pair-3",
+          "pair_id": "blind-pair-3",
+          "evaluator_id": "anonymous-evaluator-1",
+          "evidence_binding_sha256": "72c5a2e5ae2ae9d4bc0a236bff89d855d5f0b997224578259d57f05fbc1439c4"
+        },
+        {
+          "evidence_id": "prose-evidence-1924bd1016552a21c8a5",
+          "vote_id": "anonymous-evaluator-2:blind-pair-1",
+          "pair_id": "blind-pair-1",
+          "evaluator_id": "anonymous-evaluator-2",
+          "evidence_binding_sha256": "1924bd1016552a21c8a521500a1a774119eaac24075f1f300ff14ac6ebd4c6aa"
+        },
+        {
+          "evidence_id": "prose-evidence-08bad82c28ca325fb250",
+          "vote_id": "anonymous-evaluator-2:blind-pair-2",
+          "pair_id": "blind-pair-2",
+          "evaluator_id": "anonymous-evaluator-2",
+          "evidence_binding_sha256": "08bad82c28ca325fb25089240c34e94df1e91b07eda9c8e07cc50ccc1e242473"
+        },
+        {
+          "evidence_id": "prose-evidence-290558ea25782ab85720",
+          "vote_id": "anonymous-evaluator-2:blind-pair-3",
+          "pair_id": "blind-pair-3",
+          "evaluator_id": "anonymous-evaluator-2",
+          "evidence_binding_sha256": "290558ea25782ab857201eeb67b8317f8fd26d851e3269cf144901ead64de88c"
+        }
+      ],
+      "mapped_pairs": [
+        "blind-pair-1",
+        "blind-pair-2",
+        "blind-pair-3"
+      ],
+      "relevant_a_atoms": [
+        "atom-distinct-voice-diction-rhythm",
+        "atom-sensory-mechanical-affordance-constrains-action",
+        "atom-draft-usable-spatial-microchain",
+        "atom-terminal-image",
+        "atom-voice-vocabulary-sentence-habits-tone",
+        "atom-concrete-interactive-location-detail",
+        "atom-specific-cost-limit-consequence",
+        "atom-history-culture-current-tension",
+        "atom-artifact-form-function-history-risk"
+      ],
+      "relevant_b_atoms": [],
+      "input_delta_explains_output": "STRONG",
+      "aggregate_result": "BASELINE_BETTER"
+    },
+    {
+      "dimension": "scene_pressure",
+      "observed_baseline_strength": "opposed tactics, resistance, reversal, cost, and continuous microchain",
+      "observed_selective_weakness": "ordered escalation labels without opposed action mechanics",
+      "supporting_anonymous_sample_evidence": [
+        {
+          "evidence_id": "prose-evidence-d85c0b3a2eb7a1fddde0",
+          "vote_id": "anonymous-evaluator-1:blind-pair-1",
+          "pair_id": "blind-pair-1",
+          "evaluator_id": "anonymous-evaluator-1",
+          "evidence_binding_sha256": "d85c0b3a2eb7a1fddde00650e382d8f476c43f995fcef9a4c0d3ef1c021ada70"
+        },
+        {
+          "evidence_id": "prose-evidence-6d56dafdc1cf0bf560bf",
+          "vote_id": "anonymous-evaluator-1:blind-pair-2",
+          "pair_id": "blind-pair-2",
+          "evaluator_id": "anonymous-evaluator-1",
+          "evidence_binding_sha256": "6d56dafdc1cf0bf560bf0959f53a721cf0384a4c9ce9ce3218341e8f9b5b7ab3"
+        },
+        {
+          "evidence_id": "prose-evidence-a62cde18f8e6a67eed21",
+          "vote_id": "anonymous-evaluator-1:blind-pair-3",
+          "pair_id": "blind-pair-3",
+          "evaluator_id": "anonymous-evaluator-1",
+          "evidence_binding_sha256": "a62cde18f8e6a67eed21084bb04b7db4a2e5910f8517e9707e421cd51d258010"
+        },
+        {
+          "evidence_id": "prose-evidence-93703cce7224c35f98a2",
+          "vote_id": "anonymous-evaluator-2:blind-pair-1",
+          "pair_id": "blind-pair-1",
+          "evaluator_id": "anonymous-evaluator-2",
+          "evidence_binding_sha256": "93703cce7224c35f98a2a6fc50f504b566eaa9424572870dae95e09dc53518d2"
+        },
+        {
+          "evidence_id": "prose-evidence-1a1c263820bdb0676726",
+          "vote_id": "anonymous-evaluator-2:blind-pair-2",
+          "pair_id": "blind-pair-2",
+          "evaluator_id": "anonymous-evaluator-2",
+          "evidence_binding_sha256": "1a1c263820bdb06767262f842408035dfa06fe4c389b4bf8e4342bb8eecb72f9"
+        },
+        {
+          "evidence_id": "prose-evidence-130010e548438a375e67",
+          "vote_id": "anonymous-evaluator-2:blind-pair-3",
+          "pair_id": "blind-pair-3",
+          "evaluator_id": "anonymous-evaluator-2",
+          "evidence_binding_sha256": "130010e548438a375e672f6a612b5de4c66bd9b714ab0224e97f537d304d6d75"
+        }
+      ],
+      "mapped_pairs": [
+        "blind-pair-1",
+        "blind-pair-2",
+        "blind-pair-3"
+      ],
+      "relevant_a_atoms": [
+        "atom-opposed-tactics-costly-choice",
+        "atom-relationship-pressure-changes-action",
+        "atom-sensory-mechanical-affordance-constrains-action",
+        "atom-opposed-escalation-reaction-reversal",
+        "atom-behavior-over-explanatory-summary",
+        "atom-draft-usable-spatial-microchain",
+        "atom-pacing-without-authority-change",
+        "atom-relationship-role-pressure-trust-subtext",
+        "atom-concrete-interactive-location-detail",
+        "atom-specific-cost-limit-consequence",
+        "atom-faction-conflict-as-local-pressure"
+      ],
+      "relevant_b_atoms": [
+        "atom-opposed-escalation-reaction-reversal",
+        "atom-climax-highest-tension-outcome"
+      ],
+      "input_delta_explains_output": "STRONG",
+      "aggregate_result": "BASELINE_BETTER"
+    },
+    {
+      "dimension": "setup_payoff_integrity",
+      "observed_baseline_strength": "explicit plant/dependency/payoff-through-action instructions",
+      "observed_selective_weakness": "all setup/payoff/evidence candidates excluded by demand/optional filters",
+      "supporting_anonymous_sample_evidence": [
+        {
+          "evidence_id": "prose-evidence-1d83ae21db9bf8a86c3c",
+          "vote_id": "anonymous-evaluator-1:blind-pair-1",
+          "pair_id": "blind-pair-1",
+          "evaluator_id": "anonymous-evaluator-1",
+          "evidence_binding_sha256": "1d83ae21db9bf8a86c3c87ca99d9b18b3e72ee38dfe692fe24d21756e0e7fc18"
+        },
+        {
+          "evidence_id": "prose-evidence-ab17ab4f79d18ffc38e4",
+          "vote_id": "anonymous-evaluator-1:blind-pair-2",
+          "pair_id": "blind-pair-2",
+          "evaluator_id": "anonymous-evaluator-1",
+          "evidence_binding_sha256": "ab17ab4f79d18ffc38e462609b124ee0fd629a8abea7caf08c332cc179b3c939"
+        },
+        {
+          "evidence_id": "prose-evidence-c2ca0b1801c3d3493829",
+          "vote_id": "anonymous-evaluator-1:blind-pair-3",
+          "pair_id": "blind-pair-3",
+          "evaluator_id": "anonymous-evaluator-1",
+          "evidence_binding_sha256": "c2ca0b1801c3d34938292f0d68e790d46d8265b67efa7d923c9b1de0085bbd6c"
+        },
+        {
+          "evidence_id": "prose-evidence-0d33738bcedecd2341a6",
+          "vote_id": "anonymous-evaluator-2:blind-pair-1",
+          "pair_id": "blind-pair-1",
+          "evaluator_id": "anonymous-evaluator-2",
+          "evidence_binding_sha256": "0d33738bcedecd2341a652939e888fa4a4a9486a08c458d906cc4115db307953"
+        },
+        {
+          "evidence_id": "prose-evidence-47ad5773a9d11b246e0a",
+          "vote_id": "anonymous-evaluator-2:blind-pair-2",
+          "pair_id": "blind-pair-2",
+          "evaluator_id": "anonymous-evaluator-2",
+          "evidence_binding_sha256": "47ad5773a9d11b246e0a1f271ee5dc93bd95ca190752813595715fcba42dd1ce"
+        },
+        {
+          "evidence_id": "prose-evidence-b09b5221df083cd097fb",
+          "vote_id": "anonymous-evaluator-2:blind-pair-3",
+          "pair_id": "blind-pair-3",
+          "evaluator_id": "anonymous-evaluator-2",
+          "evidence_binding_sha256": "b09b5221df083cd097fb6d69f1f23d91acadbb69b8721099b784eb0ea971b0ee"
+        }
+      ],
+      "mapped_pairs": [
+        "blind-pair-1",
+        "blind-pair-2",
+        "blind-pair-3"
+      ],
+      "relevant_a_atoms": [
+        "atom-interactive-affordance-later-payoff",
+        "atom-setup-dependency-payoff-through-action",
+        "atom-foreshadowing-intent-across-plan",
+        "atom-artifact-form-function-history-risk"
+      ],
+      "relevant_b_atoms": [],
+      "input_delta_explains_output": "STRONG",
+      "aggregate_result": "BASELINE_BETTER"
+    },
+    {
+      "dimension": "voice_readiness",
+      "observed_baseline_strength": "diction, rhythm, evasion, habits, and tone instructions",
+      "observed_selective_weakness": "voice leaf excluded as Draft; B contains no direct voice instruction",
+      "supporting_anonymous_sample_evidence": [
+        {
+          "evidence_id": "prose-evidence-048b099c51d39ce2879b",
+          "vote_id": "anonymous-evaluator-1:blind-pair-1",
+          "pair_id": "blind-pair-1",
+          "evaluator_id": "anonymous-evaluator-1",
+          "evidence_binding_sha256": "048b099c51d39ce2879ba1975108172edb22dd2dc81a0959094bac01fef70b16"
+        },
+        {
+          "evidence_id": "prose-evidence-e54626b792c9ed54a0b6",
+          "vote_id": "anonymous-evaluator-1:blind-pair-2",
+          "pair_id": "blind-pair-2",
+          "evaluator_id": "anonymous-evaluator-1",
+          "evidence_binding_sha256": "e54626b792c9ed54a0b665c95a3d8fc2b6917c2d97f8b64b3bacd0a9fddc5cd4"
+        },
+        {
+          "evidence_id": "prose-evidence-535990eaefca0e1d12e2",
+          "vote_id": "anonymous-evaluator-1:blind-pair-3",
+          "pair_id": "blind-pair-3",
+          "evaluator_id": "anonymous-evaluator-1",
+          "evidence_binding_sha256": "535990eaefca0e1d12e2efee19af15f0d3b697b0c167905e50e3710a739a2e00"
+        },
+        {
+          "evidence_id": "prose-evidence-8e9d39e9587449bf3dbf",
+          "vote_id": "anonymous-evaluator-2:blind-pair-1",
+          "pair_id": "blind-pair-1",
+          "evaluator_id": "anonymous-evaluator-2",
+          "evidence_binding_sha256": "8e9d39e9587449bf3dbfa83299477548a94a31b3314e7ff355b6fc0acd35f4ee"
+        },
+        {
+          "evidence_id": "prose-evidence-211281824f99c5806efc",
+          "vote_id": "anonymous-evaluator-2:blind-pair-2",
+          "pair_id": "blind-pair-2",
+          "evaluator_id": "anonymous-evaluator-2",
+          "evidence_binding_sha256": "211281824f99c5806efc59e0a9c79df03340c2cb172194c74ba69817a8ea7e9e"
+        },
+        {
+          "evidence_id": "prose-evidence-387298cdf86929c363c1",
+          "vote_id": "anonymous-evaluator-2:blind-pair-3",
+          "pair_id": "blind-pair-3",
+          "evaluator_id": "anonymous-evaluator-2",
+          "evidence_binding_sha256": "387298cdf86929c363c188be14322341248626836921d05788a442494e67f912"
+        }
+      ],
+      "mapped_pairs": [
+        "blind-pair-1",
+        "blind-pair-2",
+        "blind-pair-3"
+      ],
+      "relevant_a_atoms": [
+        "atom-distinct-voice-diction-rhythm",
+        "atom-confirmed-frame-bridge",
+        "atom-voice-vocabulary-sentence-habits-tone"
+      ],
+      "relevant_b_atoms": [],
+      "input_delta_explains_output": "MODERATE",
+      "aggregate_result": "INCONCLUSIVE"
+    },
+    {
+      "dimension": "anti_template_risk",
+      "observed_baseline_strength": "labels-reasoning-only and behavior-over-summary constraints",
+      "observed_selective_weakness": "taxonomies and template wrappers create label salience without anti-pattern guidance",
+      "supporting_anonymous_sample_evidence": [
+        {
+          "evidence_id": "prose-evidence-5bf3e067e258d2b675ea",
+          "vote_id": "anonymous-evaluator-1:blind-pair-1",
+          "pair_id": "blind-pair-1",
+          "evaluator_id": "anonymous-evaluator-1",
+          "evidence_binding_sha256": "5bf3e067e258d2b675ea251118e4a7aab4b1b015821062f1562651b40ee8cfad"
+        },
+        {
+          "evidence_id": "prose-evidence-5c104f9ac76bfb4ec9ce",
+          "vote_id": "anonymous-evaluator-1:blind-pair-2",
+          "pair_id": "blind-pair-2",
+          "evaluator_id": "anonymous-evaluator-1",
+          "evidence_binding_sha256": "5c104f9ac76bfb4ec9ce573fa39a4a96963739f0f4702e8179cd43ab5d7e3d73"
+        },
+        {
+          "evidence_id": "prose-evidence-365d307f58f7140acf59",
+          "vote_id": "anonymous-evaluator-1:blind-pair-3",
+          "pair_id": "blind-pair-3",
+          "evaluator_id": "anonymous-evaluator-1",
+          "evidence_binding_sha256": "365d307f58f7140acf59abb8f9e04eae38e0cb7069253263a46c05c53aa4aafe"
+        },
+        {
+          "evidence_id": "prose-evidence-97a4f85612a7f3b211fb",
+          "vote_id": "anonymous-evaluator-2:blind-pair-1",
+          "pair_id": "blind-pair-1",
+          "evaluator_id": "anonymous-evaluator-2",
+          "evidence_binding_sha256": "97a4f85612a7f3b211fb25e84995c0c3b67c645328b6ee9430c769999042aa50"
+        },
+        {
+          "evidence_id": "prose-evidence-8a2f6ea163ad3c414be6",
+          "vote_id": "anonymous-evaluator-2:blind-pair-2",
+          "pair_id": "blind-pair-2",
+          "evaluator_id": "anonymous-evaluator-2",
+          "evidence_binding_sha256": "8a2f6ea163ad3c414be60aa9c63aad2136729a7cfa38c0369371f687d1429bfe"
+        },
+        {
+          "evidence_id": "prose-evidence-3456412af1fd0cc90654",
+          "vote_id": "anonymous-evaluator-2:blind-pair-3",
+          "pair_id": "blind-pair-3",
+          "evaluator_id": "anonymous-evaluator-2",
+          "evidence_binding_sha256": "3456412af1fd0cc90654e71a0d1aeca3aa23dfaf97d9fd9332b20a7d18eda02d"
+        }
+      ],
+      "mapped_pairs": [
+        "blind-pair-1",
+        "blind-pair-2",
+        "blind-pair-3"
+      ],
+      "relevant_a_atoms": [
+        "atom-evasion-gesture-withheld-explanation",
+        "atom-behavior-over-explanatory-summary",
+        "atom-terminal-image",
+        "atom-labels-reasoning-only",
+        "atom-replace-abstraction-with-choice-dialogue-consequence"
+      ],
+      "relevant_b_atoms": [],
+      "input_delta_explains_output": "MODERATE",
+      "aggregate_result": "INCONCLUSIVE"
+    }
+  ],
+  "causal_limit": "three pairs establish a bounded character-heavy mechanism, not universal genre/model causality",
+  "raw_story_or_provider_text_persisted": false
+}

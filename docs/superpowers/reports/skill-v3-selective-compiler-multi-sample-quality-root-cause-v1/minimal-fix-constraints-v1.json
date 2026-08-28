@@ -1,0 +1,31 @@
+{
+  "schema": "SkillV3MinimalFixConstraintsV1",
+  "implementation_in_this_gate": false,
+  "minimal_successor_fix_surface": [
+    "hybrid baseline plus verbatim supplement context partition",
+    "selector recall rules for rubric-wide semantics",
+    "semantic neighborhood/dependency closure",
+    "mixed-section creative subrange grouping",
+    "mandatory-first ordering and reinforcement",
+    "stage ownership exceptions only for hash-bound model-visible creative subranges"
+  ],
+  "frozen_unless_separately_proven_causal": [
+    "repo Skill prose",
+    "StoryState/authority",
+    "REF/DISTILL/Blueprint guidance",
+    "provider/model/route",
+    "sampling",
+    "output cap",
+    "validators",
+    "multi-sample methodology",
+    "blind rubric"
+  ],
+  "design_acceptance": [
+    "every mapped critical dimension retains at least one high-actionability atom",
+    "wrong-layer model-visible count zero",
+    "verbatim fidelity for supplement",
+    "no duplicate semantic authority",
+    "capacity pass without truncation/shedding",
+    "baseline path remains available until prospective non-inferiority"
+  ]
+}

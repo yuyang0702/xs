@@ -1,0 +1,359 @@
+{
+  "schema": "SkillV3MappedLiteraryFailureMatrixV1",
+  "status": "EXACT",
+  "rows": [
+    {
+      "dimension": "character_agency",
+      "criticality": "CRITICAL",
+      "pair1_result": "BASELINE_BETTER",
+      "pair2_result": "SELECTIVE_VERBATIM_BETTER",
+      "pair3_result": "BASELINE_BETTER",
+      "evaluator1_votes": [
+        "BASELINE_BETTER",
+        "SELECTIVE_VERBATIM_BETTER",
+        "BASELINE_BETTER"
+      ],
+      "evaluator2_votes": [
+        "BASELINE_BETTER",
+        "SELECTIVE_VERBATIM_BETTER",
+        "BASELINE_BETTER"
+      ],
+      "combined_counts": {
+        "SELECTIVE_VERBATIM_BETTER": 2,
+        "BASELINE_BETTER": 4,
+        "EQUIVALENT": 0,
+        "INCONCLUSIVE": 0
+      },
+      "mapped_aggregate": "BASELINE_BETTER",
+      "classification": "SELECTIVE_REGRESSION",
+      "blind_evidence_ids": [
+        "anonymous-evaluator-1:blind-pair-1",
+        "anonymous-evaluator-1:blind-pair-2",
+        "anonymous-evaluator-1:blind-pair-3",
+        "anonymous-evaluator-2:blind-pair-1",
+        "anonymous-evaluator-2:blind-pair-2",
+        "anonymous-evaluator-2:blind-pair-3"
+      ],
+      "prose_evidence_ids": [
+        "prose-evidence-6653a0836fdf78318677",
+        "prose-evidence-39a06787ff1a29eed0ee",
+        "prose-evidence-1f57417896d1177b32f8",
+        "prose-evidence-8cd6674e4b9d44f811a2",
+        "prose-evidence-d1656c09f8269eead2d4",
+        "prose-evidence-3b24d5de1b1aab02409e"
+      ]
+    },
+    {
+      "dimension": "causal_coherence",
+      "criticality": "CRITICAL",
+      "pair1_result": "BASELINE_BETTER",
+      "pair2_result": "SELECTIVE_VERBATIM_BETTER",
+      "pair3_result": "BASELINE_BETTER",
+      "evaluator1_votes": [
+        "BASELINE_BETTER",
+        "SELECTIVE_VERBATIM_BETTER",
+        "BASELINE_BETTER"
+      ],
+      "evaluator2_votes": [
+        "BASELINE_BETTER",
+        "SELECTIVE_VERBATIM_BETTER",
+        "BASELINE_BETTER"
+      ],
+      "combined_counts": {
+        "SELECTIVE_VERBATIM_BETTER": 2,
+        "BASELINE_BETTER": 4,
+        "EQUIVALENT": 0,
+        "INCONCLUSIVE": 0
+      },
+      "mapped_aggregate": "BASELINE_BETTER",
+      "classification": "SELECTIVE_REGRESSION",
+      "blind_evidence_ids": [
+        "anonymous-evaluator-1:blind-pair-1",
+        "anonymous-evaluator-1:blind-pair-2",
+        "anonymous-evaluator-1:blind-pair-3",
+        "anonymous-evaluator-2:blind-pair-1",
+        "anonymous-evaluator-2:blind-pair-2",
+        "anonymous-evaluator-2:blind-pair-3"
+      ],
+      "prose_evidence_ids": [
+        "prose-evidence-1634427b8fb1bdcd5cac",
+        "prose-evidence-bcdf0e29def1e87f1caa",
+        "prose-evidence-a08fb3eaf536b689b64d",
+        "prose-evidence-fb0d56b97e256781c53a",
+        "prose-evidence-f1de9957a1a07311e526",
+        "prose-evidence-9f659808c78b2395aa32"
+      ]
+    },
+    {
+      "dimension": "subtext_support",
+      "criticality": "NONCRITICAL",
+      "pair1_result": "BASELINE_BETTER",
+      "pair2_result": "SELECTIVE_VERBATIM_BETTER",
+      "pair3_result": "BASELINE_BETTER",
+      "evaluator1_votes": [
+        "BASELINE_BETTER",
+        "EQUIVALENT",
+        "BASELINE_BETTER"
+      ],
+      "evaluator2_votes": [
+        "BASELINE_BETTER",
+        "SELECTIVE_VERBATIM_BETTER",
+        "BASELINE_BETTER"
+      ],
+      "combined_counts": {
+        "SELECTIVE_VERBATIM_BETTER": 1,
+        "BASELINE_BETTER": 4,
+        "EQUIVALENT": 1,
+        "INCONCLUSIVE": 0
+      },
+      "mapped_aggregate": "BASELINE_BETTER",
+      "classification": "SELECTIVE_REGRESSION",
+      "blind_evidence_ids": [
+        "anonymous-evaluator-1:blind-pair-1",
+        "anonymous-evaluator-1:blind-pair-2",
+        "anonymous-evaluator-1:blind-pair-3",
+        "anonymous-evaluator-2:blind-pair-1",
+        "anonymous-evaluator-2:blind-pair-2",
+        "anonymous-evaluator-2:blind-pair-3"
+      ],
+      "prose_evidence_ids": [
+        "prose-evidence-2b1bc367c7559466e6c0",
+        "prose-evidence-58803d1a035e2e3470e9",
+        "prose-evidence-faedfefa083affed088b",
+        "prose-evidence-caff8b4ca3fbe5d04b16",
+        "prose-evidence-2ba5141a5f851fd460fc",
+        "prose-evidence-572aedadace5c4f6e4d0"
+      ]
+    },
+    {
+      "dimension": "specificity",
+      "criticality": "NONCRITICAL",
+      "pair1_result": "BASELINE_BETTER",
+      "pair2_result": "SELECTIVE_VERBATIM_BETTER",
+      "pair3_result": "BASELINE_BETTER",
+      "evaluator1_votes": [
+        "BASELINE_BETTER",
+        "SELECTIVE_VERBATIM_BETTER",
+        "BASELINE_BETTER"
+      ],
+      "evaluator2_votes": [
+        "BASELINE_BETTER",
+        "SELECTIVE_VERBATIM_BETTER",
+        "BASELINE_BETTER"
+      ],
+      "combined_counts": {
+        "SELECTIVE_VERBATIM_BETTER": 2,
+        "BASELINE_BETTER": 4,
+        "EQUIVALENT": 0,
+        "INCONCLUSIVE": 0
+      },
+      "mapped_aggregate": "BASELINE_BETTER",
+      "classification": "SELECTIVE_REGRESSION",
+      "blind_evidence_ids": [
+        "anonymous-evaluator-1:blind-pair-1",
+        "anonymous-evaluator-1:blind-pair-2",
+        "anonymous-evaluator-1:blind-pair-3",
+        "anonymous-evaluator-2:blind-pair-1",
+        "anonymous-evaluator-2:blind-pair-2",
+        "anonymous-evaluator-2:blind-pair-3"
+      ],
+      "prose_evidence_ids": [
+        "prose-evidence-bbd967c5217cb16f3b06",
+        "prose-evidence-8e649d541359b8a2f3ba",
+        "prose-evidence-72c5a2e5ae2ae9d4bc0a",
+        "prose-evidence-1924bd1016552a21c8a5",
+        "prose-evidence-08bad82c28ca325fb250",
+        "prose-evidence-290558ea25782ab85720"
+      ]
+    },
+    {
+      "dimension": "scene_pressure",
+      "criticality": "NONCRITICAL",
+      "pair1_result": "BASELINE_BETTER",
+      "pair2_result": "SELECTIVE_VERBATIM_BETTER",
+      "pair3_result": "BASELINE_BETTER",
+      "evaluator1_votes": [
+        "BASELINE_BETTER",
+        "SELECTIVE_VERBATIM_BETTER",
+        "BASELINE_BETTER"
+      ],
+      "evaluator2_votes": [
+        "BASELINE_BETTER",
+        "SELECTIVE_VERBATIM_BETTER",
+        "BASELINE_BETTER"
+      ],
+      "combined_counts": {
+        "SELECTIVE_VERBATIM_BETTER": 2,
+        "BASELINE_BETTER": 4,
+        "EQUIVALENT": 0,
+        "INCONCLUSIVE": 0
+      },
+      "mapped_aggregate": "BASELINE_BETTER",
+      "classification": "SELECTIVE_REGRESSION",
+      "blind_evidence_ids": [
+        "anonymous-evaluator-1:blind-pair-1",
+        "anonymous-evaluator-1:blind-pair-2",
+        "anonymous-evaluator-1:blind-pair-3",
+        "anonymous-evaluator-2:blind-pair-1",
+        "anonymous-evaluator-2:blind-pair-2",
+        "anonymous-evaluator-2:blind-pair-3"
+      ],
+      "prose_evidence_ids": [
+        "prose-evidence-d85c0b3a2eb7a1fddde0",
+        "prose-evidence-6d56dafdc1cf0bf560bf",
+        "prose-evidence-a62cde18f8e6a67eed21",
+        "prose-evidence-93703cce7224c35f98a2",
+        "prose-evidence-1a1c263820bdb0676726",
+        "prose-evidence-130010e548438a375e67"
+      ]
+    },
+    {
+      "dimension": "setup_payoff_integrity",
+      "criticality": "CRITICAL",
+      "pair1_result": "BASELINE_BETTER",
+      "pair2_result": "SELECTIVE_VERBATIM_BETTER",
+      "pair3_result": "BASELINE_BETTER",
+      "evaluator1_votes": [
+        "BASELINE_BETTER",
+        "EQUIVALENT",
+        "BASELINE_BETTER"
+      ],
+      "evaluator2_votes": [
+        "BASELINE_BETTER",
+        "SELECTIVE_VERBATIM_BETTER",
+        "BASELINE_BETTER"
+      ],
+      "combined_counts": {
+        "SELECTIVE_VERBATIM_BETTER": 1,
+        "BASELINE_BETTER": 4,
+        "EQUIVALENT": 1,
+        "INCONCLUSIVE": 0
+      },
+      "mapped_aggregate": "BASELINE_BETTER",
+      "classification": "SELECTIVE_REGRESSION",
+      "blind_evidence_ids": [
+        "anonymous-evaluator-1:blind-pair-1",
+        "anonymous-evaluator-1:blind-pair-2",
+        "anonymous-evaluator-1:blind-pair-3",
+        "anonymous-evaluator-2:blind-pair-1",
+        "anonymous-evaluator-2:blind-pair-2",
+        "anonymous-evaluator-2:blind-pair-3"
+      ],
+      "prose_evidence_ids": [
+        "prose-evidence-1d83ae21db9bf8a86c3c",
+        "prose-evidence-ab17ab4f79d18ffc38e4",
+        "prose-evidence-c2ca0b1801c3d3493829",
+        "prose-evidence-0d33738bcedecd2341a6",
+        "prose-evidence-47ad5773a9d11b246e0a",
+        "prose-evidence-b09b5221df083cd097fb"
+      ]
+    },
+    {
+      "dimension": "voice_readiness",
+      "criticality": "NONCRITICAL",
+      "pair1_result": "INCONCLUSIVE",
+      "pair2_result": "SELECTIVE_VERBATIM_BETTER",
+      "pair3_result": "BASELINE_BETTER",
+      "evaluator1_votes": [
+        "SELECTIVE_VERBATIM_BETTER",
+        "SELECTIVE_VERBATIM_BETTER",
+        "BASELINE_BETTER"
+      ],
+      "evaluator2_votes": [
+        "BASELINE_BETTER",
+        "SELECTIVE_VERBATIM_BETTER",
+        "BASELINE_BETTER"
+      ],
+      "combined_counts": {
+        "SELECTIVE_VERBATIM_BETTER": 3,
+        "BASELINE_BETTER": 3,
+        "EQUIVALENT": 0,
+        "INCONCLUSIVE": 0
+      },
+      "mapped_aggregate": "INCONCLUSIVE",
+      "classification": "INCONCLUSIVE",
+      "blind_evidence_ids": [
+        "anonymous-evaluator-1:blind-pair-1",
+        "anonymous-evaluator-1:blind-pair-2",
+        "anonymous-evaluator-1:blind-pair-3",
+        "anonymous-evaluator-2:blind-pair-1",
+        "anonymous-evaluator-2:blind-pair-2",
+        "anonymous-evaluator-2:blind-pair-3"
+      ],
+      "prose_evidence_ids": [
+        "prose-evidence-048b099c51d39ce2879b",
+        "prose-evidence-e54626b792c9ed54a0b6",
+        "prose-evidence-535990eaefca0e1d12e2",
+        "prose-evidence-8e9d39e9587449bf3dbf",
+        "prose-evidence-211281824f99c5806efc",
+        "prose-evidence-387298cdf86929c363c1"
+      ]
+    },
+    {
+      "dimension": "anti_template_risk",
+      "criticality": "NONCRITICAL",
+      "pair1_result": "SELECTIVE_VERBATIM_BETTER",
+      "pair2_result": "SELECTIVE_VERBATIM_BETTER",
+      "pair3_result": "BASELINE_BETTER",
+      "evaluator1_votes": [
+        "EQUIVALENT",
+        "SELECTIVE_VERBATIM_BETTER",
+        "BASELINE_BETTER"
+      ],
+      "evaluator2_votes": [
+        "SELECTIVE_VERBATIM_BETTER",
+        "SELECTIVE_VERBATIM_BETTER",
+        "BASELINE_BETTER"
+      ],
+      "combined_counts": {
+        "SELECTIVE_VERBATIM_BETTER": 3,
+        "BASELINE_BETTER": 2,
+        "EQUIVALENT": 1,
+        "INCONCLUSIVE": 0
+      },
+      "mapped_aggregate": "INCONCLUSIVE",
+      "classification": "INCONCLUSIVE",
+      "blind_evidence_ids": [
+        "anonymous-evaluator-1:blind-pair-1",
+        "anonymous-evaluator-1:blind-pair-2",
+        "anonymous-evaluator-1:blind-pair-3",
+        "anonymous-evaluator-2:blind-pair-1",
+        "anonymous-evaluator-2:blind-pair-2",
+        "anonymous-evaluator-2:blind-pair-3"
+      ],
+      "prose_evidence_ids": [
+        "prose-evidence-5bf3e067e258d2b675ea",
+        "prose-evidence-5c104f9ac76bfb4ec9ce",
+        "prose-evidence-365d307f58f7140acf59",
+        "prose-evidence-97a4f85612a7f3b211fb",
+        "prose-evidence-8a2f6ea163ad3c414be6",
+        "prose-evidence-3456412af1fd0cc90654"
+      ]
+    }
+  ],
+  "critical_counts": {
+    "better": 0,
+    "equivalent": 0,
+    "regression": 3,
+    "inconclusive": 0
+  },
+  "noncritical_counts": {
+    "better": 0,
+    "equivalent": 0,
+    "regression": 3,
+    "inconclusive": 2
+  },
+  "critical_regression_dimensions": [
+    "character_agency",
+    "causal_coherence",
+    "setup_payoff_integrity"
+  ],
+  "noncritical_regression_dimensions": [
+    "subtext_support",
+    "specificity",
+    "scene_pressure"
+  ],
+  "voice_readiness": "INCONCLUSIVE_SELECTIVE_3_BASELINE_3",
+  "anti_template_risk": "INCONCLUSIVE_SELECTIVE_3_BASELINE_2_TIE_1",
+  "raw_story_or_provider_text_persisted": false
+}

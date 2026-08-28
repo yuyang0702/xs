@@ -1,0 +1,2969 @@
+{
+  "schema": "SkillV3UnselectedCandidateSectionAuditV1",
+  "status": "EXACT",
+  "candidate_scope": "all indexed sections in the four resolved planning Skills",
+  "candidate_count": 104,
+  "eligible_count": 49,
+  "selected_count": 9,
+  "rows": [
+    {
+      "candidate_section_id": "sv3-c5cabdbecc9d9ebe",
+      "skill": "story-init",
+      "ownership": "AUTHORITY_ONLY",
+      "eligible": false,
+      "selected": false,
+      "selection_rule_or_reason": "ownership_or_model_visible_filter",
+      "dependency_reason": [],
+      "drop_reason": "excluded_wrong_layer_or_model_visible_unsafe:AUTHORITY_ONLY",
+      "optional_or_mandatory": "MANDATORY_IF_RULE_MATCHES",
+      "char_count": 290,
+      "target_semantics": [
+        "story-initialization-overview"
+      ],
+      "demand_tags": [],
+      "selection_class": "EXCLUDED_WRONG_LAYER",
+      "source_file": "vendor/novel-skills/source/story-init/SKILL.md",
+      "source_text_range": {
+        "start_line": 8,
+        "end_line": 11
+      }
+    },
+    {
+      "candidate_section_id": "sv3-8ac17f0d47795d10",
+      "skill": "story-init",
+      "ownership": "AUTHORITY_ONLY",
+      "eligible": false,
+      "selected": false,
+      "selection_rule_or_reason": "ownership_or_model_visible_filter",
+      "dependency_reason": [],
+      "drop_reason": "excluded_wrong_layer_or_model_visible_unsafe:AUTHORITY_ONLY",
+      "optional_or_mandatory": "MANDATORY_IF_RULE_MATCHES",
+      "char_count": 393,
+      "target_semantics": [
+        "story-initialization-when-to-use"
+      ],
+      "demand_tags": [],
+      "selection_class": "EXCLUDED_WRONG_LAYER",
+      "source_file": "vendor/novel-skills/source/story-init/SKILL.md",
+      "source_text_range": {
+        "start_line": 12,
+        "end_line": 18
+      }
+    },
+    {
+      "candidate_section_id": "sv3-40facfcb85f73424",
+      "skill": "story-init",
+      "ownership": "LOCAL_RUNTIME",
+      "eligible": false,
+      "selected": false,
+      "selection_rule_or_reason": "ownership_or_model_visible_filter",
+      "dependency_reason": [],
+      "drop_reason": "excluded_wrong_layer_or_model_visible_unsafe:LOCAL_RUNTIME",
+      "optional_or_mandatory": "MANDATORY_IF_RULE_MATCHES",
+      "char_count": 2084,
+      "target_semantics": [
+        "story-initialization-workflow"
+      ],
+      "demand_tags": [],
+      "selection_class": "EXCLUDED_WRONG_LAYER",
+      "source_file": "vendor/novel-skills/source/story-init/SKILL.md",
+      "source_text_range": {
+        "start_line": 19,
+        "end_line": 107
+      }
+    },
+    {
+      "candidate_section_id": "sv3-9528d6c4b2b57eb4",
+      "skill": "story-init",
+      "ownership": "LOCAL_RUNTIME",
+      "eligible": false,
+      "selected": false,
+      "selection_rule_or_reason": "ownership_or_model_visible_filter",
+      "dependency_reason": [],
+      "drop_reason": "excluded_wrong_layer_or_model_visible_unsafe:LOCAL_RUNTIME",
+      "optional_or_mandatory": "MANDATORY_IF_RULE_MATCHES",
+      "char_count": 107,
+      "target_semantics": [
+        "characters-registry"
+      ],
+      "demand_tags": [],
+      "selection_class": "EXCLUDED_WRONG_LAYER",
+      "source_file": "vendor/novel-skills/source/story-init/SKILL.md",
+      "source_text_range": {
+        "start_line": 110,
+        "end_line": 115
+      }
+    },
+    {
+      "candidate_section_id": "sv3-80f6f64ac2866551",
+      "skill": "story-init",
+      "ownership": "AUTHORITY_ONLY",
+      "eligible": false,
+      "selected": false,
+      "selection_rule_or_reason": "ownership_or_model_visible_filter",
+      "dependency_reason": [],
+      "drop_reason": "excluded_wrong_layer_or_model_visible_unsafe:AUTHORITY_ONLY",
+      "optional_or_mandatory": "MANDATORY_IF_RULE_MATCHES",
+      "char_count": 53,
+      "target_semantics": [
+        "characters-relationship-map"
+      ],
+      "demand_tags": [],
+      "selection_class": "EXCLUDED_WRONG_LAYER",
+      "source_file": "vendor/novel-skills/source/story-init/SKILL.md",
+      "source_text_range": {
+        "start_line": 116,
+        "end_line": 119
+      }
+    },
+    {
+      "candidate_section_id": "sv3-8af2ee5c60d74c3a",
+      "skill": "story-init",
+      "ownership": "AUTHORITY_ONLY",
+      "eligible": false,
+      "selected": false,
+      "selection_rule_or_reason": "ownership_or_model_visible_filter",
+      "dependency_reason": [],
+      "drop_reason": "excluded_wrong_layer_or_model_visible_unsafe:AUTHORITY_ONLY",
+      "optional_or_mandatory": "MANDATORY_IF_RULE_MATCHES",
+      "char_count": 152,
+      "target_semantics": [
+        "characters-family-trees"
+      ],
+      "demand_tags": [],
+      "selection_class": "EXCLUDED_WRONG_LAYER",
+      "source_file": "vendor/novel-skills/source/story-init/SKILL.md",
+      "source_text_range": {
+        "start_line": 120,
+        "end_line": 131
+      }
+    },
+    {
+      "candidate_section_id": "sv3-bcc4b46286151c12",
+      "skill": "story-init",
+      "ownership": "AUTHORITY_ONLY",
+      "eligible": false,
+      "selected": false,
+      "selection_rule_or_reason": "ownership_or_model_visible_filter",
+      "dependency_reason": [],
+      "drop_reason": "excluded_wrong_layer_or_model_visible_unsafe:AUTHORITY_ONLY",
+      "optional_or_mandatory": "MANDATORY_IF_RULE_MATCHES",
+      "char_count": 62,
+      "target_semantics": [
+        "worldbuilding-world-overview"
+      ],
+      "demand_tags": [],
+      "selection_class": "EXCLUDED_WRONG_LAYER",
+      "source_file": "vendor/novel-skills/source/story-init/SKILL.md",
+      "source_text_range": {
+        "start_line": 134,
+        "end_line": 137
+      }
+    },
+    {
+      "candidate_section_id": "sv3-ccab1e500e5e4cf5",
+      "skill": "story-init",
+      "ownership": "AUTHORITY_ONLY",
+      "eligible": false,
+      "selected": false,
+      "selection_rule_or_reason": "ownership_or_model_visible_filter",
+      "dependency_reason": [],
+      "drop_reason": "excluded_wrong_layer_or_model_visible_unsafe:AUTHORITY_ONLY",
+      "optional_or_mandatory": "MANDATORY_IF_RULE_MATCHES",
+      "char_count": 107,
+      "target_semantics": [
+        "worldbuilding-locations"
+      ],
+      "demand_tags": [],
+      "selection_class": "EXCLUDED_WRONG_LAYER",
+      "source_file": "vendor/novel-skills/source/story-init/SKILL.md",
+      "source_text_range": {
+        "start_line": 138,
+        "end_line": 143
+      }
+    },
+    {
+      "candidate_section_id": "sv3-3b37f8c3c1f21dee",
+      "skill": "story-init",
+      "ownership": "AUTHORITY_ONLY",
+      "eligible": false,
+      "selected": false,
+      "selection_rule_or_reason": "ownership_or_model_visible_filter",
+      "dependency_reason": [],
+      "drop_reason": "excluded_wrong_layer_or_model_visible_unsafe:AUTHORITY_ONLY",
+      "optional_or_mandatory": "MANDATORY_IF_RULE_MATCHES",
+      "char_count": 83,
+      "target_semantics": [
+        "worldbuilding-systems"
+      ],
+      "demand_tags": [],
+      "selection_class": "EXCLUDED_WRONG_LAYER",
+      "source_file": "vendor/novel-skills/source/story-init/SKILL.md",
+      "source_text_range": {
+        "start_line": 144,
+        "end_line": 149
+      }
+    },
+    {
+      "candidate_section_id": "sv3-16a97e19884d7d9b",
+      "skill": "story-init",
+      "ownership": "AUTHORITY_ONLY",
+      "eligible": false,
+      "selected": false,
+      "selection_rule_or_reason": "ownership_or_model_visible_filter",
+      "dependency_reason": [],
+      "drop_reason": "excluded_wrong_layer_or_model_visible_unsafe:AUTHORITY_ONLY",
+      "optional_or_mandatory": "MANDATORY_IF_RULE_MATCHES",
+      "char_count": 105,
+      "target_semantics": [
+        "worldbuilding-factions"
+      ],
+      "demand_tags": [],
+      "selection_class": "EXCLUDED_WRONG_LAYER",
+      "source_file": "vendor/novel-skills/source/story-init/SKILL.md",
+      "source_text_range": {
+        "start_line": 150,
+        "end_line": 155
+      }
+    },
+    {
+      "candidate_section_id": "sv3-c8d71917fcf24380",
+      "skill": "story-init",
+      "ownership": "AUTHORITY_ONLY",
+      "eligible": false,
+      "selected": false,
+      "selection_rule_or_reason": "ownership_or_model_visible_filter",
+      "dependency_reason": [],
+      "drop_reason": "excluded_wrong_layer_or_model_visible_unsafe:AUTHORITY_ONLY",
+      "optional_or_mandatory": "MANDATORY_IF_RULE_MATCHES",
+      "char_count": 222,
+      "target_semantics": [
+        "worldbuilding-artifacts"
+      ],
+      "demand_tags": [],
+      "selection_class": "EXCLUDED_WRONG_LAYER",
+      "source_file": "vendor/novel-skills/source/story-init/SKILL.md",
+      "source_text_range": {
+        "start_line": 156,
+        "end_line": 170
+      }
+    },
+    {
+      "candidate_section_id": "sv3-8eb1efe5e9383747",
+      "skill": "story-init",
+      "ownership": "AUTHORITY_ONLY",
+      "eligible": false,
+      "selected": false,
+      "selection_rule_or_reason": "ownership_or_model_visible_filter",
+      "dependency_reason": [],
+      "drop_reason": "excluded_wrong_layer_or_model_visible_unsafe:AUTHORITY_ONLY",
+      "optional_or_mandatory": "MANDATORY_IF_RULE_MATCHES",
+      "char_count": 70,
+      "target_semantics": [
+        "plot-structure-story-structure"
+      ],
+      "demand_tags": [],
+      "selection_class": "EXCLUDED_WRONG_LAYER",
+      "source_file": "vendor/novel-skills/source/story-init/SKILL.md",
+      "source_text_range": {
+        "start_line": 173,
+        "end_line": 176
+      }
+    },
+    {
+      "candidate_section_id": "sv3-a78544c964829282",
+      "skill": "story-init",
+      "ownership": "AUTHORITY_ONLY",
+      "eligible": false,
+      "selected": false,
+      "selection_rule_or_reason": "ownership_or_model_visible_filter",
+      "dependency_reason": [],
+      "drop_reason": "excluded_wrong_layer_or_model_visible_unsafe:AUTHORITY_ONLY",
+      "optional_or_mandatory": "MANDATORY_IF_RULE_MATCHES",
+      "char_count": 97,
+      "target_semantics": [
+        "plot-structure-arcs"
+      ],
+      "demand_tags": [],
+      "selection_class": "EXCLUDED_WRONG_LAYER",
+      "source_file": "vendor/novel-skills/source/story-init/SKILL.md",
+      "source_text_range": {
+        "start_line": 177,
+        "end_line": 182
+      }
+    },
+    {
+      "candidate_section_id": "sv3-10ca03901075308f",
+      "skill": "story-init",
+      "ownership": "AUTHORITY_ONLY",
+      "eligible": false,
+      "selected": false,
+      "selection_rule_or_reason": "ownership_or_model_visible_filter",
+      "dependency_reason": [],
+      "drop_reason": "excluded_wrong_layer_or_model_visible_unsafe:AUTHORITY_ONLY",
+      "optional_or_mandatory": "MANDATORY_IF_RULE_MATCHES",
+      "char_count": 198,
+      "target_semantics": [
+        "plot-structure-theme-tracking"
+      ],
+      "demand_tags": [],
+      "selection_class": "EXCLUDED_WRONG_LAYER",
+      "source_file": "vendor/novel-skills/source/story-init/SKILL.md",
+      "source_text_range": {
+        "start_line": 183,
+        "end_line": 196
+      }
+    },
+    {
+      "candidate_section_id": "sv3-e9171611b98c26ef",
+      "skill": "story-init",
+      "ownership": "LOCAL_RUNTIME",
+      "eligible": false,
+      "selected": false,
+      "selection_rule_or_reason": "ownership_or_model_visible_filter",
+      "dependency_reason": [],
+      "drop_reason": "excluded_wrong_layer_or_model_visible_unsafe:LOCAL_RUNTIME",
+      "optional_or_mandatory": "MANDATORY_IF_RULE_MATCHES",
+      "char_count": 143,
+      "target_semantics": [
+        "chapters-registry"
+      ],
+      "demand_tags": [],
+      "selection_class": "EXCLUDED_WRONG_LAYER",
+      "source_file": "vendor/novel-skills/source/story-init/SKILL.md",
+      "source_text_range": {
+        "start_line": 213,
+        "end_line": 218
+      }
+    },
+    {
+      "candidate_section_id": "sv3-8e1133b68df847e4",
+      "skill": "story-init",
+      "ownership": "LOCAL_RUNTIME",
+      "eligible": false,
+      "selected": false,
+      "selection_rule_or_reason": "ownership_or_model_visible_filter",
+      "dependency_reason": [],
+      "drop_reason": "excluded_wrong_layer_or_model_visible_unsafe:LOCAL_RUNTIME",
+      "optional_or_mandatory": "MANDATORY_IF_RULE_MATCHES",
+      "char_count": 1233,
+      "target_semantics": [
+        "chapters-total-word-count-0"
+      ],
+      "demand_tags": [],
+      "selection_class": "EXCLUDED_WRONG_LAYER",
+      "source_file": "vendor/novel-skills/source/story-init/SKILL.md",
+      "source_text_range": {
+        "start_line": 219,
+        "end_line": 245
+      }
+    },
+    {
+      "candidate_section_id": "sv3-d3294cde968201ab",
+      "skill": "story-init",
+      "ownership": "LOCAL_RUNTIME",
+      "eligible": false,
+      "selected": false,
+      "selection_rule_or_reason": "ownership_or_model_visible_filter",
+      "dependency_reason": [],
+      "drop_reason": "excluded_wrong_layer_or_model_visible_unsafe:LOCAL_RUNTIME",
+      "optional_or_mandatory": "MANDATORY_IF_RULE_MATCHES",
+      "char_count": 1779,
+      "target_semantics": [
+        "chapters-conventions"
+      ],
+      "demand_tags": [],
+      "selection_class": "EXCLUDED_WRONG_LAYER",
+      "source_file": "vendor/novel-skills/source/story-init/SKILL.md",
+      "source_text_range": {
+        "start_line": 246,
+        "end_line": 262
+      }
+    },
+    {
+      "candidate_section_id": "sv3-70a527462c32e7b6",
+      "skill": "plot-structure",
+      "ownership": "PLANNING_EVENT_REALIZATION",
+      "eligible": true,
+      "selected": true,
+      "selection_rule_or_reason": "always_on_stage_core",
+      "dependency_reason": [],
+      "drop_reason": null,
+      "optional_or_mandatory": "MANDATORY_IF_RULE_MATCHES",
+      "char_count": 129,
+      "target_semantics": [
+        "arc-template-setup"
+      ],
+      "demand_tags": [],
+      "selection_class": "ALWAYS_ON_STAGE_CORE",
+      "source_file": "vendor/novel-skills/source/plot-structure/references/arc-template.md",
+      "source_text_range": {
+        "start_line": 19,
+        "end_line": 22
+      }
+    },
+    {
+      "candidate_section_id": "sv3-faecc1466817d8aa",
+      "skill": "plot-structure",
+      "ownership": "PLANNING_EVENT_REALIZATION",
+      "eligible": true,
+      "selected": true,
+      "selection_rule_or_reason": "always_on_stage_core",
+      "dependency_reason": [],
+      "drop_reason": null,
+      "optional_or_mandatory": "MANDATORY_IF_RULE_MATCHES",
+      "char_count": 159,
+      "target_semantics": [
+        "arc-template-rising-action"
+      ],
+      "demand_tags": [],
+      "selection_class": "ALWAYS_ON_STAGE_CORE",
+      "source_file": "vendor/novel-skills/source/plot-structure/references/arc-template.md",
+      "source_text_range": {
+        "start_line": 23,
+        "end_line": 30
+      }
+    },
+    {
+      "candidate_section_id": "sv3-7633ad6f5c90db5e",
+      "skill": "plot-structure",
+      "ownership": "LOCAL_RUNTIME",
+      "eligible": true,
+      "selected": true,
+      "selection_rule_or_reason": "always_on_stage_core",
+      "dependency_reason": [],
+      "drop_reason": null,
+      "optional_or_mandatory": "MANDATORY_IF_RULE_MATCHES",
+      "char_count": 102,
+      "target_semantics": [
+        "arc-template-climax"
+      ],
+      "demand_tags": [],
+      "selection_class": "ALWAYS_ON_STAGE_CORE",
+      "source_file": "vendor/novel-skills/source/plot-structure/references/arc-template.md",
+      "source_text_range": {
+        "start_line": 31,
+        "end_line": 34
+      }
+    },
+    {
+      "candidate_section_id": "sv3-3fb51ac3fed35bc0",
+      "skill": "plot-structure",
+      "ownership": "PLANNING_EVENT_REALIZATION",
+      "eligible": true,
+      "selected": true,
+      "selection_rule_or_reason": "always_on_stage_core",
+      "dependency_reason": [],
+      "drop_reason": null,
+      "optional_or_mandatory": "MANDATORY_IF_RULE_MATCHES",
+      "char_count": 107,
+      "target_semantics": [
+        "arc-template-resolution"
+      ],
+      "demand_tags": [],
+      "selection_class": "ALWAYS_ON_STAGE_CORE",
+      "source_file": "vendor/novel-skills/source/plot-structure/references/arc-template.md",
+      "source_text_range": {
+        "start_line": 35,
+        "end_line": 38
+      }
+    },
+    {
+      "candidate_section_id": "sv3-13580b3cdbef263e",
+      "skill": "plot-structure",
+      "ownership": "PLANNING_EVENT_REALIZATION",
+      "eligible": true,
+      "selected": false,
+      "selection_rule_or_reason": "exact_demand_tag_match",
+      "dependency_reason": [
+        "sv3-3fb51ac3fed35bc0",
+        "sv3-70a527462c32e7b6",
+        "sv3-7633ad6f5c90db5e",
+        "sv3-faecc1466817d8aa"
+      ],
+      "drop_reason": "character_heavy_not_in_demand_tags",
+      "optional_or_mandatory": "MANDATORY_IF_RULE_MATCHES",
+      "char_count": 220,
+      "target_semantics": [
+        "causal_coherence",
+        "scene_pressure"
+      ],
+      "demand_tags": [
+        "conflict-pacing-heavy"
+      ],
+      "selection_class": "DEMAND_SPECIFIC",
+      "source_file": "vendor/novel-skills/source/plot-structure/references/arc-template.md",
+      "source_text_range": {
+        "start_line": 39,
+        "end_line": 46
+      }
+    },
+    {
+      "candidate_section_id": "sv3-ac7aa3aed8a7d237",
+      "skill": "plot-structure",
+      "ownership": "PLANNING_EVENT_REALIZATION",
+      "eligible": true,
+      "selected": false,
+      "selection_rule_or_reason": "exact_demand_tag_match",
+      "dependency_reason": [
+        "sv3-3fb51ac3fed35bc0",
+        "sv3-70a527462c32e7b6",
+        "sv3-7633ad6f5c90db5e",
+        "sv3-faecc1466817d8aa"
+      ],
+      "drop_reason": "character_heavy_not_in_demand_tags",
+      "optional_or_mandatory": "MANDATORY_IF_RULE_MATCHES",
+      "char_count": 232,
+      "target_semantics": [
+        "setup_payoff_integrity"
+      ],
+      "demand_tags": [
+        "setup-payoff-heavy"
+      ],
+      "selection_class": "DEMAND_SPECIFIC",
+      "source_file": "vendor/novel-skills/source/plot-structure/references/arc-template.md",
+      "source_text_range": {
+        "start_line": 47,
+        "end_line": 53
+      }
+    },
+    {
+      "candidate_section_id": "sv3-2ced894267dc51e3",
+      "skill": "plot-structure",
+      "ownership": "PLANNING_EVENT_REALIZATION",
+      "eligible": true,
+      "selected": false,
+      "selection_rule_or_reason": "exact_demand_tag_match",
+      "dependency_reason": [
+        "sv3-3fb51ac3fed35bc0",
+        "sv3-70a527462c32e7b6",
+        "sv3-7633ad6f5c90db5e",
+        "sv3-faecc1466817d8aa"
+      ],
+      "drop_reason": "character_heavy_not_in_demand_tags",
+      "optional_or_mandatory": "MANDATORY_IF_RULE_MATCHES",
+      "char_count": 46,
+      "target_semantics": [
+        "setup_payoff_integrity"
+      ],
+      "demand_tags": [
+        "setup-payoff-heavy"
+      ],
+      "selection_class": "DEMAND_SPECIFIC",
+      "source_file": "vendor/novel-skills/source/plot-structure/references/promise-template.md",
+      "source_text_range": {
+        "start_line": 18,
+        "end_line": 21
+      }
+    },
+    {
+      "candidate_section_id": "sv3-82ca2fdf9c28183b",
+      "skill": "plot-structure",
+      "ownership": "PLANNING_EVENT_REALIZATION",
+      "eligible": true,
+      "selected": false,
+      "selection_rule_or_reason": "exact_demand_tag_match",
+      "dependency_reason": [
+        "sv3-3fb51ac3fed35bc0",
+        "sv3-70a527462c32e7b6",
+        "sv3-7633ad6f5c90db5e",
+        "sv3-faecc1466817d8aa"
+      ],
+      "drop_reason": "character_heavy_not_in_demand_tags",
+      "optional_or_mandatory": "MANDATORY_IF_RULE_MATCHES",
+      "char_count": 47,
+      "target_semantics": [
+        "setup_payoff_integrity"
+      ],
+      "demand_tags": [
+        "mixed",
+        "setup-payoff-heavy"
+      ],
+      "selection_class": "DEMAND_SPECIFIC",
+      "source_file": "vendor/novel-skills/source/plot-structure/references/promise-template.md",
+      "source_text_range": {
+        "start_line": 22,
+        "end_line": 25
+      }
+    },
+    {
+      "candidate_section_id": "sv3-dd97e7e7e139fe7b",
+      "skill": "plot-structure",
+      "ownership": "LOCAL_RUNTIME",
+      "eligible": false,
+      "selected": false,
+      "selection_rule_or_reason": "ownership_or_model_visible_filter",
+      "dependency_reason": [],
+      "drop_reason": "excluded_wrong_layer_or_model_visible_unsafe:LOCAL_RUNTIME",
+      "optional_or_mandatory": "MANDATORY_IF_RULE_MATCHES",
+      "char_count": 61,
+      "target_semantics": [
+        "promise-template-tracking-notes"
+      ],
+      "demand_tags": [],
+      "selection_class": "EXCLUDED_WRONG_LAYER",
+      "source_file": "vendor/novel-skills/source/plot-structure/references/promise-template.md",
+      "source_text_range": {
+        "start_line": 26,
+        "end_line": 28
+      }
+    },
+    {
+      "candidate_section_id": "sv3-a1cb6a6e7ccf6112",
+      "skill": "plot-structure",
+      "ownership": "PLANNING_EVENT_REALIZATION",
+      "eligible": true,
+      "selected": false,
+      "selection_rule_or_reason": "exact_demand_tag_match",
+      "dependency_reason": [
+        "sv3-3fb51ac3fed35bc0",
+        "sv3-70a527462c32e7b6",
+        "sv3-7633ad6f5c90db5e",
+        "sv3-faecc1466817d8aa"
+      ],
+      "drop_reason": "character_heavy_not_in_demand_tags",
+      "optional_or_mandatory": "MANDATORY_IF_RULE_MATCHES",
+      "char_count": 68,
+      "target_semantics": [
+        "setup_payoff_integrity"
+      ],
+      "demand_tags": [
+        "setup-payoff-heavy"
+      ],
+      "selection_class": "DEMAND_SPECIFIC",
+      "source_file": "vendor/novel-skills/source/plot-structure/references/question-template.md",
+      "source_text_range": {
+        "start_line": 16,
+        "end_line": 19
+      }
+    },
+    {
+      "candidate_section_id": "sv3-972a75cb8ca8f0bd",
+      "skill": "plot-structure",
+      "ownership": "PLANNING_EVENT_REALIZATION",
+      "eligible": true,
+      "selected": false,
+      "selection_rule_or_reason": "optional_support_disabled",
+      "dependency_reason": [],
+      "drop_reason": "include_optional_support_false",
+      "optional_or_mandatory": "OPTIONAL",
+      "char_count": 59,
+      "target_semantics": [
+        "setup_payoff_integrity",
+        "causal_coherence"
+      ],
+      "demand_tags": [],
+      "selection_class": "OPTIONAL_SUPPORT",
+      "source_file": "vendor/novel-skills/source/plot-structure/references/question-template.md",
+      "source_text_range": {
+        "start_line": 20,
+        "end_line": 23
+      }
+    },
+    {
+      "candidate_section_id": "sv3-6e4a0b2625a01274",
+      "skill": "plot-structure",
+      "ownership": "PLANNING_EVENT_REALIZATION",
+      "eligible": true,
+      "selected": false,
+      "selection_rule_or_reason": "exact_demand_tag_match",
+      "dependency_reason": [
+        "sv3-3fb51ac3fed35bc0",
+        "sv3-70a527462c32e7b6",
+        "sv3-7633ad6f5c90db5e",
+        "sv3-faecc1466817d8aa"
+      ],
+      "drop_reason": "character_heavy_not_in_demand_tags",
+      "optional_or_mandatory": "MANDATORY_IF_RULE_MATCHES",
+      "char_count": 57,
+      "target_semantics": [
+        "setup_payoff_integrity"
+      ],
+      "demand_tags": [
+        "setup-payoff-heavy"
+      ],
+      "selection_class": "DEMAND_SPECIFIC",
+      "source_file": "vendor/novel-skills/source/plot-structure/references/question-template.md",
+      "source_text_range": {
+        "start_line": 24,
+        "end_line": 26
+      }
+    },
+    {
+      "candidate_section_id": "sv3-36cdb33180195037",
+      "skill": "plot-structure",
+      "ownership": "PLANNING_EVENT_REALIZATION",
+      "eligible": true,
+      "selected": false,
+      "selection_rule_or_reason": "optional_support_disabled",
+      "dependency_reason": [],
+      "drop_reason": "include_optional_support_false",
+      "optional_or_mandatory": "OPTIONAL",
+      "char_count": 685,
+      "target_semantics": [
+        "story-structure-models-reference-three-act-structure"
+      ],
+      "demand_tags": [],
+      "selection_class": "OPTIONAL_SUPPORT",
+      "source_file": "vendor/novel-skills/source/plot-structure/references/structure-models.md",
+      "source_text_range": {
+        "start_line": 5,
+        "end_line": 20
+      }
+    },
+    {
+      "candidate_section_id": "sv3-ca5d5ef7e2a542ca",
+      "skill": "plot-structure",
+      "ownership": "PLANNING_EVENT_REALIZATION",
+      "eligible": true,
+      "selected": false,
+      "selection_rule_or_reason": "optional_support_disabled",
+      "dependency_reason": [],
+      "drop_reason": "include_optional_support_false",
+      "optional_or_mandatory": "OPTIONAL",
+      "char_count": 979,
+      "target_semantics": [
+        "story-structure-models-reference-hero-s-journey-campbell-vogler"
+      ],
+      "demand_tags": [],
+      "selection_class": "OPTIONAL_SUPPORT",
+      "source_file": "vendor/novel-skills/source/plot-structure/references/structure-models.md",
+      "source_text_range": {
+        "start_line": 21,
+        "end_line": 39
+      }
+    },
+    {
+      "candidate_section_id": "sv3-ea99d0f57e75c9d5",
+      "skill": "plot-structure",
+      "ownership": "PLANNING_EVENT_REALIZATION",
+      "eligible": true,
+      "selected": false,
+      "selection_rule_or_reason": "optional_support_disabled",
+      "dependency_reason": [],
+      "drop_reason": "include_optional_support_false",
+      "optional_or_mandatory": "OPTIONAL",
+      "char_count": 1048,
+      "target_semantics": [
+        "story-structure-models-reference-save-the-cat-snyder"
+      ],
+      "demand_tags": [],
+      "selection_class": "OPTIONAL_SUPPORT",
+      "source_file": "vendor/novel-skills/source/plot-structure/references/structure-models.md",
+      "source_text_range": {
+        "start_line": 40,
+        "end_line": 61
+      }
+    },
+    {
+      "candidate_section_id": "sv3-b641e2fb5b11c38e",
+      "skill": "plot-structure",
+      "ownership": "PLANNING_EVENT_REALIZATION",
+      "eligible": true,
+      "selected": false,
+      "selection_rule_or_reason": "optional_support_disabled",
+      "dependency_reason": [],
+      "drop_reason": "include_optional_support_false",
+      "optional_or_mandatory": "OPTIONAL",
+      "char_count": 429,
+      "target_semantics": [
+        "story-structure-models-reference-kishotenketsu"
+      ],
+      "demand_tags": [],
+      "selection_class": "OPTIONAL_SUPPORT",
+      "source_file": "vendor/novel-skills/source/plot-structure/references/structure-models.md",
+      "source_text_range": {
+        "start_line": 62,
+        "end_line": 72
+      }
+    },
+    {
+      "candidate_section_id": "sv3-9145562c04bd7206",
+      "skill": "plot-structure",
+      "ownership": "PLANNING_EVENT_REALIZATION",
+      "eligible": true,
+      "selected": false,
+      "selection_rule_or_reason": "optional_support_disabled",
+      "dependency_reason": [],
+      "drop_reason": "include_optional_support_false",
+      "optional_or_mandatory": "OPTIONAL",
+      "char_count": 409,
+      "target_semantics": [
+        "story-structure-models-reference-five-act-structure-shakespeare"
+      ],
+      "demand_tags": [],
+      "selection_class": "OPTIONAL_SUPPORT",
+      "source_file": "vendor/novel-skills/source/plot-structure/references/structure-models.md",
+      "source_text_range": {
+        "start_line": 73,
+        "end_line": 84
+      }
+    },
+    {
+      "candidate_section_id": "sv3-67bbe2ba2accf4b1",
+      "skill": "plot-structure",
+      "ownership": "PLANNING_EVENT_REALIZATION",
+      "eligible": true,
+      "selected": false,
+      "selection_rule_or_reason": "optional_support_disabled",
+      "dependency_reason": [],
+      "drop_reason": "include_optional_support_false",
+      "optional_or_mandatory": "OPTIONAL",
+      "char_count": 521,
+      "target_semantics": [
+        "story-structure-models-reference-choosing-a-structure"
+      ],
+      "demand_tags": [],
+      "selection_class": "OPTIONAL_SUPPORT",
+      "source_file": "vendor/novel-skills/source/plot-structure/references/structure-models.md",
+      "source_text_range": {
+        "start_line": 85,
+        "end_line": 93
+      }
+    },
+    {
+      "candidate_section_id": "sv3-477f0ce633e7f98a",
+      "skill": "plot-structure",
+      "ownership": "PLANNING_EVENT_REALIZATION",
+      "eligible": false,
+      "selected": false,
+      "selection_rule_or_reason": "ownership_or_model_visible_filter",
+      "dependency_reason": [],
+      "drop_reason": "excluded_wrong_layer_or_model_visible_unsafe:PLANNING_EVENT_REALIZATION",
+      "optional_or_mandatory": "MANDATORY_IF_RULE_MATCHES",
+      "char_count": 267,
+      "target_semantics": [
+        "plot-structure-overview"
+      ],
+      "demand_tags": [],
+      "selection_class": "EXCLUDED_WRONG_LAYER",
+      "source_file": "vendor/novel-skills/source/plot-structure/SKILL.md",
+      "source_text_range": {
+        "start_line": 8,
+        "end_line": 11
+      }
+    },
+    {
+      "candidate_section_id": "sv3-0ae5cb27f85a5d2b",
+      "skill": "plot-structure",
+      "ownership": "PLANNING_EVENT_REALIZATION",
+      "eligible": false,
+      "selected": false,
+      "selection_rule_or_reason": "ownership_or_model_visible_filter",
+      "dependency_reason": [],
+      "drop_reason": "excluded_wrong_layer_or_model_visible_unsafe:PLANNING_EVENT_REALIZATION",
+      "optional_or_mandatory": "MANDATORY_IF_RULE_MATCHES",
+      "char_count": 144,
+      "target_semantics": [
+        "plot-structure-prerequisites"
+      ],
+      "demand_tags": [],
+      "selection_class": "EXCLUDED_WRONG_LAYER",
+      "source_file": "vendor/novel-skills/source/plot-structure/SKILL.md",
+      "source_text_range": {
+        "start_line": 12,
+        "end_line": 15
+      }
+    },
+    {
+      "candidate_section_id": "sv3-b7f4552148118714",
+      "skill": "plot-structure",
+      "ownership": "PLANNING_EVENT_REALIZATION",
+      "eligible": false,
+      "selected": false,
+      "selection_rule_or_reason": "ownership_or_model_visible_filter",
+      "dependency_reason": [],
+      "drop_reason": "excluded_wrong_layer_or_model_visible_unsafe:PLANNING_EVENT_REALIZATION",
+      "optional_or_mandatory": "MANDATORY_IF_RULE_MATCHES",
+      "char_count": 387,
+      "target_semantics": [
+        "plot-structure-choosing-a-story-structure"
+      ],
+      "demand_tags": [],
+      "selection_class": "EXCLUDED_WRONG_LAYER",
+      "source_file": "vendor/novel-skills/source/plot-structure/SKILL.md",
+      "source_text_range": {
+        "start_line": 16,
+        "end_line": 24
+      }
+    },
+    {
+      "candidate_section_id": "sv3-8f60ce5781d2680f",
+      "skill": "plot-structure",
+      "ownership": "PLANNING_EVENT_REALIZATION",
+      "eligible": false,
+      "selected": false,
+      "selection_rule_or_reason": "ownership_or_model_visible_filter",
+      "dependency_reason": [],
+      "drop_reason": "excluded_wrong_layer_or_model_visible_unsafe:PLANNING_EVENT_REALIZATION",
+      "optional_or_mandatory": "MANDATORY_IF_RULE_MATCHES",
+      "char_count": 718,
+      "target_semantics": [
+        "causal_coherence",
+        "scene_pressure"
+      ],
+      "demand_tags": [
+        "character-heavy",
+        "conflict-pacing-heavy",
+        "mixed",
+        "setup-payoff-heavy",
+        "world-heavy"
+      ],
+      "selection_class": "EXCLUDED_WRONG_LAYER",
+      "source_file": "vendor/novel-skills/source/plot-structure/SKILL.md",
+      "source_text_range": {
+        "start_line": 25,
+        "end_line": 42
+      }
+    },
+    {
+      "candidate_section_id": "sv3-a62c59fc8e1e910d",
+      "skill": "plot-structure",
+      "ownership": "PLANNING_EVENT_REALIZATION",
+      "eligible": false,
+      "selected": false,
+      "selection_rule_or_reason": "ownership_or_model_visible_filter",
+      "dependency_reason": [],
+      "drop_reason": "excluded_wrong_layer_or_model_visible_unsafe:PLANNING_EVENT_REALIZATION",
+      "optional_or_mandatory": "MANDATORY_IF_RULE_MATCHES",
+      "char_count": 553,
+      "target_semantics": [
+        "plot-structure-managing-plot-points"
+      ],
+      "demand_tags": [
+        "conflict-pacing-heavy",
+        "mixed"
+      ],
+      "selection_class": "EXCLUDED_WRONG_LAYER",
+      "source_file": "vendor/novel-skills/source/plot-structure/SKILL.md",
+      "source_text_range": {
+        "start_line": 43,
+        "end_line": 53
+      }
+    },
+    {
+      "candidate_section_id": "sv3-5dee9d2fc58594d3",
+      "skill": "plot-structure",
+      "ownership": "LOCAL_RUNTIME",
+      "eligible": false,
+      "selected": false,
+      "selection_rule_or_reason": "ownership_or_model_visible_filter",
+      "dependency_reason": [],
+      "drop_reason": "excluded_wrong_layer_or_model_visible_unsafe:LOCAL_RUNTIME",
+      "optional_or_mandatory": "MANDATORY_IF_RULE_MATCHES",
+      "char_count": 431,
+      "target_semantics": [
+        "plot-structure-timeline-management"
+      ],
+      "demand_tags": [],
+      "selection_class": "EXCLUDED_WRONG_LAYER",
+      "source_file": "vendor/novel-skills/source/plot-structure/SKILL.md",
+      "source_text_range": {
+        "start_line": 54,
+        "end_line": 67
+      }
+    },
+    {
+      "candidate_section_id": "sv3-c8068581ef934af9",
+      "skill": "plot-structure",
+      "ownership": "PLANNING_EVENT_REALIZATION",
+      "eligible": false,
+      "selected": false,
+      "selection_rule_or_reason": "ownership_or_model_visible_filter",
+      "dependency_reason": [],
+      "drop_reason": "excluded_wrong_layer_or_model_visible_unsafe:PLANNING_EVENT_REALIZATION",
+      "optional_or_mandatory": "MANDATORY_IF_RULE_MATCHES",
+      "char_count": 633,
+      "target_semantics": [
+        "setup_payoff_integrity"
+      ],
+      "demand_tags": [
+        "mixed",
+        "setup-payoff-heavy"
+      ],
+      "selection_class": "EXCLUDED_WRONG_LAYER",
+      "source_file": "vendor/novel-skills/source/plot-structure/SKILL.md",
+      "source_text_range": {
+        "start_line": 68,
+        "end_line": 79
+      }
+    },
+    {
+      "candidate_section_id": "sv3-6faf8dafed9ca421",
+      "skill": "plot-structure",
+      "ownership": "LOCAL_RUNTIME",
+      "eligible": false,
+      "selected": false,
+      "selection_rule_or_reason": "ownership_or_model_visible_filter",
+      "dependency_reason": [],
+      "drop_reason": "excluded_wrong_layer_or_model_visible_unsafe:LOCAL_RUNTIME",
+      "optional_or_mandatory": "MANDATORY_IF_RULE_MATCHES",
+      "char_count": 366,
+      "target_semantics": [
+        "plot-structure-cross-referencing"
+      ],
+      "demand_tags": [],
+      "selection_class": "EXCLUDED_WRONG_LAYER",
+      "source_file": "vendor/novel-skills/source/plot-structure/SKILL.md",
+      "source_text_range": {
+        "start_line": 80,
+        "end_line": 88
+      }
+    },
+    {
+      "candidate_section_id": "sv3-33b095f515080bad",
+      "skill": "plot-structure",
+      "ownership": "LOCAL_RUNTIME",
+      "eligible": false,
+      "selected": false,
+      "selection_rule_or_reason": "ownership_or_model_visible_filter",
+      "dependency_reason": [],
+      "drop_reason": "excluded_wrong_layer_or_model_visible_unsafe:LOCAL_RUNTIME",
+      "optional_or_mandatory": "MANDATORY_IF_RULE_MATCHES",
+      "char_count": 333,
+      "target_semantics": [
+        "plot-structure-cli-maintenance"
+      ],
+      "demand_tags": [],
+      "selection_class": "EXCLUDED_WRONG_LAYER",
+      "source_file": "vendor/novel-skills/source/plot-structure/SKILL.md",
+      "source_text_range": {
+        "start_line": 89,
+        "end_line": 92
+      }
+    },
+    {
+      "candidate_section_id": "sv3-9fb27539151c30df",
+      "skill": "plot-structure",
+      "ownership": "LOCAL_RUNTIME",
+      "eligible": false,
+      "selected": false,
+      "selection_rule_or_reason": "ownership_or_model_visible_filter",
+      "dependency_reason": [],
+      "drop_reason": "excluded_wrong_layer_or_model_visible_unsafe:LOCAL_RUNTIME",
+      "optional_or_mandatory": "MANDATORY_IF_RULE_MATCHES",
+      "char_count": 424,
+      "target_semantics": [
+        "plot-structure-reference-files"
+      ],
+      "demand_tags": [],
+      "selection_class": "EXCLUDED_WRONG_LAYER",
+      "source_file": "vendor/novel-skills/source/plot-structure/SKILL.md",
+      "source_text_range": {
+        "start_line": 93,
+        "end_line": 98
+      }
+    },
+    {
+      "candidate_section_id": "sv3-974421ec02a478fa",
+      "skill": "character-management",
+      "ownership": "PLANNING_EVENT_REALIZATION",
+      "eligible": true,
+      "selected": false,
+      "selection_rule_or_reason": "optional_support_disabled",
+      "dependency_reason": [],
+      "drop_reason": "include_optional_support_false",
+      "optional_or_mandatory": "OPTIONAL",
+      "char_count": 122,
+      "target_semantics": [
+        "specificity",
+        "anti_template_risk"
+      ],
+      "demand_tags": [],
+      "selection_class": "OPTIONAL_SUPPORT",
+      "source_file": "vendor/novel-skills/source/character-management/references/character-template.md",
+      "source_text_range": {
+        "start_line": 28,
+        "end_line": 31
+      }
+    },
+    {
+      "candidate_section_id": "sv3-4c39329c602fd48e",
+      "skill": "character-management",
+      "ownership": "PLANNING_EVENT_REALIZATION",
+      "eligible": true,
+      "selected": false,
+      "selection_rule_or_reason": "optional_support_disabled",
+      "dependency_reason": [],
+      "drop_reason": "include_optional_support_false",
+      "optional_or_mandatory": "OPTIONAL",
+      "char_count": 117,
+      "target_semantics": [
+        "specificity",
+        "voice_readiness",
+        "anti_template_risk"
+      ],
+      "demand_tags": [],
+      "selection_class": "OPTIONAL_SUPPORT",
+      "source_file": "vendor/novel-skills/source/character-management/references/character-template.md",
+      "source_text_range": {
+        "start_line": 32,
+        "end_line": 35
+      }
+    },
+    {
+      "candidate_section_id": "sv3-4c6b004ecdd2077f",
+      "skill": "character-management",
+      "ownership": "PLANNING_EVENT_REALIZATION",
+      "eligible": true,
+      "selected": true,
+      "selection_rule_or_reason": "character_heavy_demand_match",
+      "dependency_reason": [
+        "sv3-3fb51ac3fed35bc0",
+        "sv3-70a527462c32e7b6",
+        "sv3-7633ad6f5c90db5e",
+        "sv3-faecc1466817d8aa"
+      ],
+      "drop_reason": null,
+      "optional_or_mandatory": "MANDATORY_IF_RULE_MATCHES",
+      "char_count": 94,
+      "target_semantics": [
+        "character-template-backstory"
+      ],
+      "demand_tags": [
+        "character-heavy"
+      ],
+      "selection_class": "DEMAND_SPECIFIC",
+      "source_file": "vendor/novel-skills/source/character-management/references/character-template.md",
+      "source_text_range": {
+        "start_line": 36,
+        "end_line": 39
+      }
+    },
+    {
+      "candidate_section_id": "sv3-10e4ba0c5b7509b4",
+      "skill": "character-management",
+      "ownership": "PLANNING_EVENT_REALIZATION",
+      "eligible": true,
+      "selected": true,
+      "selection_rule_or_reason": "character_heavy_demand_match",
+      "dependency_reason": [
+        "sv3-3fb51ac3fed35bc0",
+        "sv3-70a527462c32e7b6",
+        "sv3-7633ad6f5c90db5e",
+        "sv3-faecc1466817d8aa"
+      ],
+      "drop_reason": null,
+      "optional_or_mandatory": "MANDATORY_IF_RULE_MATCHES",
+      "char_count": 129,
+      "target_semantics": [
+        "character-template-motivations-goals"
+      ],
+      "demand_tags": [
+        "character-heavy",
+        "mixed"
+      ],
+      "selection_class": "DEMAND_SPECIFIC",
+      "source_file": "vendor/novel-skills/source/character-management/references/character-template.md",
+      "source_text_range": {
+        "start_line": 40,
+        "end_line": 43
+      }
+    },
+    {
+      "candidate_section_id": "sv3-5fd3ed6ce8158b53",
+      "skill": "character-management",
+      "ownership": "LOCAL_RUNTIME",
+      "eligible": false,
+      "selected": false,
+      "selection_rule_or_reason": "ownership_or_model_visible_filter",
+      "dependency_reason": [],
+      "drop_reason": "excluded_wrong_layer_or_model_visible_unsafe:LOCAL_RUNTIME",
+      "optional_or_mandatory": "MANDATORY_IF_RULE_MATCHES",
+      "char_count": 133,
+      "target_semantics": [
+        "character-template-location-references"
+      ],
+      "demand_tags": [],
+      "selection_class": "EXCLUDED_WRONG_LAYER",
+      "source_file": "vendor/novel-skills/source/character-management/references/character-template.md",
+      "source_text_range": {
+        "start_line": 44,
+        "end_line": 47
+      }
+    },
+    {
+      "candidate_section_id": "sv3-b75227453c1cc26a",
+      "skill": "character-management",
+      "ownership": "DRAFT",
+      "eligible": false,
+      "selected": false,
+      "selection_rule_or_reason": "ownership_or_model_visible_filter",
+      "dependency_reason": [],
+      "drop_reason": "excluded_wrong_layer_or_model_visible_unsafe:DRAFT",
+      "optional_or_mandatory": "MANDATORY_IF_RULE_MATCHES",
+      "char_count": 275,
+      "target_semantics": [
+        "voice_readiness",
+        "specificity"
+      ],
+      "demand_tags": [],
+      "selection_class": "EXCLUDED_WRONG_LAYER",
+      "source_file": "vendor/novel-skills/source/character-management/references/character-template.md",
+      "source_text_range": {
+        "start_line": 48,
+        "end_line": 54
+      }
+    },
+    {
+      "candidate_section_id": "sv3-8e321726b4ebdcec",
+      "skill": "character-management",
+      "ownership": "PLANNING_EVENT_REALIZATION",
+      "eligible": true,
+      "selected": true,
+      "selection_rule_or_reason": "character_heavy_demand_match",
+      "dependency_reason": [
+        "sv3-3fb51ac3fed35bc0",
+        "sv3-70a527462c32e7b6",
+        "sv3-7633ad6f5c90db5e",
+        "sv3-faecc1466817d8aa"
+      ],
+      "drop_reason": null,
+      "optional_or_mandatory": "MANDATORY_IF_RULE_MATCHES",
+      "char_count": 186,
+      "target_semantics": [
+        "character-template-character-arc"
+      ],
+      "demand_tags": [
+        "character-heavy",
+        "mixed"
+      ],
+      "selection_class": "DEMAND_SPECIFIC",
+      "source_file": "vendor/novel-skills/source/character-management/references/character-template.md",
+      "source_text_range": {
+        "start_line": 55,
+        "end_line": 60
+      }
+    },
+    {
+      "candidate_section_id": "sv3-b6abd167c92af559",
+      "skill": "character-management",
+      "ownership": "LOCAL_RUNTIME",
+      "eligible": false,
+      "selected": false,
+      "selection_rule_or_reason": "ownership_or_model_visible_filter",
+      "dependency_reason": [],
+      "drop_reason": "excluded_wrong_layer_or_model_visible_unsafe:LOCAL_RUNTIME",
+      "optional_or_mandatory": "MANDATORY_IF_RULE_MATCHES",
+      "char_count": 120,
+      "target_semantics": [
+        "character-template-timeline"
+      ],
+      "demand_tags": [],
+      "selection_class": "EXCLUDED_WRONG_LAYER",
+      "source_file": "vendor/novel-skills/source/character-management/references/character-template.md",
+      "source_text_range": {
+        "start_line": 61,
+        "end_line": 67
+      }
+    },
+    {
+      "candidate_section_id": "sv3-33b3c011ab637068",
+      "skill": "character-management",
+      "ownership": "PLANNING_EVENT_REALIZATION",
+      "eligible": true,
+      "selected": false,
+      "selection_rule_or_reason": "optional_support_disabled",
+      "dependency_reason": [],
+      "drop_reason": "include_optional_support_false",
+      "optional_or_mandatory": "OPTIONAL",
+      "char_count": 583,
+      "target_semantics": [
+        "relationship-types-reference-family"
+      ],
+      "demand_tags": [],
+      "selection_class": "OPTIONAL_SUPPORT",
+      "source_file": "vendor/novel-skills/source/character-management/references/relationship-types.md",
+      "source_text_range": {
+        "start_line": 5,
+        "end_line": 22
+      }
+    },
+    {
+      "candidate_section_id": "sv3-8afeb5229a4fe841",
+      "skill": "character-management",
+      "ownership": "PLANNING_EVENT_REALIZATION",
+      "eligible": true,
+      "selected": true,
+      "selection_rule_or_reason": "character_heavy_demand_match",
+      "dependency_reason": [
+        "sv3-3fb51ac3fed35bc0",
+        "sv3-70a527462c32e7b6",
+        "sv3-7633ad6f5c90db5e",
+        "sv3-faecc1466817d8aa"
+      ],
+      "drop_reason": null,
+      "optional_or_mandatory": "MANDATORY_IF_RULE_MATCHES",
+      "char_count": 381,
+      "target_semantics": [
+        "relationship-types-reference-social"
+      ],
+      "demand_tags": [
+        "character-heavy"
+      ],
+      "selection_class": "DEMAND_SPECIFIC",
+      "source_file": "vendor/novel-skills/source/character-management/references/relationship-types.md",
+      "source_text_range": {
+        "start_line": 23,
+        "end_line": 36
+      }
+    },
+    {
+      "candidate_section_id": "sv3-e92f0f3584d44b87",
+      "skill": "character-management",
+      "ownership": "PLANNING_EVENT_REALIZATION",
+      "eligible": true,
+      "selected": true,
+      "selection_rule_or_reason": "character_heavy_demand_match",
+      "dependency_reason": [
+        "sv3-3fb51ac3fed35bc0",
+        "sv3-70a527462c32e7b6",
+        "sv3-7633ad6f5c90db5e",
+        "sv3-faecc1466817d8aa"
+      ],
+      "drop_reason": null,
+      "optional_or_mandatory": "MANDATORY_IF_RULE_MATCHES",
+      "char_count": 310,
+      "target_semantics": [
+        "relationship-types-reference-story-role"
+      ],
+      "demand_tags": [
+        "character-heavy",
+        "mixed"
+      ],
+      "selection_class": "DEMAND_SPECIFIC",
+      "source_file": "vendor/novel-skills/source/character-management/references/relationship-types.md",
+      "source_text_range": {
+        "start_line": 37,
+        "end_line": 46
+      }
+    },
+    {
+      "candidate_section_id": "sv3-fc9570e47e65f4a2",
+      "skill": "character-management",
+      "ownership": "LOCAL_RUNTIME",
+      "eligible": false,
+      "selected": false,
+      "selection_rule_or_reason": "ownership_or_model_visible_filter",
+      "dependency_reason": [],
+      "drop_reason": "excluded_wrong_layer_or_model_visible_unsafe:LOCAL_RUNTIME",
+      "optional_or_mandatory": "MANDATORY_IF_RULE_MATCHES",
+      "char_count": 601,
+      "target_semantics": [
+        "relationship-types-reference-usage"
+      ],
+      "demand_tags": [],
+      "selection_class": "EXCLUDED_WRONG_LAYER",
+      "source_file": "vendor/novel-skills/source/character-management/references/relationship-types.md",
+      "source_text_range": {
+        "start_line": 47,
+        "end_line": 63
+      }
+    },
+    {
+      "candidate_section_id": "sv3-a204bb78679cbd43",
+      "skill": "character-management",
+      "ownership": "PLANNING_EVENT_REALIZATION",
+      "eligible": false,
+      "selected": false,
+      "selection_rule_or_reason": "ownership_or_model_visible_filter",
+      "dependency_reason": [],
+      "drop_reason": "excluded_wrong_layer_or_model_visible_unsafe:PLANNING_EVENT_REALIZATION",
+      "optional_or_mandatory": "MANDATORY_IF_RULE_MATCHES",
+      "char_count": 254,
+      "target_semantics": [
+        "character-management-overview"
+      ],
+      "demand_tags": [],
+      "selection_class": "EXCLUDED_WRONG_LAYER",
+      "source_file": "vendor/novel-skills/source/character-management/SKILL.md",
+      "source_text_range": {
+        "start_line": 8,
+        "end_line": 11
+      }
+    },
+    {
+      "candidate_section_id": "sv3-81e4eea8804f7fcc",
+      "skill": "character-management",
+      "ownership": "PLANNING_EVENT_REALIZATION",
+      "eligible": false,
+      "selected": false,
+      "selection_rule_or_reason": "ownership_or_model_visible_filter",
+      "dependency_reason": [],
+      "drop_reason": "excluded_wrong_layer_or_model_visible_unsafe:PLANNING_EVENT_REALIZATION",
+      "optional_or_mandatory": "MANDATORY_IF_RULE_MATCHES",
+      "char_count": 144,
+      "target_semantics": [
+        "character-management-prerequisites"
+      ],
+      "demand_tags": [],
+      "selection_class": "EXCLUDED_WRONG_LAYER",
+      "source_file": "vendor/novel-skills/source/character-management/SKILL.md",
+      "source_text_range": {
+        "start_line": 12,
+        "end_line": 15
+      }
+    },
+    {
+      "candidate_section_id": "sv3-9e36963fe1a5a940",
+      "skill": "character-management",
+      "ownership": "PLANNING_EVENT_REALIZATION",
+      "eligible": false,
+      "selected": false,
+      "selection_rule_or_reason": "ownership_or_model_visible_filter",
+      "dependency_reason": [],
+      "drop_reason": "excluded_wrong_layer_or_model_visible_unsafe:PLANNING_EVENT_REALIZATION",
+      "optional_or_mandatory": "MANDATORY_IF_RULE_MATCHES",
+      "char_count": 1082,
+      "target_semantics": [
+        "character_agency",
+        "voice_readiness"
+      ],
+      "demand_tags": [
+        "character-heavy"
+      ],
+      "selection_class": "EXCLUDED_WRONG_LAYER",
+      "source_file": "vendor/novel-skills/source/character-management/SKILL.md",
+      "source_text_range": {
+        "start_line": 16,
+        "end_line": 40
+      }
+    },
+    {
+      "candidate_section_id": "sv3-9fea823351166907",
+      "skill": "character-management",
+      "ownership": "LOCAL_RUNTIME",
+      "eligible": false,
+      "selected": false,
+      "selection_rule_or_reason": "ownership_or_model_visible_filter",
+      "dependency_reason": [],
+      "drop_reason": "excluded_wrong_layer_or_model_visible_unsafe:LOCAL_RUNTIME",
+      "optional_or_mandatory": "MANDATORY_IF_RULE_MATCHES",
+      "char_count": 388,
+      "target_semantics": [
+        "character-management-updating-a-character"
+      ],
+      "demand_tags": [],
+      "selection_class": "EXCLUDED_WRONG_LAYER",
+      "source_file": "vendor/novel-skills/source/character-management/SKILL.md",
+      "source_text_range": {
+        "start_line": 41,
+        "end_line": 49
+      }
+    },
+    {
+      "candidate_section_id": "sv3-ccc77609137fa745",
+      "skill": "character-management",
+      "ownership": "PLANNING_EVENT_REALIZATION",
+      "eligible": false,
+      "selected": false,
+      "selection_rule_or_reason": "ownership_or_model_visible_filter",
+      "dependency_reason": [],
+      "drop_reason": "excluded_wrong_layer_or_model_visible_unsafe:PLANNING_EVENT_REALIZATION",
+      "optional_or_mandatory": "MANDATORY_IF_RULE_MATCHES",
+      "char_count": 352,
+      "target_semantics": [
+        "character-management-managing-relationships"
+      ],
+      "demand_tags": [],
+      "selection_class": "EXCLUDED_WRONG_LAYER",
+      "source_file": "vendor/novel-skills/source/character-management/SKILL.md",
+      "source_text_range": {
+        "start_line": 50,
+        "end_line": 58
+      }
+    },
+    {
+      "candidate_section_id": "sv3-76ba02adce162293",
+      "skill": "character-management",
+      "ownership": "LOCAL_RUNTIME",
+      "eligible": false,
+      "selected": false,
+      "selection_rule_or_reason": "ownership_or_model_visible_filter",
+      "dependency_reason": [],
+      "drop_reason": "excluded_wrong_layer_or_model_visible_unsafe:LOCAL_RUNTIME",
+      "optional_or_mandatory": "MANDATORY_IF_RULE_MATCHES",
+      "char_count": 130,
+      "target_semantics": [
+        "character-management-family-trees"
+      ],
+      "demand_tags": [],
+      "selection_class": "EXCLUDED_WRONG_LAYER",
+      "source_file": "vendor/novel-skills/source/character-management/SKILL.md",
+      "source_text_range": {
+        "start_line": 59,
+        "end_line": 63
+      }
+    },
+    {
+      "candidate_section_id": "sv3-63fdcf9593c78873",
+      "skill": "character-management",
+      "ownership": "LOCAL_RUNTIME",
+      "eligible": false,
+      "selected": false,
+      "selection_rule_or_reason": "ownership_or_model_visible_filter",
+      "dependency_reason": [],
+      "drop_reason": "excluded_wrong_layer_or_model_visible_unsafe:LOCAL_RUNTIME",
+      "optional_or_mandatory": "MANDATORY_IF_RULE_MATCHES",
+      "char_count": 243,
+      "target_semantics": [
+        "character-management-family-trees"
+      ],
+      "demand_tags": [],
+      "selection_class": "EXCLUDED_WRONG_LAYER",
+      "source_file": "vendor/novel-skills/source/character-management/SKILL.md",
+      "source_text_range": {
+        "start_line": 64,
+        "end_line": 73
+      }
+    },
+    {
+      "candidate_section_id": "sv3-d98d3a730489b732",
+      "skill": "character-management",
+      "ownership": "LOCAL_RUNTIME",
+      "eligible": false,
+      "selected": false,
+      "selection_rule_or_reason": "ownership_or_model_visible_filter",
+      "dependency_reason": [],
+      "drop_reason": "excluded_wrong_layer_or_model_visible_unsafe:LOCAL_RUNTIME",
+      "optional_or_mandatory": "MANDATORY_IF_RULE_MATCHES",
+      "char_count": 226,
+      "target_semantics": [
+        "character-management-family-trees-family-name"
+      ],
+      "demand_tags": [],
+      "selection_class": "EXCLUDED_WRONG_LAYER",
+      "source_file": "vendor/novel-skills/source/character-management/SKILL.md",
+      "source_text_range": {
+        "start_line": 66,
+        "end_line": 73
+      }
+    },
+    {
+      "candidate_section_id": "sv3-d3d2dc003456ac84",
+      "skill": "character-management",
+      "ownership": "LOCAL_RUNTIME",
+      "eligible": false,
+      "selected": false,
+      "selection_rule_or_reason": "ownership_or_model_visible_filter",
+      "dependency_reason": [],
+      "drop_reason": "excluded_wrong_layer_or_model_visible_unsafe:LOCAL_RUNTIME",
+      "optional_or_mandatory": "MANDATORY_IF_RULE_MATCHES",
+      "char_count": 644,
+      "target_semantics": [
+        "character-management-cross-referencing"
+      ],
+      "demand_tags": [],
+      "selection_class": "EXCLUDED_WRONG_LAYER",
+      "source_file": "vendor/novel-skills/source/character-management/SKILL.md",
+      "source_text_range": {
+        "start_line": 74,
+        "end_line": 82
+      }
+    },
+    {
+      "candidate_section_id": "sv3-da24f76c7d1ce202",
+      "skill": "character-management",
+      "ownership": "LOCAL_RUNTIME",
+      "eligible": false,
+      "selected": false,
+      "selection_rule_or_reason": "ownership_or_model_visible_filter",
+      "dependency_reason": [],
+      "drop_reason": "excluded_wrong_layer_or_model_visible_unsafe:LOCAL_RUNTIME",
+      "optional_or_mandatory": "MANDATORY_IF_RULE_MATCHES",
+      "char_count": 333,
+      "target_semantics": [
+        "character-management-cli-maintenance"
+      ],
+      "demand_tags": [],
+      "selection_class": "EXCLUDED_WRONG_LAYER",
+      "source_file": "vendor/novel-skills/source/character-management/SKILL.md",
+      "source_text_range": {
+        "start_line": 83,
+        "end_line": 86
+      }
+    },
+    {
+      "candidate_section_id": "sv3-b0f2860f08520315",
+      "skill": "character-management",
+      "ownership": "PLANNING_EVENT_REALIZATION",
+      "eligible": false,
+      "selected": false,
+      "selection_rule_or_reason": "ownership_or_model_visible_filter",
+      "dependency_reason": [],
+      "drop_reason": "excluded_wrong_layer_or_model_visible_unsafe:PLANNING_EVENT_REALIZATION",
+      "optional_or_mandatory": "MANDATORY_IF_RULE_MATCHES",
+      "char_count": 205,
+      "target_semantics": [
+        "character-management-reference-files"
+      ],
+      "demand_tags": [],
+      "selection_class": "EXCLUDED_WRONG_LAYER",
+      "source_file": "vendor/novel-skills/source/character-management/SKILL.md",
+      "source_text_range": {
+        "start_line": 87,
+        "end_line": 90
+      }
+    },
+    {
+      "candidate_section_id": "sv3-b4583d410167ab14",
+      "skill": "worldbuilding",
+      "ownership": "PLANNING_EVENT_REALIZATION",
+      "eligible": true,
+      "selected": false,
+      "selection_rule_or_reason": "optional_support_disabled",
+      "dependency_reason": [],
+      "drop_reason": "include_optional_support_false",
+      "optional_or_mandatory": "OPTIONAL",
+      "char_count": 75,
+      "target_semantics": [
+        "specificity"
+      ],
+      "demand_tags": [],
+      "selection_class": "OPTIONAL_SUPPORT",
+      "source_file": "vendor/novel-skills/source/worldbuilding/references/artifact-template.md",
+      "source_text_range": {
+        "start_line": 17,
+        "end_line": 20
+      }
+    },
+    {
+      "candidate_section_id": "sv3-ad3871e96cc16876",
+      "skill": "worldbuilding",
+      "ownership": "PLANNING_EVENT_REALIZATION",
+      "eligible": true,
+      "selected": false,
+      "selection_rule_or_reason": "optional_support_disabled",
+      "dependency_reason": [],
+      "drop_reason": "include_optional_support_false",
+      "optional_or_mandatory": "OPTIONAL",
+      "char_count": 67,
+      "target_semantics": [
+        "specificity",
+        "causal_coherence"
+      ],
+      "demand_tags": [],
+      "selection_class": "OPTIONAL_SUPPORT",
+      "source_file": "vendor/novel-skills/source/worldbuilding/references/artifact-template.md",
+      "source_text_range": {
+        "start_line": 21,
+        "end_line": 24
+      }
+    },
+    {
+      "candidate_section_id": "sv3-0933e75cb694edca",
+      "skill": "worldbuilding",
+      "ownership": "PLANNING_EVENT_REALIZATION",
+      "eligible": true,
+      "selected": false,
+      "selection_rule_or_reason": "optional_support_disabled",
+      "dependency_reason": [],
+      "drop_reason": "include_optional_support_false",
+      "optional_or_mandatory": "OPTIONAL",
+      "char_count": 61,
+      "target_semantics": [
+        "artifact-template-history"
+      ],
+      "demand_tags": [],
+      "selection_class": "OPTIONAL_SUPPORT",
+      "source_file": "vendor/novel-skills/source/worldbuilding/references/artifact-template.md",
+      "source_text_range": {
+        "start_line": 25,
+        "end_line": 28
+      }
+    },
+    {
+      "candidate_section_id": "sv3-d6b21e83ccca5d10",
+      "skill": "worldbuilding",
+      "ownership": "LOCAL_RUNTIME",
+      "eligible": false,
+      "selected": false,
+      "selection_rule_or_reason": "ownership_or_model_visible_filter",
+      "dependency_reason": [],
+      "drop_reason": "excluded_wrong_layer_or_model_visible_unsafe:LOCAL_RUNTIME",
+      "optional_or_mandatory": "MANDATORY_IF_RULE_MATCHES",
+      "char_count": 76,
+      "target_semantics": [
+        "artifact-template-current-state"
+      ],
+      "demand_tags": [],
+      "selection_class": "EXCLUDED_WRONG_LAYER",
+      "source_file": "vendor/novel-skills/source/worldbuilding/references/artifact-template.md",
+      "source_text_range": {
+        "start_line": 29,
+        "end_line": 31
+      }
+    },
+    {
+      "candidate_section_id": "sv3-6073d485d6a384b0",
+      "skill": "worldbuilding",
+      "ownership": "PLANNING_EVENT_REALIZATION",
+      "eligible": true,
+      "selected": false,
+      "selection_rule_or_reason": "exact_demand_tag_match",
+      "dependency_reason": [
+        "sv3-3fb51ac3fed35bc0",
+        "sv3-70a527462c32e7b6",
+        "sv3-7633ad6f5c90db5e",
+        "sv3-faecc1466817d8aa"
+      ],
+      "drop_reason": "character_heavy_not_in_demand_tags",
+      "optional_or_mandatory": "MANDATORY_IF_RULE_MATCHES",
+      "char_count": 55,
+      "target_semantics": [
+        "faction-template-purpose"
+      ],
+      "demand_tags": [
+        "world-heavy"
+      ],
+      "selection_class": "DEMAND_SPECIFIC",
+      "source_file": "vendor/novel-skills/source/worldbuilding/references/faction-template.md",
+      "source_text_range": {
+        "start_line": 19,
+        "end_line": 22
+      }
+    },
+    {
+      "candidate_section_id": "sv3-7e6d87ef69c95cfd",
+      "skill": "worldbuilding",
+      "ownership": "PLANNING_EVENT_REALIZATION",
+      "eligible": true,
+      "selected": false,
+      "selection_rule_or_reason": "exact_demand_tag_match",
+      "dependency_reason": [
+        "sv3-3fb51ac3fed35bc0",
+        "sv3-70a527462c32e7b6",
+        "sv3-7633ad6f5c90db5e",
+        "sv3-faecc1466817d8aa"
+      ],
+      "drop_reason": "character_heavy_not_in_demand_tags",
+      "optional_or_mandatory": "MANDATORY_IF_RULE_MATCHES",
+      "char_count": 91,
+      "target_semantics": [
+        "faction-template-power-base"
+      ],
+      "demand_tags": [
+        "world-heavy"
+      ],
+      "selection_class": "DEMAND_SPECIFIC",
+      "source_file": "vendor/novel-skills/source/worldbuilding/references/faction-template.md",
+      "source_text_range": {
+        "start_line": 23,
+        "end_line": 26
+      }
+    },
+    {
+      "candidate_section_id": "sv3-fc3356d9026d4407",
+      "skill": "worldbuilding",
+      "ownership": "PLANNING_EVENT_REALIZATION",
+      "eligible": true,
+      "selected": false,
+      "selection_rule_or_reason": "optional_support_disabled",
+      "dependency_reason": [],
+      "drop_reason": "include_optional_support_false",
+      "optional_or_mandatory": "OPTIONAL",
+      "char_count": 47,
+      "target_semantics": [
+        "faction-template-members"
+      ],
+      "demand_tags": [],
+      "selection_class": "OPTIONAL_SUPPORT",
+      "source_file": "vendor/novel-skills/source/worldbuilding/references/faction-template.md",
+      "source_text_range": {
+        "start_line": 27,
+        "end_line": 30
+      }
+    },
+    {
+      "candidate_section_id": "sv3-f998823d27d7086b",
+      "skill": "worldbuilding",
+      "ownership": "PLANNING_EVENT_REALIZATION",
+      "eligible": true,
+      "selected": false,
+      "selection_rule_or_reason": "exact_demand_tag_match",
+      "dependency_reason": [
+        "sv3-3fb51ac3fed35bc0",
+        "sv3-70a527462c32e7b6",
+        "sv3-7633ad6f5c90db5e",
+        "sv3-faecc1466817d8aa"
+      ],
+      "drop_reason": "character_heavy_not_in_demand_tags",
+      "optional_or_mandatory": "MANDATORY_IF_RULE_MATCHES",
+      "char_count": 58,
+      "target_semantics": [
+        "faction-template-conflicts"
+      ],
+      "demand_tags": [
+        "world-heavy"
+      ],
+      "selection_class": "DEMAND_SPECIFIC",
+      "source_file": "vendor/novel-skills/source/worldbuilding/references/faction-template.md",
+      "source_text_range": {
+        "start_line": 31,
+        "end_line": 33
+      }
+    },
+    {
+      "candidate_section_id": "sv3-2985467b5f2bf929",
+      "skill": "worldbuilding",
+      "ownership": "PLANNING_EVENT_REALIZATION",
+      "eligible": true,
+      "selected": false,
+      "selection_rule_or_reason": "exact_demand_tag_match",
+      "dependency_reason": [
+        "sv3-3fb51ac3fed35bc0",
+        "sv3-70a527462c32e7b6",
+        "sv3-7633ad6f5c90db5e",
+        "sv3-faecc1466817d8aa"
+      ],
+      "drop_reason": "character_heavy_not_in_demand_tags",
+      "optional_or_mandatory": "MANDATORY_IF_RULE_MATCHES",
+      "char_count": 156,
+      "target_semantics": [
+        "specificity",
+        "scene_pressure"
+      ],
+      "demand_tags": [
+        "world-heavy"
+      ],
+      "selection_class": "DEMAND_SPECIFIC",
+      "source_file": "vendor/novel-skills/source/worldbuilding/references/location-template.md",
+      "source_text_range": {
+        "start_line": 21,
+        "end_line": 24
+      }
+    },
+    {
+      "candidate_section_id": "sv3-ed69a0903a3d0d13",
+      "skill": "worldbuilding",
+      "ownership": "PLANNING_EVENT_REALIZATION",
+      "eligible": true,
+      "selected": false,
+      "selection_rule_or_reason": "optional_support_disabled",
+      "dependency_reason": [],
+      "drop_reason": "include_optional_support_false",
+      "optional_or_mandatory": "OPTIONAL",
+      "char_count": 119,
+      "target_semantics": [
+        "location-template-history"
+      ],
+      "demand_tags": [],
+      "selection_class": "OPTIONAL_SUPPORT",
+      "source_file": "vendor/novel-skills/source/worldbuilding/references/location-template.md",
+      "source_text_range": {
+        "start_line": 25,
+        "end_line": 28
+      }
+    },
+    {
+      "candidate_section_id": "sv3-3bc191e96a2ab3ad",
+      "skill": "worldbuilding",
+      "ownership": "PLANNING_EVENT_REALIZATION",
+      "eligible": true,
+      "selected": false,
+      "selection_rule_or_reason": "optional_support_disabled",
+      "dependency_reason": [],
+      "drop_reason": "include_optional_support_false",
+      "optional_or_mandatory": "OPTIONAL",
+      "char_count": 136,
+      "target_semantics": [
+        "location-template-culture-customs"
+      ],
+      "demand_tags": [],
+      "selection_class": "OPTIONAL_SUPPORT",
+      "source_file": "vendor/novel-skills/source/worldbuilding/references/location-template.md",
+      "source_text_range": {
+        "start_line": 29,
+        "end_line": 32
+      }
+    },
+    {
+      "candidate_section_id": "sv3-60d4bee497e4c0dc",
+      "skill": "worldbuilding",
+      "ownership": "PLANNING_EVENT_REALIZATION",
+      "eligible": true,
+      "selected": false,
+      "selection_rule_or_reason": "exact_demand_tag_match",
+      "dependency_reason": [
+        "sv3-3fb51ac3fed35bc0",
+        "sv3-70a527462c32e7b6",
+        "sv3-7633ad6f5c90db5e",
+        "sv3-faecc1466817d8aa"
+      ],
+      "drop_reason": "character_heavy_not_in_demand_tags",
+      "optional_or_mandatory": "MANDATORY_IF_RULE_MATCHES",
+      "char_count": 152,
+      "target_semantics": [
+        "specificity",
+        "causal_coherence"
+      ],
+      "demand_tags": [
+        "world-heavy"
+      ],
+      "selection_class": "DEMAND_SPECIFIC",
+      "source_file": "vendor/novel-skills/source/worldbuilding/references/location-template.md",
+      "source_text_range": {
+        "start_line": 33,
+        "end_line": 36
+      }
+    },
+    {
+      "candidate_section_id": "sv3-9c4a3467ac259cc3",
+      "skill": "worldbuilding",
+      "ownership": "LOCAL_RUNTIME",
+      "eligible": false,
+      "selected": false,
+      "selection_rule_or_reason": "ownership_or_model_visible_filter",
+      "dependency_reason": [],
+      "drop_reason": "excluded_wrong_layer_or_model_visible_unsafe:LOCAL_RUNTIME",
+      "optional_or_mandatory": "MANDATORY_IF_RULE_MATCHES",
+      "char_count": 131,
+      "target_semantics": [
+        "location-template-current-state"
+      ],
+      "demand_tags": [],
+      "selection_class": "EXCLUDED_WRONG_LAYER",
+      "source_file": "vendor/novel-skills/source/worldbuilding/references/location-template.md",
+      "source_text_range": {
+        "start_line": 37,
+        "end_line": 39
+      }
+    },
+    {
+      "candidate_section_id": "sv3-5453df8aca0b08ea",
+      "skill": "worldbuilding",
+      "ownership": "PLANNING_EVENT_REALIZATION",
+      "eligible": true,
+      "selected": false,
+      "selection_rule_or_reason": "optional_support_disabled",
+      "dependency_reason": [],
+      "drop_reason": "include_optional_support_false",
+      "optional_or_mandatory": "OPTIONAL",
+      "char_count": 83,
+      "target_semantics": [
+        "system-template-overview"
+      ],
+      "demand_tags": [],
+      "selection_class": "OPTIONAL_SUPPORT",
+      "source_file": "vendor/novel-skills/source/worldbuilding/references/system-template.md",
+      "source_text_range": {
+        "start_line": 13,
+        "end_line": 16
+      }
+    },
+    {
+      "candidate_section_id": "sv3-5f738df332e0919f",
+      "skill": "worldbuilding",
+      "ownership": "PLANNING_EVENT_REALIZATION",
+      "eligible": true,
+      "selected": false,
+      "selection_rule_or_reason": "exact_demand_tag_match",
+      "dependency_reason": [
+        "sv3-3fb51ac3fed35bc0",
+        "sv3-70a527462c32e7b6",
+        "sv3-7633ad6f5c90db5e",
+        "sv3-faecc1466817d8aa"
+      ],
+      "drop_reason": "character_heavy_not_in_demand_tags",
+      "optional_or_mandatory": "MANDATORY_IF_RULE_MATCHES",
+      "char_count": 175,
+      "target_semantics": [
+        "system-template-rules-limitations"
+      ],
+      "demand_tags": [
+        "mixed",
+        "world-heavy"
+      ],
+      "selection_class": "DEMAND_SPECIFIC",
+      "source_file": "vendor/novel-skills/source/worldbuilding/references/system-template.md",
+      "source_text_range": {
+        "start_line": 17,
+        "end_line": 20
+      }
+    },
+    {
+      "candidate_section_id": "sv3-4b840fd181bdfa94",
+      "skill": "worldbuilding",
+      "ownership": "PLANNING_EVENT_REALIZATION",
+      "eligible": true,
+      "selected": false,
+      "selection_rule_or_reason": "optional_support_disabled",
+      "dependency_reason": [],
+      "drop_reason": "include_optional_support_false",
+      "optional_or_mandatory": "OPTIONAL",
+      "char_count": 109,
+      "target_semantics": [
+        "system-template-history"
+      ],
+      "demand_tags": [],
+      "selection_class": "OPTIONAL_SUPPORT",
+      "source_file": "vendor/novel-skills/source/worldbuilding/references/system-template.md",
+      "source_text_range": {
+        "start_line": 21,
+        "end_line": 24
+      }
+    },
+    {
+      "candidate_section_id": "sv3-380f93b14235db0a",
+      "skill": "worldbuilding",
+      "ownership": "PLANNING_EVENT_REALIZATION",
+      "eligible": true,
+      "selected": false,
+      "selection_rule_or_reason": "optional_support_disabled",
+      "dependency_reason": [],
+      "drop_reason": "include_optional_support_false",
+      "optional_or_mandatory": "OPTIONAL",
+      "char_count": 113,
+      "target_semantics": [
+        "system-template-practitioners"
+      ],
+      "demand_tags": [],
+      "selection_class": "OPTIONAL_SUPPORT",
+      "source_file": "vendor/novel-skills/source/worldbuilding/references/system-template.md",
+      "source_text_range": {
+        "start_line": 25,
+        "end_line": 28
+      }
+    },
+    {
+      "candidate_section_id": "sv3-b4eb9bc24027f33c",
+      "skill": "worldbuilding",
+      "ownership": "PLANNING_EVENT_REALIZATION",
+      "eligible": true,
+      "selected": false,
+      "selection_rule_or_reason": "exact_demand_tag_match",
+      "dependency_reason": [
+        "sv3-3fb51ac3fed35bc0",
+        "sv3-70a527462c32e7b6",
+        "sv3-7633ad6f5c90db5e",
+        "sv3-faecc1466817d8aa"
+      ],
+      "drop_reason": "character_heavy_not_in_demand_tags",
+      "optional_or_mandatory": "MANDATORY_IF_RULE_MATCHES",
+      "char_count": 119,
+      "target_semantics": [
+        "system-template-impact-on-society"
+      ],
+      "demand_tags": [
+        "world-heavy"
+      ],
+      "selection_class": "DEMAND_SPECIFIC",
+      "source_file": "vendor/novel-skills/source/worldbuilding/references/system-template.md",
+      "source_text_range": {
+        "start_line": 29,
+        "end_line": 31
+      }
+    },
+    {
+      "candidate_section_id": "sv3-2f174a4add11e8bb",
+      "skill": "worldbuilding",
+      "ownership": "PLANNING_EVENT_REALIZATION",
+      "eligible": true,
+      "selected": false,
+      "selection_rule_or_reason": "optional_support_disabled",
+      "dependency_reason": [],
+      "drop_reason": "include_optional_support_false",
+      "optional_or_mandatory": "OPTIONAL",
+      "char_count": 470,
+      "target_semantics": [
+        "world-element-types-reference-magic-system"
+      ],
+      "demand_tags": [],
+      "selection_class": "OPTIONAL_SUPPORT",
+      "source_file": "vendor/novel-skills/source/worldbuilding/references/world-element-types.md",
+      "source_text_range": {
+        "start_line": 5,
+        "end_line": 14
+      }
+    },
+    {
+      "candidate_section_id": "sv3-ed55d4c37cd60565",
+      "skill": "worldbuilding",
+      "ownership": "PLANNING_EVENT_REALIZATION",
+      "eligible": true,
+      "selected": false,
+      "selection_rule_or_reason": "optional_support_disabled",
+      "dependency_reason": [],
+      "drop_reason": "include_optional_support_false",
+      "optional_or_mandatory": "OPTIONAL",
+      "char_count": 368,
+      "target_semantics": [
+        "world-element-types-reference-political-system"
+      ],
+      "demand_tags": [],
+      "selection_class": "OPTIONAL_SUPPORT",
+      "source_file": "vendor/novel-skills/source/worldbuilding/references/world-element-types.md",
+      "source_text_range": {
+        "start_line": 15,
+        "end_line": 24
+      }
+    },
+    {
+      "candidate_section_id": "sv3-d0d93cb328c5ffb7",
+      "skill": "worldbuilding",
+      "ownership": "PLANNING_EVENT_REALIZATION",
+      "eligible": true,
+      "selected": false,
+      "selection_rule_or_reason": "optional_support_disabled",
+      "dependency_reason": [],
+      "drop_reason": "include_optional_support_false",
+      "optional_or_mandatory": "OPTIONAL",
+      "char_count": 347,
+      "target_semantics": [
+        "world-element-types-reference-technology-system"
+      ],
+      "demand_tags": [],
+      "selection_class": "OPTIONAL_SUPPORT",
+      "source_file": "vendor/novel-skills/source/worldbuilding/references/world-element-types.md",
+      "source_text_range": {
+        "start_line": 25,
+        "end_line": 33
+      }
+    },
+    {
+      "candidate_section_id": "sv3-25df5a1786123936",
+      "skill": "worldbuilding",
+      "ownership": "PLANNING_EVENT_REALIZATION",
+      "eligible": true,
+      "selected": false,
+      "selection_rule_or_reason": "optional_support_disabled",
+      "dependency_reason": [],
+      "drop_reason": "include_optional_support_false",
+      "optional_or_mandatory": "OPTIONAL",
+      "char_count": 307,
+      "target_semantics": [
+        "world-element-types-reference-religion-system"
+      ],
+      "demand_tags": [],
+      "selection_class": "OPTIONAL_SUPPORT",
+      "source_file": "vendor/novel-skills/source/worldbuilding/references/world-element-types.md",
+      "source_text_range": {
+        "start_line": 34,
+        "end_line": 42
+      }
+    },
+    {
+      "candidate_section_id": "sv3-1349fa0f712bc848",
+      "skill": "worldbuilding",
+      "ownership": "PLANNING_EVENT_REALIZATION",
+      "eligible": true,
+      "selected": false,
+      "selection_rule_or_reason": "optional_support_disabled",
+      "dependency_reason": [],
+      "drop_reason": "include_optional_support_false",
+      "optional_or_mandatory": "OPTIONAL",
+      "char_count": 262,
+      "target_semantics": [
+        "world-element-types-reference-economic-system"
+      ],
+      "demand_tags": [],
+      "selection_class": "OPTIONAL_SUPPORT",
+      "source_file": "vendor/novel-skills/source/worldbuilding/references/world-element-types.md",
+      "source_text_range": {
+        "start_line": 43,
+        "end_line": 51
+      }
+    },
+    {
+      "candidate_section_id": "sv3-ce98dbecaf8cde57",
+      "skill": "worldbuilding",
+      "ownership": "PLANNING_EVENT_REALIZATION",
+      "eligible": true,
+      "selected": false,
+      "selection_rule_or_reason": "optional_support_disabled",
+      "dependency_reason": [],
+      "drop_reason": "include_optional_support_false",
+      "optional_or_mandatory": "OPTIONAL",
+      "char_count": 289,
+      "target_semantics": [
+        "world-element-types-reference-military-system"
+      ],
+      "demand_tags": [],
+      "selection_class": "OPTIONAL_SUPPORT",
+      "source_file": "vendor/novel-skills/source/worldbuilding/references/world-element-types.md",
+      "source_text_range": {
+        "start_line": 52,
+        "end_line": 60
+      }
+    },
+    {
+      "candidate_section_id": "sv3-773cc32a42e74484",
+      "skill": "worldbuilding",
+      "ownership": "PLANNING_EVENT_REALIZATION",
+      "eligible": true,
+      "selected": false,
+      "selection_rule_or_reason": "optional_support_disabled",
+      "dependency_reason": [],
+      "drop_reason": "include_optional_support_false",
+      "optional_or_mandatory": "OPTIONAL",
+      "char_count": 249,
+      "target_semantics": [
+        "world-element-types-reference-social-system"
+      ],
+      "demand_tags": [],
+      "selection_class": "OPTIONAL_SUPPORT",
+      "source_file": "vendor/novel-skills/source/worldbuilding/references/world-element-types.md",
+      "source_text_range": {
+        "start_line": 61,
+        "end_line": 69
+      }
+    },
+    {
+      "candidate_section_id": "sv3-4bb0dd734af872fa",
+      "skill": "worldbuilding",
+      "ownership": "PLANNING_EVENT_REALIZATION",
+      "eligible": true,
+      "selected": false,
+      "selection_rule_or_reason": "optional_support_disabled",
+      "dependency_reason": [],
+      "drop_reason": "include_optional_support_false",
+      "optional_or_mandatory": "OPTIONAL",
+      "char_count": 372,
+      "target_semantics": [
+        "world-element-types-reference-education-system"
+      ],
+      "demand_tags": [],
+      "selection_class": "OPTIONAL_SUPPORT",
+      "source_file": "vendor/novel-skills/source/worldbuilding/references/world-element-types.md",
+      "source_text_range": {
+        "start_line": 70,
+        "end_line": 77
+      }
+    },
+    {
+      "candidate_section_id": "sv3-731b5f96f38e031d",
+      "skill": "worldbuilding",
+      "ownership": "PLANNING_EVENT_REALIZATION",
+      "eligible": false,
+      "selected": false,
+      "selection_rule_or_reason": "ownership_or_model_visible_filter",
+      "dependency_reason": [],
+      "drop_reason": "excluded_wrong_layer_or_model_visible_unsafe:PLANNING_EVENT_REALIZATION",
+      "optional_or_mandatory": "MANDATORY_IF_RULE_MATCHES",
+      "char_count": 299,
+      "target_semantics": [
+        "worldbuilding-overview"
+      ],
+      "demand_tags": [],
+      "selection_class": "EXCLUDED_WRONG_LAYER",
+      "source_file": "vendor/novel-skills/source/worldbuilding/SKILL.md",
+      "source_text_range": {
+        "start_line": 8,
+        "end_line": 11
+      }
+    },
+    {
+      "candidate_section_id": "sv3-a7007aa93c406539",
+      "skill": "worldbuilding",
+      "ownership": "PLANNING_EVENT_REALIZATION",
+      "eligible": false,
+      "selected": false,
+      "selection_rule_or_reason": "ownership_or_model_visible_filter",
+      "dependency_reason": [],
+      "drop_reason": "excluded_wrong_layer_or_model_visible_unsafe:PLANNING_EVENT_REALIZATION",
+      "optional_or_mandatory": "MANDATORY_IF_RULE_MATCHES",
+      "char_count": 144,
+      "target_semantics": [
+        "worldbuilding-prerequisites"
+      ],
+      "demand_tags": [],
+      "selection_class": "EXCLUDED_WRONG_LAYER",
+      "source_file": "vendor/novel-skills/source/worldbuilding/SKILL.md",
+      "source_text_range": {
+        "start_line": 12,
+        "end_line": 15
+      }
+    },
+    {
+      "candidate_section_id": "sv3-57971b1277b054c2",
+      "skill": "worldbuilding",
+      "ownership": "PLANNING_EVENT_REALIZATION",
+      "eligible": false,
+      "selected": false,
+      "selection_rule_or_reason": "ownership_or_model_visible_filter",
+      "dependency_reason": [],
+      "drop_reason": "excluded_wrong_layer_or_model_visible_unsafe:PLANNING_EVENT_REALIZATION",
+      "optional_or_mandatory": "MANDATORY_IF_RULE_MATCHES",
+      "char_count": 912,
+      "target_semantics": [
+        "specificity",
+        "scene_pressure"
+      ],
+      "demand_tags": [
+        "mixed",
+        "world-heavy"
+      ],
+      "selection_class": "EXCLUDED_WRONG_LAYER",
+      "source_file": "vendor/novel-skills/source/worldbuilding/SKILL.md",
+      "source_text_range": {
+        "start_line": 16,
+        "end_line": 32
+      }
+    },
+    {
+      "candidate_section_id": "sv3-1b82b62f5f30c841",
+      "skill": "worldbuilding",
+      "ownership": "PLANNING_EVENT_REALIZATION",
+      "eligible": false,
+      "selected": false,
+      "selection_rule_or_reason": "ownership_or_model_visible_filter",
+      "dependency_reason": [],
+      "drop_reason": "excluded_wrong_layer_or_model_visible_unsafe:PLANNING_EVENT_REALIZATION",
+      "optional_or_mandatory": "MANDATORY_IF_RULE_MATCHES",
+      "char_count": 667,
+      "target_semantics": [
+        "worldbuilding-creating-a-system"
+      ],
+      "demand_tags": [
+        "world-heavy"
+      ],
+      "selection_class": "EXCLUDED_WRONG_LAYER",
+      "source_file": "vendor/novel-skills/source/worldbuilding/SKILL.md",
+      "source_text_range": {
+        "start_line": 33,
+        "end_line": 44
+      }
+    },
+    {
+      "candidate_section_id": "sv3-34fe98efc05e155b",
+      "skill": "worldbuilding",
+      "ownership": "PLANNING_EVENT_REALIZATION",
+      "eligible": false,
+      "selected": false,
+      "selection_rule_or_reason": "ownership_or_model_visible_filter",
+      "dependency_reason": [],
+      "drop_reason": "excluded_wrong_layer_or_model_visible_unsafe:PLANNING_EVENT_REALIZATION",
+      "optional_or_mandatory": "MANDATORY_IF_RULE_MATCHES",
+      "char_count": 443,
+      "target_semantics": [
+        "worldbuilding-creating-a-faction"
+      ],
+      "demand_tags": [
+        "world-heavy"
+      ],
+      "selection_class": "EXCLUDED_WRONG_LAYER",
+      "source_file": "vendor/novel-skills/source/worldbuilding/SKILL.md",
+      "source_text_range": {
+        "start_line": 45,
+        "end_line": 54
+      }
+    },
+    {
+      "candidate_section_id": "sv3-329e7ffd65867e60",
+      "skill": "worldbuilding",
+      "ownership": "PLANNING_EVENT_REALIZATION",
+      "eligible": false,
+      "selected": false,
+      "selection_rule_or_reason": "ownership_or_model_visible_filter",
+      "dependency_reason": [],
+      "drop_reason": "excluded_wrong_layer_or_model_visible_unsafe:PLANNING_EVENT_REALIZATION",
+      "optional_or_mandatory": "MANDATORY_IF_RULE_MATCHES",
+      "char_count": 449,
+      "target_semantics": [
+        "worldbuilding-creating-an-artifact"
+      ],
+      "demand_tags": [],
+      "selection_class": "EXCLUDED_WRONG_LAYER",
+      "source_file": "vendor/novel-skills/source/worldbuilding/SKILL.md",
+      "source_text_range": {
+        "start_line": 55,
+        "end_line": 64
+      }
+    },
+    {
+      "candidate_section_id": "sv3-b1c6dff222515560",
+      "skill": "worldbuilding",
+      "ownership": "LOCAL_RUNTIME",
+      "eligible": false,
+      "selected": false,
+      "selection_rule_or_reason": "ownership_or_model_visible_filter",
+      "dependency_reason": [],
+      "drop_reason": "excluded_wrong_layer_or_model_visible_unsafe:LOCAL_RUNTIME",
+      "optional_or_mandatory": "MANDATORY_IF_RULE_MATCHES",
+      "char_count": 305,
+      "target_semantics": [
+        "worldbuilding-updating-world-elements"
+      ],
+      "demand_tags": [],
+      "selection_class": "EXCLUDED_WRONG_LAYER",
+      "source_file": "vendor/novel-skills/source/worldbuilding/SKILL.md",
+      "source_text_range": {
+        "start_line": 65,
+        "end_line": 72
+      }
+    },
+    {
+      "candidate_section_id": "sv3-4ae4f3fefa8c26db",
+      "skill": "worldbuilding",
+      "ownership": "LOCAL_RUNTIME",
+      "eligible": false,
+      "selected": false,
+      "selection_rule_or_reason": "ownership_or_model_visible_filter",
+      "dependency_reason": [],
+      "drop_reason": "excluded_wrong_layer_or_model_visible_unsafe:LOCAL_RUNTIME",
+      "optional_or_mandatory": "MANDATORY_IF_RULE_MATCHES",
+      "char_count": 525,
+      "target_semantics": [
+        "worldbuilding-cross-referencing"
+      ],
+      "demand_tags": [],
+      "selection_class": "EXCLUDED_WRONG_LAYER",
+      "source_file": "vendor/novel-skills/source/worldbuilding/SKILL.md",
+      "source_text_range": {
+        "start_line": 73,
+        "end_line": 82
+      }
+    },
+    {
+      "candidate_section_id": "sv3-ac725871cafdecc8",
+      "skill": "worldbuilding",
+      "ownership": "LOCAL_RUNTIME",
+      "eligible": false,
+      "selected": false,
+      "selection_rule_or_reason": "ownership_or_model_visible_filter",
+      "dependency_reason": [],
+      "drop_reason": "excluded_wrong_layer_or_model_visible_unsafe:LOCAL_RUNTIME",
+      "optional_or_mandatory": "MANDATORY_IF_RULE_MATCHES",
+      "char_count": 333,
+      "target_semantics": [
+        "worldbuilding-cli-maintenance"
+      ],
+      "demand_tags": [],
+      "selection_class": "EXCLUDED_WRONG_LAYER",
+      "source_file": "vendor/novel-skills/source/worldbuilding/SKILL.md",
+      "source_text_range": {
+        "start_line": 83,
+        "end_line": 86
+      }
+    },
+    {
+      "candidate_section_id": "sv3-4704e93432b9fdc2",
+      "skill": "worldbuilding",
+      "ownership": "LOCAL_RUNTIME",
+      "eligible": false,
+      "selected": false,
+      "selection_rule_or_reason": "ownership_or_model_visible_filter",
+      "dependency_reason": [],
+      "drop_reason": "excluded_wrong_layer_or_model_visible_unsafe:LOCAL_RUNTIME",
+      "optional_or_mandatory": "MANDATORY_IF_RULE_MATCHES",
+      "char_count": 452,
+      "target_semantics": [
+        "worldbuilding-reference-files"
+      ],
+      "demand_tags": [],
+      "selection_class": "EXCLUDED_WRONG_LAYER",
+      "source_file": "vendor/novel-skills/source/worldbuilding/SKILL.md",
+      "source_text_range": {
+        "start_line": 87,
+        "end_line": 93
+      }
+    }
+  ],
+  "regression_relevant_unselected_section_count": 13,
+  "regression_relevant_unselected_section_ids": [
+    "sv3-13580b3cdbef263e",
+    "sv3-ac7aa3aed8a7d237",
+    "sv3-2ced894267dc51e3",
+    "sv3-82ca2fdf9c28183b",
+    "sv3-a1cb6a6e7ccf6112",
+    "sv3-972a75cb8ca8f0bd",
+    "sv3-6e4a0b2625a01274",
+    "sv3-974421ec02a478fa",
+    "sv3-4c39329c602fd48e",
+    "sv3-2985467b5f2bf929",
+    "sv3-60d4bee497e4c0dc",
+    "sv3-b4583d410167ab14",
+    "sv3-ad3871e96cc16876"
+  ],
+  "regression_relevant_unselected_rows": [
+    {
+      "candidate_section_id": "sv3-13580b3cdbef263e",
+      "skill": "plot-structure",
+      "ownership": "PLANNING_EVENT_REALIZATION",
+      "eligible": true,
+      "selected": false,
+      "selection_rule_or_reason": "exact_demand_tag_match",
+      "dependency_reason": [
+        "sv3-3fb51ac3fed35bc0",
+        "sv3-70a527462c32e7b6",
+        "sv3-7633ad6f5c90db5e",
+        "sv3-faecc1466817d8aa"
+      ],
+      "drop_reason": "character_heavy_not_in_demand_tags",
+      "optional_or_mandatory": "MANDATORY_IF_RULE_MATCHES",
+      "char_count": 220,
+      "target_semantics": [
+        "causal_coherence",
+        "scene_pressure"
+      ],
+      "demand_tags": [
+        "conflict-pacing-heavy"
+      ],
+      "selection_class": "DEMAND_SPECIFIC",
+      "source_file": "vendor/novel-skills/source/plot-structure/references/arc-template.md",
+      "source_text_range": {
+        "start_line": 39,
+        "end_line": 46
+      }
+    },
+    {
+      "candidate_section_id": "sv3-ac7aa3aed8a7d237",
+      "skill": "plot-structure",
+      "ownership": "PLANNING_EVENT_REALIZATION",
+      "eligible": true,
+      "selected": false,
+      "selection_rule_or_reason": "exact_demand_tag_match",
+      "dependency_reason": [
+        "sv3-3fb51ac3fed35bc0",
+        "sv3-70a527462c32e7b6",
+        "sv3-7633ad6f5c90db5e",
+        "sv3-faecc1466817d8aa"
+      ],
+      "drop_reason": "character_heavy_not_in_demand_tags",
+      "optional_or_mandatory": "MANDATORY_IF_RULE_MATCHES",
+      "char_count": 232,
+      "target_semantics": [
+        "setup_payoff_integrity"
+      ],
+      "demand_tags": [
+        "setup-payoff-heavy"
+      ],
+      "selection_class": "DEMAND_SPECIFIC",
+      "source_file": "vendor/novel-skills/source/plot-structure/references/arc-template.md",
+      "source_text_range": {
+        "start_line": 47,
+        "end_line": 53
+      }
+    },
+    {
+      "candidate_section_id": "sv3-2ced894267dc51e3",
+      "skill": "plot-structure",
+      "ownership": "PLANNING_EVENT_REALIZATION",
+      "eligible": true,
+      "selected": false,
+      "selection_rule_or_reason": "exact_demand_tag_match",
+      "dependency_reason": [
+        "sv3-3fb51ac3fed35bc0",
+        "sv3-70a527462c32e7b6",
+        "sv3-7633ad6f5c90db5e",
+        "sv3-faecc1466817d8aa"
+      ],
+      "drop_reason": "character_heavy_not_in_demand_tags",
+      "optional_or_mandatory": "MANDATORY_IF_RULE_MATCHES",
+      "char_count": 46,
+      "target_semantics": [
+        "setup_payoff_integrity"
+      ],
+      "demand_tags": [
+        "setup-payoff-heavy"
+      ],
+      "selection_class": "DEMAND_SPECIFIC",
+      "source_file": "vendor/novel-skills/source/plot-structure/references/promise-template.md",
+      "source_text_range": {
+        "start_line": 18,
+        "end_line": 21
+      }
+    },
+    {
+      "candidate_section_id": "sv3-82ca2fdf9c28183b",
+      "skill": "plot-structure",
+      "ownership": "PLANNING_EVENT_REALIZATION",
+      "eligible": true,
+      "selected": false,
+      "selection_rule_or_reason": "exact_demand_tag_match",
+      "dependency_reason": [
+        "sv3-3fb51ac3fed35bc0",
+        "sv3-70a527462c32e7b6",
+        "sv3-7633ad6f5c90db5e",
+        "sv3-faecc1466817d8aa"
+      ],
+      "drop_reason": "character_heavy_not_in_demand_tags",
+      "optional_or_mandatory": "MANDATORY_IF_RULE_MATCHES",
+      "char_count": 47,
+      "target_semantics": [
+        "setup_payoff_integrity"
+      ],
+      "demand_tags": [
+        "mixed",
+        "setup-payoff-heavy"
+      ],
+      "selection_class": "DEMAND_SPECIFIC",
+      "source_file": "vendor/novel-skills/source/plot-structure/references/promise-template.md",
+      "source_text_range": {
+        "start_line": 22,
+        "end_line": 25
+      }
+    },
+    {
+      "candidate_section_id": "sv3-a1cb6a6e7ccf6112",
+      "skill": "plot-structure",
+      "ownership": "PLANNING_EVENT_REALIZATION",
+      "eligible": true,
+      "selected": false,
+      "selection_rule_or_reason": "exact_demand_tag_match",
+      "dependency_reason": [
+        "sv3-3fb51ac3fed35bc0",
+        "sv3-70a527462c32e7b6",
+        "sv3-7633ad6f5c90db5e",
+        "sv3-faecc1466817d8aa"
+      ],
+      "drop_reason": "character_heavy_not_in_demand_tags",
+      "optional_or_mandatory": "MANDATORY_IF_RULE_MATCHES",
+      "char_count": 68,
+      "target_semantics": [
+        "setup_payoff_integrity"
+      ],
+      "demand_tags": [
+        "setup-payoff-heavy"
+      ],
+      "selection_class": "DEMAND_SPECIFIC",
+      "source_file": "vendor/novel-skills/source/plot-structure/references/question-template.md",
+      "source_text_range": {
+        "start_line": 16,
+        "end_line": 19
+      }
+    },
+    {
+      "candidate_section_id": "sv3-972a75cb8ca8f0bd",
+      "skill": "plot-structure",
+      "ownership": "PLANNING_EVENT_REALIZATION",
+      "eligible": true,
+      "selected": false,
+      "selection_rule_or_reason": "optional_support_disabled",
+      "dependency_reason": [],
+      "drop_reason": "include_optional_support_false",
+      "optional_or_mandatory": "OPTIONAL",
+      "char_count": 59,
+      "target_semantics": [
+        "setup_payoff_integrity",
+        "causal_coherence"
+      ],
+      "demand_tags": [],
+      "selection_class": "OPTIONAL_SUPPORT",
+      "source_file": "vendor/novel-skills/source/plot-structure/references/question-template.md",
+      "source_text_range": {
+        "start_line": 20,
+        "end_line": 23
+      }
+    },
+    {
+      "candidate_section_id": "sv3-6e4a0b2625a01274",
+      "skill": "plot-structure",
+      "ownership": "PLANNING_EVENT_REALIZATION",
+      "eligible": true,
+      "selected": false,
+      "selection_rule_or_reason": "exact_demand_tag_match",
+      "dependency_reason": [
+        "sv3-3fb51ac3fed35bc0",
+        "sv3-70a527462c32e7b6",
+        "sv3-7633ad6f5c90db5e",
+        "sv3-faecc1466817d8aa"
+      ],
+      "drop_reason": "character_heavy_not_in_demand_tags",
+      "optional_or_mandatory": "MANDATORY_IF_RULE_MATCHES",
+      "char_count": 57,
+      "target_semantics": [
+        "setup_payoff_integrity"
+      ],
+      "demand_tags": [
+        "setup-payoff-heavy"
+      ],
+      "selection_class": "DEMAND_SPECIFIC",
+      "source_file": "vendor/novel-skills/source/plot-structure/references/question-template.md",
+      "source_text_range": {
+        "start_line": 24,
+        "end_line": 26
+      }
+    },
+    {
+      "candidate_section_id": "sv3-974421ec02a478fa",
+      "skill": "character-management",
+      "ownership": "PLANNING_EVENT_REALIZATION",
+      "eligible": true,
+      "selected": false,
+      "selection_rule_or_reason": "optional_support_disabled",
+      "dependency_reason": [],
+      "drop_reason": "include_optional_support_false",
+      "optional_or_mandatory": "OPTIONAL",
+      "char_count": 122,
+      "target_semantics": [
+        "specificity",
+        "anti_template_risk"
+      ],
+      "demand_tags": [],
+      "selection_class": "OPTIONAL_SUPPORT",
+      "source_file": "vendor/novel-skills/source/character-management/references/character-template.md",
+      "source_text_range": {
+        "start_line": 28,
+        "end_line": 31
+      }
+    },
+    {
+      "candidate_section_id": "sv3-4c39329c602fd48e",
+      "skill": "character-management",
+      "ownership": "PLANNING_EVENT_REALIZATION",
+      "eligible": true,
+      "selected": false,
+      "selection_rule_or_reason": "optional_support_disabled",
+      "dependency_reason": [],
+      "drop_reason": "include_optional_support_false",
+      "optional_or_mandatory": "OPTIONAL",
+      "char_count": 117,
+      "target_semantics": [
+        "specificity",
+        "voice_readiness",
+        "anti_template_risk"
+      ],
+      "demand_tags": [],
+      "selection_class": "OPTIONAL_SUPPORT",
+      "source_file": "vendor/novel-skills/source/character-management/references/character-template.md",
+      "source_text_range": {
+        "start_line": 32,
+        "end_line": 35
+      }
+    },
+    {
+      "candidate_section_id": "sv3-b4583d410167ab14",
+      "skill": "worldbuilding",
+      "ownership": "PLANNING_EVENT_REALIZATION",
+      "eligible": true,
+      "selected": false,
+      "selection_rule_or_reason": "optional_support_disabled",
+      "dependency_reason": [],
+      "drop_reason": "include_optional_support_false",
+      "optional_or_mandatory": "OPTIONAL",
+      "char_count": 75,
+      "target_semantics": [
+        "specificity"
+      ],
+      "demand_tags": [],
+      "selection_class": "OPTIONAL_SUPPORT",
+      "source_file": "vendor/novel-skills/source/worldbuilding/references/artifact-template.md",
+      "source_text_range": {
+        "start_line": 17,
+        "end_line": 20
+      }
+    },
+    {
+      "candidate_section_id": "sv3-ad3871e96cc16876",
+      "skill": "worldbuilding",
+      "ownership": "PLANNING_EVENT_REALIZATION",
+      "eligible": true,
+      "selected": false,
+      "selection_rule_or_reason": "optional_support_disabled",
+      "dependency_reason": [],
+      "drop_reason": "include_optional_support_false",
+      "optional_or_mandatory": "OPTIONAL",
+      "char_count": 67,
+      "target_semantics": [
+        "specificity",
+        "causal_coherence"
+      ],
+      "demand_tags": [],
+      "selection_class": "OPTIONAL_SUPPORT",
+      "source_file": "vendor/novel-skills/source/worldbuilding/references/artifact-template.md",
+      "source_text_range": {
+        "start_line": 21,
+        "end_line": 24
+      }
+    },
+    {
+      "candidate_section_id": "sv3-2985467b5f2bf929",
+      "skill": "worldbuilding",
+      "ownership": "PLANNING_EVENT_REALIZATION",
+      "eligible": true,
+      "selected": false,
+      "selection_rule_or_reason": "exact_demand_tag_match",
+      "dependency_reason": [
+        "sv3-3fb51ac3fed35bc0",
+        "sv3-70a527462c32e7b6",
+        "sv3-7633ad6f5c90db5e",
+        "sv3-faecc1466817d8aa"
+      ],
+      "drop_reason": "character_heavy_not_in_demand_tags",
+      "optional_or_mandatory": "MANDATORY_IF_RULE_MATCHES",
+      "char_count": 156,
+      "target_semantics": [
+        "specificity",
+        "scene_pressure"
+      ],
+      "demand_tags": [
+        "world-heavy"
+      ],
+      "selection_class": "DEMAND_SPECIFIC",
+      "source_file": "vendor/novel-skills/source/worldbuilding/references/location-template.md",
+      "source_text_range": {
+        "start_line": 21,
+        "end_line": 24
+      }
+    },
+    {
+      "candidate_section_id": "sv3-60d4bee497e4c0dc",
+      "skill": "worldbuilding",
+      "ownership": "PLANNING_EVENT_REALIZATION",
+      "eligible": true,
+      "selected": false,
+      "selection_rule_or_reason": "exact_demand_tag_match",
+      "dependency_reason": [
+        "sv3-3fb51ac3fed35bc0",
+        "sv3-70a527462c32e7b6",
+        "sv3-7633ad6f5c90db5e",
+        "sv3-faecc1466817d8aa"
+      ],
+      "drop_reason": "character_heavy_not_in_demand_tags",
+      "optional_or_mandatory": "MANDATORY_IF_RULE_MATCHES",
+      "char_count": 152,
+      "target_semantics": [
+        "specificity",
+        "causal_coherence"
+      ],
+      "demand_tags": [
+        "world-heavy"
+      ],
+      "selection_class": "DEMAND_SPECIFIC",
+      "source_file": "vendor/novel-skills/source/worldbuilding/references/location-template.md",
+      "source_text_range": {
+        "start_line": 33,
+        "end_line": 36
+      }
+    }
+  ],
+  "regression_relevant_ownership_filtered_section_count": 5,
+  "regression_relevant_ownership_filtered_section_ids": [
+    "sv3-8f60ce5781d2680f",
+    "sv3-c8068581ef934af9",
+    "sv3-9e36963fe1a5a940",
+    "sv3-b75227453c1cc26a",
+    "sv3-57971b1277b054c2"
+  ],
+  "regression_relevant_ownership_filtered_rows": [
+    {
+      "candidate_section_id": "sv3-8f60ce5781d2680f",
+      "skill": "plot-structure",
+      "ownership": "PLANNING_EVENT_REALIZATION",
+      "eligible": false,
+      "selected": false,
+      "selection_rule_or_reason": "ownership_or_model_visible_filter",
+      "dependency_reason": [],
+      "drop_reason": "excluded_wrong_layer_or_model_visible_unsafe:PLANNING_EVENT_REALIZATION",
+      "optional_or_mandatory": "MANDATORY_IF_RULE_MATCHES",
+      "char_count": 718,
+      "target_semantics": [
+        "causal_coherence",
+        "scene_pressure"
+      ],
+      "demand_tags": [
+        "character-heavy",
+        "conflict-pacing-heavy",
+        "mixed",
+        "setup-payoff-heavy",
+        "world-heavy"
+      ],
+      "selection_class": "EXCLUDED_WRONG_LAYER",
+      "source_file": "vendor/novel-skills/source/plot-structure/SKILL.md",
+      "source_text_range": {
+        "start_line": 25,
+        "end_line": 42
+      }
+    },
+    {
+      "candidate_section_id": "sv3-c8068581ef934af9",
+      "skill": "plot-structure",
+      "ownership": "PLANNING_EVENT_REALIZATION",
+      "eligible": false,
+      "selected": false,
+      "selection_rule_or_reason": "ownership_or_model_visible_filter",
+      "dependency_reason": [],
+      "drop_reason": "excluded_wrong_layer_or_model_visible_unsafe:PLANNING_EVENT_REALIZATION",
+      "optional_or_mandatory": "MANDATORY_IF_RULE_MATCHES",
+      "char_count": 633,
+      "target_semantics": [
+        "setup_payoff_integrity"
+      ],
+      "demand_tags": [
+        "mixed",
+        "setup-payoff-heavy"
+      ],
+      "selection_class": "EXCLUDED_WRONG_LAYER",
+      "source_file": "vendor/novel-skills/source/plot-structure/SKILL.md",
+      "source_text_range": {
+        "start_line": 68,
+        "end_line": 79
+      }
+    },
+    {
+      "candidate_section_id": "sv3-b75227453c1cc26a",
+      "skill": "character-management",
+      "ownership": "DRAFT",
+      "eligible": false,
+      "selected": false,
+      "selection_rule_or_reason": "ownership_or_model_visible_filter",
+      "dependency_reason": [],
+      "drop_reason": "excluded_wrong_layer_or_model_visible_unsafe:DRAFT",
+      "optional_or_mandatory": "MANDATORY_IF_RULE_MATCHES",
+      "char_count": 275,
+      "target_semantics": [
+        "voice_readiness",
+        "specificity"
+      ],
+      "demand_tags": [],
+      "selection_class": "EXCLUDED_WRONG_LAYER",
+      "source_file": "vendor/novel-skills/source/character-management/references/character-template.md",
+      "source_text_range": {
+        "start_line": 48,
+        "end_line": 54
+      }
+    },
+    {
+      "candidate_section_id": "sv3-9e36963fe1a5a940",
+      "skill": "character-management",
+      "ownership": "PLANNING_EVENT_REALIZATION",
+      "eligible": false,
+      "selected": false,
+      "selection_rule_or_reason": "ownership_or_model_visible_filter",
+      "dependency_reason": [],
+      "drop_reason": "excluded_wrong_layer_or_model_visible_unsafe:PLANNING_EVENT_REALIZATION",
+      "optional_or_mandatory": "MANDATORY_IF_RULE_MATCHES",
+      "char_count": 1082,
+      "target_semantics": [
+        "character_agency",
+        "voice_readiness"
+      ],
+      "demand_tags": [
+        "character-heavy"
+      ],
+      "selection_class": "EXCLUDED_WRONG_LAYER",
+      "source_file": "vendor/novel-skills/source/character-management/SKILL.md",
+      "source_text_range": {
+        "start_line": 16,
+        "end_line": 40
+      }
+    },
+    {
+      "candidate_section_id": "sv3-57971b1277b054c2",
+      "skill": "worldbuilding",
+      "ownership": "PLANNING_EVENT_REALIZATION",
+      "eligible": false,
+      "selected": false,
+      "selection_rule_or_reason": "ownership_or_model_visible_filter",
+      "dependency_reason": [],
+      "drop_reason": "excluded_wrong_layer_or_model_visible_unsafe:PLANNING_EVENT_REALIZATION",
+      "optional_or_mandatory": "MANDATORY_IF_RULE_MATCHES",
+      "char_count": 912,
+      "target_semantics": [
+        "specificity",
+        "scene_pressure"
+      ],
+      "demand_tags": [
+        "mixed",
+        "world-heavy"
+      ],
+      "selection_class": "EXCLUDED_WRONG_LAYER",
+      "source_file": "vendor/novel-skills/source/worldbuilding/SKILL.md",
+      "source_text_range": {
+        "start_line": 16,
+        "end_line": 32
+      }
+    }
+  ]
+}

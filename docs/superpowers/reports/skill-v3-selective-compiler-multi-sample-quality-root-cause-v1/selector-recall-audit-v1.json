@@ -1,0 +1,59 @@
+{
+  "schema": "SkillV3SelectorRecallAuditV1",
+  "status": "UNDER_RECALL_PROVEN",
+  "demand_features": [
+    "creative_demand_class=character-heavy",
+    "resolved Skill IDs/source hashes",
+    "stage=planning",
+    "substage=event_realization",
+    "task contract identity",
+    "authority fact hashes",
+    "include_optional_support=false"
+  ],
+  "feature_source": "SelectionInputV1 and sealed character-heavy request",
+  "match_rules": [
+    "ALWAYS_ON_STAGE_CORE",
+    "exact demand-tag equality",
+    "exact contract-id equality",
+    "optional support only when explicitly enabled",
+    "declared dependency closure only",
+    "planning ownership allowlist"
+  ],
+  "selection_recall_risk": "HIGH",
+  "false_negative_section_patterns": [
+    "cross-cutting quality sections tagged to another mutually exclusive demand",
+    "optional evidence/specificity leaves",
+    "creative subranges inside mixed operational parent sections",
+    "voice/subtext guidance assigned to Draft ownership",
+    "semantic neighbor not declared as formal dependency"
+  ],
+  "false_positive_section_patterns": [
+    "relationship taxonomies selected as character-heavy guidance without scene application instructions",
+    "generic arc labels counted as core despite low actionability for event realization"
+  ],
+  "regression_relevant_unselected_eligible_count": 13,
+  "regression_relevant_unselected_eligible_ids": [
+    "sv3-13580b3cdbef263e",
+    "sv3-ac7aa3aed8a7d237",
+    "sv3-2ced894267dc51e3",
+    "sv3-82ca2fdf9c28183b",
+    "sv3-a1cb6a6e7ccf6112",
+    "sv3-972a75cb8ca8f0bd",
+    "sv3-6e4a0b2625a01274",
+    "sv3-974421ec02a478fa",
+    "sv3-4c39329c602fd48e",
+    "sv3-2985467b5f2bf929",
+    "sv3-60d4bee497e4c0dc",
+    "sv3-b4583d410167ab14",
+    "sv3-ad3871e96cc16876"
+  ],
+  "regression_relevant_ownership_filtered_count": 5,
+  "selected_low_actionability_taxonomy_ids": [
+    "sv3-8afeb5229a4fe841",
+    "sv3-e92f0f3584d44b87"
+  ],
+  "under_selection_proof": "all six mapped regression dimensions have A-only high-actionability atoms; thirteen eligible relevant sections and five ownership-filtered relevant sections are absent from B",
+  "over_selection_proof": "two of nine selected sections are taxonomies with no action-realization instruction, while cross-cutting scene dependencies are absent",
+  "selector_over_indexed_explicit_character_labels": true,
+  "selector_missed_cross_cutting_scene_causality_subtext_pressure_specificity_setup_payoff": true
+}

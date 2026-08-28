@@ -1,0 +1,75 @@
+{
+  "schema": "SkillV3QualityRootCauseHypothesisMatrixV1",
+  "rows": [
+    {
+      "id": "H1_SELECTOR_UNDER_RECALL",
+      "status": "SUPPORTED",
+      "evidence": "13 eligible and 5 ownership-filtered regression-relevant sections absent; six regressions align to A-only high-actionability atoms",
+      "counterevidence": "pair2 selective output wins several votes",
+      "confidence": "HIGH"
+    },
+    {
+      "id": "H2_DEPENDENCY_GRAPH_UNDERMODELS_SEMANTIC_DEPENDENCIES",
+      "status": "SUPPORTED",
+      "evidence": "declared edges close structurally but omit setup/payoff, evidence, voice, relationship-application, and scene neighbors",
+      "counterevidence": "formal dependency missing count is zero",
+      "confidence": "HIGH"
+    },
+    {
+      "id": "H3_SECTION_GRANULARITY_PROBLEM",
+      "status": "SUPPORTED",
+      "evidence": "creative subranges are trapped in mixed wrong-layer parents while leaf taxonomies survive without application context",
+      "counterevidence": "nine selected leaf hashes are exact",
+      "confidence": "HIGH"
+    },
+    {
+      "id": "H4_BASELINE_COMPACTOR_HAS_BETTER_SEMANTIC_DIVERSITY",
+      "status": "SUPPORTED",
+      "evidence": "A spans action, consequence, subtext, setting, payoff, voice, and anti-pattern bridges; B is primarily arc/character templates",
+      "counterevidence": "A is rewritten rather than verbatim and has its own provenance tradeoff",
+      "confidence": "HIGH"
+    },
+    {
+      "id": "H5_SELECTIVE_CONTEXT_OVER_RIGIDITY",
+      "status": "PARTIALLY_SUPPORTED",
+      "evidence": "exact-tag mutually exclusive demand routing removes rubric-wide semantics",
+      "counterevidence": "B itself is not instruction-dense; under-specification dominates rigidity",
+      "confidence": "MEDIUM"
+    },
+    {
+      "id": "H6_ORDERING_SALIENCE_REGRESSION",
+      "status": "PARTIALLY_SUPPORTED",
+      "evidence": "A front-loads and reinforces high-actionability rules; B spends substantial context on wrappers and generic/taxonomic sections",
+      "counterevidence": "task distance is equal and ordering alone cannot restore absent atoms",
+      "confidence": "MEDIUM"
+    },
+    {
+      "id": "H7_WRONG_STAGE_OWNERSHIP_FILTER",
+      "status": "SUPPORTED",
+      "evidence": "voice and mixed creative/operational parent sections are excluded wholesale",
+      "counterevidence": "filter correctly prevents runtime mutation instructions",
+      "confidence": "HIGH"
+    },
+    {
+      "id": "H8_VERBATIM_SELECTION_ARCHITECTURE_FALSE_PREMISE",
+      "status": "SUPPORTED",
+      "evidence": "source-faithful B cannot recreate demand-aware A's deterministic scene-realization bridge atoms because several do not exist verbatim in eligible source",
+      "counterevidence": "verbatim sections remain useful as provenance-preserving supplement",
+      "confidence": "HIGH"
+    },
+    {
+      "id": "H9_STOCHASTIC_VARIANCE_DOMINANT",
+      "status": "NOT_SUPPORTED",
+      "evidence": "both evaluators support baseline aggregate on all six regression dimensions, including three critical",
+      "counterevidence": "voice and anti-template remain variable",
+      "confidence": "HIGH"
+    },
+    {
+      "id": "H10_MULTI_FACTOR_INTERACTION",
+      "status": "SUPPORTED",
+      "evidence": "replacement mismatch is amplified by exact-demand under-recall, shallow dependencies, coarse ownership, and weaker salience",
+      "counterevidence": "the primary mechanism is still identifiable",
+      "confidence": "HIGH"
+    }
+  ]
+}

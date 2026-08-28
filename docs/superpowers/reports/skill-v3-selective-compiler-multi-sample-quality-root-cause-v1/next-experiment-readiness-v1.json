@@ -1,0 +1,20 @@
+{
+  "schema": "SkillV3NextExperimentReadinessV1",
+  "new_real_campaign_justified_after_fix": "CONDITIONAL",
+  "offline_prerequisites": [
+    "selector replay across all five sealed demand scenarios",
+    "semantic-atom coverage gain on all six regression dimensions",
+    "wrong-layer selected count zero",
+    "verbatim fidelity exact for supplement",
+    "hybrid capacity PASS with no truncation/shedding",
+    "non-Skill byte identity exact",
+    "production isolation and observer fail-open exact",
+    "blind methodology and criticality unchanged",
+    "fresh prospective experiment lock",
+    "focused/related/full-suite and Strict L3 green"
+  ],
+  "approval_created": false,
+  "nonce_created": false,
+  "new_real_sample_count": 0,
+  "exact_next_gate": "SKILL_V3_HYBRID_SKILL_CONTEXT_ARCHITECTURE_DESIGN"
+}
