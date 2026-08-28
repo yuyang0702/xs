@@ -1,0 +1,86 @@
+{
+  "rows": [
+    {
+      "sample_id": "sv3s-089dd120ad568f87e7ef",
+      "sample_slot": "A1",
+      "signed_approval": {
+        "approval_id": "skill-v3-a1-destination-v3-20260827t145755z-edb721913cb9d2ad",
+        "approval_schema": "SkillV3PilotDestinationBoundSuccessorSignedApprovalV3",
+        "authorization_context_identity_sha256": "edb721913cb9d2adcf99bfe13d649171edeea8209b2ce75bd030352f06059210",
+        "authorization_message_sha256": "a0678be2a391da6b3021bfefdb75945cccec72834ba9b04ee4d209672f3e2d0d",
+        "execution_authorized": true,
+        "expires_at": "2026-08-27T16:57:55Z",
+        "issued_at": "2026-08-27T14:57:55Z",
+        "nonce_state_at_issue": "NOT_CREATED",
+        "repository_head": "4295653aee0ef795fc00e14f7f739591eaa219c7",
+        "schema": "SkillV3A1V3ApprovalBindingV1",
+        "signed_approval_sha256": "9aecbe6ab2e144f9727bc8c400202c625065a462478ce493e5d8f99c6eb19866",
+        "single_use": true,
+        "status": "EXACT",
+        "usage_at_dispatch": "unused"
+      }
+    },
+    {
+      "sample_id": "sv3s-cd80aa5d21e790079a06",
+      "sample_slot": "B1",
+      "signed_approval": {
+        "approval_id": "sv3o-b1-10c61c44d0d013140cb689cd",
+        "execution_authorized": true,
+        "schema": "SkillV3RemainingCampaignJitSignedApprovalV4",
+        "signed_approval_sha256": "595b1c3abc4ee4a6456e49c05c2f84a62e5c04c31dea38f15b24fda241a440b0",
+        "single_use": true,
+        "usage_status_at_issue": "unused"
+      }
+    },
+    {
+      "sample_id": "sv3s-689f28e6be27dd416760",
+      "sample_slot": "A2",
+      "signed_approval": {
+        "approval_id": "sv3o-a2-7aaabe12eb4d7e6daf01fb52",
+        "execution_authorized": true,
+        "schema": "SkillV3RemainingCampaignJitSignedApprovalV4",
+        "signed_approval_sha256": "47b4326c27307bbfb4069d21878db41a17bd6fbe167678241cc10ae0b042d986",
+        "single_use": true,
+        "usage_status_at_issue": "unused"
+      }
+    },
+    {
+      "sample_id": "sv3s-86c1bce67d1e52ec2aa6",
+      "sample_slot": "B2",
+      "signed_approval": {
+        "approval_id": "sv3o-b2-0690bcdba613bac1549939e3",
+        "execution_authorized": true,
+        "schema": "SkillV3RemainingCampaignJitSignedApprovalV4",
+        "signed_approval_sha256": "3fd55d2a4574d24d411055e7e7f81c49bdd7e4a3cf7f21b77fa877cbcf8647b4",
+        "single_use": true,
+        "usage_status_at_issue": "unused"
+      }
+    },
+    {
+      "sample_id": "sv3s-32d61044ab8db7c9b145",
+      "sample_slot": "A3",
+      "signed_approval": {
+        "approval_id": "sv3o-a3-4ca90446936fecbc0a964a6f",
+        "execution_authorized": true,
+        "schema": "SkillV3RemainingCampaignJitSignedApprovalV4",
+        "signed_approval_sha256": "b311aa7dd70a0e3ef1cd9bbb22c298da6b883d9d62c4519917cb708ec87c14f0",
+        "single_use": true,
+        "usage_status_at_issue": "unused"
+      }
+    },
+    {
+      "sample_id": "sv3s-bbd71244a306271cd726",
+      "sample_slot": "B3",
+      "signed_approval": {
+        "approval_id": "sv3o-b3-1507ba9792cf9b3576f99b19",
+        "execution_authorized": true,
+        "schema": "SkillV3RemainingCampaignJitSignedApprovalV4",
+        "signed_approval_sha256": "c0e95f1771b586e489f40c800f7cc69611663825fcc733230ca3898eef4f7f47",
+        "single_use": true,
+        "usage_status_at_issue": "unused"
+      }
+    }
+  ],
+  "schema": "SkillV3CampaignSignedApprovalV1",
+  "status": "PASS"
+}

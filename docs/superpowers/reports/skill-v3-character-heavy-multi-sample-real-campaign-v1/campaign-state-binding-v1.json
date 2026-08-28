@@ -1,0 +1,147 @@
+{
+  "campaign_authorization_sha256": "416330ffdafc974342435cd489dbcca9b7f68dd3b86df1bafcd9f6713daf38ad",
+  "cumulative_http_post_attempts": 5,
+  "cumulative_network_attempts": 5,
+  "cumulative_provider_attempts": 5,
+  "finished_at": "2026-08-28T00:07:26Z",
+  "repository_branch": "r1-ptr3/planning-repair-finding-propagation-20260817",
+  "repository_head": "32b230f4ddf1fe7cb93705e4d365d9f898e75702",
+  "sample_results": [
+    {
+      "approval_id": "sv3o-b1-10c61c44d0d013140cb689cd",
+      "artifact_file_sha256": "63142020ccd19853c73dcc25204ffd7fe3fc0a08fed0d60d25cebf2be627d761",
+      "attempts": {
+        "http_post_attempt_count": 1,
+        "logical_model_call_count": 1,
+        "network_request_attempt_count": 1,
+        "provider_dispatch_attempt_count": 1
+      },
+      "execution_receipt_sha256": "fe9fc61c55f751fcb550e04d1c5b2f90f56cfb9fc5ea9512f4a1edf7e5e23ff1",
+      "sample_id": "sv3s-cd80aa5d21e790079a06",
+      "sample_slot": "B1",
+      "signed_approval_sha256": "595b1c3abc4ee4a6456e49c05c2f84a62e5c04c31dea38f15b24fda241a440b0",
+      "status": "SEALED_VALID",
+      "transport_attempts": {
+        "application_second_dispatch_allowed": false,
+        "guard_active": true,
+        "http_post_attempts": 1,
+        "max_http_post_attempts": 1,
+        "model_logical_calls": 1,
+        "network_request_attempts": 1,
+        "real_provider_request_attempts": 1,
+        "sdk_retries_disabled": true,
+        "transport_request_retries_disabled": true
+      }
+    },
+    {
+      "approval_id": "sv3o-a2-7aaabe12eb4d7e6daf01fb52",
+      "artifact_file_sha256": "ce631e9c8b62f4b26b3dbba1e012be95916b3c033d48c4695bf284fb524390ae",
+      "attempts": {
+        "http_post_attempt_count": 1,
+        "logical_model_call_count": 1,
+        "network_request_attempt_count": 1,
+        "provider_dispatch_attempt_count": 1
+      },
+      "execution_receipt_sha256": "a45ba9b99873a7d201474a785fe4e3c29609187cc83b665666d6f60423abc988",
+      "sample_id": "sv3s-689f28e6be27dd416760",
+      "sample_slot": "A2",
+      "signed_approval_sha256": "47b4326c27307bbfb4069d21878db41a17bd6fbe167678241cc10ae0b042d986",
+      "status": "SEALED_VALID",
+      "transport_attempts": {
+        "application_second_dispatch_allowed": false,
+        "guard_active": true,
+        "http_post_attempts": 1,
+        "max_http_post_attempts": 1,
+        "model_logical_calls": 1,
+        "network_request_attempts": 1,
+        "real_provider_request_attempts": 1,
+        "sdk_retries_disabled": true,
+        "transport_request_retries_disabled": true
+      }
+    },
+    {
+      "approval_id": "sv3o-b2-0690bcdba613bac1549939e3",
+      "artifact_file_sha256": "cb570cad8e573a7dfbb6c8d8ceda23f490fa058aae54367cfb12adab707a9e03",
+      "attempts": {
+        "http_post_attempt_count": 1,
+        "logical_model_call_count": 1,
+        "network_request_attempt_count": 1,
+        "provider_dispatch_attempt_count": 1
+      },
+      "execution_receipt_sha256": "4ed4cb6a8f808c43b4cc6395cf6b81cc1464c82882ed4f0dc149169bb3faa3a3",
+      "sample_id": "sv3s-86c1bce67d1e52ec2aa6",
+      "sample_slot": "B2",
+      "signed_approval_sha256": "3fd55d2a4574d24d411055e7e7f81c49bdd7e4a3cf7f21b77fa877cbcf8647b4",
+      "status": "SEALED_VALID",
+      "transport_attempts": {
+        "application_second_dispatch_allowed": false,
+        "guard_active": true,
+        "http_post_attempts": 1,
+        "max_http_post_attempts": 1,
+        "model_logical_calls": 1,
+        "network_request_attempts": 1,
+        "real_provider_request_attempts": 1,
+        "sdk_retries_disabled": true,
+        "transport_request_retries_disabled": true
+      }
+    },
+    {
+      "approval_id": "sv3o-a3-4ca90446936fecbc0a964a6f",
+      "artifact_file_sha256": "bcf7ccadb47600092acf1a7eed264e7aa30cbf0b1ab5f61c27352364087a8bba",
+      "attempts": {
+        "http_post_attempt_count": 1,
+        "logical_model_call_count": 1,
+        "network_request_attempt_count": 1,
+        "provider_dispatch_attempt_count": 1
+      },
+      "execution_receipt_sha256": "fe139b368d3b653dc99810164c679a71916b13b4a9018e6742c1b674fee34cdc",
+      "sample_id": "sv3s-32d61044ab8db7c9b145",
+      "sample_slot": "A3",
+      "signed_approval_sha256": "b311aa7dd70a0e3ef1cd9bbb22c298da6b883d9d62c4519917cb708ec87c14f0",
+      "status": "SEALED_VALID",
+      "transport_attempts": {
+        "application_second_dispatch_allowed": false,
+        "guard_active": true,
+        "http_post_attempts": 1,
+        "max_http_post_attempts": 1,
+        "model_logical_calls": 1,
+        "network_request_attempts": 1,
+        "real_provider_request_attempts": 1,
+        "sdk_retries_disabled": true,
+        "transport_request_retries_disabled": true
+      }
+    },
+    {
+      "approval_id": "sv3o-b3-1507ba9792cf9b3576f99b19",
+      "artifact_file_sha256": "303310df6ba6e77872df3de9c54c4f6fc03aa6c6edfd2e9110dd28214dc7ed5d",
+      "attempts": {
+        "http_post_attempt_count": 1,
+        "logical_model_call_count": 1,
+        "network_request_attempt_count": 1,
+        "provider_dispatch_attempt_count": 1
+      },
+      "execution_receipt_sha256": "1105c1682ad0b7d8ff00d4cbe2511851ddb3f646dc0b84c6c848016709d36db8",
+      "sample_id": "sv3s-bbd71244a306271cd726",
+      "sample_slot": "B3",
+      "signed_approval_sha256": "c0e95f1771b586e489f40c800f7cc69611663825fcc733230ca3898eef4f7f47",
+      "status": "SEALED_VALID",
+      "transport_attempts": {
+        "application_second_dispatch_allowed": false,
+        "guard_active": true,
+        "http_post_attempts": 1,
+        "max_http_post_attempts": 1,
+        "model_logical_calls": 1,
+        "network_request_attempts": 1,
+        "real_provider_request_attempts": 1,
+        "sdk_retries_disabled": true,
+        "transport_request_retries_disabled": true
+      }
+    }
+  ],
+  "schema": "SkillV3RemainingCampaignExternalStateV1",
+  "started_at": "2026-08-28T00:05:54Z",
+  "state_sha256": "48df7a76f8b982c6010bff7fed1506323409b44fdf9ff66852c539dec73bad15",
+  "status": "SEALED_VALID",
+  "stop_reason": null,
+  "version": 1
+}

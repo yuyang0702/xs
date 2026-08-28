@@ -1,0 +1,18 @@
+{
+  "authorization_source": "EXACT_USER_PLAINTEXT_CONTEXT",
+  "authorized_sequence": [
+    "B1",
+    "A2",
+    "B2",
+    "A3",
+    "B3"
+  ],
+  "campaign_authorization_sha256": "416330ffdafc974342435cd489dbcca9b7f68dd3b86df1bafcd9f6713daf38ad",
+  "destination": "https://lingsuan.org:443/v1/messages",
+  "maximum_elapsed_hours": 10,
+  "maximum_requests": 5,
+  "permission_is_per_sample_signed_approval": false,
+  "retry_fallback_route_switch_resume_second_dispatch_allowed": false,
+  "schema": "SkillV3CampaignAuthorizationBindingV1",
+  "status": "PASS"
+}

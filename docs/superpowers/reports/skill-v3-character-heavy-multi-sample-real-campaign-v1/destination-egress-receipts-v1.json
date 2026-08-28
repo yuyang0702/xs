@@ -1,0 +1,101 @@
+{
+  "rows": [
+    {
+      "destination_egress": {
+        "actual_destination_origin": "https://lingsuan.org",
+        "actual_destination_origin_sha256": "356a50c853735ad87163de137457b9e95cda70dfdb24229ffef847aff38a0b21",
+        "actual_destination_path": "/v1/messages",
+        "allowed_destination_count": 1,
+        "api_path": "/v1/messages",
+        "contract_version": "skill-v3-a1-network-destination-binding-v1",
+        "cross_origin_redirect_allowed": false,
+        "destination_origin_sha256": "356a50c853735ad87163de137457b9e95cda70dfdb24229ffef847aff38a0b21",
+        "hostname": "lingsuan.org",
+        "model_binding_sha256": "5fd92d58fb34146b854ecf816dfe7622e24c233480149dfab9e327cff7f6b1ff",
+        "model_label": "gpt-5.6-sol",
+        "operator_class": "THIRD_PARTY_RELAY_LOCAL_METADATA_ONLY",
+        "origin": "https://lingsuan.org",
+        "port": 443,
+        "provider_descriptor_sha256": "121cc6b0b4f77b0b08697f2782e0f67a29007183d65a2780b2051048da3a600f",
+        "provider_label": "lingsuan_gpt",
+        "route_fingerprint": "30e9cbaf86fbb4b89b43614d71cc11b359ad41e7411e8ebda5d3ce4199879bf0",
+        "schema": "SkillV3A1NetworkDestinationBindingV1",
+        "scheme": "https",
+        "second_destination_attempt_count": 0,
+        "status": "EXACT",
+        "unbound_base_url_override_allowed": false,
+        "unbound_proxy_route_allowed": false,
+        "version": 1
+      },
+      "sample_id": "sv3s-089dd120ad568f87e7ef",
+      "sample_slot": "A1"
+    },
+    {
+      "destination_egress": {
+        "cross_origin_redirect_allowed": false,
+        "destination_operator_class": "THIRD_PARTY_RELAY_LOCAL_METADATA_ONLY",
+        "destination_origin": "https://lingsuan.org",
+        "destination_origin_sha256": "356a50c853735ad87163de137457b9e95cda70dfdb24229ffef847aff38a0b21",
+        "destination_path": "/v1/messages",
+        "egress_policy_sha256": "68577676f158f5ee0661ceeed74284c2f652ce2d748b4eae9bae857c33f11736",
+        "unbound_proxy_route_allowed": false
+      },
+      "sample_id": "sv3s-cd80aa5d21e790079a06",
+      "sample_slot": "B1"
+    },
+    {
+      "destination_egress": {
+        "cross_origin_redirect_allowed": false,
+        "destination_operator_class": "THIRD_PARTY_RELAY_LOCAL_METADATA_ONLY",
+        "destination_origin": "https://lingsuan.org",
+        "destination_origin_sha256": "356a50c853735ad87163de137457b9e95cda70dfdb24229ffef847aff38a0b21",
+        "destination_path": "/v1/messages",
+        "egress_policy_sha256": "d26e74f84016b8236738ebc15862c005eb998a12e8270f9e89eff45a3c2158d8",
+        "unbound_proxy_route_allowed": false
+      },
+      "sample_id": "sv3s-689f28e6be27dd416760",
+      "sample_slot": "A2"
+    },
+    {
+      "destination_egress": {
+        "cross_origin_redirect_allowed": false,
+        "destination_operator_class": "THIRD_PARTY_RELAY_LOCAL_METADATA_ONLY",
+        "destination_origin": "https://lingsuan.org",
+        "destination_origin_sha256": "356a50c853735ad87163de137457b9e95cda70dfdb24229ffef847aff38a0b21",
+        "destination_path": "/v1/messages",
+        "egress_policy_sha256": "084bdf32daabdc1f7b286496e52260146777a5602f7fff64278d414b7279622a",
+        "unbound_proxy_route_allowed": false
+      },
+      "sample_id": "sv3s-86c1bce67d1e52ec2aa6",
+      "sample_slot": "B2"
+    },
+    {
+      "destination_egress": {
+        "cross_origin_redirect_allowed": false,
+        "destination_operator_class": "THIRD_PARTY_RELAY_LOCAL_METADATA_ONLY",
+        "destination_origin": "https://lingsuan.org",
+        "destination_origin_sha256": "356a50c853735ad87163de137457b9e95cda70dfdb24229ffef847aff38a0b21",
+        "destination_path": "/v1/messages",
+        "egress_policy_sha256": "4f883e65a60e1f109fa11706dc1b877cbc08675efc522829e9723c35802f5efb",
+        "unbound_proxy_route_allowed": false
+      },
+      "sample_id": "sv3s-32d61044ab8db7c9b145",
+      "sample_slot": "A3"
+    },
+    {
+      "destination_egress": {
+        "cross_origin_redirect_allowed": false,
+        "destination_operator_class": "THIRD_PARTY_RELAY_LOCAL_METADATA_ONLY",
+        "destination_origin": "https://lingsuan.org",
+        "destination_origin_sha256": "356a50c853735ad87163de137457b9e95cda70dfdb24229ffef847aff38a0b21",
+        "destination_path": "/v1/messages",
+        "egress_policy_sha256": "890c67d589f40fb2fa5c7795c58d1d332134720843c506b8ad7c0ed182be8e05",
+        "unbound_proxy_route_allowed": false
+      },
+      "sample_id": "sv3s-bbd71244a306271cd726",
+      "sample_slot": "B3"
+    }
+  ],
+  "schema": "SkillV3CampaignDestinationEgressV1",
+  "status": "PASS"
+}

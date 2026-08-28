@@ -1,0 +1,98 @@
+{
+  "definition_sha256": "3a4458f6c5959e30e674db6cff13763ded598da7bed1c898d62d7a1799fd6cb8",
+  "entries": [
+    {
+      "bytes": 2953,
+      "path": "approval-final-states-v1.json",
+      "sha256": "fa70def5b5846999cda51881c72c7e9660d008abd73fde85cb75a43c0bc913db"
+    },
+    {
+      "bytes": 3953,
+      "path": "attempt-counters-v1.json",
+      "sha256": "8fca5674a5c728626fd4b5cd0facb1063651b605883239dc3367b55c9e42a75c"
+    },
+    {
+      "bytes": 555,
+      "path": "campaign-authorization-binding-v1.json",
+      "sha256": "0bca90834304f82f5a6df7c4699e2dca21aeceabd71a1ca9b5f08655ba5ae6f7"
+    },
+    {
+      "bytes": 6031,
+      "path": "campaign-state-binding-v1.json",
+      "sha256": "d6aac92437578cdc9a496216c58ad90560643d9d0f654cf666a6dbd6ceb12e52"
+    },
+    {
+      "bytes": 542,
+      "path": "cumulative-budget-receipt-v1.json",
+      "sha256": "c947b2fbebe2c0277828fe7ede4a7c15091bc8a42b284038c4acb8548eacdcfa"
+    },
+    {
+      "bytes": 4574,
+      "path": "destination-egress-receipts-v1.json",
+      "sha256": "cc511dcf4529b8612e5e5a996007f50235f10f1ab2b3845137cea5a8dfb96059"
+    },
+    {
+      "bytes": 5018,
+      "path": "execution-receipts-v1.json",
+      "sha256": "68f2a99a36bc80a845c725cd0a2d0538d51e96a9d7919459e953f8ebbd80ca35"
+    },
+    {
+      "bytes": 1347,
+      "path": "final-report-v1.md",
+      "sha256": "9de8871975042e734f6d3397a5b165dc24f0b627f99c83a5cec8d3c7338892e7"
+    },
+    {
+      "bytes": 462,
+      "path": "independence-contamination-recheck-v1.json",
+      "sha256": "ced142cb9cedc7b6681b98e556cb5e83bb5e625fd29de461484426abba71d304"
+    },
+    {
+      "bytes": 1861,
+      "path": "literary-artifact-sha256-matrix-v1.json",
+      "sha256": "b1f8cc828a8b30ccb1403bf97db50049a4afd6c67ddb3850a862604a72b7bdd0"
+    },
+    {
+      "bytes": 2726,
+      "path": "nonce-final-states-v1.json",
+      "sha256": "e2239c7eb4df25c14467e115355fd9c3a4a7759a76ddd5c2ee5e9e02225c8d3f"
+    },
+    {
+      "bytes": 375,
+      "path": "privacy-scan-v1.json",
+      "sha256": "6806e7ba42463df814f78c7f65c0e5d6dd2d07cfef4863e0cc751f2da81b1f29"
+    },
+    {
+      "bytes": 342,
+      "path": "production-isolation-v1.json",
+      "sha256": "ec2265058888d3cfe4fd21c9c694b0c6a219c023ed3d5fed51f38db0887729f4"
+    },
+    {
+      "bytes": 159,
+      "path": "README.md",
+      "sha256": "27f950000887cc1a0627c10818dfa854b16eb8684bd4750e92c62e9578b3fe78"
+    },
+    {
+      "bytes": 3382,
+      "path": "signed-approval-bindings-v1.json",
+      "sha256": "bddbea9be25360e2083e672afcb8956ce172cd73efe6a38ad79210d39a6e0b73"
+    },
+    {
+      "bytes": 1432,
+      "path": "six-sample-validity-matrix-v1.json",
+      "sha256": "c9dd97c304b0fd1430f9d0fa238b5092a2d3fe03260f4f0fadacf3c2e262db04"
+    },
+    {
+      "bytes": 2871,
+      "path": "terminal-pipeline-receipts-v1.json",
+      "sha256": "1de30d00923ad685dc2c645b49a8f4476c3516c0d200a616b8eba80d05194bc7"
+    },
+    {
+      "bytes": 519,
+      "path": "test-receipt-v1.json",
+      "sha256": "bd196fb9179f36f62824c09bbb63908609465e3585c984f42406b9e6c1d0ca27"
+    }
+  ],
+  "entry_count": 18,
+  "schema": "SkillV3CampaignSha256ManifestV1",
+  "status": "EXACT"
+}

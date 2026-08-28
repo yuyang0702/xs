@@ -1,0 +1,11 @@
+{
+  "blockers": 0,
+  "focused": "12 passed in 28.70s; 5 passed in 1.01s after final materializer patch",
+  "literary_judgment_performed": false,
+  "phase_a_full_suite": "3794 passed, 41 skipped, 6 xfailed, 54 failed, 72 errors; unrelated sealed-evidence/materialization/Planning-Skill/live-parity gates",
+  "related": "112 passed in 147.35s",
+  "schema": "SkillV3CampaignTestReceiptV1",
+  "status": "PASS",
+  "strict_l3": "PASS; warnings=0; blockers=0; MAIN_CODEX_SINGLE_AGENT_NO_INDEPENDENCE_CLAIM",
+  "warnings": 0
+}

@@ -1,0 +1,128 @@
+{
+  "rows": [
+    {
+      "execution_receipt": {
+        "actual_destination_hostname": "lingsuan.org",
+        "actual_destination_origin": "https://lingsuan.org",
+        "actual_destination_origin_sha256": "356a50c853735ad87163de137457b9e95cda70dfdb24229ffef847aff38a0b21",
+        "actual_destination_path": "/v1/messages",
+        "actual_destination_port": 443,
+        "dispatch_attempted_at": "2026-08-27T15:19:53Z",
+        "finish_reason": "end_turn",
+        "http_post_attempt_count": 1,
+        "input_tokens": null,
+        "input_tokens_observability": "NOT_RETAINED_BY_HASH_SAFE_MODEL_OUTPUT_OBSERVER",
+        "model_binding_sha256": "5fd92d58fb34146b854ecf816dfe7622e24c233480149dfab9e327cff7f6b1ff",
+        "model_logical_call_count": 1,
+        "network_request_attempt_count": 1,
+        "output_tokens": 649,
+        "provider_binding_sha256": "121cc6b0b4f77b0b08697f2782e0f67a29007183d65a2780b2051048da3a600f",
+        "provider_dispatch_attempt_count": 1,
+        "route_fingerprint": "30e9cbaf86fbb4b89b43614d71cc11b359ad41e7411e8ebda5d3ce4199879bf0",
+        "schema": "SkillV3A1V3RealDestinationDispatchReceiptV1",
+        "status": "EXECUTED_ONCE",
+        "transport_complete": true,
+        "visible_characters": 1991
+      },
+      "sample_id": "sv3s-089dd120ad568f87e7ef",
+      "sample_slot": "A1"
+    },
+    {
+      "execution_receipt": {
+        "artifact_file_sha256": "63142020ccd19853c73dcc25204ffd7fe3fc0a08fed0d60d25cebf2be627d761",
+        "attempts": {
+          "http_post_attempt_count": 1,
+          "logical_model_call_count": 1,
+          "network_request_attempt_count": 1,
+          "provider_dispatch_attempt_count": 1
+        },
+        "execution_receipt_sha256": "fe9fc61c55f751fcb550e04d1c5b2f90f56cfb9fc5ea9512f4a1edf7e5e23ff1",
+        "real_boundary_reached": 1,
+        "sample_id": "sv3s-cd80aa5d21e790079a06",
+        "sample_slot": "B1",
+        "status": "SEALED_VALID",
+        "terminal_pipeline": "PASS"
+      },
+      "sample_id": "sv3s-cd80aa5d21e790079a06",
+      "sample_slot": "B1"
+    },
+    {
+      "execution_receipt": {
+        "artifact_file_sha256": "ce631e9c8b62f4b26b3dbba1e012be95916b3c033d48c4695bf284fb524390ae",
+        "attempts": {
+          "http_post_attempt_count": 1,
+          "logical_model_call_count": 1,
+          "network_request_attempt_count": 1,
+          "provider_dispatch_attempt_count": 1
+        },
+        "execution_receipt_sha256": "a45ba9b99873a7d201474a785fe4e3c29609187cc83b665666d6f60423abc988",
+        "real_boundary_reached": 1,
+        "sample_id": "sv3s-689f28e6be27dd416760",
+        "sample_slot": "A2",
+        "status": "SEALED_VALID",
+        "terminal_pipeline": "PASS"
+      },
+      "sample_id": "sv3s-689f28e6be27dd416760",
+      "sample_slot": "A2"
+    },
+    {
+      "execution_receipt": {
+        "artifact_file_sha256": "cb570cad8e573a7dfbb6c8d8ceda23f490fa058aae54367cfb12adab707a9e03",
+        "attempts": {
+          "http_post_attempt_count": 1,
+          "logical_model_call_count": 1,
+          "network_request_attempt_count": 1,
+          "provider_dispatch_attempt_count": 1
+        },
+        "execution_receipt_sha256": "4ed4cb6a8f808c43b4cc6395cf6b81cc1464c82882ed4f0dc149169bb3faa3a3",
+        "real_boundary_reached": 1,
+        "sample_id": "sv3s-86c1bce67d1e52ec2aa6",
+        "sample_slot": "B2",
+        "status": "SEALED_VALID",
+        "terminal_pipeline": "PASS"
+      },
+      "sample_id": "sv3s-86c1bce67d1e52ec2aa6",
+      "sample_slot": "B2"
+    },
+    {
+      "execution_receipt": {
+        "artifact_file_sha256": "bcf7ccadb47600092acf1a7eed264e7aa30cbf0b1ab5f61c27352364087a8bba",
+        "attempts": {
+          "http_post_attempt_count": 1,
+          "logical_model_call_count": 1,
+          "network_request_attempt_count": 1,
+          "provider_dispatch_attempt_count": 1
+        },
+        "execution_receipt_sha256": "fe139b368d3b653dc99810164c679a71916b13b4a9018e6742c1b674fee34cdc",
+        "real_boundary_reached": 1,
+        "sample_id": "sv3s-32d61044ab8db7c9b145",
+        "sample_slot": "A3",
+        "status": "SEALED_VALID",
+        "terminal_pipeline": "PASS"
+      },
+      "sample_id": "sv3s-32d61044ab8db7c9b145",
+      "sample_slot": "A3"
+    },
+    {
+      "execution_receipt": {
+        "artifact_file_sha256": "303310df6ba6e77872df3de9c54c4f6fc03aa6c6edfd2e9110dd28214dc7ed5d",
+        "attempts": {
+          "http_post_attempt_count": 1,
+          "logical_model_call_count": 1,
+          "network_request_attempt_count": 1,
+          "provider_dispatch_attempt_count": 1
+        },
+        "execution_receipt_sha256": "1105c1682ad0b7d8ff00d4cbe2511851ddb3f646dc0b84c6c848016709d36db8",
+        "real_boundary_reached": 1,
+        "sample_id": "sv3s-bbd71244a306271cd726",
+        "sample_slot": "B3",
+        "status": "SEALED_VALID",
+        "terminal_pipeline": "PASS"
+      },
+      "sample_id": "sv3s-bbd71244a306271cd726",
+      "sample_slot": "B3"
+    }
+  ],
+  "schema": "SkillV3CampaignExecutionReceiptV1",
+  "status": "PASS"
+}

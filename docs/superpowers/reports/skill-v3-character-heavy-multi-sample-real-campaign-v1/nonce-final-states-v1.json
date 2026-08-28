@@ -1,0 +1,84 @@
+{
+  "rows": [
+    {
+      "nonce_final_state": {
+        "final_reason": "SEALED_VALID",
+        "nonce_closed": true,
+        "nonce_consumed": true,
+        "nonce_created": true,
+        "nonce_final_state": "CONSUMED",
+        "nonce_id": "sv3n-8ec776061c581bb639fdedc7c236ad5c",
+        "nonce_invalidated": false,
+        "nonce_receipt_sha256": "55b779fb75b446756f2014e1decb2c5eae9f90ff087cbd6d44ae07a36d79e6a9",
+        "nonce_reserved": true,
+        "reusable": false,
+        "schema": "SkillV3A1V3NonceFinalStateV1",
+        "status": "CONSUMED"
+      },
+      "sample_id": "sv3s-089dd120ad568f87e7ef",
+      "sample_slot": "A1"
+    },
+    {
+      "nonce_final_state": {
+        "final_reason": "SEALED_VALID",
+        "network_request_attempts": 1,
+        "nonce_receipt_sha256": "21fc09365b43b0e19453c2ec1cc6746279f032b1d2feabac26608354122b05fd",
+        "provider_dispatch_attempts": 1,
+        "single_use": true,
+        "state": "CONSUMED"
+      },
+      "sample_id": "sv3s-cd80aa5d21e790079a06",
+      "sample_slot": "B1"
+    },
+    {
+      "nonce_final_state": {
+        "final_reason": "SEALED_VALID",
+        "network_request_attempts": 1,
+        "nonce_receipt_sha256": "951dada59b4bcb932de27f28913006322547c2c24d64efac236f3e739200221c",
+        "provider_dispatch_attempts": 1,
+        "single_use": true,
+        "state": "CONSUMED"
+      },
+      "sample_id": "sv3s-689f28e6be27dd416760",
+      "sample_slot": "A2"
+    },
+    {
+      "nonce_final_state": {
+        "final_reason": "SEALED_VALID",
+        "network_request_attempts": 1,
+        "nonce_receipt_sha256": "f37cffd1c5c8523646518d11752a62ba6cf52501f93d8b88d31622dfed29a062",
+        "provider_dispatch_attempts": 1,
+        "single_use": true,
+        "state": "CONSUMED"
+      },
+      "sample_id": "sv3s-86c1bce67d1e52ec2aa6",
+      "sample_slot": "B2"
+    },
+    {
+      "nonce_final_state": {
+        "final_reason": "SEALED_VALID",
+        "network_request_attempts": 1,
+        "nonce_receipt_sha256": "633cfe94dc1d8bae3e2baf8ee8731a32edba1f11b05d8ef197a3e605631858e6",
+        "provider_dispatch_attempts": 1,
+        "single_use": true,
+        "state": "CONSUMED"
+      },
+      "sample_id": "sv3s-32d61044ab8db7c9b145",
+      "sample_slot": "A3"
+    },
+    {
+      "nonce_final_state": {
+        "final_reason": "SEALED_VALID",
+        "network_request_attempts": 1,
+        "nonce_receipt_sha256": "2a084175b2f0329049670b4c33551578a0f7172159e16a2bd2c8555a4cf68ccd",
+        "provider_dispatch_attempts": 1,
+        "single_use": true,
+        "state": "CONSUMED"
+      },
+      "sample_id": "sv3s-bbd71244a306271cd726",
+      "sample_slot": "B3"
+    }
+  ],
+  "schema": "SkillV3CampaignNonceFinalStateV1",
+  "status": "PASS"
+}

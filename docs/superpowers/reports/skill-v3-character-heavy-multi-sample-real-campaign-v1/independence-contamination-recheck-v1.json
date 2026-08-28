@@ -1,0 +1,15 @@
+{
+  "cross_arm_prose_injection": false,
+  "primary_changed_variable": "SKILL_CONTEXT",
+  "prior_blind_result_in_input": false,
+  "prior_sample_prose_in_input": false,
+  "prior_sample_result_in_input": false,
+  "schema": "SkillV3CampaignIndependenceContaminationRecheckV1",
+  "status": "PASS",
+  "uncontrolled_variable_count": 0,
+  "unique_approvals": 6,
+  "unique_artifacts": 6,
+  "unique_execution_receipts": 6,
+  "unique_nonces": 6,
+  "unique_sample_ids": 6
+}

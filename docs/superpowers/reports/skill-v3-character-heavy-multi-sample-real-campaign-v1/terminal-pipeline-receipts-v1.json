@@ -1,0 +1,101 @@
+{
+  "rows": [
+    {
+      "sample_id": "sv3s-089dd120ad568f87e7ef",
+      "sample_slot": "A1",
+      "terminal_pipeline": {
+        "audit_serialization": "PASS",
+        "authority_normalization": "PASS",
+        "domain_validation": "PASS",
+        "freeze": "PASS",
+        "ordered_stages": [
+          "PROVIDER_RETURN",
+          "PARSE_CONVERSION",
+          "AUTHORITY_NORMALIZATION",
+          "DOMAIN_VALIDATION",
+          "SCHEMA_VALIDATION",
+          "FREEZE",
+          "AUDIT_SERIALIZATION",
+          "OUTPUT_ISOLATION",
+          "PERSISTENCE",
+          "SAMPLE_RECEIPT_SEAL"
+        ],
+        "output_isolation": "PASS",
+        "parse_conversion": "PASS",
+        "persistence": "PASS",
+        "production_authority": false,
+        "sample_receipt_seal": "PASS",
+        "schema": "SkillV3A1V3TerminalLocalPipelineReceiptV1",
+        "schema_validation": "PASS",
+        "status": "PASS"
+      }
+    },
+    {
+      "sample_id": "sv3s-cd80aa5d21e790079a06",
+      "sample_slot": "B1",
+      "terminal_pipeline": {
+        "freeze_state": "FROZEN",
+        "output_isolation": "PASS",
+        "parser_schema_before_freeze": "PASS",
+        "persistence": "PASS",
+        "production_authority": false,
+        "status": "PASS",
+        "validation_status": "PASS"
+      }
+    },
+    {
+      "sample_id": "sv3s-689f28e6be27dd416760",
+      "sample_slot": "A2",
+      "terminal_pipeline": {
+        "freeze_state": "FROZEN",
+        "output_isolation": "PASS",
+        "parser_schema_before_freeze": "PASS",
+        "persistence": "PASS",
+        "production_authority": false,
+        "status": "PASS",
+        "validation_status": "PASS"
+      }
+    },
+    {
+      "sample_id": "sv3s-86c1bce67d1e52ec2aa6",
+      "sample_slot": "B2",
+      "terminal_pipeline": {
+        "freeze_state": "FROZEN",
+        "output_isolation": "PASS",
+        "parser_schema_before_freeze": "PASS",
+        "persistence": "PASS",
+        "production_authority": false,
+        "status": "PASS",
+        "validation_status": "PASS"
+      }
+    },
+    {
+      "sample_id": "sv3s-32d61044ab8db7c9b145",
+      "sample_slot": "A3",
+      "terminal_pipeline": {
+        "freeze_state": "FROZEN",
+        "output_isolation": "PASS",
+        "parser_schema_before_freeze": "PASS",
+        "persistence": "PASS",
+        "production_authority": false,
+        "status": "PASS",
+        "validation_status": "PASS"
+      }
+    },
+    {
+      "sample_id": "sv3s-bbd71244a306271cd726",
+      "sample_slot": "B3",
+      "terminal_pipeline": {
+        "freeze_state": "FROZEN",
+        "output_isolation": "PASS",
+        "parser_schema_before_freeze": "PASS",
+        "persistence": "PASS",
+        "production_authority": false,
+        "status": "PASS",
+        "validation_status": "PASS"
+      }
+    }
+  ],
+  "schema": "SkillV3CampaignTerminalPipelineV1",
+  "status": "PASS"
+}

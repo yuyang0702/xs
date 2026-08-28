@@ -1,0 +1,13 @@
+{
+  "baml_src_diff": 0,
+  "canon_mutation_count": 0,
+  "full_short_canary": "NOT_EXECUTED",
+  "planning_v2_cutover": false,
+  "production_authority_count": 0,
+  "ready_mutation_count": 0,
+  "schema": "SkillV3CampaignProductionIsolationV1",
+  "skill_v3_cutover": false,
+  "src_diff": 0,
+  "status": "PASS",
+  "story_state_mutation_count": 0
+}

@@ -1,0 +1,72 @@
+{
+  "rows": [
+    {
+      "approval_final_state": {
+        "approval_id": "skill-v3-a1-destination-v3-20260827t145755z-edb721913cb9d2ad",
+        "consumption_receipt": {
+          "approval_id": "skill-v3-a1-destination-v3-20260827t145755z-edb721913cb9d2ad",
+          "canonicalization_version": "runtime-fingerprint-canonical-json-v1",
+          "consumption_sha256": "9a8a9b5f98ab1a6b1501b2e8d3cb5b8bee100ee93cad8a686cbd0685c30a8613",
+          "execution_receipt_sha256": "db9d08429ea3179a7b7bc59d233a5757224dfae3e3780818d3cdd5bed6f18895",
+          "schema": "SkillV3PilotSuccessorApprovalConsumptionV1",
+          "signed_approval_sha256": "9aecbe6ab2e144f9727bc8c400202c625065a462478ce493e5d8f99c6eb19866",
+          "version": 1
+        },
+        "reusable": false,
+        "schema": "SkillV3A1V3ApprovalFinalStateV1",
+        "signed_approval_sha256": "9aecbe6ab2e144f9727bc8c400202c625065a462478ce493e5d8f99c6eb19866",
+        "status": "CONSUMED",
+        "usage_status": "consumed"
+      },
+      "sample_id": "sv3s-089dd120ad568f87e7ef",
+      "sample_slot": "A1"
+    },
+    {
+      "approval_final_state": {
+        "consumption_sha256": "43f2e9f82f00c4ded6920723917c412e3fc020b91e3a41b97b36781b69ddd8d6",
+        "execution_receipt_sha256": "fe9fc61c55f751fcb550e04d1c5b2f90f56cfb9fc5ea9512f4a1edf7e5e23ff1",
+        "state": "CONSUMED"
+      },
+      "sample_id": "sv3s-cd80aa5d21e790079a06",
+      "sample_slot": "B1"
+    },
+    {
+      "approval_final_state": {
+        "consumption_sha256": "f657b016b093c3caba58078f6713a9ff6e09b939044cfa38b0625190d886b00e",
+        "execution_receipt_sha256": "a45ba9b99873a7d201474a785fe4e3c29609187cc83b665666d6f60423abc988",
+        "state": "CONSUMED"
+      },
+      "sample_id": "sv3s-689f28e6be27dd416760",
+      "sample_slot": "A2"
+    },
+    {
+      "approval_final_state": {
+        "consumption_sha256": "4473a510a2caa8ba3c0cba8afe9ee8b1d8b0d059acb403f125f875a9d24a0be3",
+        "execution_receipt_sha256": "4ed4cb6a8f808c43b4cc6395cf6b81cc1464c82882ed4f0dc149169bb3faa3a3",
+        "state": "CONSUMED"
+      },
+      "sample_id": "sv3s-86c1bce67d1e52ec2aa6",
+      "sample_slot": "B2"
+    },
+    {
+      "approval_final_state": {
+        "consumption_sha256": "e2cb484c9f70bf2e595960c30cfef2238a4985121ed728ccd78119fa5d7537ea",
+        "execution_receipt_sha256": "fe139b368d3b653dc99810164c679a71916b13b4a9018e6742c1b674fee34cdc",
+        "state": "CONSUMED"
+      },
+      "sample_id": "sv3s-32d61044ab8db7c9b145",
+      "sample_slot": "A3"
+    },
+    {
+      "approval_final_state": {
+        "consumption_sha256": "03f86ba43e1a41275c5b50a9bedddcf7052ddadaeccdfa999e2318f45233dab5",
+        "execution_receipt_sha256": "1105c1682ad0b7d8ff00d4cbe2511851ddb3f646dc0b84c6c848016709d36db8",
+        "state": "CONSUMED"
+      },
+      "sample_id": "sv3s-bbd71244a306271cd726",
+      "sample_slot": "B3"
+    }
+  ],
+  "schema": "SkillV3CampaignApprovalFinalStateV1",
+  "status": "PASS"
+}
