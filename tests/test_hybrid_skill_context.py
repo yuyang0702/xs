@@ -426,3 +426,28 @@ async def test_workflow_observer_exception_is_observable_and_production_fail_ope
     assert record["FAILURE_OBSERVABLE"] == "YES"
     assert record["PRODUCTION_MODEL_INPUT_UNCHANGED"] == "YES"
     assert "PRIVATE" not in json.dumps(record)
+
+
+def test_workflow_shadow_request_construction_failure_is_observable(tmp_path: Path) -> None:
+    gateway = _Gateway()
+    _db, _store, _project, service = _service(
+        tmp_path, mode="short", gateway=gateway, title="Hybrid request failure",
+    )
+    service.hybrid_skill_context_shadow_enabled = True
+    service.hybrid_skill_context_shadow_observer = lambda _request: pytest.fail(
+        "observer must not run after request construction fails"
+    )
+
+    def broken_request_factory() -> HybridShadowInputV1:
+        raise RuntimeError("PRIVATE request construction exception")
+
+    service._observe_hybrid_skill_context_shadow(
+        "7" * 64, broken_request_factory
+    )
+
+    assert service.hybrid_skill_context_shadow_failure_count == 1
+    record = service.hybrid_skill_context_shadow_records[0]
+    assert record["FAILURE_CODE"] == "UNEXPECTED_REQUEST_CONSTRUCTION_EXCEPTION"
+    assert record["PRODUCTION_MODEL_INPUT_SHA"] == "7" * 64
+    assert record["PRODUCTION_MODEL_INPUT_UNCHANGED"] == "YES"
+    assert "PRIVATE" not in json.dumps(record)

@@ -905,13 +905,17 @@ class WorkflowService:
 
     def _observe_hybrid_skill_context_shadow(
         self,
-        request: HybridShadowInputV1,
+        production_model_input_sha256: str,
+        request_factory: Callable[[], HybridShadowInputV1],
     ) -> None:
-        """Run one local Hybrid observer without consuming its result."""
+        """Build and run one local Hybrid observer without consuming its result."""
 
         if not self.hybrid_skill_context_shadow_enabled:
             return
+        failure_code = "UNEXPECTED_REQUEST_CONSTRUCTION_EXCEPTION"
         try:
+            request = request_factory()
+            failure_code = "UNEXPECTED_OBSERVER_EXCEPTION"
             if self.hybrid_skill_context_shadow_observer is None:
                 raise RuntimeError("hybrid shadow observer is not configured")
             raw = self.hybrid_skill_context_shadow_observer(request)
@@ -937,7 +941,7 @@ class WorkflowService:
                 "FINAL_HYBRID_ADVISORY_SHA": projection.get(
                     "FINAL_HYBRID_ADVISORY_SHA"
                 ),
-                "PRODUCTION_MODEL_INPUT_SHA": request.production_model_input_sha256,
+                "PRODUCTION_MODEL_INPUT_SHA": production_model_input_sha256,
                 "PRODUCTION_MODEL_INPUT_UNCHANGED": "YES",
                 "HYBRID_MODEL_VISIBLE": "NO",
                 "RAW_CONTENT_RETAINED": "NO",
@@ -950,7 +954,7 @@ class WorkflowService:
             self.hybrid_skill_context_shadow_records.append({
                 "schema": "WorkflowHybridSkillContextShadowRecordV1",
                 "SHADOW_RESULT": "NO_GO",
-                "FAILURE_CODE": "UNEXPECTED_OBSERVER_EXCEPTION",
+                "FAILURE_CODE": failure_code,
                 "ERROR_CLASS": type(exc).__name__[:128],
                 "ERROR_MESSAGE_SHA256": hashlib.sha256(
                     (
@@ -958,7 +962,7 @@ class WorkflowService:
                         f"{str(exc)}"
                     ).encode("utf-8", errors="replace")
                 ).hexdigest(),
-                "PRODUCTION_MODEL_INPUT_SHA": request.production_model_input_sha256,
+                "PRODUCTION_MODEL_INPUT_SHA": production_model_input_sha256,
                 "PRODUCTION_MODEL_INPUT_UNCHANGED": "YES",
                 "FAILURE_OBSERVABLE": "YES",
                 "HYBRID_MODEL_VISIBLE": "NO",
@@ -27189,20 +27193,12 @@ class WorkflowService:
                 # The exact production compactor output is captured only after
                 # it exists.  The observer receives it in local memory, returns
                 # hash-only evidence, and its result is deliberately discarded.
-                reference_tokens = estimate_input_tokens(model_constraints)
-                output_contract_tokens = (
-                    estimate_input_tokens(json.dumps(
-                        structured_contract.provider_schema(),
-                        ensure_ascii=False,
-                        sort_keys=True,
-                        separators=(",", ":"),
-                    ))
-                    if structured_contract is not None else 0
-                )
                 production_model_input_sha256 = hashlib.sha256(
                     (system + "\n" + user).encode("utf-8")
                 ).hexdigest()
-                self._observe_hybrid_skill_context_shadow(HybridShadowInputV1(
+                self._observe_hybrid_skill_context_shadow(
+                    production_model_input_sha256,
+                    lambda: HybridShadowInputV1(
                     stage="planning",
                     substage="event_realization",
                     task_case="runtime-planning-hybrid-shadow",
@@ -27306,11 +27302,21 @@ class WorkflowService:
                         mandatory_authority_tokens=estimate_input_tokens(
                             stage_system + "\n" + user
                         ),
-                        reference_guidance_tokens=reference_tokens,
+                        reference_guidance_tokens=estimate_input_tokens(
+                            model_constraints
+                        ),
                         baseline_skill_foundation_tokens=estimate_input_tokens(
                             model_skill_prompt
                         ),
-                        output_contract_tokens=output_contract_tokens,
+                        output_contract_tokens=(
+                            estimate_input_tokens(json.dumps(
+                                structured_contract.provider_schema(),
+                                ensure_ascii=False,
+                                sort_keys=True,
+                                separators=(",", ":"),
+                            ))
+                            if structured_contract is not None else 0
+                        ),
                         wrapper_and_estimator_margin_tokens=1024,
                     ),
                 ))
