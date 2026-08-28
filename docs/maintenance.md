@@ -2174,3 +2174,25 @@ and bytes of every file in the selected Skill directory. The separately named
 compares each value only with an expectation from the same domain; a package
 override, stale primary document, or changed section therefore produces its own
 typed, hash-only failure without changing the production model input.
+
+## Skill V3 Hybrid JIT approval boundary
+
+The Hybrid character-heavy pilot uses its own closed
+`SkillV3HybridSampleJitSignedApprovalV1` namespace. It does not broaden or
+reinterpret historical Selective V1-V4 approvals. A campaign permission must
+bind the exact Hybrid pilot, experiment, execution HEAD, ordered six-sample
+manifest, route, destination, egress policies, caps, expiry, and stop policy.
+Only the next eligible sample can receive one approval; later approvals and
+nonces cannot be precreated.
+
+The immutable signed body and mutable lifecycle are stored outside the Git
+worktree under the configured user data directory. Creation and lifecycle
+transitions are file-locked and atomic. The only lifecycle path is
+`UNUSED` to `CONSUMED`, `INVALID`, or `EXPIRED`; a terminal approval cannot be
+reactivated. A verified approval is projected into the already sealed Hybrid
+launcher shape, then a destination-bound durable nonce may be reserved, and
+only then can the dormant one-shot dispatcher be entered. Validation failures
+emit bounded hash-only typed receipts before nonce reservation or external
+action. Offline tests use explicitly non-executable permissions and temporary
+stores. This boundary does not itself grant campaign permission, create a real
+approval or nonce, read credentials, or alter production model input.
