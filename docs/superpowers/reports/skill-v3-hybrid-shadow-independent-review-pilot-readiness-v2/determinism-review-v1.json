@@ -1,0 +1,284 @@
+{
+  "schema": "SkillV3HybridDeterminismIndependentReviewV1",
+  "first": {
+    "DEMAND_FEATURES_SHA": "939edf677a4f3a542c6de401c30fc64f7f5abeddb78e0e816ef0ef2a20e8783c",
+    "PACKET_IDS": [
+      "CHARACTER_CHOICE_VOICE_PACKET_V1",
+      "CAUSAL_PRESSURE_PACKET_V1",
+      "SETUP_PAYOFF_CLOSURE_PACKET_V1"
+    ],
+    "ORDERED_SECTION_IDS": [
+      "sv3-faecc1466817d8aa",
+      "sv3-2985467b5f2bf929",
+      "sv3-60d4bee497e4c0dc",
+      "sv3-5f738df332e0919f",
+      "sv3-13580b3cdbef263e",
+      "sv3-2ced894267dc51e3",
+      "sv3-82ca2fdf9c28183b",
+      "sv3-6e4a0b2625a01274",
+      "sv3-972a75cb8ca8f0bd",
+      "sv3-ac7aa3aed8a7d237",
+      "sv3-4c39329c602fd48e",
+      "sv3-8e321726b4ebdcec",
+      "sv3-b75227453c1cc26a",
+      "sv3-10e4ba0c5b7509b4",
+      "sv3-ad3871e96cc16876"
+    ],
+    "DEPENDENCY_CLOSURE": {
+      "edges": [
+        {
+          "FROM_SECTION_ID": "sv3-13580b3cdbef263e",
+          "TO_SECTION_ID": "sv3-faecc1466817d8aa",
+          "DEPENDENCY_TYPE": "FORMAL_DEPENDENCY",
+          "SOURCE_OF_TRUTH": "skill-v3-hybrid-skill-context-architecture-design-v1/semantic-dependency-model-v1",
+          "REASON": "Plot points realize the rising-action progression."
+        },
+        {
+          "FROM_SECTION_ID": "sv3-13580b3cdbef263e",
+          "TO_SECTION_ID": "sv3-2985467b5f2bf929",
+          "DEPENDENCY_TYPE": "SCENE_REALIZATION_DEPENDENCY",
+          "SOURCE_OF_TRUTH": "skill-v3-hybrid-skill-context-architecture-design-v1/semantic-dependency-model-v1",
+          "REASON": "Causal plot pressure needs a concrete location affordance."
+        },
+        {
+          "FROM_SECTION_ID": "sv3-5f738df332e0919f",
+          "TO_SECTION_ID": "sv3-60d4bee497e4c0dc",
+          "DEPENDENCY_TYPE": "EXAMPLE_DEPENDENCY",
+          "SOURCE_OF_TRUTH": "skill-v3-hybrid-skill-context-architecture-design-v1/semantic-dependency-model-v1",
+          "REASON": "Rules become actionable through concrete notable features."
+        },
+        {
+          "FROM_SECTION_ID": "sv3-13580b3cdbef263e",
+          "TO_SECTION_ID": "sv3-5f738df332e0919f",
+          "DEPENDENCY_TYPE": "CROSS_SKILL_SEMANTIC_DEPENDENCY",
+          "SOURCE_OF_TRUTH": "skill-v3-hybrid-skill-context-architecture-design-v1/semantic-dependency-model-v1",
+          "REASON": "Causal escalation needs explicit world-system costs and limits."
+        },
+        {
+          "FROM_SECTION_ID": "sv3-ac7aa3aed8a7d237",
+          "TO_SECTION_ID": "sv3-2ced894267dc51e3",
+          "DEPENDENCY_TYPE": "PARENT_CONTEXT_DEPENDENCY",
+          "SOURCE_OF_TRUTH": "skill-v3-hybrid-skill-context-architecture-design-v1/semantic-dependency-model-v1",
+          "REASON": "Foreshadowing retains its setup identity."
+        },
+        {
+          "FROM_SECTION_ID": "sv3-972a75cb8ca8f0bd",
+          "TO_SECTION_ID": "sv3-82ca2fdf9c28183b",
+          "DEPENDENCY_TYPE": "EXAMPLE_DEPENDENCY",
+          "SOURCE_OF_TRUTH": "skill-v3-hybrid-skill-context-architecture-design-v1/semantic-dependency-model-v1",
+          "REASON": "Evidence is retained through its payoff target."
+        },
+        {
+          "FROM_SECTION_ID": "sv3-972a75cb8ca8f0bd",
+          "TO_SECTION_ID": "sv3-6e4a0b2625a01274",
+          "DEPENDENCY_TYPE": "QUALIFIER_DEPENDENCY",
+          "SOURCE_OF_TRUTH": "skill-v3-hybrid-skill-context-architecture-design-v1/semantic-dependency-model-v1",
+          "REASON": "Evidence requires a bounded resolution plan."
+        },
+        {
+          "FROM_SECTION_ID": "sv3-ac7aa3aed8a7d237",
+          "TO_SECTION_ID": "sv3-972a75cb8ca8f0bd",
+          "DEPENDENCY_TYPE": "APPLICATION_BRIDGE_DEPENDENCY",
+          "SOURCE_OF_TRUTH": "skill-v3-hybrid-skill-context-architecture-design-v1/semantic-dependency-model-v1",
+          "REASON": "Foreshadowing must yield observable evidence."
+        },
+        {
+          "FROM_SECTION_ID": "sv3-b75227453c1cc26a",
+          "TO_SECTION_ID": "sv3-4c39329c602fd48e",
+          "DEPENDENCY_TYPE": "ANTI_PATTERN_DEPENDENCY",
+          "SOURCE_OF_TRUTH": "skill-v3-hybrid-skill-context-architecture-design-v1/semantic-dependency-model-v1",
+          "REASON": "Trait context prevents generic voice templating."
+        },
+        {
+          "FROM_SECTION_ID": "sv3-10e4ba0c5b7509b4",
+          "TO_SECTION_ID": "sv3-4c39329c602fd48e",
+          "DEPENDENCY_TYPE": "PARENT_CONTEXT_DEPENDENCY",
+          "SOURCE_OF_TRUTH": "skill-v3-hybrid-skill-context-architecture-design-v1/semantic-dependency-model-v1",
+          "REASON": "Motivation requires the bound character traits context."
+        },
+        {
+          "FROM_SECTION_ID": "sv3-b75227453c1cc26a",
+          "TO_SECTION_ID": "sv3-8e321726b4ebdcec",
+          "DEPENDENCY_TYPE": "QUALIFIER_DEPENDENCY",
+          "SOURCE_OF_TRUTH": "skill-v3-hybrid-skill-context-architecture-design-v1/semantic-dependency-model-v1",
+          "REASON": "Voice choices must remain aligned with the character arc."
+        },
+        {
+          "FROM_SECTION_ID": "sv3-10e4ba0c5b7509b4",
+          "TO_SECTION_ID": "sv3-b75227453c1cc26a",
+          "DEPENDENCY_TYPE": "APPLICATION_BRIDGE_DEPENDENCY",
+          "SOURCE_OF_TRUTH": "skill-v3-hybrid-skill-context-architecture-design-v1/semantic-dependency-model-v1",
+          "REASON": "Motivation becomes scene-usable through exact voice behavior."
+        }
+      ],
+      "cycle_groups": [],
+      "ordering": "dependency-before-dependent_then_resolver-skill-source-order",
+      "silent_dependency_drop_count": 0
+    },
+    "ACTIONABILITY_DISTRIBUTION": {
+      "HIGH_ACTIONABILITY": 8,
+      "LOW_ACTIONABILITY": 2,
+      "MEDIUM_ACTIONABILITY": 5
+    },
+    "SUPPLEMENT_RENDER_SHA": "7f4ef3b8d320fdf7521b3d309b8e32208c89fa8953d85c2d44059c5cb52f8c81",
+    "FINAL_HYBRID_CANDIDATE_SHA": "0d92f0167bbb315c80e685f35b8b2fe17dd6a9ce71010e9b509c429b2af7437c",
+    "BUDGET_RECEIPT": {
+      "MANDATORY_AUTHORITY_BUDGET": 18,
+      "REFERENCE_DERIVED_GUIDANCE_BUDGET": 26,
+      "BASELINE_SKILL_FOUNDATION_BUDGET": 2232,
+      "VERBATIM_SUPPLEMENT_BUDGET": 933,
+      "OUTPUT_CONTRACT_BUDGET": 0,
+      "OUTPUT_RESERVE_TOKENS": 12288,
+      "WRAPPER_AND_ESTIMATOR_MARGIN_TOKENS": 1024,
+      "MAXIMUM_TOTAL_INPUT_TOKENS": 24576,
+      "AVAILABLE_SUPPLEMENT_TOKENS": 8988,
+      "BASELINE_TRUNCATED_FOR_SUPPLEMENT": "NO",
+      "REFERENCE_GUIDANCE_TRUNCATED_FOR_SUPPLEMENT": "NO",
+      "BASELINE_SHED_FOR_SUPPLEMENT": "NO",
+      "REFERENCE_GUIDANCE_SHED_FOR_SUPPLEMENT": "NO",
+      "HYBRID_DYNAMIC_SILENT_SHEDDING": "NO"
+    }
+  },
+  "second": {
+    "DEMAND_FEATURES_SHA": "939edf677a4f3a542c6de401c30fc64f7f5abeddb78e0e816ef0ef2a20e8783c",
+    "PACKET_IDS": [
+      "CHARACTER_CHOICE_VOICE_PACKET_V1",
+      "CAUSAL_PRESSURE_PACKET_V1",
+      "SETUP_PAYOFF_CLOSURE_PACKET_V1"
+    ],
+    "ORDERED_SECTION_IDS": [
+      "sv3-faecc1466817d8aa",
+      "sv3-2985467b5f2bf929",
+      "sv3-60d4bee497e4c0dc",
+      "sv3-5f738df332e0919f",
+      "sv3-13580b3cdbef263e",
+      "sv3-2ced894267dc51e3",
+      "sv3-82ca2fdf9c28183b",
+      "sv3-6e4a0b2625a01274",
+      "sv3-972a75cb8ca8f0bd",
+      "sv3-ac7aa3aed8a7d237",
+      "sv3-4c39329c602fd48e",
+      "sv3-8e321726b4ebdcec",
+      "sv3-b75227453c1cc26a",
+      "sv3-10e4ba0c5b7509b4",
+      "sv3-ad3871e96cc16876"
+    ],
+    "DEPENDENCY_CLOSURE": {
+      "edges": [
+        {
+          "FROM_SECTION_ID": "sv3-13580b3cdbef263e",
+          "TO_SECTION_ID": "sv3-faecc1466817d8aa",
+          "DEPENDENCY_TYPE": "FORMAL_DEPENDENCY",
+          "SOURCE_OF_TRUTH": "skill-v3-hybrid-skill-context-architecture-design-v1/semantic-dependency-model-v1",
+          "REASON": "Plot points realize the rising-action progression."
+        },
+        {
+          "FROM_SECTION_ID": "sv3-13580b3cdbef263e",
+          "TO_SECTION_ID": "sv3-2985467b5f2bf929",
+          "DEPENDENCY_TYPE": "SCENE_REALIZATION_DEPENDENCY",
+          "SOURCE_OF_TRUTH": "skill-v3-hybrid-skill-context-architecture-design-v1/semantic-dependency-model-v1",
+          "REASON": "Causal plot pressure needs a concrete location affordance."
+        },
+        {
+          "FROM_SECTION_ID": "sv3-5f738df332e0919f",
+          "TO_SECTION_ID": "sv3-60d4bee497e4c0dc",
+          "DEPENDENCY_TYPE": "EXAMPLE_DEPENDENCY",
+          "SOURCE_OF_TRUTH": "skill-v3-hybrid-skill-context-architecture-design-v1/semantic-dependency-model-v1",
+          "REASON": "Rules become actionable through concrete notable features."
+        },
+        {
+          "FROM_SECTION_ID": "sv3-13580b3cdbef263e",
+          "TO_SECTION_ID": "sv3-5f738df332e0919f",
+          "DEPENDENCY_TYPE": "CROSS_SKILL_SEMANTIC_DEPENDENCY",
+          "SOURCE_OF_TRUTH": "skill-v3-hybrid-skill-context-architecture-design-v1/semantic-dependency-model-v1",
+          "REASON": "Causal escalation needs explicit world-system costs and limits."
+        },
+        {
+          "FROM_SECTION_ID": "sv3-ac7aa3aed8a7d237",
+          "TO_SECTION_ID": "sv3-2ced894267dc51e3",
+          "DEPENDENCY_TYPE": "PARENT_CONTEXT_DEPENDENCY",
+          "SOURCE_OF_TRUTH": "skill-v3-hybrid-skill-context-architecture-design-v1/semantic-dependency-model-v1",
+          "REASON": "Foreshadowing retains its setup identity."
+        },
+        {
+          "FROM_SECTION_ID": "sv3-972a75cb8ca8f0bd",
+          "TO_SECTION_ID": "sv3-82ca2fdf9c28183b",
+          "DEPENDENCY_TYPE": "EXAMPLE_DEPENDENCY",
+          "SOURCE_OF_TRUTH": "skill-v3-hybrid-skill-context-architecture-design-v1/semantic-dependency-model-v1",
+          "REASON": "Evidence is retained through its payoff target."
+        },
+        {
+          "FROM_SECTION_ID": "sv3-972a75cb8ca8f0bd",
+          "TO_SECTION_ID": "sv3-6e4a0b2625a01274",
+          "DEPENDENCY_TYPE": "QUALIFIER_DEPENDENCY",
+          "SOURCE_OF_TRUTH": "skill-v3-hybrid-skill-context-architecture-design-v1/semantic-dependency-model-v1",
+          "REASON": "Evidence requires a bounded resolution plan."
+        },
+        {
+          "FROM_SECTION_ID": "sv3-ac7aa3aed8a7d237",
+          "TO_SECTION_ID": "sv3-972a75cb8ca8f0bd",
+          "DEPENDENCY_TYPE": "APPLICATION_BRIDGE_DEPENDENCY",
+          "SOURCE_OF_TRUTH": "skill-v3-hybrid-skill-context-architecture-design-v1/semantic-dependency-model-v1",
+          "REASON": "Foreshadowing must yield observable evidence."
+        },
+        {
+          "FROM_SECTION_ID": "sv3-b75227453c1cc26a",
+          "TO_SECTION_ID": "sv3-4c39329c602fd48e",
+          "DEPENDENCY_TYPE": "ANTI_PATTERN_DEPENDENCY",
+          "SOURCE_OF_TRUTH": "skill-v3-hybrid-skill-context-architecture-design-v1/semantic-dependency-model-v1",
+          "REASON": "Trait context prevents generic voice templating."
+        },
+        {
+          "FROM_SECTION_ID": "sv3-10e4ba0c5b7509b4",
+          "TO_SECTION_ID": "sv3-4c39329c602fd48e",
+          "DEPENDENCY_TYPE": "PARENT_CONTEXT_DEPENDENCY",
+          "SOURCE_OF_TRUTH": "skill-v3-hybrid-skill-context-architecture-design-v1/semantic-dependency-model-v1",
+          "REASON": "Motivation requires the bound character traits context."
+        },
+        {
+          "FROM_SECTION_ID": "sv3-b75227453c1cc26a",
+          "TO_SECTION_ID": "sv3-8e321726b4ebdcec",
+          "DEPENDENCY_TYPE": "QUALIFIER_DEPENDENCY",
+          "SOURCE_OF_TRUTH": "skill-v3-hybrid-skill-context-architecture-design-v1/semantic-dependency-model-v1",
+          "REASON": "Voice choices must remain aligned with the character arc."
+        },
+        {
+          "FROM_SECTION_ID": "sv3-10e4ba0c5b7509b4",
+          "TO_SECTION_ID": "sv3-b75227453c1cc26a",
+          "DEPENDENCY_TYPE": "APPLICATION_BRIDGE_DEPENDENCY",
+          "SOURCE_OF_TRUTH": "skill-v3-hybrid-skill-context-architecture-design-v1/semantic-dependency-model-v1",
+          "REASON": "Motivation becomes scene-usable through exact voice behavior."
+        }
+      ],
+      "cycle_groups": [],
+      "ordering": "dependency-before-dependent_then_resolver-skill-source-order",
+      "silent_dependency_drop_count": 0
+    },
+    "ACTIONABILITY_DISTRIBUTION": {
+      "HIGH_ACTIONABILITY": 8,
+      "LOW_ACTIONABILITY": 2,
+      "MEDIUM_ACTIONABILITY": 5
+    },
+    "SUPPLEMENT_RENDER_SHA": "7f4ef3b8d320fdf7521b3d309b8e32208c89fa8953d85c2d44059c5cb52f8c81",
+    "FINAL_HYBRID_CANDIDATE_SHA": "0d92f0167bbb315c80e685f35b8b2fe17dd6a9ce71010e9b509c429b2af7437c",
+    "BUDGET_RECEIPT": {
+      "MANDATORY_AUTHORITY_BUDGET": 18,
+      "REFERENCE_DERIVED_GUIDANCE_BUDGET": 26,
+      "BASELINE_SKILL_FOUNDATION_BUDGET": 2232,
+      "VERBATIM_SUPPLEMENT_BUDGET": 933,
+      "OUTPUT_CONTRACT_BUDGET": 0,
+      "OUTPUT_RESERVE_TOKENS": 12288,
+      "WRAPPER_AND_ESTIMATOR_MARGIN_TOKENS": 1024,
+      "MAXIMUM_TOTAL_INPUT_TOKENS": 24576,
+      "AVAILABLE_SUPPLEMENT_TOKENS": 8988,
+      "BASELINE_TRUNCATED_FOR_SUPPLEMENT": "NO",
+      "REFERENCE_GUIDANCE_TRUNCATED_FOR_SUPPLEMENT": "NO",
+      "BASELINE_SHED_FOR_SUPPLEMENT": "NO",
+      "REFERENCE_GUIDANCE_SHED_FOR_SUPPLEMENT": "NO",
+      "HYBRID_DYNAMIC_SILENT_SHEDDING": "NO"
+    }
+  },
+  "identical": true,
+  "LLM_SELECTOR": "NO",
+  "status": "PASS"
+}

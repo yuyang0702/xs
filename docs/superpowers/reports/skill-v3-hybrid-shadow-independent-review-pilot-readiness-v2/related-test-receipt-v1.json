@@ -1,0 +1,6 @@
+{
+  "schema": "SkillV3HybridRelatedTestReceiptV1",
+  "command": "pytest -q selected Hybrid, architecture, root-cause, mapping, context-packet, and workflow clusters",
+  "result": "205 passed, 9 historical sealed-oracle baseline-gate errors, 1 dependency deprecation warning in 77.74s",
+  "NEW_OWNING_SOURCE_REGRESSION_COUNT": 0
+}

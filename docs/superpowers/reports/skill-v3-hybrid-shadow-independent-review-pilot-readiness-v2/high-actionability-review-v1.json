@@ -1,0 +1,106 @@
+{
+  "schema": "SkillV3HybridHighActionabilityReviewV1",
+  "DETERMINISTIC_ACTIONABILITY": "YES",
+  "SOURCE_GROUNDED_ACTIONABILITY": "YES",
+  "SAMPLE_ID_DEPENDENCE": "NO",
+  "BLIND_OUTPUT_DEPENDENCE": "NO",
+  "PAIR_SPECIFIC_DEPENDENCE": "NO",
+  "LOW_ACTIONABILITY_LEAF_DOMINANCE": "NO",
+  "counts_and_character_shares": [
+    {
+      "class": "HIGH_ACTIONABILITY",
+      "section_count": 8,
+      "source_characters": 1309,
+      "character_share": 0.630236
+    },
+    {
+      "class": "LOW_ACTIONABILITY",
+      "section_count": 2,
+      "source_characters": 93,
+      "character_share": 0.044776
+    },
+    {
+      "class": "MEDIUM_ACTIONABILITY",
+      "section_count": 5,
+      "source_characters": 675,
+      "character_share": 0.324988
+    }
+  ],
+  "scene_level_semantic_functions": [
+    {
+      "semantic_function": "causal_coherence",
+      "source_grounded_section_ids": [
+        "sv3-faecc1466817d8aa",
+        "sv3-5f738df332e0919f",
+        "sv3-13580b3cdbef263e",
+        "sv3-6e4a0b2625a01274",
+        "sv3-972a75cb8ca8f0bd"
+      ],
+      "executable_guidance_present": true
+    },
+    {
+      "semantic_function": "character_agency_motivation",
+      "source_grounded_section_ids": [
+        "sv3-4c39329c602fd48e",
+        "sv3-8e321726b4ebdcec",
+        "sv3-10e4ba0c5b7509b4"
+      ],
+      "executable_guidance_present": true
+    },
+    {
+      "semantic_function": "relationship_consequence",
+      "source_grounded_section_ids": [
+        "sv3-8e321726b4ebdcec"
+      ],
+      "executable_guidance_present": true
+    },
+    {
+      "semantic_function": "scene_pressure",
+      "source_grounded_section_ids": [
+        "sv3-faecc1466817d8aa",
+        "sv3-2985467b5f2bf929",
+        "sv3-60d4bee497e4c0dc",
+        "sv3-5f738df332e0919f",
+        "sv3-13580b3cdbef263e"
+      ],
+      "executable_guidance_present": true
+    },
+    {
+      "semantic_function": "setup_payoff",
+      "source_grounded_section_ids": [
+        "sv3-2ced894267dc51e3",
+        "sv3-82ca2fdf9c28183b",
+        "sv3-6e4a0b2625a01274",
+        "sv3-972a75cb8ca8f0bd",
+        "sv3-ac7aa3aed8a7d237",
+        "sv3-ad3871e96cc16876"
+      ],
+      "executable_guidance_present": true
+    },
+    {
+      "semantic_function": "specificity",
+      "source_grounded_section_ids": [
+        "sv3-2985467b5f2bf929",
+        "sv3-60d4bee497e4c0dc",
+        "sv3-5f738df332e0919f",
+        "sv3-ad3871e96cc16876"
+      ],
+      "executable_guidance_present": true
+    },
+    {
+      "semantic_function": "subtext_dramatization",
+      "source_grounded_section_ids": [
+        "sv3-b75227453c1cc26a"
+      ],
+      "executable_guidance_present": true
+    },
+    {
+      "semantic_function": "voice_readiness",
+      "source_grounded_section_ids": [
+        "sv3-b75227453c1cc26a"
+      ],
+      "executable_guidance_present": true
+    }
+  ],
+  "status": "PASS"
+}

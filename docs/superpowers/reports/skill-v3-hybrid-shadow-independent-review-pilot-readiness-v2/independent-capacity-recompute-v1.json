@@ -1,0 +1,123 @@
+{
+  "schema": "SkillV3HybridIndependentCapacityRecomputeV1",
+  "identity_basis": "current production SkillPromptCompactor baseline, not the historical campaign baseline",
+  "rows": [
+    {
+      "DEMAND_CLASS": "character-heavy",
+      "BASELINE_CHARS_TOKENS": {
+        "chars": 8927,
+        "tokens": 2232
+      },
+      "REFERENCE_GUIDANCE_CHARS_TOKENS": {
+        "chars": 102,
+        "tokens": 26
+      },
+      "SUPPLEMENT_CHARS_TOKENS": {
+        "chars": 3732,
+        "tokens": 933
+      },
+      "TOTAL_ADVISORY_CHARS_TOKENS": {
+        "chars": 12793,
+        "tokens": 3199
+      },
+      "TOTAL_PROMPT_ESTIMATE": 4241,
+      "LOCAL_PRECHECK_RESULT": "PASS",
+      "PROVIDER_CONTEXT_HEADROOM": 16239,
+      "SHADOW_RESULT": "PASS"
+    },
+    {
+      "DEMAND_CLASS": "world-heavy",
+      "BASELINE_CHARS_TOKENS": {
+        "chars": 8927,
+        "tokens": 2232
+      },
+      "REFERENCE_GUIDANCE_CHARS_TOKENS": {
+        "chars": 102,
+        "tokens": 26
+      },
+      "SUPPLEMENT_CHARS_TOKENS": {
+        "chars": 3082,
+        "tokens": 771
+      },
+      "TOTAL_ADVISORY_CHARS_TOKENS": {
+        "chars": 12143,
+        "tokens": 3036
+      },
+      "TOTAL_PROMPT_ESTIMATE": 4078,
+      "LOCAL_PRECHECK_RESULT": "PASS",
+      "PROVIDER_CONTEXT_HEADROOM": 16402,
+      "SHADOW_RESULT": "PASS"
+    },
+    {
+      "DEMAND_CLASS": "conflict-pacing-heavy",
+      "BASELINE_CHARS_TOKENS": {
+        "chars": 8927,
+        "tokens": 2232
+      },
+      "REFERENCE_GUIDANCE_CHARS_TOKENS": {
+        "chars": 102,
+        "tokens": 26
+      },
+      "SUPPLEMENT_CHARS_TOKENS": {
+        "chars": 3732,
+        "tokens": 933
+      },
+      "TOTAL_ADVISORY_CHARS_TOKENS": {
+        "chars": 12793,
+        "tokens": 3199
+      },
+      "TOTAL_PROMPT_ESTIMATE": 4241,
+      "LOCAL_PRECHECK_RESULT": "PASS",
+      "PROVIDER_CONTEXT_HEADROOM": 16239,
+      "SHADOW_RESULT": "PASS"
+    },
+    {
+      "DEMAND_CLASS": "setup-payoff-heavy",
+      "BASELINE_CHARS_TOKENS": {
+        "chars": 8927,
+        "tokens": 2232
+      },
+      "REFERENCE_GUIDANCE_CHARS_TOKENS": {
+        "chars": 102,
+        "tokens": 26
+      },
+      "SUPPLEMENT_CHARS_TOKENS": {
+        "chars": 2577,
+        "tokens": 645
+      },
+      "TOTAL_ADVISORY_CHARS_TOKENS": {
+        "chars": 11638,
+        "tokens": 2910
+      },
+      "TOTAL_PROMPT_ESTIMATE": 3952,
+      "LOCAL_PRECHECK_RESULT": "PASS",
+      "PROVIDER_CONTEXT_HEADROOM": 16528,
+      "SHADOW_RESULT": "PASS"
+    },
+    {
+      "DEMAND_CLASS": "mixed",
+      "BASELINE_CHARS_TOKENS": {
+        "chars": 8927,
+        "tokens": 2232
+      },
+      "REFERENCE_GUIDANCE_CHARS_TOKENS": {
+        "chars": 102,
+        "tokens": 26
+      },
+      "SUPPLEMENT_CHARS_TOKENS": {
+        "chars": 4237,
+        "tokens": 1060
+      },
+      "TOTAL_ADVISORY_CHARS_TOKENS": {
+        "chars": 13298,
+        "tokens": 3325
+      },
+      "TOTAL_PROMPT_ESTIMATE": 4367,
+      "LOCAL_PRECHECK_RESULT": "PASS",
+      "PROVIDER_CONTEXT_HEADROOM": 16113,
+      "SHADOW_RESULT": "PASS"
+    }
+  ],
+  "arbitrary_3000_character_target": false,
+  "ALL_FIVE_DEMAND_CAPACITY": "PASS"
+}

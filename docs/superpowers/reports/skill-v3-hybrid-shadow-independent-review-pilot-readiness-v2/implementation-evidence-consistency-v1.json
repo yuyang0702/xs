@@ -1,0 +1,64 @@
+{
+  "schema": "SkillV3HybridImplementationEvidenceConsistencyReviewV1",
+  "required_roots": [
+    {
+      "root": "skill-v3-hybrid-shadow-production-identity-correction-v1",
+      "manifest_schema": "SkillV3HybridIdentityCorrectionManifestDefinitionV1",
+      "manifest_file_sha256": "d9a4b5218bdf341e64bd25bee9b02c0a969e74bcd6eed1bbae2245e38d2a1c36",
+      "entry_count": 22,
+      "mismatch_count": 0,
+      "status": "EXACT"
+    },
+    {
+      "root": "skill-v3-hybrid-skill-context-shadow-implementation-v1",
+      "manifest_schema": "SkillV3HybridShadowSha256ManifestV1",
+      "manifest_file_sha256": "082b4ea03b55ef3cdc1da5a35eef87251e15420fe26b1c6c9e0d8a5b931bbf7d",
+      "entry_count": 29,
+      "mismatch_count": 0,
+      "status": "EXACT"
+    },
+    {
+      "root": "skill-v3-hybrid-skill-context-architecture-design-v1",
+      "manifest_schema": "SkillV3HybridArchitectureSha256ManifestV1",
+      "manifest_file_sha256": "f0da1a567186adc712661298b175d4e55d1ea1ef96c239e4a6e5b052be71dc81",
+      "entry_count": 26,
+      "mismatch_count": 0,
+      "status": "EXACT"
+    },
+    {
+      "root": "skill-v3-selective-compiler-multi-sample-quality-root-cause-v1",
+      "manifest_schema": "SkillV3QualityRootCauseSha256ManifestV1",
+      "manifest_file_sha256": "4fc742fe66d8a0a111da7974b4f8d8a6e9c919c950c903b68e9ac0fe7cdd7af8",
+      "entry_count": 24,
+      "mismatch_count": 0,
+      "status": "EXACT"
+    },
+    {
+      "root": "skill-v3-character-heavy-multi-sample-real-campaign-v1",
+      "manifest_schema": "SkillV3CampaignSha256ManifestV1",
+      "manifest_file_sha256": "0da358cc14b04b1463e41668b5593e5f53ac017f3c7677fdd131dd08a8488c54",
+      "entry_count": 18,
+      "mismatch_count": 0,
+      "status": "EXACT"
+    },
+    {
+      "root": "skill-v3-character-heavy-multi-sample-mapping-reveal-decision-v1",
+      "manifest_schema": "SkillV3MappingRevealDecisionManifestEnvelopeV1",
+      "manifest_file_sha256": "1c9f0b69aab881b34319b2e424a286dc941ea537678fb898a649d647efb91e94",
+      "entry_count": 21,
+      "mismatch_count": 0,
+      "status": "EXACT"
+    }
+  ],
+  "source_files_reviewed": [
+    "src/novel_flywheel/hybrid_skill_context.py",
+    "src/novel_flywheel/selective_skill_compiler.py",
+    "src/novel_flywheel/skills.py",
+    "src/novel_flywheel/workflows.py",
+    "tests/test_hybrid_skill_context.py",
+    "tools/diagnostics/materialize_skill_v3_hybrid_independent_review_v2.py"
+  ],
+  "source_wins_over_reports": true,
+  "mismatch_count": 0,
+  "SOURCE_EVIDENCE_IMPLEMENTATION_SURFACE_MATCH": "YES"
+}

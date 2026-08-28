@@ -1,0 +1,32 @@
+{
+  "schema": "SkillV3HybridOverlapReinforcementReviewV1",
+  "rows": [
+    {
+      "class": "ANTI_PATTERN_RESTORATION",
+      "count": 1
+    },
+    {
+      "class": "BENEFICIAL_REINFORCEMENT",
+      "count": 1
+    },
+    {
+      "class": "CONTRADICTORY_RESTATEMENT",
+      "count": 0
+    },
+    {
+      "class": "DETAIL_ENRICHMENT",
+      "count": 10
+    },
+    {
+      "class": "QUALIFIER_RESTORATION",
+      "count": 3
+    },
+    {
+      "class": "REDUNDANT_DUPLICATION",
+      "count": 0
+    }
+  ],
+  "UNRESOLVED_CONTRADICTION_COUNT": 0,
+  "lexical_only_deduplication": false,
+  "status": "PASS"
+}

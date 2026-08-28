@@ -1,0 +1,15 @@
+{
+  "schema": "SkillV3HybridRenderOrderSalienceReviewV1",
+  "RENDER_ORDER": [
+    "PROTECTED_NON_SKILL_PREFIX",
+    "EXACT_BASELINE_SKILL_FOUNDATION",
+    "HYBRID_VERBATIM_SUPPLEMENT"
+  ],
+  "WRAPPER_VERSION": "hybrid-verbatim-supplement-wrapper-v1",
+  "DELIMITER_VERSION": "hybrid-supplement-delimiter-v1",
+  "SUPPLEMENT_DISTANCE_FROM_TASK": "after current task envelope, mandatory rules, and global skeleton inside the lowest advisory layer",
+  "SUPPLEMENT_DISTANCE_FROM_OUTPUT_CONTRACT": "output contract remains in the earlier current task envelope; distance/precedence unchanged",
+  "wrapper_paraphrase_count": 0,
+  "task_and_contract_precedence_unchanged": true,
+  "status": "PASS"
+}

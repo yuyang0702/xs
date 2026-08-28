@@ -1,0 +1,14 @@
+{
+  "schema": "SkillV3HybridCapacityFailClosedReviewV1",
+  "injection": "complete character-heavy supplement with zero available supplement tokens",
+  "BASELINE_TRUNCATED_FOR_SUPPLEMENT": "NO",
+  "REFERENCE_TRUNCATED_FOR_SUPPLEMENT": "NO",
+  "BASELINE_SHED_FOR_SUPPLEMENT": "NO",
+  "REFERENCE_SHED_FOR_SUPPLEMENT": "NO",
+  "DEPENDENCY_SILENTLY_DROPPED": "NO",
+  "HYBRID_DYNAMIC_SILENT_SHEDDING": "NO",
+  "SHADOW_RESULT": "CAPACITY_NO_GO",
+  "failure_code": "HYBRID_SUPPLEMENT_CAPACITY_NO_GO",
+  "PRODUCTION_MODEL_INPUT_UNCHANGED": "YES",
+  "status": "PASS"
+}

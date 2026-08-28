@@ -1,0 +1,8 @@
+{
+  "schema": "SkillV3HybridFullSuiteReceiptV1",
+  "command": "pytest -q",
+  "result": "3861 passed, 41 skipped, 6 xfailed, 54 historical failures, 81 historical errors, 1 dependency deprecation warning in 2154.17s",
+  "NEW_REVIEW_RELEVANT_REGRESSION_COUNT": 0,
+  "NEW_OWNING_SOURCE_REGRESSION_COUNT": 0,
+  "classification_for_remaining_non_green": "HISTORICAL_SEALED_ORACLE_LIVE_PARITY_NON_GREEN"
+}

@@ -1,0 +1,145 @@
+{
+  "schema": "SkillV3HybridSectionGranularityReviewV1",
+  "PACKET_IDS": [
+    "CHARACTER_CHOICE_VOICE_PACKET_V1",
+    "CAUSAL_PRESSURE_PACKET_V1",
+    "SETUP_PAYOFF_CLOSURE_PACKET_V1"
+  ],
+  "packet_bindings": [
+    {
+      "PACKET_ID": "CHARACTER_CHOICE_VOICE_PACKET_V1",
+      "DEMAND_FEATURES_SHA": "939edf677a4f3a542c6de401c30fc64f7f5abeddb78e0e816ef0ef2a20e8783c",
+      "ROOT_SECTION_IDS": [
+        "sv3-10e4ba0c5b7509b4",
+        "sv3-b75227453c1cc26a",
+        "sv3-8e321726b4ebdcec"
+      ],
+      "DEPENDENCY_SECTION_IDS": [
+        "sv3-4c39329c602fd48e"
+      ],
+      "SOURCE_SKILLS": [
+        "character-management"
+      ],
+      "ORDERED_SECTION_IDS": [
+        "sv3-4c39329c602fd48e",
+        "sv3-8e321726b4ebdcec",
+        "sv3-b75227453c1cc26a",
+        "sv3-10e4ba0c5b7509b4"
+      ],
+      "ORDERED_SECTION_SHAS": [
+        "18cdd21d9e678213380ec004f33cd1a02fe79d15fba88870a834f1d2300b6149",
+        "fd55b33019a46b72b1e92d64f7d0f84967996307f60247e844608e214b51c6ae",
+        "6fed87b6d18784ceaf3271bd4cbd2374ee9173540789ac1645af787fbfee2f83",
+        "798c073d3b85fe59b34e26f99236059fb30315a17f3a8d8173c3ce0d608e6fcf"
+      ],
+      "SEMANTIC_FUNCTIONS": [
+        "character_agency_motivation",
+        "relationship_consequence",
+        "subtext_dramatization",
+        "voice_readiness",
+        "anti_template_realization"
+      ],
+      "ACTIONABILITY_DISTRIBUTION": {
+        "HIGH_ACTIONABILITY": 2,
+        "LOW_ACTIONABILITY": 0,
+        "MEDIUM_ACTIONABILITY": 2
+      },
+      "PACKET_RENDER_SHA": "ce1ce857fcbf3a29af1e0438a7999cbba0c6165017091c65ec1ab1688ec9a1fa",
+      "PACKET_CHAR_COUNT": 1154,
+      "PACKET_TOKEN_ESTIMATE": 289
+    },
+    {
+      "PACKET_ID": "CAUSAL_PRESSURE_PACKET_V1",
+      "DEMAND_FEATURES_SHA": "939edf677a4f3a542c6de401c30fc64f7f5abeddb78e0e816ef0ef2a20e8783c",
+      "ROOT_SECTION_IDS": [
+        "sv3-13580b3cdbef263e",
+        "sv3-5f738df332e0919f",
+        "sv3-60d4bee497e4c0dc"
+      ],
+      "DEPENDENCY_SECTION_IDS": [
+        "sv3-faecc1466817d8aa",
+        "sv3-2985467b5f2bf929"
+      ],
+      "SOURCE_SKILLS": [
+        "plot-structure",
+        "worldbuilding"
+      ],
+      "ORDERED_SECTION_IDS": [
+        "sv3-faecc1466817d8aa",
+        "sv3-2985467b5f2bf929",
+        "sv3-60d4bee497e4c0dc",
+        "sv3-5f738df332e0919f",
+        "sv3-13580b3cdbef263e"
+      ],
+      "ORDERED_SECTION_SHAS": [
+        "ac802425007fdb56b8a1c835d3557607ca70537439ae082d8cecaf64a8d2fece",
+        "6fafb45c97b2c08902b03097f3f06f2dc1d9e9c9465b9489e1f5b37c209dad41",
+        "62fd1ac8a3c40cd681447b1e42ab7cb35d30a3c7dc8622553167db894983259a",
+        "adf59ba8ee504efb755dee11f2ac4264c7ce806f7777ac0e3d39aec16048a406",
+        "73c2b160147666820490daac3c8263c83616be1d6b7553dbe4c7ad59c1deecd5"
+      ],
+      "SEMANTIC_FUNCTIONS": [
+        "causal_coherence",
+        "scene_pressure"
+      ],
+      "ACTIONABILITY_DISTRIBUTION": {
+        "HIGH_ACTIONABILITY": 3,
+        "LOW_ACTIONABILITY": 0,
+        "MEDIUM_ACTIONABILITY": 2
+      },
+      "PACKET_RENDER_SHA": "6793e899604ea98e3146a697c733b1c8139b023a8fc89d250a8108ad07a8c78f",
+      "PACKET_CHAR_COUNT": 1371,
+      "PACKET_TOKEN_ESTIMATE": 343
+    },
+    {
+      "PACKET_ID": "SETUP_PAYOFF_CLOSURE_PACKET_V1",
+      "DEMAND_FEATURES_SHA": "939edf677a4f3a542c6de401c30fc64f7f5abeddb78e0e816ef0ef2a20e8783c",
+      "ROOT_SECTION_IDS": [
+        "sv3-ac7aa3aed8a7d237",
+        "sv3-972a75cb8ca8f0bd",
+        "sv3-6e4a0b2625a01274",
+        "sv3-ad3871e96cc16876"
+      ],
+      "DEPENDENCY_SECTION_IDS": [
+        "sv3-2ced894267dc51e3",
+        "sv3-82ca2fdf9c28183b"
+      ],
+      "SOURCE_SKILLS": [
+        "plot-structure",
+        "worldbuilding"
+      ],
+      "ORDERED_SECTION_IDS": [
+        "sv3-2ced894267dc51e3",
+        "sv3-82ca2fdf9c28183b",
+        "sv3-6e4a0b2625a01274",
+        "sv3-972a75cb8ca8f0bd",
+        "sv3-ac7aa3aed8a7d237",
+        "sv3-ad3871e96cc16876"
+      ],
+      "ORDERED_SECTION_SHAS": [
+        "a7f8ff1660501aa2f0a7add1f59ebb57f10974b69bef32cabfac0fdb6edb39d8",
+        "0fa3af2eb8e48d88855a740fd829235839d2cb20c39eb8979da9ef5cbd005483",
+        "38571a839a3723fbc27dfa75db7110e677ebe15f07d6b282a1baa4491a12f80c",
+        "0ff2b2bf8144d3715869f1c7f63f594a22afe08558117c797c928ac7e1318c5f",
+        "8598c41dcc56bea1ab0987381230b8a39a088748ca1f942f0f4c84df24d7acd0",
+        "b2e8d32ed90de3f9711ee25d1938d41e4670352b470cffec67cf31f9ef19db32"
+      ],
+      "SEMANTIC_FUNCTIONS": [
+        "setup_payoff"
+      ],
+      "ACTIONABILITY_DISTRIBUTION": {
+        "HIGH_ACTIONABILITY": 3,
+        "LOW_ACTIONABILITY": 2,
+        "MEDIUM_ACTIONABILITY": 1
+      },
+      "PACKET_RENDER_SHA": "c958ec4040ba7e26667441d2a8bba34989ba18f9809327db721b2669b1745179",
+      "PACKET_CHAR_COUNT": 1129,
+      "PACKET_TOKEN_ESTIMATE": 283
+    }
+  ],
+  "VERBATIM_MISMATCH": 0,
+  "NO_CREATIVE_PARAPHRASE": "YES",
+  "NO_SUMMARY_TO_FIT": "YES",
+  "KNOWN_SECTION_BOUNDARY_FAILURES_CLOSED": "YES",
+  "status": "PASS"
+}

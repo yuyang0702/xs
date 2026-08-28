@@ -1,0 +1,11 @@
+{
+  "schema": "SkillV3HybridStageOwnershipAuthorityReviewV1",
+  "WRONG_LAYER_SECTION_COUNT": 0,
+  "AUTHORITY_CONTENT_IN_SUPPLEMENT": 0,
+  "UNSEALED_OWNERSHIP_EXCEPTION_COUNT": 0,
+  "sealed_exact_exception_ids": [
+    "sv3-b75227453c1cc26a"
+  ],
+  "STAGE_OWNERSHIP_FALSE_NEGATIVES_REDUCED": "YES",
+  "status": "PASS"
+}

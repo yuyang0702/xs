@@ -1,0 +1,7 @@
+{
+  "schema": "SkillV3HybridStopLossPolicyV1",
+  "trigger": "any supported critical Hybrid regression in the causally clean campaign",
+  "HYBRID_AS_QUALITY_ENHANCEMENT_DOES_NOT_AUTO_ITERATE": true,
+  "disposition": "architecture disposition, not another prompt or selector hill-climb",
+  "sealed": true
+}

@@ -1,0 +1,10 @@
+{
+  "schema": "SkillV3HybridIndependentReviewPrivacyScanV1",
+  "status": "PASS",
+  "forbidden_matches": [],
+  "raw_story_count": 0,
+  "raw_provider_response_count": 0,
+  "credential_count": 0,
+  "absolute_machine_path_count": 0,
+  "manifest_scope": "all generated evidence files except this scan and the manifest"
+}

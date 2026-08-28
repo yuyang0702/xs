@@ -1,0 +1,60 @@
+{
+  "schema": "SkillV3HybridSemanticDependencyReviewV1",
+  "known_gap_rows": [
+    {
+      "GAP_ID": "SEMANTIC_GAP_1_CAUSAL_PRESSURE_PARENT",
+      "OLD_FAILURE": "sv3-faecc1466817d8aa selected without sv3-13580b3cdbef263e",
+      "NEW_EDGE_OR_NEIGHBORHOOD": "sv3-13580b3cdbef263e -> sv3-faecc1466817d8aa",
+      "DEPENDENCY_TYPE": "FORMAL_DEPENDENCY",
+      "SOURCE_OF_TRUTH": "skill-v3-hybrid-skill-context-architecture-design-v1/semantic-dependency-model-v1",
+      "CLOSED": true
+    },
+    {
+      "GAP_ID": "SEMANTIC_GAP_2_SETUP_IDENTITY",
+      "OLD_FAILURE": "sv3-70a527462c32e7b6 lacked sv3-2ced894267dc51e3",
+      "NEW_EDGE_OR_NEIGHBORHOOD": "SETUP_PAYOFF_CLOSURE_PACKET_V1: sv3-ac7aa3aed8a7d237 -> sv3-2ced894267dc51e3",
+      "DEPENDENCY_TYPE": "PARENT_CONTEXT_DEPENDENCY",
+      "SOURCE_OF_TRUTH": "skill-v3-hybrid-skill-context-architecture-design-v1/semantic-dependency-model-v1",
+      "CLOSED": true
+    },
+    {
+      "GAP_ID": "SEMANTIC_GAP_3_PAYOFF_TARGET",
+      "OLD_FAILURE": "sv3-3fb51ac3fed35bc0 lacked sv3-82ca2fdf9c28183b",
+      "NEW_EDGE_OR_NEIGHBORHOOD": "SETUP_PAYOFF_CLOSURE_PACKET_V1: sv3-972a75cb8ca8f0bd -> sv3-82ca2fdf9c28183b",
+      "DEPENDENCY_TYPE": "EXAMPLE_DEPENDENCY",
+      "SOURCE_OF_TRUTH": "skill-v3-hybrid-skill-context-architecture-design-v1/semantic-dependency-model-v1",
+      "CLOSED": true
+    },
+    {
+      "GAP_ID": "SEMANTIC_GAP_4_RESOLUTION_PLAN",
+      "OLD_FAILURE": "sv3-3fb51ac3fed35bc0 lacked sv3-6e4a0b2625a01274",
+      "NEW_EDGE_OR_NEIGHBORHOOD": "SETUP_PAYOFF_CLOSURE_PACKET_V1: sv3-972a75cb8ca8f0bd -> sv3-6e4a0b2625a01274",
+      "DEPENDENCY_TYPE": "QUALIFIER_DEPENDENCY",
+      "SOURCE_OF_TRUTH": "skill-v3-hybrid-skill-context-architecture-design-v1/semantic-dependency-model-v1",
+      "CLOSED": true
+    }
+  ],
+  "KNOWN_SEMANTIC_DEPENDENCY_GAPS_CLOSED": "4/4",
+  "independent_injections": {
+    "missing_target": "PASS_TYPED_NO_GO",
+    "cycle": "PASS_TYPED_NO_GO",
+    "duplicate_dependency": "PASS_EDGE_RECEIPT_PRESERVES_DUPLICATE_SECTION_RENDERED_ONCE",
+    "conflicting_order": "PASS_UNDECLARED_CYCLE_NO_GO",
+    "cross_skill_edge": "PASS",
+    "neighborhood_closure": "PASS",
+    "deterministic_order": "PASS"
+  },
+  "SILENT_DEPENDENCY_DROP": "NO",
+  "ARBITRARY_POST_CLOSURE_TRUNCATION": "NO",
+  "supported_dependency_types": [
+    "ANTI_PATTERN_DEPENDENCY",
+    "APPLICATION_BRIDGE_DEPENDENCY",
+    "CROSS_SKILL_SEMANTIC_DEPENDENCY",
+    "EXAMPLE_DEPENDENCY",
+    "FORMAL_DEPENDENCY",
+    "PARENT_CONTEXT_DEPENDENCY",
+    "QUALIFIER_DEPENDENCY",
+    "SCENE_REALIZATION_DEPENDENCY"
+  ],
+  "status": "PASS"
+}

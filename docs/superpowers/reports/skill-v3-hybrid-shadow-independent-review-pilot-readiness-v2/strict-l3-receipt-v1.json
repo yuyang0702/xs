@@ -1,0 +1,8 @@
+{
+  "schema": "SkillV3HybridStrictL3ReceiptV1",
+  "declared_level": "L3",
+  "status": "PASS",
+  "warnings": 0,
+  "blockers": 0,
+  "review_mode": "single-agent source-first review requested by the raw task; no team-review subagents"
+}

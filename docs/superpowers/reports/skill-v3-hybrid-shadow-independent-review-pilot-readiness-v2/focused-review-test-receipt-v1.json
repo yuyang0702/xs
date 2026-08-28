@@ -1,0 +1,6 @@
+{
+  "schema": "SkillV3HybridFocusedReviewTestReceiptV1",
+  "command": "pytest -q tests/test_hybrid_skill_context.py tests/canary/test_skill_v3_hybrid_shadow.py tests/test_selective_skill_compiler.py tests/canary/test_skill_v3_hybrid_independent_review_v2.py",
+  "result": "55 passed in 24.83s",
+  "NEW_REVIEW_RELEVANT_REGRESSION_COUNT": 0
+}

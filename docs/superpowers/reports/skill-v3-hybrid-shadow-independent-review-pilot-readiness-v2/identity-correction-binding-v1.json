@@ -1,0 +1,12 @@
+{
+  "schema": "SkillV3HybridIdentityCorrectionBindingReviewV1",
+  "SKILL_V3_HYBRID_SHADOW_PRODUCTION_IDENTITY_CORRECTED": "YES",
+  "identity_correction_commit": "c29e7da652c86a0e701dc820918a817ab8389df6",
+  "commit_is_ancestor": true,
+  "corrected_domains": {
+    "resolved_source_sha256": "canonical resolved whole Skill package identity",
+    "primary_document_sha256": "exact primary SKILL.md bytes",
+    "section_content_sha256": "exact selected source section bytes"
+  },
+  "domains_typed_and_non_interchangeable": true
+}

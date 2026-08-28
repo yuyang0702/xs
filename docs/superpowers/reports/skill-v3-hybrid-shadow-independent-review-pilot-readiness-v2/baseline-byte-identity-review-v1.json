@@ -1,0 +1,13 @@
+{
+  "schema": "SkillV3HybridBaselineByteIdentityReviewV1",
+  "baseline_identity_domain": "actual WorkflowService post-SkillPromptCompactor seam",
+  "historical_experiment_baseline_is_not_substituted": true,
+  "PRODUCTION_BASELINE_SHA256": "c7916de36e67f380f2e10f30f169bcdbe04440cc8bd01bbf2626d26a7cdf49b7",
+  "HYBRID_BASELINE_PREFIX_SHA256": "c7916de36e67f380f2e10f30f169bcdbe04440cc8bd01bbf2626d26a7cdf49b7",
+  "BASELINE_CHAR_COUNT": 8927,
+  "BASELINE_TOKEN_ESTIMATE": 2232,
+  "FULL_RESOLVED_SKILL_PROMPT_SHA256": "26da95882e4abf67a334cfaa3b031568ccbb7d37bce2063f124e61b937294379",
+  "FULL_RESOLVED_SKILL_PROMPT_CHAR_COUNT": 21345,
+  "BASELINE_IDENTITY_METHOD": "exact UTF-8 bytes captured after production SkillPromptCompactor.compact",
+  "HYBRID_BASELINE_PREFIX_EXACT_BYTE_IDENTITY": "YES"
+}

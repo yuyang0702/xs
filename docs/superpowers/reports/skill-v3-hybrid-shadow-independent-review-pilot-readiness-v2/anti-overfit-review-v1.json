@@ -1,0 +1,19 @@
+{
+  "schema": "SkillV3HybridAntiOverfitIndependentReviewV1",
+  "scanned_implementation_paths": [
+    "src/novel_flywheel/hybrid_skill_context.py",
+    "src/novel_flywheel/skills.py",
+    "src/novel_flywheel/selective_skill_compiler.py",
+    "src/novel_flywheel/workflows.py",
+    "vendor/novel-skills/skill-section-index-v2.json"
+  ],
+  "prior_identifier_count": 12,
+  "blind_value_count_hash_only_scan": 6,
+  "PAIR_SPECIFIC_RULE_COUNT": 0,
+  "SAMPLE_SPECIFIC_RULE_COUNT": 0,
+  "BLIND_PROSE_MEMORIZATION_COUNT": 0,
+  "MAPPING_DEPENDENT_RULE_COUNT": 0,
+  "RUBRIC_HACK_COUNT": 0,
+  "raw_blind_prose_persisted": false,
+  "status": "PASS"
+}

@@ -1,0 +1,43 @@
+{
+  "schema": "SkillV3HybridRootCauseClosureReviewV1",
+  "PRIMARY_ROOT_CAUSE": "MULTI_FACTOR_WITH_PRIMARY_SELECTIVE_REPLACEMENT_ARCHITECTURE_MISMATCH",
+  "SELECTIVE_VERBATIM_ARCHITECTURE_DISPOSITION": "REPOSITION_AS_SUPPLEMENT_NOT_REPLACEMENT",
+  "closure_rows": [
+    {
+      "finding": "replacement mismatch",
+      "closed": true
+    },
+    {
+      "finding": "broad cross-Skill semantic loss",
+      "closed": true
+    },
+    {
+      "finding": "low-actionability leaf overrepresentation",
+      "closed": true
+    },
+    {
+      "finding": "selector under-recall",
+      "closed": true
+    },
+    {
+      "finding": "semantic dependency gaps",
+      "closed": true
+    },
+    {
+      "finding": "section granularity",
+      "closed": true
+    },
+    {
+      "finding": "stage ownership",
+      "closed": true
+    },
+    {
+      "finding": "salience/order",
+      "closed": true
+    }
+  ],
+  "SUPPLEMENT_REPLACES_BASELINE": "NO",
+  "BASELINE_IS_FIRST_CLASS_PROTECTED_COMPONENT": "YES",
+  "SELECTIVE_REPLACEMENT_CODEPATH_USED_FOR_TREATMENT": "NO",
+  "status": "PASS"
+}

@@ -1,0 +1,35 @@
+{
+  "schema": "SkillV3HybridIdentityNegativeInjectionReviewV1",
+  "rows": [
+    {
+      "case": "wrong_resolved_source",
+      "failure_code": "RESOLVED_SKILL_SOURCE_IDENTITY_MISMATCH",
+      "pass": true
+    },
+    {
+      "case": "stale_primary_document",
+      "failure_code": "PRIMARY_SKILL_DOCUMENT_IDENTITY_MISMATCH",
+      "pass": true
+    },
+    {
+      "case": "section_mismatch",
+      "failure_code": "SECTION_CONTENT_IDENTITY_MISMATCH",
+      "pass": true
+    },
+    {
+      "case": "override_source_root_stale_index",
+      "failure_code": "RESOLVED_SKILL_SOURCE_IDENTITY_MISMATCH",
+      "primary_document_unchanged": true,
+      "pass": true
+    },
+    {
+      "case": "directory_identity_change",
+      "baseline_package_sha256": "77d0a75c0ccdd959218a75f02852cb6654aebf0e645e427dd8ef86514ffbd6a9",
+      "changed_package_sha256": "8be48ae752a4de06b93e7a8ad6674bbc8ef73affbb231862c14449f9b31032a4",
+      "primary_document_unchanged": true,
+      "path_or_file_set_change_changes_identity": true,
+      "pass": true
+    }
+  ],
+  "IDENTITY_NEGATIVE_INJECTIONS_PASS": "YES"
+}

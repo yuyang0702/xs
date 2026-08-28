@@ -1,0 +1,178 @@
+{
+  "schema": "SkillV3HybridIndependentReviewManifestV1",
+  "definition": {
+    "schema": "SkillV3HybridIndependentReviewManifestDefinitionV1",
+    "entry_count": 33,
+    "entries": [
+      {
+        "path": "README.md",
+        "bytes": 339,
+        "sha256": "ede7665687e8d84a11c8b6e41f4529f693e19cb8a5feb8c705abe05b35f34e5a"
+      },
+      {
+        "path": "anti-overfit-review-v1.json",
+        "bytes": 637,
+        "sha256": "e712cb710a7d87b997a3e67902e2292fd574e1df07aa7442a42c2b4989edfa17"
+      },
+      {
+        "path": "baseline-binding-v1.json",
+        "bytes": 567,
+        "sha256": "299573d674f6ffe58eb280ba586763b6b0013cd7f5e1576ef1d502f4d78c5263"
+      },
+      {
+        "path": "baseline-byte-identity-review-v1.json",
+        "bytes": 795,
+        "sha256": "aa7a3c902876d81da22a22e38237424a838990220d5be048dca241d6c673d07a"
+      },
+      {
+        "path": "capacity-fail-closed-review-v1.json",
+        "bytes": 559,
+        "sha256": "a5e04a8979a4a9cc849a7a49d7f27976c2ac696a5933211456a61d3796117f79"
+      },
+      {
+        "path": "default-disabled-isolation-review-v1.json",
+        "bytes": 525,
+        "sha256": "9b8091a97f2623d714d506acdbd065870f3cdc1484e86f6c4ba54421f8df2b46"
+      },
+      {
+        "path": "determinism-review-v1.json",
+        "bytes": 12930,
+        "sha256": "2d59514a31fccc1853aaec8bcf0367a6b6bd1874e0d7d6009435c25677ce803c"
+      },
+      {
+        "path": "disabled-production-identity-review-v1.json",
+        "bytes": 618,
+        "sha256": "082e720e2921bdef2123cb4c3e8ff19bc4cd743bd17b7c3fb04a0636748dbcf9"
+      },
+      {
+        "path": "failure-observability-review-v1.json",
+        "bytes": 5139,
+        "sha256": "c79e84c107da669b0accd0bb61145d93ab9d56d2000c5e62f121c0ae7fdcbc91"
+      },
+      {
+        "path": "final-review-report-v1.md",
+        "bytes": 4927,
+        "sha256": "5dfa42ab2096181a59cea17bccc652310a3b69112a2462bd65a8792c5ed48e3a"
+      },
+      {
+        "path": "focused-review-test-receipt-v1.json",
+        "bytes": 341,
+        "sha256": "6e3e43a5ef64e85f607fe3307e3b3333e88bd127bdcce2c585c73415c959adfe"
+      },
+      {
+        "path": "full-suite-receipt-v1.json",
+        "bytes": 400,
+        "sha256": "b6f44c02dc1ff51cb039a1844b507552789e9a83e6d17ab4270e4e06f1512e4a"
+      },
+      {
+        "path": "high-actionability-review-v1.json",
+        "bytes": 2850,
+        "sha256": "0cc9198eb36e5a2706699e5dc0dcda7ee08f235bd3ce3499e4393f1996f6cbec"
+      },
+      {
+        "path": "identity-correction-binding-v1.json",
+        "bytes": 527,
+        "sha256": "a9fdcc8ffe1c41e4b6886a8167c7bd8c04c2d17ad8e17809e42fb33516d101c4"
+      },
+      {
+        "path": "identity-negative-injection-review-v1.json",
+        "bytes": 1089,
+        "sha256": "c851f79942293cf8c436ae5482b9dd12a1c7bb9a540a0b5e0d9481fe62b29c6e"
+      },
+      {
+        "path": "implementation-evidence-consistency-v1.json",
+        "bytes": 2536,
+        "sha256": "4bccd0cfd48042d5c10b5a24c2d08c4e3f3187f6a23b0db2b179370fc2b136c2"
+      },
+      {
+        "path": "independent-capacity-recompute-v1.json",
+        "bytes": 3111,
+        "sha256": "d54178201eaa06d552db58e64c1374de97dfedeba7779a3f0832a2b01c1050da"
+      },
+      {
+        "path": "overlap-reinforcement-review-v1.json",
+        "bytes": 601,
+        "sha256": "c8f293b36326a3d50583d8c0673f691c562da50762449adc38eec4445f0c245e"
+      },
+      {
+        "path": "pilot-readiness-decision-v1.json",
+        "bytes": 1139,
+        "sha256": "b78bbd5ebe610144c772be96e5cf393d3cae851eb91d5149597b6e40fbc9c565"
+      },
+      {
+        "path": "planning-four-skill-seam-review-v1.json",
+        "bytes": 2164,
+        "sha256": "5c985267fe6658438ac54d81a88dad32d36458949f3342db1a952610da06ae15"
+      },
+      {
+        "path": "privacy-scan-v1.json",
+        "bytes": 316,
+        "sha256": "3a2ef98419fd3e6a6daafc65940133eb5a212d1f9e933eca27a63188af238a4b"
+      },
+      {
+        "path": "production-identity-contract-review-v1.json",
+        "bytes": 2092,
+        "sha256": "a99084c1e09db9e9e6b150d994012bc52dbf880769cd03461c37b164fa811057"
+      },
+      {
+        "path": "prospective-experiment-contract-v1.json",
+        "bytes": 1141,
+        "sha256": "1a86b343c7ac1f93f64ad63c51322c777f9fb0c1e081f84a06b9555dbfb62238"
+      },
+      {
+        "path": "reference-nonskill-identity-review-v1.json",
+        "bytes": 644,
+        "sha256": "c85570c7f29d9afc2255e21a52e59b3111c9fca74bcf5c8665c80dcc869d89f4"
+      },
+      {
+        "path": "related-test-receipt-v1.json",
+        "bytes": 330,
+        "sha256": "dddf933d5b1506843e993afdb1ba1fe9d7496e31f51827a5951d02400a3cc81d"
+      },
+      {
+        "path": "render-order-salience-review-v1.json",
+        "bytes": 690,
+        "sha256": "cfc5f493cc0b7415319812fc743e35f18906a412e9ae9517bb4c8821fd1c60e9"
+      },
+      {
+        "path": "root-cause-closure-review-v1.json",
+        "bytes": 1072,
+        "sha256": "3aa7708be3968880737c70221c59a8d73c16abfea99d87a0f7007de1fd13ef8f"
+      },
+      {
+        "path": "section-granularity-review-v1.json",
+        "bytes": 4961,
+        "sha256": "3ccb0054208be9b52c10160c46dd8f1d2a3d218b2a2b5945d665d9b777b4e8f5"
+      },
+      {
+        "path": "semantic-dependency-review-v1.json",
+        "bytes": 2587,
+        "sha256": "e5c3c13dc0525b407956e1d7ebfd5ca8f1d36f8135394f7bcaaaad75f29d8f1a"
+      },
+      {
+        "path": "source-implementation-map-v1.json",
+        "bytes": 5624,
+        "sha256": "a6be3d3dd0a13c40f3baae694964a54937fb70fb82791f7566ad68280a3d7c89"
+      },
+      {
+        "path": "stage-ownership-authority-review-v1.json",
+        "bytes": 318,
+        "sha256": "2db6c02dd720bfc05c37a5af734bcfddee277064af4d0bd11de8cea414f0d1e9"
+      },
+      {
+        "path": "stop-loss-policy-v1.json",
+        "bytes": 305,
+        "sha256": "fae3c8c8220d02719bdc033e1da0a175707f367eadc9a6fd7a958e355038aeb3"
+      },
+      {
+        "path": "strict-l3-receipt-v1.json",
+        "bytes": 234,
+        "sha256": "2a5df5ddba791b409640764284cf23db93014877eb43d4d22d59695dee40c81f"
+      }
+    ]
+  },
+  "definition_sha256": "41bdb65d20cf2857ec9e694346e6edccccc9910f143609b0b06ef8a8f14d7362",
+  "entry_hash_mode": "UTF8_CANONICAL_LF_V1",
+  "coverage": "all required evidence files except the manifest itself",
+  "status": "EXACT"
+}

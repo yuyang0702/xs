@@ -1,0 +1,160 @@
+{
+  "schema": "SkillV3HybridSourceImplementationMapReviewV1",
+  "rows": [
+    {
+      "surface": "Hybrid default-disabled mode",
+      "module": "src/novel_flywheel/hybrid_skill_context.py",
+      "symbol": "DEFAULT_HYBRID_SKILL_CONTEXT_SHADOW_ENABLED",
+      "line": 35,
+      "source_evidence": "DEFAULT_HYBRID_SKILL_CONTEXT_SHADOW_ENABLED = False"
+    },
+    {
+      "surface": "Hybrid default-disabled workflow gate",
+      "module": "src/novel_flywheel/workflows.py",
+      "symbol": "WorkflowService.__init__",
+      "line": 865,
+      "source_evidence": "hybrid_skill_context_shadow_enabled: bool = False"
+    },
+    {
+      "surface": "production Skill resolver",
+      "module": "src/novel_flywheel/skills.py",
+      "symbol": "SkillScanner.scan",
+      "line": 74,
+      "source_evidence": "def scan(self, extra_roots"
+    },
+    {
+      "surface": "resolved_source_sha256",
+      "module": "src/novel_flywheel/skills.py",
+      "symbol": "compute_resolved_skill_source_sha256",
+      "line": 53,
+      "source_evidence": "def compute_resolved_skill_source_sha256"
+    },
+    {
+      "surface": "primary_document_sha256",
+      "module": "src/novel_flywheel/skills.py",
+      "symbol": "compute_primary_skill_document_sha256",
+      "line": 64,
+      "source_evidence": "def compute_primary_skill_document_sha256"
+    },
+    {
+      "surface": "section_content_sha256",
+      "module": "src/novel_flywheel/selective_skill_compiler.py",
+      "symbol": "SkillSectionIndexV1.load",
+      "line": 354,
+      "source_evidence": "SECTION_CONTENT_IDENTITY_MISMATCH"
+    },
+    {
+      "surface": "baseline capture",
+      "module": "src/novel_flywheel/workflows.py",
+      "symbol": "WorkflowService._stage",
+      "line": 27262,
+      "source_evidence": "production_baseline_context=model_skill_prompt"
+    },
+    {
+      "surface": "reference/non-Skill binding",
+      "module": "src/novel_flywheel/workflows.py",
+      "symbol": "WorkflowService._stage",
+      "line": 27293,
+      "source_evidence": "reference_guidance_context=model_constraints"
+    },
+    {
+      "surface": "demand extraction",
+      "module": "src/novel_flywheel/hybrid_skill_context.py",
+      "symbol": "extract_demand_features_v1",
+      "line": 559,
+      "source_evidence": "def extract_demand_features_v1"
+    },
+    {
+      "surface": "actionability classification",
+      "module": "src/novel_flywheel/hybrid_skill_context.py",
+      "symbol": "HybridSkillSectionIndexV2.load",
+      "line": 432,
+      "source_evidence": "actionability = str"
+    },
+    {
+      "surface": "cross-Skill packet compiler",
+      "module": "src/novel_flywheel/hybrid_skill_context.py",
+      "symbol": "HybridSkillContextCompilerV1._packet_ids",
+      "line": 689,
+      "source_evidence": "def _packet_ids"
+    },
+    {
+      "surface": "typed dependency closure",
+      "module": "src/novel_flywheel/hybrid_skill_context.py",
+      "symbol": "HybridSkillContextCompilerV1._close_dependencies",
+      "line": 720,
+      "source_evidence": "def _close_dependencies"
+    },
+    {
+      "surface": "ownership filtering",
+      "module": "src/novel_flywheel/hybrid_skill_context.py",
+      "symbol": "HybridSkillContextCompilerV1._ownership_allowed",
+      "line": 710,
+      "source_evidence": "def _ownership_allowed"
+    },
+    {
+      "surface": "overlap/reinforcement",
+      "module": "src/novel_flywheel/hybrid_skill_context.py",
+      "symbol": "HybridSkillContextCompilerV1.materialize",
+      "line": 885,
+      "source_evidence": "UNRESOLVED_CONTRADICTION"
+    },
+    {
+      "surface": "protected capacity",
+      "module": "src/novel_flywheel/hybrid_skill_context.py",
+      "symbol": "HybridProtectedBudgetV1",
+      "line": 202,
+      "source_evidence": "class HybridProtectedBudgetV1"
+    },
+    {
+      "surface": "shadow rendering",
+      "module": "src/novel_flywheel/hybrid_skill_context.py",
+      "symbol": "HybridSkillContextCompilerV1.materialize",
+      "line": 909,
+      "source_evidence": "final_advisory ="
+    },
+    {
+      "surface": "provenance",
+      "module": "src/novel_flywheel/hybrid_skill_context.py",
+      "symbol": "hash_only_hybrid_projection",
+      "line": 1109,
+      "source_evidence": "def hash_only_hybrid_projection"
+    },
+    {
+      "surface": "failure observability",
+      "module": "src/novel_flywheel/hybrid_skill_context.py",
+      "symbol": "_failure_projection",
+      "line": 1145,
+      "source_evidence": "def _failure_projection"
+    },
+    {
+      "surface": "production input seam",
+      "module": "src/novel_flywheel/workflows.py",
+      "symbol": "WorkflowService._stage",
+      "line": 27192,
+      "source_evidence": "if self.hybrid_skill_context_shadow_enabled and stage == \"planning\""
+    },
+    {
+      "surface": "disabled-path identity",
+      "module": "src/novel_flywheel/workflows.py",
+      "symbol": "WorkflowService._observe_hybrid_skill_context_shadow",
+      "line": 913,
+      "source_evidence": "if not self.hybrid_skill_context_shadow_enabled"
+    },
+    {
+      "surface": "replay/test harnesses",
+      "module": "tests/test_hybrid_skill_context.py",
+      "symbol": "test_workflow_real_four_skill_resolver_reaches_actual_hybrid_seam",
+      "line": 551,
+      "source_evidence": "def test_workflow_real_four_skill_resolver_reaches_actual_hybrid_seam"
+    },
+    {
+      "surface": "evidence materializer",
+      "module": "tools/diagnostics/materialize_skill_v3_hybrid_independent_review_v2.py",
+      "symbol": "build_artifacts",
+      "line": 255,
+      "source_evidence": "def build_artifacts"
+    }
+  ],
+  "SOURCE_EVIDENCE_IMPLEMENTATION_SURFACE_MATCH": "YES"
+}

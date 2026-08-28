@@ -1,0 +1,11 @@
+{
+  "schema": "SkillV3HybridIndependentReviewBaselineBindingV1",
+  "EXACT_GATE": "SKILL_V3_HYBRID_SHADOW_INDEPENDENT_REVIEW_AND_PILOT_READINESS",
+  "branch": "r1-ptr3/planning-repair-finding-propagation-20260817",
+  "start_head": "bfb75334ad8bea30f03e792474f85a9750e40981",
+  "observed_branch": "r1-ptr3/planning-repair-finding-propagation-20260817",
+  "observed_head_at_materialization": "bfb75334ad8bea30f03e792474f85a9750e40981",
+  "expected_worktree_at_start": "CLEAN",
+  "review_commit": "COMMIT_CONTAINING_THIS_EVIDENCE",
+  "final_worktree_required": "CLEAN"
+}

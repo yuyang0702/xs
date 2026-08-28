@@ -1,0 +1,42 @@
+{
+  "schema": "SkillV3HybridPlanningFourSkillSeamReviewV1",
+  "resolver": "SkillScanner + SkillGate production identity contract",
+  "actual_workflow_seam_test": "tests/test_hybrid_skill_context.py::test_workflow_real_four_skill_resolver_reaches_actual_hybrid_seam",
+  "rows": [
+    {
+      "SKILL_ID": "story-init",
+      "PRODUCTION_RESOLVED_SOURCE_SHA256": "77d0a75c0ccdd959218a75f02852cb6654aebf0e645e427dd8ef86514ffbd6a9",
+      "SEALED_RESOLVED_SOURCE_SHA256": "77d0a75c0ccdd959218a75f02852cb6654aebf0e645e427dd8ef86514ffbd6a9",
+      "PRIMARY_DOCUMENT_SHA256": "9ace3dec9fd2ca22e9f6a96a9cf54ea4f498ee6d4522301fd775bc87bd2511d6",
+      "SECTION_DOMAIN_SEPARATE": true,
+      "SHADOW_RESULT": "PASS"
+    },
+    {
+      "SKILL_ID": "plot-structure",
+      "PRODUCTION_RESOLVED_SOURCE_SHA256": "97bd7c6985867076a1b53b461db4549fefff4d1e3c2afad17de2b0a67a1cb9b9",
+      "SEALED_RESOLVED_SOURCE_SHA256": "97bd7c6985867076a1b53b461db4549fefff4d1e3c2afad17de2b0a67a1cb9b9",
+      "PRIMARY_DOCUMENT_SHA256": "54a38f07a5d0106c66e30058a7e375867f3ca1924aef8208a4428c205d73146c",
+      "SECTION_DOMAIN_SEPARATE": true,
+      "SHADOW_RESULT": "PASS"
+    },
+    {
+      "SKILL_ID": "character-management",
+      "PRODUCTION_RESOLVED_SOURCE_SHA256": "3debd36a3da4a430f4f71292280d4824bfab0436234a2ace68be939773062be5",
+      "SEALED_RESOLVED_SOURCE_SHA256": "3debd36a3da4a430f4f71292280d4824bfab0436234a2ace68be939773062be5",
+      "PRIMARY_DOCUMENT_SHA256": "bc21410cc846d00b766a8c465c30e48af859083c83d2f731bd7eb415c76c578a",
+      "SECTION_DOMAIN_SEPARATE": true,
+      "SHADOW_RESULT": "PASS"
+    },
+    {
+      "SKILL_ID": "worldbuilding",
+      "PRODUCTION_RESOLVED_SOURCE_SHA256": "434e8f9f37a54b4f15e4f1b6978862eaa40eb1ec37d02e778336bda485950678",
+      "SEALED_RESOLVED_SOURCE_SHA256": "434e8f9f37a54b4f15e4f1b6978862eaa40eb1ec37d02e778336bda485950678",
+      "PRIMARY_DOCUMENT_SHA256": "6085390c930309c1e9f3182c50c30e9d746d0f054000f2808147a80807b2b279",
+      "SECTION_DOMAIN_SEPARATE": true,
+      "SHADOW_RESULT": "PASS"
+    }
+  ],
+  "REAL_PLANNING_SKILL_SEAM_CASES": 4,
+  "REAL_PLANNING_SKILL_SEAM_PASS": "4/4",
+  "RESOLVED_SKILL_SOURCE_HASH_MISMATCH_COUNT": 0
+}
