@@ -1,0 +1,21 @@
+{
+  "schema": "SkillV3EngineeringNonInferiorityV1",
+  "status": "DECIDED",
+  "engineering_non_inferior": "YES",
+  "prospective_engineering_hard_failure_rule": "invalid sample blocks that arm and no replacement request is automatic",
+  "regressions": {
+    "VALIDITY_REGRESSION": false,
+    "CAPACITY_REGRESSION": false,
+    "TRUNCATION_REGRESSION": false,
+    "RETRY_REGRESSION": false,
+    "ROUTE_REGRESSION": false,
+    "VALIDATOR_REGRESSION": false,
+    "PRODUCTION_ISOLATION_REGRESSION": false,
+    "PROVENANCE_REGRESSION": false,
+    "SECURITY_EGRESS_REGRESSION": false
+  },
+  "token_comparison_sufficient": "NO",
+  "cost_comparison_sufficient": "NO",
+  "reason": "both arms produced 3/3 sealed-valid outputs under identical hard bounds with no dispatch, route, validator, isolation, provenance, capacity, truncation, or egress regression",
+  "literary_results_used": false
+}

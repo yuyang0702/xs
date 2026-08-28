@@ -1,0 +1,13 @@
+{
+  "schema": "SkillV3CharacterHeavyPilotDispositionV1",
+  "status": "DECIDED",
+  "narrative_non_inferior": "NO",
+  "engineering_non_inferior": "YES",
+  "experiment_lock_valid": true,
+  "blinding_valid": true,
+  "sample_validity": "6/6 SEALED_VALID",
+  "methodology_complete": true,
+  "final_pilot_disposition": "SKILL_V3_CHARACTER_HEAVY_MULTI_SAMPLE_PILOT=NO_GO_QUALITY",
+  "decision_priority": "narrative critical regression produces NO_GO_QUALITY even though engineering non-inferiority passes",
+  "exact_next_gate": "SKILL_V3_SELECTIVE_COMPILER_MULTI_SAMPLE_QUALITY_ROOT_CAUSE"
+}

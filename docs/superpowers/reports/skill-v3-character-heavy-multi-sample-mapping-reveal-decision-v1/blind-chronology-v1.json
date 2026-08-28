@@ -1,0 +1,36 @@
+{
+  "schema": "SkillV3MappingRevealBlindChronologyV1",
+  "status": "PASS",
+  "required_order": [
+    "BLIND_BUNDLE_SEALED",
+    "EVALUATOR_1_FROZEN",
+    "EVALUATOR_2_INDEPENDENTLY_FROZEN",
+    "COMBINED_BLIND_AGGREGATION_FROZEN",
+    "MAPPING_REVEALED_IN_THIS_GATE"
+  ],
+  "blind_bundle": {
+    "commit": "fa8fc7d911a22d8c821623bd41af61eb818ba30f",
+    "committed_at": "2026-08-28T08:31:20+08:00"
+  },
+  "evaluator_1_freeze": {
+    "commit": "fdc387fa90e18745ced9b67447fd9e35e3f631a8",
+    "committed_at": "2026-08-28T09:55:29+08:00"
+  },
+  "evaluator_2_freeze": {
+    "commit": "fec3607b6ad52f3e917f3d6bcad32e7224928720",
+    "committed_at": "2026-08-28T10:30:14+08:00"
+  },
+  "combined_blind_freeze": {
+    "commit": "3e9a012f5d826a222547cea21d80136b439adc1d",
+    "committed_at": "2026-08-28T10:37:46+08:00"
+  },
+  "mapping_artifact_sealed_before_evaluation": true,
+  "mapping_artifact_commit": {
+    "commit": "fa8fc7d911a22d8c821623bd41af61eb818ba30f",
+    "committed_at": "2026-08-28T08:31:20+08:00"
+  },
+  "mapping_was_inaccessible_to_evaluators": true,
+  "mapping_reveal_baseline_head": "3e9a012f5d826a222547cea21d80136b439adc1d",
+  "mapping_reveal_occurs_after_combined_freeze": true,
+  "mapping_contamination": 0
+}

@@ -1,0 +1,15 @@
+{
+  "schema": "SkillV3NarrativeNonInferiorityV1",
+  "status": "DECIDED",
+  "narrative_non_inferior": "NO",
+  "selective_critical_better_count": 0,
+  "selective_critical_equivalent_count": 0,
+  "selective_critical_regression_count": 3,
+  "selective_critical_inconclusive_count": 0,
+  "selective_noncritical_better_count": 0,
+  "selective_noncritical_equivalent_count": 0,
+  "selective_noncritical_regression_count": 3,
+  "selective_noncritical_inconclusive_count": 2,
+  "reason": "all three critical dimensions are supported BASELINE_BETTER results after per-pair mapping",
+  "generalized_superiority_claimed": false
+}

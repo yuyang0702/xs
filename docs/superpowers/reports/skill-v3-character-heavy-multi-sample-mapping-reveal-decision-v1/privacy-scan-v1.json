@@ -1,0 +1,17 @@
+{
+  "schema": "SkillV3MappingRevealDecisionPrivacyScanV1",
+  "status": "PASS",
+  "matches": {
+    "anthropic_secret": 0,
+    "bearer_token": 0,
+    "private_key": 0,
+    "generic_secret_assignment": 0
+  },
+  "total_matches": 0,
+  "raw_prompt_persisted": false,
+  "raw_story_input_persisted": false,
+  "raw_provider_response_persisted": false,
+  "literary_artifact_body_persisted": false,
+  "credentials_persisted": false,
+  "hash_only_or_typed_evidence": true
+}

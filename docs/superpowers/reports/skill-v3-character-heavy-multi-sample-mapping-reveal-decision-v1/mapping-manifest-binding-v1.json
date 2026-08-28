@@ -1,0 +1,16 @@
+{
+  "schema": "SkillV3MappingManifestBindingV1",
+  "status": "EXACT",
+  "manifest": {
+    "root": "docs/superpowers/reports/skill-v3-character-heavy-multi-sample-blind-mapping-v1",
+    "status": "EXACT",
+    "entry_count": 5,
+    "manifest_file_sha256": "3f6e7b4465a940ffa7448636c51b260ff4ec90f0baec8f0ebd3992514104618b",
+    "definition_sha256": "78a8e99479b7da6de68f68e08f805bbcfecc3e1b26205f03036219572b4d5808",
+    "evidence_root_sha256": null
+  },
+  "mapping_status": "SEALED",
+  "mapping_frozen_before_evaluation": true,
+  "one_to_one_mapping": true,
+  "anonymous_sample_count": 6
+}

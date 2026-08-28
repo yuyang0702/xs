@@ -1,0 +1,23 @@
+{
+  "schema": "SkillV3ExperimentalArmIdentitiesV1",
+  "status": "EXACT",
+  "experiment_arm_a_context_kind": "DEMAND_AWARE_V2_LAST_KNOWN_BEST_COMPRESSED_BASELINE",
+  "experiment_arm_a_skill_context_sha256": "7d0f6309ede2261f2f6a1098d394937948bf5b50eb9248266ab350fd91da9adc",
+  "experiment_arm_a_profile_sha256": "109bb50e2e649c5841bd7c83513100caa0d93cf3c1bb5db845e489b5ae10856d",
+  "experiment_arm_b_context_kind": "VERBATIM_SELECTIVE_SKILL_COMPILER_SHADOW_V1_CHARACTER_HEAVY",
+  "experiment_arm_b_skill_context_sha256": "c830681f79526c44d9bd83430019d75cb886bde0affcad86714ee1fc1f41aedd",
+  "experiment_arm_b_selected_section_sha256": {
+    "sv3-70a527462c32e7b6": "f9d070a8b08fd62d02c97c20f71cf091a1414657d94524125693472998a530a0",
+    "sv3-faecc1466817d8aa": "ac802425007fdb56b8a1c835d3557607ca70537439ae082d8cecaf64a8d2fece",
+    "sv3-7633ad6f5c90db5e": "e7655b22821ec2d7cefc4ddd6ad8bad7518b1cc0a2900b4fb3377bd6566f57d8",
+    "sv3-3fb51ac3fed35bc0": "64c7922b0e7732ef54dd6ba1e7af1578849ed42418430d7bb183dbd45399acaa",
+    "sv3-4c6b004ecdd2077f": "d4511d12ba4a597051146baa1ed25a9776872ec91a0a16aec73d2930506133e3",
+    "sv3-10e4ba0c5b7509b4": "798c073d3b85fe59b34e26f99236059fb30315a17f3a8d8173c3ce0d608e6fcf",
+    "sv3-8e321726b4ebdcec": "fd55b33019a46b72b1e92d64f7d0f84967996307f60247e844608e214b51c6ae",
+    "sv3-8afeb5229a4fe841": "4739809792c7332bd0cda20ca3f755bc63f8aaac614b9ad7074db2b34f60996a",
+    "sv3-e92f0f3584d44b87": "8142de9c9898b1d2c03c8172203783a2a508211685a5c1ca73244d823bee0ce1"
+  },
+  "selective_verbatim_arm": "EXPERIMENT_ARM_B",
+  "baseline_control_arm": "EXPERIMENT_ARM_A",
+  "primary_changed_variable": "SKILL_CONTEXT"
+}

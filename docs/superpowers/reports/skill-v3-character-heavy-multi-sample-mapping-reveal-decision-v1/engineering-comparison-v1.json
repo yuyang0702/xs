@@ -1,0 +1,46 @@
+{
+  "schema": "SkillV3EngineeringComparisonV1",
+  "status": "COMPLETE_WITH_OBSERVABILITY_LIMITS",
+  "arms": {
+    "A_BASELINE_CONTROL": {
+      "samples": 3,
+      "sealed_valid": 3,
+      "provider_attempts": 3,
+      "terminal_pipeline_pass": true,
+      "skill_context_chars": 2925,
+      "skill_context_token_estimate": 732,
+      "total_input_estimate": 1440,
+      "headroom": 17488
+    },
+    "B_SELECTIVE_VERBATIM": {
+      "samples": 3,
+      "sealed_valid": 3,
+      "provider_attempts": 3,
+      "terminal_pipeline_pass": true,
+      "skill_context_chars": 2556,
+      "skill_context_token_estimate": 639,
+      "total_input_estimate": 1347,
+      "headroom": 17581
+    }
+  },
+  "b_minus_a_skill_context_chars": -369,
+  "b_minus_a_skill_context_token_estimate": -93,
+  "b_minus_a_headroom": 93,
+  "capacity_both_pass": true,
+  "no_silent_truncation": true,
+  "advisory_truncation_occurred": false,
+  "advisory_shedding_occurred": false,
+  "non_skill_byte_identity": "PASS",
+  "only_skill_context_differs_by_arm": true,
+  "route_model_destination_identity": "PASS",
+  "validator_identity": "PASS",
+  "production_isolation": "PASS",
+  "provenance": "PASS",
+  "a1_output_tokens_observed": 649,
+  "a1_finish_reason_observed": "end_turn",
+  "a1_input_tokens_observed": false,
+  "most_other_token_and_finish_fields_retained": false,
+  "token_comparison_sufficient": "NO",
+  "cost_comparison_sufficient": "NO",
+  "cost_observability": "UNKNOWN_NOT_SEALED"
+}

@@ -1,0 +1,50 @@
+{
+  "schema": "SkillV3CampaignEngineeringBindingV1",
+  "status": "EXACT",
+  "readiness_manifest": {
+    "root": "docs/superpowers/reports/skill-v3-character-heavy-multi-sample-pilot-approval-readiness-recheck-v1",
+    "status": "EXACT",
+    "entry_count": 38,
+    "manifest_file_sha256": "00baef1e9340c3ca4b9aabf24188b1f69c0be600014e3c724bb1ed487d182e81",
+    "definition_sha256": "f1f3dba847990bbf2caca9e4645f9310316939787c508c164c5c1bb4f7cf46e4",
+    "evidence_root_sha256": null
+  },
+  "campaign_manifest": {
+    "root": "docs/superpowers/reports/skill-v3-character-heavy-multi-sample-real-campaign-v1",
+    "status": "EXACT",
+    "entry_count": 18,
+    "manifest_file_sha256": "0da358cc14b04b1463e41668b5593e5f53ac017f3c7677fdd131dd08a8488c54",
+    "definition_sha256": "3a4458f6c5959e30e674db6cff13763ded598da7bed1c898d62d7a1799fd6cb8",
+    "evidence_root_sha256": null
+  },
+  "total_samples": 6,
+  "sealed_valid": 6,
+  "sealed_invalid": 0,
+  "total_real_provider_requests": 6,
+  "per_sample_provider_attempts": 1,
+  "total_retry": 0,
+  "total_transport_retry": 0,
+  "total_fallback": 0,
+  "total_route_switch": 0,
+  "total_resume_dispatch": 0,
+  "total_second_dispatch": 0,
+  "all_approvals_single_use_final_consumed": true,
+  "all_nonces_single_use_final_consumed": true,
+  "destination": "https://lingsuan.org:443/v1/messages",
+  "alternate_destination_count": 0,
+  "cross_origin_redirect_count": 0,
+  "story_state_canon_ready_mutations": [
+    0,
+    0,
+    0
+  ],
+  "production_authority": false,
+  "production_src_diff": 0,
+  "baml_src_diff": 0,
+  "campaign_strict_l3": "PASS; warnings=0; blockers=0; MAIN_CODEX_SINGLE_AGENT_NO_INDEPENDENCE_CLAIM",
+  "campaign_privacy": "PASS",
+  "route_fingerprint": "30e9cbaf86fbb4b89b43614d71cc11b359ad41e7411e8ebda5d3ce4199879bf0",
+  "model_binding_sha256": "5fd92d58fb34146b854ecf816dfe7622e24c233480149dfab9e327cff7f6b1ff",
+  "provider_descriptor_sha256": "121cc6b0b4f77b0b08697f2782e0f67a29007183d65a2780b2051048da3a600f",
+  "validator_sha256": "062dd052fd34949dd8b2369c0c5d5488e100d71ff4d905d9524711f5d14039e7"
+}

@@ -1,0 +1,601 @@
+{
+  "schema": "SkillV3MappedLiteraryDimensionResultsV1",
+  "status": "COMPLETE",
+  "method": "mechanical per-vote blind-position to experiment-arm translation followed by the sealed prospective ordinal rule",
+  "rows": [
+    {
+      "dimension": "character_agency",
+      "criticality": "CRITICAL",
+      "blind_result": "BLIND_SIDE_B_BETTER",
+      "blind_counts": {
+        "BLIND_SIDE_A_BETTER": 0,
+        "BLIND_SIDE_B_BETTER": 6,
+        "TIE_OR_EQUIVALENT": 0
+      },
+      "mapped_experiment_counts": {
+        "SELECTIVE_VERBATIM_BETTER": 2,
+        "BASELINE_BETTER": 4,
+        "EQUIVALENT": 0,
+        "INCONCLUSIVE": 0
+      },
+      "mapped_experiment_result": "BASELINE_BETTER",
+      "evaluator_mapped_directions": {
+        "anonymous-evaluator-1": "BASELINE_BETTER",
+        "anonymous-evaluator-2": "BASELINE_BETTER"
+      },
+      "blind_variance_flag": false,
+      "opposed_direction_flag": false,
+      "direction_tie_variance_flag": false,
+      "evaluator_disagreement_flag": false,
+      "evaluator_disagreements": [],
+      "mapped_vote_trace": [
+        {
+          "vote_id": "anonymous-evaluator-1:blind-pair-1",
+          "evaluator_id": "anonymous-evaluator-1",
+          "anonymous_pair_id": "blind-pair-1",
+          "blind_relation": "B_BETTER",
+          "mapped_result": "BASELINE_BETTER"
+        },
+        {
+          "vote_id": "anonymous-evaluator-1:blind-pair-2",
+          "evaluator_id": "anonymous-evaluator-1",
+          "anonymous_pair_id": "blind-pair-2",
+          "blind_relation": "B_BETTER",
+          "mapped_result": "SELECTIVE_VERBATIM_BETTER"
+        },
+        {
+          "vote_id": "anonymous-evaluator-1:blind-pair-3",
+          "evaluator_id": "anonymous-evaluator-1",
+          "anonymous_pair_id": "blind-pair-3",
+          "blind_relation": "B_BETTER",
+          "mapped_result": "BASELINE_BETTER"
+        },
+        {
+          "vote_id": "anonymous-evaluator-2:blind-pair-1",
+          "evaluator_id": "anonymous-evaluator-2",
+          "anonymous_pair_id": "blind-pair-1",
+          "blind_relation": "B_BETTER",
+          "mapped_result": "BASELINE_BETTER"
+        },
+        {
+          "vote_id": "anonymous-evaluator-2:blind-pair-2",
+          "evaluator_id": "anonymous-evaluator-2",
+          "anonymous_pair_id": "blind-pair-2",
+          "blind_relation": "B_BETTER",
+          "mapped_result": "SELECTIVE_VERBATIM_BETTER"
+        },
+        {
+          "vote_id": "anonymous-evaluator-2:blind-pair-3",
+          "evaluator_id": "anonymous-evaluator-2",
+          "anonymous_pair_id": "blind-pair-3",
+          "blind_relation": "B_BETTER",
+          "mapped_result": "BASELINE_BETTER"
+        }
+      ]
+    },
+    {
+      "dimension": "causal_coherence",
+      "criticality": "CRITICAL",
+      "blind_result": "BLIND_SIDE_B_BETTER",
+      "blind_counts": {
+        "BLIND_SIDE_A_BETTER": 0,
+        "BLIND_SIDE_B_BETTER": 6,
+        "TIE_OR_EQUIVALENT": 0
+      },
+      "mapped_experiment_counts": {
+        "SELECTIVE_VERBATIM_BETTER": 2,
+        "BASELINE_BETTER": 4,
+        "EQUIVALENT": 0,
+        "INCONCLUSIVE": 0
+      },
+      "mapped_experiment_result": "BASELINE_BETTER",
+      "evaluator_mapped_directions": {
+        "anonymous-evaluator-1": "BASELINE_BETTER",
+        "anonymous-evaluator-2": "BASELINE_BETTER"
+      },
+      "blind_variance_flag": false,
+      "opposed_direction_flag": false,
+      "direction_tie_variance_flag": false,
+      "evaluator_disagreement_flag": false,
+      "evaluator_disagreements": [],
+      "mapped_vote_trace": [
+        {
+          "vote_id": "anonymous-evaluator-1:blind-pair-1",
+          "evaluator_id": "anonymous-evaluator-1",
+          "anonymous_pair_id": "blind-pair-1",
+          "blind_relation": "B_BETTER",
+          "mapped_result": "BASELINE_BETTER"
+        },
+        {
+          "vote_id": "anonymous-evaluator-1:blind-pair-2",
+          "evaluator_id": "anonymous-evaluator-1",
+          "anonymous_pair_id": "blind-pair-2",
+          "blind_relation": "B_BETTER",
+          "mapped_result": "SELECTIVE_VERBATIM_BETTER"
+        },
+        {
+          "vote_id": "anonymous-evaluator-1:blind-pair-3",
+          "evaluator_id": "anonymous-evaluator-1",
+          "anonymous_pair_id": "blind-pair-3",
+          "blind_relation": "B_BETTER",
+          "mapped_result": "BASELINE_BETTER"
+        },
+        {
+          "vote_id": "anonymous-evaluator-2:blind-pair-1",
+          "evaluator_id": "anonymous-evaluator-2",
+          "anonymous_pair_id": "blind-pair-1",
+          "blind_relation": "B_BETTER",
+          "mapped_result": "BASELINE_BETTER"
+        },
+        {
+          "vote_id": "anonymous-evaluator-2:blind-pair-2",
+          "evaluator_id": "anonymous-evaluator-2",
+          "anonymous_pair_id": "blind-pair-2",
+          "blind_relation": "B_BETTER",
+          "mapped_result": "SELECTIVE_VERBATIM_BETTER"
+        },
+        {
+          "vote_id": "anonymous-evaluator-2:blind-pair-3",
+          "evaluator_id": "anonymous-evaluator-2",
+          "anonymous_pair_id": "blind-pair-3",
+          "blind_relation": "B_BETTER",
+          "mapped_result": "BASELINE_BETTER"
+        }
+      ]
+    },
+    {
+      "dimension": "subtext_support",
+      "criticality": "NONCRITICAL",
+      "blind_result": "BLIND_SIDE_B_BETTER",
+      "blind_counts": {
+        "BLIND_SIDE_A_BETTER": 0,
+        "BLIND_SIDE_B_BETTER": 5,
+        "TIE_OR_EQUIVALENT": 1
+      },
+      "mapped_experiment_counts": {
+        "SELECTIVE_VERBATIM_BETTER": 1,
+        "BASELINE_BETTER": 4,
+        "EQUIVALENT": 1,
+        "INCONCLUSIVE": 0
+      },
+      "mapped_experiment_result": "BASELINE_BETTER",
+      "evaluator_mapped_directions": {
+        "anonymous-evaluator-1": "BASELINE_BETTER",
+        "anonymous-evaluator-2": "BASELINE_BETTER"
+      },
+      "blind_variance_flag": true,
+      "opposed_direction_flag": false,
+      "direction_tie_variance_flag": true,
+      "evaluator_disagreement_flag": true,
+      "evaluator_disagreements": [
+        {
+          "anonymous_pair_id": "blind-pair-2",
+          "dimension": "subtext_support",
+          "evaluator_1": "TIE",
+          "evaluator_2": "B_BETTER",
+          "kind": "DIRECTION_VS_TIE"
+        }
+      ],
+      "mapped_vote_trace": [
+        {
+          "vote_id": "anonymous-evaluator-1:blind-pair-1",
+          "evaluator_id": "anonymous-evaluator-1",
+          "anonymous_pair_id": "blind-pair-1",
+          "blind_relation": "B_BETTER",
+          "mapped_result": "BASELINE_BETTER"
+        },
+        {
+          "vote_id": "anonymous-evaluator-1:blind-pair-2",
+          "evaluator_id": "anonymous-evaluator-1",
+          "anonymous_pair_id": "blind-pair-2",
+          "blind_relation": "TIE",
+          "mapped_result": "EQUIVALENT"
+        },
+        {
+          "vote_id": "anonymous-evaluator-1:blind-pair-3",
+          "evaluator_id": "anonymous-evaluator-1",
+          "anonymous_pair_id": "blind-pair-3",
+          "blind_relation": "B_BETTER",
+          "mapped_result": "BASELINE_BETTER"
+        },
+        {
+          "vote_id": "anonymous-evaluator-2:blind-pair-1",
+          "evaluator_id": "anonymous-evaluator-2",
+          "anonymous_pair_id": "blind-pair-1",
+          "blind_relation": "B_BETTER",
+          "mapped_result": "BASELINE_BETTER"
+        },
+        {
+          "vote_id": "anonymous-evaluator-2:blind-pair-2",
+          "evaluator_id": "anonymous-evaluator-2",
+          "anonymous_pair_id": "blind-pair-2",
+          "blind_relation": "B_BETTER",
+          "mapped_result": "SELECTIVE_VERBATIM_BETTER"
+        },
+        {
+          "vote_id": "anonymous-evaluator-2:blind-pair-3",
+          "evaluator_id": "anonymous-evaluator-2",
+          "anonymous_pair_id": "blind-pair-3",
+          "blind_relation": "B_BETTER",
+          "mapped_result": "BASELINE_BETTER"
+        }
+      ]
+    },
+    {
+      "dimension": "specificity",
+      "criticality": "NONCRITICAL",
+      "blind_result": "BLIND_SIDE_B_BETTER",
+      "blind_counts": {
+        "BLIND_SIDE_A_BETTER": 0,
+        "BLIND_SIDE_B_BETTER": 6,
+        "TIE_OR_EQUIVALENT": 0
+      },
+      "mapped_experiment_counts": {
+        "SELECTIVE_VERBATIM_BETTER": 2,
+        "BASELINE_BETTER": 4,
+        "EQUIVALENT": 0,
+        "INCONCLUSIVE": 0
+      },
+      "mapped_experiment_result": "BASELINE_BETTER",
+      "evaluator_mapped_directions": {
+        "anonymous-evaluator-1": "BASELINE_BETTER",
+        "anonymous-evaluator-2": "BASELINE_BETTER"
+      },
+      "blind_variance_flag": false,
+      "opposed_direction_flag": false,
+      "direction_tie_variance_flag": false,
+      "evaluator_disagreement_flag": false,
+      "evaluator_disagreements": [],
+      "mapped_vote_trace": [
+        {
+          "vote_id": "anonymous-evaluator-1:blind-pair-1",
+          "evaluator_id": "anonymous-evaluator-1",
+          "anonymous_pair_id": "blind-pair-1",
+          "blind_relation": "B_BETTER",
+          "mapped_result": "BASELINE_BETTER"
+        },
+        {
+          "vote_id": "anonymous-evaluator-1:blind-pair-2",
+          "evaluator_id": "anonymous-evaluator-1",
+          "anonymous_pair_id": "blind-pair-2",
+          "blind_relation": "B_BETTER",
+          "mapped_result": "SELECTIVE_VERBATIM_BETTER"
+        },
+        {
+          "vote_id": "anonymous-evaluator-1:blind-pair-3",
+          "evaluator_id": "anonymous-evaluator-1",
+          "anonymous_pair_id": "blind-pair-3",
+          "blind_relation": "B_BETTER",
+          "mapped_result": "BASELINE_BETTER"
+        },
+        {
+          "vote_id": "anonymous-evaluator-2:blind-pair-1",
+          "evaluator_id": "anonymous-evaluator-2",
+          "anonymous_pair_id": "blind-pair-1",
+          "blind_relation": "B_BETTER",
+          "mapped_result": "BASELINE_BETTER"
+        },
+        {
+          "vote_id": "anonymous-evaluator-2:blind-pair-2",
+          "evaluator_id": "anonymous-evaluator-2",
+          "anonymous_pair_id": "blind-pair-2",
+          "blind_relation": "B_BETTER",
+          "mapped_result": "SELECTIVE_VERBATIM_BETTER"
+        },
+        {
+          "vote_id": "anonymous-evaluator-2:blind-pair-3",
+          "evaluator_id": "anonymous-evaluator-2",
+          "anonymous_pair_id": "blind-pair-3",
+          "blind_relation": "B_BETTER",
+          "mapped_result": "BASELINE_BETTER"
+        }
+      ]
+    },
+    {
+      "dimension": "scene_pressure",
+      "criticality": "NONCRITICAL",
+      "blind_result": "BLIND_SIDE_B_BETTER",
+      "blind_counts": {
+        "BLIND_SIDE_A_BETTER": 0,
+        "BLIND_SIDE_B_BETTER": 6,
+        "TIE_OR_EQUIVALENT": 0
+      },
+      "mapped_experiment_counts": {
+        "SELECTIVE_VERBATIM_BETTER": 2,
+        "BASELINE_BETTER": 4,
+        "EQUIVALENT": 0,
+        "INCONCLUSIVE": 0
+      },
+      "mapped_experiment_result": "BASELINE_BETTER",
+      "evaluator_mapped_directions": {
+        "anonymous-evaluator-1": "BASELINE_BETTER",
+        "anonymous-evaluator-2": "BASELINE_BETTER"
+      },
+      "blind_variance_flag": false,
+      "opposed_direction_flag": false,
+      "direction_tie_variance_flag": false,
+      "evaluator_disagreement_flag": false,
+      "evaluator_disagreements": [],
+      "mapped_vote_trace": [
+        {
+          "vote_id": "anonymous-evaluator-1:blind-pair-1",
+          "evaluator_id": "anonymous-evaluator-1",
+          "anonymous_pair_id": "blind-pair-1",
+          "blind_relation": "B_BETTER",
+          "mapped_result": "BASELINE_BETTER"
+        },
+        {
+          "vote_id": "anonymous-evaluator-1:blind-pair-2",
+          "evaluator_id": "anonymous-evaluator-1",
+          "anonymous_pair_id": "blind-pair-2",
+          "blind_relation": "B_BETTER",
+          "mapped_result": "SELECTIVE_VERBATIM_BETTER"
+        },
+        {
+          "vote_id": "anonymous-evaluator-1:blind-pair-3",
+          "evaluator_id": "anonymous-evaluator-1",
+          "anonymous_pair_id": "blind-pair-3",
+          "blind_relation": "B_BETTER",
+          "mapped_result": "BASELINE_BETTER"
+        },
+        {
+          "vote_id": "anonymous-evaluator-2:blind-pair-1",
+          "evaluator_id": "anonymous-evaluator-2",
+          "anonymous_pair_id": "blind-pair-1",
+          "blind_relation": "B_BETTER",
+          "mapped_result": "BASELINE_BETTER"
+        },
+        {
+          "vote_id": "anonymous-evaluator-2:blind-pair-2",
+          "evaluator_id": "anonymous-evaluator-2",
+          "anonymous_pair_id": "blind-pair-2",
+          "blind_relation": "B_BETTER",
+          "mapped_result": "SELECTIVE_VERBATIM_BETTER"
+        },
+        {
+          "vote_id": "anonymous-evaluator-2:blind-pair-3",
+          "evaluator_id": "anonymous-evaluator-2",
+          "anonymous_pair_id": "blind-pair-3",
+          "blind_relation": "B_BETTER",
+          "mapped_result": "BASELINE_BETTER"
+        }
+      ]
+    },
+    {
+      "dimension": "setup_payoff_integrity",
+      "criticality": "CRITICAL",
+      "blind_result": "BLIND_SIDE_B_BETTER",
+      "blind_counts": {
+        "BLIND_SIDE_A_BETTER": 0,
+        "BLIND_SIDE_B_BETTER": 5,
+        "TIE_OR_EQUIVALENT": 1
+      },
+      "mapped_experiment_counts": {
+        "SELECTIVE_VERBATIM_BETTER": 1,
+        "BASELINE_BETTER": 4,
+        "EQUIVALENT": 1,
+        "INCONCLUSIVE": 0
+      },
+      "mapped_experiment_result": "BASELINE_BETTER",
+      "evaluator_mapped_directions": {
+        "anonymous-evaluator-1": "BASELINE_BETTER",
+        "anonymous-evaluator-2": "BASELINE_BETTER"
+      },
+      "blind_variance_flag": true,
+      "opposed_direction_flag": false,
+      "direction_tie_variance_flag": true,
+      "evaluator_disagreement_flag": true,
+      "evaluator_disagreements": [
+        {
+          "anonymous_pair_id": "blind-pair-2",
+          "dimension": "setup_payoff_integrity",
+          "evaluator_1": "TIE",
+          "evaluator_2": "B_BETTER",
+          "kind": "DIRECTION_VS_TIE"
+        }
+      ],
+      "mapped_vote_trace": [
+        {
+          "vote_id": "anonymous-evaluator-1:blind-pair-1",
+          "evaluator_id": "anonymous-evaluator-1",
+          "anonymous_pair_id": "blind-pair-1",
+          "blind_relation": "B_BETTER",
+          "mapped_result": "BASELINE_BETTER"
+        },
+        {
+          "vote_id": "anonymous-evaluator-1:blind-pair-2",
+          "evaluator_id": "anonymous-evaluator-1",
+          "anonymous_pair_id": "blind-pair-2",
+          "blind_relation": "TIE",
+          "mapped_result": "EQUIVALENT"
+        },
+        {
+          "vote_id": "anonymous-evaluator-1:blind-pair-3",
+          "evaluator_id": "anonymous-evaluator-1",
+          "anonymous_pair_id": "blind-pair-3",
+          "blind_relation": "B_BETTER",
+          "mapped_result": "BASELINE_BETTER"
+        },
+        {
+          "vote_id": "anonymous-evaluator-2:blind-pair-1",
+          "evaluator_id": "anonymous-evaluator-2",
+          "anonymous_pair_id": "blind-pair-1",
+          "blind_relation": "B_BETTER",
+          "mapped_result": "BASELINE_BETTER"
+        },
+        {
+          "vote_id": "anonymous-evaluator-2:blind-pair-2",
+          "evaluator_id": "anonymous-evaluator-2",
+          "anonymous_pair_id": "blind-pair-2",
+          "blind_relation": "B_BETTER",
+          "mapped_result": "SELECTIVE_VERBATIM_BETTER"
+        },
+        {
+          "vote_id": "anonymous-evaluator-2:blind-pair-3",
+          "evaluator_id": "anonymous-evaluator-2",
+          "anonymous_pair_id": "blind-pair-3",
+          "blind_relation": "B_BETTER",
+          "mapped_result": "BASELINE_BETTER"
+        }
+      ]
+    },
+    {
+      "dimension": "voice_readiness",
+      "criticality": "NONCRITICAL",
+      "blind_result": "BLIND_SIDE_B_BETTER",
+      "blind_counts": {
+        "BLIND_SIDE_A_BETTER": 1,
+        "BLIND_SIDE_B_BETTER": 5,
+        "TIE_OR_EQUIVALENT": 0
+      },
+      "mapped_experiment_counts": {
+        "SELECTIVE_VERBATIM_BETTER": 3,
+        "BASELINE_BETTER": 3,
+        "EQUIVALENT": 0,
+        "INCONCLUSIVE": 0
+      },
+      "mapped_experiment_result": "INCONCLUSIVE",
+      "evaluator_mapped_directions": {
+        "anonymous-evaluator-1": "SELECTIVE_VERBATIM_BETTER",
+        "anonymous-evaluator-2": "BASELINE_BETTER"
+      },
+      "blind_variance_flag": true,
+      "opposed_direction_flag": true,
+      "direction_tie_variance_flag": false,
+      "evaluator_disagreement_flag": true,
+      "evaluator_disagreements": [
+        {
+          "anonymous_pair_id": "blind-pair-1",
+          "dimension": "voice_readiness",
+          "evaluator_1": "A_BETTER",
+          "evaluator_2": "B_BETTER",
+          "kind": "OPPOSED_DIRECTION"
+        }
+      ],
+      "mapped_vote_trace": [
+        {
+          "vote_id": "anonymous-evaluator-1:blind-pair-1",
+          "evaluator_id": "anonymous-evaluator-1",
+          "anonymous_pair_id": "blind-pair-1",
+          "blind_relation": "A_BETTER",
+          "mapped_result": "SELECTIVE_VERBATIM_BETTER"
+        },
+        {
+          "vote_id": "anonymous-evaluator-1:blind-pair-2",
+          "evaluator_id": "anonymous-evaluator-1",
+          "anonymous_pair_id": "blind-pair-2",
+          "blind_relation": "B_BETTER",
+          "mapped_result": "SELECTIVE_VERBATIM_BETTER"
+        },
+        {
+          "vote_id": "anonymous-evaluator-1:blind-pair-3",
+          "evaluator_id": "anonymous-evaluator-1",
+          "anonymous_pair_id": "blind-pair-3",
+          "blind_relation": "B_BETTER",
+          "mapped_result": "BASELINE_BETTER"
+        },
+        {
+          "vote_id": "anonymous-evaluator-2:blind-pair-1",
+          "evaluator_id": "anonymous-evaluator-2",
+          "anonymous_pair_id": "blind-pair-1",
+          "blind_relation": "B_BETTER",
+          "mapped_result": "BASELINE_BETTER"
+        },
+        {
+          "vote_id": "anonymous-evaluator-2:blind-pair-2",
+          "evaluator_id": "anonymous-evaluator-2",
+          "anonymous_pair_id": "blind-pair-2",
+          "blind_relation": "B_BETTER",
+          "mapped_result": "SELECTIVE_VERBATIM_BETTER"
+        },
+        {
+          "vote_id": "anonymous-evaluator-2:blind-pair-3",
+          "evaluator_id": "anonymous-evaluator-2",
+          "anonymous_pair_id": "blind-pair-3",
+          "blind_relation": "B_BETTER",
+          "mapped_result": "BASELINE_BETTER"
+        }
+      ]
+    },
+    {
+      "dimension": "anti_template_risk",
+      "criticality": "NONCRITICAL",
+      "blind_result": "BLIND_SIDE_B_BETTER",
+      "blind_counts": {
+        "BLIND_SIDE_A_BETTER": 1,
+        "BLIND_SIDE_B_BETTER": 4,
+        "TIE_OR_EQUIVALENT": 1
+      },
+      "mapped_experiment_counts": {
+        "SELECTIVE_VERBATIM_BETTER": 3,
+        "BASELINE_BETTER": 2,
+        "EQUIVALENT": 1,
+        "INCONCLUSIVE": 0
+      },
+      "mapped_experiment_result": "INCONCLUSIVE",
+      "evaluator_mapped_directions": {
+        "anonymous-evaluator-1": "INCONCLUSIVE",
+        "anonymous-evaluator-2": "SELECTIVE_VERBATIM_BETTER"
+      },
+      "blind_variance_flag": true,
+      "opposed_direction_flag": true,
+      "direction_tie_variance_flag": true,
+      "evaluator_disagreement_flag": true,
+      "evaluator_disagreements": [
+        {
+          "anonymous_pair_id": "blind-pair-1",
+          "dimension": "anti_template_risk",
+          "evaluator_1": "TIE",
+          "evaluator_2": "A_BETTER",
+          "kind": "DIRECTION_VS_TIE"
+        }
+      ],
+      "mapped_vote_trace": [
+        {
+          "vote_id": "anonymous-evaluator-1:blind-pair-1",
+          "evaluator_id": "anonymous-evaluator-1",
+          "anonymous_pair_id": "blind-pair-1",
+          "blind_relation": "TIE",
+          "mapped_result": "EQUIVALENT"
+        },
+        {
+          "vote_id": "anonymous-evaluator-1:blind-pair-2",
+          "evaluator_id": "anonymous-evaluator-1",
+          "anonymous_pair_id": "blind-pair-2",
+          "blind_relation": "B_BETTER",
+          "mapped_result": "SELECTIVE_VERBATIM_BETTER"
+        },
+        {
+          "vote_id": "anonymous-evaluator-1:blind-pair-3",
+          "evaluator_id": "anonymous-evaluator-1",
+          "anonymous_pair_id": "blind-pair-3",
+          "blind_relation": "B_BETTER",
+          "mapped_result": "BASELINE_BETTER"
+        },
+        {
+          "vote_id": "anonymous-evaluator-2:blind-pair-1",
+          "evaluator_id": "anonymous-evaluator-2",
+          "anonymous_pair_id": "blind-pair-1",
+          "blind_relation": "A_BETTER",
+          "mapped_result": "SELECTIVE_VERBATIM_BETTER"
+        },
+        {
+          "vote_id": "anonymous-evaluator-2:blind-pair-2",
+          "evaluator_id": "anonymous-evaluator-2",
+          "anonymous_pair_id": "blind-pair-2",
+          "blind_relation": "B_BETTER",
+          "mapped_result": "SELECTIVE_VERBATIM_BETTER"
+        },
+        {
+          "vote_id": "anonymous-evaluator-2:blind-pair-3",
+          "evaluator_id": "anonymous-evaluator-2",
+          "anonymous_pair_id": "blind-pair-3",
+          "blind_relation": "B_BETTER",
+          "mapped_result": "BASELINE_BETTER"
+        }
+      ]
+    }
+  ],
+  "no_underlying_blind_judgment_edited": true,
+  "scalar_average_created": false
+}

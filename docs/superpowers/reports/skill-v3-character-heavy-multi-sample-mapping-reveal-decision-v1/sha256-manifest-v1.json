@@ -1,0 +1,117 @@
+{
+  "schema": "SkillV3MappingRevealDecisionManifestEnvelopeV1",
+  "definition": {
+    "schema": "SkillV3MappingRevealDecisionSha256ManifestV1",
+    "status": "EXACT",
+    "coverage": "all evidence files except sha256-manifest-v1.json itself",
+    "entry_count": 21,
+    "entries": [
+      {
+        "path": "README.md",
+        "bytes": 389,
+        "sha256": "a097fee986bb29c069be2710c7b27ddd7d3f6275e527aa2e78fbe558b674d7a5"
+      },
+      {
+        "path": "anonymous-to-sample-mapping-v1.json",
+        "bytes": 2800,
+        "sha256": "b1bc34459eb51a9bc9995d9f1e1734ac049698d671bab1778dec16e209d729c1"
+      },
+      {
+        "path": "architectural-interpretation-v1.json",
+        "bytes": 1257,
+        "sha256": "a7e42e9bdc464c64bb3bbc13561eb43f2b14c730c6a6fc0a71d563879d0df1f2"
+      },
+      {
+        "path": "baseline-binding-v1.json",
+        "bytes": 428,
+        "sha256": "510edc612946a8e4f9e5ed474d2c1acdc432d0f05c573c15d8dadf45a21b7592"
+      },
+      {
+        "path": "blind-chronology-v1.json",
+        "bytes": 1226,
+        "sha256": "67c508938cd212c976c2da521dfd2d42a3283d31d86465ce0b61b166ded6b211"
+      },
+      {
+        "path": "blind-freeze-binding-v1.json",
+        "bytes": 2474,
+        "sha256": "7f076d664274f781db9a3c3c688355dc9deae8a40f2d65b9b41274339a472429"
+      },
+      {
+        "path": "blind-side-to-experiment-arm-v1.json",
+        "bytes": 983,
+        "sha256": "6bc3667e299ee979d912be065567c9ea867223537092a1437a47364b6a6abdcb"
+      },
+      {
+        "path": "campaign-engineering-binding-v1.json",
+        "bytes": 2066,
+        "sha256": "3311e59b92409e88d5ed2bd387382414e6c7bd747edbe9c823212f24e7a2df3a"
+      },
+      {
+        "path": "engineering-comparison-v1.json",
+        "bytes": 1462,
+        "sha256": "4add701550a837c2f0af4e91fa4f80d6aa4caef1cb1944bf6414ee6575a4cbee"
+      },
+      {
+        "path": "engineering-non-inferiority-v1.json",
+        "bytes": 881,
+        "sha256": "70212ca373637a572eba730002ca57ec4e8a1e563f2e206d41c688e5ad4c7955"
+      },
+      {
+        "path": "experimental-arm-identities-v1.json",
+        "bytes": 1646,
+        "sha256": "23007f8dcd2c6929909f802478e1f5036a753d5c91b139cb117080f5e2e7ca9b"
+      },
+      {
+        "path": "final-report-v1.md",
+        "bytes": 8483,
+        "sha256": "4526ef44f4957a7c919201cbdb9c6ba13ab562bbf7ab6d3ee4c7a020ed001a9a"
+      },
+      {
+        "path": "frozen-blind-result-binding-v1.json",
+        "bytes": 3264,
+        "sha256": "3da8c39f8f6192dc59cb86ea5d80b9ce48f9d8af52a7bf310056dc5d89d29a23"
+      },
+      {
+        "path": "mapped-literary-dimension-results-v1.json",
+        "bytes": 20922,
+        "sha256": "5943d388f70f22360592f761cf728a7837ef736d74b5a813aa0ce3ebff363336"
+      },
+      {
+        "path": "mapping-manifest-binding-v1.json",
+        "bytes": 589,
+        "sha256": "0789d882d12336e72b48d6d6b055ff5008271e2f40d47d548a72e3ec099cb2d2"
+      },
+      {
+        "path": "narrative-non-inferiority-v1.json",
+        "bytes": 618,
+        "sha256": "257609dcbd0cb5e9412b5f715fb1b517f53bc7c94b1b56baf00a5da77d41f8dd"
+      },
+      {
+        "path": "narrative-policy-binding-v1.json",
+        "bytes": 1601,
+        "sha256": "92e282456ec677bc9b7c6d435f870a7abe5d57e89146410df0364fc40a82b534"
+      },
+      {
+        "path": "pilot-disposition-v1.json",
+        "bytes": 584,
+        "sha256": "bb132877f7826723dc8e785f30efd753c7fafac3a8f58ae0e5e56441a03b1e17"
+      },
+      {
+        "path": "privacy-scan-v1.json",
+        "bytes": 462,
+        "sha256": "507f22b2bd966a3e1c3637f30c3bb1d4eaf2e1cbfe36d8186ee884dbd2809d43"
+      },
+      {
+        "path": "strict-l3-receipt-v1.json",
+        "bytes": 366,
+        "sha256": "7f4a8764f4dee1d14dafc8575a23f62e2126b60c7f50822f06e5329830c42e7d"
+      },
+      {
+        "path": "test-receipt-v1.json",
+        "bytes": 772,
+        "sha256": "453aa3b04250c996c43705f4b9faaa8165eee37ff744a0578944b26971594ec1"
+      }
+    ]
+  },
+  "definition_sha256": "d87f820be279bc9540346e2e8019ca2ec1284218e6473a197d6ce5b52b0673f7"
+}

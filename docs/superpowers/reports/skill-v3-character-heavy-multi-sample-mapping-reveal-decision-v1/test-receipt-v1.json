@@ -1,0 +1,18 @@
+{
+  "schema": "SkillV3MappingRevealDecisionTestReceiptV1",
+  "status": "PASS",
+  "focused": "9 passed in 0.93s; final materialized evidence rechecks 9 passed in 1.01s and 9 passed in 0.96s",
+  "related": "71 passed in 69.49s",
+  "full_offline_suite": "3809 passed, 41 skipped, 6 xfailed, 54 failed, 72 errors in 2238.38s; non-green items are historical sealed-evidence/materialization/Planning-Skill/R0E-R0F live-parity gates; no new owning-source failure",
+  "coverage": [
+    "mapping completeness",
+    "blind-side to experiment-arm translation",
+    "freeze immutability",
+    "decision-rule application",
+    "campaign evidence binding",
+    "engineering comparison",
+    "manifest and privacy"
+  ],
+  "new_owning_source_regression_count": 0,
+  "external_calls": 0
+}

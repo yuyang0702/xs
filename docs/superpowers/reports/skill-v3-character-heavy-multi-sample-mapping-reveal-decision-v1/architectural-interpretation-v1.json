@@ -1,0 +1,26 @@
+{
+  "schema": "SkillV3CharacterHeavyArchitecturalInterpretationV1",
+  "status": "BOUNDED",
+  "selective_verbatim_met_character_heavy_narrative_non_inferiority": false,
+  "selective_verbatim_met_engineering_non_inferiority": true,
+  "selective_verbatim_beat_baseline_on_any_frozen_mapped_aggregate": false,
+  "selective_verbatim_beat_baseline_on_all_frozen_mapped_aggregates": false,
+  "remaining_variance": {
+    "voice_readiness": "INCONCLUSIVE_3_TO_3_OPPOSED",
+    "anti_template_risk": "INCONCLUSIVE_3_TO_2_WITH_1_TIE",
+    "frozen_evaluator_disagreement_count": 4
+  },
+  "proves": [
+    "the sealed character-heavy six-sample method completed without engineering hard failure",
+    "the selective-verbatim arm is engineering non-inferior within the sealed character-heavy experiment",
+    "the selective-verbatim arm failed the prospective narrative non-inferiority rule for this demand class"
+  ],
+  "does_not_prove": [
+    "generalized Skill V3 narrative or engineering non-inferiority",
+    "fitness for other demand classes",
+    "production cutover readiness",
+    "actual token-use or cost parity"
+  ],
+  "one_character_heavy_multi_sample_pass_does_not_prove_generalized_skill_v3_non_inferiority": true,
+  "production_cutover_authorized": false
+}

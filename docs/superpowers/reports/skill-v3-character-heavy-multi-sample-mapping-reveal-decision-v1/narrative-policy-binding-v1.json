@@ -1,0 +1,28 @@
+{
+  "schema": "SkillV3NarrativePolicyBindingV1",
+  "status": "EXACT",
+  "literary_policy_sha256": "d93c95af9ed15d4c3f1193b00e319f364fb57176190e96e9e5d2fcd19eec0b21",
+  "policy_file": "docs/superpowers/reports/skill-v3-character-heavy-multi-sample-blind-bundle-v1/sealed-aggregation-policy-v1.json",
+  "critical_dimensions": [
+    "causal_coherence",
+    "character_agency",
+    "setup_payoff_integrity"
+  ],
+  "noncritical_dimensions": [
+    "anti_template_risk",
+    "scene_pressure",
+    "specificity",
+    "subtext_support",
+    "voice_readiness"
+  ],
+  "aggregation": "per dimension, take the median ordinal relation only when both evaluators agree on direction or at least 4 of 6 evaluator-by-batch votes support it; otherwise INCONCLUSIVE",
+  "critical_regression_handling": "any supported A_BETTER result on a critical dimension is a critical B regression and blocks pass",
+  "noncritical_regression_handling": "reported dimension-by-dimension; cannot compensate for or erase a critical regression",
+  "variance_handling": "high dispersion or evaluator disagreement yields INCONCLUSIVE, never an inferred pass",
+  "inconclusive_handling": "blocks non-inferiority/cutover claim",
+  "tie_equivalent_handling": "EQUIVALENT maps to sealed TIE and remains neutral",
+  "opposed_direction_handling": "INCONCLUSIVE unless the sealed 4-of-6 support threshold is met",
+  "minimum_support": "every critical dimension must be TIE or B_BETTER with the support threshold; at least one critical dimension must not be INCONCLUSIVE",
+  "scalar_average_allowed": false,
+  "retrospective_tuning_allowed": false
+}

@@ -1,0 +1,30 @@
+{
+  "schema": "SkillV3BlindSideToExperimentArmV1",
+  "status": "EXACT",
+  "global_blind_side_to_experiment_arm_mapping": "NOT_DEFINED_BY_DESIGN",
+  "reason": "pair order was shuffled; blind side labels are positional, not arm identities",
+  "pairs": [
+    {
+      "anonymous_pair_id": "blind-pair-1",
+      "blind_side_a_experiment_arm": "B",
+      "blind_side_a_sample_slot": "B1",
+      "blind_side_b_experiment_arm": "A",
+      "blind_side_b_sample_slot": "A1"
+    },
+    {
+      "anonymous_pair_id": "blind-pair-2",
+      "blind_side_a_experiment_arm": "A",
+      "blind_side_a_sample_slot": "A2",
+      "blind_side_b_experiment_arm": "B",
+      "blind_side_b_sample_slot": "B2"
+    },
+    {
+      "anonymous_pair_id": "blind-pair-3",
+      "blind_side_a_experiment_arm": "B",
+      "blind_side_a_sample_slot": "B3",
+      "blind_side_b_experiment_arm": "A",
+      "blind_side_b_sample_slot": "A3"
+    }
+  ],
+  "blind_side_b_must_not_be_assumed_to_mean_experiment_arm_b": true
+}

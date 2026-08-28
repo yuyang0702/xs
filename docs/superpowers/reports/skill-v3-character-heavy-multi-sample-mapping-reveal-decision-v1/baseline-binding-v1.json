@@ -1,0 +1,10 @@
+{
+  "schema": "SkillV3MappingRevealBaselineBindingV1",
+  "status": "EXACT",
+  "branch": "r1-ptr3/planning-repair-finding-propagation-20260817",
+  "start_head": "3e9a012f5d826a222547cea21d80136b439adc1d",
+  "start_worktree": "CLEAN",
+  "decision_commit": "COMMIT_CONTAINING_THIS_NON_SELF_REFERENTIAL_REPORT",
+  "final_head": "COMMIT_CONTAINING_THIS_NON_SELF_REFERENTIAL_REPORT",
+  "final_worktree_expected": "CLEAN_AFTER_SEAL"
+}

@@ -1,0 +1,120 @@
+{
+  "schema": "SkillV3FrozenBlindResultBindingV1",
+  "status": "EXACT_IMMUTABLE",
+  "rows": [
+    {
+      "dimension": "character_agency",
+      "criticality": "CRITICAL",
+      "blind_side_a_better": 0,
+      "blind_side_b_better": 6,
+      "tie_or_equivalent": 0,
+      "blind_result": "BLIND_SIDE_B_BETTER",
+      "variance_flag": false
+    },
+    {
+      "dimension": "causal_coherence",
+      "criticality": "CRITICAL",
+      "blind_side_a_better": 0,
+      "blind_side_b_better": 6,
+      "tie_or_equivalent": 0,
+      "blind_result": "BLIND_SIDE_B_BETTER",
+      "variance_flag": false
+    },
+    {
+      "dimension": "subtext_support",
+      "criticality": "NONCRITICAL",
+      "blind_side_a_better": 0,
+      "blind_side_b_better": 5,
+      "tie_or_equivalent": 1,
+      "blind_result": "BLIND_SIDE_B_BETTER",
+      "variance_flag": true
+    },
+    {
+      "dimension": "specificity",
+      "criticality": "NONCRITICAL",
+      "blind_side_a_better": 0,
+      "blind_side_b_better": 6,
+      "tie_or_equivalent": 0,
+      "blind_result": "BLIND_SIDE_B_BETTER",
+      "variance_flag": false
+    },
+    {
+      "dimension": "scene_pressure",
+      "criticality": "NONCRITICAL",
+      "blind_side_a_better": 0,
+      "blind_side_b_better": 6,
+      "tie_or_equivalent": 0,
+      "blind_result": "BLIND_SIDE_B_BETTER",
+      "variance_flag": false
+    },
+    {
+      "dimension": "setup_payoff_integrity",
+      "criticality": "CRITICAL",
+      "blind_side_a_better": 0,
+      "blind_side_b_better": 5,
+      "tie_or_equivalent": 1,
+      "blind_result": "BLIND_SIDE_B_BETTER",
+      "variance_flag": true
+    },
+    {
+      "dimension": "voice_readiness",
+      "criticality": "NONCRITICAL",
+      "blind_side_a_better": 1,
+      "blind_side_b_better": 5,
+      "tie_or_equivalent": 0,
+      "blind_result": "BLIND_SIDE_B_BETTER",
+      "variance_flag": true
+    },
+    {
+      "dimension": "anti_template_risk",
+      "criticality": "NONCRITICAL",
+      "blind_side_a_better": 1,
+      "blind_side_b_better": 4,
+      "tie_or_equivalent": 1,
+      "blind_result": "BLIND_SIDE_B_BETTER",
+      "variance_flag": true
+    }
+  ],
+  "opposed_direction_dimensions": [
+    "voice_readiness",
+    "anti_template_risk"
+  ],
+  "direction_tie_variance_dimensions": [
+    "subtext_support",
+    "setup_payoff_integrity",
+    "anti_template_risk"
+  ],
+  "evaluator_disagreement_count": 4,
+  "evaluator_disagreements": [
+    {
+      "anonymous_pair_id": "blind-pair-1",
+      "dimension": "voice_readiness",
+      "evaluator_1": "A_BETTER",
+      "evaluator_2": "B_BETTER",
+      "kind": "OPPOSED_DIRECTION"
+    },
+    {
+      "anonymous_pair_id": "blind-pair-1",
+      "dimension": "anti_template_risk",
+      "evaluator_1": "TIE",
+      "evaluator_2": "A_BETTER",
+      "kind": "DIRECTION_VS_TIE"
+    },
+    {
+      "anonymous_pair_id": "blind-pair-2",
+      "dimension": "subtext_support",
+      "evaluator_1": "TIE",
+      "evaluator_2": "B_BETTER",
+      "kind": "DIRECTION_VS_TIE"
+    },
+    {
+      "anonymous_pair_id": "blind-pair-2",
+      "dimension": "setup_payoff_integrity",
+      "evaluator_1": "TIE",
+      "evaluator_2": "B_BETTER",
+      "kind": "DIRECTION_VS_TIE"
+    }
+  ],
+  "scalar_average_created": false,
+  "new_literary_scoring_performed": false
+}
