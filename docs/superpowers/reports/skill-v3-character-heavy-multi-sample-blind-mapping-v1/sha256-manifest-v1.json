@@ -1,0 +1,33 @@
+{
+  "definition_sha256": "78a8e99479b7da6de68f68e08f805bbcfecc3e1b26205f03036219572b4d5808",
+  "entries": [
+    {
+      "bytes": 501,
+      "path": "blind-handoff-validation-receipt-v1.json",
+      "sha256": "3564ca28cd7bd1fe4ac9264837b819faa333b75e094db9fe869aa314b0e4e290"
+    },
+    {
+      "bytes": 6045,
+      "path": "campaign-final-report-supplement-v1.json",
+      "sha256": "5d032c294c289aa113c36f18b4af2d86ee747950ab1ea4bc539a61aa8386e1a5"
+    },
+    {
+      "bytes": 846,
+      "path": "handoff-report-v1.md",
+      "sha256": "e57a02bac6fcf62ea3c1f788d9407689a9849ca0056666caf9ee3a28770005ee"
+    },
+    {
+      "bytes": 106,
+      "path": "README.md",
+      "sha256": "d2c160f0eb4b99a8bb20413cd0b38248e149b9fbe1a626dba797b42ab7e57aa5"
+    },
+    {
+      "bytes": 2400,
+      "path": "sealed-mapping-v1.json",
+      "sha256": "ad224a6240a9513b14e0d7d7b1b5d0ce1c98a24189790422f506fe4dbf022e6b"
+    }
+  ],
+  "entry_count": 5,
+  "schema": "SkillV3BlindMappingSha256ManifestV1",
+  "status": "EXACT"
+}

@@ -1,0 +1,149 @@
+{
+  "allowed_relations": [
+    "A_BETTER",
+    "B_BETTER",
+    "TIE",
+    "INCOMPARABLE"
+  ],
+  "arm_identity_guess_forbidden": true,
+  "evaluator_context_id": "REQUIRED_FRESH_CONTEXT",
+  "judgments_frozen": false,
+  "pairs": [
+    {
+      "anonymous_pair_id": "blind-pair-1",
+      "dimensions": {
+        "anti_template_risk": {
+          "evidence": [],
+          "relation": "UNSET",
+          "uncertainty": "UNSET"
+        },
+        "causal_coherence": {
+          "evidence": [],
+          "relation": "UNSET",
+          "uncertainty": "UNSET"
+        },
+        "character_agency": {
+          "evidence": [],
+          "relation": "UNSET",
+          "uncertainty": "UNSET"
+        },
+        "scene_pressure": {
+          "evidence": [],
+          "relation": "UNSET",
+          "uncertainty": "UNSET"
+        },
+        "setup_payoff_integrity": {
+          "evidence": [],
+          "relation": "UNSET",
+          "uncertainty": "UNSET"
+        },
+        "specificity": {
+          "evidence": [],
+          "relation": "UNSET",
+          "uncertainty": "UNSET"
+        },
+        "subtext_support": {
+          "evidence": [],
+          "relation": "UNSET",
+          "uncertainty": "UNSET"
+        },
+        "voice_readiness": {
+          "evidence": [],
+          "relation": "UNSET",
+          "uncertainty": "UNSET"
+        }
+      }
+    },
+    {
+      "anonymous_pair_id": "blind-pair-2",
+      "dimensions": {
+        "anti_template_risk": {
+          "evidence": [],
+          "relation": "UNSET",
+          "uncertainty": "UNSET"
+        },
+        "causal_coherence": {
+          "evidence": [],
+          "relation": "UNSET",
+          "uncertainty": "UNSET"
+        },
+        "character_agency": {
+          "evidence": [],
+          "relation": "UNSET",
+          "uncertainty": "UNSET"
+        },
+        "scene_pressure": {
+          "evidence": [],
+          "relation": "UNSET",
+          "uncertainty": "UNSET"
+        },
+        "setup_payoff_integrity": {
+          "evidence": [],
+          "relation": "UNSET",
+          "uncertainty": "UNSET"
+        },
+        "specificity": {
+          "evidence": [],
+          "relation": "UNSET",
+          "uncertainty": "UNSET"
+        },
+        "subtext_support": {
+          "evidence": [],
+          "relation": "UNSET",
+          "uncertainty": "UNSET"
+        },
+        "voice_readiness": {
+          "evidence": [],
+          "relation": "UNSET",
+          "uncertainty": "UNSET"
+        }
+      }
+    },
+    {
+      "anonymous_pair_id": "blind-pair-3",
+      "dimensions": {
+        "anti_template_risk": {
+          "evidence": [],
+          "relation": "UNSET",
+          "uncertainty": "UNSET"
+        },
+        "causal_coherence": {
+          "evidence": [],
+          "relation": "UNSET",
+          "uncertainty": "UNSET"
+        },
+        "character_agency": {
+          "evidence": [],
+          "relation": "UNSET",
+          "uncertainty": "UNSET"
+        },
+        "scene_pressure": {
+          "evidence": [],
+          "relation": "UNSET",
+          "uncertainty": "UNSET"
+        },
+        "setup_payoff_integrity": {
+          "evidence": [],
+          "relation": "UNSET",
+          "uncertainty": "UNSET"
+        },
+        "specificity": {
+          "evidence": [],
+          "relation": "UNSET",
+          "uncertainty": "UNSET"
+        },
+        "subtext_support": {
+          "evidence": [],
+          "relation": "UNSET",
+          "uncertainty": "UNSET"
+        },
+        "voice_readiness": {
+          "evidence": [],
+          "relation": "UNSET",
+          "uncertainty": "UNSET"
+        }
+      }
+    }
+  ],
+  "schema": "SkillV3BlindJudgmentTemplateV1"
+}

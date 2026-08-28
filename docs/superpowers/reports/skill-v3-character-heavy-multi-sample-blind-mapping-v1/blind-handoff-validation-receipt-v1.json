@@ -1,0 +1,15 @@
+{
+  "blockers": 0,
+  "credential_lookup_count": 0,
+  "focused_tests": "6 passed in 1.04s",
+  "main_context_literary_judgment": "NOT_PERFORMED",
+  "model_calls": 0,
+  "network_calls": 0,
+  "paid_calls": 0,
+  "related_tests": "113 passed in 148.73s",
+  "review_mode": "MAIN_CODEX_SINGLE_AGENT_NO_INDEPENDENCE_CLAIM",
+  "schema": "SkillV3BlindHandoffValidationReceiptV1",
+  "status": "PASS",
+  "strict_l3": "PASS; warnings=0; blockers=0; MAIN_CODEX_SINGLE_AGENT_NO_INDEPENDENCE_CLAIM",
+  "warnings": 0
+}

@@ -1,0 +1,28 @@
+{
+  "critical_dimensions": [
+    "character_agency",
+    "causal_coherence",
+    "setup_payoff_integrity"
+  ],
+  "dimensions": [
+    "character_agency",
+    "causal_coherence",
+    "subtext_support",
+    "specificity",
+    "scene_pressure",
+    "setup_payoff_integrity",
+    "voice_readiness",
+    "anti_template_risk"
+  ],
+  "minimum_support": "every critical dimension must be TIE or B_BETTER with the support threshold; at least one critical dimension must not be INCONCLUSIVE",
+  "noncritical_dimensions": [
+    "subtext_support",
+    "specificity",
+    "scene_pressure",
+    "voice_readiness",
+    "anti_template_risk"
+  ],
+  "schema": "SkillV3BlindCriticalityPolicyV1",
+  "status": "SEALED",
+  "worst_case_rule": "any supported A_BETTER result on a critical dimension is a critical B regression and blocks pass"
+}

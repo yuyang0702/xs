@@ -1,0 +1,88 @@
+{
+  "definition_sha256": "2b98b26ffa25928783b4bffc5a7c8ffcf79fd604bd74c5443eeee56d0b5ddebd",
+  "entries": [
+    {
+      "bytes": 2594,
+      "path": "artifacts/blind-12cb88bb3573ce5c.json",
+      "sha256": "61c4de6199ad6f42cc6c274fb5b6655ed52cf1594cbd861b81c20ffdca3e0bff"
+    },
+    {
+      "bytes": 2211,
+      "path": "artifacts/blind-5f084ba2aa794cd5.json",
+      "sha256": "102a8336cd48e1f171915a241aefbd4970607e72beefb86a7254cd214f18fb9b"
+    },
+    {
+      "bytes": 2237,
+      "path": "artifacts/blind-645c2c2eadf86a6e.json",
+      "sha256": "9712745c3fe0a2fd005ed771093ae277d4104c8cad85bf98317724f84ad5cf29"
+    },
+    {
+      "bytes": 2593,
+      "path": "artifacts/blind-d0a798450ae880c2.json",
+      "sha256": "c1329c9bc246f09b41d6def74eedff819cf64d322ac31b773028ac63d58eba13"
+    },
+    {
+      "bytes": 2122,
+      "path": "artifacts/blind-eeae3135bca45598.json",
+      "sha256": "faa85277bb2ef3b15f720de4150f3c73a96c89ebb0254f6bce1ed85754ff034e"
+    },
+    {
+      "bytes": 2226,
+      "path": "artifacts/blind-f72b8680d396280f.json",
+      "sha256": "bffc7bd9109a5d00631a64f3cb0602dbcc7f4b7690f51faa107063487c3bb65f"
+    },
+    {
+      "bytes": 931,
+      "path": "blind-batch-policy-v1.json",
+      "sha256": "9d05786739404b3f739bd2142b8bd4a7ee144f7369f34de5ae4794796fa47380"
+    },
+    {
+      "bytes": 1992,
+      "path": "blind-batch-v1.json",
+      "sha256": "0dbac2b15ed9a1ae7cb0f6c6b4d4731c04b96089b2b4692ac2fc928f32677bd7"
+    },
+    {
+      "bytes": 587,
+      "path": "fresh-evaluator-context-policy-v2.json",
+      "sha256": "7e170745ac7094daf492fb6f4113858d5998eaf69e5572ee50575bfd9cead1f4"
+    },
+    {
+      "bytes": 3675,
+      "path": "judgment-template-v1.json",
+      "sha256": "718b2f08192971b6ab4b1ab2a61e4a9295f49a27d98e2926c89ff0ad8fed16d3"
+    },
+    {
+      "bytes": 1248,
+      "path": "minimal-task-context-v1.json",
+      "sha256": "d86f8fa05bface1d0aa740a9214e936ad586908ca6d51e4d975e90acd05ddd3f"
+    },
+    {
+      "bytes": 517,
+      "path": "privacy-scan-v1.json",
+      "sha256": "5da79abae687ce1a58ef675fb20ccb75877827556cee056a599784ba9539647a"
+    },
+    {
+      "bytes": 227,
+      "path": "README.md",
+      "sha256": "ea8b962db1a6135632396e3584e1c73478e153652a2de90301c2103ed16bfbc8"
+    },
+    {
+      "bytes": 1015,
+      "path": "sealed-aggregation-policy-v1.json",
+      "sha256": "d93c95af9ed15d4c3f1193b00e319f364fb57176190e96e9e5d2fcd19eec0b21"
+    },
+    {
+      "bytes": 820,
+      "path": "sealed-criticality-policy-v1.json",
+      "sha256": "f918ef05462d69bd0e471e2090e5658b452db768367124175e25ce91d8c19216"
+    },
+    {
+      "bytes": 1015,
+      "path": "sealed-literary-rubric-v1.json",
+      "sha256": "d93c95af9ed15d4c3f1193b00e319f364fb57176190e96e9e5d2fcd19eec0b21"
+    }
+  ],
+  "entry_count": 16,
+  "schema": "SkillV3BlindBundleSha256ManifestV1",
+  "status": "EXACT"
+}

@@ -1,0 +1,31 @@
+{
+  "authority_input": {
+    "context_projection_sha256": "7134e84052d6e15bdd0f3bbb75de41a45c9e8c083d09e896004f8228b71c47c7",
+    "dependency_artifact_ids": [],
+    "formal_event_contract_sha256": "55a5b2b47210d3b6106f7b985d35f888be348ad7aacfd4a6dcc4222c62fc2f70",
+    "formal_event_id": "EV-3D3AE01E",
+    "formal_event_ids": [
+      "EV-3D3AE01E"
+    ],
+    "parent_authority_sha256": "5271869c41776bc7f8f3023729246899dd76b1bc19c22cb98854a5a976dafada",
+    "predecessor_boundary_sha256": "76a68bbed1248ae022a28653d63d27cef26c0810683a610c74cf1bb4ebef4360",
+    "required_obligation_ids": [
+      "motivation:protect-rival-without-confessing-guilt",
+      "voice:restrained-irony-under-fear",
+      "relationship:costly-choice-creates-conditional-trust",
+      "subtext:apology-concealed-as-bargain"
+    ],
+    "segment_event_ids": [
+      [
+        "EV-3D3AE01E"
+      ]
+    ]
+  },
+  "expected_output": [
+    "title",
+    "narrative"
+  ],
+  "experiment_demand": "character-heavy event realization",
+  "instruction": "Assess each anonymous artifact as a non-authoritative realization of the same frozen formal event. Judge relative literary quality and task fidelity using only the sealed rubric.",
+  "schema": "SkillV3BlindMinimalTaskContextV1"
+}

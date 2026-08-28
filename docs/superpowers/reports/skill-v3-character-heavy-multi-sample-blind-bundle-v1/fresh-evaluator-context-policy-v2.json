@@ -1,0 +1,16 @@
+{
+  "allowed_after_freeze": "main engineering/orchestration context may reveal mapping and perform engineering evaluation",
+  "evaluator_outputs": "dimension-level judgments, evidence references, uncertainty; no arm identity guess",
+  "forbidden_before_freeze": [
+    "arm mapping",
+    "engineering evidence",
+    "prior outcomes",
+    "profile version labels",
+    "private approval/nonce artifacts"
+  ],
+  "fresh_context_required": [
+    "each blind literary evaluation batch",
+    "tie-break evaluation if prospectively authorized"
+  ],
+  "schema": "FreshEvaluatorContextPolicyV2"
+}
