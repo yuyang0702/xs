@@ -1,0 +1,12 @@
+{
+  "schema": "OutlineAuthorityClosureV1",
+  "version": 1,
+  "supported_heading_levels": [2, 3, 4, 5, 6],
+  "source_level_type": "exact_integer",
+  "private_public_alias_conflict": "fail_closed",
+  "parent_container_with_nested_narrative_or_structure": "excluded",
+  "deepest_sparse_leaf": "retained",
+  "formal_public_identity_parity": "exact_after_documented_uppercase_normalization",
+  "languages_tested": ["Chinese", "English"],
+  "topologies_tested": ["populated", "sparse", "level_jump", "same_level_siblings", "bold_legacy"]
+}

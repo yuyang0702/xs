@@ -1,0 +1,13 @@
+{
+  "schema": "StyleAuthorityFreezeClosureV1",
+  "version": 1,
+  "status": "CLOSED",
+  "STYLE_SELECTION_ABSENCE_IS_COMPARABLE_STATE": true,
+  "states": ["selected", "missing", "unreadable", "not_requested"],
+  "selected_to_other": "fail_closed",
+  "selected_to_missing_or_cancelled": "fail_closed",
+  "version_hash_scope_project_change": "fail_closed",
+  "not_requested_to_not_requested": "pass",
+  "profile_byte_identity": "actual_bytes_including_empty_crlf_or_invalid_utf8",
+  "raw_profile_persisted": false
+}

@@ -1,0 +1,25 @@
+{
+  "schema": "ShortTrustworthyFinalCandidateChangeInventoryV1",
+  "version": 1,
+  "start_head": "ed8e6cc56f2d25fdd330252a0bd9986b6f3128c1",
+  "files": [
+    {"path":"docs/maintenance.md","intent":"Document A/B/C authority behavior","disposition":"KEEP_MODIFIED"},
+    {"path":"src/novel_flywheel/contract_runtime.py","intent":"Planning typed contract propagation","disposition":"KEEP_MODIFIED"},
+    {"path":"src/novel_flywheel/generated_artifacts.py","intent":"Registered generated-artifact boundary","disposition":"KEEP_MODIFIED"},
+    {"path":"src/novel_flywheel/outlines.py","intent":"Exact formal/public H2-H6 event ownership","disposition":"KEEP_MODIFIED"},
+    {"path":"src/novel_flywheel/planning_closure.py","intent":"Bounded whole-graph deterministic closure","disposition":"KEEP_NEW"},
+    {"path":"src/novel_flywheel/planning_semantics.py","intent":"Closed typed Planning finding authority","disposition":"KEEP_MODIFIED"},
+    {"path":"src/novel_flywheel/prose_quality.py","intent":"Validator-origin Draft decision attestation","disposition":"KEEP_MODIFIED"},
+    {"path":"src/novel_flywheel/style_context.py","intent":"Frozen style authority and typed fidelity claims","disposition":"KEEP_MODIFIED"},
+    {"path":"src/novel_flywheel/workflows.py","intent":"A/B/C production integration without new authority path","disposition":"KEEP_MODIFIED"},
+    {"path":"tests/test_outlines.py","intent":"Nested/sparse outline ownership regressions","disposition":"KEEP_MODIFIED"},
+    {"path":"tests/test_r1_d3_draft_retry_findings.py","intent":"Exact Draft finding/repair authority regressions","disposition":"KEEP_MODIFIED"},
+    {"path":"tests/test_short_trustworthy_full_flow.py","intent":"Systemic A/B/C offline regression matrix","disposition":"KEEP_NEW"},
+    {"path":"tests/test_workflows.py","intent":"Cross-stage style and Full Short integration regressions","disposition":"KEEP_MODIFIED"},
+    {"path":"tests/fixtures/reliability/short_trustworthy_full_flow/sanitized-isomorphic-fixture-v1.json","intent":"Non-private production-shaped topology fixture","disposition":"KEEP_NEW"},
+    {"path":"docs/superpowers/reports/short-trustworthy-full-flow-readiness-and-cutover-master-v1/change-contract-v1.json","intent":"Preserve stopped candidate provenance","disposition":"KEEP_NEW"}
+  ],
+  "partial_revert_count": 0,
+  "removed_candidate_file_count": 0,
+  "unrelated_change_count": 0
+}

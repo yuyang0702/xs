@@ -1,0 +1,39 @@
+{
+  "schema": "ShortTrustworthyFullOfflineSuiteReceiptV1",
+  "version": 1,
+  "command": "pytest -q",
+  "raw_summary": "62 failed, 4075 passed, 41 skipped, 6 xfailed, 1 warning, 144 errors in 2136.71s",
+  "exit_code": 1,
+  "current_owning_source_regressions": 0,
+  "owning_source_recheck": [
+    "focused: 269 passed",
+    "related: 645 passed",
+    "Draft plus outline final: 104 passed",
+    "production length: 3 passed",
+    "Draft/style matrix: 112 passed"
+  ],
+  "historical_non_green_families": [
+    "expired or superseded Canary approval/materialization exact-hash gates",
+    "planning repair and Provider capability probe sealed live-parity gates",
+    "Short Completion successor/readiness historical source fingerprints",
+    "Skill V2/V3 campaign approval, mapping and execution evidence locks",
+    "Planning Skill profile quality/oracle sealed evidence",
+    "R0E/R0F/runtime fingerprint historical baseline hashes"
+  ],
+  "representative_non_green_paths": [
+    "tests/canary/test_pa_strict_tool_obs_materialization.py",
+    "tests/canary/test_planning_repair_approval_closure.py",
+    "tests/canary/test_short_completion_materialization.py",
+    "tests/canary/test_provider_capability_probe_materialization.py",
+    "tests/canary/test_skill_v2_bounded_repeated_ab_pair1_a_closure.py",
+    "tests/canary/test_skill_v3_mapping_reveal_decision.py",
+    "tests/test_planning_skill_profile_quality.py",
+    "tests/test_r0e_reports.py",
+    "tests/test_r0f_baseline.py",
+    "tests/test_runtime_fingerprint.py"
+  ],
+  "historical_evidence_rewritten_to_force_green": false,
+  "live_database_mutated_to_force_green": false,
+  "classification": "ACCEPTED_HISTORICAL_NON_GREEN_WITH_ZERO_CURRENT_OWNING_REGRESSION",
+  "external_actions": 0
+}

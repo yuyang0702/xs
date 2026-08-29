@@ -1,0 +1,11 @@
+{
+  "schema": "PlanningGlobalCycleReviewV1",
+  "version": 1,
+  "root_reachable_cycle": "FAIL_CLOSED",
+  "disconnected_cycle": "FAIL_CLOSED",
+  "self_loop": "FAIL_CLOSED",
+  "missing_target": "FAIL_CLOSED",
+  "duplicate_edge": "FAIL_CLOSED",
+  "disconnected_acyclic_component": "VALIDATED_BEFORE_ROOT_SELECTION",
+  "whole_declared_graph_reviewed": true
+}

@@ -1,0 +1,29 @@
+{
+  "schema": "ShortTrustworthyAuthorityCriticalReadinessDispositionV1",
+  "version": 1,
+  "implementation_commit": "0d1986a",
+  "A_PLANNING": "CLOSED",
+  "B_DRAFT_REPAIR_OWNERSHIP": "CLOSED",
+  "C_STYLE_REFERENCE_PROVENANCE_FIDELITY": "CLOSED",
+  "TRUSTWORTHY_FULL_SHORT_READINESS": "YES",
+  "PLANNING_V2_PRODUCTION_CUTOVER": "NO",
+  "FULL_SHORT_EXECUTION_AUTHORIZED": "NO",
+  "FULL_SHORT": "NOT_EXECUTED",
+  "new_owning_source_regressions": 0,
+  "strict_l3": "PASS",
+  "privacy": "PASS",
+  "production_baseline_identity": "EXACT",
+  "hybrid_accidental_enable_count": 0,
+  "EXACT_NEXT_GATE": "FIRST_TRUSTWORTHY_FULL_SHORT_EXECUTION_BOUNDARY_AND_APPROVAL_MASTER",
+  "external_counters": {
+    "credential_lookup_count": 0,
+    "provider_client_creation_count": 0,
+    "real_provider_calls": 0,
+    "http_post_attempts": 0,
+    "network_calls": 0,
+    "model_calls": 0,
+    "paid_calls": 0,
+    "real_sample_execution_count": 0,
+    "full_short_execution_count": 0
+  }
+}

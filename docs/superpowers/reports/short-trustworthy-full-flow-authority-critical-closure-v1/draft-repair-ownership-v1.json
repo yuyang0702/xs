@@ -1,0 +1,14 @@
+{
+  "schema": "DraftRepairOwnershipClosureV1",
+  "version": 1,
+  "status": "CLOSED",
+  "local_defect": "paragraph_local_byte_preserving_repair",
+  "multiple_independent_defects": "independent_bounded_local_units",
+  "wider_defect": "typed_owned_segment_rebuild",
+  "ambiguous_or_invalid_scope": "fail_closed",
+  "authority": "validator_origin_hmac_source_draft_bound_DraftRetryFindingBatch",
+  "unaffected_bytes_preserved": true,
+  "forged_or_cross_draft_replay": "rejected",
+  "deterministic_replay": true,
+  "free_form_interpretation": false
+}

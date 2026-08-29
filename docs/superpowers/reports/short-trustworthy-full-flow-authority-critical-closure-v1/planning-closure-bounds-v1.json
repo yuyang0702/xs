@@ -1,0 +1,13 @@
+{
+  "schema": "PlanningGlobalClosureBoundsV1",
+  "version": 1,
+  "MAX_NODE_COUNT": 512,
+  "MAX_EDGE_COUNT": 8192,
+  "MAX_ROOT_COUNT": 512,
+  "MAX_SERIALIZED_BYTES": 1048576,
+  "identity_type": "exact_string",
+  "silent_coercion": false,
+  "silent_truncation": false,
+  "partial_closure_accepted": false,
+  "bound_failure": "typed_fail_closed"
+}

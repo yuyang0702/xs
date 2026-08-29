@@ -1,0 +1,8 @@
+{
+  "schema": "ShortTrustworthyFocusedTestReceiptV1",
+  "version": 1,
+  "result": "269 passed in 23.15s",
+  "scope": ["A Planning", "B Draft repair", "C style/reference", "outline authority", "contract runtime"],
+  "exit_code": 0,
+  "external_actions": 0
+}

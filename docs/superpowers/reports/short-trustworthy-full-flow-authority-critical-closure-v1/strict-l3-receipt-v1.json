@@ -1,0 +1,15 @@
+{
+  "schema": "ShortTrustworthyStrictL3ReceiptV1",
+  "version": 1,
+  "declared_level": "L3",
+  "baseline_used": true,
+  "forward_risk_report": "forward-risk-report-v2.json",
+  "split_review_report": "split-review-report-v1.json",
+  "core_tree_sha256": "d77e54fafba93c9c0975cbd65b83674aceb13bba8994099b463d2e9999751651",
+  "core_path_count": 6,
+  "review_slice_count": 3,
+  "warnings": 0,
+  "blockers": 0,
+  "ok": true,
+  "external_actions": 0
+}

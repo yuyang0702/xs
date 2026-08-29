@@ -1,0 +1,15 @@
+{
+  "schema": "StyleReferenceFidelityClaimContractClosureV1",
+  "version": 1,
+  "status": "CLOSED",
+  "claim_schema": "StyleReferenceFidelityClaimV1",
+  "allowed_category": "uses_selected_style_guidance",
+  "requires_exact_provenance_and_evidence": true,
+  "exact_replication": "rejected",
+  "faithful_author_voice_replication": "rejected",
+  "indistinguishable_imitation": "rejected",
+  "author_or_style_equivalence": "rejected",
+  "ordinary_prose_source_authorship_critique": "allowed",
+  "blacklist_role": "defense_in_depth_only",
+  "large_structured_verdict_scan": "bounded_direct_sibling_only"
+}

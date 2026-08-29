@@ -1,0 +1,50 @@
+{
+  "version": 1,
+  "core_tree_sha256": "d77e54fafba93c9c0975cbd65b83674aceb13bba8994099b463d2e9999751651",
+  "reviews": [
+    {
+      "review_id": "planning-authority-final-v13",
+      "reviewer": "Huygens (/root/draft_style_postfix_v27)",
+      "status": "passed",
+      "core_paths": [
+        "src/novel_flywheel/planning_closure.py",
+        "src/novel_flywheel/planning_semantics.py"
+      ],
+      "test_paths": [
+        "tests/test_short_trustworthy_full_flow.py",
+        "tests/test_workflows.py"
+      ],
+      "evidence": "Fresh read-only review on final bytes: closed registry/HMAC/source binding, duplicate policy, strict IDs, all four bounds, missing target, self-loop, disconnected cycle and deterministic full-graph closure PASS; 145 focused tests plus independent permutation/adversarial probe."
+    },
+    {
+      "review_id": "outline-and-draft-authority-final",
+      "reviewer": "Anscombe (/root/draft_style_postfix_v26)",
+      "status": "passed",
+      "core_paths": [
+        "src/novel_flywheel/outlines.py",
+        "src/novel_flywheel/prose_quality.py"
+      ],
+      "test_paths": [
+        "tests/test_outlines.py",
+        "tests/test_r1_d3_draft_retry_findings.py",
+        "tests/test_short_trustworthy_full_flow.py"
+      ],
+      "evidence": "Fresh read-only reviews on final bytes: H2-H6 populated/sparse Chinese/English public/formal/project/workflow event parity and exact source-level shapes PASS; Draft validator-origin HMAC, source binding, forged/replayed rejection, privacy and 30K/60K bounded behavior PASS."
+    },
+    {
+      "review_id": "style-and-workflow-authority-final-v28",
+      "reviewer": "Mendel (/root/draft_style_postfix_v28)",
+      "status": "passed",
+      "core_paths": [
+        "src/novel_flywheel/style_context.py",
+        "src/novel_flywheel/workflows.py"
+      ],
+      "test_paths": [
+        "tests/test_short_trustworthy_full_flow.py",
+        "tests/test_workflows.py",
+        "tests/test_r1_d3_draft_retry_findings.py"
+      ],
+      "evidence": "Fresh read-only review on final bytes: style removal/change detection, typed fidelity semantics, Draft ownership, unaffected-content preservation and bounded large-verdict scan PASS; 188 focused, 379 workflow-related, 4096+4096 adversarial probe at 26.314 MiB peak."
+    }
+  ]
+}

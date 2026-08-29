@@ -1,0 +1,11 @@
+{
+  "schema": "ShortTrustworthyOfflineFullFlowReplayV1",
+  "version": 1,
+  "command": "pytest -q tests/test_workflows.py::test_short_ir_first_production_length_matrix_reaches_formal_manuscript",
+  "targets_effective_han_characters": [13000, 20000, 30000],
+  "result": "3 passed in 80.34s",
+  "production_orchestration_retained": true,
+  "paid_boundary_replaced_by_deterministic_gateway": true,
+  "boundaries_crossed": ["planning", "causal_chain", "execution_manifest", "drafting", "split_merge", "polish", "final_review", "formal_promotion"],
+  "external_actions": 0
+}

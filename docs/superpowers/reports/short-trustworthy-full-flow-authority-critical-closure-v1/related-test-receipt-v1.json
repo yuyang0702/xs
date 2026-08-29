@@ -1,0 +1,8 @@
+{
+  "schema": "ShortTrustworthyRelatedTestReceiptV1",
+  "version": 1,
+  "command": "pytest -q tests/test_short_trustworthy_full_flow.py tests/test_workflows.py tests/test_contract_runtime.py tests/test_r1_d3_draft_retry_findings.py tests/test_outlines.py",
+  "result": "645 passed in 419.17s",
+  "exit_code": 0,
+  "external_actions": 0
+}

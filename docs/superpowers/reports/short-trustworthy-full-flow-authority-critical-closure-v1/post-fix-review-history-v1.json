@@ -1,0 +1,13 @@
+{
+  "schema": "ShortTrustworthyPostFixReviewHistoryV1",
+  "version": 1,
+  "historical_non_final_findings": [
+    "V27 exposed unbounded nested fidelity sibling expansion; fixed before V28 PASS.",
+    "Outlines review exposed H5/H6 omission; fixed and regression-tested.",
+    "Outlines re-review exposed public projection hierarchy loss; fixed with exact source_level.",
+    "Outlines re-review exposed sparse generic parent leakage; fixed by nested narrative/structure suppression.",
+    "Outlines re-review exposed dual source-level alias ambiguity; fixed fail-closed."
+  ],
+  "historical_failures_counted_as_final_pass": false,
+  "all_final_review_slices_passed": true
+}

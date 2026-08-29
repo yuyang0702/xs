@@ -1,0 +1,11 @@
+{
+  "schema": "ShortTrustworthyAuthorityCriticalBaselineBindingV1",
+  "version": 1,
+  "branch": "r1-ptr3/planning-repair-finding-propagation-20260817",
+  "start_head": "ed8e6cc56f2d25fdd330252a0bd9986b6f3128c1",
+  "baseline_kind": "intentionally_dirty_unsealed_candidate",
+  "baseline_file": "short-trustworthy-authority-critical-narrow-fix-baseline-v1.json",
+  "candidate_preserved_without_reset_stash_or_discard": true,
+  "source_truth_precedence": true,
+  "external_actions": 0
+}

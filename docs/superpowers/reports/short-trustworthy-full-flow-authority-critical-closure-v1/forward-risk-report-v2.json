@@ -1,0 +1,141 @@
+{
+  "version": 2,
+  "original_requirement": "Close the four authority-critical Strict L3 defects, finish bounded Draft repair ownership, and prove the complete trustworthy Full Short offline readiness chain without executing a real Provider or Full Short.",
+  "scope_classification": "open_world",
+  "operational_definition": "All supported Planning output topologies must enter one typed finding and global-closure authority; Draft repair must consume only validator-origin exact owned findings; selected style/reference authority must remain immutable across every later stage; fidelity claims must be typed and evidence-bounded; valid unseen structures must cross the next authoritative boundary while ambiguous, malformed, capacity-limited, or interrupted inputs fail closed.",
+  "forbidden_narrowing": [
+    "Do not authorize findings merely because a caller recomputed a public SHA.",
+    "Do not restrict graph safety to root-reachable components or coerce malformed identities.",
+    "Do not map a local Draft finding into a free-form or whole-draft rewrite.",
+    "Do not treat selected-to-missing style state as absence of a comparison.",
+    "Do not replace structural fidelity semantics with one observed phrase blacklist.",
+    "Do not support only the observed outline depth, language, wrapper name, Provider, story, or fixture."
+  ],
+  "resolution_status": "systemically_resolved",
+  "constraint_traceability": [
+    {
+      "requirement": "Planning findings use a closed reason/code/scope registry and exact validator-origin authorization.",
+      "implementation": "src/novel_flywheel/planning_semantics.py validates the exact finding schema, registry relation, canonical identity, source binding, batch HMAC and duplicate policy.",
+      "test_paths": ["tests/test_short_trustworthy_full_flow.py"],
+      "evidence": "Unknown or retargeted rehashed findings, stale hashes, duplicate identities, signature replay and wrong-source batches fail closed; every registered kind is deterministic."
+    },
+    {
+      "requirement": "Global Planning closure uses strict identities, explicit bounds and whole-graph cycle detection.",
+      "implementation": "src/novel_flywheel/planning_closure.py validates exact IDs and the complete declared graph before root selection under node, edge, root and serialized-byte limits.",
+      "test_paths": ["tests/test_short_trustworthy_full_flow.py"],
+      "evidence": "Missing targets, duplicate edges, self-loops, disconnected cycles, non-string IDs and every resource bound are tested with deterministic closure replay."
+    },
+    {
+      "requirement": "Typed Planning authority must retain exact nested outline event ownership across public and formal projections.",
+      "implementation": "src/novel_flywheel/outlines.py retains exact H2-H6 source hierarchy, rejects malformed/dual source-level states and makes public, formal, project and workflow projections agree.",
+      "test_paths": ["tests/test_outlines.py", "tests/test_workflows.py"],
+      "evidence": "Chinese H5, English H6, sparse generic containers, malformed scalar values and alias conflicts have stable regression coverage."
+    },
+    {
+      "requirement": "Draft local repair authority is exact, narrow, deterministic and cannot be forged or replayed.",
+      "implementation": "src/novel_flywheel/prose_quality.py emits source-bound HMAC validator decisions; src/novel_flywheel/workflows.py admits only exact DraftRetryFindingBatch capabilities and byte-preserving owned repairs.",
+      "test_paths": ["tests/test_r1_d3_draft_retry_findings.py", "tests/test_short_trustworthy_full_flow.py"],
+      "evidence": "Multiple independent defects remain local, ambiguous/wide scope is typed or fail-closed, forged and cross-draft findings are rejected, and unowned bytes remain exact."
+    },
+    {
+      "requirement": "Frozen style/reference authority compares selected, missing, unreadable and not-requested states at every applicable stage.",
+      "implementation": "src/novel_flywheel/style_context.py creates an exact byte-bound authority; src/novel_flywheel/workflows.py freezes it once and revalidates every later stage including present-to-missing transitions.",
+      "test_paths": ["tests/test_short_trustworthy_full_flow.py", "tests/test_workflows.py"],
+      "evidence": "Removal, replacement, version/hash/scope/project drift, CRLF/empty/unreadable profiles and tampered in-memory profile text are covered."
+    },
+    {
+      "requirement": "Final Review fidelity language is typed, provenance-bound and bounded without blocking ordinary prose critique.",
+      "implementation": "src/novel_flywheel/style_context.py scans the closed typed verdict structure, rejects author/style imitation assertions and emits only StyleReferenceFidelityClaimV1 evidence-bounded claims.",
+      "test_paths": ["tests/test_short_trustworthy_full_flow.py", "tests/test_workflows.py"],
+      "evidence": "Paraphrased replication, key/value and direct-sibling constructions fail; ordinary prose, source and authorship critique pass; large verdicts remain bounded and deterministic."
+    }
+  ],
+  "historical_incident_families_checked": [
+    "planning semantic_validation_failed finding propagation",
+    "planning repair_scope_mutation_not_proven residual",
+    "reasoning-only max_tokens zero-visible Provider output",
+    "ContractOutputLimitExhausted terminal amplification",
+    "Draft retry_scope_too_broad residual",
+    "stale or replayed authority receipts",
+    "style selection removal and reference identity drift",
+    "nested outline event ownership collapse"
+  ],
+  "projected_failure_mechanisms": [
+    "presentation topology variance before typed Planning validation",
+    "identity coercion, duplicate ownership and disconnected graph cycles",
+    "capacity, truncation and interrupted response boundaries",
+    "forged or replayed local-repair capability",
+    "authority disappearance between Planning, Draft, polish and Final Review",
+    "unsupported author-voice equivalence expressed across structured fields",
+    "hierarchy metadata loss between formal and public outline projections"
+  ],
+  "model_output_boundary_changed": true,
+  "model_output_variants_tested": [
+    "canonical PlanningSemanticDraftV2 object with ordered segments",
+    "runtime-owned planning packet wrapper with exact formal-event coverage",
+    "event-array presentation normalized through the registered adapter boundary",
+    "markdown-field planning packet with nested narrative headings",
+    "unseen artifact_bundle container with a single provable candidate",
+    "unseen delivery_envelope wrapper with complete body ownership",
+    "typed Draft mixed-script validator decision with one local unit",
+    "typed Final Review verdict with evidence-bounded style claim"
+  ],
+  "invalid_output_variants_tested": [
+    "ambiguous multiple Planning candidates and unknown machine-control field",
+    "rehashed unknown or path-retargeted Planning finding",
+    "forged or cross-draft replayed Draft validator decision",
+    "paraphrased exact author-voice replication claim"
+  ],
+  "transport_capacity_variants_tested": [
+    "truncated or output-limited Planning envelope retains no partial closure",
+    "interrupted deterministic gateway/checkpoint path retains last accepted authority",
+    "node, edge, root and serialized-byte closure exhaustion",
+    "large Final Review criteria/issues collection remains bounded"
+  ],
+  "model_output_topology_classes_tested": [
+    "canonical typed object",
+    "nested object wrapper",
+    "array-owned event packet",
+    "markdown or fenced document packet",
+    "typed validator decision batch",
+    "typed Final Review verdict mapping"
+  ],
+  "unseen_valid_variants_tested": [
+    "artifact_bundle wrapper absent from production fixtures",
+    "delivery_envelope nested body absent from implementation labels",
+    "generic English H2-to-H4-to-H6 hierarchy"
+  ],
+  "unknown_variant_behavior": "Unknown, conflicting, duplicated, incomplete or narratively ambiguous structures remain unconverted and enter the existing typed bounded recovery/fail-close path; no guessing, truncation or broad rewrite is permitted.",
+  "invariant_test_paths": [
+    "tests/test_short_trustworthy_full_flow.py",
+    "tests/test_r1_d3_draft_retry_findings.py",
+    "tests/test_outlines.py",
+    "tests/test_workflows.py",
+    "tests/test_contract_runtime.py"
+  ],
+  "why_previous_tests_missed": "Earlier tests emphasized one root-reachable graph, present-to-present style comparison, exact observed phrases, idealized Draft decisions and H2-H4 outline shapes. Fresh independent reviews projected the same mechanisms into disconnected graphs, missing authority states, structured sibling claims, large verdicts, H5/H6 and sparse generic hierarchies, revealing the adjacent gaps.",
+  "sibling_boundaries": [
+    {"boundary": "causal chain", "disposition": "tested_not_susceptible", "evidence": "Consumes authorized formal event identities; complete offline flow preserves exact ordered ownership."},
+    {"boundary": "execution manifest", "disposition": "fixed_and_tested", "evidence": "Planning closure and outline projection bind the same uppercase formal identities before manifest construction."},
+    {"boundary": "drafting", "disposition": "fixed_and_tested", "evidence": "Typed Planning findings map to exact local Draft ownership; forged, stale or broad findings fail closed."},
+    {"boundary": "split and merge", "disposition": "tested_not_susceptible", "evidence": "Production-shaped 13K/20K/30K replays preserve packet ownership, reconstruction and whole-candidate validation."},
+    {"boundary": "polish", "disposition": "fixed_and_tested", "evidence": "Frozen style/reference authority is revalidated and provenance is carried without changing selected identity."},
+    {"boundary": "targeted and manual revision", "disposition": "tested_not_susceptible", "evidence": "Existing revision authority remains unchanged; no new free-form repair or formal-write path was introduced."},
+    {"boundary": "final review", "disposition": "fixed_and_tested", "evidence": "Closed typed verdict scan rejects unsupported fidelity while allowing bounded evidence-backed claims."},
+    {"boundary": "formal promotion", "disposition": "tested_not_susceptible", "evidence": "Offline full-flow matrix reaches the existing atomic promotion boundary without changing Canon, StoryState or READY authority."}
+  ],
+  "production_shaped_tests": [
+    "tests/test_short_trustworthy_full_flow.py",
+    "tests/test_workflows.py",
+    "tests/test_outlines.py"
+  ],
+  "next_authoritative_boundary_tests": [
+    "tests/test_short_trustworthy_full_flow.py",
+    "tests/test_workflows.py",
+    "tests/test_r1_d3_draft_retry_findings.py"
+  ],
+  "remaining_risks": [
+    "Real Provider behavior and one real Full Short remain deliberately unexecuted and require the separately authorized next gate.",
+    "Legacy stored outline events without source_level retain their historical flat fallback semantics; fresh outline parsing now persists exact hierarchy."
+  ]
+}

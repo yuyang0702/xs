@@ -1,0 +1,24 @@
+{
+  "schema": "ShortTrustworthyPrivacyScanV1",
+  "version": 1,
+  "scope": [
+    "authority-critical closure evidence directory",
+    "sanitized isomorphic fixture"
+  ],
+  "patterns": [
+    "credential or API-key assignment",
+    "Authorization or Bearer header",
+    "secret-like sk token",
+    "absolute user-machine path",
+    "raw Provider content",
+    "raw prompt/story/reference persisted=true"
+  ],
+  "match_count": 0,
+  "raw_prompt_persisted": false,
+  "raw_story_persisted": false,
+  "raw_reference_persisted": false,
+  "raw_provider_content_persisted": false,
+  "credentials_persisted": false,
+  "status": "PASS",
+  "external_actions": 0
+}

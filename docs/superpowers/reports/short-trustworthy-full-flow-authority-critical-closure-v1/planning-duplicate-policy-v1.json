@@ -1,0 +1,9 @@
+{
+  "schema": "PlanningFindingDuplicatePolicyV1",
+  "version": 1,
+  "exact_duplicate_identity": "reject_fail_closed",
+  "distinct_findings_same_target": "preserve_when_registry_valid",
+  "distinct_dependencies_same_target": "preserve",
+  "ordering": "canonical_field_path_code_identity",
+  "replay": "deterministic_duplicate_rejection"
+}

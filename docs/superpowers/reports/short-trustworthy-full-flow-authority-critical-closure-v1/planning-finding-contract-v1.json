@@ -1,0 +1,12 @@
+{
+  "schema": "PlanningFindingContractClosureV1",
+  "version": 1,
+  "status": "CLOSED",
+  "authority": "validator_origin_hmac_plus_rejected_source_identity",
+  "public_sha_role": "identity_and_integrity_only",
+  "registry": "closed_reason_code_field_path_repair_scope_relation",
+  "schema_extra_fields": "forbidden",
+  "unknown_or_rehashed_finding": "fail_closed",
+  "stale_or_wrong_source": "fail_closed",
+  "canonical_serialization": "deterministic"
+}

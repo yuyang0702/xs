@@ -1,0 +1,51 @@
+{
+  "schema": "ShortTrustworthyAuthorityCriticalSha256ManifestV1",
+  "version": 1,
+  "implementation_commit": "0d1986a",
+  "entry_count": 28,
+  "entries": [
+    {"path":"docs/superpowers/reports/short-trustworthy-full-flow-authority-critical-closure-v1/baseline-binding-v1.json","sha256":"b52f3de13e94bacf67a5e96aaed5af704b062ae13204b1ee6c6785f50226d164","bytes":483},
+    {"path":"docs/superpowers/reports/short-trustworthy-full-flow-authority-critical-closure-v1/candidate-change-inventory-v1.json","sha256":"06a4e969949efbf0a5bc0aa9d56ee2a9c321ca56d7d5294a1a1b3b6c0712cd46","bytes":2396},
+    {"path":"docs/superpowers/reports/short-trustworthy-full-flow-authority-critical-closure-v1/child-review-a-v1.json","sha256":"a21841ef7eb6c137960394b69cebaa1577bd0d6d315757a8ce0d037ff08c2bd6","bytes":763},
+    {"path":"docs/superpowers/reports/short-trustworthy-full-flow-authority-critical-closure-v1/child-review-b-v1.json","sha256":"357ee315e70ef0c9bfbbb05fe4a695431b1d8cc5b581539a5c29df85438d3feb","bytes":918},
+    {"path":"docs/superpowers/reports/short-trustworthy-full-flow-authority-critical-closure-v1/cross-contract-integration-v1.json","sha256":"12dca537c1e79433c41e1edfe45c123ee0cb81c6b7d55c9d39d54e8883a4c39e","bytes":703},
+    {"path":"docs/superpowers/reports/short-trustworthy-full-flow-authority-critical-closure-v1/current-project-hash-only-snapshot-v1.json","sha256":"0e6facc5ef15c231562610f01460dc7ec14e2d2e634cf0189ac6c1f43be5e93c","bytes":913},
+    {"path":"docs/superpowers/reports/short-trustworthy-full-flow-authority-critical-closure-v1/draft-repair-ownership-v1.json","sha256":"9f258a2696c94cd38728bf53d8a0444bc448807fe085873590a45bade2460b48","bytes":546},
+    {"path":"docs/superpowers/reports/short-trustworthy-full-flow-authority-critical-closure-v1/draft-style-matrix-v1.json","sha256":"155baafa80b3e9b1cda2f80256f0d6249de9c0582db957d740815ffa41419541","bytes":310},
+    {"path":"docs/superpowers/reports/short-trustworthy-full-flow-authority-critical-closure-v1/focused-test-receipt-v1.json","sha256":"15d4538e5cfe592519d60522b6a8e11ad3230669314fc31e3a5a859ffcba38b0","bytes":257},
+    {"path":"docs/superpowers/reports/short-trustworthy-full-flow-authority-critical-closure-v1/forward-risk-report-v2.json","sha256":"93e3c1f6040adf546c2d0d56a4d9e61e33a2be4a1520c00096689414eac30ae4","bytes":11085},
+    {"path":"docs/superpowers/reports/short-trustworthy-full-flow-authority-critical-closure-v1/full-suite-receipt-v1.json","sha256":"cbd3b37b82d9de885e572bc971763b5a5cf0ab7fa6bcb7cb2c1dd408710d0b36","bytes":1748},
+    {"path":"docs/superpowers/reports/short-trustworthy-full-flow-authority-critical-closure-v1/offline-full-flow-replay-v1.json","sha256":"51bf50eb3e6326c7431094769305dc580ddd2e3f3a4028bea849c0a231af49c4","bytes":569},
+    {"path":"docs/superpowers/reports/short-trustworthy-full-flow-authority-critical-closure-v1/outline-authority-closure-v1.json","sha256":"686b472f62c73a2f971b41b93a931b829e3215fc70c2729b3465ce28513421a5","bytes":534},
+    {"path":"docs/superpowers/reports/short-trustworthy-full-flow-authority-critical-closure-v1/planning-closure-bounds-v1.json","sha256":"8d678741d8a464954237670eefc30b6c36db11d11f49dab78771577777265239","bytes":345},
+    {"path":"docs/superpowers/reports/short-trustworthy-full-flow-authority-critical-closure-v1/planning-determinism-v1.json","sha256":"bd4789970cfd1b6c64d7a609bffba83c2e560a58a91749b7e45ed1018a52b427","bytes":345},
+    {"path":"docs/superpowers/reports/short-trustworthy-full-flow-authority-critical-closure-v1/planning-duplicate-policy-v1.json","sha256":"7f6aedce4001f2d6f47a24c9d31f35abe130b619b7afcf2d237d354bed742aed","bytes":338},
+    {"path":"docs/superpowers/reports/short-trustworthy-full-flow-authority-critical-closure-v1/planning-finding-contract-v1.json","sha256":"0481aa4e60b189c20e06b52c746a219efd28d9a359f9650b41525ccb13913971","bytes":454},
+    {"path":"docs/superpowers/reports/short-trustworthy-full-flow-authority-critical-closure-v1/planning-global-cycle-review-v1.json","sha256":"682c1231c6cea746d38294c157a3e769b9400e1036aacea762f2a719187df656","bytes":354},
+    {"path":"docs/superpowers/reports/short-trustworthy-full-flow-authority-critical-closure-v1/post-fix-review-history-v1.json","sha256":"6e932dc94fe68fe689f97d3e997681e689be94fc777e4121f8c8d21c29765bb5","bytes":674},
+    {"path":"docs/superpowers/reports/short-trustworthy-full-flow-authority-critical-closure-v1/privacy-scan-v1.json","sha256":"d81c71f94f185d3c122423e9106af804f25b167b730a7d72a16c4a866ca93711","bytes":650},
+    {"path":"docs/superpowers/reports/short-trustworthy-full-flow-authority-critical-closure-v1/production-isolation-v1.json","sha256":"5e740338c1758c0ca328cf8f2f97e503b00b9eb6e3720a3c946e1f83bbec5891","bytes":872},
+    {"path":"docs/superpowers/reports/short-trustworthy-full-flow-authority-critical-closure-v1/readiness-disposition-v1.json","sha256":"4b119735a6939a10d1ad4171f2f9cacde1b84e28e1f7c8b2d82a81a932aaf29f","bytes":970},
+    {"path":"docs/superpowers/reports/short-trustworthy-full-flow-authority-critical-closure-v1/README.md","sha256":"99df065b776883765ee597df348161bd0f21427ffc6b1965b4299b031b9c9e61","bytes":646},
+    {"path":"docs/superpowers/reports/short-trustworthy-full-flow-authority-critical-closure-v1/related-test-receipt-v1.json","sha256":"dfc6ca492d1847c9581b5de38ebeef6577af7a68d43e5cf817cca604df1062da","bytes":338},
+    {"path":"docs/superpowers/reports/short-trustworthy-full-flow-authority-critical-closure-v1/split-review-report-v1.json","sha256":"a5950d1c1b3bd47510a173cef96ad030817f37c10684ec77a5de188c01c81108","bytes":2302},
+    {"path":"docs/superpowers/reports/short-trustworthy-full-flow-authority-critical-closure-v1/strict-l3-receipt-v1.json","sha256":"67b25f50419a1e066dd095f9b8be16f79e1d8d60aa133d74456adc9a4e6ea237","bytes":445},
+    {"path":"docs/superpowers/reports/short-trustworthy-full-flow-authority-critical-closure-v1/style-authority-freeze-v1.json","sha256":"e15b0438629c4bbf09f91187ec07dc543ca59a0d354ee3e21c06e8dcf92ec54b","bytes":512},
+    {"path":"docs/superpowers/reports/short-trustworthy-full-flow-authority-critical-closure-v1/style-fidelity-claim-contract-v1.json","sha256":"66ccf81bd323b279d9b894d36fd6f370448171ba4fe71037d98d8a1aebb0772e","bytes":601}
+  ],
+  "source_bindings": {
+    "src/novel_flywheel/contract_runtime.py": "b56aabcb6a6022b600f99784be3a5b448a1e42820cdc8fb0921383f0bede7b07",
+    "src/novel_flywheel/generated_artifacts.py": "8beead394eb347acb0c0e574d1d332e98a89edc6766b3fa96b5cf0ab97d7d45b",
+    "src/novel_flywheel/outlines.py": "8906a18e2ed46ec1769d56bed78dfa7a2e72aa553b2b0b7ba5fcb66c4a739925",
+    "src/novel_flywheel/planning_closure.py": "50438ccf8af06a32d72cfed4fe941f31b43775f63aa6e4c3b1b30c037561cf1a",
+    "src/novel_flywheel/planning_semantics.py": "1bd031402eeb8a3b51df2224034a0dee868e636a73c957012e7de4a0db7f2a7f",
+    "src/novel_flywheel/prose_quality.py": "9dd6d94fe653224203961ae14fcd5ae2f944e4b04f241b3612c5dc9e5227be9b",
+    "src/novel_flywheel/style_context.py": "648a4599ca01550f9d54a41b330749de5eaaa1a048959f41f80f15116286e741",
+    "src/novel_flywheel/workflows.py": "ab934daa84c3e6fcb3d4685fca524dcaec0b66906f14a48f149ccb96a122e745"
+  },
+  "excluded_self_referential_files": [
+    "sha256-manifest-v1.json",
+    "final-report-v1.md"
+  ],
+  "exclusion_reason": "The manifest cannot hash itself; final-report-v1.md records this manifest file SHA and is therefore verified separately at delivery."
+}

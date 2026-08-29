@@ -1,0 +1,19 @@
+{
+  "schema": "ShortTrustworthyCurrentProjectHashOnlySnapshotBindingV1",
+  "version": 1,
+  "private_snapshot_location": "outside_repository_temporary_storage",
+  "capture_mode": "read_only_hash_only",
+  "project_root_sha256": "236293afc5e20f148d6e68ba6b0f3a6da383313d9b70ee45e678c0bc9104cfb5",
+  "project_json_sha256": "c2b2ab52cac1d811cde0774599ffd747d5a7a85bf015ba82b194cd2f2cd66993",
+  "constraints_sha256": "a6fc9361f55c8789519380a9671412108b9717175d3d42707211976e3a4ea267",
+  "style_profile_sha256": "543beabfe3aecd805114db21ffb3b211ed13a43b1de4dec00608aac6b0f52d83",
+  "file_count": 2953,
+  "total_bytes": 63976777,
+  "manuscript_file_count": 332,
+  "manuscript_hash_set_sha256": "a7913e1485ad73f6e0c3eadba1aae1ee93030650259bd592c4ffca423fe1d6e2",
+  "raw_title_persisted": false,
+  "raw_prompt_persisted": false,
+  "raw_story_persisted": false,
+  "raw_reference_persisted": false,
+  "external_actions": 0
+}

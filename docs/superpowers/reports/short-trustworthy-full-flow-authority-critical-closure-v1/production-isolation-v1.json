@@ -1,0 +1,21 @@
+{
+  "schema": "ShortTrustworthyProductionIsolationV1",
+  "version": 1,
+  "baml_src_diff_count": 0,
+  "route_model_provider_source_diff_count": 0,
+  "skill_runtime_sha256": "175effd82bd048c77b27c2a6ef734c0e15321896ce506d152afbe74db9fcad95",
+  "hybrid_skill_context_sha256": "07ef225e4903c4f4ce561f3afe1447f27e1aea484d904efe4d902bca7ab6e198",
+  "baseline_skill_production_path": "SkillGate_to_SkillPromptCompactor_to_Planning_V1",
+  "baseline_skill_production_path_changed": false,
+  "hybrid_shadow_default_enabled": false,
+  "hybrid_model_visible_augmentation_enabled": false,
+  "hybrid_accidental_enable_count": 0,
+  "planning_v2_production_cutover": false,
+  "prompt_baseline_checks": "3 passed in 1.08s",
+  "credential_lookup_count": 0,
+  "provider_client_creation_count": 0,
+  "network_calls": 0,
+  "model_calls": 0,
+  "paid_calls": 0,
+  "full_short": "NOT_EXECUTED"
+}

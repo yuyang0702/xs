@@ -1,0 +1,11 @@
+{
+  "schema": "PlanningClosureDeterminismV1",
+  "version": 1,
+  "same_graph_same_identity": true,
+  "input_permutation_invariant": true,
+  "closure_order": "deterministic_topological_with_canonical_ties",
+  "receipt_hash": "deterministic",
+  "set_order_leakage": false,
+  "explicit_replay_runs": 2,
+  "explicit_replay_result_each": "3_passed"
+}

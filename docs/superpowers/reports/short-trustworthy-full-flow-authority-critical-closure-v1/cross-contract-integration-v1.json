@@ -1,0 +1,21 @@
+{
+  "schema": "ShortTrustworthyCrossContractIntegrationV1",
+  "version": 1,
+  "chain": [
+    "outline_exact_event_authority",
+    "Planning_typed_finding",
+    "validated_bounded_recovery",
+    "deterministic_global_closure",
+    "Draft_exact_repair_ownership",
+    "bounded_local_repair_or_typed_escalation",
+    "frozen_style_reference_authority",
+    "polish_and_final_review_provenance",
+    "typed_bounded_fidelity_claim"
+  ],
+  "free_form_semantic_bypass_count": 0,
+  "local_to_broad_rewrite_without_authority_count": 0,
+  "style_deletion_bypass_count": 0,
+  "unsupported_fidelity_overclaim_count": 0,
+  "baseline_skill_path_changed": false,
+  "hybrid_model_visible_augmentation_enabled": false
+}

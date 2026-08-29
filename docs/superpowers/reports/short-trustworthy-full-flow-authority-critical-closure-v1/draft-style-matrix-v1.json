@@ -1,0 +1,8 @@
+{
+  "schema": "ShortTrustworthyDraftStyleMatrixV1",
+  "version": 1,
+  "selection": "draft or style or fidelity or repair_ownership or frozen",
+  "result": "112 passed, 76 deselected in 8.80s",
+  "large_adversarial_verdict": "4096 criteria plus 4096 issues deterministic; peak 26.314 MiB",
+  "status": "PASS"
+}
