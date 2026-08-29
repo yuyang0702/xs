@@ -501,8 +501,8 @@ def materialize(
     }
     _write_json(root / "final-campaign-rematerialization-v1.json", rematerialization)
     _write_json(root / "approval-readiness-packet-final-v1.json", {
-        "schema": "SkillV3HybridFinalApprovalReadinessPacketV1", "status": "EXACT",
         **rematerialization,
+        "schema": "SkillV3HybridFinalApprovalReadinessPacketV1", "status": "EXACT",
         "provider": route["PROVIDER"], "model": route["MODEL"],
         "protocol": route["PROTOCOL"], "route_fingerprint": route["ROUTE_FINGERPRINT"],
         "destination": f"{destination['DESTINATION_ORIGIN']}:{destination['DESTINATION_PORT']}{destination['DESTINATION_PATH']}",
