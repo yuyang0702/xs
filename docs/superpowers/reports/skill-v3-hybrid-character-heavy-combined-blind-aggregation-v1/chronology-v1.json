@@ -1,0 +1,10 @@
+{
+  "blind_bundle_head": "d4b94613ec4731636d8516910451cabb340ffadf",
+  "combined_written_before_mapping_read": true,
+  "coordination_file_mtime_utc": "2026-08-29T10:59:18.618800Z",
+  "evaluator_1_frozen_at": "2026-08-29T11:06:53.435183Z",
+  "evaluator_2_frozen_at": "2026-08-29T11:06:30.633068Z",
+  "mapping_revealed": false,
+  "schema": "SkillV3HybridBlindFreezeChronologyV1",
+  "status": "PASS"
+}

@@ -1,0 +1,38 @@
+{
+  "definition_sha256": "fc357b04401cbfded9508d0b78421cdd1c022cfadf7b0927148a61cdabcf9ffa",
+  "entries": [
+    {
+      "bytes": 399,
+      "path": "chronology-v1.json",
+      "sha256": "d236785bbbab15e9080c22cd6e51c240abe7b920ec207369f9cb2aba5350bff6"
+    },
+    {
+      "bytes": 16984,
+      "path": "complete-vote-set-v1.json",
+      "sha256": "5e6932c06fbf44722fce0699159cdfdc5a1b5e4988d65e905702a0cfcc90e510"
+    },
+    {
+      "bytes": 726,
+      "path": "freeze-bindings-v1.json",
+      "sha256": "b6cfa68d3824747b3b7518565c59e17e896a378b2d095c4c5316e57a32e8691e"
+    },
+    {
+      "bytes": 252,
+      "path": "privacy-scan-v1.json",
+      "sha256": "7e22d7357936504a56e02a511bdec80f09a77ca42455b4f4b1bfd4776a6fabe4"
+    },
+    {
+      "bytes": 146,
+      "path": "README.md",
+      "sha256": "2c405f4962de4a6bab9b3c518408399b50ef724724a2feaf24b3866650c98301"
+    },
+    {
+      "bytes": 609,
+      "path": "variance-and-disagreement-v1.json",
+      "sha256": "7274a24be9fbe5edbcb4cf462b44897eebb43cbcac9fe722c32af37d1b4ea08d"
+    }
+  ],
+  "entry_count": 6,
+  "schema": "SkillV3HybridCombinedBlindSha256ManifestV1",
+  "status": "EXACT"
+}

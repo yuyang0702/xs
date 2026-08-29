@@ -1,0 +1,33 @@
+{
+  "approval_single_use_consumed": 6,
+  "capacity_exact": true,
+  "cost_comparison_sufficient": "NO",
+  "engineering_non_inferior": "YES",
+  "nonce_single_use_consumed": 6,
+  "per_sample_attempts": 1,
+  "post_authorization_git_mutation_during_campaign": false,
+  "production_isolation": true,
+  "provider_http_network_attempts": [
+    6,
+    6,
+    6
+  ],
+  "provider_model_route_destination_identical": true,
+  "required": 6,
+  "retry_transport_retry_fallback_route_switch_resume_second_dispatch": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+  ],
+  "schema": "SkillV3HybridEngineeringNonInferiorityV1",
+  "sealed_valid": 6,
+  "status": "PASS",
+  "token_comparison_sufficient": "NO",
+  "truncation_or_shedding": false,
+  "unobserved_token_or_cost_values_inferred": false,
+  "validator_output_cap_identical": true,
+  "within_pair_non_skill_bytes_identical": true
+}

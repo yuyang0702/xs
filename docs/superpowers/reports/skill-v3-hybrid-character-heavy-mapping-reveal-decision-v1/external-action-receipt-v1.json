@@ -1,0 +1,12 @@
+{
+  "new_credential_lookup_count": 0,
+  "new_http_post_attempts": 0,
+  "new_model_calls": 0,
+  "new_network_calls": 0,
+  "new_paid_calls": 0,
+  "new_provider_client_creation_count": 0,
+  "new_provider_request_attempts": 0,
+  "new_real_nonces": 0,
+  "new_real_signed_approvals": 0,
+  "schema": "SkillV3HybridPostCampaignExternalActionReceiptV1"
+}

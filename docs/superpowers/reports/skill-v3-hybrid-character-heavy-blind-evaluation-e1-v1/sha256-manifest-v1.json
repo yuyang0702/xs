@@ -1,0 +1,33 @@
+{
+  "definition_sha256": "67b5c732935856e4773aa4ab39c8b1aa44edf04d44b22c40869697398463b9e7",
+  "entries": [
+    {
+      "bytes": 451,
+      "path": "blind-bundle-binding-v1.json",
+      "sha256": "9b93a6cfc5f3d3256c0e921e20e49b63e90cd3ce3000b056d7d3328b9da586a6"
+    },
+    {
+      "bytes": 28572,
+      "path": "evaluator-freeze-v1.json",
+      "sha256": "7c9ec391ca3f1c05cd6738871bad47247b997da618affea4c317d48069200745"
+    },
+    {
+      "bytes": 629,
+      "path": "independence-and-firewall-v1.json",
+      "sha256": "ac6755a9abf15f4ba3ece0f5fbe48a36a0f877c5f6884a86b7e76f4609f4c4e6"
+    },
+    {
+      "bytes": 187,
+      "path": "privacy-scan-v1.json",
+      "sha256": "2c03b90da6a02502e7c7926725b30c9505445c9b458dbd350d75a89bc4a8770d"
+    },
+    {
+      "bytes": 128,
+      "path": "README.md",
+      "sha256": "8c0176057b46f628f5b79952963d605009a48d3babb958880bf37e891bf5ca64"
+    }
+  ],
+  "entry_count": 5,
+  "schema": "SkillV3HybridEvaluatorSha256ManifestV1",
+  "status": "EXACT"
+}

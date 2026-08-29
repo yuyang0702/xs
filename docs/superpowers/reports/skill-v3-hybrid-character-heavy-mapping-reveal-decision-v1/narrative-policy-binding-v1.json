@@ -1,0 +1,20 @@
+{
+  "critical_dimensions": [
+    "character_agency",
+    "causal_coherence",
+    "setup_payoff_integrity"
+  ],
+  "literary_policy_sha256": "d93c95af9ed15d4c3f1193b00e319f364fb57176190e96e9e5d2fcd19eec0b21",
+  "noncritical_dimensions": [
+    "subtext_support",
+    "specificity",
+    "scene_pressure",
+    "voice_readiness",
+    "anti_template_risk"
+  ],
+  "retrospective_tuning_allowed": false,
+  "scalar_average_allowed": false,
+  "schema": "SkillV3HybridNarrativePolicyBindingV1",
+  "status": "EXACT",
+  "support_threshold": 4
+}

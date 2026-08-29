@@ -1,0 +1,11 @@
+{
+  "blind_bundle_manifest_sha256": "b59256db86beafff4d14c02a763e4e10e1a386ec7ac9aca058621c1169504ba5",
+  "coordination_bundle_sha256": "6b35af71755450ae96ed96dbb34a0420f8052990e009827f17bb69bb427847ca",
+  "evaluator_1_freeze_file_sha256": "7c9ec391ca3f1c05cd6738871bad47247b997da618affea4c317d48069200745",
+  "evaluator_1_judgment_set_sha256": "c2f2718f449f438ae935a45978c216652d82e9030deaaf54e1a897bc1fa0dfcb",
+  "evaluator_2_freeze_file_sha256": "ba00fa83040335bc491d9928e7f6c257cd309fdc3347357030f2f5197144cd8f",
+  "evaluator_2_judgment_set_sha256": "e4beea12610abcfe1e929ce5f51d7cb3b91e22624f1ddd4c38eee95e7719d2c3",
+  "mapping_revealed": false,
+  "schema": "SkillV3HybridCombinedFreezeBindingsV1",
+  "status": "EXACT"
+}

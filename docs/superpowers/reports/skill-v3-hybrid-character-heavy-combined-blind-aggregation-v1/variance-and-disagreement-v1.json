@@ -1,0 +1,26 @@
+{
+  "all_opposed_directions_preserved": true,
+  "disagreement_count": 3,
+  "rows": [
+    {
+      "anonymous_pair_id": "hybrid-blind-pair-1",
+      "dimension": "character_agency",
+      "e1": "A_BETTER",
+      "e2": "TIE"
+    },
+    {
+      "anonymous_pair_id": "hybrid-blind-pair-2",
+      "dimension": "causal_coherence",
+      "e1": "A_BETTER",
+      "e2": "TIE"
+    },
+    {
+      "anonymous_pair_id": "hybrid-blind-pair-2",
+      "dimension": "subtext_support",
+      "e1": "B_BETTER",
+      "e2": "A_BETTER"
+    }
+  ],
+  "schema": "SkillV3HybridBlindVarianceAndDisagreementV1",
+  "status": "RECORDED"
+}

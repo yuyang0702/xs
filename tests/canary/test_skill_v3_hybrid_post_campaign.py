@@ -73,6 +73,31 @@ def test_aggregate_requires_six_votes_and_does_not_average() -> None:
     assert all(row["blind_relation"] == "B_BETTER" for row in combined["dimensions"])
 
 
+def test_pair_local_mapping_translation_does_not_assume_global_side_identity() -> None:
+    assert post.relation_to_arm_result("A_BETTER", "HYBRID", "CONTROL") == "HYBRID_BETTER"
+    assert post.relation_to_arm_result("A_BETTER", "CONTROL", "HYBRID") == "CONTROL_BETTER"
+    assert post.relation_to_arm_result("B_BETTER", "HYBRID", "CONTROL") == "CONTROL_BETTER"
+    assert post.relation_to_arm_result("TIE", "CONTROL", "HYBRID") == "EQUIVALENT"
+
+
+def test_narrative_rule_blocks_regression_and_inconclusive_without_scalar_average() -> None:
+    rows = [
+        {
+            "dimension": dimension,
+            "critical": dimension in post.CRITICAL_DIMENSIONS,
+            "mapped_result": "EQUIVALENT",
+        }
+        for dimension in post.DIMENSIONS
+    ]
+    assert post.narrative_decision({"dimensions": rows})["narrative_non_inferior"] == "YES"
+    rows[0]["mapped_result"] = "CONTROL_BETTER"
+    rejected = post.narrative_decision({"dimensions": rows})
+    assert rejected["narrative_non_inferior"] == "NO"
+    assert rejected["critical_regression_stop_loss_triggered"] is True
+    rows[0]["mapped_result"] = "INCONCLUSIVE"
+    assert post.narrative_decision({"dimensions": rows})["narrative_non_inferior"] == "INCONCLUSIVE"
+
+
 def test_manifest_is_recursive_exact_and_excludes_itself(tmp_path: Path) -> None:
     (tmp_path / "nested").mkdir()
     (tmp_path / "a.json").write_text("{}\n", encoding="utf-8")

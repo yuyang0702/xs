@@ -1,0 +1,15 @@
+{
+  "critical_regression_stop_loss_triggered": true,
+  "hybrid_critical_better_count": 0,
+  "hybrid_critical_equivalent_count": 0,
+  "hybrid_critical_inconclusive_count": 2,
+  "hybrid_critical_regression_count": 1,
+  "hybrid_noncritical_better_count": 5,
+  "hybrid_noncritical_equivalent_count": 0,
+  "hybrid_noncritical_inconclusive_count": 0,
+  "hybrid_noncritical_regression_count": 0,
+  "inconclusive_blocks_non_inferiority": true,
+  "narrative_non_inferior": "NO",
+  "schema": "SkillV3HybridNarrativeNonInferiorityV1",
+  "status": "DECIDED"
+}

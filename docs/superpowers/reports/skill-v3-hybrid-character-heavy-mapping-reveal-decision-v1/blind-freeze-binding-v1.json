@@ -1,0 +1,8 @@
+{
+  "combined_blind_aggregation_manifest_sha256": "59138d75b2ebf76a8b25e01accd9f939831c447a39798677e7d7b78e852b7087",
+  "evaluator_1_freeze_file_sha256": "7c9ec391ca3f1c05cd6738871bad47247b997da618affea4c317d48069200745",
+  "evaluator_2_freeze_file_sha256": "ba00fa83040335bc491d9928e7f6c257cd309fdc3347357030f2f5197144cd8f",
+  "mapping_read_only_after_combined_freeze": true,
+  "schema": "SkillV3HybridFinalBlindFreezeBindingV1",
+  "status": "EXACT"
+}

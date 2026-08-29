@@ -1,0 +1,18 @@
+{
+  "does_not_prove": [
+    "generalized Skill V3 non-inferiority",
+    "remaining demand-class compatibility",
+    "production cutover safety"
+  ],
+  "engineering_non_inferior": "YES",
+  "exact_next_gate": "SKILL_V3_HYBRID_CHARACTER_HEAVY_ARCHITECTURE_DISPOSITION",
+  "full_short": "NOT_EXECUTED",
+  "narrative_non_inferior": "NO",
+  "planning_v2_production_cutover": "NO",
+  "proves": "only the recorded bounded character-heavy disposition",
+  "schema": "SkillV3HybridCharacterHeavyPilotDispositionV1",
+  "skill_v3_hybrid_character_heavy_multi_sample_pilot": "NO_GO_QUALITY",
+  "skill_v3_production_cutover": "NO",
+  "status": "FINAL",
+  "stop_loss_state": "HYBRID_AS_QUALITY_ENHANCEMENT_DOES_NOT_AUTO_ITERATE"
+}

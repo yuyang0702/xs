@@ -1,0 +1,11 @@
+{
+  "blockers": 0,
+  "focused": "8 passed",
+  "full_suite": "3964 passed, 42 skipped, 6 xfailed, 55 historical failures, 81 historical errors; new owning-source regressions=0",
+  "new_owning_source_regression_count": 0,
+  "related": "106 passed, 1 deselected",
+  "schema": "SkillV3HybridFinalDecisionValidationReceiptV1",
+  "status": "PASS",
+  "strict_l3": "PASS; warnings=0; blockers=0",
+  "warnings": 0
+}

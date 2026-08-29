@@ -1,0 +1,8 @@
+{
+  "blind_bundle_definition_sha256": "fc4e3b922347df46674240221d281ae067e44e08a53235be402b99a276eccad0",
+  "blind_bundle_head": "d4b94613ec4731636d8516910451cabb340ffadf",
+  "blind_bundle_manifest_sha256": "b59256db86beafff4d14c02a763e4e10e1a386ec7ac9aca058621c1169504ba5",
+  "literary_policy_sha256": "d93c95af9ed15d4c3f1193b00e319f364fb57176190e96e9e5d2fcd19eec0b21",
+  "schema": "SkillV3HybridEvaluatorBlindBundleBindingV1",
+  "status": "EXACT"
+}

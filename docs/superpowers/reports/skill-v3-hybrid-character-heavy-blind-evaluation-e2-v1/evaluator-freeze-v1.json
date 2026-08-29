@@ -1,0 +1,245 @@
+{
+  "arm_identity_guessed": false,
+  "blind_bundle_definition_sha256": "fc4e3b922347df46674240221d281ae067e44e08a53235be402b99a276eccad0",
+  "blind_bundle_head": "d4b94613ec4731636d8516910451cabb340ffadf",
+  "blind_bundle_manifest_sha256": "b59256db86beafff4d14c02a763e4e10e1a386ec7ac9aca058621c1169504ba5",
+  "engineering_metadata_accessed": false,
+  "evaluator_by_batch_vote_count": 3,
+  "evaluator_id": "e2",
+  "external_project_actions": 0,
+  "fresh_context": true,
+  "frozen_at": "2026-08-29T11:06:30.633068Z",
+  "independent_sample_judgments": [
+    {
+      "anonymous_sample_id": "hybrid-blind-1a8467e97ae2c101",
+      "dimension_notes": {
+        "anti_template_risk": "整体由现场动作和物件关系生长出来，模板感较低；但‘Not trust. A loan with interest.’一类总结句替读者命名关系，略显刻意收束。",
+        "causal_coherence": "巡逻发现门闩、账页会暴露Mara、印章在她手上，因而她必须同时让Iven离开并取回账页；马匹、拖延至黎明、她留下应付巡逻形成连续因果链。",
+        "character_agency": "Mara主动提出逃生路线并承担解释印章的风险；Iven扣住账页、索价、最终交还并发出旧暗号，双方的选择都实际改变局面。",
+        "scene_pressure": "钟声、雨中不断增多的灯笼和即将到来的搜身把交易压缩在极短时间内，压力持续推动每次让步。",
+        "setup_payoff_integrity": "印章、账页、北路马匹与旧暗号均获得用途；结尾不闩门把Mara未说出口的继续保护落实为可见后果。",
+        "specificity": "东门、破门闩、湿雨灯笼、拇指盖住名字墨迹、折叠账页等细节具体且参与叙事。",
+        "subtext_support": "Mara以‘交易’包装救援，以‘负担得起的版本’包装歉意；抓腕、交页、旧暗号和不闩门让未明说的亏欠与试探成立。",
+        "voice_readiness": "Mara的克制讥讽在恐惧中保持稳定，Iven的回击同样有个人立场；对话可直接进入成稿，仅少数警句稍显雕琢。"
+      },
+      "risks": [
+        "‘不是信任，而是带利息的借款’直接解释关系，削弱了一点已由动作形成的余味。",
+        "刀、印章与账页各自牵涉的旧案只给出最小背景，长篇承接时仍需补清其来源。"
+      ],
+      "strengths": [
+        "把保护、隐瞒罪责、交易式歉意和条件信任压进同一个迫近搜查的场景。",
+        "双方都有筹码和拒绝权，关系变化来自有代价的选择而非叙述宣告。",
+        "末尾旧暗号与未闩的门构成克制而有效的情感回声。"
+      ],
+      "summary": "一场发生在东门搜捕前夕的现场交易：Mara在隐瞒自己账册罪责的同时为Iven安排逃路，以承担盘查风险换回账页；Iven用交页和旧暗号暂借信任，二人没有和解，却以行动保留了下一次合作。"
+    },
+    {
+      "anonymous_sample_id": "hybrid-blind-1a34e6e6bc65dc78",
+      "dimension_notes": {
+        "anti_template_risk": "结构高度贴合任务义务，但多次直接说明‘歉意未被命名’‘条件无法逃避’‘不算盟友而是债务人’，有按指标逐项交代的模板感。",
+        "causal_coherence": "Iven因承认改账会牵出更大行动而转用程序性交易救Mara，基本动机清楚；但从藏印章、答应交出到档案室再次发现印章的动作衔接较概述化。",
+        "character_agency": "Iven打断裁决并提出保管方案，Mara拒绝无条件获救、索要印章和首位证人；两人都通过条件重写局势。",
+        "scene_pressure": "处刑风险明确，却以事后概述方式跨过法庭和档案室，即时威胁没有被逐拍体验，压力更多是概念性的。",
+        "setup_payoff_integrity": "密码、掌心伤口、缺失印章与证人条件互相呼应，但档案调查尚未真正展开，第一证人和更大行动都停在承诺层面。",
+        "specificity": "伪造账册、边注密码、掌心伤口和布条包印章提供了可用物件，不过空间、人物反应和程序细节较薄。",
+        "subtext_support": "用保存证据的借口和证物交换承载亏欠，概念准确；叙述随后直接解释双方的歉意与不宽恕，留给潜台词的空间有限。",
+        "voice_readiness": "‘按笔迹判刑不如先吊死书记员’有克制的危险幽默，Mara关于证据的回应也锋利；但主体叙述更像情节提要而非完成场景。"
+      },
+      "risks": [
+        "主要以概述和解释推进，裁决、讨价还价与档案发现未充分戏剧化。",
+        "印章交接和证人条件的落实略跳跃，读者难以检验交易的真实代价。",
+        "结尾直接定义债务关系和条件信任，显得替读者归纳任务要求。"
+      ],
+      "strengths": [
+        "保护者Iven的隐罪、代价与救援方案明确，任务义务覆盖完整。",
+        "Mara不是被动获救者，她以拒绝、索证和选择证人保留控制权。",
+        "几句对话准确建立了恐惧下的干涩讥讽。"
+      ],
+      "summary": "以法庭与档案室为两段提要式场景：Iven拒绝用指认Mara换取自保，改以交出印章和调查控制权换她暂时获释；Mara为救援加上自己的条件，两人的歉意和合作都被严格限制在债务关系内。"
+    },
+    {
+      "anonymous_sample_id": "hybrid-blind-b83053250bb32e7e",
+      "dimension_notes": {
+        "anti_template_risk": "‘恐惧披成轻蔑’‘谎言下面’‘不可信但可合作’等句精准却频繁替文本释义，加上逐项兑现任务的结尾，模板暴露风险中等偏高。",
+        "causal_coherence": "Ilyan拒绝嫁祸Mara，交出可自证的钥匙并放弃发言权，换她检查桥梁和暂缓处刑；她找到伪修标记后成为关键证人，主链闭合，但钥匙具体为何能洗清他交代不足。",
+        "character_agency": "Ilyan主动拒绝免责交易并设计新条件；Mara先抵抗、后检查并公开给出有限证词，两人都承担会改变自身处境的决定。",
+        "scene_pressure": "处刑倒计时和议会审讯构成高风险，但叙事迅速跳到东拱和黄昏，现场压迫被摘要节奏稀释。",
+        "setup_payoff_integrity": "桥塌、命令、钥匙和检查权最终导向第二处断裂与伪修标记，调查线有回收；印章与禁言权则主要作为列出的代价，后续作用较弱。",
+        "specificity": "坍桥、东侧支撑、伪修标记、钥匙和议会桌提供辨识度，但缺少空间动作和感官层面的持续展开。",
+        "subtext_support": "‘租用你的能力’把保护伪装成交易，且Mara拒绝将保护等同可信，符合条件信任；不过叙述明确说明笑话下的谎言与未道歉，潜台词被部分讲破。",
+        "voice_readiness": "Ilyan以桥和供词的冷笑话遮掩恐惧，Mara的回应克制而有判断力；人物声音可用，叙述则偏功能性提要。"
+      },
+      "risks": [
+        "钥匙、印章和发言权三个代价并列过多，其中部分没有后续叙事功能。",
+        "重要发现与关系转折被概述，读者看到的是结果而不是选择发生的瞬间。",
+        "多处解释人物台词‘真正意味着什么’，削弱潜台词。"
+      ],
+      "strengths": [
+        "Ilyan明确放弃自证机会来保护Mara，代价与隐瞒的罪责紧密相连。",
+        "桥梁检查把人物交易接到外部事件，并让Mara凭行动取得必要性。",
+        "结尾证词‘保护不等于可信’准确落在条件信任而非廉价和解。"
+      ],
+      "summary": "在桥梁坍塌后的议会审讯中，Ilyan拒绝指认Mara换清白，反而交出自证筹码和发言权，换她检查桥梁并延缓处刑；Mara找出伪修证据后只承认他保护过自己，双方因生存而形成有限合作。"
+    },
+    {
+      "anonymous_sample_id": "hybrid-blind-1c67cc3036d89865",
+      "dimension_notes": {
+        "anti_template_risk": "文本主要靠场面、动作和对话推进，成稿感较强；但‘勇气或陷阱’‘别把动作误认为什么’及可负担的道歉等熟悉句式仍带轻微生成式修辞痕迹。",
+        "causal_coherence": "Iven要疏散下城区，Mara以叛徒姓名和指环为抵押换开闸，动作链清楚；Vey这个名字未预先埋设，而开闸后Mara如何面对违令后果也留在场外。",
+        "character_agency": "Mara违抗队长、亲自开闸并规定Iven先行与交戒；Iven带着救人的目标赴约、提出姓名交易并交出身份筹码，双方均有主动选择。",
+        "scene_pressure": "弩手、明确命令、流血、黑水与等待在雨中的敌对巡逻让选择持续处于即时危险中，场景张力强。",
+        "setup_payoff_integrity": "闸链、钥匙、伤口和指环都在场景内发挥作用；作为主要交换物的叛徒姓名只在末尾揭出，缺少验证，违令代价也尚未兑现。",
+        "specificity": "东侧水闸、黑水中的灯影、门链、腰间铁钥匙、带体温的指环等细节具体并参与动作。",
+        "subtext_support": "扶住手肘又迅速放开、以收费和威胁包装照顾，关系潜流清晰；然而保护者Mara并无明确待隐藏的罪责，末句又直接称其为非道歉，任务核心略有偏移。",
+        "voice_readiness": "双方的干涩互刺自然嵌在危险动作中，Mara的‘公共财产’与‘让我选择要加价’尤其稳定；整体具有可直接使用的场景声线。"
+      },
+      "risks": [
+        "保护Iven的Mara没有清晰的隐罪，‘保护对手而不认罪’这一义务落实不完整。",
+        "叛徒姓名在结尾突然出现且未经检验，像快速支付剧情筹码。",
+        "开闸后队长和弩手的即时反应被截断，使最昂贵的后果尚未落地。"
+      ],
+      "strengths": [
+        "把危险、身体动作和交易放在同一现场，阅读压力持续且清晰。",
+        "Mara与Iven各自带目标和筹码，没有一方沦为纯粹被救者。",
+        "细节与对话共同呈现克制讥讽，人物声线鲜明。"
+      ],
+      "summary": "在东侧水闸的雨夜对峙中，Mara违抗活捉或放任Iven溺死的命令，以开闸换取叛徒姓名和他的指环；她用冷硬交易掩饰救援，Iven则以抵押物和信息换来有限通行，但罪责与歉意的对应不够完整。"
+    },
+    {
+      "anonymous_sample_id": "hybrid-blind-075a07f468bb2453",
+      "dimension_notes": {
+        "anti_template_risk": "现场化程度较高，仍反复使用‘不是温柔，不完全是，而是……’和‘不宽恕/条件合作’等显式标签；正文还保留字面\\n转义标记，成稿洁净度受损。",
+        "causal_coherence": "Mara放弃独自逃生路线去救Iven的因果成立，但账册先被她取走塞入外套，随后又约定Iven到河边交账册，结尾更由Iven再次交出，形成核心物件连续性矛盾。",
+        "character_agency": "Mara选择切绳、制定条件、背负伤者并牺牲逃路，主导性强；Iven抓腕、质问、抵抗并最终合作，但其关键交账动作被物件矛盾削弱。",
+        "scene_pressure": "坍塌楼梯、下方巡逻、点名搜捕、伤口与水淹通道持续制造身体和时间压力。",
+        "setup_payoff_integrity": "绳索、蓄水池路线和血衣得到回收，Greybridge也触发一次情感交锋；账册作为主要筹码却在持有者上自相矛盾，严重损伤设置—兑现完整性。",
+        "specificity": "坍塌楼梯、石块缚绳、染血外套、蓄水池格栅和淹水通道形成明确空间与行动细节。",
+        "subtext_support": "掌心停留过久、以未完成交易包装救援、拒绝接受无罪开脱，都能承载未说出口的歉意；旁白立即把手势解释成歉意，略显过度。",
+        "voice_readiness": "Mara的冷讽与Iven的追问有稳定节奏，恐惧没有把语言写成俏皮表演；但字面转义标记和账册错误必须修订后才可视为成稿。"
+      },
+      "risks": [
+        "账册在Mara收起后又两次被写成仍由Iven持有，是会破坏读者信任的硬连续性错误。",
+        "正文出现字面\\n分隔符，版面未经清理。",
+        "旁白直接把动作命名为歉意，并在结尾归纳条件合作，削弱含蓄度。"
+      ],
+      "strengths": [
+        "救援确实让Mara失去预备好的独逃路线，选择代价具体。",
+        "追兵、伤势、切绳和淹水通道带来完整的现场动作。",
+        "Greybridge话题让罪责、安慰与拒绝宽恕形成有张力的对话。"
+      ],
+      "summary": "Mara在巡逻逼近时放弃可独自脱身的路线，切断束缚并背着受伤的Iven穿过蓄水池，以Greybridge沉默和账册交换包装救援；关系张力和场面有效，但核心账册的持有连续性出现严重矛盾。"
+    },
+    {
+      "anonymous_sample_id": "hybrid-blind-fb517bb0b9a65546",
+      "dimension_notes": {
+        "anti_template_risk": "任务义务全部清晰可见，却也被逐条解释：‘歉意只有形状’‘代价使忠诚无法忽视’等句像评估摘要，模板感高于自然成章的叙事。",
+        "causal_coherence": "Mara为隐瞒纵火关联而以危险印戒作保，借失踪账册换Iven获释；Iven反加她作担保并报假地点争取时间，整体连贯，只是队长为何接受未经证实的账册线索略便利。",
+        "character_agency": "Mara公开押上通行身份，Iven拒绝单方面被救并迫使她共同承担，随后又用假地点制造时间；双方的反提条件都改变风险分配。",
+        "scene_pressure": "天黑前示众、即将落下的镣铐和公开暴露身份构成压力，但大部分通过概述报告，紧张感不如实时场景。",
+        "setup_payoff_integrity": "纵火、焦黑印记、印戒隐藏标记、假会面与失而复得的手套组成较完整的物件链；账册路线和假地点尚无后续验证，部分兑现停在计划层。",
+        "specificity": "焦黑印章、三名证人、铁印戒的隐藏标记和火场手套颇具体，但检查站空间与人群动作只点到为止。",
+        "subtext_support": "手抖后握紧、归还火场手套以及‘Payment’能以物件和交易承载歉意；叙述随后明确解释双方承认伤害却不认罪，降低了潜台词余量。",
+        "voice_readiness": "Mara关于‘不能带路的囚犯’有克制机锋，末尾付款对答简洁；整体声线被提要式叙述包围，人物持续性展示不足。"
+      },
+      "risks": [
+        "叙述频繁解释文本如何满足歉意、罪责和条件信任，文学含蓄度不足。",
+        "队长凭一项可能虚构的账册线索接受高风险担保，程序阻力略低。",
+        "以提要跨过关键讨价还价，公开选择的心理与现场后果没有充分展开。"
+      ],
+      "strengths": [
+        "Mara保护最可能揭发自己的人，隐罪与保护对象之间的冲突非常清楚。",
+        "印戒、假地点和火场手套让代价、互保与无言歉意都有具体载体。",
+        "Iven用反提条件拒绝成为被动受惠者，条件信任具有双向性。"
+      ],
+      "summary": "检查站前，Mara为保护能揭发她纵火关联的Iven，公开押上带隐藏标记的印戒与安全身份；Iven以要求她共同担保和提供假地点反向分担风险，火场手套则成为不认罪的歉意载体。"
+    }
+  ],
+  "judgment_set_sha256": "e4beea12610abcfe1e929ce5f51d7cb3b91e22624f1ddd4c38eee95e7719d2c3",
+  "judgments_frozen": true,
+  "literary_policy_sha256": "d93c95af9ed15d4c3f1193b00e319f364fb57176190e96e9e5d2fcd19eec0b21",
+  "mapping_accessed": false,
+  "mapping_revealed": false,
+  "other_evaluator_record_accessed": false,
+  "provider_route_skill_metadata_accessed": false,
+  "scalar_average_created": false,
+  "schema": "SkillV3HybridBlindEvaluatorFreezeV1",
+  "six_independent_sample_judgments_frozen": true,
+  "status": "FROZEN",
+  "votes": [
+    {
+      "anonymous_pair_id": "hybrid-blind-pair-1",
+      "dimension_evidence": {
+        "anti_template_risk": "A主要让巡逻、账页、交页与不闩门自行显义，虽有一句关系总结；B多次直接说明歉意、条件与债务关系，模板式释义更密集。",
+        "causal_coherence": "A从门闩告警和搜身风险连续推进到送走Iven、取回账页、Mara独自迎检；B的藏印、交印、档案室发现印章及证人条件衔接更概述化。",
+        "character_agency": "A中Mara制定逃路且承担盘查，Iven扣页索价后决定交还；B中Iven重写法庭交易，Mara以印章和首位证人反设条件。两边双方都以有效选择改变局势。",
+        "scene_pressure": "A的钟声、迫近灯笼和搜身在同一现场持续施压；B虽有处刑风险，却用概述跳过法庭与档案室的即时过程。",
+        "setup_payoff_integrity": "A的印章、账页、旧暗号和未闩之门均在结尾获得作用；B的第一证人和调查尚未兑现，印章交接也较跳跃。",
+        "specificity": "A具有雨中东门、破闩、灯笼、墨迹和折页等参与动作的连续细节；B只有账册、伤口和印章等节点性物件。",
+        "subtext_support": "A以抓腕、交页、旧暗号和留门承载未说出口的亏欠；B的证物交换有效，但旁白直接解释歉意和不宽恕。",
+        "voice_readiness": "A在完整对话场中持续维持Mara与Iven各自的冷硬机锋；B有两句好台词，但主体仍是提要声线。"
+      },
+      "dimension_relations": {
+        "anti_template_risk": "A_BETTER",
+        "causal_coherence": "A_BETTER",
+        "character_agency": "TIE",
+        "scene_pressure": "A_BETTER",
+        "setup_payoff_integrity": "A_BETTER",
+        "specificity": "A_BETTER",
+        "subtext_support": "A_BETTER",
+        "voice_readiness": "A_BETTER"
+      },
+      "position_a_anonymous_sample_id": "hybrid-blind-1a8467e97ae2c101",
+      "position_b_anonymous_sample_id": "hybrid-blind-1a34e6e6bc65dc78"
+    },
+    {
+      "anonymous_pair_id": "hybrid-blind-pair-2",
+      "dimension_evidence": {
+        "anti_template_risk": "A频繁解释恐惧、谎言与条件信任，并以提要逐项兑现义务；B更多依赖实时动作和对话，虽仍有熟悉警句，模板暴露较少。",
+        "causal_coherence": "A由拒绝嫁祸、让渡自证筹码、桥检和伪修发现构成调查闭环，但钥匙功能略虚；B的开闸交易动作更连续，却未呈现违令后果且Vey缺少预埋。两者缺口性质不同、强弱接近。",
+        "character_agency": "A中Ilyan设计替代交易，Mara反对、调查并限定证词；B中Mara违令开闸，Iven以信息和指环交易。双方在两篇中都有能改变局势的选择。",
+        "scene_pressure": "B把弩手、伤势、队长命令和黑水放在一个持续现场；A以跨时段提要快速带过处刑倒计时和调查。",
+        "setup_payoff_integrity": "A预设坍桥与命令，最终以第二断裂和伪修标记改变证词，主调查线回收更完整；B末尾给出Vey却未验证，违令后果也截断。",
+        "specificity": "B的水闸、链条、灯影、钥匙和带体温指环形成可感空间；A的桥梁和议会物件明确，但持续场面细节较少。",
+        "subtext_support": "A用‘租用能力’掩饰带罪保护，Mara只承认保护而拒绝信任；B的照顾手势有效，但保护者Mara缺乏明确隐罪，且末句直接命名非道歉。",
+        "voice_readiness": "B的干涩互刺贯穿动作，Mara和Iven声线都稳定；A有好笑话和回应，但叙述提要削弱了持续人物声音。"
+      },
+      "dimension_relations": {
+        "anti_template_risk": "B_BETTER",
+        "causal_coherence": "TIE",
+        "character_agency": "TIE",
+        "scene_pressure": "B_BETTER",
+        "setup_payoff_integrity": "A_BETTER",
+        "specificity": "B_BETTER",
+        "subtext_support": "A_BETTER",
+        "voice_readiness": "B_BETTER"
+      },
+      "position_a_anonymous_sample_id": "hybrid-blind-b83053250bb32e7e",
+      "position_b_anonymous_sample_id": "hybrid-blind-1c67cc3036d89865"
+    },
+    {
+      "anonymous_pair_id": "hybrid-blind-pair-3",
+      "dimension_evidence": {
+        "anti_template_risk": "A虽有显式关系标签和字面转义瑕疵，主体仍由追兵、切绳和通道动作构成；B大段直接解释每项行为如何代表罪责、歉意与条件信任，模板感更强。",
+        "causal_coherence": "A的账册先由Mara收起，之后却仍被约定及实际由Iven交付，发生硬连续性矛盾；B从印戒担保到共同担保、假地点争时基本连贯。",
+        "character_agency": "A主要由Mara单方制定与执行救援，Iven的关键交账动作还受连续性错误破坏；B中Iven以反条件迫使Mara公开选择，并与她共同重分配风险。",
+        "scene_pressure": "A在坍塌楼梯、巡逻点名、伤势和淹水通道中实时推进；B的示众与镣铐风险明确，却主要被摘要讲述。",
+        "setup_payoff_integrity": "A的路线与切绳有回收，但核心账册的持有人前后冲突；B的印戒、假地点和火场手套各自承担担保、争时与关系回声，闭环更可靠。",
+        "specificity": "A持续提供石块缚绳、血衣、蓄水池和格栅等空间动作；B有鲜明物件，但检查站的连续场面较薄。",
+        "subtext_support": "A的手掌停留、拒绝无罪开脱和交易措辞虽被旁白解释，仍有多层动作支撑；B的手套和付款有效，但旁白几乎完整说出其歉意含义。",
+        "voice_readiness": "A以较长的对话往返稳定呈现Mara的冷讽和Iven的追问；B只有少量对答，人物声音被解释性叙述覆盖。"
+      },
+      "dimension_relations": {
+        "anti_template_risk": "A_BETTER",
+        "causal_coherence": "B_BETTER",
+        "character_agency": "B_BETTER",
+        "scene_pressure": "A_BETTER",
+        "setup_payoff_integrity": "B_BETTER",
+        "specificity": "A_BETTER",
+        "subtext_support": "A_BETTER",
+        "voice_readiness": "A_BETTER"
+      },
+      "position_a_anonymous_sample_id": "hybrid-blind-075a07f468bb2453",
+      "position_b_anonymous_sample_id": "hybrid-blind-fb517bb0b9a65546"
+    }
+  ]
+}

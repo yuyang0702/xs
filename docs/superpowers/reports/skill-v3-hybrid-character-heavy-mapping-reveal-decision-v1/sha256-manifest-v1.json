@@ -1,0 +1,68 @@
+{
+  "definition_sha256": "17c26ac160ac32279688fab6d139797e93ee50cc6e8d8f04e04bdf2a256f6306",
+  "entries": [
+    {
+      "bytes": 453,
+      "path": "blind-freeze-binding-v1.json",
+      "sha256": "125e5a7f32a4778244b4297f9022c058c77bcf9b4ca8b0b94bc979c2abe4c6bb"
+    },
+    {
+      "bytes": 864,
+      "path": "engineering-non-inferiority-v1.json",
+      "sha256": "858a5117d4357d3d6ac60ff26e38aa51f75148897f6319ac654439ba560815df"
+    },
+    {
+      "bytes": 346,
+      "path": "external-action-receipt-v1.json",
+      "sha256": "aceda7f803b0a47e0eaab696972bb68aeff720948eaead4f1400a1f5d7eec9e6"
+    },
+    {
+      "bytes": 3424,
+      "path": "final-report-v1.md",
+      "sha256": "c47e47fe42086b617a54000dddef1fb3d8fccef79a314c749092089ca6320c39"
+    },
+    {
+      "bytes": 5637,
+      "path": "mapped-literary-results-v1.json",
+      "sha256": "cfb36cc77b8b62b6e51c86fec3b272943c19dfe08634fc7e0fc6c41b39e9237a"
+    },
+    {
+      "bytes": 548,
+      "path": "narrative-non-inferiority-v1.json",
+      "sha256": "17e836953975f3cac29c6c754a8f7082e56325e03c0d1b54c2f270f583e52b09"
+    },
+    {
+      "bytes": 531,
+      "path": "narrative-policy-binding-v1.json",
+      "sha256": "1f0e880e1bec586a8ade1a5a286c641808893f785cba5157981b826c2425ee10"
+    },
+    {
+      "bytes": 975,
+      "path": "pair-local-mapping-v1.json",
+      "sha256": "2b9478d98e50ecc42ca08b486098293c35ff9901e392aeb08cdd59b346c73d83"
+    },
+    {
+      "bytes": 715,
+      "path": "pilot-disposition-v1.json",
+      "sha256": "2ee96ab53fad6fa11e53a08405e6547701e3abe8ef67b5e84bd7a7aa6af486af"
+    },
+    {
+      "bytes": 267,
+      "path": "privacy-scan-v1.json",
+      "sha256": "3cd19115410f0403c269f75d8a9ba27d44602d58636b04529dc9b815a12242dd"
+    },
+    {
+      "bytes": 158,
+      "path": "README.md",
+      "sha256": "77c1d70ddc9de953dbc9033a53b534563a038796a2e2d5bdb3de41dc1dec8eab"
+    },
+    {
+      "bytes": 407,
+      "path": "validation-receipt-v1.json",
+      "sha256": "77e1cc397911f50dd0654c6a8a79662d98a8d676775c8147d6a716092bec5f95"
+    }
+  ],
+  "entry_count": 12,
+  "schema": "SkillV3HybridFinalDecisionSha256ManifestV1",
+  "status": "EXACT"
+}

@@ -1,0 +1,28 @@
+{
+  "global_blind_side_mapping": "NOT_DEFINED_BY_DESIGN",
+  "pairs": [
+    {
+      "anonymous_pair_id": "hybrid-blind-pair-1",
+      "position_a_anonymous_sample_id": "hybrid-blind-1a8467e97ae2c101",
+      "position_a_arm": "HYBRID",
+      "position_b_anonymous_sample_id": "hybrid-blind-1a34e6e6bc65dc78",
+      "position_b_arm": "CONTROL"
+    },
+    {
+      "anonymous_pair_id": "hybrid-blind-pair-2",
+      "position_a_anonymous_sample_id": "hybrid-blind-b83053250bb32e7e",
+      "position_a_arm": "CONTROL",
+      "position_b_anonymous_sample_id": "hybrid-blind-1c67cc3036d89865",
+      "position_b_arm": "HYBRID"
+    },
+    {
+      "anonymous_pair_id": "hybrid-blind-pair-3",
+      "position_a_anonymous_sample_id": "hybrid-blind-075a07f468bb2453",
+      "position_a_arm": "HYBRID",
+      "position_b_anonymous_sample_id": "hybrid-blind-fb517bb0b9a65546",
+      "position_b_arm": "CONTROL"
+    }
+  ],
+  "schema": "SkillV3HybridPairLocalMappingV1",
+  "status": "EXACT"
+}

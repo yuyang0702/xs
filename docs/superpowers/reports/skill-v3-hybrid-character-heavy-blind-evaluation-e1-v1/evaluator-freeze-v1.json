@@ -1,0 +1,245 @@
+{
+  "arm_identity_guessed": false,
+  "blind_bundle_definition_sha256": "fc4e3b922347df46674240221d281ae067e44e08a53235be402b99a276eccad0",
+  "blind_bundle_head": "d4b94613ec4731636d8516910451cabb340ffadf",
+  "blind_bundle_manifest_sha256": "b59256db86beafff4d14c02a763e4e10e1a386ec7ac9aca058621c1169504ba5",
+  "engineering_metadata_accessed": false,
+  "evaluator_by_batch_vote_count": 3,
+  "evaluator_id": "e1",
+  "external_project_actions": 0,
+  "fresh_context": true,
+  "frozen_at": "2026-08-29T11:06:53.435183Z",
+  "independent_sample_judgments": [
+    {
+      "anonymous_sample_id": "hybrid-blind-1a8467e97ae2c101",
+      "dimension_notes": {
+        "anti_template_risk": "The scene is substantially dramatized rather than summarized, and the seal, page, whistle, and unbarred gate interact meaningfully. Risk remains in polished aphoristic tags such as 'a loan with interest' and in the very orderly sequence of obligation beats.",
+        "causal_coherence": "The missing seal and ledger page place both characters at risk; the approaching patrol forces a bargain; Mara's decision to face the patrol enables Iven's escape. Each choice changes the immediate options in a legible chain.",
+        "character_agency": "Mara chooses a costly public exposure instead of abandoning Iven, defines the bargain, and leaves the gate unbarred. Iven withholds the page, negotiates terms, then voluntarily transfers it and signals from the dark.",
+        "scene_pressure": "The ringing bell, multiplying lanterns, incriminating objects, and narrowing time keep the exchange under active pressure. Negotiation and physical movement toward the patrol prevent the scene from becoming static.",
+        "setup_payoff_integrity": "The seal and ledger page introduced at the gate determine the bargain; the old whistle and unbarred gate close the conditional-trust movement without converting it into forgiveness. The concrete setups receive consequences inside the scene.",
+        "specificity": "East gate, broken latch, levy rolls, quarry horse, rain-lit patrol, ink under Iven's thumb, and the old whistle give the conflict particular objects and gestures rather than generic danger.",
+        "subtext_support": "Rescue is consistently disguised as transaction, and the apology is displaced into the affordable-version exchange. The wrist grip, page transfer, unanswered whistle, and open gate carry feeling beyond the explicit dialogue.",
+        "voice_readiness": "The prose sustains restrained irony under fear in both dialogue and narration, with clean scene control and a finished cadence. A few epigrammatic sentences feel conspicuously polished, but the voice is ready at scene level."
+      },
+      "risks": [
+        "Several compact aphorisms explain the emotional ledger after the action has already conveyed it.",
+        "The bargain structure is so cleanly staged that some beats feel engineered to satisfy the obligations."
+      ],
+      "strengths": [
+        "Turns all four obligations into consequential choices and physical business inside a pressured scene.",
+        "Balances Mara's protective agency with Iven's leverage, resistance, and final voluntary concession.",
+        "Ends on a precise image of conditional trust rather than premature reconciliation."
+      ],
+      "summary": "A compact, fully dramatized gate confrontation in which mutual evidence, an approaching patrol, and a deniable rescue force two rivals into a costly bargain. Its strongest achievement is making conditional trust visible through the transferred page, old signal, and unbarred gate; its main weakness is occasional over-polished emotional accounting."
+    },
+    {
+      "anonymous_sample_id": "hybrid-blind-1a34e6e6bc65dc78",
+      "dimension_notes": {
+        "anti_template_risk": "The narrative closely tracks the required obligations and frequently names their meaning for the reader. Because much of it is synopsis rather than enacted scene, the tribunal, archive, apology, cost, and conditional trust can read as checked-off components.",
+        "causal_coherence": "The forged ledger prompts Iven's intervention; his custody proposal creates Mara's counterconditions; surrendering the seal gives up his exculpatory evidence and moves them into conditional cooperation. The chain is understandable, though the opening reference to 'Mara's oldest rival' briefly blurs who is being condemned and protected.",
+        "character_agency": "Iven interrupts, proposes a legal bargain, and sacrifices control; Mara refuses passive rescue, demands the seal, and chooses the first witness. Both exercise leverage, although their decisions are reported more often than experienced.",
+        "scene_pressure": "Execution and tribunal judgment supply high stakes, but the summary mode compresses reactions, timing, and reversals. The archive section arrives without sustained sensory or moment-to-moment pressure.",
+        "setup_payoff_integrity": "The cipher, missing seal, custody bargain, and witness condition connect to the archive and future investigation. The outcome preserves distrust, but the first-witness condition is not paid off within the artifact and the larger operation remains abstract.",
+        "specificity": "Ciphered margins, a cut palm, hidden seal, archive access, and the bandage cloth provide usable particulars. They are surrounded by generalized institutional summary, so the setting and action never become fully present.",
+        "subtext_support": "The joke, refusal of eye contact, hidden injured hand, and bandage-wrapped seal support concealed fear and remorse. However, the narrator explicitly decodes the apology and each character's knowledge, reducing interpretive space.",
+        "voice_readiness": "The dry tribunal joke and evidence-versus-people exchange establish the intended tonal register. The dominant explanatory synopsis voice is not yet a finished dramatic scene and repeatedly states motivation and relational meaning."
+      },
+      "risks": [
+        "The artifact reads more like a scene treatment than publishable narrative prose.",
+        "Explicit explanations of apology, guilt, distrust, and cost flatten the intended subtext.",
+        "The opening identity relationship is momentarily confusing."
+      ],
+      "strengths": [
+        "Gives both rivals meaningful negotiating power rather than making protection unilateral.",
+        "Uses the seal as a concrete sacrifice that protects Mara while worsening Iven's position.",
+        "Maintains conditional cooperation without granting absolution."
+      ],
+      "summary": "A coherent tribunal-and-archive treatment in which Iven protects Mara by sacrificing exculpatory evidence and Mara converts rescue into terms she controls. It fulfills the event obligations clearly, but its explanatory synopsis mode keeps pressure, subtext, and voice from becoming fully dramatic."
+    },
+    {
+      "anonymous_sample_id": "hybrid-blind-b83053250bb32e7e",
+      "dimension_notes": {
+        "anti_template_risk": "The key, bridge, inquiry, false repairs, and detention create an internally connected plot rather than a wholly interchangeable frame. Yet the prose often announces the hidden lie, the unspoken apology, the cost, and the resulting trust, producing a rubric-shaped treatment feel.",
+        "causal_coherence": "The bridge collapse and mutual testimony create vulnerability; the magistrate's offer forces Ilyan to choose; his counteroffer enables Mara's inspection; her discovery makes her testimony necessary and leads to joint detention. The causal progression is unusually complete for the short form.",
+        "character_agency": "Ilyan refuses self-exoneration, sets an alternative price, and gives up rights and evidence. Mara rejects the terms of passive rescue, performs the decisive inspection, and publicly defines the limits of her trust.",
+        "scene_pressure": "Threatened executions, a hostile magistrate, and an unstable bridge create material stakes. Pressure is partially diluted by summary transitions from chamber to arch to dusk rather than sustained in a continuous scene.",
+        "setup_payoff_integrity": "The key that could clear Ilyan becomes the surrendered instrument of Mara's inspection; the unsafe supports yield false repair marks; testimony and postponed executions converge in detention. Most introduced elements alter the resolution.",
+        "specificity": "The collapsed bridge, supports, key, seal, inquiry rights, false repair marks, and chained detention distinguish the scenario. Physical and sensory detail remains limited because the prose emphasizes plot report.",
+        "subtext_support": "Dry objections and the 'renting your competence' line disguise fear, remorse, and protection as contempt or commerce. The narrator then explains the lie and apology directly, weakening the subtext's independence.",
+        "voice_readiness": "The dialogue has controlled dryness and the ending lands cleanly on conditional trust. Narrative voice remains closer to a polished outline than an immersive scene, with explanatory sentences doing work the characters' behavior could carry."
+      },
+      "risks": [
+        "Synopsis compression reduces immediacy across what are effectively several scene locations.",
+        "The narrative repeatedly interprets the subtext for the reader.",
+        "The bargain's many listed concessions feel slightly optimized for obligation coverage."
+      ],
+      "strengths": [
+        "Builds a complete causal arc from accusation through investigation to a constrained new alliance.",
+        "Gives Ilyan a genuine sacrifice and Mara a decisive investigative and testimonial role.",
+        "Pays off the key and bridge-support setup with evidence that changes both characters' survival."
+      ],
+      "summary": "A plot-complete bridge-inquiry treatment where Ilyan spends his chance at exoneration to create time for Mara, and Mara's competence converts that sacrifice into evidence and conditional cooperation. The causal and payoff design is strong, while the explanatory summary form limits scene pressure and subtext."
+    },
+    {
+      "anonymous_sample_id": "hybrid-blind-1c67cc3036d89865",
+      "dimension_notes": {
+        "anti_template_risk": "The sluice mechanics, opposing armed groups, scarf, ring, and named traitor give the bargain some local texture. Familiar polished constructions and the explicit apology exchange still reveal a strongly designed obligation sequence, but the scene is less checklist-like than a synopsis.",
+        "causal_coherence": "Iven needs the sluice opened to evacuate the lower quarter; Mara needs the betrayer's name; the watch order and crossbows force her choice; his signet and unarmed crossing secure provisional terms. The geography and distinction between patrol groups are slightly underexplained, and the evacuation outcome remains offstage.",
+        "character_agency": "Mara steps between Iven and the bolts, treats his wound, imposes crossing terms, and turns the key against orders. Iven comes alone, offers information, relinquishes his signet, and supplies the name, so agency is reciprocal.",
+        "scene_pressure": "Crossbows, active orders, a bleeding rival, waiting patrol lights, and the threatened sealing of the lower quarter sustain immediate pressure through the negotiation and gate opening.",
+        "setup_payoff_integrity": "The gate chain and key lead directly to the opened sluice; the demanded name is delivered; the signet remains in Mara's hand as collateral. The fate of the lower-quarter residents and the commander conflict are left unresolved, making the external payoff partial.",
+        "specificity": "Rain on black water, gold lantern reflections, the iron key, warm signet, folded scarf, crossbows, and the sluice's groan provide embodied detail and functional props.",
+        "subtext_support": "Mara's wound care, brief elbow catch, and rapid release enact care she refuses to name, while Iven's signet transfer makes trust conditional. The final dialogue labels the apology fairly directly, but most emotion remains carried in action.",
+        "voice_readiness": "Restrained barbs remain credible under fear, and the narrative moves fluently through physical beats without losing tonal control. A few sentences are self-consciously polished, yet the artifact reads as a finished short scene."
+      },
+      "risks": [
+        "The spatial relationship among Mara's watchmen, the rival patrol, the lower passage, and the sluice could be clearer.",
+        "The external objective of evacuating the lower quarter is asserted but not shown reaching consequence.",
+        "The final affordable-apology formulation is somewhat overt."
+      ],
+      "strengths": [
+        "Sustains immediate physical danger while allowing both rivals to negotiate rather than merely react.",
+        "Uses wound care, collateral, and gate mechanics to embody concealed loyalty and conditional trust.",
+        "Maintains a controlled ironic voice without erasing fear."
+      ],
+      "summary": "A tense sluice-gate scene in which Mara defies her watch order to protect an injured rival, while Iven trades collateral and a traitor's name for passage. It dramatizes agency, pressure, and restrained care effectively, though its physical factions and the evacuation payoff are not fully clarified."
+    },
+    {
+      "anonymous_sample_id": "hybrid-blind-075a07f468bb2453",
+      "dimension_notes": {
+        "anti_template_risk": "The stair, rope, cistern, coat, ledger, and Greybridge history give the scene more than a generic bargain frame. Still, the narrator labels the hand gesture as an apology and itemizes the cost of the choice, while the closing conditional-trust sentence has a familiar engineered cadence.",
+        "causal_coherence": "The patrol and trapped injury force an escape decision, and Mara sacrifices her clean route to free and carry Iven. A major ledger continuity error breaks the chain: Mara puts it inside her coat, then bargains for Iven to give it later, and he somehow hands it over at the grate without regaining it.",
+        "character_agency": "Mara rejects the safer solo escape, cuts Iven free, sets terms, and bears the physical cost. Iven challenges her motive, offers a judgment about Greybridge, stops resisting, returns the ledger, and opens the grate, though the impossible ledger handling weakens his final choice.",
+        "scene_pressure": "Moving patrol lanterns, nearby footsteps, a trapped and bleeding rival, a flooded passage, and a lost escape route sustain danger. The mouth-covering pause creates an effective quiet beat without releasing the pursuit pressure.",
+        "setup_payoff_integrity": "The rope is cut, the cistern route is used, the prepared solo escape is surrendered, and Greybridge frames the emotional refusal. The ledger, the principal leverage object, changes possession inconsistently, damaging the central bargain and payoff.",
+        "specificity": "Collapsed stair, ankle rope, stolen ledger, blood-marked coat, flooded passage, cistern grate, and Greybridge provide concrete objects, movement, and prior-history texture.",
+        "subtext_support": "The knife redirected to the rope, the hand held over Iven's mouth too long, and Mara's refusal of absolution give concealed guilt and care behavioral support. The narration sometimes explains those meanings instead of trusting them.",
+        "voice_readiness": "The dry exchanges are distinct and consistent under fear, and the prose has strong scene rhythm. Readiness is materially reduced by literal escaped newline markers in the narrative presentation and by the central ledger continuity error."
+      },
+      "risks": [
+        "The ledger changes hands impossibly, undermining the bargain's causal center.",
+        "Literal escaped newline markers make the delivered narrative look technically unpolished.",
+        "The narrator over-explains apology and the exact cost of the rescue."
+      ],
+      "strengths": [
+        "Creates a physically active rescue in which Mara's costly choice is unmistakable.",
+        "Lets Greybridge guilt and mutual distrust surface through controlled, dry dialogue.",
+        "Uses the cistern escape and intimate silencing gesture to sustain both danger and subtext."
+      ],
+      "summary": "An active cistern escape in which Mara abandons a clean solo route to save Iven and converts concealed guilt into a hard bargain. Its physical pressure and character voice are strong, but a central ledger-possession contradiction and visible escaped line breaks keep it from being narratively ready."
+    },
+    {
+      "anonymous_sample_id": "hybrid-blind-fb517bb0b9a65546",
+      "dimension_notes": {
+        "anti_template_risk": "The checkpoint, governor's signet, hidden mark, false meeting place, and recovered glove create a plausible chain of objects. Nevertheless, the synopsis explicitly identifies each obligation—protection, public cost, unspoken apology, intact distrust, and concealed loyalty—so the construction often feels rubric-forward.",
+        "causal_coherence": "The weak evidence and impending shackles force Mara to stake her signet; her ledger claim prompts Iven's countercondition; public guarantorship exposes her; his false destination buys time. The sequence is clear, though the glove's prior theft and strategic value arrive late.",
+        "character_agency": "Mara intervenes publicly, risks her status, invents leverage, and accepts scrutiny. Iven refuses a merely secret rescue, requires her guarantorship, supplies the delaying lie, and chooses to remain beside her.",
+        "scene_pressure": "Arrest before nightfall, the captain's scrutiny, and the dangerous signet create immediate stakes. Pressure is described from outside rather than lived beat by beat, so the checkpoint exchange has limited temporal and sensory intensity.",
+        "setup_payoff_integrity": "The fire accusation motivates the arrest; the signet's hidden mark turns surety into a cost; the dawn appearance and false meeting place create temporary release. The returned glove echoes the fire but is introduced only at payoff, making that symbol feel appended.",
+        "specificity": "A scorched seal, three witnesses, shackles, an iron governor's signet with a hidden mark, arrest ledger, false meeting place, and burned-building glove make the institutional danger concrete despite summary delivery.",
+        "subtext_support": "The shaking hand, insistence on a public choice, returned glove, and payment dialogue support remorse and reciprocal recognition without forgiveness. The narrator repeatedly states what the exchange means, leaving little interpretive work to those details.",
+        "voice_readiness": "Restrained dialogue appears in useful flashes, but the present-tense explanatory treatment dominates and reports inner knowledge and thematic meaning. It reads as a strong scene plan rather than finished narrative prose."
+      },
+      "risks": [
+        "Explanatory synopsis prevents the characters' bargaining from unfolding with full dramatic force.",
+        "The glove functions as a late-introduced symbolic payoff rather than a prepared one.",
+        "Repeated statements of obligation meaning make the artifact feel designed around a checklist."
+      ],
+      "strengths": [
+        "Makes Mara's protection genuinely costly by exposing the one object tied to both safety and guilt.",
+        "Gives Iven meaningful resistance and a counteroffer that forces Mara to own her choice publicly.",
+        "Preserves distrust while establishing an earned, limited alignment."
+      ],
+      "summary": "A clear checkpoint treatment in which Mara risks the signet that protects her own status to prevent Iven's arrest, and Iven makes that rescue public and reciprocal. The agency and causal bargain are strong, but the piece explains its subtext and relational outcome instead of fully dramatizing them."
+    }
+  ],
+  "judgment_set_sha256": "c2f2718f449f438ae935a45978c216652d82e9030deaaf54e1a897bc1fa0dfcb",
+  "judgments_frozen": true,
+  "literary_policy_sha256": "d93c95af9ed15d4c3f1193b00e319f364fb57176190e96e9e5d2fcd19eec0b21",
+  "mapping_accessed": false,
+  "mapping_revealed": false,
+  "other_evaluator_record_accessed": false,
+  "provider_route_skill_metadata_accessed": false,
+  "scalar_average_created": false,
+  "schema": "SkillV3HybridBlindEvaluatorFreezeV1",
+  "six_independent_sample_judgments_frozen": true,
+  "status": "FROZEN",
+  "votes": [
+    {
+      "anonymous_pair_id": "hybrid-blind-pair-1",
+      "dimension_evidence": {
+        "anti_template_risk": "Position A dramatizes the bargain through active props and reversals, while position B repeatedly explains how each beat fulfills guilt, apology, cost, and conditional trust; A therefore carries less template risk.",
+        "causal_coherence": "Position A's seal, ledger page, approaching patrol, escape terms, page transfer, and open gate form a continuous consequence chain. Position B is coherent but briefly confuses the protected relationship in its opening and reports later links more abstractly.",
+        "character_agency": "Position A lets Mara choose exposure and define terms while Iven withholds, negotiates, transfers the page, and signals; position B gives both characters choices but mainly reports them in synopsis.",
+        "scene_pressure": "Position A sustains a ringing bell, closing lanterns, incriminating objects, and immediate movement toward capture. Position B has tribunal stakes but compresses tribunal and archive action into summary.",
+        "setup_payoff_integrity": "Position A pays the seal, page, old signal, and gate through immediate actions that close on conditional trust. Position B leaves the first-witness condition and larger operation without an in-artifact payoff.",
+        "specificity": "Position A supplies a denser functional field—broken latch, levy page, quarry horse, rain lanterns, thumb over ink, whistle, and gate—than position B's mostly summarized tribunal and archive details.",
+        "subtext_support": "Position A's wrist grip, protected name, page transfer, unanswered whistle, and unbarred gate allow care and apology to remain partly implicit. Position B explicitly decodes the unnamed apology and each character's understanding.",
+        "voice_readiness": "Position A sustains finished scene prose and restrained irony throughout. Position B contains good dry lines but remains a treatment whose narrative voice explains rather than dramatizes."
+      },
+      "dimension_relations": {
+        "anti_template_risk": "A_BETTER",
+        "causal_coherence": "A_BETTER",
+        "character_agency": "A_BETTER",
+        "scene_pressure": "A_BETTER",
+        "setup_payoff_integrity": "A_BETTER",
+        "specificity": "A_BETTER",
+        "subtext_support": "A_BETTER",
+        "voice_readiness": "A_BETTER"
+      },
+      "position_a_anonymous_sample_id": "hybrid-blind-1a8467e97ae2c101",
+      "position_b_anonymous_sample_id": "hybrid-blind-1a34e6e6bc65dc78"
+    },
+    {
+      "anonymous_pair_id": "hybrid-blind-pair-2",
+      "dimension_evidence": {
+        "anti_template_risk": "Position B embeds the obligations in an enacted sluice negotiation, whereas position A often labels the hidden lie, apology, cost, and trust in explanatory summary; B has lower template risk.",
+        "causal_coherence": "Position A completes a clear bridge-collapse chain from accusation through bargain, inspection, evidence, testimony, and detention. Position B's immediate bargain is sound, but its patrol geography and the lower-quarter evacuation outcome are only partially resolved.",
+        "character_agency": "Position A gives Ilyan a costly counteroffer and Mara the decisive inspection and testimony; position B gives Mara the gate-opening choice and Iven collateral and information leverage. Both make consequential reciprocal choices at comparable depth.",
+        "scene_pressure": "Position B keeps crossbows, direct orders, bleeding, and the gate mechanism active in one continuous scene. Position A's execution stakes are strong but dissipate across summarized chamber, bridge, and dusk transitions.",
+        "setup_payoff_integrity": "Position A turns the key into inspection, the supports into false repair evidence, and postponed executions into joint detention. Position B pays the key, signet, and name but leaves the promised evacuation and commander conflict offstage.",
+        "specificity": "Position B provides more embodied detail—rain on black water, lantern reflections, scarf pressure, warm ring, crossbows, and groaning sluice—than position A's mostly plotted bridge and inquiry objects.",
+        "subtext_support": "Position B's wound care, elbow catch, release, and signet transfer carry concealed care in action. Position A supplies dry dialogue but then directly interprets the lie and unspoken apology.",
+        "voice_readiness": "Position B reads as controlled finished scene prose with irony integrated into action. Position A has good lines and a clean ending but retains the explanatory register of a polished outline."
+      },
+      "dimension_relations": {
+        "anti_template_risk": "B_BETTER",
+        "causal_coherence": "A_BETTER",
+        "character_agency": "TIE",
+        "scene_pressure": "B_BETTER",
+        "setup_payoff_integrity": "A_BETTER",
+        "specificity": "B_BETTER",
+        "subtext_support": "B_BETTER",
+        "voice_readiness": "B_BETTER"
+      },
+      "position_a_anonymous_sample_id": "hybrid-blind-b83053250bb32e7e",
+      "position_b_anonymous_sample_id": "hybrid-blind-1c67cc3036d89865"
+    },
+    {
+      "anonymous_pair_id": "hybrid-blind-pair-3",
+      "dimension_evidence": {
+        "anti_template_risk": "Position A is more fully dramatized and ties its bargain to stair, rope, patrol, and cistern action. Position B explicitly walks through every required obligation in synopsis, so A has lower template risk despite its own explanatory lines.",
+        "causal_coherence": "Position B maintains a legible chain from arrest evidence through signet surety, guarantorship, false destination, and release. Position A has a central ledger contradiction: Mara pockets it, bargains to receive it later, and Iven later hands it over without regaining it.",
+        "character_agency": "Position B gives Mara a public self-endangering intervention and Iven a countercondition that changes its terms, followed by his delaying lie. Position A is driven chiefly by Mara, while Iven's key ledger concession is weakened by the possession error.",
+        "scene_pressure": "Position A sustains nearby patrol footsteps, a trapped wound, rope-cutting, a flooded route, and physical escape. Position B describes checkpoint urgency but does not enact comparable beat-to-beat pressure.",
+        "setup_payoff_integrity": "Position B pays the signet's hidden risk through public guarantorship and uses the false meeting place to secure release, though the glove is late. Position A pays rope and cistern setups but breaks the central ledger bargain through inconsistent possession.",
+        "specificity": "Position A's collapsed stair, binding rope, blood-marked coat, flooded passage, and cistern grate create more sustained physical specificity than position B's clearly selected but summarized checkpoint props.",
+        "subtext_support": "Position A supports concealed guilt and care through the redirected knife, overlong hand-to-mouth contact, and refusal of absolution. Position B has a useful tremor and glove exchange but explicitly states the exchange's apologetic shape and meaning.",
+        "voice_readiness": "Position A has the more distinct dry character voice and sustained scene rhythm, although literal escaped line breaks and the ledger error require repair. Position B is cleaner in continuity but remains a voice-light explanatory treatment; on the voice dimension, A is stronger."
+      },
+      "dimension_relations": {
+        "anti_template_risk": "A_BETTER",
+        "causal_coherence": "B_BETTER",
+        "character_agency": "B_BETTER",
+        "scene_pressure": "A_BETTER",
+        "setup_payoff_integrity": "B_BETTER",
+        "specificity": "A_BETTER",
+        "subtext_support": "A_BETTER",
+        "voice_readiness": "A_BETTER"
+      },
+      "position_a_anonymous_sample_id": "hybrid-blind-075a07f468bb2453",
+      "position_b_anonymous_sample_id": "hybrid-blind-fb517bb0b9a65546"
+    }
+  ]
+}

@@ -1,0 +1,265 @@
+{
+  "dimensions": [
+    {
+      "blind_relation": "INCONCLUSIVE",
+      "counts": {
+        "A_BETTER": 1,
+        "B_BETTER": 2,
+        "INCOMPARABLE": 0,
+        "TIE": 3
+      },
+      "dimension": "character_agency",
+      "support_threshold": 4
+    },
+    {
+      "blind_relation": "INCONCLUSIVE",
+      "counts": {
+        "A_BETTER": 3,
+        "B_BETTER": 2,
+        "INCOMPARABLE": 0,
+        "TIE": 1
+      },
+      "dimension": "causal_coherence",
+      "support_threshold": 4
+    },
+    {
+      "blind_relation": "A_BETTER",
+      "counts": {
+        "A_BETTER": 5,
+        "B_BETTER": 1,
+        "INCOMPARABLE": 0,
+        "TIE": 0
+      },
+      "dimension": "subtext_support",
+      "support_threshold": 4
+    },
+    {
+      "blind_relation": "A_BETTER",
+      "counts": {
+        "A_BETTER": 4,
+        "B_BETTER": 2,
+        "INCOMPARABLE": 0,
+        "TIE": 0
+      },
+      "dimension": "specificity",
+      "support_threshold": 4
+    },
+    {
+      "blind_relation": "A_BETTER",
+      "counts": {
+        "A_BETTER": 4,
+        "B_BETTER": 2,
+        "INCOMPARABLE": 0,
+        "TIE": 0
+      },
+      "dimension": "scene_pressure",
+      "support_threshold": 4
+    },
+    {
+      "blind_relation": "A_BETTER",
+      "counts": {
+        "A_BETTER": 4,
+        "B_BETTER": 2,
+        "INCOMPARABLE": 0,
+        "TIE": 0
+      },
+      "dimension": "setup_payoff_integrity",
+      "support_threshold": 4
+    },
+    {
+      "blind_relation": "A_BETTER",
+      "counts": {
+        "A_BETTER": 4,
+        "B_BETTER": 2,
+        "INCOMPARABLE": 0,
+        "TIE": 0
+      },
+      "dimension": "voice_readiness",
+      "support_threshold": 4
+    },
+    {
+      "blind_relation": "A_BETTER",
+      "counts": {
+        "A_BETTER": 4,
+        "B_BETTER": 2,
+        "INCOMPARABLE": 0,
+        "TIE": 0
+      },
+      "dimension": "anti_template_risk",
+      "support_threshold": 4
+    }
+  ],
+  "duplicate_vote_count": 0,
+  "extra_vote_count": 0,
+  "mapping_revealed": false,
+  "missing_vote_count": 0,
+  "observed_evaluator_by_batch_votes": 6,
+  "required_evaluator_by_batch_votes": 6,
+  "scalar_average_created": false,
+  "schema": "SkillV3HybridCombinedBlindAggregationV1",
+  "status": "COMPLETE_EXACT",
+  "votes": [
+    {
+      "anonymous_pair_id": "hybrid-blind-pair-1",
+      "dimension_evidence": {
+        "anti_template_risk": "Position A dramatizes the bargain through active props and reversals, while position B repeatedly explains how each beat fulfills guilt, apology, cost, and conditional trust; A therefore carries less template risk.",
+        "causal_coherence": "Position A's seal, ledger page, approaching patrol, escape terms, page transfer, and open gate form a continuous consequence chain. Position B is coherent but briefly confuses the protected relationship in its opening and reports later links more abstractly.",
+        "character_agency": "Position A lets Mara choose exposure and define terms while Iven withholds, negotiates, transfers the page, and signals; position B gives both characters choices but mainly reports them in synopsis.",
+        "scene_pressure": "Position A sustains a ringing bell, closing lanterns, incriminating objects, and immediate movement toward capture. Position B has tribunal stakes but compresses tribunal and archive action into summary.",
+        "setup_payoff_integrity": "Position A pays the seal, page, old signal, and gate through immediate actions that close on conditional trust. Position B leaves the first-witness condition and larger operation without an in-artifact payoff.",
+        "specificity": "Position A supplies a denser functional field—broken latch, levy page, quarry horse, rain lanterns, thumb over ink, whistle, and gate—than position B's mostly summarized tribunal and archive details.",
+        "subtext_support": "Position A's wrist grip, protected name, page transfer, unanswered whistle, and unbarred gate allow care and apology to remain partly implicit. Position B explicitly decodes the unnamed apology and each character's understanding.",
+        "voice_readiness": "Position A sustains finished scene prose and restrained irony throughout. Position B contains good dry lines but remains a treatment whose narrative voice explains rather than dramatizes."
+      },
+      "dimension_relations": {
+        "anti_template_risk": "A_BETTER",
+        "causal_coherence": "A_BETTER",
+        "character_agency": "A_BETTER",
+        "scene_pressure": "A_BETTER",
+        "setup_payoff_integrity": "A_BETTER",
+        "specificity": "A_BETTER",
+        "subtext_support": "A_BETTER",
+        "voice_readiness": "A_BETTER"
+      },
+      "evaluator_id": "e1",
+      "position_a_anonymous_sample_id": "hybrid-blind-1a8467e97ae2c101",
+      "position_b_anonymous_sample_id": "hybrid-blind-1a34e6e6bc65dc78",
+      "vote_id": "e1:hybrid-blind-pair-1"
+    },
+    {
+      "anonymous_pair_id": "hybrid-blind-pair-2",
+      "dimension_evidence": {
+        "anti_template_risk": "Position B embeds the obligations in an enacted sluice negotiation, whereas position A often labels the hidden lie, apology, cost, and trust in explanatory summary; B has lower template risk.",
+        "causal_coherence": "Position A completes a clear bridge-collapse chain from accusation through bargain, inspection, evidence, testimony, and detention. Position B's immediate bargain is sound, but its patrol geography and the lower-quarter evacuation outcome are only partially resolved.",
+        "character_agency": "Position A gives Ilyan a costly counteroffer and Mara the decisive inspection and testimony; position B gives Mara the gate-opening choice and Iven collateral and information leverage. Both make consequential reciprocal choices at comparable depth.",
+        "scene_pressure": "Position B keeps crossbows, direct orders, bleeding, and the gate mechanism active in one continuous scene. Position A's execution stakes are strong but dissipate across summarized chamber, bridge, and dusk transitions.",
+        "setup_payoff_integrity": "Position A turns the key into inspection, the supports into false repair evidence, and postponed executions into joint detention. Position B pays the key, signet, and name but leaves the promised evacuation and commander conflict offstage.",
+        "specificity": "Position B provides more embodied detail—rain on black water, lantern reflections, scarf pressure, warm ring, crossbows, and groaning sluice—than position A's mostly plotted bridge and inquiry objects.",
+        "subtext_support": "Position B's wound care, elbow catch, release, and signet transfer carry concealed care in action. Position A supplies dry dialogue but then directly interprets the lie and unspoken apology.",
+        "voice_readiness": "Position B reads as controlled finished scene prose with irony integrated into action. Position A has good lines and a clean ending but retains the explanatory register of a polished outline."
+      },
+      "dimension_relations": {
+        "anti_template_risk": "B_BETTER",
+        "causal_coherence": "A_BETTER",
+        "character_agency": "TIE",
+        "scene_pressure": "B_BETTER",
+        "setup_payoff_integrity": "A_BETTER",
+        "specificity": "B_BETTER",
+        "subtext_support": "B_BETTER",
+        "voice_readiness": "B_BETTER"
+      },
+      "evaluator_id": "e1",
+      "position_a_anonymous_sample_id": "hybrid-blind-b83053250bb32e7e",
+      "position_b_anonymous_sample_id": "hybrid-blind-1c67cc3036d89865",
+      "vote_id": "e1:hybrid-blind-pair-2"
+    },
+    {
+      "anonymous_pair_id": "hybrid-blind-pair-3",
+      "dimension_evidence": {
+        "anti_template_risk": "Position A is more fully dramatized and ties its bargain to stair, rope, patrol, and cistern action. Position B explicitly walks through every required obligation in synopsis, so A has lower template risk despite its own explanatory lines.",
+        "causal_coherence": "Position B maintains a legible chain from arrest evidence through signet surety, guarantorship, false destination, and release. Position A has a central ledger contradiction: Mara pockets it, bargains to receive it later, and Iven later hands it over without regaining it.",
+        "character_agency": "Position B gives Mara a public self-endangering intervention and Iven a countercondition that changes its terms, followed by his delaying lie. Position A is driven chiefly by Mara, while Iven's key ledger concession is weakened by the possession error.",
+        "scene_pressure": "Position A sustains nearby patrol footsteps, a trapped wound, rope-cutting, a flooded route, and physical escape. Position B describes checkpoint urgency but does not enact comparable beat-to-beat pressure.",
+        "setup_payoff_integrity": "Position B pays the signet's hidden risk through public guarantorship and uses the false meeting place to secure release, though the glove is late. Position A pays rope and cistern setups but breaks the central ledger bargain through inconsistent possession.",
+        "specificity": "Position A's collapsed stair, binding rope, blood-marked coat, flooded passage, and cistern grate create more sustained physical specificity than position B's clearly selected but summarized checkpoint props.",
+        "subtext_support": "Position A supports concealed guilt and care through the redirected knife, overlong hand-to-mouth contact, and refusal of absolution. Position B has a useful tremor and glove exchange but explicitly states the exchange's apologetic shape and meaning.",
+        "voice_readiness": "Position A has the more distinct dry character voice and sustained scene rhythm, although literal escaped line breaks and the ledger error require repair. Position B is cleaner in continuity but remains a voice-light explanatory treatment; on the voice dimension, A is stronger."
+      },
+      "dimension_relations": {
+        "anti_template_risk": "A_BETTER",
+        "causal_coherence": "B_BETTER",
+        "character_agency": "B_BETTER",
+        "scene_pressure": "A_BETTER",
+        "setup_payoff_integrity": "B_BETTER",
+        "specificity": "A_BETTER",
+        "subtext_support": "A_BETTER",
+        "voice_readiness": "A_BETTER"
+      },
+      "evaluator_id": "e1",
+      "position_a_anonymous_sample_id": "hybrid-blind-075a07f468bb2453",
+      "position_b_anonymous_sample_id": "hybrid-blind-fb517bb0b9a65546",
+      "vote_id": "e1:hybrid-blind-pair-3"
+    },
+    {
+      "anonymous_pair_id": "hybrid-blind-pair-1",
+      "dimension_evidence": {
+        "anti_template_risk": "A主要让巡逻、账页、交页与不闩门自行显义，虽有一句关系总结；B多次直接说明歉意、条件与债务关系，模板式释义更密集。",
+        "causal_coherence": "A从门闩告警和搜身风险连续推进到送走Iven、取回账页、Mara独自迎检；B的藏印、交印、档案室发现印章及证人条件衔接更概述化。",
+        "character_agency": "A中Mara制定逃路且承担盘查，Iven扣页索价后决定交还；B中Iven重写法庭交易，Mara以印章和首位证人反设条件。两边双方都以有效选择改变局势。",
+        "scene_pressure": "A的钟声、迫近灯笼和搜身在同一现场持续施压；B虽有处刑风险，却用概述跳过法庭与档案室的即时过程。",
+        "setup_payoff_integrity": "A的印章、账页、旧暗号和未闩之门均在结尾获得作用；B的第一证人和调查尚未兑现，印章交接也较跳跃。",
+        "specificity": "A具有雨中东门、破闩、灯笼、墨迹和折页等参与动作的连续细节；B只有账册、伤口和印章等节点性物件。",
+        "subtext_support": "A以抓腕、交页、旧暗号和留门承载未说出口的亏欠；B的证物交换有效，但旁白直接解释歉意和不宽恕。",
+        "voice_readiness": "A在完整对话场中持续维持Mara与Iven各自的冷硬机锋；B有两句好台词，但主体仍是提要声线。"
+      },
+      "dimension_relations": {
+        "anti_template_risk": "A_BETTER",
+        "causal_coherence": "A_BETTER",
+        "character_agency": "TIE",
+        "scene_pressure": "A_BETTER",
+        "setup_payoff_integrity": "A_BETTER",
+        "specificity": "A_BETTER",
+        "subtext_support": "A_BETTER",
+        "voice_readiness": "A_BETTER"
+      },
+      "evaluator_id": "e2",
+      "position_a_anonymous_sample_id": "hybrid-blind-1a8467e97ae2c101",
+      "position_b_anonymous_sample_id": "hybrid-blind-1a34e6e6bc65dc78",
+      "vote_id": "e2:hybrid-blind-pair-1"
+    },
+    {
+      "anonymous_pair_id": "hybrid-blind-pair-2",
+      "dimension_evidence": {
+        "anti_template_risk": "A频繁解释恐惧、谎言与条件信任，并以提要逐项兑现义务；B更多依赖实时动作和对话，虽仍有熟悉警句，模板暴露较少。",
+        "causal_coherence": "A由拒绝嫁祸、让渡自证筹码、桥检和伪修发现构成调查闭环，但钥匙功能略虚；B的开闸交易动作更连续，却未呈现违令后果且Vey缺少预埋。两者缺口性质不同、强弱接近。",
+        "character_agency": "A中Ilyan设计替代交易，Mara反对、调查并限定证词；B中Mara违令开闸，Iven以信息和指环交易。双方在两篇中都有能改变局势的选择。",
+        "scene_pressure": "B把弩手、伤势、队长命令和黑水放在一个持续现场；A以跨时段提要快速带过处刑倒计时和调查。",
+        "setup_payoff_integrity": "A预设坍桥与命令，最终以第二断裂和伪修标记改变证词，主调查线回收更完整；B末尾给出Vey却未验证，违令后果也截断。",
+        "specificity": "B的水闸、链条、灯影、钥匙和带体温指环形成可感空间；A的桥梁和议会物件明确，但持续场面细节较少。",
+        "subtext_support": "A用‘租用能力’掩饰带罪保护，Mara只承认保护而拒绝信任；B的照顾手势有效，但保护者Mara缺乏明确隐罪，且末句直接命名非道歉。",
+        "voice_readiness": "B的干涩互刺贯穿动作，Mara和Iven声线都稳定；A有好笑话和回应，但叙述提要削弱了持续人物声音。"
+      },
+      "dimension_relations": {
+        "anti_template_risk": "B_BETTER",
+        "causal_coherence": "TIE",
+        "character_agency": "TIE",
+        "scene_pressure": "B_BETTER",
+        "setup_payoff_integrity": "A_BETTER",
+        "specificity": "B_BETTER",
+        "subtext_support": "A_BETTER",
+        "voice_readiness": "B_BETTER"
+      },
+      "evaluator_id": "e2",
+      "position_a_anonymous_sample_id": "hybrid-blind-b83053250bb32e7e",
+      "position_b_anonymous_sample_id": "hybrid-blind-1c67cc3036d89865",
+      "vote_id": "e2:hybrid-blind-pair-2"
+    },
+    {
+      "anonymous_pair_id": "hybrid-blind-pair-3",
+      "dimension_evidence": {
+        "anti_template_risk": "A虽有显式关系标签和字面转义瑕疵，主体仍由追兵、切绳和通道动作构成；B大段直接解释每项行为如何代表罪责、歉意与条件信任，模板感更强。",
+        "causal_coherence": "A的账册先由Mara收起，之后却仍被约定及实际由Iven交付，发生硬连续性矛盾；B从印戒担保到共同担保、假地点争时基本连贯。",
+        "character_agency": "A主要由Mara单方制定与执行救援，Iven的关键交账动作还受连续性错误破坏；B中Iven以反条件迫使Mara公开选择，并与她共同重分配风险。",
+        "scene_pressure": "A在坍塌楼梯、巡逻点名、伤势和淹水通道中实时推进；B的示众与镣铐风险明确，却主要被摘要讲述。",
+        "setup_payoff_integrity": "A的路线与切绳有回收，但核心账册的持有人前后冲突；B的印戒、假地点和火场手套各自承担担保、争时与关系回声，闭环更可靠。",
+        "specificity": "A持续提供石块缚绳、血衣、蓄水池和格栅等空间动作；B有鲜明物件，但检查站的连续场面较薄。",
+        "subtext_support": "A的手掌停留、拒绝无罪开脱和交易措辞虽被旁白解释，仍有多层动作支撑；B的手套和付款有效，但旁白几乎完整说出其歉意含义。",
+        "voice_readiness": "A以较长的对话往返稳定呈现Mara的冷讽和Iven的追问；B只有少量对答，人物声音被解释性叙述覆盖。"
+      },
+      "dimension_relations": {
+        "anti_template_risk": "A_BETTER",
+        "causal_coherence": "B_BETTER",
+        "character_agency": "B_BETTER",
+        "scene_pressure": "A_BETTER",
+        "setup_payoff_integrity": "B_BETTER",
+        "specificity": "A_BETTER",
+        "subtext_support": "A_BETTER",
+        "voice_readiness": "A_BETTER"
+      },
+      "evaluator_id": "e2",
+      "position_a_anonymous_sample_id": "hybrid-blind-075a07f468bb2453",
+      "position_b_anonymous_sample_id": "hybrid-blind-fb517bb0b9a65546",
+      "vote_id": "e2:hybrid-blind-pair-3"
+    }
+  ]
+}

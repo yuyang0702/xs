@@ -1,0 +1,10 @@
+{
+  "matches": {
+    "anthropic_secret": 0,
+    "bearer_token": 0,
+    "private_key": 0
+  },
+  "schema": "SkillV3HybridEvaluatorPrivacyScanV1",
+  "status": "PASS",
+  "total_matches": 0
+}

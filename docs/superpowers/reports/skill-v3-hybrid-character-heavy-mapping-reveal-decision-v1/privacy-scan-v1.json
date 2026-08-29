@@ -1,0 +1,12 @@
+{
+  "matches": {
+    "anthropic_secret": 0,
+    "bearer_token": 0,
+    "private_key": 0
+  },
+  "raw_prompt_persisted": false,
+  "raw_provider_content_persisted": false,
+  "schema": "SkillV3HybridFinalDecisionPrivacyScanV1",
+  "status": "PASS",
+  "total_matches": 0
+}

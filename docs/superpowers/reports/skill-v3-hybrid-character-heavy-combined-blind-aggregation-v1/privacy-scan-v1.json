@@ -1,0 +1,12 @@
+{
+  "mapping_included": false,
+  "matches": {
+    "anthropic_secret": 0,
+    "bearer_token": 0,
+    "private_key": 0
+  },
+  "real_sample_ids_included": false,
+  "schema": "SkillV3HybridCombinedPrivacyScanV1",
+  "status": "PASS",
+  "total_matches": 0
+}

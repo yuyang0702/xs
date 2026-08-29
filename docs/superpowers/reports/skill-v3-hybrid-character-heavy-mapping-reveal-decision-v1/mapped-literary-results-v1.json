@@ -1,0 +1,196 @@
+{
+  "dimensions": [
+    {
+      "counts": {
+        "CONTROL_BETTER": 2,
+        "EQUIVALENT": 3,
+        "HYBRID_BETTER": 1,
+        "INCONCLUSIVE": 0
+      },
+      "critical": true,
+      "dimension": "character_agency",
+      "mapped_result": "INCONCLUSIVE",
+      "support_threshold": 4
+    },
+    {
+      "counts": {
+        "CONTROL_BETTER": 3,
+        "EQUIVALENT": 1,
+        "HYBRID_BETTER": 2,
+        "INCONCLUSIVE": 0
+      },
+      "critical": true,
+      "dimension": "causal_coherence",
+      "mapped_result": "INCONCLUSIVE",
+      "support_threshold": 4
+    },
+    {
+      "counts": {
+        "CONTROL_BETTER": 1,
+        "EQUIVALENT": 0,
+        "HYBRID_BETTER": 5,
+        "INCONCLUSIVE": 0
+      },
+      "critical": false,
+      "dimension": "subtext_support",
+      "mapped_result": "HYBRID_BETTER",
+      "support_threshold": 4
+    },
+    {
+      "counts": {
+        "CONTROL_BETTER": 0,
+        "EQUIVALENT": 0,
+        "HYBRID_BETTER": 6,
+        "INCONCLUSIVE": 0
+      },
+      "critical": false,
+      "dimension": "specificity",
+      "mapped_result": "HYBRID_BETTER",
+      "support_threshold": 4
+    },
+    {
+      "counts": {
+        "CONTROL_BETTER": 0,
+        "EQUIVALENT": 0,
+        "HYBRID_BETTER": 6,
+        "INCONCLUSIVE": 0
+      },
+      "critical": false,
+      "dimension": "scene_pressure",
+      "mapped_result": "HYBRID_BETTER",
+      "support_threshold": 4
+    },
+    {
+      "counts": {
+        "CONTROL_BETTER": 4,
+        "EQUIVALENT": 0,
+        "HYBRID_BETTER": 2,
+        "INCONCLUSIVE": 0
+      },
+      "critical": true,
+      "dimension": "setup_payoff_integrity",
+      "mapped_result": "CONTROL_BETTER",
+      "support_threshold": 4
+    },
+    {
+      "counts": {
+        "CONTROL_BETTER": 0,
+        "EQUIVALENT": 0,
+        "HYBRID_BETTER": 6,
+        "INCONCLUSIVE": 0
+      },
+      "critical": false,
+      "dimension": "voice_readiness",
+      "mapped_result": "HYBRID_BETTER",
+      "support_threshold": 4
+    },
+    {
+      "counts": {
+        "CONTROL_BETTER": 0,
+        "EQUIVALENT": 0,
+        "HYBRID_BETTER": 6,
+        "INCONCLUSIVE": 0
+      },
+      "critical": false,
+      "dimension": "anti_template_risk",
+      "mapped_result": "HYBRID_BETTER",
+      "support_threshold": 4
+    }
+  ],
+  "mapped_votes": [
+    {
+      "anonymous_pair_id": "hybrid-blind-pair-1",
+      "dimension_results": {
+        "anti_template_risk": "HYBRID_BETTER",
+        "causal_coherence": "HYBRID_BETTER",
+        "character_agency": "HYBRID_BETTER",
+        "scene_pressure": "HYBRID_BETTER",
+        "setup_payoff_integrity": "HYBRID_BETTER",
+        "specificity": "HYBRID_BETTER",
+        "subtext_support": "HYBRID_BETTER",
+        "voice_readiness": "HYBRID_BETTER"
+      },
+      "evaluator_id": "e1",
+      "vote_id": "e1:hybrid-blind-pair-1"
+    },
+    {
+      "anonymous_pair_id": "hybrid-blind-pair-2",
+      "dimension_results": {
+        "anti_template_risk": "HYBRID_BETTER",
+        "causal_coherence": "CONTROL_BETTER",
+        "character_agency": "EQUIVALENT",
+        "scene_pressure": "HYBRID_BETTER",
+        "setup_payoff_integrity": "CONTROL_BETTER",
+        "specificity": "HYBRID_BETTER",
+        "subtext_support": "HYBRID_BETTER",
+        "voice_readiness": "HYBRID_BETTER"
+      },
+      "evaluator_id": "e1",
+      "vote_id": "e1:hybrid-blind-pair-2"
+    },
+    {
+      "anonymous_pair_id": "hybrid-blind-pair-3",
+      "dimension_results": {
+        "anti_template_risk": "HYBRID_BETTER",
+        "causal_coherence": "CONTROL_BETTER",
+        "character_agency": "CONTROL_BETTER",
+        "scene_pressure": "HYBRID_BETTER",
+        "setup_payoff_integrity": "CONTROL_BETTER",
+        "specificity": "HYBRID_BETTER",
+        "subtext_support": "HYBRID_BETTER",
+        "voice_readiness": "HYBRID_BETTER"
+      },
+      "evaluator_id": "e1",
+      "vote_id": "e1:hybrid-blind-pair-3"
+    },
+    {
+      "anonymous_pair_id": "hybrid-blind-pair-1",
+      "dimension_results": {
+        "anti_template_risk": "HYBRID_BETTER",
+        "causal_coherence": "HYBRID_BETTER",
+        "character_agency": "EQUIVALENT",
+        "scene_pressure": "HYBRID_BETTER",
+        "setup_payoff_integrity": "HYBRID_BETTER",
+        "specificity": "HYBRID_BETTER",
+        "subtext_support": "HYBRID_BETTER",
+        "voice_readiness": "HYBRID_BETTER"
+      },
+      "evaluator_id": "e2",
+      "vote_id": "e2:hybrid-blind-pair-1"
+    },
+    {
+      "anonymous_pair_id": "hybrid-blind-pair-2",
+      "dimension_results": {
+        "anti_template_risk": "HYBRID_BETTER",
+        "causal_coherence": "EQUIVALENT",
+        "character_agency": "EQUIVALENT",
+        "scene_pressure": "HYBRID_BETTER",
+        "setup_payoff_integrity": "CONTROL_BETTER",
+        "specificity": "HYBRID_BETTER",
+        "subtext_support": "CONTROL_BETTER",
+        "voice_readiness": "HYBRID_BETTER"
+      },
+      "evaluator_id": "e2",
+      "vote_id": "e2:hybrid-blind-pair-2"
+    },
+    {
+      "anonymous_pair_id": "hybrid-blind-pair-3",
+      "dimension_results": {
+        "anti_template_risk": "HYBRID_BETTER",
+        "causal_coherence": "CONTROL_BETTER",
+        "character_agency": "CONTROL_BETTER",
+        "scene_pressure": "HYBRID_BETTER",
+        "setup_payoff_integrity": "CONTROL_BETTER",
+        "specificity": "HYBRID_BETTER",
+        "subtext_support": "HYBRID_BETTER",
+        "voice_readiness": "HYBRID_BETTER"
+      },
+      "evaluator_id": "e2",
+      "vote_id": "e2:hybrid-blind-pair-3"
+    }
+  ],
+  "new_literary_scoring_performed_after_reveal": false,
+  "scalar_average_created": false,
+  "schema": "SkillV3HybridMappedLiteraryResultsV1",
+  "status": "COMPLETE_EXACT"
+}

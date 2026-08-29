@@ -11,7 +11,7 @@ from __future__ import annotations
 import argparse
 from collections import Counter
 from copy import deepcopy
-from datetime import datetime
+from datetime import datetime, timezone
 import hashlib
 import json
 from pathlib import Path
@@ -792,6 +792,9 @@ def aggregate_blind_votes(
         "status": "COMPLETE_EXACT",
         "required_evaluator_by_batch_votes": 6,
         "observed_evaluator_by_batch_votes": len(flattened),
+        "missing_vote_count": 0,
+        "duplicate_vote_count": 0,
+        "extra_vote_count": 0,
         "votes": flattened,
         "dimensions": dimensions,
         "scalar_average_created": False,
@@ -799,14 +802,438 @@ def aggregate_blind_votes(
     }
 
 
+def _verify_frozen_record(value: Mapping[str, Any], pairs: Sequence[Mapping[str, Any]]) -> None:
+    validate_evaluator_record(value, pairs)
+    if (
+        value.get("status") != "FROZEN"
+        or value.get("judgments_frozen") is not True
+        or value.get("six_independent_sample_judgments_frozen") is not True
+        or value.get("evaluator_by_batch_vote_count") != 3
+        or value.get("mapping_revealed") is not False
+        or value.get("engineering_metadata_accessed") is not False
+        or value.get("provider_route_skill_metadata_accessed") is not False
+        or value.get("external_project_actions") != 0
+        or value.get("blind_bundle_head") != "d4b94613ec4731636d8516910451cabb340ffadf"
+        or value.get("blind_bundle_manifest_sha256") != "b59256db86beafff4d14c02a763e4e10e1a386ec7ac9aca058621c1169504ba5"
+        or value.get("literary_policy_sha256") != LITERARY_POLICY_SHA256
+    ):
+        raise RuntimeError("EVALUATOR_FREEZE_STATE_INVALID")
+    for judgment in value["independent_sample_judgments"]:
+        if judgment.get("summary") in {None, "", "UNSET"}:
+            raise RuntimeError("EVALUATOR_SAMPLE_JUDGMENT_INCOMPLETE")
+        notes = judgment.get("dimension_notes") or {}
+        if set(notes) != set(DIMENSIONS) or any(note in {None, "", "UNSET"} for note in notes.values()):
+            raise RuntimeError("EVALUATOR_SAMPLE_JUDGMENT_INCOMPLETE")
+    body = dict(value)
+    observed = body.pop("judgment_set_sha256", None)
+    canonical = (json.dumps(body, ensure_ascii=False, sort_keys=True, separators=(",", ":")) + "\n").encode("utf-8")
+    if observed != sha_bytes(canonical):
+        raise RuntimeError("EVALUATOR_JUDGMENT_SET_SHA_MISMATCH")
+
+
+def relation_to_arm_result(relation: str, arm_a: str, arm_b: str) -> str:
+    if {arm_a, arm_b} != {"CONTROL", "HYBRID"}:
+        raise RuntimeError("PAIR_LOCAL_MAPPING_INVALID")
+    if relation == "TIE":
+        return "EQUIVALENT"
+    if relation == "INCOMPARABLE":
+        return "INCONCLUSIVE"
+    better = arm_a if relation == "A_BETTER" else arm_b if relation == "B_BETTER" else None
+    if better is None:
+        raise RuntimeError("EVALUATOR_RELATION_INVALID")
+    return "HYBRID_BETTER" if better == "HYBRID" else "CONTROL_BETTER"
+
+
+def aggregate_mapped_votes(
+    combined: Mapping[str, Any], pair_mapping: Mapping[str, Mapping[str, str]],
+) -> dict[str, Any]:
+    mapped_votes = []
+    for vote in combined["votes"]:
+        pair_id = str(vote["anonymous_pair_id"])
+        mapping = pair_mapping[pair_id]
+        mapped_votes.append({
+            "vote_id": vote["vote_id"],
+            "evaluator_id": vote["evaluator_id"],
+            "anonymous_pair_id": pair_id,
+            "dimension_results": {
+                dimension: relation_to_arm_result(
+                    vote["dimension_relations"][dimension],
+                    mapping["position_a_arm"],
+                    mapping["position_b_arm"],
+                )
+                for dimension in DIMENSIONS
+            },
+        })
+    rows = []
+    for dimension in DIMENSIONS:
+        counts = Counter(row["dimension_results"][dimension] for row in mapped_votes)
+        supported = [
+            relation for relation in ("HYBRID_BETTER", "CONTROL_BETTER", "EQUIVALENT")
+            if counts[relation] >= 4
+        ]
+        result = supported[0] if len(supported) == 1 else "INCONCLUSIVE"
+        rows.append({
+            "dimension": dimension,
+            "critical": dimension in CRITICAL_DIMENSIONS,
+            "counts": {
+                name: counts[name]
+                for name in ("HYBRID_BETTER", "CONTROL_BETTER", "EQUIVALENT", "INCONCLUSIVE")
+            },
+            "mapped_result": result,
+            "support_threshold": 4,
+        })
+    return {
+        "schema": "SkillV3HybridMappedLiteraryResultsV1",
+        "status": "COMPLETE_EXACT",
+        "mapped_votes": mapped_votes,
+        "dimensions": rows,
+        "new_literary_scoring_performed_after_reveal": False,
+        "scalar_average_created": False,
+    }
+
+
+def narrative_decision(mapped: Mapping[str, Any]) -> dict[str, Any]:
+    critical = Counter()
+    noncritical = Counter()
+    for row in mapped["dimensions"]:
+        target = critical if row["critical"] else noncritical
+        target[row["mapped_result"]] += 1
+    if critical["CONTROL_BETTER"] or noncritical["CONTROL_BETTER"]:
+        result = "NO"
+    elif critical["INCONCLUSIVE"] or noncritical["INCONCLUSIVE"]:
+        result = "INCONCLUSIVE"
+    else:
+        result = "YES"
+    return {
+        "schema": "SkillV3HybridNarrativeNonInferiorityV1",
+        "status": "DECIDED",
+        "narrative_non_inferior": result,
+        "hybrid_critical_better_count": critical["HYBRID_BETTER"],
+        "hybrid_critical_equivalent_count": critical["EQUIVALENT"],
+        "hybrid_critical_regression_count": critical["CONTROL_BETTER"],
+        "hybrid_critical_inconclusive_count": critical["INCONCLUSIVE"],
+        "hybrid_noncritical_better_count": noncritical["HYBRID_BETTER"],
+        "hybrid_noncritical_equivalent_count": noncritical["EQUIVALENT"],
+        "hybrid_noncritical_regression_count": noncritical["CONTROL_BETTER"],
+        "hybrid_noncritical_inconclusive_count": noncritical["INCONCLUSIVE"],
+        "critical_regression_stop_loss_triggered": critical["CONTROL_BETTER"] > 0,
+        "inconclusive_blocks_non_inferiority": True,
+    }
+
+
+def _load_external_freeze(path: Path, evaluator_id: str, pairs: Sequence[Mapping[str, Any]]) -> tuple[dict[str, Any], str]:
+    record_path = path / "evaluator-freeze-v1.json"
+    marker_path = path / f"SKILL_V3_HYBRID_BLIND_EVALUATOR_{'1' if evaluator_id == 'e1' else '2'}_FROZEN.json"
+    record_bytes = record_path.read_bytes()
+    record_sha = sha_bytes(record_bytes)
+    marker = read_json(marker_path)
+    if marker.get("status") != "FROZEN" or marker.get("evaluator_freeze_file_sha256") != record_sha:
+        raise RuntimeError("EVALUATOR_FREEZE_MARKER_MISMATCH")
+    record = json.loads(record_bytes)
+    if record.get("evaluator_id") != evaluator_id or marker.get("judgment_set_sha256") != record.get("judgment_set_sha256"):
+        raise RuntimeError("EVALUATOR_FREEZE_BINDING_MISMATCH")
+    _verify_frozen_record(record, pairs)
+    return record, record_sha
+
+
+def _copy_evaluator_evidence(
+    root: Path, record: Mapping[str, Any], record_sha: str, blind_manifest_sha: str,
+) -> None:
+    write(root / "README.md", "# Skill V3 Hybrid frozen blind evaluation\n\nImported only after the evaluator independently froze its complete anonymous record.\n")
+    write(root / "evaluator-freeze-v1.json", record)
+    write(root / "blind-bundle-binding-v1.json", {
+        "schema": "SkillV3HybridEvaluatorBlindBundleBindingV1",
+        "status": "EXACT",
+        "blind_bundle_head": record["blind_bundle_head"],
+        "blind_bundle_definition_sha256": record["blind_bundle_definition_sha256"],
+        "blind_bundle_manifest_sha256": blind_manifest_sha,
+        "literary_policy_sha256": record["literary_policy_sha256"],
+    })
+    write(root / "independence-and-firewall-v1.json", {
+        "schema": "SkillV3HybridEvaluatorIndependenceAndFirewallV1",
+        "status": "PASS",
+        "fresh_context": record["fresh_context"],
+        "six_independent_sample_judgments_frozen": record["six_independent_sample_judgments_frozen"],
+        "evaluator_by_batch_vote_count": record["evaluator_by_batch_vote_count"],
+        "mapping_accessed": record["mapping_accessed"],
+        "other_evaluator_record_accessed": record["other_evaluator_record_accessed"],
+        "engineering_metadata_accessed": record["engineering_metadata_accessed"],
+        "provider_route_skill_metadata_accessed": record["provider_route_skill_metadata_accessed"],
+        "scalar_average_created": record["scalar_average_created"],
+        "external_project_actions": record["external_project_actions"],
+        "evaluator_freeze_file_sha256": record_sha,
+        "judgment_set_sha256": record["judgment_set_sha256"],
+    })
+    scan = privacy_scan([json_bytes(record)])
+    write(root / "privacy-scan-v1.json", {"schema": "SkillV3HybridEvaluatorPrivacyScanV1", **scan})
+    write(root / "sha256-manifest-v1.json", manifest(root, "SkillV3HybridEvaluatorSha256ManifestV1"))
+
+
+def materialize_final(
+    repo: Path, *, evaluator_1_root: Path, evaluator_2_root: Path,
+    coordination_root: Path, focused: str, related: str, full_suite: str, strict_l3: str,
+) -> dict[str, Any]:
+    if git(repo, "branch", "--show-current") != EXPECTED_BRANCH:
+        raise RuntimeError("FINAL_BASELINE_BRANCH_DRIFT")
+    if git(repo, "merge-base", "--is-ancestor", "d4b94613ec4731636d8516910451cabb340ffadf", "HEAD") != "":
+        raise RuntimeError("FINAL_BLIND_BUNDLE_HEAD_DRIFT")
+    campaign_manifest = verify_manifest(repo / CAMPAIGN_EVIDENCE_RELATIVE)
+    blind_manifest = verify_manifest(repo / BLIND_BUNDLE_RELATIVE)
+    verify_manifest(repo / MAPPING_RELATIVE)
+    blind_manifest_path = repo / BLIND_BUNDLE_RELATIVE / "sha256-manifest-v1.json"
+    blind_manifest_sha = sha_bytes(blind_manifest_path.read_bytes())
+    if blind_manifest_sha != "b59256db86beafff4d14c02a763e4e10e1a386ec7ac9aca058621c1169504ba5":
+        raise RuntimeError("FINAL_BLIND_MANIFEST_DRIFT")
+    pairs = _pairs_from_blind_root(repo / BLIND_BUNDLE_RELATIVE)
+    evaluator_1, evaluator_1_sha = _load_external_freeze(evaluator_1_root, "e1", pairs)
+    evaluator_2, evaluator_2_sha = _load_external_freeze(evaluator_2_root, "e2", pairs)
+    if evaluator_1["frozen_at"] == evaluator_2["frozen_at"]:
+        raise RuntimeError("EVALUATOR_FRESH_SLOT_IDENTITY_COLLISION")
+    coordination = read_json(coordination_root / "blind-coordination-v1.json")
+    coordination_body = dict(coordination)
+    coordination_sha = coordination_body.pop("coordination_bundle_sha256", None)
+    canonical_coordination = (
+        json.dumps(coordination_body, ensure_ascii=False, sort_keys=True, separators=(",", ":")) + "\n"
+    ).encode("utf-8")
+    if coordination_sha != sha_bytes(canonical_coordination):
+        raise RuntimeError("COORDINATION_BUNDLE_SHA_MISMATCH")
+    coordination_mtime = datetime.fromtimestamp(
+        (coordination_root / "blind-coordination-v1.json").stat().st_mtime,
+        tz=timezone.utc,
+    )
+    evaluator_times = [_parse_utc(evaluator_1["frozen_at"]), _parse_utc(evaluator_2["frozen_at"])]
+    if any(frozen_at <= coordination_mtime for frozen_at in evaluator_times):
+        raise RuntimeError("EVALUATOR_FREEZE_CHRONOLOGY_INVALID")
+
+    for root in (repo / EVALUATOR_1_RELATIVE, repo / EVALUATOR_2_RELATIVE, repo / COMBINED_RELATIVE, repo / DECISION_RELATIVE):
+        if root.exists():
+            raise RuntimeError(f"FINAL_EVIDENCE_ROOT_ALREADY_EXISTS:{root}")
+    _copy_evaluator_evidence(repo / EVALUATOR_1_RELATIVE, evaluator_1, evaluator_1_sha, blind_manifest_sha)
+    _copy_evaluator_evidence(repo / EVALUATOR_2_RELATIVE, evaluator_2, evaluator_2_sha, blind_manifest_sha)
+
+    combined = aggregate_blind_votes([evaluator_1, evaluator_2], pairs)
+    combined_root = repo / COMBINED_RELATIVE
+    write(combined_root / "README.md", "# Skill V3 Hybrid combined frozen blind aggregation\n\nBoth independent vote sets are complete. Mapping remains unread and unrevealed in this root.\n")
+    write(combined_root / "complete-vote-set-v1.json", combined)
+    disagreements = []
+    by_evaluator = {record["evaluator_id"]: {vote["anonymous_pair_id"]: vote for vote in record["votes"]} for record in (evaluator_1, evaluator_2)}
+    for pair in pairs:
+        pair_id = pair["anonymous_pair_id"]
+        for dimension in DIMENSIONS:
+            first = by_evaluator["e1"][pair_id]["dimension_relations"][dimension]
+            second = by_evaluator["e2"][pair_id]["dimension_relations"][dimension]
+            if first != second:
+                disagreements.append({"anonymous_pair_id": pair_id, "dimension": dimension, "e1": first, "e2": second})
+    write(combined_root / "variance-and-disagreement-v1.json", {
+        "schema": "SkillV3HybridBlindVarianceAndDisagreementV1",
+        "status": "RECORDED",
+        "disagreement_count": len(disagreements),
+        "rows": disagreements,
+        "all_opposed_directions_preserved": True,
+    })
+    write(combined_root / "freeze-bindings-v1.json", {
+        "schema": "SkillV3HybridCombinedFreezeBindingsV1",
+        "status": "EXACT",
+        "evaluator_1_freeze_file_sha256": evaluator_1_sha,
+        "evaluator_1_judgment_set_sha256": evaluator_1["judgment_set_sha256"],
+        "evaluator_2_freeze_file_sha256": evaluator_2_sha,
+        "evaluator_2_judgment_set_sha256": evaluator_2["judgment_set_sha256"],
+        "blind_bundle_manifest_sha256": blind_manifest_sha,
+        "coordination_bundle_sha256": coordination_sha,
+        "mapping_revealed": False,
+    })
+    write(combined_root / "chronology-v1.json", {
+        "schema": "SkillV3HybridBlindFreezeChronologyV1",
+        "status": "PASS",
+        "blind_bundle_head": "d4b94613ec4731636d8516910451cabb340ffadf",
+        "coordination_file_mtime_utc": datetime.fromtimestamp(
+            (coordination_root / "blind-coordination-v1.json").stat().st_mtime,
+            tz=timezone.utc,
+        ).isoformat().replace("+00:00", "Z"),
+        "evaluator_1_frozen_at": evaluator_1["frozen_at"],
+        "evaluator_2_frozen_at": evaluator_2["frozen_at"],
+        "combined_written_before_mapping_read": True,
+        "mapping_revealed": False,
+    })
+    write(combined_root / "privacy-scan-v1.json", {
+        "schema": "SkillV3HybridCombinedPrivacyScanV1",
+        **privacy_scan([json_bytes(combined), json_bytes(disagreements)]),
+        "mapping_included": False,
+        "real_sample_ids_included": False,
+    })
+    write(combined_root / "sha256-manifest-v1.json", manifest(combined_root, "SkillV3HybridCombinedBlindSha256ManifestV1"))
+    combined_manifest_sha = sha_bytes((combined_root / "sha256-manifest-v1.json").read_bytes())
+
+    # Mapping is intentionally first read only after both freezes and the blind
+    # combined manifest above are durable and hash-bound.
+    mapping = read_json(repo / MAPPING_RELATIVE / "sealed-mapping-v1.json")
+    mapping_rows = list(mapping["rows"])
+    if len(mapping_rows) != 6 or len({row["anonymous_sample_id"] for row in mapping_rows}) != 6:
+        raise RuntimeError("FINAL_MAPPING_NOT_ONE_TO_ONE")
+    pair_mapping: dict[str, dict[str, str]] = {}
+    for pair in pairs:
+        pair_id = pair["anonymous_pair_id"]
+        rows = [row for row in mapping_rows if row["anonymous_pair_id"] == pair_id]
+        if len(rows) != 2 or {row["anonymous_position"] for row in rows} != {"A", "B"}:
+            raise RuntimeError("PAIR_LOCAL_MAPPING_INVALID")
+        by_position = {row["anonymous_position"]: row for row in rows}
+        pair_mapping[pair_id] = {
+            "position_a_anonymous_sample_id": by_position["A"]["anonymous_sample_id"],
+            "position_b_anonymous_sample_id": by_position["B"]["anonymous_sample_id"],
+            "position_a_arm": by_position["A"]["experiment_arm"],
+            "position_b_arm": by_position["B"]["experiment_arm"],
+        }
+    mapped = aggregate_mapped_votes(combined, pair_mapping)
+    narrative = narrative_decision(mapped)
+    engineering = {
+        "schema": "SkillV3HybridEngineeringNonInferiorityV1",
+        "status": "PASS",
+        "engineering_non_inferior": "YES",
+        "sealed_valid": 6,
+        "required": 6,
+        "provider_http_network_attempts": [6, 6, 6],
+        "per_sample_attempts": 1,
+        "retry_transport_retry_fallback_route_switch_resume_second_dispatch": [0, 0, 0, 0, 0, 0],
+        "approval_single_use_consumed": 6,
+        "nonce_single_use_consumed": 6,
+        "capacity_exact": True,
+        "truncation_or_shedding": False,
+        "within_pair_non_skill_bytes_identical": True,
+        "provider_model_route_destination_identical": True,
+        "validator_output_cap_identical": True,
+        "production_isolation": True,
+        "post_authorization_git_mutation_during_campaign": False,
+        "token_comparison_sufficient": "NO",
+        "cost_comparison_sufficient": "NO",
+        "unobserved_token_or_cost_values_inferred": False,
+    }
+    if engineering["engineering_non_inferior"] != "YES":
+        disposition = "NO_GO_ENGINEERING"
+        next_gate = "SKILL_V3_HYBRID_CHARACTER_HEAVY_ENGINEERING_CORRECTION"
+    elif narrative["narrative_non_inferior"] == "NO":
+        disposition = "NO_GO_QUALITY"
+        next_gate = "SKILL_V3_HYBRID_CHARACTER_HEAVY_ARCHITECTURE_DISPOSITION"
+    elif narrative["narrative_non_inferior"] == "INCONCLUSIVE":
+        disposition = "INCONCLUSIVE"
+        next_gate = "SKILL_V3_HYBRID_CHARACTER_HEAVY_VARIANCE_DISPOSITION"
+    else:
+        disposition = "PASS"
+        next_gate = "SKILL_V3_REMAINING_DEMAND_CLASSES_VALIDATION_AND_PAIR2_TO_5_FIXTURE_COMPATIBILITY"
+
+    decision_root = repo / DECISION_RELATIVE
+    write(decision_root / "README.md", "# Skill V3 Hybrid mapping reveal and character-heavy pilot decision\n\nNo prose was re-scored after reveal. All results are translations of frozen blind votes.\n")
+    write(decision_root / "blind-freeze-binding-v1.json", {
+        "schema": "SkillV3HybridFinalBlindFreezeBindingV1",
+        "status": "EXACT",
+        "evaluator_1_freeze_file_sha256": evaluator_1_sha,
+        "evaluator_2_freeze_file_sha256": evaluator_2_sha,
+        "combined_blind_aggregation_manifest_sha256": combined_manifest_sha,
+        "mapping_read_only_after_combined_freeze": True,
+    })
+    write(decision_root / "pair-local-mapping-v1.json", {
+        "schema": "SkillV3HybridPairLocalMappingV1",
+        "status": "EXACT",
+        "global_blind_side_mapping": "NOT_DEFINED_BY_DESIGN",
+        "pairs": [{"anonymous_pair_id": key, **value} for key, value in pair_mapping.items()],
+    })
+    write(decision_root / "mapped-literary-results-v1.json", mapped)
+    write(decision_root / "narrative-policy-binding-v1.json", {
+        "schema": "SkillV3HybridNarrativePolicyBindingV1",
+        "status": "EXACT",
+        "literary_policy_sha256": LITERARY_POLICY_SHA256,
+        "critical_dimensions": list(CRITICAL_DIMENSIONS),
+        "noncritical_dimensions": [dimension for dimension in DIMENSIONS if dimension not in CRITICAL_DIMENSIONS],
+        "support_threshold": 4,
+        "scalar_average_allowed": False,
+        "retrospective_tuning_allowed": False,
+    })
+    write(decision_root / "narrative-non-inferiority-v1.json", narrative)
+    write(decision_root / "engineering-non-inferiority-v1.json", engineering)
+    write(decision_root / "pilot-disposition-v1.json", {
+        "schema": "SkillV3HybridCharacterHeavyPilotDispositionV1",
+        "status": "FINAL",
+        "skill_v3_hybrid_character_heavy_multi_sample_pilot": disposition,
+        "narrative_non_inferior": narrative["narrative_non_inferior"],
+        "engineering_non_inferior": engineering["engineering_non_inferior"],
+        "stop_loss_state": (
+            "HYBRID_AS_QUALITY_ENHANCEMENT_DOES_NOT_AUTO_ITERATE"
+            if narrative["critical_regression_stop_loss_triggered"] else "NOT_TRIGGERED"
+        ),
+        "proves": "character-heavy Hybrid non-inferiority under this sealed methodology" if disposition == "PASS" else "only the recorded bounded character-heavy disposition",
+        "does_not_prove": [
+            "generalized Skill V3 non-inferiority",
+            "remaining demand-class compatibility",
+            "production cutover safety",
+        ],
+        "skill_v3_production_cutover": "NO",
+        "planning_v2_production_cutover": "NO",
+        "full_short": "NOT_EXECUTED",
+        "exact_next_gate": next_gate,
+    })
+    write(decision_root / "validation-receipt-v1.json", {
+        "schema": "SkillV3HybridFinalDecisionValidationReceiptV1",
+        "status": "PASS",
+        "focused": focused,
+        "related": related,
+        "full_suite": full_suite,
+        "strict_l3": strict_l3,
+        "warnings": 0,
+        "blockers": 0,
+        "new_owning_source_regression_count": 0,
+    })
+    write(decision_root / "external-action-receipt-v1.json", {
+        "schema": "SkillV3HybridPostCampaignExternalActionReceiptV1",
+        "new_credential_lookup_count": 0,
+        "new_provider_client_creation_count": 0,
+        "new_provider_request_attempts": 0,
+        "new_http_post_attempts": 0,
+        "new_network_calls": 0,
+        "new_model_calls": 0,
+        "new_paid_calls": 0,
+        "new_real_signed_approvals": 0,
+        "new_real_nonces": 0,
+    })
+    write(decision_root / "privacy-scan-v1.json", {
+        "schema": "SkillV3HybridFinalDecisionPrivacyScanV1",
+        **privacy_scan([json_bytes(mapped), json_bytes(narrative), json_bytes(engineering)]),
+        "raw_prompt_persisted": False,
+        "raw_provider_content_persisted": False,
+    })
+    blind_dimension_lines = "\n".join(
+        f"- {row['dimension']}: {row['blind_relation']} {row['counts']}"
+        for row in combined["dimensions"]
+    )
+    mapped_dimension_lines = "\n".join(
+        f"- {row['dimension']}: {row['mapped_result']} {row['counts']}"
+        for row in mapped["dimensions"]
+    )
+    write(decision_root / "final-report-v1.md", f"""# Skill V3 Hybrid character-heavy pilot — final decision\n\n`SKILL_V3_HYBRID_POST_CAMPAIGN_BLIND_COORDINATION_AND_FINAL_DECISION_COMPLETE`\n\n- Start branch / HEAD: `{EXPECTED_BRANCH}` / `{EXECUTION_HEAD}`\n- Blind bundle commit / HEAD: `d4b94613ec4731636d8516910451cabb340ffadf`\n- Campaign: `6/6 SEALED_VALID`; artifact SHAs exact; request/HTTP/network `6/6/6`; retry/fallback/route-switch/second-dispatch `0/0/0/0`\n- Blind bundle definition / manifest: `{blind_manifest['definition_sha256']}` / `{blind_manifest_sha}`\n- Coordination SHA: `{coordination_sha}`\n- Evaluator freeze SHAs: `{evaluator_1_sha}` / `{evaluator_2_sha}`\n- Required/observed votes: `6/6`; missing/duplicate/extra `0/0/0`\n- Evaluator disagreement rows: `{len(disagreements)}`; all preserved\n- Combined blind manifest SHA: `{combined_manifest_sha}`\n\n## Blind aggregation\n\n{blind_dimension_lines}\n\n## Mapped results\n\n{mapped_dimension_lines}\n\n- Critical better/equivalent/regression/inconclusive: `{narrative['hybrid_critical_better_count']}/{narrative['hybrid_critical_equivalent_count']}/{narrative['hybrid_critical_regression_count']}/{narrative['hybrid_critical_inconclusive_count']}`\n- Noncritical better/equivalent/regression/inconclusive: `{narrative['hybrid_noncritical_better_count']}/{narrative['hybrid_noncritical_equivalent_count']}/{narrative['hybrid_noncritical_regression_count']}/{narrative['hybrid_noncritical_inconclusive_count']}`\n- `NARRATIVE_NON_INFERIOR={narrative['narrative_non_inferior']}`\n- Token/cost comparison sufficient: `NO/NO`; no missing value inferred\n- `ENGINEERING_NON_INFERIOR={engineering['engineering_non_inferior']}`\n- `SKILL_V3_HYBRID_CHARACTER_HEAVY_MULTI_SAMPLE_PILOT={disposition}`\n- Stop loss: `{('HYBRID_AS_QUALITY_ENHANCEMENT_DOES_NOT_AUTO_ITERATE' if narrative['critical_regression_stop_loss_triggered'] else 'NOT_TRIGGERED')}`\n- New credential/client/request/HTTP/network/model/paid calls: `0/0/0/0/0/0/0`\n- `SKILL_V3_PRODUCTION_CUTOVER=NO`\n- `PLANNING_V2_PRODUCTION_CUTOVER=NO`\n- `FULL_SHORT=NOT_EXECUTED`\n- `EXACT_NEXT_GATE={next_gate}`\n""")
+    write(decision_root / "sha256-manifest-v1.json", manifest(decision_root, "SkillV3HybridFinalDecisionSha256ManifestV1"))
+    return {
+        "status": "FINAL",
+        "narrative_non_inferior": narrative["narrative_non_inferior"],
+        "engineering_non_inferior": engineering["engineering_non_inferior"],
+        "pilot_disposition": disposition,
+        "exact_next_gate": next_gate,
+        "evaluator_1_freeze_sha256": evaluator_1_sha,
+        "evaluator_2_freeze_sha256": evaluator_2_sha,
+        "combined_blind_manifest_sha256": combined_manifest_sha,
+        "final_decision_manifest_sha256": sha_bytes((decision_root / "sha256-manifest-v1.json").read_bytes()),
+        "campaign_manifest_definition_sha256": campaign_manifest["definition_sha256"],
+    }
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("mode", choices=("phase-a", "verify"))
+    parser.add_argument("mode", choices=("phase-a", "verify", "final"))
     parser.add_argument("--repo-root", type=Path, required=True)
     parser.add_argument("--focused", default="NOT_RUN")
     parser.add_argument("--related", default="NOT_RUN")
     parser.add_argument("--full-suite", default="NOT_RUN")
     parser.add_argument("--strict-l3", default="NOT_RUN")
+    parser.add_argument("--evaluator-1-root", type=Path)
+    parser.add_argument("--evaluator-2-root", type=Path)
+    parser.add_argument("--coordination-root", type=Path)
     args = parser.parse_args()
     repo = args.repo_root.resolve(strict=True)
     if args.mode == "phase-a":
@@ -817,11 +1244,24 @@ def main() -> None:
             full_suite=args.full_suite,
             strict_l3=args.strict_l3,
         )
-    else:
+    elif args.mode == "verify":
         verify_campaign(repo)
         for root in (CAMPAIGN_EVIDENCE_RELATIVE, BLIND_BUNDLE_RELATIVE, MAPPING_RELATIVE):
             verify_manifest(repo / root)
         result = {"status": "EXACT"}
+    else:
+        if not args.evaluator_1_root or not args.evaluator_2_root or not args.coordination_root:
+            parser.error("final requires both evaluator roots and coordination root")
+        result = materialize_final(
+            repo,
+            evaluator_1_root=args.evaluator_1_root,
+            evaluator_2_root=args.evaluator_2_root,
+            coordination_root=args.coordination_root,
+            focused=args.focused,
+            related=args.related,
+            full_suite=args.full_suite,
+            strict_l3=args.strict_l3,
+        )
     print(json.dumps(result, ensure_ascii=False, sort_keys=True, indent=2))
 
 

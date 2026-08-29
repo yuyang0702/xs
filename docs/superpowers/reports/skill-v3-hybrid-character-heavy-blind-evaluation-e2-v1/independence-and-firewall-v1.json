@@ -1,0 +1,15 @@
+{
+  "engineering_metadata_accessed": false,
+  "evaluator_by_batch_vote_count": 3,
+  "evaluator_freeze_file_sha256": "ba00fa83040335bc491d9928e7f6c257cd309fdc3347357030f2f5197144cd8f",
+  "external_project_actions": 0,
+  "fresh_context": true,
+  "judgment_set_sha256": "e4beea12610abcfe1e929ce5f51d7cb3b91e22624f1ddd4c38eee95e7719d2c3",
+  "mapping_accessed": false,
+  "other_evaluator_record_accessed": false,
+  "provider_route_skill_metadata_accessed": false,
+  "scalar_average_created": false,
+  "schema": "SkillV3HybridEvaluatorIndependenceAndFirewallV1",
+  "six_independent_sample_judgments_frozen": true,
+  "status": "PASS"
+}
