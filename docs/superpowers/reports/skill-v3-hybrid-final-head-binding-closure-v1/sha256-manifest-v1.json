@@ -1,0 +1,65 @@
+{
+  "definition": {
+    "schema": "SkillV3HybridFinalHeadBindingSha256ManifestV1",
+    "entry_count": 11,
+    "entries": [
+      {
+        "path": "authorization-chronology-v1.json",
+        "sha256": "2904b288b5b7ce893cd10cebb2bfa42fefe30b500d6699eff228561c9bc42f3f",
+        "bytes": 969
+      },
+      {
+        "path": "final-head-materialization-contract-v1.json",
+        "sha256": "989bbf605476ac2150c1c36c7ec538f8104513d8538b8f7baea7fbb8107ef4da",
+        "bytes": 1594
+      },
+      {
+        "path": "final-report-pre-authorization-v1.md",
+        "sha256": "c910bb1d9dbde91a1dc561f86352d67f5929a6b28d33b1f8e9691ce41faceb37",
+        "bytes": 2598
+      },
+      {
+        "path": "forward-risk-report-v2.json",
+        "sha256": "ad956ddb2fb86a99a064bce5741f62ede25b6dd8e47a67aaab51e33126f94788",
+        "bytes": 6722
+      },
+      {
+        "path": "implementation-binding-v1.json",
+        "sha256": "967ea72c4a0ee4085b1393a1d0b36f19aff3f8e62c1b4ad347ba3fddb7c27e19",
+        "bytes": 1021
+      },
+      {
+        "path": "model-visible-identity-v1.json",
+        "sha256": "062d6970b603c989300348591680841cb79f35700df721e56f7c6eb4e56ecca9",
+        "bytes": 1570
+      },
+      {
+        "path": "pre-authorization-test-receipt-v1.json",
+        "sha256": "5b1bececb85a0450e0ef3d4ea1fa9f712ccf9d0370ee2f11fb216d257009be94",
+        "bytes": 1261
+      },
+      {
+        "path": "privacy-scan-v1.json",
+        "sha256": "913207283365b903a19e58f90e2b3d87637af1702906fff4e8de230ea585b6c9",
+        "bytes": 329
+      },
+      {
+        "path": "readiness-v1.json",
+        "sha256": "a852354f684906f3d2106b42fc01251446c2f3ea043a87d9ecf0074ecc842b51",
+        "bytes": 640
+      },
+      {
+        "path": "README.md",
+        "sha256": "3b1a783ac51401fe33a304651c2a28cc9d248c1babd981b21d45cf0d5284cd93",
+        "bytes": 454
+      },
+      {
+        "path": "strict-l3-receipt-v1.json",
+        "sha256": "31c0c73cb54c8155b46a2b159fbc1a151799a0b2a02ad30bd51a98a4ed97f978",
+        "bytes": 185
+      }
+    ]
+  },
+  "status": "EXACT",
+  "mismatch_count": 0
+}

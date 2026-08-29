@@ -1,0 +1,16 @@
+{
+  "schema": "SkillV3HybridAuthorizationChronologyV1",
+  "status": "EXACT",
+  "starting_branch": "r1-ptr3/planning-repair-finding-propagation-20260817",
+  "starting_head": "e3ebf54571aae6b165c03763c14c5f233ae0f07e",
+  "old_authorization_bound_head": "fb71c56218d2dfd0e6308aa1f9303e4e17e35e41",
+  "old_authorization_sha256": "98aac2b004b1f9241dcd1c05d2185ddd099396cdbde0fdd336b963751c7dcbf2",
+  "old_authorization_source_commit": "fb71c56218d2dfd0e6308aa1f9303e4e17e35e41",
+  "later_evidence_seal_commit": "e3ebf54571aae6b165c03763c14c5f233ae0f07e",
+  "authorization_materialization_before_final_head": true,
+  "post_authorization_git_commit_advanced_head": true,
+  "runner_exact_head_equality_policy": true,
+  "ancestry_not_accepted": true,
+  "root_cause": "authorization bytes were materialized before the evidence seal commit, so the commit that sealed them immediately advanced HEAD beyond the bound successor_head",
+  "runner_disposition": "CORRECT_FAIL_CLOSED"
+}

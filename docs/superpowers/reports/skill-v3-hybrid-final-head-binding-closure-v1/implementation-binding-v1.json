@@ -1,0 +1,31 @@
+{
+  "schema": "SkillV3HybridFinalHeadBindingImplementationBindingV1",
+  "status": "EXACT_PRE_COMMIT",
+  "files": [
+    {
+      "path": "tools/diagnostics/materialize_skill_v3_hybrid_final_head_authorization.py",
+      "sha256": "efe6a205de730b9449eb5e3f74a7f5effab6a57f051b30e6285f1b3c40da1a49",
+      "bytes": 13893
+    },
+    {
+      "path": "tests/canary/test_skill_v3_hybrid_final_head_authorization.py",
+      "sha256": "3b6b10bbb9cd37cad6b7cfcca66fb15b3b51875e8a07804de0932790abb31c75",
+      "bytes": 7155
+    },
+    {
+      "path": "docs/maintenance.md",
+      "sha256": "0e78ae21a4decec6a59d5f6054585c34cd3126696fb3ae5a83884d704f573cc4",
+      "bytes": 288042
+    }
+  ],
+  "production_source_diff_count": 0,
+  "baml_source_diff_count": 0,
+  "prompt_changed": false,
+  "model_changed": false,
+  "route_changed": false,
+  "destination_changed": false,
+  "retry_or_fallback_changed": false,
+  "output_budget_changed": false,
+  "approval_or_nonce_semantics_changed": false,
+  "head_exact_equality_weakened": false
+}

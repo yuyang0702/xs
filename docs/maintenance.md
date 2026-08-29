@@ -2221,3 +2221,20 @@ are permanently marked dry-run-only and cannot be promoted as real literary
 samples. This module is not imported by normal application workflows and does
 not authorize Skill V3 cutover, Planning V2 cutover, Full Short, retry,
 fallback, route switching, or any real campaign by itself.
+
+## Skill V3 Hybrid final-HEAD authorization materialization
+
+The executable Hybrid campaign authorization must be created only after every
+source and evidence commit is complete and the repository has reached its final
+clean execution HEAD. `tools/diagnostics/materialize_skill_v3_hybrid_final_head_authorization.py`
+reuses the campaign runner's canonical UTF-8 renderer, exact-byte validator,
+and route/destination preflight. It writes one hash-pinned authorization and a
+hash-only receipt under the configured user data directory, outside the Git
+worktree. The bundle is exclusive-create and may not be overwritten or reused.
+
+No Git write or commit may follow final authorization materialization. A later
+HEAD, dirty worktree, one-byte edit, Markdown URL rewrite, omitted sample/egress
+binding, or alternate storage inside the worktree fails closed. An ancestor is
+never equivalent to the current HEAD. The materializer creates no campaign
+permission, JIT signed approval, nonce, credential lookup, Provider client,
+network call, model call, paid call, production cutover, or Full Short run.

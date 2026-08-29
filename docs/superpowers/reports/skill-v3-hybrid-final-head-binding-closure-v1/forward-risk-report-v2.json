@@ -1,0 +1,106 @@
+{
+  "version": 2,
+  "original_requirement": "permanently close the Hybrid campaign authorization paradox by creating exact canonical authorization bytes only after the final clean execution HEAD is committed, outside the Git worktree, without weakening exact HEAD equality or performing any external action",
+  "scope_classification": "closed_world",
+  "closed_world_justification": "one sealed Hybrid pilot, one finite six-sample experiment, one exact branch, one exact final Git HEAD at materialization time, one canonical renderer, one exact validator, one route/destination, and one worktree-external exclusive bundle define the whole boundary",
+  "operational_definition": "commit all source and evidence first; require the configured branch and a clean worktree; render existing canonical authorization with current HEAD; validate exact bytes and transport bindings; exclusively write authorization and hash-only receipt outside Git; verify HEAD and cleanliness again; allow no later Git write or commit",
+  "forbidden_narrowing": [
+    "no ancestry or semantic-equivalence substitution for exact HEAD equality",
+    "no manual edit or date/head rewrite of the old authorization",
+    "no second authorization schema",
+    "no authorization artifact inside the Git worktree",
+    "no overwrite or reuse of an existing external bundle",
+    "no post-authorization Git write or commit",
+    "no signed approval, nonce, credential lookup, Provider client, network, model, paid call, sample execution, cutover, or Full Short"
+  ],
+  "resolution_status": "case_fixed",
+  "constraint_traceability": [
+    {
+      "requirement": "materialize only after the final clean exact HEAD",
+      "implementation": "materialize_final_head_authorization_bundle_v1 and current_git_identity(require_clean=True)",
+      "test_paths": ["tests/canary/test_skill_v3_hybrid_final_head_authorization.py"],
+      "evidence": "final-head-materialization-contract-v1.json"
+    },
+    {
+      "requirement": "reuse canonical authorization bytes and real exact runner preflight",
+      "implementation": "render_final_authorization_text_v1, validate_final_authorization_text_v1, and campaign_transport_preflight_v1",
+      "test_paths": ["tests/canary/test_skill_v3_hybrid_final_head_authorization.py", "tests/canary/test_skill_v3_hybrid_real_campaign_closure.py"],
+      "evidence": "pre-authorization-test-receipt-v1.json"
+    },
+    {
+      "requirement": "create an immutable-by-policy worktree-external artifact without Git mutation",
+      "implementation": "_outside_store, exclusive directory creation, and _write_bytes_exclusive",
+      "test_paths": ["tests/canary/test_skill_v3_hybrid_final_head_authorization.py", "tests/canary/test_skill_v3_hybrid_jit_approval.py"],
+      "evidence": "final-head-materialization-contract-v1.json"
+    },
+    {
+      "requirement": "preserve exact equality and reject post-authorization HEAD drift or byte mutation",
+      "implementation": "validate_final_head_authorization_preflight_v1",
+      "test_paths": ["tests/canary/test_skill_v3_hybrid_final_head_authorization.py"],
+      "evidence": "authorization-chronology-v1.json"
+    }
+  ],
+  "historical_incident_families_checked": [
+    "authorization_materialized_before_final_commit",
+    "stale_successor_head",
+    "ancestor_treated_as_authorized",
+    "authorization_byte_mutation",
+    "markdown_url_rewrite",
+    "sample_lock_or_egress_omission",
+    "authorization_store_inside_worktree",
+    "authorization_bundle_overwrite_or_reuse",
+    "dirty_worktree_materialization",
+    "post_authorization_git_drift",
+    "premature_signed_approval_or_nonce",
+    "external_action_before_fresh_user_authorization"
+  ],
+  "projected_failure_mechanisms": [
+    "a later commit makes the external authorization stale",
+    "a dirty worktree makes the sealed state ambiguous",
+    "an existing final-HEAD bundle is accidentally overwritten",
+    "copied authorization bytes are changed by formatting or link conversion",
+    "route, destination, sample, egress, or cap bindings drift",
+    "an operator attempts to use ancestor equivalence"
+  ],
+  "why_previous_tests_missed": "the earlier closure validated the authorization and runner correctly but stored the authorization inside the evidence tree before the commit that sealed that tree; it did not yet test the ordering invariant that no commit may follow executable authorization materialization",
+  "sibling_boundaries": [
+    {
+      "boundary": "real campaign exact authorization validator",
+      "disposition": "fixed_and_tested",
+      "evidence": "the helper calls the existing exact validator and negative-tests a different HEAD"
+    },
+    {
+      "boundary": "worktree-external approval and nonce storage convention",
+      "disposition": "tested_not_susceptible",
+      "evidence": "the helper reuses _outside_store and creates neither approval nor nonce"
+    },
+    {
+      "boundary": "model-visible six-sample experiment identity",
+      "disposition": "tested_not_susceptible",
+      "evidence": "model-visible-identity-v1.json records unchanged pilot, experiment, samples, locks, route, destination, egress, and caps"
+    },
+    {
+      "boundary": "production runtime, Prompt, Skill context, Planning, and output contract",
+      "disposition": "not_applicable",
+      "evidence": "changes are limited to offline diagnostics, tests, documentation, and evidence; src and baml_src diff are zero"
+    }
+  ],
+  "model_output_boundary_changed": false,
+  "model_output_not_applicable_evidence": "the helper only rebinds the authorization SUCCESSOR_HEAD after the final commit; no model-visible input, prompt, Skill context, schema, provider, model, route, destination, egress, output cap, parser, or validator is changed",
+  "production_shaped_tests": [
+    "tests/canary/test_skill_v3_hybrid_final_head_authorization.py",
+    "tests/canary/test_skill_v3_hybrid_real_campaign_closure.py",
+    "tests/canary/test_skill_v3_hybrid_jit_approval.py",
+    "tests/canary/test_skill_v3_real_execution_boundary.py"
+  ],
+  "next_authoritative_boundary_tests": [
+    "tests/canary/test_skill_v3_hybrid_final_head_authorization.py",
+    "tests/canary/test_skill_v3_hybrid_real_campaign_closure.py"
+  ],
+  "remaining_risks": [
+    "any later Git commit or worktree mutation intentionally invalidates the final external authorization",
+    "the external runtime bundle is immutable by exclusive-create policy rather than filesystem-level WORM storage",
+    "a future real campaign still requires the user to send the exact external authorization bytes as a fresh explicit authorization message",
+    "no trustworthy monetary cap is sealed; no paid request is authorized or made in this task"
+  ]
+}
