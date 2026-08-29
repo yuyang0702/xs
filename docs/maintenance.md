@@ -2196,3 +2196,28 @@ emit bounded hash-only typed receipts before nonce reservation or external
 action. Offline tests use explicitly non-executable permissions and temporary
 stores. This boundary does not itself grant campaign permission, create a real
 approval or nonce, read credentials, or alter production model input.
+
+## Skill V3 Hybrid complete campaign boundary
+
+`tools/canary/skill_v3_hybrid_real_campaign.py` is the closed, dormant
+six-sample orchestrator above the existing Hybrid JIT approval, durable nonce,
+one-shot dispatcher, and local terminal-pipeline seams. It accepts only the
+canonical authorization text as exact UTF-8 bytes, persists the immutable
+campaign permission and hash-only progress outside the worktree, and permits
+only the next sample in the sealed CONTROL/HYBRID sequence to create a JIT
+approval and then a destination-bound nonce. Completion, expiry, failure, or
+an uncertain post-dispatch restart is terminal; the same sample cannot be
+dispatched a second time.
+
+The canonical real environment is constructed without reading credentials or
+creating a Provider client. Those actions remain unreachable until exact
+authorization, clean-HEAD, campaign-state, approval, nonce, route,
+destination, egress, and cap checks all pass. Offline closure tests traverse
+the real request builder, provider registry, Anthropic adapter, response
+normalization, artifact conversion, domain/schema validation, freeze, audit,
+and isolated persistence path while replacing only the lowest HTTP transport
+with `httpx.MockTransport`. Synthetic outputs and their anonymous blind bundle
+are permanently marked dry-run-only and cannot be promoted as real literary
+samples. This module is not imported by normal application workflows and does
+not authorize Skill V3 cutover, Planning V2 cutover, Full Short, retry,
+fallback, route switching, or any real campaign by itself.
