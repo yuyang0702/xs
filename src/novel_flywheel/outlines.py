@@ -546,9 +546,19 @@ def narrative_outline_events(events: list[dict]) -> list[dict]:
         if kind not in OUTLINE_EVENT_KINDS:
             kind = outline_event_kind(event.get("section", ""), event.get("label", ""))
         label = str(event.get("label") or "").strip()
+        if "_source_level" in event and "source_level" in event:
+            raise ValueError("outline event source_level aliases conflict")
+        raw_source_level = event.get(
+            "_source_level", event.get("source_level", 0),
+        )
+        if (
+            type(raw_source_level) is not int
+            or raw_source_level not in {0, 2, 3, 4, 5, 6}
+        ):
+            raise ValueError("outline event source_level is invalid")
         classified.append((
             event, kind, _outline_anchor_level(label),
-            int(event.get("_source_level") or 0),
+            raw_source_level,
         ))
 
     result = []
@@ -564,7 +574,7 @@ def narrative_outline_events(events: list[dict]) -> list[dict]:
                     and following_source_level <= source_level
                 ):
                     break
-                if following_kind == "narrative" and (
+                if following_kind in {"narrative", "structure"} and (
                     not following_source_level
                     or following_source_level > source_level
                 ):
@@ -605,7 +615,7 @@ def _outline_event_records(content: str) -> list[dict]:
     occurrences: dict[str, int] = {}
     for line_index, line in enumerate(lines):
         heading = re.match(
-            r"^(?P<marks>#{2,4})[ \t]+(?P<label>.+?)\s*$", line.strip(),
+            r"^(?P<marks>#{2,6})[ \t]+(?P<label>.+?)\s*$", line.strip(),
         )
         source_level = 0
         if heading:
@@ -652,10 +662,16 @@ def _outline_event_records(content: str) -> list[dict]:
 
 def outline_events(content: str) -> list[dict[str, str | int]]:
     """Build stable event IDs from explicit event labels in a confirmed outline."""
-    return [{
-        key: value for key, value in event.items()
-        if not key.startswith("_") and key != "evidence"
-    } for event in _outline_event_records(content)]
+    return [
+        {
+            **{
+                key: value for key, value in event.items()
+                if not key.startswith("_") and key != "evidence"
+            },
+            "source_level": int(event["_source_level"]),
+        }
+        for event in _outline_event_records(content)
+    ]
 
 
 def narrative_outline_event_contracts(content: str) -> list[dict]:
@@ -670,7 +686,10 @@ def narrative_outline_event_contracts(content: str) -> list[dict]:
     contracts = []
     for order, item in enumerate(selected, 1):
         contracts.append({
-            "id": str(item["id"]),
+            # The formal-event contract boundary owns one uppercase identity
+            # grammar.  The read-only outline projection may retain its legacy
+            # lowercase presentation, but no downstream authority receives it.
+            "id": str(item["id"]).upper(),
             "order": order,
             "source_order": int(item["order"]),
             "label": str(item["label"]),

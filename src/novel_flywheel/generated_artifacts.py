@@ -461,6 +461,14 @@ _REGISTRATIONS = (
         wire_closed=True, minimum_business_characters=240,
     ),
     ArtifactContractRegistration(
+        name="draft_local_repair_contract", phase="writing",
+        semantic_authority=(
+            "Runtime-owned exact Draft paragraph units and finding identities"
+        ),
+        wire_required_fields=("source_draft_sha256", "units"),
+        wire_closed=True, minimum_business_characters=160,
+    ),
+    ArtifactContractRegistration(
         name="final_review", phase="quality",
         semantic_authority="typed final-review verdict and authoritative issue ledger",
         # normalize_review accepts either canonical dimensions or the legacy
@@ -663,7 +671,7 @@ def _all_contract_registrations() -> tuple[ArtifactContractRegistration, ...]:
 _NONEMPTY_ARRAY_FIELDS = {
     "beat_receipts", "beats", "cycles", "event_receipts", "event_reviews",
     "events", "evidence", "groups", "replacements", "scenes", "segments",
-    "segment_receipts", "tasks",
+    "segment_receipts", "tasks", "units",
 }
 _OBJECT_FIELDS = {
     "criteria", "criterion_evidence", "dimensions", "entry", "exit",
@@ -1169,8 +1177,6 @@ def _adapt_planning_semantic_root_projection(
 
     if semantic_normalizer is None:
         return None
-    if _try_semantic_normalizer(semantic_normalizer, payload) is not None:
-        return None
     canonical_keys = ("version", "initial_state", "segments")
     if any(key not in payload for key in canonical_keys):
         return None
@@ -1183,6 +1189,13 @@ def _adapt_planning_semantic_root_projection(
             "planning semantic root projection contains unknown machine controls: "
             + ", ".join(sorted(set(unsafe)))
         )
+    # Only registered packet-level presentation echoes are projectable.  An
+    # unknown root field stays in the canonical candidate so strict domain
+    # validation emits a typed extra-field finding; it is never silently
+    # reclassified as descriptive data by a finite control-word denylist.
+    allowed_descriptors = frozenset({"exit_state"})
+    if any(key not in allowed_descriptors for key in extra_keys):
+        return None
     canonical_input = {key: payload[key] for key in canonical_keys}
     canonical = _try_semantic_normalizer(semantic_normalizer, canonical_input)
     if canonical is None:

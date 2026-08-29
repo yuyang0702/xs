@@ -1,7 +1,9 @@
 from dataclasses import dataclass
 import hashlib
+import hmac
 import json
 import re
+import secrets
 from statistics import mean
 from typing import Any, Iterable
 import unicodedata
@@ -28,6 +30,37 @@ _LATIN_TOKEN = re.compile(
 )
 _NORMALIZED_LATIN_TOKEN = re.compile(
     r"[A-Za-z][A-Za-z0-9]*(?:(?:[._/\-])[A-Za-z0-9]+)*(?:\+{1,2})?"
+)
+
+
+def _make_mixed_script_decision_attestor():
+    key = secrets.token_bytes(32)
+
+    def attest(payload: dict[str, Any]) -> dict[str, Any]:
+        body = json.dumps(
+            payload, ensure_ascii=False, sort_keys=True,
+            separators=(",", ":"), allow_nan=False,
+        ).encode("utf-8")
+        return {
+            **payload,
+            "validator_origin_attestation_sha256": hmac.new(
+                key, body, hashlib.sha256,
+            ).hexdigest(),
+        }
+
+    def verify(decision: dict[str, Any]) -> bool:
+        value = dict(decision)
+        signature = value.pop("validator_origin_attestation_sha256", None)
+        if not isinstance(signature, str):
+            return False
+        expected = attest(value)["validator_origin_attestation_sha256"]
+        return hmac.compare_digest(signature, expected)
+
+    return attest, verify
+
+
+_attest_mixed_script_decision, verify_mixed_script_decision_origin = (
+    _make_mixed_script_decision_attestor()
 )
 UNICODE_REPLACEMENT = re.compile("\ufffd")
 INVALID_CONTROL = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")
@@ -294,6 +327,7 @@ def _mixed_script_decision(
     ambiguous: bool,
     context: DraftProseAuthorityContextV1,
     *,
+    source_draft_sha256: str,
     term_set_sha256: str,
     approved_by_term: dict[str, tuple[AuthorityApprovedLatinTermV1, ...]],
     source_metadata: dict[str, AuthorityTermSourceArtifactV1],
@@ -313,6 +347,7 @@ def _mixed_script_decision(
         "draft_authority_sha256": context.current_draft_authority_sha256,
         "segment_binding_sha256": context.current_segment_binding_sha256,
         "term_set_sha256": term_set_sha256,
+        "source_draft_sha256": source_draft_sha256,
     }
     if (
         ambiguous
@@ -320,7 +355,9 @@ def _mixed_script_decision(
         or term_set.normalization_version
         != AUTHORITY_LATIN_NORMALIZATION_VERSION
     ):
-        return {**base, "decision": "reject_ambiguous_term"}
+        return _attest_mixed_script_decision({
+            **base, "decision": "reject_ambiguous_term",
+        })
     term_sources = {item.artifact_sha256 for item in term_set.source_artifacts}
     current_sources = set(context.current_source_artifact_sha256s)
     if (
@@ -336,7 +373,9 @@ def _mixed_script_decision(
         )
         or term_sources != current_sources
     ):
-        return {**base, "decision": "reject_stale_authority"}
+        return _attest_mixed_script_decision({
+            **base, "decision": "reject_stale_authority",
+        })
     matches = [
         item for item in approved_by_term.get(normalized, ())
         if item.normalized_term == normalized
@@ -347,8 +386,10 @@ def _mixed_script_decision(
         and _SHA256.fullmatch(item.source_field_path_sha256) is not None
     ]
     if not matches:
-        return {**base, "decision": "reject_unapproved_mixed_script"}
-    return {
+        return _attest_mixed_script_decision({
+            **base, "decision": "reject_unapproved_mixed_script",
+        })
+    return _attest_mixed_script_decision({
         **base,
         "decision": "exempt_authority_approved_term",
         "source_artifacts": [
@@ -365,7 +406,7 @@ def _mixed_script_decision(
                 value.source_field_path_sha256,
             ))
         ],
-    }
+    })
 
 
 def _segment_for(text: str, offset: int) -> int:
@@ -393,6 +434,7 @@ def analyze_prose(
 ) -> dict[str, Any]:
     findings: list[dict[str, Any]] = []
     mixed_script_decisions: list[dict[str, Any]] = []
+    source_draft_sha256 = hashlib.sha256(text.encode("utf-8")).hexdigest()
     for pattern in PRODUCTION_PATTERNS:
         for match in re.finditer(pattern, text, re.I):
             findings.append(_finding("production_text", text, match, True))
@@ -436,6 +478,7 @@ def analyze_prose(
                 continue
             decision = _mixed_script_decision(
                 match.group(0), normalized, ambiguous, authority_context,
+                source_draft_sha256=source_draft_sha256,
                 term_set_sha256=term_set_sha256,
                 approved_by_term=approved_by_term,
                 source_metadata=source_metadata,

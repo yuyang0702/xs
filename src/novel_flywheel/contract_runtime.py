@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, replace
+import hashlib
 from typing import Any, Awaitable, Callable, Literal, Mapping, Sequence
 
 from novel_flywheel.generated_artifacts import (
@@ -328,6 +329,9 @@ class ContractRuntimeResult:
     conversion: ArtifactConversionResult
     model_response: Any
     attempt: ProtocolReceiptAttempt
+    accepted_system_sha256: str
+    accepted_user_sha256: str
+    accepted_input_sha256: str
 
 
 @dataclass(frozen=True)
@@ -1427,26 +1431,41 @@ async def execute_contract_runtime(
             diagnostic_findings: Sequence[Mapping[str, Any]] = ()
             if execution_spec.domain_diagnostic_extractor is not None:
                 try:
-                    diagnostic_findings = tuple(
+                    diagnostic_findings = (
                         execution_spec.domain_diagnostic_extractor(
                             conversion.payload,
                         )
                     )
+                    if not isinstance(diagnostic_findings, Sequence):
+                        raise TypeError(
+                            "domain diagnostic extractor must return a sequence"
+                        )
                 except Exception:
                     if execution_spec.domain_retry_renderer is not None:
                         raise
                     diagnostic_findings = ()
             if execution_spec.domain_retry_renderer is not None:
-                pending_domain_findings = tuple(diagnostic_findings)
-                pending_source_identity = domain_sha256(
-                    "r1-ptr3-domain-attempt-source-v1",
-                    {
-                        "contract_name": contract_name,
-                        "attempt_index": attempt.attempt_index,
-                        "repair_target_identity_sha256": (
-                            execution_spec.domain_diagnostic_metadata or {}
-                        ).get("repair_target_identity_sha256"),
-                    },
+                pending_domain_findings = diagnostic_findings
+                validator_source_identity = getattr(
+                    diagnostic_findings, "source_payload_sha256", None,
+                )
+                pending_source_identity = (
+                    validator_source_identity
+                    if isinstance(validator_source_identity, str)
+                    else domain_sha256(
+                        "r1-ptr3-domain-attempt-source-v2",
+                        {
+                            "contract_name": contract_name,
+                            "attempt_index": attempt.attempt_index,
+                            "repair_target_identity_sha256": (
+                                execution_spec.domain_diagnostic_metadata or {}
+                            ).get("repair_target_identity_sha256"),
+                            "rejected_candidate_sha256": domain_sha256(
+                                "r1-ptr3-rejected-domain-candidate-v1",
+                                conversion.payload,
+                            ),
+                        },
+                    )
                 )
             observed_domain = observe_domain_validation_snapshot(
                 attempt_context,
@@ -1566,6 +1585,15 @@ async def execute_contract_runtime(
             conversion=conversion,
             model_response=response,
             attempt=attempt,
+            accepted_system_sha256=hashlib.sha256(
+                route_system.encode("utf-8")
+            ).hexdigest(),
+            accepted_user_sha256=hashlib.sha256(
+                route_user.encode("utf-8")
+            ).hexdigest(),
+            accepted_input_sha256=hashlib.sha256(
+                (route_system + "\n" + route_user).encode("utf-8")
+            ).hexdigest(),
         )
     if last_error is None:  # pragma: no cover - attempt constructor is non-empty
         raise RuntimeError("structured contract runtime had no executable attempt")

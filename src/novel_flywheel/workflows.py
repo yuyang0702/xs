@@ -1,9 +1,11 @@
 import asyncio
 import hashlib
+import hmac
 import json
 import math
 import os
 import re
+import secrets
 import shutil
 import threading
 import unicodedata
@@ -376,6 +378,7 @@ from novel_flywheel.revision import (
     segment_map,
 )
 from novel_flywheel.prose_quality import (
+    AUTHORITY_LATIN_NORMALIZATION_VERSION,
     AuthorityTermProjectionFieldV1,
     AuthorityTermSourceArtifactV1,
     DraftProseAuthorityContextV1,
@@ -384,6 +387,7 @@ from novel_flywheel.prose_quality import (
     build_authority_approved_latin_term_set,
     compare_voice_metrics,
     prose_metrics,
+    verify_mixed_script_decision_origin,
 )
 from novel_flywheel.prose_policy import load_prose_validation_policy
 from novel_flywheel.project_transactions import (
@@ -408,7 +412,15 @@ from novel_flywheel.project_transactions import (
 from novel_flywheel.legacy_short_promotion import (
     recover_legacy_short_formal_promotions,
 )
-from novel_flywheel.style_context import character_fingerprints, ensure_style_profile
+from novel_flywheel.style_context import (
+    character_fingerprints,
+    ensure_style_profile,
+    final_review_style_reference_receipt,
+    render_selected_style_reference_context,
+    selected_style_reference_provenance,
+    validate_frozen_style_reference_authority,
+    validate_style_reference_context_receipt,
+)
 from novel_flywheel.skill_prompts import ConstraintPromptCompactor, SkillPromptCompactor
 from novel_flywheel.hybrid_skill_context import (
     HybridProtectedBudgetV1,
@@ -451,14 +463,19 @@ from novel_flywheel.planning_compiler import (
 from novel_flywheel.planning_semantics import (
     PlanningSemanticDraftV2,
     compile_planning_semantic_v2,
+    extract_planning_semantic_v2_findings,
     merge_planning_semantic_document_packets_v2,
     merge_planning_semantic_event_packets_v2,
     normalize_planning_semantic_v2_payload,
     parse_planning_semantic_v2,
+    render_actionable_planning_semantic_findings,
     planning_semantic_packet_ownership_v2,
     planning_semantic_schema_v2,
     semantic_planning_packet_prompt_v2,
     semantic_planning_prompt_v2,
+)
+from novel_flywheel.planning_closure import (
+    build_runtime_planning_global_closure,
 )
 
 
@@ -625,8 +642,422 @@ class DraftRetryFindingV1:
     authority_status: str
     validator_policy_sha256: str
     authority_snapshot_reference_sha256: str
+    validator_decision_binding_sha256: str
     retry_scope_id: str
     finding_identity_sha256: str
+
+
+def _make_draft_retry_finding_batch_signer():
+    key = secrets.token_bytes(32)
+
+    def sign(
+        source_draft_sha256: str,
+        findings: Sequence[DraftRetryFindingV1],
+    ) -> str:
+        body = json.dumps({
+            "source_draft_sha256": source_draft_sha256,
+            "findings": [asdict(item) for item in findings],
+        }, ensure_ascii=False, sort_keys=True, separators=(",", ":"),
+            allow_nan=False,
+        ).encode("utf-8")
+        return hmac.new(key, body, hashlib.sha256).hexdigest()
+
+    return sign
+
+
+_sign_draft_retry_finding_batch = _make_draft_retry_finding_batch_signer()
+
+
+class DraftRetryFindingBatch(tuple):
+    """Immutable validator-origin capability for one rejected Draft."""
+
+    __slots__ = ()
+
+    def __new__(
+        cls,
+        findings: Sequence[DraftRetryFindingV1],
+        *,
+        source_draft_sha256: str,
+        _signature: str,
+    ) -> "DraftRetryFindingBatch":
+        return tuple.__new__(cls, (
+            source_draft_sha256, tuple(findings), _signature,
+        ))
+
+    @property
+    def source_draft_sha256(self) -> str:
+        return tuple.__getitem__(self, 0)
+
+    @property
+    def _finding_values(self) -> tuple[DraftRetryFindingV1, ...]:
+        return tuple.__getitem__(self, 1)
+
+    @property
+    def _validator_signature(self) -> str:
+        return tuple.__getitem__(self, 2)
+
+    def __len__(self) -> int:
+        return len(self._finding_values)
+
+    def __getitem__(self, index: int | slice) -> Any:
+        return self._finding_values[index]
+
+    def __iter__(self):
+        return iter(self._finding_values)
+
+
+def _validate_draft_retry_finding_batch(
+    findings: Sequence[DraftRetryFindingV1],
+    *,
+    source_draft_sha256: str | None = None,
+) -> DraftRetryFindingBatch:
+    if (
+        type(findings) is not DraftRetryFindingBatch
+        or (source_draft_sha256 is not None and
+            findings.source_draft_sha256 != source_draft_sha256)
+        or not hmac.compare_digest(
+            findings._validator_signature,
+            _sign_draft_retry_finding_batch(
+                findings.source_draft_sha256, findings._finding_values,
+            ),
+        )
+    ):
+        raise DraftRetryFindingContractError(
+            "validator_finding_origin_unprovable"
+        )
+    return findings
+
+
+@dataclass(frozen=True)
+class DraftLocalRepairUnitV1:
+    schema: str
+    version: int
+    unit_id: str
+    retry_scope_id: str
+    start: int
+    end: int
+    source_draft_sha256: str
+    source_unit_sha256: str
+    finding_identity_sha256s: tuple[str, ...]
+    normalized_items: tuple[str, ...]
+
+
+DRAFT_LOCAL_REPAIR_MAX_UNITS = 4
+DRAFT_LOCAL_REPAIR_MAX_UNIT_CHARACTERS = 4000
+DRAFT_LOCAL_REPAIR_MAX_TOTAL_CHARACTERS = 8000
+
+
+def _draft_paragraph_spans(draft: str) -> tuple[tuple[int, int], ...]:
+    spans = []
+    for match in re.finditer(
+        r"(?s)(?:\A|\r?\n[ \t]*\r?\n)(.*?)(?=\r?\n[ \t]*\r?\n|\Z)",
+        draft,
+    ):
+        start, end = match.span(1)
+        if draft[start:end].strip():
+            spans.append((start, end))
+    return tuple(spans)
+
+
+def build_draft_local_repair_units(
+    draft: str,
+    findings: Sequence[DraftRetryFindingV1],
+) -> tuple[DraftLocalRepairUnitV1, ...]:
+    """Bind exact actionable occurrences to immutable paragraph units."""
+
+    if not draft or not findings or len(findings) > DRAFT_RETRY_MAX_FINDINGS:
+        raise DraftRetryFindingContractError("local_repair_input_invalid")
+    source_sha256 = hashlib.sha256(draft.encode("utf-8")).hexdigest()
+    _validate_draft_retry_finding_batch(
+        findings, source_draft_sha256=source_sha256,
+    )
+    paragraphs = _draft_paragraph_spans(draft)
+    if not paragraphs:
+        raise DraftRetryFindingContractError("local_repair_unit_not_found")
+    token_spans: dict[str, list[tuple[int, int]]] = {}
+    for match, normalized, _ambiguous in _latin_tokens(draft):
+        item = normalized or unicodedata.normalize("NFKC", match.group(0))
+        token_spans.setdefault(item, []).append(match.span())
+    grouped: dict[tuple[int, int], list[DraftRetryFindingV1]] = {}
+    for finding in findings:
+        if type(finding) is not DraftRetryFindingV1:
+            raise DraftRetryFindingContractError(
+                "local_repair_finding_not_actionable"
+            )
+        identity_payload = {
+            "schema": finding.schema,
+            "version": finding.version,
+            "finding_code": finding.finding_code,
+            "validator_reason_code": finding.validator_reason_code,
+            "normalized_item": finding.normalized_item,
+            "authority_status": finding.authority_status,
+            "validator_policy_sha256": finding.validator_policy_sha256,
+            "authority_snapshot_reference_sha256": (
+                finding.authority_snapshot_reference_sha256
+            ),
+            "validator_decision_binding_sha256": (
+                finding.validator_decision_binding_sha256
+            ),
+            "retry_scope_id": finding.retry_scope_id,
+        }
+        if (
+            finding.schema != "DraftRetryFindingV1"
+            or type(finding.version) is not int
+            or finding.version != 1
+            or finding.finding_code != "unapproved_mixed_script"
+            or finding.validator_reason_code != "reject_unapproved_mixed_script"
+            or finding.authority_status != "unapproved"
+            or type(finding.occurrence_count) is not int
+            or not 1 <= finding.occurrence_count <= DRAFT_RETRY_MAX_OCCURRENCES
+            or not isinstance(finding.normalized_item, str)
+            or not finding.normalized_item
+            or len(finding.normalized_item) > DRAFT_RETRY_MAX_ITEM_CHARACTERS
+            or not isinstance(finding.retry_scope_id, str)
+            or not finding.retry_scope_id.strip()
+            or any(
+                re.fullmatch(r"[0-9a-f]{64}", value) is None
+                for value in (
+                    finding.validator_policy_sha256,
+                        finding.authority_snapshot_reference_sha256,
+                        finding.validator_decision_binding_sha256,
+                        finding.finding_identity_sha256,
+                )
+            )
+            or _draft_retry_finding_identity(identity_payload)
+            != finding.finding_identity_sha256
+        ):
+            raise DraftRetryFindingContractError(
+                "local_repair_finding_not_actionable"
+            )
+        occurrences = token_spans.get(finding.normalized_item, [])
+        if len(occurrences) != finding.occurrence_count:
+            raise DraftRetryFindingContractError(
+                "local_repair_occurrence_binding_ambiguous"
+            )
+        for occurrence_start, occurrence_end in occurrences:
+            owners = [
+                span for span in paragraphs
+                if span[0] <= occurrence_start < occurrence_end <= span[1]
+            ]
+            if len(owners) != 1:
+                raise DraftRetryFindingContractError(
+                    "local_repair_paragraph_ownership_ambiguous"
+                )
+            grouped.setdefault(owners[0], []).append(finding)
+    if not grouped or len(grouped) > DRAFT_LOCAL_REPAIR_MAX_UNITS:
+        raise DraftRetryFindingContractError(
+            "local_repair_unit_count_exceeded"
+        )
+    if sum(end - start for start, end in grouped) > (
+        DRAFT_LOCAL_REPAIR_MAX_TOTAL_CHARACTERS
+    ):
+        raise DraftRetryFindingContractError(
+            "local_repair_total_characters_exceeded"
+        )
+    units = []
+    retry_scopes = {finding.retry_scope_id for finding in findings}
+    if len(retry_scopes) != 1:
+        raise DraftRetryFindingContractError("local_repair_scope_mixed")
+    retry_scope_id = next(iter(retry_scopes))
+    for start, end in sorted(grouped):
+        if end - start > DRAFT_LOCAL_REPAIR_MAX_UNIT_CHARACTERS:
+            raise DraftRetryFindingContractError(
+                "local_repair_unit_characters_exceeded"
+            )
+        owned_findings = grouped[(start, end)]
+        finding_ids = tuple(sorted({
+            item.finding_identity_sha256 for item in owned_findings
+        }))
+        normalized_items = tuple(sorted({
+            item.normalized_item for item in owned_findings
+        }))
+        source_unit_sha256 = hashlib.sha256(
+            draft[start:end].encode("utf-8")
+        ).hexdigest()
+        unit_payload = {
+            "schema": "DraftLocalRepairUnitV1",
+            "version": 1,
+            "retry_scope_id": retry_scope_id,
+            "start": start,
+            "end": end,
+            "source_draft_sha256": source_sha256,
+            "source_unit_sha256": source_unit_sha256,
+            "finding_identity_sha256s": finding_ids,
+            "normalized_items": normalized_items,
+        }
+        units.append(DraftLocalRepairUnitV1(
+            **unit_payload,
+            unit_id=hashlib.sha256(json.dumps(
+                unit_payload, ensure_ascii=False, sort_keys=True,
+                separators=(",", ":"), allow_nan=False,
+            ).encode("utf-8")).hexdigest(),
+        ))
+    return tuple(units)
+
+
+def apply_draft_local_repair_units(
+    draft: str,
+    replacements: Sequence[tuple[DraftLocalRepairUnitV1, str]],
+) -> str:
+    """Reconstruct a Draft from frozen source plus disjoint owned units only."""
+
+    if not replacements or len(replacements) > DRAFT_LOCAL_REPAIR_MAX_UNITS:
+        raise DraftRetryFindingContractError("local_repair_replacements_invalid")
+    source_sha256 = hashlib.sha256(draft.encode("utf-8")).hexdigest()
+    ordered = sorted(replacements, key=lambda item: item[0].start)
+    if len({item[0].unit_id for item in ordered}) != len(ordered):
+        raise DraftRetryFindingContractError("local_repair_unit_duplicate")
+    previous_end = -1
+    for unit, replacement in ordered:
+        if type(unit) is not DraftLocalRepairUnitV1:
+            raise DraftRetryFindingContractError(
+                "local_repair_replacement_binding_invalid"
+            )
+        unit_payload = {
+            "schema": unit.schema,
+            "version": unit.version,
+            "retry_scope_id": unit.retry_scope_id,
+            "start": unit.start,
+            "end": unit.end,
+            "source_draft_sha256": unit.source_draft_sha256,
+            "source_unit_sha256": unit.source_unit_sha256,
+            "finding_identity_sha256s": unit.finding_identity_sha256s,
+            "normalized_items": unit.normalized_items,
+        }
+        expected_unit_id = hashlib.sha256(json.dumps(
+            unit_payload, ensure_ascii=False, sort_keys=True,
+            separators=(",", ":"), allow_nan=False,
+        ).encode("utf-8")).hexdigest()
+        if (
+            unit.schema != "DraftLocalRepairUnitV1"
+            or type(unit.version) is not int
+            or unit.version != 1
+            or type(unit.start) is not int
+            or type(unit.end) is not int
+            or not isinstance(unit.retry_scope_id, str)
+            or not unit.retry_scope_id
+            or not isinstance(unit.finding_identity_sha256s, tuple)
+            or not unit.finding_identity_sha256s
+            or any(
+                re.fullmatch(r"[0-9a-f]{64}", value) is None
+                for value in unit.finding_identity_sha256s
+            )
+            or tuple(sorted(set(unit.finding_identity_sha256s)))
+            != unit.finding_identity_sha256s
+            or not isinstance(unit.normalized_items, tuple)
+            or not unit.normalized_items
+            or any(
+                not isinstance(value, str) or not value
+                for value in unit.normalized_items
+            )
+            or tuple(sorted(set(unit.normalized_items)))
+            != unit.normalized_items
+            or unit.unit_id != expected_unit_id
+            or unit.source_draft_sha256 != source_sha256
+            or unit.start < previous_end
+            or not (0 <= unit.start < unit.end <= len(draft))
+            or hashlib.sha256(
+                draft[unit.start:unit.end].encode("utf-8")
+            ).hexdigest() != unit.source_unit_sha256
+            or not isinstance(replacement, str)
+            or not replacement.strip()
+            or "\n\n" in replacement
+            or "\r\n\r\n" in replacement
+        ):
+            raise DraftRetryFindingContractError(
+                "local_repair_replacement_binding_invalid"
+            )
+        previous_end = unit.end
+    candidate = draft
+    for unit, replacement in reversed(ordered):
+        candidate = (
+            candidate[:unit.start] + replacement + candidate[unit.end:]
+        )
+    return candidate
+
+
+def normalize_draft_local_repair_contract(
+    value: Mapping[str, Any],
+    draft: str,
+    units: Sequence[DraftLocalRepairUnitV1],
+) -> tuple[str, tuple[tuple[DraftLocalRepairUnitV1, str], ...]]:
+    """Validate one closed patch response and reconstruct the complete scope."""
+
+    if not isinstance(value, Mapping) or set(value) != {
+        "source_draft_sha256", "units",
+    }:
+        raise DraftRetryFindingContractError("local_repair_contract_shape_invalid")
+    source_sha256 = hashlib.sha256(draft.encode("utf-8")).hexdigest()
+    if value.get("source_draft_sha256") != source_sha256:
+        raise DraftRetryFindingContractError("local_repair_contract_source_stale")
+    raw_units = value.get("units")
+    if not isinstance(raw_units, list) or len(raw_units) != len(units):
+        raise DraftRetryFindingContractError("local_repair_contract_units_incomplete")
+    expected = {unit.unit_id: unit for unit in units}
+    replacements = []
+    seen: set[str] = set()
+    for raw in raw_units:
+        if not isinstance(raw, dict) or set(raw) != {
+            "unit_id", "source_unit_sha256",
+            "finding_identity_sha256s", "replacement",
+        }:
+            raise DraftRetryFindingContractError(
+                "local_repair_contract_unit_shape_invalid"
+            )
+        unit_id = raw.get("unit_id")
+        if not isinstance(unit_id, str):
+            raise DraftRetryFindingContractError(
+                "local_repair_contract_unit_binding_invalid"
+            )
+        unit = expected.get(unit_id)
+        finding_ids = raw.get("finding_identity_sha256s")
+        if (
+            unit is None
+            or unit_id in seen
+            or raw.get("source_unit_sha256") != unit.source_unit_sha256
+            or not isinstance(finding_ids, list)
+            or tuple(finding_ids) != unit.finding_identity_sha256s
+            or not isinstance(raw.get("replacement"), str)
+        ):
+            raise DraftRetryFindingContractError(
+                "local_repair_contract_unit_binding_invalid"
+            )
+        seen.add(unit_id)
+        replacements.append((unit, raw["replacement"]))
+    if seen != set(expected):
+        raise DraftRetryFindingContractError("local_repair_contract_unit_missing")
+    ordered = tuple(sorted(replacements, key=lambda item: item[0].start))
+    candidate = apply_draft_local_repair_units(draft, ordered)
+    for unit, replacement in ordered:
+        remaining = {
+            normalized or unicodedata.normalize("NFKC", match.group(0))
+            for match, normalized, _ambiguous in _latin_tokens(replacement)
+        }
+        if remaining.intersection(unit.normalized_items):
+            raise DraftRetryFindingContractError(
+                "local_repair_contract_finding_not_resolved"
+            )
+    return candidate, ordered
+
+
+def validate_draft_local_repair_replacement(
+    replacement: str,
+    *,
+    authority_context: DraftProseAuthorityContextV1 | None,
+) -> None:
+    """Reject a locally scoped replacement before it becomes durable evidence."""
+
+    if not isinstance(replacement, str) or not replacement.strip():
+        raise DraftRetryFindingContractError(
+            "local_repair_replacement_invalid"
+        )
+    report = analyze_prose(
+        replacement, authority_context=authority_context,
+    )
+    if any(item.get("blocking") for item in report.get("findings", [])):
+        raise DraftRetryFindingContractError(
+            "local_repair_replacement_introduced_finding"
+        )
 
 
 def _draft_retry_finding_identity(payload: Mapping[str, object]) -> str:
@@ -641,7 +1072,7 @@ def build_draft_retry_findings(
     validator_decisions: Sequence[Mapping[str, object]],
     *,
     retry_scope_id: str,
-) -> tuple[DraftRetryFindingV1, ...]:
+) -> DraftRetryFindingBatch | tuple[()]:
     """Bind exact rejected terms to hash-only validator decisions in memory.
 
     The authoritative tokenizer is reused rather than reimplemented. Raw terms
@@ -650,17 +1081,24 @@ def build_draft_retry_findings(
     """
 
     if (
-        not retry_scope_id.strip()
+        not isinstance(retry_scope_id, str)
+        or not retry_scope_id.strip()
         or len(retry_scope_id) > 160
         or any(unicodedata.category(char) == "Cc" for char in retry_scope_id)
     ):
         raise DraftRetryFindingContractError("retry_scope_id_invalid")
-    actionable = [
-        decision for decision in validator_decisions
-        if decision.get("decision") == "reject_unapproved_mixed_script"
-    ]
+    actionable = []
+    for decision in validator_decisions:
+        if not isinstance(decision, Mapping):
+            raise DraftRetryFindingContractError(
+                "validator_decision_contract_invalid"
+            )
+        if decision.get("decision") == "reject_unapproved_mixed_script":
+            actionable.append(decision)
     if not actionable:
         return ()
+
+    source_draft_sha256 = hashlib.sha256(draft.encode("utf-8")).hexdigest()
 
     candidates: dict[str, set[str]] = {}
     for match, normalized, _ambiguous in _latin_tokens(draft):
@@ -670,20 +1108,65 @@ def build_draft_retry_findings(
 
     grouped: dict[str, DraftRetryFindingV1] = {}
     for decision in actionable:
-        token_sha256 = str(decision.get("token_sha256") or "")
-        term_set_sha256 = str(decision.get("term_set_sha256") or "")
+        expected_fields = {
+            "schema", "version", "decision", "token_sha256", "token_length",
+            "character_classes", "normalization_version",
+            "draft_authority_revision", "draft_authority_sha256",
+            "segment_binding_sha256", "term_set_sha256",
+            "source_draft_sha256", "validator_origin_attestation_sha256",
+        }
+        if type(decision) is not dict or set(decision) != expected_fields:
+            raise DraftRetryFindingContractError(
+                "validator_decision_contract_invalid"
+            )
+        token_sha256 = decision["token_sha256"]
+        term_set_sha256 = decision["term_set_sha256"]
+        authority_sha256 = decision["draft_authority_sha256"]
+        segment_binding_sha256 = decision["segment_binding_sha256"]
+        if (
+            decision["schema"] != "DraftProseMixedScriptDecisionV1"
+            or type(decision["version"]) is not int
+            or decision["version"] != 1
+            or decision["decision"] != "reject_unapproved_mixed_script"
+            or type(token_sha256) is not str
+            or type(decision["token_length"]) is not int
+            or type(decision["character_classes"]) is not list
+            or decision["character_classes"] != ["latin", "cjk_adjacent"]
+            or type(decision["normalization_version"]) is not str
+            or decision["normalization_version"]
+            != AUTHORITY_LATIN_NORMALIZATION_VERSION
+            or type(decision["draft_authority_revision"]) is not int
+            or decision["draft_authority_revision"] < 0
+            or type(authority_sha256) is not str
+            or type(segment_binding_sha256) is not str
+            or type(term_set_sha256) is not str
+            or type(decision["source_draft_sha256"]) is not str
+            or decision["source_draft_sha256"] != source_draft_sha256
+            or type(decision["validator_origin_attestation_sha256"]) is not str
+            or any(
+                re.fullmatch(r"[0-9a-f]{64}", value) is None
+                for value in (
+                    token_sha256, authority_sha256,
+                    segment_binding_sha256, term_set_sha256,
+                    decision["source_draft_sha256"],
+                    decision["validator_origin_attestation_sha256"],
+                )
+            )
+            or not verify_mixed_script_decision_origin(decision)
+        ):
+            raise DraftRetryFindingContractError(
+                "validator_decision_contract_invalid"
+            )
         bound_items = candidates.get(token_sha256, set())
         if (
-            re.fullmatch(r"[0-9a-f]{64}", token_sha256) is None
-            or re.fullmatch(r"[0-9a-f]{64}", term_set_sha256) is None
-            or len(bound_items) != 1
+            len(bound_items) != 1
         ):
             raise DraftRetryFindingContractError(
                 "validator_finding_source_binding_unprovable"
             )
         item = next(iter(bound_items))
         if (
-            len(item) != int(decision.get("token_length") or -1)
+            len(item) != decision["token_length"]
             or len(item) > DRAFT_RETRY_MAX_ITEM_CHARACTERS
             or any(unicodedata.category(char) == "Cc" for char in item)
         ):
@@ -697,6 +1180,12 @@ def build_draft_retry_findings(
             "authority_status": "unapproved",
             "validator_policy_sha256": R1_D1_DECLARED_VALIDATOR_POLICY_SHA256,
             "authority_snapshot_reference_sha256": term_set_sha256,
+            "validator_decision_binding_sha256": (
+                _draft_retry_finding_identity({
+                    key: value for key, value in decision.items()
+                    if key != "validator_origin_attestation_sha256"
+                })
+            ),
             "retry_scope_id": retry_scope_id,
         }
         identity = _draft_retry_finding_identity(identity_payload)
@@ -715,10 +1204,17 @@ def build_draft_retry_findings(
             raise DraftRetryFindingContractError(
                 "validator_finding_count_bound_exceeded"
             )
-    return tuple(sorted(
+    ordered = tuple(sorted(
         grouped.values(),
         key=lambda item: (item.normalized_item, item.finding_identity_sha256),
     ))
+    return DraftRetryFindingBatch(
+        ordered,
+        source_draft_sha256=source_draft_sha256,
+        _signature=_sign_draft_retry_finding_batch(
+            source_draft_sha256, ordered,
+        ),
+    )
 
 
 def render_actionable_draft_validation_findings(
@@ -728,6 +1224,7 @@ def render_actionable_draft_validation_findings(
 
     if not findings or len(findings) > DRAFT_RETRY_MAX_FINDINGS:
         raise DraftRetryFindingContractError("validator_finding_count_invalid")
+    _validate_draft_retry_finding_batch(findings)
     payload = {
         "schema": "ActionableDraftValidationFindingsV1",
         "version": 1,
@@ -5062,6 +5559,7 @@ class WorkflowService:
     ) -> str:
         """Generate canonical v2 semantics through Runtime-owned packets."""
 
+        global_closure = build_runtime_planning_global_closure(formal_events)
         ownership = planning_semantic_packet_ownership_v2(
             segment_count=segment_count,
             formal_event_count=len(formal_events),
@@ -5074,6 +5572,7 @@ class WorkflowService:
             "formal_ending_sha256": canonical_sha256(formal_ending),
             "segment_count": segment_count,
             "ownership": ownership,
+            "global_closure_sha256": global_closure["closure_sha256"],
         })
         checkpoint_root = (
             run_path / "outputs" / "planning-semantic-v2-packets"
@@ -5188,6 +5687,12 @@ class WorkflowService:
                 runtime_authority=packet_authority,
             )
 
+            def validate_packet_payload(payload: Mapping[str, Any]):
+                return validate_packet(
+                    json.dumps(payload, ensure_ascii=False),
+                    len(global_ordinals),
+                )[0]
+
             async def split_again(split_details: dict) -> str:
                 midpoint = len(global_ordinals) // 2
                 left_ordinals = global_ordinals[:midpoint]
@@ -5245,10 +5750,22 @@ class WorkflowService:
                     contract_name="planning_semantic_v2",
                     structured_contract=packet_contract,
                     semantic_normalizer=normalize_planning_semantic_v2_payload,
-                    domain_validator=lambda payload: validate_packet(
-                        json.dumps(payload, ensure_ascii=False),
-                        len(global_ordinals),
-                    )[0],
+                    domain_validator=validate_packet_payload,
+                    domain_diagnostic_extractor=lambda payload: (
+                        extract_planning_semantic_v2_findings(
+                            payload,
+                            domain_validator=validate_packet_payload,
+                        )
+                    ),
+                    domain_diagnostic_metadata={
+                        "contract_name": "planning_semantic_v2",
+                        "repair_target_identity_sha256": (
+                            packet_authority_sha256
+                        ),
+                    },
+                    domain_retry_renderer=(
+                        render_actionable_planning_semantic_findings
+                    ),
                     retry_domain_failures=True,
                 ),
                 compact_input=True,
@@ -5335,6 +5852,7 @@ class WorkflowService:
                 "packets": packet_records,
                 "merged_semantic_sha256": merged_sha256,
                 "planning_authority_sha256": compiled.document.authority_sha256,
+                "global_closure": global_closure,
             }, ensure_ascii=False, sort_keys=True, indent=2),
         )
         self.db.add_run_event(
@@ -5359,6 +5877,7 @@ class WorkflowService:
         formal_events = self._planning_adaptation_contracts(
             state, formal_events,
         )
+        global_closure = build_runtime_planning_global_closure(formal_events)
         formal_ending = self._short_formal_ending_authority(
             state, formal_events,
         )
@@ -5374,6 +5893,7 @@ class WorkflowService:
             ],
             "formal_events_sha256": canonical_sha256(formal_events),
             "formal_ending_sha256": canonical_sha256(formal_ending),
+            "global_closure_sha256": global_closure["closure_sha256"],
         }
         contract = StructuredArtifactContract(
             name="planning_semantic_v2",
@@ -5409,6 +5929,21 @@ class WorkflowService:
                 structured_contract=contract,
                 semantic_normalizer=normalize_planning_semantic_v2_payload,
                 domain_validator=validate_semantic_payload,
+                domain_diagnostic_extractor=lambda payload: (
+                    extract_planning_semantic_v2_findings(
+                        payload,
+                        domain_validator=validate_semantic_payload,
+                    )
+                ),
+                domain_diagnostic_metadata={
+                    "contract_name": "planning_semantic_v2",
+                    "repair_target_identity_sha256": canonical_sha256(
+                        authority
+                    ),
+                },
+                domain_retry_renderer=(
+                    render_actionable_planning_semantic_findings
+                ),
                 retry_domain_failures=True,
             ),
             compact_input=True,
@@ -5427,6 +5962,12 @@ class WorkflowService:
         atomic_write(
             outputs / "planning-semantic-v2.json",
             compiled.semantic.model_dump_json(indent=2),
+        )
+        atomic_write(
+            outputs / "planning-global-closure-v1.json",
+            json.dumps(
+                global_closure, ensure_ascii=False, sort_keys=True, indent=2,
+            ),
         )
         atomic_write(
             outputs / "planning-exit-topology-v1.json",
@@ -5714,7 +6255,7 @@ class WorkflowService:
             if isinstance(item, dict) and str(item.get("id") or "").strip()
         ]
         if stored:
-            return stored
+            return WorkflowService._canonical_formal_event_contracts(stored)
 
         premise = str(project.metadata.get("premise") or "").strip()
         if not premise:
@@ -6445,12 +6986,53 @@ class WorkflowService:
             narrative_outline_event_contracts(outline_content)
             if outline_content.strip() else []
         )
-        if contracts:
-            return contracts
-        return [
-            dict(item) for item in narrative_outline_events(formal_outline_events)
-            if isinstance(item, dict) and str(item.get("id") or "").strip()
-        ]
+        if not contracts:
+            contracts = [
+                dict(item)
+                for item in narrative_outline_events(formal_outline_events)
+                if isinstance(item, dict) and str(item.get("id") or "").strip()
+            ]
+        return WorkflowService._canonical_formal_event_contracts(contracts)
+
+    @staticmethod
+    def _canonical_formal_event_contracts(
+        events: Sequence[Mapping[str, Any]],
+    ) -> list[dict[str, Any]]:
+        """Close the one explicit legacy lowercase ID migration boundary.
+
+        Historical outline IDs were SHA-1 hex emitted entirely lowercase.  That
+        exact legacy representation is supported here and nowhere downstream;
+        mixed case, whitespace, aliases, types, and post-migration collisions
+        remain invalid rather than being broadly normalized.
+        """
+
+        result: list[dict[str, Any]] = []
+        seen: set[str] = set()
+        for item in events:
+            if not isinstance(item, Mapping):
+                raise ValueError("formal event contract must be an object")
+            raw_id = item.get("id")
+            raw_alias = item.get("event_id")
+            if raw_id is None:
+                raw_id = raw_alias
+            elif raw_alias is not None and raw_alias != raw_id:
+                raise ValueError("formal event identity aliases conflict")
+            if type(raw_id) is not str:
+                raise ValueError("formal event identity must be an exact string")
+            if re.fullmatch(r"EV-[0-9A-F]{8}", raw_id):
+                canonical_id = raw_id
+            elif re.fullmatch(r"EV-[0-9a-f]{8}", raw_id):
+                canonical_id = raw_id.upper()
+            else:
+                raise ValueError("formal event identity grammar is invalid")
+            if canonical_id in seen:
+                raise ValueError("formal event identity migration collides")
+            seen.add(canonical_id)
+            value = dict(item)
+            value.pop("event_id", None)
+            value["id"] = canonical_id
+            result.append(value)
+        return result
 
     @staticmethod
     def _stored_planning_adaptation_payloads(
@@ -12222,10 +12804,19 @@ class WorkflowService:
         rebuild_dispatches: dict[tuple[int, ...], int] = {}
         targeted_generation_failures: dict[tuple[int, ...], int] = {}
         rebuild_generation_failures: dict[tuple[int, ...], int] = {}
+        recovery_transition_bound = max(8, segment_count * 8)
+        recovery_state["total_transition_bound"] = recovery_transition_bound
+
+        def transition_count() -> int:
+            return int(recovery_state.get("semantic_attempts") or 0) + int(
+                recovery_state.get("candidate_generation_attempts") or 0
+            )
+
         while (
             best_issues
             and not protocol_failure(best_issues)
             and not receipt_blocked
+            and transition_count() < recovery_transition_bound
         ):
             scope = recovery_scope(best_plan, best_issues)
             units = recovery_units(best_plan, best_issues)
@@ -12629,11 +13220,55 @@ class WorkflowService:
                     stage="planning", metadata=comparison,
                 )
 
+        if (
+            best_issues
+            and not receipt_blocked
+            and transition_count() >= recovery_transition_bound
+            and not any(
+                str(item.get("code") or "")
+                == "planning_recovery_transition_bound_exhausted"
+                for item in best_issues if isinstance(item, dict)
+            )
+        ):
+            best_issues = [
+                *best_issues,
+                {
+                    "code": "planning_recovery_transition_bound_exhausted",
+                    "message": (
+                        "规划恢复已达到不可重置的全局转换上限，已保留当前最佳完整规划"
+                    ),
+                    "blocking": True,
+                    "transition_count": transition_count(),
+                    "transition_bound": recovery_transition_bound,
+                    "recovery_scope_kind": "typed_terminal_stop",
+                },
+            ]
+            recovery_state["best_issues"] = best_issues
+            recovery_state["best_issue_keys"] = sorted(
+                planning_issue_keys(best_issues)
+            )
+            recovery_state["status"] = "typed_transition_bound_exhausted"
+            self.db.add_run_event(
+                run_id, "error", "planning_recovery_transition_bound_exhausted",
+                "Planning recovery reached its persisted global transition bound.",
+                stage="planning", metadata={
+                    "transition_count": transition_count(),
+                    "transition_bound": recovery_transition_bound,
+                    "best_issue_keys": recovery_state["best_issue_keys"],
+                },
+            )
+
         issues = best_issues
         receipts = best_receipts
         whole_receipt = best_whole_receipt
         recovery_state["status"] = (
             "awaiting_receipt" if receipt_blocked else
+            "typed_transition_bound_exhausted"
+            if any(
+                str(item.get("code") or "")
+                == "planning_recovery_transition_bound_exhausted"
+                for item in issues if isinstance(item, dict)
+            ) else
             "ready" if not issues else "recoverable_failed"
         )
         recovery_state["best_issues"] = best_issues
@@ -18538,6 +19173,104 @@ class WorkflowService:
                 payload_validator(payload)
             return payload
 
+        def bind_style_fidelity_after_stage(
+            payload: dict,
+            raw_stage: str,
+        ) -> dict:
+            if recovery_kind != "review":
+                return payload
+            authority_path = (
+                run_path / "outputs" / "style-reference-authority-v1.json"
+            )
+            if not authority_path.is_file():
+                return payload
+            try:
+                style_authority = json.loads(
+                    authority_path.read_text(encoding="utf-8")
+                )
+            except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+                raise ValueError(
+                    "Final Review style/reference authority is unreadable"
+                ) from exc
+            context_sha256 = ""
+            reviewed_model_input_sha256 = hashlib.sha256(
+                prompt.encode("utf-8")
+            ).hexdigest()
+            if style_authority.get("selection_status") == "selected":
+                stage_receipt = getattr(raw_stage, "receipt", None)
+                if not isinstance(stage_receipt, Mapping):
+                    raise ValueError(
+                        "Final Review accepted model attempt receipt is missing"
+                    )
+                accepted_input_sha256 = stage_receipt.get(
+                    "actual_model_input_sha256"
+                )
+                accepted_system_sha256 = stage_receipt.get(
+                    "actual_model_system_sha256"
+                )
+                accepted_context_packet_sha256 = stage_receipt.get(
+                    "actual_context_packet_sha256"
+                )
+                accepted_attempt_index = stage_receipt.get(
+                    "contract_attempt_index"
+                )
+                accepted_attempt_route = stage_receipt.get(
+                    "contract_attempt_route"
+                )
+                if (
+                    not isinstance(accepted_input_sha256, str)
+                    or re.fullmatch(r"[0-9a-f]{64}", accepted_input_sha256)
+                    is None
+                    or not isinstance(accepted_system_sha256, str)
+                    or re.fullmatch(r"[0-9a-f]{64}", accepted_system_sha256)
+                    is None
+                    or not isinstance(accepted_context_packet_sha256, str)
+                    or re.fullmatch(
+                        r"[0-9a-f]{64}", accepted_context_packet_sha256,
+                    ) is None
+                    or type(accepted_attempt_index) is not int
+                    or accepted_attempt_route
+                    not in {"primary", "configured_fallback"}
+                ):
+                    raise ValueError(
+                        "Final Review accepted model attempt binding is invalid"
+                    )
+                context_path = (
+                    run_path / "outputs"
+                    / "style-reference-context-final_review-v1.json"
+                )
+                try:
+                    context_receipt = json.loads(
+                        context_path.read_text(encoding="utf-8")
+                    )
+                except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+                    raise ValueError(
+                        "Final Review style/reference context receipt is unreadable"
+                    ) from exc
+                context_receipt = validate_style_reference_context_receipt(
+                    context_receipt,
+                    frozen_authority=style_authority,
+                    stage="final_review",
+                    require_contract_attempt=True,
+                    expected_model_input_sha256=accepted_input_sha256,
+                    expected_model_system_sha256=accepted_system_sha256,
+                    expected_context_packet_sha256=(
+                        accepted_context_packet_sha256
+                    ),
+                    expected_contract_attempt_index=accepted_attempt_index,
+                    expected_contract_attempt_route=accepted_attempt_route,
+                )
+                context_sha256 = context_receipt["context_sha256"]
+                reviewed_model_input_sha256 = accepted_input_sha256
+            payload["style_reference_fidelity"] = (
+                final_review_style_reference_receipt(
+                    style_authority, payload,
+                    rendered_context_sha256=context_sha256,
+                    reviewed_input_sha256=reviewed_model_input_sha256,
+                )
+            )
+            return payload
+
         contract_name = (
             "final_review_window" if recovery_kind == "window" else
             "final_review_regional" if recovery_kind == "regional" else
@@ -18582,7 +19315,7 @@ class WorkflowService:
         try:
             if stage_error is not None:
                 raise stage_error
-            return raw, convert(raw)
+            return raw, bind_style_fidelity_after_stage(convert(raw), raw)
         except (json.JSONDecodeError, ValueError, RuntimeError) as primary_error:
             binding = self.db.get_role_binding("final_review") or {}
             configured_fallback = bool(
@@ -18610,7 +19343,9 @@ class WorkflowService:
                         bounded_protocol_output=True,
                         execution_spec=review_spec(prompt),
                     )
-                    return fallback_raw, convert(fallback_raw)
+                    return fallback_raw, bind_style_fidelity_after_stage(
+                        convert(fallback_raw), fallback_raw,
+                    )
                 except (json.JSONDecodeError, ValueError, RuntimeError) as exc:
                     fallback_error = exc
 
@@ -18648,7 +19383,9 @@ class WorkflowService:
                         compact_input=True,
                         execution_spec=review_spec(compact_prompt),
                     )
-                    compact_payload = convert(compact_raw)
+                    compact_payload = bind_style_fidelity_after_stage(
+                        convert(compact_raw), compact_raw,
+                    )
                 except (json.JSONDecodeError, ValueError, RuntimeError) as exc:
                     compact_error = exc
                     continue
@@ -24784,6 +25521,481 @@ class WorkflowService:
             )
             return retried
 
+        async def repair_actionable_local_scope(
+            rejected_draft: str,
+            source_findings: list[dict],
+            actionable_findings: tuple[DraftRetryFindingV1, ...],
+        ) -> str:
+            """Run one closed paragraph-owned repair before any segment rebuild."""
+
+            try:
+                units = build_draft_local_repair_units(
+                    rejected_draft, actionable_findings,
+                )
+            except DraftRetryFindingContractError as exc:
+                self.db.add_run_event(
+                    run_id, "error", "draft_local_repair_scope_rejected",
+                    "Draft local-repair ownership was ambiguous or exceeded its bound.",
+                    stage="draft", metadata={
+                        "task_id": contract.task_id,
+                        "failure_code": str(exc),
+                        "repair_scope_kind": "fail_closed",
+                    },
+                )
+                raise
+
+            async def repair_multiple_units_independently() -> str:
+                """Seal each accepted unit so a sibling failure cannot erase it."""
+
+                source_sha256 = hashlib.sha256(
+                    rejected_draft.encode("utf-8")
+                ).hexdigest()
+                checkpoint_path = (
+                    run_path / "outputs"
+                    / (
+                        "draft-local-repair-units-"
+                        + hashlib.sha256(contract.task_id.encode("utf-8")).hexdigest()[:16]
+                        + "-" + source_sha256[:16] + ".json"
+                    )
+                )
+                accepted_by_id: dict[str, str] = {}
+                try:
+                    checkpoint = json.loads(
+                        checkpoint_path.read_text(encoding="utf-8")
+                    )
+                    if (
+                        not isinstance(checkpoint, dict)
+                        or set(checkpoint) != {
+                            "schema", "version", "source_draft_sha256",
+                            "retry_scope_id", "authorized_unit_ids",
+                            "accepted_units", "accepted_unit_count",
+                            "complete", "checkpoint_sha256",
+                        }
+                        or checkpoint.get("schema")
+                        != "DraftLocalRepairCheckpointV1"
+                        or type(checkpoint.get("version")) is not int
+                        or checkpoint.get("version") != 1
+                        or checkpoint.get("source_draft_sha256") != source_sha256
+                        or checkpoint.get("retry_scope_id") != contract.task_id
+                        or checkpoint.get("authorized_unit_ids")
+                        != [unit.unit_id for unit in units]
+                        or not isinstance(checkpoint.get("accepted_units"), list)
+                        or type(checkpoint.get("accepted_unit_count")) is not int
+                        or checkpoint.get("accepted_unit_count")
+                        != len(checkpoint.get("accepted_units"))
+                        or type(checkpoint.get("complete")) is not bool
+                        or checkpoint.get("complete")
+                        != (
+                            len(checkpoint.get("accepted_units")) == len(units)
+                        )
+                        or not isinstance(checkpoint.get("checkpoint_sha256"), str)
+                        or checkpoint.get("checkpoint_sha256")
+                        != canonical_sha256({
+                            key: value for key, value in checkpoint.items()
+                            if key != "checkpoint_sha256"
+                        })
+                    ):
+                        raise DraftRetryFindingContractError(
+                            "local_repair_checkpoint_binding_invalid"
+                        )
+                    accepted_unit_ids = [
+                        raw.get("unit_id") if isinstance(raw, dict) else None
+                        for raw in checkpoint["accepted_units"]
+                    ]
+                    if accepted_unit_ids != [
+                        unit.unit_id for unit in units[:len(accepted_unit_ids)]
+                    ]:
+                        raise DraftRetryFindingContractError(
+                            "local_repair_checkpoint_order_invalid"
+                        )
+                    expected = {unit.unit_id: unit for unit in units}
+                    for raw in checkpoint["accepted_units"]:
+                        if not isinstance(raw, dict) or set(raw) != {
+                            "unit_id", "source_unit_sha256",
+                            "finding_identity_sha256s", "replacement",
+                        }:
+                            raise DraftRetryFindingContractError(
+                                "local_repair_checkpoint_shape_invalid"
+                            )
+                        unit_id = raw.get("unit_id")
+                        unit = expected.get(unit_id) if isinstance(unit_id, str) else None
+                        if (
+                            unit is None
+                            or unit_id in accepted_by_id
+                            or raw.get("source_unit_sha256")
+                            != unit.source_unit_sha256
+                            or raw.get("finding_identity_sha256s")
+                            != list(unit.finding_identity_sha256s)
+                            or not isinstance(raw.get("replacement"), str)
+                        ):
+                            raise DraftRetryFindingContractError(
+                                "local_repair_checkpoint_binding_invalid"
+                            )
+                        # Revalidate the stored replacement against the frozen unit.
+                        normalize_draft_local_repair_contract({
+                            "source_draft_sha256": source_sha256,
+                            "units": [raw],
+                        }, rejected_draft, (unit,))
+                        validate_draft_local_repair_replacement(
+                            raw["replacement"],
+                            authority_context=prose_authority_context,
+                        )
+                        accepted_by_id[unit_id] = raw["replacement"]
+                except FileNotFoundError:
+                    checkpoint = None
+                except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+                    raise DraftRetryFindingContractError(
+                        "local_repair_checkpoint_unreadable"
+                    ) from exc
+
+                def persist_checkpoint() -> None:
+                    ordered = []
+                    for unit in units:
+                        replacement = accepted_by_id.get(unit.unit_id)
+                        if replacement is None:
+                            continue
+                        ordered.append({
+                            "unit_id": unit.unit_id,
+                            "source_unit_sha256": unit.source_unit_sha256,
+                            "finding_identity_sha256s": list(
+                                unit.finding_identity_sha256s
+                            ),
+                            "replacement": replacement,
+                        })
+                    receipt = {
+                        "schema": "DraftLocalRepairCheckpointV1",
+                        "version": 1,
+                        "source_draft_sha256": source_sha256,
+                        "retry_scope_id": contract.task_id,
+                        "authorized_unit_ids": [unit.unit_id for unit in units],
+                        "accepted_units": ordered,
+                        "accepted_unit_count": len(ordered),
+                        "complete": len(ordered) == len(units),
+                    }
+                    receipt["checkpoint_sha256"] = canonical_sha256(receipt)
+                    atomic_write(
+                        checkpoint_path,
+                        json.dumps(
+                            receipt, ensure_ascii=False,
+                            sort_keys=True, indent=2,
+                        ),
+                    )
+
+                for unit in units:
+                    if unit.unit_id in accepted_by_id:
+                        continue
+                    unit_request = {
+                        "schema": "DraftLocalRepairRequestV1",
+                        "version": 1,
+                        "source_draft_sha256": source_sha256,
+                        "retry_scope_id": contract.task_id,
+                        "units": [{
+                            "unit_id": unit.unit_id,
+                            "source_unit_sha256": unit.source_unit_sha256,
+                            "finding_identity_sha256s": list(
+                                unit.finding_identity_sha256s
+                            ),
+                            "normalized_items": list(unit.normalized_items),
+                            "source_unit": rejected_draft[unit.start:unit.end],
+                        }],
+                        "instructions": (
+                            "Return exactly one closed repair unit. Rewrite only the "
+                            "supplied paragraph enough to remove its exact rejected terms; "
+                            "preserve facts, action, voice, order, meaning, and paragraph "
+                            "boundaries. Do not add machine-control fields."
+                        ),
+                    }
+
+                    def validate_one(payload: Mapping[str, Any]) -> str:
+                        candidate, replacements = normalize_draft_local_repair_contract(
+                            payload, rejected_draft, (unit,),
+                        )
+                        validate_draft_local_repair_replacement(
+                            replacements[0][1],
+                            authority_context=prose_authority_context,
+                        )
+                        return candidate
+
+                    unit_spec = ExecutableContractSpec(
+                        contract_name="draft_local_repair_contract",
+                        structured_contract=StructuredArtifactContract(
+                            name="draft_local_repair_contract", version=1,
+                            schema=registered_business_wire_schema(
+                                "draft_local_repair_contract", {
+                                    "source_draft_sha256": source_sha256,
+                                    "unit_ids": [unit.unit_id],
+                                },
+                            ),
+                            runtime_authority={
+                                "source_draft_sha256": source_sha256,
+                                "unit_ids": [unit.unit_id],
+                            },
+                        ),
+                        semantic_normalizer=lambda value: (
+                            dict(value) if isinstance(value, Mapping) else None
+                        ),
+                        domain_validator=validate_one,
+                        retry_domain_failures=False,
+                    )
+                    try:
+                        raw = await self._stage(
+                            run_id, run_path, project, "draft", constraints,
+                            json.dumps(
+                                unit_request, ensure_ascii=False, sort_keys=True,
+                            ),
+                            suffix=(
+                                f"{suffix}-local-repair-{unit.unit_id[:12]}"
+                            ),
+                            allow_tools=False,
+                            expected_output_characters=unit.end - unit.start,
+                            completion_check=lambda value: (
+                                self._completion_check_safe(
+                                    lambda candidate: bool(validate_one(
+                                        self._convert_generated_object(
+                                            candidate, run_path,
+                                            contract_name=(
+                                                "draft_local_repair_contract"
+                                            ),
+                                        )
+                                    )),
+                                    value,
+                                )
+                            ),
+                            execution_spec=unit_spec,
+                            bounded_protocol_output=True,
+                        )
+                        payload = self._convert_generated_object(
+                            raw, run_path,
+                            contract_name="draft_local_repair_contract",
+                        )
+                        _candidate, replacements = (
+                            normalize_draft_local_repair_contract(
+                                payload, rejected_draft, (unit,),
+                            )
+                        )
+                        accepted_by_id[unit.unit_id] = replacements[0][1]
+                        persist_checkpoint()
+                    except asyncio.CancelledError:
+                        raise
+                    except Exception as exc:
+                        self.db.add_run_event(
+                            run_id, "error", "draft_local_repair_unit_paused",
+                            "One local unit failed; accepted sibling units remain sealed for resume.",
+                            stage="draft", metadata={
+                                "task_id": contract.task_id,
+                                "failed_unit_id": unit.unit_id,
+                                "accepted_unit_ids": sorted(accepted_by_id),
+                                "failure": safe_local_validation_message(exc),
+                                "repair_scope_kind": "same_unit_resume",
+                            },
+                        )
+                        raise DraftRetryFindingContractError(
+                            "local_repair_unit_failed_resume_required"
+                        ) from exc
+
+                replacements = tuple(
+                    (unit, accepted_by_id[unit.unit_id]) for unit in units
+                )
+                candidate = apply_draft_local_repair_units(
+                    rejected_draft, replacements,
+                )
+                remaining_decisions: list[dict[str, Any]] = []
+                remaining_findings = [
+                    item for item in self._draft_segment_findings(
+                        candidate, target, previous_parts, location_catalog,
+                        authority_context=prose_authority_context,
+                        decision_sink=remaining_decisions,
+                    ) if item.get("blocking")
+                ]
+                if remaining_findings:
+                    raise DraftRetryFindingContractError(
+                        "local_repair_complete_candidate_validation_failed"
+                    )
+                accepted = await accept_node(candidate)
+                self.db.add_run_event(
+                    run_id, "success", "draft_local_repair_applied",
+                    "Independent local Draft units were accepted without replaying siblings.",
+                    stage="draft", metadata={
+                        "task_id": contract.task_id,
+                        "unit_ids": [unit.unit_id for unit in units],
+                        "source_draft_sha256": source_sha256,
+                        "candidate_draft_sha256": hashlib.sha256(
+                            accepted.encode("utf-8")
+                        ).hexdigest(),
+                        "unowned_bytes_preserved": True,
+                        "accepted_unit_replay_count": len(accepted_by_id),
+                    },
+                )
+                return accepted
+
+            if len(units) > 1:
+                return await repair_multiple_units_independently()
+            request = {
+                "schema": "DraftLocalRepairRequestV1",
+                "version": 1,
+                "source_draft_sha256": hashlib.sha256(
+                    rejected_draft.encode("utf-8")
+                ).hexdigest(),
+                "retry_scope_id": contract.task_id,
+                "units": [
+                    {
+                        "unit_id": unit.unit_id,
+                        "source_unit_sha256": unit.source_unit_sha256,
+                        "finding_identity_sha256s": list(
+                            unit.finding_identity_sha256s
+                        ),
+                        "normalized_items": list(unit.normalized_items),
+                        "source_unit": rejected_draft[unit.start:unit.end],
+                    }
+                    for unit in units
+                ],
+                "instructions": (
+                    "Return one JSON object with exactly source_draft_sha256 and units. "
+                    "Return every authorized unit exactly once. Each unit must contain "
+                    "exactly unit_id, source_unit_sha256, finding_identity_sha256s, and "
+                    "replacement. Rewrite only the supplied paragraph unit enough to "
+                    "remove its exact rejected terms. Preserve all other facts, action, "
+                    "voice, order, meaning, and paragraph boundaries. Do not add any "
+                    "new unapproved Latin term or any machine-control field."
+                ),
+            }
+
+            def validate_local_payload(payload: Mapping[str, Any]) -> str:
+                candidate, _replacements = normalize_draft_local_repair_contract(
+                    payload, rejected_draft, units,
+                )
+                return candidate
+
+            execution_spec = ExecutableContractSpec(
+                contract_name="draft_local_repair_contract",
+                structured_contract=StructuredArtifactContract(
+                    name="draft_local_repair_contract",
+                    version=1,
+                    schema=registered_business_wire_schema(
+                        "draft_local_repair_contract",
+                        {
+                            "source_draft_sha256": request[
+                                "source_draft_sha256"
+                            ],
+                            "unit_ids": [unit.unit_id for unit in units],
+                        },
+                    ),
+                    runtime_authority={
+                        "source_draft_sha256": request[
+                            "source_draft_sha256"
+                        ],
+                        "unit_ids": [unit.unit_id for unit in units],
+                    },
+                ),
+                semantic_normalizer=lambda value: (
+                    dict(value) if isinstance(value, Mapping) else None
+                ),
+                domain_validator=validate_local_payload,
+                retry_domain_failures=False,
+            )
+            try:
+                raw = await self._stage(
+                    run_id, run_path, project, "draft", constraints,
+                    json.dumps(request, ensure_ascii=False, sort_keys=True),
+                    suffix=f"{suffix}-local-repair",
+                    allow_tools=False,
+                    expected_output_characters=sum(
+                        unit.end - unit.start for unit in units
+                    ),
+                    completion_check=lambda value: self._completion_check_safe(
+                        lambda candidate: bool(normalize_draft_local_repair_contract(
+                            self._convert_generated_object(
+                                candidate, run_path,
+                                contract_name="draft_local_repair_contract",
+                            ),
+                            rejected_draft, units,
+                        )[0]),
+                        value,
+                    ),
+                    execution_spec=execution_spec,
+                    bounded_protocol_output=True,
+                )
+                payload = self._convert_generated_object(
+                    raw, run_path,
+                    contract_name="draft_local_repair_contract",
+                )
+                candidate, replacements = normalize_draft_local_repair_contract(
+                    payload, rejected_draft, units,
+                )
+                remaining_decisions: list[dict[str, Any]] = []
+                remaining_findings = [
+                    item for item in self._draft_segment_findings(
+                        candidate, target, previous_parts, location_catalog,
+                        authority_context=prose_authority_context,
+                        decision_sink=remaining_decisions,
+                    )
+                    if item.get("blocking")
+                ]
+                if remaining_findings:
+                    refreshed_findings = build_draft_retry_findings(
+                        candidate, remaining_decisions,
+                        retry_scope_id=contract.task_id,
+                    )
+                    self.db.add_run_event(
+                        run_id, "warning", "draft_local_repair_escalated",
+                        "Local repair exposed another current finding; refreshing the owned retry evidence.",
+                        stage="draft", metadata={
+                            "task_id": contract.task_id,
+                            "repair_scope_kind": "owned_segment_rebuild",
+                            "unit_ids": [unit.unit_id for unit in units],
+                            "issue_codes": [
+                                str(item.get("code") or "incomplete")
+                                for item in remaining_findings
+                            ],
+                        },
+                    )
+                    return await retry_same_scope(
+                        remaining_findings, refreshed_findings,
+                    )
+                accepted = await accept_node(candidate)
+            except asyncio.CancelledError:
+                raise
+            except Exception as exc:
+                self.db.add_run_event(
+                    run_id, "warning", "draft_local_repair_escalated",
+                    "Local Draft repair could not close safely; escalating to the same owned segment.",
+                    stage="draft", metadata={
+                        "task_id": contract.task_id,
+                        "repair_scope_kind": "owned_segment_rebuild",
+                        "unit_ids": [unit.unit_id for unit in units],
+                        "failure": safe_local_validation_message(exc),
+                    },
+                )
+                return await retry_same_scope([
+                    {
+                        "code": "draft_local_repair_escalated",
+                        "message": (
+                            "严格局部修复未能通过完整检查，现只允许重建当前事件段"
+                        ),
+                        "repair_scope_kind": "owned_segment_rebuild",
+                    },
+                    *source_findings,
+                ], actionable_findings)
+            self.db.add_run_event(
+                run_id, "success", "draft_local_repair_applied",
+                "Exact local Draft findings were repaired without changing unowned bytes.",
+                stage="draft", metadata={
+                    "task_id": contract.task_id,
+                    "unit_ids": [unit.unit_id for unit, _value in replacements],
+                    "finding_identity_sha256s": sorted({
+                        identity
+                        for unit, _value in replacements
+                        for identity in unit.finding_identity_sha256s
+                    }),
+                    "source_draft_sha256": request["source_draft_sha256"],
+                    "candidate_draft_sha256": hashlib.sha256(
+                        accepted.encode("utf-8")
+                    ).hexdigest(),
+                    "unowned_bytes_preserved": True,
+                },
+            )
+            return accepted
+
         async def accept_or_retry(value: str) -> str:
             try:
                 return await accept_node(value)
@@ -24832,6 +26044,10 @@ class WorkflowService:
             actionable_findings = build_draft_retry_findings(
                 str(part), decisions, retry_scope_id=contract.task_id,
             )
+            if actionable_findings:
+                return await repair_actionable_local_scope(
+                    str(part), findings, actionable_findings,
+                )
             if not findings:
                 try:
                     return await accept_node(part)
@@ -27101,12 +28317,81 @@ class WorkflowService:
                 model_constraints = self.constraint_prompts.compact_for_stage(
                     source_constraints, stage=stage, focus=user,
                 )
-            style = (
-                f"\n\nPROJECT STYLE PROFILE:\n{ensure_style_profile(project)}"
-                if stage == "draft"
-                and project.metadata.get("style_sample_scope") == "draft_and_polish"
-                else ""
-            )
+            style = ""
+            if stage in {"planning", "draft", "polish", "final_review"}:
+                authority_path = (
+                    run_path / "outputs" / "style-reference-authority-v1.json"
+                )
+                previously_bound = any(
+                    event.get("event_type") == "style_reference_authority_bound"
+                    for event in self.db.list_run_events(run_id)
+                )
+                if previously_bound and not authority_path.is_file():
+                    raise ValueError(
+                        "frozen style/reference authority is missing during run"
+                    )
+                quality_reference_group = (
+                    self.db.latest_quality_reference_group(
+                        project.id, profile_for_project(project),
+                    )
+                    or {}
+                )
+                current_style_authority = selected_style_reference_provenance(
+                    project, quality_reference_group,
+                    initialize_missing_profile=(
+                        not previously_bound and not authority_path.is_file()
+                    ),
+                )
+                public_authority = {
+                    key: value
+                    for key, value in current_style_authority.items()
+                    if key != "style_profile_text"
+                }
+                if authority_path.is_file():
+                    try:
+                        frozen_authority = json.loads(
+                            authority_path.read_text(encoding="utf-8")
+                        )
+                    except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+                        raise ValueError(
+                            "frozen style/reference authority is unreadable"
+                        ) from exc
+                    frozen_authority = validate_frozen_style_reference_authority(
+                        frozen_authority, public_authority,
+                    )
+                else:
+                    frozen_authority = public_authority
+                    atomic_write(
+                        authority_path,
+                        json.dumps(
+                            frozen_authority, ensure_ascii=False,
+                            sort_keys=True, indent=2,
+                        ),
+                    )
+                style = render_selected_style_reference_context(
+                    {
+                        **frozen_authority,
+                        "style_profile_text": current_style_authority.get(
+                            "style_profile_text", ""
+                        ),
+                    },
+                    stage=stage,
+                )
+                self.db.add_run_event(
+                    run_id, "info", "style_reference_authority_bound",
+                    "Style/reference presence and identity are hash-bound to this stage.",
+                    stage=stage, metadata={
+                        "authority_sha256": frozen_authority["authority_sha256"],
+                        "selection_status": frozen_authority["selection_status"],
+                        "selection_scope": frozen_authority["selection_scope"],
+                        "style_profile_sha256": frozen_authority[
+                            "style_profile_sha256"
+                        ],
+                        "reference_evidence_status": frozen_authority[
+                            "reference_evidence_status"
+                        ],
+                    },
+                )
             context_packet = None
             if layered_context:
                 story_state = self.story_states.ensure(project.id, project.path).data
@@ -27152,11 +28437,17 @@ class WorkflowService:
                 }
                 advisory = (
                     model_constraints + "\n\nSkill instructions (advisory):\n"
-                    + model_skill_prompt + style
+                    + model_skill_prompt
                 )
+                current_contract = self._stage_contract_envelope(stage, user)
+                if style:
+                    current_contract = {
+                        **current_contract,
+                        "mandatory_style_reference_context": style,
+                    }
                 context_packet = build_stage_context_packet(
                     stage=stage,
-                    current_contract=self._stage_contract_envelope(stage, user),
+                    current_contract=current_contract,
                     constraints=source_constraints,
                     skill_prompt=skill_run.prompt,
                     explicit_invariants=explicit_invariants,
@@ -27173,6 +28464,33 @@ class WorkflowService:
                     output_reserve=preliminary_route_reserve,
                     advisory_max_chars=3000 if compact_input else 8000,
                 )
+                if style:
+                    style_context_receipt = {
+                        "schema": "StyleReferenceContextReceiptV1",
+                        "version": 1,
+                        "stage": stage,
+                        "visibility": "mandatory_current_contract",
+                        "selected_authority_sha256": frozen_authority[
+                            "authority_sha256"
+                        ],
+                        "style_profile_sha256": frozen_authority[
+                            "style_profile_sha256"
+                        ],
+                        "context_sha256": hashlib.sha256(
+                            style.encode("utf-8")
+                        ).hexdigest(),
+                    }
+                    style_context_receipt["receipt_sha256"] = canonical_sha256(
+                        style_context_receipt
+                    )
+                    atomic_write(
+                        run_path / "outputs"
+                        / f"style-reference-context-{stage}-v1.json",
+                        json.dumps(
+                            style_context_receipt, ensure_ascii=False,
+                            sort_keys=True, indent=2,
+                        ),
+                    )
                 coverage_issues = validate_rule_coverage(context_packet)
                 if coverage_issues:
                     raise ValueError(
@@ -27473,7 +28791,7 @@ class WorkflowService:
                     before_output_reserve = route_output_reserve
                     context_packet = build_stage_context_packet(
                         stage=stage,
-                        current_contract=self._stage_contract_envelope(stage, user),
+                        current_contract=current_contract,
                         constraints=source_constraints,
                         skill_prompt=skill_run.prompt,
                         explicit_invariants=explicit_invariants,
@@ -27574,6 +28892,93 @@ class WorkflowService:
                         "output_reserve": route_output_reserve,
                         "context_window": context_window,
                     })
+            style_receipt_path: Path | None = None
+
+            def bind_style_dispatch_input(
+                actual_system: str,
+                actual_user: str,
+                *,
+                attempt_index: int | None = None,
+                attempt_route: str | None = None,
+            ) -> None:
+                """Bind the exact current attempt, including Runtime retry edits."""
+
+                nonlocal style_receipt_path
+                if not style:
+                    return
+                style_receipt_path = (
+                    run_path / "outputs"
+                    / f"style-reference-context-{stage}-v1.json"
+                )
+                try:
+                    style_context_receipt = json.loads(
+                        style_receipt_path.read_text(encoding="utf-8")
+                    )
+                except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+                    raise ValueError(
+                        "style/reference context receipt is unreadable before dispatch"
+                    ) from exc
+                if (
+                    not isinstance(style_context_receipt, dict)
+                    or style_context_receipt.get("context_sha256")
+                    != hashlib.sha256(style.encode("utf-8")).hexdigest()
+                    or context_packet is not None
+                    and current_contract.get("mandatory_style_reference_context")
+                    != style
+                ):
+                    raise ValueError(
+                        "style/reference mandatory context was not preserved"
+                    )
+                finalized_style_receipt = {
+                    key: value for key, value in style_context_receipt.items()
+                    if key not in {
+                        "receipt_sha256", "contract_attempt_index",
+                        "contract_attempt_route",
+                    }
+                }
+                finalized_style_receipt.update({
+                    "context_packet_sha256": (
+                        context_packet_sha256(context_packet)
+                        if context_packet is not None else ""
+                    ),
+                    "model_system_sha256": hashlib.sha256(
+                        actual_system.encode("utf-8")
+                    ).hexdigest(),
+                    "model_input_sha256": hashlib.sha256(
+                        (actual_system + "\n" + actual_user).encode("utf-8")
+                    ).hexdigest(),
+                    "advisory_shedding_occurred": bool(
+                        context_packet is not None
+                        and context_packet.metrics.get(
+                            "advisory_shedding_occurred", False
+                        )
+                    ),
+                    "dispatch_binding_status": "exact",
+                })
+                if attempt_index is not None:
+                    finalized_style_receipt["contract_attempt_index"] = (
+                        attempt_index
+                    )
+                    finalized_style_receipt["contract_attempt_route"] = (
+                        attempt_route
+                    )
+                finalized_style_receipt["receipt_sha256"] = canonical_sha256(
+                    finalized_style_receipt
+                )
+                atomic_write(
+                    style_receipt_path,
+                    json.dumps(
+                        finalized_style_receipt, ensure_ascii=False,
+                        sort_keys=True, indent=2,
+                    ),
+                )
+
+            if style:
+                # Bind the post-capacity base request. Structured Contract
+                # Runtime retries rebind this receipt again immediately before
+                # each actual dispatch with their regenerated system/finding
+                # input, so the accepted attempt remains the durable value.
+                bind_style_dispatch_input(system, user)
             if not layered_context and route_capacity_guard and context_window:
                 pressure = classify_input_pressure(
                     full_input_tokens=estimated_input_tokens,
@@ -27850,6 +29255,12 @@ class WorkflowService:
                                     "contract_name": execution_spec.contract_name,
                                 },
                             )
+                        bind_style_dispatch_input(
+                            attempt_system,
+                            attempt_user,
+                            attempt_index=attempt.attempt_index,
+                            attempt_route=attempt.route,
+                        )
                         return await dispatch_explicit_model_route(
                             self.gateway, attempt.route,
                             role=attempt_role, system=attempt_system,
@@ -27888,6 +29299,19 @@ class WorkflowService:
                     )
                     result.receipt.setdefault(
                         "contract_validation_stage", "local_semantics",
+                    )
+                    result.receipt["actual_model_system_sha256"] = (
+                        contract_runtime.accepted_system_sha256
+                    )
+                    result.receipt["actual_model_user_sha256"] = (
+                        contract_runtime.accepted_user_sha256
+                    )
+                    result.receipt["actual_model_input_sha256"] = (
+                        contract_runtime.accepted_input_sha256
+                    )
+                    result.receipt["actual_context_packet_sha256"] = (
+                        context_packet_sha256(context_packet)
+                        if context_packet is not None else ""
                     )
                     selected_route = contract_runtime.attempt.route
                 else:

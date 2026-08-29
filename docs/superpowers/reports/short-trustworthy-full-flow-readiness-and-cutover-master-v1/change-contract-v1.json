@@ -1,0 +1,76 @@
+{
+  "schema": "ShortTrustworthyFullFlowChangeContractV1",
+  "version": 1,
+  "actual_start_head": "ed8e6cc56f2d25fdd330252a0bd9986b6f3128c1",
+  "branch": "r1-ptr3/planning-repair-finding-propagation-20260817",
+  "change_class": "systemic_model_output_boundary_and_cross_stage_authority_closure",
+  "review_level": "L3",
+  "scope": {
+    "planning": [
+      "typed fail-closed PlanningSemanticDraftV2 validation findings",
+      "bounded same-contract finding propagation",
+      "deterministic Runtime-owned packet and document closure"
+    ],
+    "draft": [
+      "exact local ownership for actionable mixed-script findings",
+      "bounded paragraph-local repair with byte preservation outside the owned unit",
+      "typed escalation or fail-close when ownership is ambiguous"
+    ],
+    "style_reference": [
+      "deterministic selected-style/reference identity",
+      "planning-to-final-review provenance continuity",
+      "evidence-bounded fidelity claims"
+    ]
+  },
+  "protected": [
+    "Hybrid model-visible augmentation remains retired",
+    "Selective Replacement remains retired",
+    "SkillGate -> SkillPromptCompactor -> Planning V1 remains the production Skill path",
+    "Prompt, route/model, retry/fallback, output budget, Canon, StoryState and READY authority are not weakened",
+    "no credentials, provider clients, network, model or paid calls"
+  ],
+  "acceptance": {
+    "planning": [
+      "typed valid and invalid cases",
+      "positive propagation and negative stop conditions",
+      "bounded deterministic replay",
+      "missing target, cycle, duplicate, ordering and closure cases where supported"
+    ],
+    "draft": [
+      "one local defect",
+      "multiple independent local defects",
+      "ambiguous ownership fail-close",
+      "wider typed escalation",
+      "unaffected bytes and provenance preserved",
+      "deterministic replay"
+    ],
+    "style_reference": [
+      "identity and provenance exact",
+      "planning, draft, polish and final_review continuity",
+      "unsupported imitation/equivalence claims forbidden",
+      "deterministic verification"
+    ],
+    "systemic": [
+      "six valid variants across four topologies",
+      "two unseen wrappers",
+      "two invalid outputs",
+      "two capacity or transport faults",
+      "complete offline short flows at 13K, 20K and 30K",
+      "fresh private hash-only current-project snapshot",
+      "sanitized isomorphic fixture",
+      "focused, related and full offline suites",
+      "Strict L3, privacy, determinism, production isolation and SHA manifest"
+    ]
+  },
+  "rollback": "Revert only the gate's narrow implementation and evidence commits; no history rewrite.",
+  "external_actions": {
+    "credential_lookup": 0,
+    "provider_client_creation": 0,
+    "http_network": 0,
+    "model_calls": 0,
+    "paid_calls": 0,
+    "real_sample_execution": false,
+    "full_short_execution": false,
+    "real_execution_authorization": false
+  }
+}

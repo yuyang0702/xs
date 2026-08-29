@@ -2238,3 +2238,48 @@ binding, or alternate storage inside the worktree fails closed. An ancestor is
 never equivalent to the current HEAD. The materializer creates no campaign
 permission, JIT signed approval, nonce, credential lookup, Provider client,
 network call, model call, paid call, production cutover, or Full Short run.
+
+## Trustworthy Full Short offline closure contracts
+
+The current Short Planning semantic boundary keeps syntax recovery separate
+from strict Pydantic domain authority. A malformed object that contains a
+canonical Planning root is retained long enough to produce bounded,
+value-free `PlanningSemanticFindingV1` records. Those records are
+tamper-evident, hash-bound to the same Runtime authority, and may be rendered
+only into the next already-bounded contract attempt. Unknown root fields are
+not silently treated as descriptive packet metadata. Runtime-owned formal
+event and Skill-source identities are reduced through
+`PlanningGlobalClosureReceiptV1`; duplicate nodes or edges, missing targets,
+unsupported cross-kind edges, and cycles fail closed. Planning adaptation also
+has a persisted, non-resetting total transition bound so latent findings cannot
+move indefinitely between otherwise accepted candidates.
+
+An actionable mixed-script Draft finding first enters the closed
+`draft_local_repair_contract`. Runtime binds every exact occurrence to one
+immutable paragraph unit and dispatches those units independently in
+deterministic source order. Each accepted unit is revalidated before a
+hash-bound checkpoint is written; resume reuses only exact accepted units and
+does not replay them when a later sibling fails or the run is cancelled.
+Runtime reconstructs the complete Draft from the frozen source plus all
+accepted units and proves that bytes outside the units are unchanged.
+Ambiguous, stale, overlapping, incomplete, newly invalid, or still-invalid
+local repairs fail closed or emit an explicit `owned_segment_rebuild`
+escalation within the existing bounded segment scope. They never authorize a
+manuscript-wide rewrite.
+
+When a project explicitly selects a style profile or confirmed reference
+group, the run freezes `SelectedStyleReferenceProvenanceV1`. Planning receives
+identity only; Draft, Polish, and Final Review receive the same hash-bound
+derived profile when available. A missing or explicitly unselected profile is
+also a comparable frozen state. Selected style context is mandatory contract
+input and survives advisory-context shedding; audit-only reference, group,
+source, and version identifiers remain outside model-visible context.
+Confirmed quality references remain identity-only manual scoring calibration
+and their raw manuscripts are not routine model inputs. Final Review records a
+bounded `FinalReviewStyleReferenceReceiptV1` whose typed claim is only
+`uses_selected_style_guidance`, bound to the actual reviewed model-input hash;
+it explicitly does not prove fidelity equivalence. Exact imitation, author
+equivalence, same-pen claims, and unsupported stylistic equivalence are
+rejected. A changed live selection fails before the next model dispatch. These
+offline contracts do not enable Hybrid, Planning V2 cutover, real Provider
+access, or Full Short execution authorization.

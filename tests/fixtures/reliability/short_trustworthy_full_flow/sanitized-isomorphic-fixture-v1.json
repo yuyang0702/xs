@@ -1,0 +1,38 @@
+{
+  "schema": "ShortTrustworthySanitizedIsomorphicFixtureV1",
+  "version": 1,
+  "classification": "synthetic_non_private",
+  "planning": {
+    "formal_events": ["EV-00000001", "EV-00000002", "EV-00000003"],
+    "dependency_edges": [
+      ["EV-00000001", "EV-00000002", "prerequisite"],
+      ["EV-00000002", "EV-00000003", "prerequisite"]
+    ],
+    "expected_closure_order": ["EV-00000001", "EV-00000002", "EV-00000003"],
+    "typed_failure_cases": [
+      "strict_integer_required",
+      "extra_field_forbidden",
+      "required_field_missing"
+    ]
+  },
+  "draft": {
+    "local_units": 2,
+    "independent_findings": 2,
+    "unowned_byte_preservation_required": true,
+    "ambiguous_ownership": "fail_closed",
+    "wide_repair": "typed_owned_segment_rebuild"
+  },
+  "style_reference": {
+    "selection": "synthetic_derived_profile",
+    "planning_visibility": "identity_only",
+    "draft_polish_final_review_visibility": "profile_and_identity",
+    "quality_reference_visibility": "identity_only_manual_calibration",
+    "allowed_claim": "uses_selected_style_guidance",
+    "forbidden_claims": [
+      "exact_imitation",
+      "author_equivalence",
+      "unsupported_stylistic_equivalence"
+    ]
+  },
+  "external_actions": 0
+}

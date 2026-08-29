@@ -18,7 +18,10 @@ from novel_flywheel.context_policy import (
     classify_input_pressure,
     estimate_input_tokens,
 )
-from novel_flywheel.contract_runtime import ContractBusinessOutputIncompleteError
+from novel_flywheel.contract_runtime import (
+    ContractBusinessOutputIncompleteError,
+    ExecutableContractSpec,
+)
 from novel_flywheel.execution_manifest import (
     bind_previous_exit_hashes,
     execution_manifest_payload,
@@ -67,6 +70,9 @@ from novel_flywheel.planning_recovery import (
     write_planning_recovery,
 )
 from novel_flywheel.planning_semantics import (
+    PlanningSemanticDraftV2,
+    normalize_planning_semantic_v2_payload,
+    planning_semantic_schema_v2,
     planning_semantic_packet_ownership_v2,
 )
 from novel_flywheel.prompts import IMMUTABLE_RECEIPT_SYSTEM
@@ -85,6 +91,7 @@ from novel_flywheel.scene_continuity import LocationRef
 from novel_flywheel.skills import SkillGate, SkillScanner
 from novel_flywheel.story_state import StoryStateStore
 from novel_flywheel.storage import ProjectSnapshot, atomic_write
+from novel_flywheel.structured_artifacts import StructuredArtifactContract
 from novel_flywheel.workflows import (
     ContextCapacityPreflightError,
     DraftReceiptProtocolError,
@@ -114,7 +121,7 @@ def planning_semantic_body_from_prompt(prompt: str) -> dict:
     if match is None:
         raise AssertionError("planning semantic prompt did not declare segment count")
     segment_count = int(match.group(1))
-    event_catalog = json.loads(
+    event_catalog, _end = json.JSONDecoder().raw_decode(
         prompt.split("FORMAL EVENT CATALOG:\n", 1)[1]
     )
     ownership = planning_semantic_packet_ownership_v2(
@@ -2727,6 +2734,7 @@ async def test_ir_first_canary_reaches_complete_formal_manuscript(tmp_path) -> N
     class IrFirstGateway(FakeGateway):
         def __init__(self) -> None:
             super().__init__()
+            self.planning_calls: list[str] = []
             self.responses = iter([
                 "# Draft\nRough story.",
                 json.dumps({"score": 86, "hard_fail": False, "issues": ["tighten prose"]}),
@@ -2740,6 +2748,15 @@ async def test_ir_first_canary_reaches_complete_formal_manuscript(tmp_path) -> N
             if "IR_FIRST_SHORT_PLANNING_V2" in user:
                 self.roles.append(role)
                 self.systems.append(system)
+                self.planning_calls.append(user)
+                if len(self.planning_calls) == 1:
+                    return ModelResult(json.dumps({
+                        "version": 2,
+                        "initial_state": (
+                            "The investigator enters the locked carriage."
+                        ),
+                        "segments": [],
+                    }), {"role": role, "model_name": f"fake-{role}"})
                 return ModelResult(json.dumps({
                     "version": 2,
                     "initial_state": "The investigator enters the locked carriage.",
@@ -2849,12 +2866,22 @@ async def test_ir_first_canary_reaches_complete_formal_manuscript(tmp_path) -> N
     run_path = project.path / "runs" / result["id"]
 
     assert result["status"] == "completed"
+    assert len(gateway.planning_calls) == 2
+    assert "collection_too_short" in gateway.planning_calls[1]
     assert (run_path / "outputs" / "planning-semantic-v2.json").is_file()
     assert (run_path / "outputs" / "planning-exit-topology-v1.json").is_file()
     assert (project.path / "manuscript" / "story.md").read_text(
         encoding="utf-8",
     ) == "# Final Story\nHuman, polished prose."
-    assert db.get_sealed_generation_unit(result["id"], "draft_segment", "1")
+    draft_unit = db.get_sealed_generation_unit(
+        result["id"], "draft_segment", "1",
+    )
+    assert draft_unit
+    assert draft_unit["dependencies"]
+    execution_index = json.loads((
+        run_path / "outputs" / "short-execution-index.json"
+    ).read_text(encoding="utf-8"))
+    assert execution_index["status"] == "ready"
     assert any(
         item["event_type"] == "planning_ir_first_compiled"
         for item in db.list_run_events(result["id"])
@@ -3397,13 +3424,36 @@ async def test_draft_uses_style_profile_only_when_project_enables_it(tmp_path) -
     make_prompt_skills(skill_root)
     gateway = FakeGateway()
 
-    await WorkflowService(
+    result = await WorkflowService(
         db, store, gateway, SkillGate(db, SkillScanner([skill_root])),
     ).run_short(project.id, use_crewai=False)
 
     draft_system = gateway.systems[gateway.roles.index("draft")]
     assert "PROJECT STYLE PROFILE" in draft_system
     assert "动作推动情绪" in draft_system
+    for stage in ("planning", "draft", "polish", "final_review"):
+        stage_systems = [
+            system for role, system in zip(gateway.roles, gateway.systems)
+            if role == stage
+        ]
+        assert stage_systems
+        assert all(
+            "SELECTED STYLE/REFERENCE PROVENANCE" in system
+            for system in stage_systems
+        )
+    planning_system = gateway.systems[gateway.roles.index("planning")]
+    assert "动作推动情绪" not in planning_system
+    polish_system = gateway.systems[gateway.roles.index("polish")]
+    final_review_system = gateway.systems[gateway.roles.index("final_review")]
+    assert "动作推动情绪" in polish_system
+    assert "动作推动情绪" in final_review_system
+    assert "UNSUPPORTED_FIDELITY_CLAIMS_FORBIDDEN" in final_review_system
+    authority = json.loads((
+        project.path / "runs" / result["id"] / "outputs"
+        / "style-reference-authority-v1.json"
+    ).read_text(encoding="utf-8"))
+    assert "style_profile_text" not in authority
+    assert len(authority["authority_sha256"]) == 64
 
 
 @pytest.mark.asyncio
@@ -10997,16 +11047,23 @@ async def test_bounded_protocol_stage_sheds_only_advisory_context_before_split(
         extra_headers={},
     )
     db.save_model(
-        model_id="review-model", provider_id="provider", display_name="Review",
-        model_name="review-model", context_window=32_768,
+        model_id="planning-model", provider_id="provider", display_name="Planning",
+        model_name="planning-model", context_window=32_768,
     )
-    db.save_role_binding("review", "provider", "review-model", None, None)
+    db.save_role_binding("planning", "provider", "planning-model", None, None)
     store = ProjectStore(db, tmp_path / "workspace")
     project = store.create(ProjectCreate(
         title="Advisory shed", mode="short", genre="suspense",
         premise="A protocol retry sits just above the safe context line.",
         target_words=5000,
     ))
+    project.metadata["style_sample_scope"] = "draft_and_polish"
+    (project.path / "project.json").write_text(
+        json.dumps(project.metadata, ensure_ascii=False), encoding="utf-8",
+    )
+    (project.path / "style-profile.md").write_text(
+        "# 风格\n\n动作推动情绪，不做抽象总结。", encoding="utf-8",
+    )
     skill_root = tmp_path / "skills"
     make_prompt_skills(skill_root)
     gateway = RecordingGateway(["{\"status\":\"complete\"}"])
@@ -11025,7 +11082,7 @@ async def test_bounded_protocol_stage_sheds_only_advisory_context_before_split(
     )
 
     result = await service._stage(
-        "advisory-shed", run_path, project, "review",
+        "advisory-shed", run_path, project, "planning",
         "MUST preserve every confirmed story invariant.",
         "Return one bounded protocol object.", allow_tools=False,
         route_capacity_guard=True, bounded_protocol_output=True,
@@ -11035,6 +11092,15 @@ async def test_bounded_protocol_stage_sheds_only_advisory_context_before_split(
     assert result == '{"status":"complete"}'
     assert len(gateway.calls) == 1
     assert "[advisory]" not in gateway.calls[0]["system"]
+    assert "SELECTED STYLE/REFERENCE PROVENANCE" in gateway.calls[0]["system"]
+    receipt = json.loads((
+        run_path / "outputs" / "style-reference-context-planning-v1.json"
+    ).read_text(encoding="utf-8"))
+    assert receipt["dispatch_binding_status"] == "exact"
+    assert receipt["advisory_shedding_occurred"] is True
+    assert receipt["model_system_sha256"] == hashlib.sha256(
+        gateway.calls[0]["system"].encode("utf-8")
+    ).hexdigest()
     event = next(
         item for item in db.list_run_events("advisory-shed")
         if item["event_type"] == "stage_advisory_context_shed"
@@ -11043,6 +11109,101 @@ async def test_bounded_protocol_stage_sheds_only_advisory_context_before_split(
     assert event["metadata"]["after_required_tokens"] <= (
         event["metadata"]["before_required_tokens"]
     )
+
+
+@pytest.mark.asyncio
+async def test_style_receipt_rebinds_to_actual_protocol_retry_input(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    db.save_provider(
+        provider_id="provider", name="Provider", protocol="anthropic",
+        base_url="https://example.test", auth_type="bearer",
+        timeout_seconds=180, extra_headers={},
+    )
+    db.save_model(
+        model_id="planning-model", provider_id="provider",
+        display_name="Planning", model_name="planning-model",
+        context_window=32_768,
+    )
+    db.save_role_binding("planning", "provider", "planning-model", None, None)
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Style retry binding", mode="short", genre="suspense",
+        premise="A protocol retry must retain exact style evidence.",
+        target_words=5000,
+    ))
+    project.metadata["style_sample_scope"] = "draft_and_polish"
+    (project.path / "project.json").write_text(
+        json.dumps(project.metadata, ensure_ascii=False), encoding="utf-8",
+    )
+    (project.path / "style-profile.md").write_text(
+        "# 风格\n\n动作推动情绪，不做抽象总结。", encoding="utf-8",
+    )
+    skill_root = tmp_path / "skills"
+    make_prompt_skills(skill_root)
+    valid = {
+        "version": 2,
+        "initial_state": "雨夜里所有人仍然在站台等待最后一班车",
+        "segments": [{
+            "kind": "terminal", "segment": 1, "title": "最后一班车",
+            "events": [{
+                "formal_event_ordinal": 1,
+                "narrative": "林澈查清车票去向并决定留下足以公开的证据",
+            }],
+        }],
+    }
+    gateway = RecordingGateway(["not-json", json.dumps(valid, ensure_ascii=False)])
+    service = WorkflowService(
+        db, store, gateway, SkillGate(db, SkillScanner([skill_root])),
+    )
+    db.create_run("style-retry", project.id, "short-story", status="running")
+    run_path = project.path / "runs" / "style-retry"
+    (run_path / "outputs").mkdir(parents=True)
+    (run_path / "receipts").mkdir()
+    spec = ExecutableContractSpec(
+        contract_name="planning_semantic_v2",
+        structured_contract=StructuredArtifactContract(
+            name="planning_semantic_v2", version=2,
+            schema=planning_semantic_schema_v2(),
+            runtime_authority={"repair_target_identity_sha256": "a" * 64},
+        ),
+        semantic_normalizer=normalize_planning_semantic_v2_payload,
+        domain_validator=PlanningSemanticDraftV2.model_validate,
+        retry_domain_failures=True,
+    )
+
+    result = await service._stage(
+        "style-retry", run_path, project, "planning",
+        "MUST preserve the confirmed story authority.",
+        "Return one canonical PlanningSemanticDraftV2 object.",
+        allow_tools=False, execution_spec=spec,
+    )
+
+    assert json.loads(result)["version"] == 2
+    assert len(gateway.calls) == 2
+    assert gateway.calls[0]["system"] != gateway.calls[1]["system"]
+    receipt = json.loads((
+        run_path / "outputs" / "style-reference-context-planning-v1.json"
+    ).read_text(encoding="utf-8"))
+    assert receipt["contract_attempt_index"] == 2
+    assert receipt["contract_attempt_route"] == "primary"
+    assert receipt["model_system_sha256"] == hashlib.sha256(
+        gateway.calls[1]["system"].encode("utf-8")
+    ).hexdigest()
+    assert receipt["model_input_sha256"] == hashlib.sha256(
+        (gateway.calls[1]["system"] + "\n" + gateway.calls[1]["user"]).encode(
+            "utf-8"
+        )
+    ).hexdigest()
+    assert result.receipt["actual_model_system_sha256"] == receipt[
+        "model_system_sha256"
+    ]
+    assert result.receipt["actual_model_input_sha256"] == receipt[
+        "model_input_sha256"
+    ]
+    assert result.receipt["actual_context_packet_sha256"] == receipt[
+        "context_packet_sha256"
+    ]
 
 
 @pytest.mark.parametrize("provider_error", [
@@ -13568,11 +13729,13 @@ async def test_planning_second_monotonic_repair_recovers_after_no_progress_candi
     class ContractRetryGateway:
         def __init__(self) -> None:
             self.calls = 0
+            self.users: list[str] = []
 
         async def complete_primary(
             self, role, system, user, max_output_tokens=None,
         ):
             self.calls += 1
+            self.users.append(user)
             payload = (
                 {
                     "version": 2,
@@ -13625,7 +13788,10 @@ async def test_planning_second_monotonic_repair_recovers_after_no_progress_candi
         json.loads(path.read_text(encoding="utf-8"))["method"]
         for path in audit_files
     }
-    assert {"rejected", "exact_json"} <= audit_methods
+    # Syntax conversion remains exact; the separate domain boundary emits the
+    # typed, value-free repair finding instead of mislabeling syntax recovery.
+    assert audit_methods == {"exact_json"}
+    assert "collection_too_short" in gateway.users[1]
 
 
 @pytest.mark.asyncio

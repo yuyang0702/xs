@@ -482,6 +482,87 @@ def test_narrative_outline_events_falls_back_per_nested_sparse_chapter() -> None
     ]
 
 
+def test_narrative_outline_events_preserve_h5_child_event_ownership() -> None:
+    content = (
+        "# 大纲\n\n## 章节规划\n### 第一幕\n#### 第一章\n"
+        "##### 事件甲\n人物采取行动。\n##### 事件乙\n行动产生结果。\n"
+    )
+
+    contracts = narrative_outline_event_contracts(content)
+
+    assert [item["label"] for item in contracts] == ["事件甲", "事件乙"]
+    assert [item["source_order"] for item in contracts] == [4, 5]
+    assert len({item["id"] for item in contracts}) == 2
+    assert [item["order"] for item in contracts] == [1, 2]
+    assert narrative_outline_event_contracts(content) == contracts
+    projected = narrative_outline_events(outline_events(content))
+    assert [item["label"] for item in projected] == ["事件甲", "事件乙"]
+    assert [item["source_level"] for item in projected] == [5, 5]
+    assert [item["id"].upper() for item in projected] == [
+        item["id"] for item in contracts
+    ]
+
+
+def test_narrative_outline_events_preserve_h6_child_event_ownership() -> None:
+    content = (
+        "# Outline\n\n## Story Structure\n### Act I\n#### Chapter 1\n"
+        "##### Scene 1\n###### Discovery\nA clue is found.\n"
+        "###### Decision\nThe protagonist commits.\n"
+    )
+
+    contracts = narrative_outline_event_contracts(content)
+
+    assert [item["label"] for item in contracts] == ["Discovery", "Decision"]
+    assert [item["source_order"] for item in contracts] == [5, 6]
+    assert len({item["id"] for item in contracts}) == 2
+    assert [item["order"] for item in contracts] == [1, 2]
+    assert narrative_outline_event_contracts(content) == contracts
+    projected = narrative_outline_events(outline_events(content))
+    assert [item["label"] for item in projected] == ["Discovery", "Decision"]
+    assert [item["source_level"] for item in projected] == [6, 6]
+    assert [item["id"].upper() for item in projected] == [
+        item["id"] for item in contracts
+    ]
+
+
+def test_narrative_outline_events_use_only_deepest_sparse_generic_container() -> None:
+    content = (
+        "# Outline\n\n## Story Structure\n### Act I\n"
+        "#### Chapter 1\nOnly prose.\n"
+    )
+
+    contracts = narrative_outline_event_contracts(content)
+    projected = narrative_outline_events(outline_events(content))
+
+    assert [item["label"] for item in contracts] == ["Chapter 1"]
+    assert [item["label"] for item in projected] == ["Chapter 1"]
+    assert [item["id"].upper() for item in projected] == [
+        item["id"] for item in contracts
+    ]
+
+
+@pytest.mark.parametrize("source_level", [True, 1, 7, "5", None, [], {}])
+def test_narrative_outline_events_reject_malformed_source_level(source_level) -> None:
+    event = {
+        "id": "ev-example", "order": 1, "label": "Discovery",
+        "section": "Story Structure", "source_level": source_level,
+    }
+
+    with pytest.raises(ValueError, match="source_level is invalid"):
+        narrative_outline_events([event])
+
+
+def test_narrative_outline_events_reject_source_level_alias_conflict() -> None:
+    event = {
+        "id": "ev-example", "order": 1, "label": "Discovery",
+        "section": "Story Structure", "_source_level": 5,
+        "source_level": "bogus",
+    }
+
+    with pytest.raises(ValueError, match="source_level aliases conflict"):
+        narrative_outline_events([event])
+
+
 def test_narrative_outline_events_does_not_require_act_before_titled_chapter() -> None:
     events = outline_events(
         "# 大纲\n\n## 章节规划\n"
@@ -515,7 +596,7 @@ def test_narrative_outline_event_contracts_exclude_eight_production_style_chapte
     assert [item["label"] for item in contracts] == event_labels
     assert all(not item["label"].startswith("第") for item in contracts)
     assert [item["id"] for item in contracts] == [
-        original_ids[label] for label in event_labels
+        original_ids[label].upper() for label in event_labels
     ]
     changed = narrative_outline_event_contracts(
         content.replace("产生可核对结果", "产生更具体且可核对的结果"),
