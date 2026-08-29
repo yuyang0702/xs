@@ -1,0 +1,49 @@
+{
+  "raw_literary_content_persisted_here": false,
+  "rows": [
+    {
+      "artifact_file_sha256": "c56feb1925276ce41304ba6679f54276671087966eba8fa2b698a7d8d7deb3e2",
+      "artifact_value_sha256": "0380fd21effbead85f0f6199ce0b3c80c54b029cd2ec0e9507e21572b48e165a",
+      "sample_id": "sv3hs-0901efa55a2b11f3456f",
+      "sample_lock_sha256": "edd6d501eec1c102ad30fcb5f4aa56ec0aa9ae56b1516241d58e79d72d87470c",
+      "sample_slot": "CONTROL_1"
+    },
+    {
+      "artifact_file_sha256": "bab4a61c9cc76fc67cada0b41697a9056c814d5a1c0dd029ef62866146546b03",
+      "artifact_value_sha256": "4ad923f308f9ed303904e17eb5e098f9308f058c5c3a6ed6e54602c6bef35889",
+      "sample_id": "sv3hs-63c2c291b989e2a3e48c",
+      "sample_lock_sha256": "e5c180c915d22d176e54da147b096e741259e2a304dec13c561ae81bd01e18e9",
+      "sample_slot": "HYBRID_1"
+    },
+    {
+      "artifact_file_sha256": "c40842302a61122cc87514103966ac6b8d46a9374eb4df44a896da4a12834dca",
+      "artifact_value_sha256": "7ebc963f1e69e736ef9c010a51927a87f2bb48f0f8de5a84d29a445e4e92f6f5",
+      "sample_id": "sv3hs-7725333044fdaae559a2",
+      "sample_lock_sha256": "1adfc2826f129c31d67a71cb424269c1cdd79c37f2f006d2d39f1352f2e7632a",
+      "sample_slot": "CONTROL_2"
+    },
+    {
+      "artifact_file_sha256": "05947e8ad7cc2df0cf3981729c057aab0f3a93fbf905d15cb63a42cd15d6ef2f",
+      "artifact_value_sha256": "b5aaea5b24a13062b5828583fc82d5a83cd387f53889d65e5d76ccfb3b79f22c",
+      "sample_id": "sv3hs-aae6112339a439d43750",
+      "sample_lock_sha256": "a157b27243c6e8b178981c65f3fce9864ce8cf18361ed7df0b8a6c72be210c57",
+      "sample_slot": "HYBRID_2"
+    },
+    {
+      "artifact_file_sha256": "8d53e96f68a14f1fa9fabbc8d17ea7d554660821094f1b6f85bb4adebcaf3bfe",
+      "artifact_value_sha256": "9225354f663602debd893f94fdb782e59c13b161479082f2d541b7ed745714ba",
+      "sample_id": "sv3hs-8f00799be335c4ccaf76",
+      "sample_lock_sha256": "9aa81b929e3d6564d8ab68216f8dfee3566eda4da66c79f089c3ff483380328b",
+      "sample_slot": "CONTROL_3"
+    },
+    {
+      "artifact_file_sha256": "890add645050ff6247af4a5ea316ca941cfd9fd3b26924f329386dfa57047c67",
+      "artifact_value_sha256": "44beacae709f903f8c3ff1a14f0c9a2b2f4849b1eeee768c314cb634dcf22f00",
+      "sample_id": "sv3hs-84e695ee4e02665555cf",
+      "sample_lock_sha256": "031791507f9b4c2cd70a9f3af123d6df5a1e7194e7483618d630fe5065b11b44",
+      "sample_slot": "HYBRID_3"
+    }
+  ],
+  "schema": "SkillV3HybridArtifactBindingV1",
+  "status": "EXACT"
+}

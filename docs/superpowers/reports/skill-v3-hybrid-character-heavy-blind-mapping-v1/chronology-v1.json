@@ -1,0 +1,8 @@
+{
+  "campaign_completed_before_bundle": true,
+  "mapping_frozen_before_evaluator_1": true,
+  "mapping_frozen_before_evaluator_2": true,
+  "mapping_reveal_allowed_only_after_two_freezes": true,
+  "schema": "SkillV3HybridBlindChronologyV1",
+  "status": "PRE_EVALUATION"
+}

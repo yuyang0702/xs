@@ -1,0 +1,62 @@
+{
+  "arm_identity_visible": false,
+  "campaign_metadata_visible": false,
+  "pair_count": 3,
+  "pairs": [
+    {
+      "anonymous_pair_id": "hybrid-blind-pair-1",
+      "position_a_anonymous_sample_id": "hybrid-blind-1a8467e97ae2c101",
+      "position_b_anonymous_sample_id": "hybrid-blind-1a34e6e6bc65dc78",
+      "samples": [
+        {
+          "anonymous_sample_id": "hybrid-blind-1a8467e97ae2c101",
+          "artifact_path": "artifacts/hybrid-blind-1a8467e97ae2c101.json",
+          "artifact_sha256": "e231ff8acf4fbcae86061a2fee68a64d1f07be741da65f1007c4bd307eb2b522"
+        },
+        {
+          "anonymous_sample_id": "hybrid-blind-1a34e6e6bc65dc78",
+          "artifact_path": "artifacts/hybrid-blind-1a34e6e6bc65dc78.json",
+          "artifact_sha256": "74ad6428114190f0a74285fbaa0ecabac0917c7d14f9655b2b6459ec70e9977f"
+        }
+      ]
+    },
+    {
+      "anonymous_pair_id": "hybrid-blind-pair-2",
+      "position_a_anonymous_sample_id": "hybrid-blind-b83053250bb32e7e",
+      "position_b_anonymous_sample_id": "hybrid-blind-1c67cc3036d89865",
+      "samples": [
+        {
+          "anonymous_sample_id": "hybrid-blind-b83053250bb32e7e",
+          "artifact_path": "artifacts/hybrid-blind-b83053250bb32e7e.json",
+          "artifact_sha256": "8004316ec0d106636e4f76d3af945f7adeeceea7cdce741d954fd25596fdae8b"
+        },
+        {
+          "anonymous_sample_id": "hybrid-blind-1c67cc3036d89865",
+          "artifact_path": "artifacts/hybrid-blind-1c67cc3036d89865.json",
+          "artifact_sha256": "f0af797cd1fb4b5ca135802217e262dfad33835f25d330a65a6b86963cfa12f7"
+        }
+      ]
+    },
+    {
+      "anonymous_pair_id": "hybrid-blind-pair-3",
+      "position_a_anonymous_sample_id": "hybrid-blind-075a07f468bb2453",
+      "position_b_anonymous_sample_id": "hybrid-blind-fb517bb0b9a65546",
+      "samples": [
+        {
+          "anonymous_sample_id": "hybrid-blind-075a07f468bb2453",
+          "artifact_path": "artifacts/hybrid-blind-075a07f468bb2453.json",
+          "artifact_sha256": "e35bb8ee16ef07e589f71cb4c357379e83f5fa8ca574282fb221c52a356e14af"
+        },
+        {
+          "anonymous_sample_id": "hybrid-blind-fb517bb0b9a65546",
+          "artifact_path": "artifacts/hybrid-blind-fb517bb0b9a65546.json",
+          "artifact_sha256": "d62272efa90f14528fb56ec7180fc3f44c70fbc975ac4dcdcb64b6ce14d4effa"
+        }
+      ]
+    }
+  ],
+  "sample_count": 6,
+  "schema": "SkillV3HybridAnonymousBlindBatchV1",
+  "skill_context_visible": false,
+  "status": "READY"
+}

@@ -1,0 +1,20 @@
+{
+  "CRITICALITY_UNCHANGED": "YES",
+  "MAPPING_HIDDEN_UNTIL_BLIND_FREEZE": "YES",
+  "REQUIRED_VOTE_SET_COMPLETE_BEFORE_REVEAL": "YES",
+  "RUBRIC_UNCHANGED": "YES",
+  "TWO_FRESH_BLIND_EVALUATORS_REQUIRED": "YES",
+  "bundle_excludes": [
+    "arm names",
+    "Skill SHA",
+    "route/provider/cost",
+    "approvals/nonces",
+    "implementation metadata",
+    "real sample IDs"
+  ],
+  "fresh_anonymous_evaluator_ids": 6,
+  "mapping_storage": "separate MAIN-only evidence",
+  "materialize_only_after": "all six future samples SEALED_VALID",
+  "scalar_literary_score": "FORBIDDEN",
+  "schema": "SkillV3HybridPilotBlindBundlePolicyV1"
+}

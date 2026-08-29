@@ -1,0 +1,34 @@
+{
+  "allowed_relations": [
+    "A_BETTER",
+    "B_BETTER",
+    "INCOMPARABLE",
+    "TIE"
+  ],
+  "allowed_roots": [
+    "docs/superpowers/reports/skill-v3-hybrid-character-heavy-blind-bundle-v1"
+  ],
+  "arm_identity_guess_forbidden": true,
+  "dimensions": [
+    "character_agency",
+    "causal_coherence",
+    "subtext_support",
+    "specificity",
+    "scene_pressure",
+    "setup_payoff_integrity",
+    "voice_readiness",
+    "anti_template_risk"
+  ],
+  "forbidden_roots": [
+    "docs/superpowers/reports/skill-v3-hybrid-character-heavy-blind-mapping-v1",
+    "docs/superpowers/reports/skill-v3-hybrid-character-heavy-blind-evaluation-e1-v1",
+    "docs/superpowers/reports/skill-v3-hybrid-character-heavy-blind-evaluation-e2-v1"
+  ],
+  "mapping_access_forbidden": true,
+  "required_evaluator_by_batch_votes": 3,
+  "required_fresh_context": true,
+  "required_independent_sample_judgments": 6,
+  "scalar_average_forbidden": true,
+  "schema": "SkillV3HybridBlindEvaluatorInstructionsV1",
+  "status": "SEALED"
+}

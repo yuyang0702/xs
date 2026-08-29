@@ -1,0 +1,78 @@
+{
+  "rows": [
+    {
+      "approval_id": "sv3h-jit-c6940bd2a6d37d5000c364fbfee029d8",
+      "approval_lifecycle_sha256": "3da771e9ca7f1b6a94f13c5ed55f600ccf5122a6c588e080f0729bc1912177df",
+      "artifact_file_sha256": "c56feb1925276ce41304ba6679f54276671087966eba8fa2b698a7d8d7deb3e2",
+      "experiment_arm": "CONTROL",
+      "nonce_id": "sv3n-7260d99a051818b1d685201a62c16f0d",
+      "nonce_receipt_sha256": "6a7198186fa1e0d72dfa01962fc392ca7eb37ed1eef14a054daeee01dcf7ccd4",
+      "sample_id": "sv3hs-0901efa55a2b11f3456f",
+      "sample_lock_sha256": "edd6d501eec1c102ad30fcb5f4aa56ec0aa9ae56b1516241d58e79d72d87470c",
+      "sample_slot": "CONTROL_1",
+      "signed_approval_sha256": "57b70897f1fb142351965031fee5ec43cf0b8a469f0f40b7f4d3cce7ea3129de"
+    },
+    {
+      "approval_id": "sv3h-jit-4cd5da7808628b159b18d73d42644e4d",
+      "approval_lifecycle_sha256": "8492524729b82b876535085183a613635663703105f6acc46eeec70c6f0cf7ef",
+      "artifact_file_sha256": "bab4a61c9cc76fc67cada0b41697a9056c814d5a1c0dd029ef62866146546b03",
+      "experiment_arm": "HYBRID",
+      "nonce_id": "sv3n-302e01be82fef0885d5d4ed7b1e8f02d",
+      "nonce_receipt_sha256": "e66985a3f68d78b9a13ce3fb04cd9962353649730e1958b65c4af05ec48c200d",
+      "sample_id": "sv3hs-63c2c291b989e2a3e48c",
+      "sample_lock_sha256": "e5c180c915d22d176e54da147b096e741259e2a304dec13c561ae81bd01e18e9",
+      "sample_slot": "HYBRID_1",
+      "signed_approval_sha256": "46fc1102198056f0fbafd51bd74c6dceeadc35abb90757d4a0c2cd65400e67d4"
+    },
+    {
+      "approval_id": "sv3h-jit-5aebbd5e73bd93ddd337cf385069086b",
+      "approval_lifecycle_sha256": "c414f87ec6d6049ba90fb2e1f7ed682cb882a6fc136d53dd768f086beb8678f8",
+      "artifact_file_sha256": "c40842302a61122cc87514103966ac6b8d46a9374eb4df44a896da4a12834dca",
+      "experiment_arm": "CONTROL",
+      "nonce_id": "sv3n-643f699d8fe76434f93e7c36257fa906",
+      "nonce_receipt_sha256": "20f98cdd9904ca8ca37701013373b5796e4175e42dceca1c12cc3fd47838a827",
+      "sample_id": "sv3hs-7725333044fdaae559a2",
+      "sample_lock_sha256": "1adfc2826f129c31d67a71cb424269c1cdd79c37f2f006d2d39f1352f2e7632a",
+      "sample_slot": "CONTROL_2",
+      "signed_approval_sha256": "2070d2b1225111c8ed052d5cdf5c930e7779fb17360504ba7993b1d2bb082909"
+    },
+    {
+      "approval_id": "sv3h-jit-5a30b58077b0ffb949bac858525fb028",
+      "approval_lifecycle_sha256": "f9b91f15e3e1ea996a2e1dfe0f778433d2b1bfbb4dbf33c354a162f9cbf67684",
+      "artifact_file_sha256": "05947e8ad7cc2df0cf3981729c057aab0f3a93fbf905d15cb63a42cd15d6ef2f",
+      "experiment_arm": "HYBRID",
+      "nonce_id": "sv3n-7233c5d5681a13bd4066bf8e17637bf7",
+      "nonce_receipt_sha256": "e9e53e8658cf78338d827ca998670c552ec92ab41b8878968caaf609832d3f35",
+      "sample_id": "sv3hs-aae6112339a439d43750",
+      "sample_lock_sha256": "a157b27243c6e8b178981c65f3fce9864ce8cf18361ed7df0b8a6c72be210c57",
+      "sample_slot": "HYBRID_2",
+      "signed_approval_sha256": "d084ecc09db0e9620bb78c431202788e041ef6c439191932939e4c59038b2ff4"
+    },
+    {
+      "approval_id": "sv3h-jit-bb72f42af95743697af6b35a01696c23",
+      "approval_lifecycle_sha256": "96d290442bc4c29e5696d290829504b4bc2a7dd5b3deb9939085672eba9b0a77",
+      "artifact_file_sha256": "8d53e96f68a14f1fa9fabbc8d17ea7d554660821094f1b6f85bb4adebcaf3bfe",
+      "experiment_arm": "CONTROL",
+      "nonce_id": "sv3n-22ed4312f4d412eb783eb30c60d23770",
+      "nonce_receipt_sha256": "2dd4325ea9d712cf0d7ca98593bc0f794fb0c54197ca63a76c1809d1273575da",
+      "sample_id": "sv3hs-8f00799be335c4ccaf76",
+      "sample_lock_sha256": "9aa81b929e3d6564d8ab68216f8dfee3566eda4da66c79f089c3ff483380328b",
+      "sample_slot": "CONTROL_3",
+      "signed_approval_sha256": "5b91c9825426c200807c9ba90b7050967f9e25566dda54b5bb019a5222315741"
+    },
+    {
+      "approval_id": "sv3h-jit-6d2f54b65f06ec33014f967f57ab95ff",
+      "approval_lifecycle_sha256": "542fd5fd112f1cb6202ea45ee51aaa9b5ec99df81191fb72239fcbdfbfd87065",
+      "artifact_file_sha256": "890add645050ff6247af4a5ea316ca941cfd9fd3b26924f329386dfa57047c67",
+      "experiment_arm": "HYBRID",
+      "nonce_id": "sv3n-3f9d60ef7a6eacef14eebf0d04671c78",
+      "nonce_receipt_sha256": "d07e407a2f566570f54d6d18be73f909ef11e60d0de368c6d94891ae7d548269",
+      "sample_id": "sv3hs-84e695ee4e02665555cf",
+      "sample_lock_sha256": "031791507f9b4c2cd70a9f3af123d6df5a1e7194e7483618d630fe5065b11b44",
+      "sample_slot": "HYBRID_3",
+      "signed_approval_sha256": "f351fe45da1924e48e2a6a60eb0d4dc007f1302574830e3164c0ce598ffc1a94"
+    }
+  ],
+  "schema": "SkillV3HybridSixSampleExecutionMatrixV1",
+  "status": "PASS"
+}

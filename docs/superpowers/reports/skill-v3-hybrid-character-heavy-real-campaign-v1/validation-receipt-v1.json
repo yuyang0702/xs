@@ -1,0 +1,11 @@
+{
+  "blockers": 0,
+  "external_actions_during_materialization": 0,
+  "focused": "5 passed, 1 skipped (pre-materialization)",
+  "full_suite": "3964 passed, 42 skipped, 6 xfailed, 55 historical failures, 81 historical errors; new owning-source regressions=0",
+  "related": "100 passed, 1 skipped; 1 historical fixed-hash failure; 9 historical baseline-gate errors",
+  "schema": "SkillV3HybridPostCampaignValidationReceiptV1",
+  "status": "PASS",
+  "strict_l3": "PASS; warnings=0; blockers=0",
+  "warnings": 0
+}

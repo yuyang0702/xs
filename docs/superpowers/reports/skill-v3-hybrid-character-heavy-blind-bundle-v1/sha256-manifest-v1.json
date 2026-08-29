@@ -1,0 +1,78 @@
+{
+  "definition_sha256": "fc4e3b922347df46674240221d281ae067e44e08a53235be402b99a276eccad0",
+  "entries": [
+    {
+      "bytes": 2723,
+      "path": "artifacts/hybrid-blind-075a07f468bb2453.json",
+      "sha256": "e35bb8ee16ef07e589f71cb4c357379e83f5fa8ca574282fb221c52a356e14af"
+    },
+    {
+      "bytes": 2044,
+      "path": "artifacts/hybrid-blind-1a34e6e6bc65dc78.json",
+      "sha256": "74ad6428114190f0a74285fbaa0ecabac0917c7d14f9655b2b6459ec70e9977f"
+    },
+    {
+      "bytes": 2736,
+      "path": "artifacts/hybrid-blind-1a8467e97ae2c101.json",
+      "sha256": "e231ff8acf4fbcae86061a2fee68a64d1f07be741da65f1007c4bd307eb2b522"
+    },
+    {
+      "bytes": 2465,
+      "path": "artifacts/hybrid-blind-1c67cc3036d89865.json",
+      "sha256": "f0af797cd1fb4b5ca135802217e262dfad33835f25d330a65a6b86963cfa12f7"
+    },
+    {
+      "bytes": 2209,
+      "path": "artifacts/hybrid-blind-b83053250bb32e7e.json",
+      "sha256": "8004316ec0d106636e4f76d3af945f7adeeceea7cdce741d954fd25596fdae8b"
+    },
+    {
+      "bytes": 2311,
+      "path": "artifacts/hybrid-blind-fb517bb0b9a65546.json",
+      "sha256": "d62272efa90f14528fb56ec7180fc3f44c70fbc975ac4dcdcb64b6ce14d4effa"
+    },
+    {
+      "bytes": 2489,
+      "path": "blind-batch-v1.json",
+      "sha256": "a331d8c19afc2121d313af97d99ee52026ee7be99c2f5185754d49cda85ddd3b"
+    },
+    {
+      "bytes": 1008,
+      "path": "evaluator-instructions-v1.json",
+      "sha256": "ae91f7a6ca7e542f4f28c659ce435c0af3124bdca87b3910e0b155f18b0d81e9"
+    },
+    {
+      "bytes": 5863,
+      "path": "judgment-template-v1.json",
+      "sha256": "048b983ea9ce8c0da881054eb0df19b8fbcec1ffb08462374b83ba1c08bc8b0a"
+    },
+    {
+      "bytes": 1248,
+      "path": "minimal-task-context-v1.json",
+      "sha256": "d86f8fa05bface1d0aa740a9214e936ad586908ca6d51e4d975e90acd05ddd3f"
+    },
+    {
+      "bytes": 387,
+      "path": "privacy-scan-v1.json",
+      "sha256": "cce5c5539e026ac8d561b058d10a909c0f63acb71d3d6aa0b99fa35069074b7c"
+    },
+    {
+      "bytes": 276,
+      "path": "README.md",
+      "sha256": "7466d3a43333f9ee774bb707a9285dca46f732c9e729ff4a49bfc3ce4d9cf4b8"
+    },
+    {
+      "bytes": 629,
+      "path": "sealed-blind-policy-v1.json",
+      "sha256": "072e58f62c410dd5e29f9020d5842b3aab3c6db2fe058da7d353f21ccd4c67e0"
+    },
+    {
+      "bytes": 1263,
+      "path": "sealed-literary-policy-v1.json",
+      "sha256": "af43cae3f0cf54bc311690e2d231f52eaacb2c13b1371b967e289f9e170824d3"
+    }
+  ],
+  "entry_count": 14,
+  "schema": "SkillV3HybridBlindBundleSha256ManifestV1",
+  "status": "EXACT"
+}

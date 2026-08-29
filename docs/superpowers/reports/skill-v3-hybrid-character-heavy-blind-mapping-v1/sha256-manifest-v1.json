@@ -1,0 +1,28 @@
+{
+  "definition_sha256": "2afe33fd59f313bb3620fa89b368513de82c39c57307f285d947bbbcbf6d5aa6",
+  "entries": [
+    {
+      "bytes": 270,
+      "path": "chronology-v1.json",
+      "sha256": "ee6aa7419e5c13a3cb5385d39b89e14dea655f49705fce914da6fc4ae5a75b1a"
+    },
+    {
+      "bytes": 510,
+      "path": "handoff-report-v1.md",
+      "sha256": "10facd0bfbdf2c068d39ad1b2dec2d2df06cc2f4808e38de0ab9159314b3e199"
+    },
+    {
+      "bytes": 134,
+      "path": "README.md",
+      "sha256": "27e6f178e0f659828ab8e3c60258366fe5b7e85a08e426eefb7b198976aa4684"
+    },
+    {
+      "bytes": 3099,
+      "path": "sealed-mapping-v1.json",
+      "sha256": "7a86329caf8db771447028fad10995a273f0e2995ab743568335f2257ee83d80"
+    }
+  ],
+  "entry_count": 4,
+  "schema": "SkillV3HybridBlindMappingSha256ManifestV1",
+  "status": "EXACT"
+}

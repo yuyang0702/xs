@@ -1,0 +1,22 @@
+{
+  "authorization_text_sha256": "8de65a8b04c27d6112b278b71a21ffa8789e6d6f21f6579b7bc0780e41e0b031",
+  "authorized_sequence": [
+    "CONTROL_1",
+    "HYBRID_1",
+    "CONTROL_2",
+    "HYBRID_2",
+    "CONTROL_3",
+    "HYBRID_3"
+  ],
+  "campaign_permission_sha256": "d69299cdb4044d2ec631e3c701deac80cb2d9b53431c669f63baa6052ecc86a0",
+  "destination": "https://lingsuan.org:443/v1/messages",
+  "experiment_lock_sha256": "de49d3353abe641f49dbb697d929a13bb30cc6c4fafe9bcf11f0a6d6ea19bafc",
+  "monetary_cost_cap": "UNKNOWN_NOT_SEALED",
+  "output_token_hard_cap": 27744,
+  "permission_id": "sv3h-real-b1a2453f-20260829T094300Z",
+  "pilot_id": "skill-v3-hybrid-character-heavy-v1-5e5cbfd1e6296ec8878b",
+  "provider_request_hard_cap": 6,
+  "repository_head": "b1a2453fa2535462a6771d2dfd2799f395c6d86f",
+  "schema": "SkillV3HybridCampaignPermissionBindingV1",
+  "status": "EXACT"
+}

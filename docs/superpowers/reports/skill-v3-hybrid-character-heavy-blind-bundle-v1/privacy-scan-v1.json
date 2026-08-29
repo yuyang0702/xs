@@ -1,0 +1,17 @@
+{
+  "approval_id_matches": 0,
+  "experiment_arm_key_matches": 0,
+  "mapping_visible": false,
+  "matches": {
+    "anthropic_secret": 0,
+    "bearer_token": 0,
+    "private_key": 0
+  },
+  "nonce_id_matches": 0,
+  "route_fingerprint_matches": 0,
+  "sample_id_matches": 0,
+  "sample_slot_matches": 0,
+  "schema": "SkillV3HybridBlindPrivacyScanV1",
+  "status": "PASS",
+  "total_matches": 0
+}

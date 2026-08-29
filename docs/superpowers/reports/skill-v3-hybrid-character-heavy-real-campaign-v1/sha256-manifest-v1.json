@@ -1,0 +1,68 @@
+{
+  "definition_sha256": "1d2ed3dc1dee858c2de2644f81157289ee87c5c8968453214fe70ea1e13894b1",
+  "entries": [
+    {
+      "bytes": 3506,
+      "path": "approval-nonce-lifecycle-v1.json",
+      "sha256": "b100dab8262226f3f9897312ac1269ca94870e9e8c5d712230bff3a5c8ec3f3f"
+    },
+    {
+      "bytes": 2459,
+      "path": "artifact-binding-v1.json",
+      "sha256": "ee169603076f41575179664df05f27366a2c628337471a593f04a12d4f928ad7"
+    },
+    {
+      "bytes": 871,
+      "path": "campaign-binding-v1.json",
+      "sha256": "998f2682483513984c2095806469dfa763959d4f1e5473113f2ab3406a4b90e1"
+    },
+    {
+      "bytes": 4853,
+      "path": "campaign-completion-v1.json",
+      "sha256": "6043e538579fa4ae36f5e6aabd65e31776e99727b234d6707aca3ffaa507f635"
+    },
+    {
+      "bytes": 1123,
+      "path": "final-campaign-report-v1.md",
+      "sha256": "74fc62491925097b74e5843cf486f81f302112d59fde452e5cf967646119aecc"
+    },
+    {
+      "bytes": 345,
+      "path": "privacy-scan-v1.json",
+      "sha256": "23c4f930beb0b24d20c0d62bddb898aefe8a4280993760d506782436f9d9c558"
+    },
+    {
+      "bytes": 448,
+      "path": "production-isolation-v1.json",
+      "sha256": "2644875bf0787e93ba0550faabb9118a269691f595a0f15c97355a795c92e7a6"
+    },
+    {
+      "bytes": 164,
+      "path": "README.md",
+      "sha256": "e0fc417bb0804b322abd0d4fd3599764fae1e23983edbda62a993254e028ea4a"
+    },
+    {
+      "bytes": 600,
+      "path": "request-attempt-accounting-v1.json",
+      "sha256": "e42a6ece6236acef579ecd9de597dca0b2f132c9c06fe60d931626942957e9f8"
+    },
+    {
+      "bytes": 1109,
+      "path": "route-destination-egress-v1.json",
+      "sha256": "c51d0394c083e917ed96a20e02b7b58ef4dba34b7fae6a87a55e770052c629ef"
+    },
+    {
+      "bytes": 4588,
+      "path": "six-sample-validity-v1.json",
+      "sha256": "d65a588ddb341df24e01582f9aaadd44fb58fd62edf10921857b531791a4c03f"
+    },
+    {
+      "bytes": 509,
+      "path": "validation-receipt-v1.json",
+      "sha256": "14a1f2551dc14866f6f9c162459aa53f614538244cebb251aea9e5a98f47b868"
+    }
+  ],
+  "entry_count": 12,
+  "schema": "SkillV3HybridCampaignSha256ManifestV1",
+  "status": "EXACT"
+}

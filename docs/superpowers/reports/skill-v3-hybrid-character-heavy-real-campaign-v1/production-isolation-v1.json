@@ -1,0 +1,14 @@
+{
+  "baml_src_diff_from_execution_head": 0,
+  "canon_mutation_count": 0,
+  "full_short_canary": "NOT_EXECUTED",
+  "planning_v2_cutover": false,
+  "post_authorization_git_commit_count_during_campaign": 0,
+  "production_authority_count": 0,
+  "ready_mutation_count": 0,
+  "schema": "SkillV3HybridCampaignProductionIsolationV1",
+  "skill_v3_cutover": false,
+  "src_diff_from_execution_head": 0,
+  "status": "PASS",
+  "story_state_mutation_count": 0
+}

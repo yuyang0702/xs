@@ -1,0 +1,14 @@
+{
+  "literary_artifact_persisted_here": false,
+  "matches": {
+    "anthropic_secret": 0,
+    "bearer_token": 0,
+    "private_key": 0
+  },
+  "raw_prompt_persisted": false,
+  "raw_provider_content_persisted": false,
+  "raw_story_input_persisted": false,
+  "schema": "SkillV3HybridCampaignPrivacyScanV1",
+  "status": "PASS",
+  "total_matches": 0
+}

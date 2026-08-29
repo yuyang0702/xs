@@ -1,0 +1,22 @@
+{
+  "alternate_destination_count": 0,
+  "cross_origin_redirect_count": 0,
+  "destination": "https://lingsuan.org:443/v1/messages",
+  "egress_policy_sha256s": [
+    "58470e41d92a1f0acad35c6b543e3a6faaa54eeaa550a20672d3d0b5c387e34c",
+    "6aa183aca58e1fb67348d66862c023240e1f7f97bddc35bc18f360fd14291507",
+    "cb26522fe2dbd9aba30c9c45fd9cb1d18a01e2e14433a6bccb07109f19fff256",
+    "57d3ba94669de627b01fe0ec72ae51be18d905f819ef7f40127ccb1bb99cb27a",
+    "0ccfffe2f65bdefe74cf362d75b33e9d1c37c83cdb4a81519a471d66cc18478f",
+    "10dea0857ebee6142a8c1b708484b8abbf8f3a5f848fd19d8bd7154a1c570d09"
+  ],
+  "model": "gpt-5.6-sol",
+  "model_binding_sha256": "5fd92d58fb34146b854ecf816dfe7622e24c233480149dfab9e327cff7f6b1ff",
+  "operator_classification": "THIRD_PARTY_RELAY_LOCAL_METADATA_ONLY",
+  "protocol": "anthropic",
+  "provider": "lingsuan_gpt",
+  "provider_descriptor_sha256": "121cc6b0b4f77b0b08697f2782e0f67a29007183d65a2780b2051048da3a600f",
+  "route_fingerprint": "30e9cbaf86fbb4b89b43614d71cc11b359ad41e7411e8ebda5d3ce4199879bf0",
+  "schema": "SkillV3HybridRouteDestinationEgressV1",
+  "status": "EXACT"
+}

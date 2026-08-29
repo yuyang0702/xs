@@ -1,0 +1,23 @@
+{
+  "actual_monetary_cost_observability": "NOT_RETAINED_BY_CAMPAIGN_BOUNDARY",
+  "actual_output_tokens_observability": "NOT_RETAINED_BY_CAMPAIGN_BOUNDARY",
+  "fallback": 0,
+  "http_post_attempts": 6,
+  "network_attempts": 6,
+  "per_sample_output_token_hard_cap": 4624,
+  "per_sample_provider_http_network": [
+    1,
+    1,
+    1
+  ],
+  "provider_requests": 6,
+  "replacement_sample": 0,
+  "resume": 0,
+  "retry": 0,
+  "route_switch": 0,
+  "schema": "SkillV3HybridAttemptAndBudgetReceiptV1",
+  "second_dispatch": 0,
+  "status": "PASS",
+  "total_output_token_hard_cap": 27744,
+  "transport_retry": 0
+}

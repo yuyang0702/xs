@@ -1,0 +1,69 @@
+{
+  "blind_evaluation_started": false,
+  "campaign_manifest_sha256": "e81e349b547febcf14de17bdca7eae820816c830b71b70b830599623cc534168",
+  "mapping_frozen_before_evaluation": true,
+  "rows": [
+    {
+      "anonymous_pair_id": "hybrid-blind-pair-1",
+      "anonymous_position": "A",
+      "anonymous_sample_id": "hybrid-blind-1a8467e97ae2c101",
+      "artifact_file_sha256": "bab4a61c9cc76fc67cada0b41697a9056c814d5a1c0dd029ef62866146546b03",
+      "blind_artifact_sha256": "e231ff8acf4fbcae86061a2fee68a64d1f07be741da65f1007c4bd307eb2b522",
+      "experiment_arm": "HYBRID",
+      "sample_id": "sv3hs-63c2c291b989e2a3e48c",
+      "sample_slot": "HYBRID_1"
+    },
+    {
+      "anonymous_pair_id": "hybrid-blind-pair-1",
+      "anonymous_position": "B",
+      "anonymous_sample_id": "hybrid-blind-1a34e6e6bc65dc78",
+      "artifact_file_sha256": "c56feb1925276ce41304ba6679f54276671087966eba8fa2b698a7d8d7deb3e2",
+      "blind_artifact_sha256": "74ad6428114190f0a74285fbaa0ecabac0917c7d14f9655b2b6459ec70e9977f",
+      "experiment_arm": "CONTROL",
+      "sample_id": "sv3hs-0901efa55a2b11f3456f",
+      "sample_slot": "CONTROL_1"
+    },
+    {
+      "anonymous_pair_id": "hybrid-blind-pair-2",
+      "anonymous_position": "A",
+      "anonymous_sample_id": "hybrid-blind-b83053250bb32e7e",
+      "artifact_file_sha256": "c40842302a61122cc87514103966ac6b8d46a9374eb4df44a896da4a12834dca",
+      "blind_artifact_sha256": "8004316ec0d106636e4f76d3af945f7adeeceea7cdce741d954fd25596fdae8b",
+      "experiment_arm": "CONTROL",
+      "sample_id": "sv3hs-7725333044fdaae559a2",
+      "sample_slot": "CONTROL_2"
+    },
+    {
+      "anonymous_pair_id": "hybrid-blind-pair-2",
+      "anonymous_position": "B",
+      "anonymous_sample_id": "hybrid-blind-1c67cc3036d89865",
+      "artifact_file_sha256": "05947e8ad7cc2df0cf3981729c057aab0f3a93fbf905d15cb63a42cd15d6ef2f",
+      "blind_artifact_sha256": "f0af797cd1fb4b5ca135802217e262dfad33835f25d330a65a6b86963cfa12f7",
+      "experiment_arm": "HYBRID",
+      "sample_id": "sv3hs-aae6112339a439d43750",
+      "sample_slot": "HYBRID_2"
+    },
+    {
+      "anonymous_pair_id": "hybrid-blind-pair-3",
+      "anonymous_position": "A",
+      "anonymous_sample_id": "hybrid-blind-075a07f468bb2453",
+      "artifact_file_sha256": "890add645050ff6247af4a5ea316ca941cfd9fd3b26924f329386dfa57047c67",
+      "blind_artifact_sha256": "e35bb8ee16ef07e589f71cb4c357379e83f5fa8ca574282fb221c52a356e14af",
+      "experiment_arm": "HYBRID",
+      "sample_id": "sv3hs-84e695ee4e02665555cf",
+      "sample_slot": "HYBRID_3"
+    },
+    {
+      "anonymous_pair_id": "hybrid-blind-pair-3",
+      "anonymous_position": "B",
+      "anonymous_sample_id": "hybrid-blind-fb517bb0b9a65546",
+      "artifact_file_sha256": "8d53e96f68a14f1fa9fabbc8d17ea7d554660821094f1b6f85bb4adebcaf3bfe",
+      "blind_artifact_sha256": "d62272efa90f14528fb56ec7180fc3f44c70fbc975ac4dcdcb64b6ce14d4effa",
+      "experiment_arm": "CONTROL",
+      "sample_id": "sv3hs-8f00799be335c4ccaf76",
+      "sample_slot": "CONTROL_3"
+    }
+  ],
+  "schema": "SkillV3HybridBlindMappingV1",
+  "status": "SEALED_MAIN_ONLY"
+}

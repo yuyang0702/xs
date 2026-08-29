@@ -1,0 +1,187 @@
+{
+  "arm_identity_guessed": false,
+  "evaluator_id": "FRESH_EVALUATOR_REQUIRED",
+  "external_project_actions": 0,
+  "fresh_context": true,
+  "independent_sample_judgments": [
+    {
+      "anonymous_sample_id": "hybrid-blind-1a8467e97ae2c101",
+      "dimension_notes": {
+        "anti_template_risk": "UNSET",
+        "causal_coherence": "UNSET",
+        "character_agency": "UNSET",
+        "scene_pressure": "UNSET",
+        "setup_payoff_integrity": "UNSET",
+        "specificity": "UNSET",
+        "subtext_support": "UNSET",
+        "voice_readiness": "UNSET"
+      },
+      "risks": [],
+      "strengths": [],
+      "summary": "UNSET"
+    },
+    {
+      "anonymous_sample_id": "hybrid-blind-1a34e6e6bc65dc78",
+      "dimension_notes": {
+        "anti_template_risk": "UNSET",
+        "causal_coherence": "UNSET",
+        "character_agency": "UNSET",
+        "scene_pressure": "UNSET",
+        "setup_payoff_integrity": "UNSET",
+        "specificity": "UNSET",
+        "subtext_support": "UNSET",
+        "voice_readiness": "UNSET"
+      },
+      "risks": [],
+      "strengths": [],
+      "summary": "UNSET"
+    },
+    {
+      "anonymous_sample_id": "hybrid-blind-b83053250bb32e7e",
+      "dimension_notes": {
+        "anti_template_risk": "UNSET",
+        "causal_coherence": "UNSET",
+        "character_agency": "UNSET",
+        "scene_pressure": "UNSET",
+        "setup_payoff_integrity": "UNSET",
+        "specificity": "UNSET",
+        "subtext_support": "UNSET",
+        "voice_readiness": "UNSET"
+      },
+      "risks": [],
+      "strengths": [],
+      "summary": "UNSET"
+    },
+    {
+      "anonymous_sample_id": "hybrid-blind-1c67cc3036d89865",
+      "dimension_notes": {
+        "anti_template_risk": "UNSET",
+        "causal_coherence": "UNSET",
+        "character_agency": "UNSET",
+        "scene_pressure": "UNSET",
+        "setup_payoff_integrity": "UNSET",
+        "specificity": "UNSET",
+        "subtext_support": "UNSET",
+        "voice_readiness": "UNSET"
+      },
+      "risks": [],
+      "strengths": [],
+      "summary": "UNSET"
+    },
+    {
+      "anonymous_sample_id": "hybrid-blind-075a07f468bb2453",
+      "dimension_notes": {
+        "anti_template_risk": "UNSET",
+        "causal_coherence": "UNSET",
+        "character_agency": "UNSET",
+        "scene_pressure": "UNSET",
+        "setup_payoff_integrity": "UNSET",
+        "specificity": "UNSET",
+        "subtext_support": "UNSET",
+        "voice_readiness": "UNSET"
+      },
+      "risks": [],
+      "strengths": [],
+      "summary": "UNSET"
+    },
+    {
+      "anonymous_sample_id": "hybrid-blind-fb517bb0b9a65546",
+      "dimension_notes": {
+        "anti_template_risk": "UNSET",
+        "causal_coherence": "UNSET",
+        "character_agency": "UNSET",
+        "scene_pressure": "UNSET",
+        "setup_payoff_integrity": "UNSET",
+        "specificity": "UNSET",
+        "subtext_support": "UNSET",
+        "voice_readiness": "UNSET"
+      },
+      "risks": [],
+      "strengths": [],
+      "summary": "UNSET"
+    }
+  ],
+  "judgments_frozen": false,
+  "mapping_accessed": false,
+  "other_evaluator_record_accessed": false,
+  "scalar_average_created": false,
+  "schema": "SkillV3HybridBlindEvaluatorFreezeV1",
+  "status": "UNSET",
+  "votes": [
+    {
+      "anonymous_pair_id": "hybrid-blind-pair-1",
+      "dimension_evidence": {
+        "anti_template_risk": "UNSET",
+        "causal_coherence": "UNSET",
+        "character_agency": "UNSET",
+        "scene_pressure": "UNSET",
+        "setup_payoff_integrity": "UNSET",
+        "specificity": "UNSET",
+        "subtext_support": "UNSET",
+        "voice_readiness": "UNSET"
+      },
+      "dimension_relations": {
+        "anti_template_risk": "UNSET",
+        "causal_coherence": "UNSET",
+        "character_agency": "UNSET",
+        "scene_pressure": "UNSET",
+        "setup_payoff_integrity": "UNSET",
+        "specificity": "UNSET",
+        "subtext_support": "UNSET",
+        "voice_readiness": "UNSET"
+      },
+      "position_a_anonymous_sample_id": "hybrid-blind-1a8467e97ae2c101",
+      "position_b_anonymous_sample_id": "hybrid-blind-1a34e6e6bc65dc78"
+    },
+    {
+      "anonymous_pair_id": "hybrid-blind-pair-2",
+      "dimension_evidence": {
+        "anti_template_risk": "UNSET",
+        "causal_coherence": "UNSET",
+        "character_agency": "UNSET",
+        "scene_pressure": "UNSET",
+        "setup_payoff_integrity": "UNSET",
+        "specificity": "UNSET",
+        "subtext_support": "UNSET",
+        "voice_readiness": "UNSET"
+      },
+      "dimension_relations": {
+        "anti_template_risk": "UNSET",
+        "causal_coherence": "UNSET",
+        "character_agency": "UNSET",
+        "scene_pressure": "UNSET",
+        "setup_payoff_integrity": "UNSET",
+        "specificity": "UNSET",
+        "subtext_support": "UNSET",
+        "voice_readiness": "UNSET"
+      },
+      "position_a_anonymous_sample_id": "hybrid-blind-b83053250bb32e7e",
+      "position_b_anonymous_sample_id": "hybrid-blind-1c67cc3036d89865"
+    },
+    {
+      "anonymous_pair_id": "hybrid-blind-pair-3",
+      "dimension_evidence": {
+        "anti_template_risk": "UNSET",
+        "causal_coherence": "UNSET",
+        "character_agency": "UNSET",
+        "scene_pressure": "UNSET",
+        "setup_payoff_integrity": "UNSET",
+        "specificity": "UNSET",
+        "subtext_support": "UNSET",
+        "voice_readiness": "UNSET"
+      },
+      "dimension_relations": {
+        "anti_template_risk": "UNSET",
+        "causal_coherence": "UNSET",
+        "character_agency": "UNSET",
+        "scene_pressure": "UNSET",
+        "setup_payoff_integrity": "UNSET",
+        "specificity": "UNSET",
+        "subtext_support": "UNSET",
+        "voice_readiness": "UNSET"
+      },
+      "position_a_anonymous_sample_id": "hybrid-blind-075a07f468bb2453",
+      "position_b_anonymous_sample_id": "hybrid-blind-fb517bb0b9a65546"
+    }
+  ]
+}
