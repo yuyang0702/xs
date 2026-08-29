@@ -1,0 +1,7 @@
+{
+  "schema": "SkillV3HybridClosureFullSuiteReceiptV1",
+  "summary": "3950 passed, 41 skipped, 6 xfailed, 55 failed, 81 errors in 2305.47s",
+  "classification": "HISTORICAL_SEALED_ORACLE_LIVE_PARITY_NON_GREEN",
+  "new_execution_boundary_closure_regression_count": 0,
+  "new_owning_source_regression_count": 0
+}

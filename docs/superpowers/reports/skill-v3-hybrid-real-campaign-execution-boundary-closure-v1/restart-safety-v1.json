@@ -1,0 +1,15 @@
+{
+  "schema": "SkillV3HybridRestartSafetyV1",
+  "status": "PASS",
+  "points": [
+    "permission_created",
+    "approval_created",
+    "nonce_reserved",
+    "dispatch_uncertain",
+    "sample_sealed"
+  ],
+  "NO_DOUBLE_APPROVAL_AFTER_RESTART": "YES",
+  "NO_DOUBLE_NONCE_AFTER_RESTART": "YES",
+  "NO_SECOND_DISPATCH_AFTER_RESTART": "YES",
+  "uncertain_dispatch_policy": "FAIL_CLOSED_NO_RESUME"
+}

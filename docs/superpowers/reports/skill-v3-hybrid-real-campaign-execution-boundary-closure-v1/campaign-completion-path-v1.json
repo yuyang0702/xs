@@ -1,0 +1,33 @@
+{
+  "schema": "SkillV3HybridCampaignCompletionReceiptV1",
+  "permission_id": "offline-closure-campaign-permission-v1",
+  "campaign_state_sha256": "412c0c481a763803789b73b999f80dedeef4e148399e0eed95ffccfec898da02",
+  "sample_count": 6,
+  "valid_sample_count": 6,
+  "approval_states": [
+    "CONSUMED",
+    "CONSUMED",
+    "CONSUMED",
+    "CONSUMED",
+    "CONSUMED",
+    "CONSUMED"
+  ],
+  "nonce_states": [
+    "CONSUMED",
+    "CONSUMED",
+    "CONSUMED",
+    "CONSUMED",
+    "CONSUMED",
+    "CONSUMED"
+  ],
+  "synthetic_http_attempt_count": 6,
+  "real_external_action_count": 0,
+  "dry_run_only": true,
+  "status": "COMPLETED",
+  "completion_receipt_sha256": "45738011791f28e7e2bbfee932c43368b498d050d582b062b55b8c5045c59311",
+  "dry_run_blind_bundle_sha256": "5fef3aca0e3662fa5977680659ea77cb9e1a1e555bfebd5f9d3d6fb2fa72367f",
+  "all_approvals_final_consumed": true,
+  "all_nonces_final_consumed": true,
+  "dry_run_blind_bundle_policy_path": "PASS",
+  "dry_run_artifacts_cannot_be_real_samples": true
+}

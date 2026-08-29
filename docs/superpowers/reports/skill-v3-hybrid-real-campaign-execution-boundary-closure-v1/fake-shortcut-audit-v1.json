@@ -1,0 +1,13 @@
+{
+  "schema": "SkillV3HybridFakeShortcutAuditV1",
+  "status": "PASS",
+  "real_runner": "execute_authorized_hybrid_campaign_once_v1",
+  "real_path_fake_only_blocker_count": 0,
+  "lowest_stub": "httpx.MockTransport in offline test/materializer only",
+  "direct_hash_injection": false,
+  "test_only_resolver_in_real_runner": false,
+  "missing_real_store_constructor": false,
+  "missing_real_validator": false,
+  "missing_real_transport_adapter": false,
+  "missing_campaign_transition": false
+}

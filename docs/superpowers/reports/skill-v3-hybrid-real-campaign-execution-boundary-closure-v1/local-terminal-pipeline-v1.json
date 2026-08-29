@@ -1,0 +1,17 @@
+{
+  "schema": "SkillV3HybridLocalTerminalPipelineV1",
+  "status": "PASS",
+  "sample_count": 6,
+  "stages": [
+    "response_normalization",
+    "parse_conversion",
+    "domain_validation",
+    "schema_validation",
+    "freeze",
+    "audit_serialization",
+    "output_isolation",
+    "artifact_persistence",
+    "sample_validity_seal"
+  ],
+  "malformed_response_second_request_count": 0
+}

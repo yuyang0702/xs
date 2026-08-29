@@ -1,0 +1,25 @@
+{
+  "schema": "SkillV3HybridRealCampaignClosureBaselineV1",
+  "branch": "r1-ptr3/planning-repair-finding-propagation-20260817",
+  "start_head": "f555f4fd6c8aa18569777d65e50f89fc8b04fb51",
+  "source_successor_head": "fb71c56218d2dfd0e6308aa1f9303e4e17e35e41",
+  "worktree_before_materialization": "CLEAN",
+  "prior_roots": {
+    "skill-v3-hybrid-executable-jit-approval-boundary-fix-v1": {
+      "status": "EXACT",
+      "entry_count": 26,
+      "definition_sha256": "e8c1e174138e0c41fffd725ef1eb8557b7624b7a9c43817b958a4ab78f390d62"
+    },
+    "skill-v3-hybrid-character-heavy-multi-sample-pilot-materialization-v1": {
+      "status": "EXACT",
+      "entry_count": 31,
+      "definition_sha256": "ff6ecc76d28f634b9ce8e5674712497257525d8d10fd5ed664f8921e6cd3cc35"
+    },
+    "skill-v3-hybrid-shadow-independent-review-pilot-readiness-v2": {
+      "status": "EXACT",
+      "entry_count": 33,
+      "definition_sha256": "41bdb65d20cf2857ec9e694346e6edccccc9910f143609b0b06ef8a8f14d7362"
+    }
+  },
+  "source_wins_over_reports": true
+}

@@ -1,0 +1,18 @@
+{
+  "schema": "SkillV3HybridClosureSingleAgentCleanRoomReviewV1",
+  "status": "PASS",
+  "independence_claimed": false,
+  "baseline_head": "f555f4fd6c8aa18569777d65e50f89fc8b04fb51",
+  "final_head": "fb71c56218d2dfd0e6308aa1f9303e4e17e35e41",
+  "core_paths": [
+    "tools/canary/skill_v3_hybrid_real_campaign.py"
+  ],
+  "review_inputs": [
+    "raw_request",
+    "task_baseline",
+    "final_diff",
+    "raw_test_output",
+    "forward-risk-report-v2.json"
+  ],
+  "new_hard_issue_count": 0
+}

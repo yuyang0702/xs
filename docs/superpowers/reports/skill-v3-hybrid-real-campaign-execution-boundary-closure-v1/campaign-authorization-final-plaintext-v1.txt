@@ -1,0 +1,31 @@
+SKILL V3 HYBRID CHARACTER-HEAVY MULTI-SAMPLE PILOT — FINAL FRESH USER AUTHORIZATION
+
+This text is an authorization template only. It is not authorization until the user sends it as a fresh explicit message.
+
+SUCCESSOR_HEAD=fb71c56218d2dfd0e6308aa1f9303e4e17e35e41
+PILOT_ID=skill-v3-hybrid-character-heavy-v1-5e5cbfd1e6296ec8878b
+EXPERIMENT_LOCK_SHA256=de49d3353abe641f49dbb697d929a13bb30cc6c4fafe9bcf11f0a6d6ea19bafc
+EXECUTION_SEQUENCE=CONTROL_1,HYBRID_1,CONTROL_2,HYBRID_2,CONTROL_3,HYBRID_3
+SAMPLE_IDS=sv3hs-0901efa55a2b11f3456f,sv3hs-63c2c291b989e2a3e48c,sv3hs-7725333044fdaae559a2,sv3hs-aae6112339a439d43750,sv3hs-8f00799be335c4ccaf76,sv3hs-84e695ee4e02665555cf
+SAMPLE_LOCK_SHA256S=edd6d501eec1c102ad30fcb5f4aa56ec0aa9ae56b1516241d58e79d72d87470c,e5c180c915d22d176e54da147b096e741259e2a304dec13c561ae81bd01e18e9,1adfc2826f129c31d67a71cb424269c1cdd79c37f2f006d2d39f1352f2e7632a,a157b27243c6e8b178981c65f3fce9864ce8cf18361ed7df0b8a6c72be210c57,9aa81b929e3d6564d8ab68216f8dfee3566eda4da66c79f089c3ff483380328b,031791507f9b4c2cd70a9f3af123d6df5a1e7194e7483618d630fe5065b11b44
+PROVIDER=lingsuan_gpt
+PROVIDER_DESCRIPTOR_SHA256=121cc6b0b4f77b0b08697f2782e0f67a29007183d65a2780b2051048da3a600f
+MODEL=gpt-5.6-sol
+MODEL_BINDING_SHA256=5fd92d58fb34146b854ecf816dfe7622e24c233480149dfab9e327cff7f6b1ff
+PROTOCOL=anthropic
+ROUTE_FINGERPRINT=30e9cbaf86fbb4b89b43614d71cc11b359ad41e7411e8ebda5d3ce4199879bf0
+DESTINATION=https://lingsuan.org:443/v1/messages
+OPERATOR_CLASSIFICATION=THIRD_PARTY_RELAY_LOCAL_METADATA_ONLY
+EGRESS_POLICY_SHA256S=58470e41d92a1f0acad35c6b543e3a6faaa54eeaa550a20672d3d0b5c387e34c,6aa183aca58e1fb67348d66862c023240e1f7f97bddc35bc18f360fd14291507,cb26522fe2dbd9aba30c9c45fd9cb1d18a01e2e14433a6bccb07109f19fff256,57d3ba94669de627b01fe0ec72ae51be18d905f819ef7f40127ccb1bb99cb27a,0ccfffe2f65bdefe74cf362d75b33e9d1c37c83cdb4a81519a471d66cc18478f,10dea0857ebee6142a8c1b708484b8abbf8f3a5f848fd19d8bd7154a1c570d09
+PER_SAMPLE_OUTPUT_TOKEN_HARD_CAP=4624
+TOTAL_SIX_SAMPLE_OUTPUT_TOKEN_HARD_CAP=27744
+MAX_PROVIDER_REQUESTS_PER_SAMPLE=1
+TOTAL_PROVIDER_REQUESTS=6
+MAX_HTTP_POST_ATTEMPTS_PER_SAMPLE=1
+TOTAL_HTTP_POST_ATTEMPTS=6
+MAX_NETWORK_ATTEMPTS_PER_SAMPLE=1
+TOTAL_NETWORK_ATTEMPTS=6
+MAX_CAMPAIGN_ELAPSED_HOURS=10
+MONETARY_COST_CAP=UNKNOWN_NOT_SEALED
+I explicitly authorize the six sealed samples above, in the exact order above, with at most one paid request per sample and at most six paid requests total. I authorize only each sample's required system/context, task, authority, story slice, already model-visible reference-derived non-Skill guidance, its arm Skill context, output contract, and required Provider request metadata to be sent to the exact destination. I accept actual-fee risk because no trustworthy USD/CNY cap is sealed.
+Each next-eligible sample requires a separate JIT SkillV3HybridSampleJitSignedApprovalV1 followed by a separate fresh durable single-use nonce. Later approvals/nonces must not be precreated. No retry, transport retry, fallback, route switch, resume dispatch, second dispatch, alternate destination, cross-origin redirect, or replacement sample is authorized. Stop on the first blocked, invalid, drifted, failed, privacy-failed, or budget-exceeded state, or when the campaign expires. Blind mapping remains hidden until all required votes freeze. No Skill V3 cutover, Planning V2 cutover, or Full Short is authorized.

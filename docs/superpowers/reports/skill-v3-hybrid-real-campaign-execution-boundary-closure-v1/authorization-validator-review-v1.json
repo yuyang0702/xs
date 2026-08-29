@@ -1,0 +1,15 @@
+{
+  "schema": "SkillV3HybridCanonicalAuthorizationValidationV1",
+  "status": "EXACT",
+  "authorization_text_sha256": "98aac2b004b1f9241dcd1c05d2185ddd099396cdbde0fdd336b963751c7dcbf2",
+  "successor_head": "fb71c56218d2dfd0e6308aa1f9303e4e17e35e41",
+  "semantic_equivalence_relaxation": false,
+  "external_action_count": 0,
+  "negative_cases": {
+    "one_byte_mutation": "FAIL_CLOSED",
+    "markdown_url_rewrite": "FAIL_CLOSED",
+    "head_mismatch": "FAIL_CLOSED",
+    "missing_sample_lock": "FAIL_CLOSED",
+    "missing_egress_sha": "FAIL_CLOSED"
+  }
+}

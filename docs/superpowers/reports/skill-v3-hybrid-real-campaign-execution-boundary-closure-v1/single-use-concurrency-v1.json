@@ -1,0 +1,12 @@
+{
+  "schema": "SkillV3HybridSingleUseConcurrencyV1",
+  "status": "PASS",
+  "approval_double_consume": "BLOCKED",
+  "nonce_double_consume": "BLOCKED",
+  "simultaneous_approval_create": "ONE_WINNER_ONLY",
+  "simultaneous_nonce_reserve": "ONE_WINNER_ONLY",
+  "later_approval_precreate": "BLOCKED",
+  "later_nonce_precreate": "BLOCKED_AT_CAMPAIGN_ENTRY",
+  "second_dispatch": "BLOCKED",
+  "completed_permission_reuse": "BLOCKED"
+}

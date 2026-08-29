@@ -1,0 +1,321 @@
+{
+  "schema": "SkillV3HybridRealExecutionCallGraphV1",
+  "steps": [
+    {
+      "STEP_ID": "authorization_bytes",
+      "SOURCE_MODULE": "tools.canary.skill_v3_hybrid_real_campaign",
+      "FUNCTION_OR_CLASS": "validate_final_authorization_text_v1",
+      "REAL_OR_FAKE": "REAL",
+      "USED_BY_REAL_RUNNER": true,
+      "TESTED_PRODUCTION_SHAPED": true,
+      "MISSING_LOCAL_CAPABILITY": false
+    },
+    {
+      "STEP_ID": "authorization_validator",
+      "SOURCE_MODULE": "tools.canary.skill_v3_hybrid_real_campaign",
+      "FUNCTION_OR_CLASS": "validate_final_authorization_text_v1",
+      "REAL_OR_FAKE": "REAL",
+      "USED_BY_REAL_RUNNER": true,
+      "TESTED_PRODUCTION_SHAPED": true,
+      "MISSING_LOCAL_CAPABILITY": false
+    },
+    {
+      "STEP_ID": "campaign_permission",
+      "SOURCE_MODULE": "tools.canary.skill_v3_hybrid_real_campaign",
+      "FUNCTION_OR_CLASS": "DurableHybridCampaignPermissionStoreV1.create",
+      "REAL_OR_FAKE": "REAL",
+      "USED_BY_REAL_RUNNER": true,
+      "TESTED_PRODUCTION_SHAPED": true,
+      "MISSING_LOCAL_CAPABILITY": false
+    },
+    {
+      "STEP_ID": "next_eligible",
+      "SOURCE_MODULE": "tools.canary.skill_v3_hybrid_real_campaign",
+      "FUNCTION_OR_CLASS": "DurableHybridCampaignPermissionStoreV1.assert_next_eligible",
+      "REAL_OR_FAKE": "REAL",
+      "USED_BY_REAL_RUNNER": true,
+      "TESTED_PRODUCTION_SHAPED": true,
+      "MISSING_LOCAL_CAPABILITY": false
+    },
+    {
+      "STEP_ID": "git_and_lock_recheck",
+      "SOURCE_MODULE": "tools.canary.skill_v3_hybrid_real_campaign",
+      "FUNCTION_OR_CLASS": "validate_campaign_permission_v1",
+      "REAL_OR_FAKE": "REAL",
+      "USED_BY_REAL_RUNNER": true,
+      "TESTED_PRODUCTION_SHAPED": true,
+      "MISSING_LOCAL_CAPABILITY": false
+    },
+    {
+      "STEP_ID": "input_identity_recheck",
+      "SOURCE_MODULE": "tools.canary.skill_v3_hybrid_real_campaign",
+      "FUNCTION_OR_CLASS": "reconstruct_sample_input",
+      "REAL_OR_FAKE": "REAL",
+      "USED_BY_REAL_RUNNER": true,
+      "TESTED_PRODUCTION_SHAPED": true,
+      "MISSING_LOCAL_CAPABILITY": false
+    },
+    {
+      "STEP_ID": "transport_binding_recheck",
+      "SOURCE_MODULE": "tools.canary.skill_v3_hybrid_real_campaign",
+      "FUNCTION_OR_CLASS": "RealPilotDispatcherV1.__init__",
+      "REAL_OR_FAKE": "REAL",
+      "USED_BY_REAL_RUNNER": true,
+      "TESTED_PRODUCTION_SHAPED": true,
+      "MISSING_LOCAL_CAPABILITY": false
+    },
+    {
+      "STEP_ID": "jit_approval_create",
+      "SOURCE_MODULE": "tools.canary.skill_v3_hybrid_real_campaign",
+      "FUNCTION_OR_CLASS": "create_one_hybrid_sample_jit_approval",
+      "REAL_OR_FAKE": "REAL",
+      "USED_BY_REAL_RUNNER": true,
+      "TESTED_PRODUCTION_SHAPED": true,
+      "MISSING_LOCAL_CAPABILITY": false
+    },
+    {
+      "STEP_ID": "approval_schema",
+      "SOURCE_MODULE": "tools.canary.skill_v3_hybrid_real_campaign",
+      "FUNCTION_OR_CLASS": "validate_approval_schema_v1",
+      "REAL_OR_FAKE": "REAL",
+      "USED_BY_REAL_RUNNER": true,
+      "TESTED_PRODUCTION_SHAPED": true,
+      "MISSING_LOCAL_CAPABILITY": false
+    },
+    {
+      "STEP_ID": "approval_domain",
+      "SOURCE_MODULE": "tools.canary.skill_v3_hybrid_real_campaign",
+      "FUNCTION_OR_CLASS": "validate_approval_domain_v1",
+      "REAL_OR_FAKE": "REAL",
+      "USED_BY_REAL_RUNNER": true,
+      "TESTED_PRODUCTION_SHAPED": true,
+      "MISSING_LOCAL_CAPABILITY": false
+    },
+    {
+      "STEP_ID": "approval_store",
+      "SOURCE_MODULE": "tools.canary.skill_v3_hybrid_real_campaign",
+      "FUNCTION_OR_CLASS": "DurableHybridApprovalStoreV1.create/load",
+      "REAL_OR_FAKE": "REAL",
+      "USED_BY_REAL_RUNNER": true,
+      "TESTED_PRODUCTION_SHAPED": true,
+      "MISSING_LOCAL_CAPABILITY": false
+    },
+    {
+      "STEP_ID": "approval_verify",
+      "SOURCE_MODULE": "tools.canary.skill_v3_hybrid_real_campaign",
+      "FUNCTION_OR_CLASS": "validate_approval_domain_v1",
+      "REAL_OR_FAKE": "REAL",
+      "USED_BY_REAL_RUNNER": true,
+      "TESTED_PRODUCTION_SHAPED": true,
+      "MISSING_LOCAL_CAPABILITY": false
+    },
+    {
+      "STEP_ID": "nonce_reserve",
+      "SOURCE_MODULE": "tools.canary.skill_v3_hybrid_real_campaign",
+      "FUNCTION_OR_CLASS": "HybridApprovalBoundNonceAdapter.reserve",
+      "REAL_OR_FAKE": "REAL",
+      "USED_BY_REAL_RUNNER": true,
+      "TESTED_PRODUCTION_SHAPED": true,
+      "MISSING_LOCAL_CAPABILITY": false
+    },
+    {
+      "STEP_ID": "nonce_verify",
+      "SOURCE_MODULE": "tools.canary.skill_v3_hybrid_real_campaign",
+      "FUNCTION_OR_CLASS": "DurablePilotNonceStoreV1.load",
+      "REAL_OR_FAKE": "REAL",
+      "USED_BY_REAL_RUNNER": true,
+      "TESTED_PRODUCTION_SHAPED": true,
+      "MISSING_LOCAL_CAPABILITY": false
+    },
+    {
+      "STEP_ID": "credential_boundary",
+      "SOURCE_MODULE": "tools.canary.skill_v3_hybrid_real_campaign",
+      "FUNCTION_OR_CLASS": "ProviderRegistry.resolve",
+      "REAL_OR_FAKE": "REAL_WITH_OFFLINE_SECRET",
+      "USED_BY_REAL_RUNNER": true,
+      "TESTED_PRODUCTION_SHAPED": true,
+      "MISSING_LOCAL_CAPABILITY": false
+    },
+    {
+      "STEP_ID": "provider_client_boundary",
+      "SOURCE_MODULE": "tools.canary.skill_v3_hybrid_real_campaign",
+      "FUNCTION_OR_CLASS": "ProviderRegistry.resolve",
+      "REAL_OR_FAKE": "REAL_WITH_OFFLINE_CLIENT",
+      "USED_BY_REAL_RUNNER": true,
+      "TESTED_PRODUCTION_SHAPED": true,
+      "MISSING_LOCAL_CAPABILITY": false
+    },
+    {
+      "STEP_ID": "one_shot_dispatch",
+      "SOURCE_MODULE": "tools.canary.skill_v3_hybrid_real_campaign",
+      "FUNCTION_OR_CLASS": "RealPilotDispatcherV1.dispatch",
+      "REAL_OR_FAKE": "REAL",
+      "USED_BY_REAL_RUNNER": true,
+      "TESTED_PRODUCTION_SHAPED": true,
+      "MISSING_LOCAL_CAPABILITY": false
+    },
+    {
+      "STEP_ID": "http_network",
+      "SOURCE_MODULE": "tools.canary.skill_v3_hybrid_real_campaign",
+      "FUNCTION_OR_CLASS": "httpx.MockTransport",
+      "REAL_OR_FAKE": "FAKE_LOWEST_SEAM_ONLY",
+      "USED_BY_REAL_RUNNER": false,
+      "TESTED_PRODUCTION_SHAPED": true,
+      "MISSING_LOCAL_CAPABILITY": false
+    },
+    {
+      "STEP_ID": "provider_response",
+      "SOURCE_MODULE": "tools.canary.skill_v3_hybrid_real_campaign",
+      "FUNCTION_OR_CLASS": "AnthropicAdapter.complete",
+      "REAL_OR_FAKE": "REAL_LOCAL",
+      "USED_BY_REAL_RUNNER": true,
+      "TESTED_PRODUCTION_SHAPED": true,
+      "MISSING_LOCAL_CAPABILITY": false
+    },
+    {
+      "STEP_ID": "response_normalize",
+      "SOURCE_MODULE": "tools.canary.skill_v3_hybrid_real_campaign",
+      "FUNCTION_OR_CLASS": "ModelGateway.complete_route",
+      "REAL_OR_FAKE": "REAL_LOCAL",
+      "USED_BY_REAL_RUNNER": true,
+      "TESTED_PRODUCTION_SHAPED": true,
+      "MISSING_LOCAL_CAPABILITY": false
+    },
+    {
+      "STEP_ID": "parse_conversion",
+      "SOURCE_MODULE": "tools.canary.skill_v3_hybrid_real_campaign",
+      "FUNCTION_OR_CLASS": "convert_event_realization_candidate",
+      "REAL_OR_FAKE": "REAL_LOCAL",
+      "USED_BY_REAL_RUNNER": true,
+      "TESTED_PRODUCTION_SHAPED": true,
+      "MISSING_LOCAL_CAPABILITY": false
+    },
+    {
+      "STEP_ID": "authority_normalize",
+      "SOURCE_MODULE": "tools.canary.skill_v3_hybrid_real_campaign",
+      "FUNCTION_OR_CLASS": "normalize_event_realization_input_authority_v1",
+      "REAL_OR_FAKE": "REAL_LOCAL",
+      "USED_BY_REAL_RUNNER": true,
+      "TESTED_PRODUCTION_SHAPED": true,
+      "MISSING_LOCAL_CAPABILITY": false
+    },
+    {
+      "STEP_ID": "domain_validation",
+      "SOURCE_MODULE": "tools.canary.skill_v3_hybrid_real_campaign",
+      "FUNCTION_OR_CLASS": "validate_event_realization_artifact",
+      "REAL_OR_FAKE": "REAL_LOCAL",
+      "USED_BY_REAL_RUNNER": true,
+      "TESTED_PRODUCTION_SHAPED": true,
+      "MISSING_LOCAL_CAPABILITY": false
+    },
+    {
+      "STEP_ID": "schema_validation",
+      "SOURCE_MODULE": "tools.canary.skill_v3_hybrid_real_campaign",
+      "FUNCTION_OR_CLASS": "EventRealizationCandidateV1",
+      "REAL_OR_FAKE": "REAL_LOCAL",
+      "USED_BY_REAL_RUNNER": true,
+      "TESTED_PRODUCTION_SHAPED": true,
+      "MISSING_LOCAL_CAPABILITY": false
+    },
+    {
+      "STEP_ID": "freeze",
+      "SOURCE_MODULE": "tools.canary.skill_v3_hybrid_real_campaign",
+      "FUNCTION_OR_CLASS": "freeze_validated_artifact",
+      "REAL_OR_FAKE": "REAL_LOCAL",
+      "USED_BY_REAL_RUNNER": true,
+      "TESTED_PRODUCTION_SHAPED": true,
+      "MISSING_LOCAL_CAPABILITY": false
+    },
+    {
+      "STEP_ID": "audit_serialization",
+      "SOURCE_MODULE": "tools.canary.skill_v3_hybrid_real_campaign",
+      "FUNCTION_OR_CLASS": "_terminal_pipeline",
+      "REAL_OR_FAKE": "REAL_LOCAL",
+      "USED_BY_REAL_RUNNER": true,
+      "TESTED_PRODUCTION_SHAPED": true,
+      "MISSING_LOCAL_CAPABILITY": false
+    },
+    {
+      "STEP_ID": "output_isolation",
+      "SOURCE_MODULE": "tools.canary.skill_v3_hybrid_real_campaign",
+      "FUNCTION_OR_CLASS": "_terminal_pipeline",
+      "REAL_OR_FAKE": "REAL_LOCAL",
+      "USED_BY_REAL_RUNNER": true,
+      "TESTED_PRODUCTION_SHAPED": true,
+      "MISSING_LOCAL_CAPABILITY": false
+    },
+    {
+      "STEP_ID": "artifact_persistence",
+      "SOURCE_MODULE": "tools.canary.skill_v3_hybrid_real_campaign",
+      "FUNCTION_OR_CLASS": "_terminal_pipeline",
+      "REAL_OR_FAKE": "REAL_LOCAL",
+      "USED_BY_REAL_RUNNER": true,
+      "TESTED_PRODUCTION_SHAPED": true,
+      "MISSING_LOCAL_CAPABILITY": false
+    },
+    {
+      "STEP_ID": "sample_validity_seal",
+      "SOURCE_MODULE": "tools.canary.skill_v3_hybrid_real_campaign",
+      "FUNCTION_OR_CLASS": "launch_one_sealed_hybrid_sample",
+      "REAL_OR_FAKE": "REAL_LOCAL",
+      "USED_BY_REAL_RUNNER": true,
+      "TESTED_PRODUCTION_SHAPED": true,
+      "MISSING_LOCAL_CAPABILITY": false
+    },
+    {
+      "STEP_ID": "approval_consume",
+      "SOURCE_MODULE": "tools.canary.skill_v3_hybrid_real_campaign",
+      "FUNCTION_OR_CLASS": "DurableHybridApprovalStoreV1.consume",
+      "REAL_OR_FAKE": "REAL",
+      "USED_BY_REAL_RUNNER": true,
+      "TESTED_PRODUCTION_SHAPED": true,
+      "MISSING_LOCAL_CAPABILITY": false
+    },
+    {
+      "STEP_ID": "nonce_consume",
+      "SOURCE_MODULE": "tools.canary.skill_v3_hybrid_real_campaign",
+      "FUNCTION_OR_CLASS": "DurablePilotNonceStoreV1.consume",
+      "REAL_OR_FAKE": "REAL",
+      "USED_BY_REAL_RUNNER": true,
+      "TESTED_PRODUCTION_SHAPED": true,
+      "MISSING_LOCAL_CAPABILITY": false
+    },
+    {
+      "STEP_ID": "campaign_transition",
+      "SOURCE_MODULE": "tools.canary.skill_v3_hybrid_real_campaign",
+      "FUNCTION_OR_CLASS": "DurableHybridCampaignPermissionStoreV1.record_success",
+      "REAL_OR_FAKE": "REAL",
+      "USED_BY_REAL_RUNNER": true,
+      "TESTED_PRODUCTION_SHAPED": true,
+      "MISSING_LOCAL_CAPABILITY": false
+    },
+    {
+      "STEP_ID": "campaign_completion",
+      "SOURCE_MODULE": "tools.canary.skill_v3_hybrid_real_campaign",
+      "FUNCTION_OR_CLASS": "run_hybrid_campaign_v1",
+      "REAL_OR_FAKE": "REAL",
+      "USED_BY_REAL_RUNNER": true,
+      "TESTED_PRODUCTION_SHAPED": true,
+      "MISSING_LOCAL_CAPABILITY": false
+    },
+    {
+      "STEP_ID": "post_campaign_staging",
+      "SOURCE_MODULE": "tools.canary.skill_v3_hybrid_real_campaign",
+      "FUNCTION_OR_CLASS": "run_hybrid_campaign_v1",
+      "REAL_OR_FAKE": "REAL_LOCAL",
+      "USED_BY_REAL_RUNNER": true,
+      "TESTED_PRODUCTION_SHAPED": true,
+      "MISSING_LOCAL_CAPABILITY": false
+    },
+    {
+      "STEP_ID": "blind_bundle_policy",
+      "SOURCE_MODULE": "tools.canary.skill_v3_hybrid_real_campaign",
+      "FUNCTION_OR_CLASS": "materialize_dry_run_blind_bundle_v1",
+      "REAL_OR_FAKE": "REAL_LOCAL",
+      "USED_BY_REAL_RUNNER": true,
+      "TESTED_PRODUCTION_SHAPED": true,
+      "MISSING_LOCAL_CAPABILITY": false
+    }
+  ],
+  "UNMAPPED_REQUIRED_REAL_EXECUTION_STEP_COUNT": 0
+}

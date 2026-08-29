@@ -1,0 +1,24 @@
+{
+  "schema": "SkillV3HybridPerSampleDryRunReceiptV1",
+  "sample_slot": "CONTROL_3",
+  "sample_id_sha256": "980ceba9805b597a1bacb2acd038b5ce35f1bda1ada1849ea2d954b8550cd2ca",
+  "approval": {
+    "sample_slot": "CONTROL_3",
+    "approval_id": "offline-hybrid-jit-5-2c5f641eff32b874",
+    "signed_approval_sha256": "dff31a47b05816f7887042d2e7cf8dd1f6ec465a77cb33624437111a072840b4",
+    "state": "CONSUMED",
+    "offline_test_only": true
+  },
+  "nonce": {
+    "sample_slot": "CONTROL_3",
+    "nonce_id": "sv3n-6f6826bd338ecd2d8555eec73e42fb92",
+    "nonce_receipt_sha256": "2daca73773e115aa630015ed88c1f1643abe4e32b718d65a6491ec4994d6872f",
+    "state": "CONSUMED",
+    "provider_dispatch_attempts": 1,
+    "network_request_attempts": 1
+  },
+  "artifact_file_sha256": "0fbf4cdb12960f0f537392d758942620d61b7189707807aaf775e00932f81937",
+  "status": "SEALED_VALID",
+  "dry_run_only": true,
+  "real_external_action_count": 0
+}

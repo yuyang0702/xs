@@ -1,0 +1,55 @@
+{
+  "schema": "SkillV3HybridModelVisibleIdentityV1",
+  "status": "PASS",
+  "MODEL_VISIBLE_SAMPLE_BYTES_UNCHANGED_BY_BOUNDARY_CLOSURE": "YES",
+  "PRIMARY_CHANGED_VARIABLE": "SKILL_CONTEXT_TREATMENT_LAYER_ONLY",
+  "LITERARY_POLICY_UNCHANGED": "YES",
+  "PAIR_NON_SKILL_IDENTITY": "PASS",
+  "REFERENCE_GUIDANCE_IDENTITY": "PASS",
+  "CAPACITY": "PASS",
+  "CROSS_SAMPLE_CONTAMINATION": 0,
+  "samples": [
+    {
+      "sample_slot": "CONTROL_1",
+      "wire_input_sha256": "486dd076a9e10de26b054538b6832660cacdeb39dc5ec0f71d828fe4ca5cd714",
+      "sealed_wire_input_sha256": "486dd076a9e10de26b054538b6832660cacdeb39dc5ec0f71d828fe4ca5cd714",
+      "skill_context_sha256": "c7916de36e67f380f2e10f30f169bcdbe04440cc8bd01bbf2626d26a7cdf49b7",
+      "status": "EXACT"
+    },
+    {
+      "sample_slot": "HYBRID_1",
+      "wire_input_sha256": "e413b0c32fcc7c9f50000146f4ce37a1bf5aaf007d491e56709bb8ed02238321",
+      "sealed_wire_input_sha256": "e413b0c32fcc7c9f50000146f4ce37a1bf5aaf007d491e56709bb8ed02238321",
+      "skill_context_sha256": "ae28e77b3a3b5931efb98e7613bd2827f841269c6b17cce2ee4259500a76eaff",
+      "status": "EXACT"
+    },
+    {
+      "sample_slot": "CONTROL_2",
+      "wire_input_sha256": "486dd076a9e10de26b054538b6832660cacdeb39dc5ec0f71d828fe4ca5cd714",
+      "sealed_wire_input_sha256": "486dd076a9e10de26b054538b6832660cacdeb39dc5ec0f71d828fe4ca5cd714",
+      "skill_context_sha256": "c7916de36e67f380f2e10f30f169bcdbe04440cc8bd01bbf2626d26a7cdf49b7",
+      "status": "EXACT"
+    },
+    {
+      "sample_slot": "HYBRID_2",
+      "wire_input_sha256": "e413b0c32fcc7c9f50000146f4ce37a1bf5aaf007d491e56709bb8ed02238321",
+      "sealed_wire_input_sha256": "e413b0c32fcc7c9f50000146f4ce37a1bf5aaf007d491e56709bb8ed02238321",
+      "skill_context_sha256": "ae28e77b3a3b5931efb98e7613bd2827f841269c6b17cce2ee4259500a76eaff",
+      "status": "EXACT"
+    },
+    {
+      "sample_slot": "CONTROL_3",
+      "wire_input_sha256": "486dd076a9e10de26b054538b6832660cacdeb39dc5ec0f71d828fe4ca5cd714",
+      "sealed_wire_input_sha256": "486dd076a9e10de26b054538b6832660cacdeb39dc5ec0f71d828fe4ca5cd714",
+      "skill_context_sha256": "c7916de36e67f380f2e10f30f169bcdbe04440cc8bd01bbf2626d26a7cdf49b7",
+      "status": "EXACT"
+    },
+    {
+      "sample_slot": "HYBRID_3",
+      "wire_input_sha256": "e413b0c32fcc7c9f50000146f4ce37a1bf5aaf007d491e56709bb8ed02238321",
+      "sealed_wire_input_sha256": "e413b0c32fcc7c9f50000146f4ce37a1bf5aaf007d491e56709bb8ed02238321",
+      "skill_context_sha256": "ae28e77b3a3b5931efb98e7613bd2827f841269c6b17cce2ee4259500a76eaff",
+      "status": "EXACT"
+    }
+  ]
+}

@@ -1,0 +1,55 @@
+{
+  "schema": "SkillV3HybridSixSampleSequentialDryRunV1",
+  "status": "PASS",
+  "sample_count": 6,
+  "valid_sample_count": 6,
+  "sequence": [
+    "CONTROL_1",
+    "HYBRID_1",
+    "CONTROL_2",
+    "HYBRID_2",
+    "CONTROL_3",
+    "HYBRID_3"
+  ],
+  "sample_ids": [
+    "sv3hs-0901efa55a2b11f3456f",
+    "sv3hs-63c2c291b989e2a3e48c",
+    "sv3hs-7725333044fdaae559a2",
+    "sv3hs-aae6112339a439d43750",
+    "sv3hs-8f00799be335c4ccaf76",
+    "sv3hs-84e695ee4e02665555cf"
+  ],
+  "sample_locks": [
+    "edd6d501eec1c102ad30fcb5f4aa56ec0aa9ae56b1516241d58e79d72d87470c",
+    "e5c180c915d22d176e54da147b096e741259e2a304dec13c561ae81bd01e18e9",
+    "1adfc2826f129c31d67a71cb424269c1cdd79c37f2f006d2d39f1352f2e7632a",
+    "a157b27243c6e8b178981c65f3fce9864ce8cf18361ed7df0b8a6c72be210c57",
+    "9aa81b929e3d6564d8ab68216f8dfee3566eda4da66c79f089c3ff483380328b",
+    "031791507f9b4c2cd70a9f3af123d6df5a1e7194e7483618d630fe5065b11b44"
+  ],
+  "handler_counts": [
+    1,
+    1,
+    1,
+    1,
+    1,
+    1
+  ],
+  "approval_ids": [
+    "offline-hybrid-jit-1-9e7f3ab6a2c3da4c",
+    "offline-hybrid-jit-2-a3b0e0ae0f185e71",
+    "offline-hybrid-jit-3-5be282c49581666a",
+    "offline-hybrid-jit-4-db0422332657b621",
+    "offline-hybrid-jit-5-2c5f641eff32b874",
+    "offline-hybrid-jit-6-f7d6caca6d5dac22"
+  ],
+  "nonce_ids": [
+    "sv3n-acb9547b2eb8c332cc80934116bd8bf3",
+    "sv3n-3ce538ec7189e947d5d8a67e612c1248",
+    "sv3n-a0071ff6702676e2112e9e1ae72380ce",
+    "sv3n-f517d3eb95653ef9673a0b23c6817209",
+    "sv3n-6f6826bd338ecd2d8555eec73e42fb92",
+    "sv3n-8beab13e40638aa44634a89a400ca7e5"
+  ],
+  "real_external_action_count": 0
+}

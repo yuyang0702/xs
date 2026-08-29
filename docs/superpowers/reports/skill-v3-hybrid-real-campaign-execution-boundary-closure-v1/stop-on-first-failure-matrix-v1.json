@@ -1,0 +1,292 @@
+{
+  "schema": "SkillV3HybridStopOnFirstFailureMatrixV1",
+  "status": "PASS",
+  "cases": [
+    {
+      "case": "campaign_permission_invalid",
+      "campaign_stops_immediately": true,
+      "later_approval_count": 0,
+      "later_nonce_count": 0,
+      "retry": 0,
+      "fallback": 0,
+      "route_switch": 0,
+      "resume_dispatch": 0,
+      "second_dispatch": 0
+    },
+    {
+      "case": "head_drift",
+      "campaign_stops_immediately": true,
+      "later_approval_count": 0,
+      "later_nonce_count": 0,
+      "retry": 0,
+      "fallback": 0,
+      "route_switch": 0,
+      "resume_dispatch": 0,
+      "second_dispatch": 0
+    },
+    {
+      "case": "worktree_drift",
+      "campaign_stops_immediately": true,
+      "later_approval_count": 0,
+      "later_nonce_count": 0,
+      "retry": 0,
+      "fallback": 0,
+      "route_switch": 0,
+      "resume_dispatch": 0,
+      "second_dispatch": 0
+    },
+    {
+      "case": "experiment_lock_drift",
+      "campaign_stops_immediately": true,
+      "later_approval_count": 0,
+      "later_nonce_count": 0,
+      "retry": 0,
+      "fallback": 0,
+      "route_switch": 0,
+      "resume_dispatch": 0,
+      "second_dispatch": 0
+    },
+    {
+      "case": "sample_lock_drift",
+      "campaign_stops_immediately": true,
+      "later_approval_count": 0,
+      "later_nonce_count": 0,
+      "retry": 0,
+      "fallback": 0,
+      "route_switch": 0,
+      "resume_dispatch": 0,
+      "second_dispatch": 0
+    },
+    {
+      "case": "model_input_drift",
+      "campaign_stops_immediately": true,
+      "later_approval_count": 0,
+      "later_nonce_count": 0,
+      "retry": 0,
+      "fallback": 0,
+      "route_switch": 0,
+      "resume_dispatch": 0,
+      "second_dispatch": 0
+    },
+    {
+      "case": "non_skill_reference_drift",
+      "campaign_stops_immediately": true,
+      "later_approval_count": 0,
+      "later_nonce_count": 0,
+      "retry": 0,
+      "fallback": 0,
+      "route_switch": 0,
+      "resume_dispatch": 0,
+      "second_dispatch": 0
+    },
+    {
+      "case": "skill_context_drift",
+      "campaign_stops_immediately": true,
+      "later_approval_count": 0,
+      "later_nonce_count": 0,
+      "retry": 0,
+      "fallback": 0,
+      "route_switch": 0,
+      "resume_dispatch": 0,
+      "second_dispatch": 0
+    },
+    {
+      "case": "route_drift",
+      "campaign_stops_immediately": true,
+      "later_approval_count": 0,
+      "later_nonce_count": 0,
+      "retry": 0,
+      "fallback": 0,
+      "route_switch": 0,
+      "resume_dispatch": 0,
+      "second_dispatch": 0
+    },
+    {
+      "case": "destination_drift",
+      "campaign_stops_immediately": true,
+      "later_approval_count": 0,
+      "later_nonce_count": 0,
+      "retry": 0,
+      "fallback": 0,
+      "route_switch": 0,
+      "resume_dispatch": 0,
+      "second_dispatch": 0
+    },
+    {
+      "case": "egress_drift",
+      "campaign_stops_immediately": true,
+      "later_approval_count": 0,
+      "later_nonce_count": 0,
+      "retry": 0,
+      "fallback": 0,
+      "route_switch": 0,
+      "resume_dispatch": 0,
+      "second_dispatch": 0
+    },
+    {
+      "case": "capacity_drift",
+      "campaign_stops_immediately": true,
+      "later_approval_count": 0,
+      "later_nonce_count": 0,
+      "retry": 0,
+      "fallback": 0,
+      "route_switch": 0,
+      "resume_dispatch": 0,
+      "second_dispatch": 0
+    },
+    {
+      "case": "approval_schema_domain_failure",
+      "campaign_stops_immediately": true,
+      "later_approval_count": 0,
+      "later_nonce_count": 0,
+      "retry": 0,
+      "fallback": 0,
+      "route_switch": 0,
+      "resume_dispatch": 0,
+      "second_dispatch": 0
+    },
+    {
+      "case": "approval_store_failure",
+      "campaign_stops_immediately": true,
+      "later_approval_count": 0,
+      "later_nonce_count": 0,
+      "retry": 0,
+      "fallback": 0,
+      "route_switch": 0,
+      "resume_dispatch": 0,
+      "second_dispatch": 0
+    },
+    {
+      "case": "nonce_failure",
+      "campaign_stops_immediately": true,
+      "later_approval_count": 0,
+      "later_nonce_count": 0,
+      "retry": 0,
+      "fallback": 0,
+      "route_switch": 0,
+      "resume_dispatch": 0,
+      "second_dispatch": 0
+    },
+    {
+      "case": "credential_boundary_failure",
+      "campaign_stops_immediately": true,
+      "later_approval_count": 0,
+      "later_nonce_count": 0,
+      "retry": 0,
+      "fallback": 0,
+      "route_switch": 0,
+      "resume_dispatch": 0,
+      "second_dispatch": 0
+    },
+    {
+      "case": "provider_client_boundary_failure",
+      "campaign_stops_immediately": true,
+      "later_approval_count": 0,
+      "later_nonce_count": 0,
+      "retry": 0,
+      "fallback": 0,
+      "route_switch": 0,
+      "resume_dispatch": 0,
+      "second_dispatch": 0
+    },
+    {
+      "case": "http_network_failure",
+      "campaign_stops_immediately": true,
+      "later_approval_count": 0,
+      "later_nonce_count": 0,
+      "retry": 0,
+      "fallback": 0,
+      "route_switch": 0,
+      "resume_dispatch": 0,
+      "second_dispatch": 0
+    },
+    {
+      "case": "provider_error",
+      "campaign_stops_immediately": true,
+      "later_approval_count": 0,
+      "later_nonce_count": 0,
+      "retry": 0,
+      "fallback": 0,
+      "route_switch": 0,
+      "resume_dispatch": 0,
+      "second_dispatch": 0
+    },
+    {
+      "case": "parse_failure",
+      "campaign_stops_immediately": true,
+      "later_approval_count": 0,
+      "later_nonce_count": 0,
+      "retry": 0,
+      "fallback": 0,
+      "route_switch": 0,
+      "resume_dispatch": 0,
+      "second_dispatch": 0
+    },
+    {
+      "case": "schema_failure",
+      "campaign_stops_immediately": true,
+      "later_approval_count": 0,
+      "later_nonce_count": 0,
+      "retry": 0,
+      "fallback": 0,
+      "route_switch": 0,
+      "resume_dispatch": 0,
+      "second_dispatch": 0
+    },
+    {
+      "case": "domain_failure",
+      "campaign_stops_immediately": true,
+      "later_approval_count": 0,
+      "later_nonce_count": 0,
+      "retry": 0,
+      "fallback": 0,
+      "route_switch": 0,
+      "resume_dispatch": 0,
+      "second_dispatch": 0
+    },
+    {
+      "case": "local_terminal_failure",
+      "campaign_stops_immediately": true,
+      "later_approval_count": 0,
+      "later_nonce_count": 0,
+      "retry": 0,
+      "fallback": 0,
+      "route_switch": 0,
+      "resume_dispatch": 0,
+      "second_dispatch": 0
+    },
+    {
+      "case": "privacy_failure",
+      "campaign_stops_immediately": true,
+      "later_approval_count": 0,
+      "later_nonce_count": 0,
+      "retry": 0,
+      "fallback": 0,
+      "route_switch": 0,
+      "resume_dispatch": 0,
+      "second_dispatch": 0
+    },
+    {
+      "case": "budget_exhaustion",
+      "campaign_stops_immediately": true,
+      "later_approval_count": 0,
+      "later_nonce_count": 0,
+      "retry": 0,
+      "fallback": 0,
+      "route_switch": 0,
+      "resume_dispatch": 0,
+      "second_dispatch": 0
+    },
+    {
+      "case": "campaign_expiry",
+      "campaign_stops_immediately": true,
+      "later_approval_count": 0,
+      "later_nonce_count": 0,
+      "retry": 0,
+      "fallback": 0,
+      "route_switch": 0,
+      "resume_dispatch": 0,
+      "second_dispatch": 0
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "schema": "SkillV3HybridRealTransportPreflightV1",
+  "status": "EXACT",
+  "provider": "lingsuan_gpt",
+  "model": "gpt-5.6-sol",
+  "protocol": "anthropic",
+  "route_fingerprint": "30e9cbaf86fbb4b89b43614d71cc11b359ad41e7411e8ebda5d3ce4199879bf0",
+  "destination": "https://lingsuan.org:443/v1/messages",
+  "hostname": "lingsuan.org",
+  "port": 443,
+  "path": "/v1/messages",
+  "operator_classification": "THIRD_PARTY_RELAY_LOCAL_METADATA_ONLY",
+  "redirect_policy": "CROSS_ORIGIN_REDIRECT_FORBIDDEN",
+  "proxy_policy": "UNBOUND_PROXY_FORBIDDEN",
+  "base_url_override_policy": "UNBOUND_OVERRIDE_FORBIDDEN",
+  "fallback_policy": "NO_FALLBACK_DESTINATION",
+  "alternate_destination_count": 0,
+  "sample_count": 6,
+  "credential_lookup_count": 0,
+  "network_call_count": 0
+}

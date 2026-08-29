@@ -1,0 +1,65 @@
+{
+  "version": 2,
+  "original_requirement": "Close the complete real six-sample campaign boundary offline before seeking fresh authorization.",
+  "scope_classification": "closed_world",
+  "operational_definition": "Exact sealed campaign crosses every local/runtime seam with only lowest HTTP stubbed.",
+  "forbidden_narrowing": [
+    "fake-only runner",
+    "bypassed durable store, validator, or terminal path",
+    "precreated later-sample approval or nonce",
+    "retry, fallback, route switch, resume, or second dispatch",
+    "credential, network, model, or paid action during closure"
+  ],
+  "resolution_status": "case_fixed",
+  "closed_world_justification": "The sealed campaign has six fixed samples, one fixed order, one fixed route/destination, fixed caps, and a finite local execution seam graph.",
+  "constraint_traceability": [
+    {
+      "requirement": "complete six-sample local closure",
+      "implementation": "tools/canary/skill_v3_hybrid_real_campaign.py",
+      "test_paths": [
+        "tests/canary/test_skill_v3_hybrid_real_campaign_closure.py"
+      ],
+      "evidence": "six-sample-sequential-dry-run-v1.json"
+    }
+  ],
+  "historical_incident_families_checked": [
+    "missing_real_execution_boundary",
+    "approval_head_successor_drift",
+    "nonce_precreation",
+    "hidden_transport_retry",
+    "post_response_terminal_failure",
+    "destination_binding_drift"
+  ],
+  "projected_failure_mechanisms": [
+    "stale authority",
+    "partial checkpoint",
+    "transport interruption",
+    "parser failure",
+    "capacity drift",
+    "concurrency"
+  ],
+  "why_previous_tests_missed": "Prior tests proved single samples and isolated JIT approval but did not traverse one durable six-sample campaign state machine.",
+  "sibling_boundaries": [
+    {
+      "boundary": "normal production workflows",
+      "disposition": "tested_not_susceptible",
+      "evidence": "No normal application module imports the dormant canary module."
+    },
+    {
+      "boundary": "existing single-sample Hybrid launcher",
+      "disposition": "fixed_and_tested",
+      "evidence": "The related canary test cluster exercises and preserves the existing single-sample launcher."
+    }
+  ],
+  "model_output_boundary_changed": false,
+  "model_output_not_applicable_evidence": "The existing sealed model input, provider adapter, conversion, domain validator and schema validator are invoked unchanged; only orchestration above them is added.",
+  "production_shaped_tests": [
+    "tests/canary/test_skill_v3_hybrid_real_campaign_closure.py"
+  ],
+  "next_authoritative_boundary_tests": [
+    "tests/canary/test_skill_v3_hybrid_real_campaign_closure.py"
+  ],
+  "remaining_risks": [
+    "Actual credential, network, Provider, model-output and literary outcomes require a separately authorized real campaign."
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "schema": "SkillV3HybridCampaignPermissionLifecycleEvidenceV1",
+  "status": "PASS",
+  "create_exactly_once": true,
+  "restart_load": "PASS",
+  "active_expired_states": "PASS",
+  "scope_exactness": "PASS",
+  "request_budget_counters": "PASS",
+  "completion_invalidation": "PASS",
+  "successor_non_reuse": "PASS",
+  "final_state": "COMPLETED",
+  "campaign_permission_sha256": "08c46ecd4ad64fd431a946daf45c92fb76119b663eec0a54a56a62a546197230"
+}
