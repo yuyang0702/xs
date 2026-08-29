@@ -1,0 +1,35 @@
+{
+  "archive_negative_evidence": [
+    "Restored Skill V2",
+    "Demand-aware V2",
+    "Residual V3",
+    "Selective replacement",
+    "current Hybrid supplement"
+  ],
+  "delete_count": 0,
+  "retain_default_disabled": [
+    "Selective compiler integrity primitives",
+    "Hybrid typed closure",
+    "actionability",
+    "protected budgets",
+    "provenance",
+    "shadow/failure observers",
+    "Planning V2 Slice1 artifacts"
+  ],
+  "retain_experiment_safety": [
+    "JIT approval",
+    "durable approval store",
+    "single-use nonce",
+    "one-shot runner",
+    "blind evaluation",
+    "destination/head/egress bindings"
+  ],
+  "retain_production": [
+    "SkillGate",
+    "hard-rule extraction",
+    "SkillPromptCompactor",
+    "PTR9 guard",
+    "PTR12 hash-only observer"
+  ],
+  "schema": "SkillV3EngineeringAssetDispositionV1"
+}

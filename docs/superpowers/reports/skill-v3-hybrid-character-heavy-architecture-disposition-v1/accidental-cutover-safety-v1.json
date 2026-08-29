@@ -1,0 +1,12 @@
+{
+  "baml_src_diff_count": 0,
+  "failed_skill_v3_path_accidental_cutover_count": 0,
+  "hybrid_default_enabled": false,
+  "normal_production_true_enablement_count": 0,
+  "production_baseline_prompt_bytes_unchanged": "YES",
+  "production_model_input_identity_unchanged": "YES",
+  "reason": "WorkflowService defaults hybrid_skill_context_shadow_enabled to false; app construction does not enable it; no normal source path passes true; enabled shadow remains hash-only and model-input inert.",
+  "schema": "SkillV3AccidentalCutoverSafetyV1",
+  "source_change_required": false,
+  "src_diff_count": 0
+}

@@ -1,0 +1,81 @@
+{
+  "blockers": [
+    {
+      "acceptance_evidence": [
+        "typed issue vector retained",
+        "no whole-artifact same-fingerprint loop",
+        "deterministic assembly/global closure",
+        "Draft entry reached in production-shaped offline tests",
+        "13K/20K/30K/current-project snapshots"
+      ],
+      "blocker_id": "FSB-PLANNING-CONVERGENCE",
+      "can_combine_with_other_blockers": "YES",
+      "deferable": "NO",
+      "description": "Lossless typed Planning semantic findings plus bounded event repair/freeze and deterministic global assembly must converge.",
+      "estimated_risk": "HIGH",
+      "external_call_required": "NO_FOR_IMPLEMENTATION_AND_OFFLINE_ACCEPTANCE; YES_ONLY_FOR_LATER_SINGLE_CANARY",
+      "model_visible_change_required": "YES_BOUNDED_PLANNING_RECOVERY_CONTEXT",
+      "owner_module": [
+        "planning_semantics.py",
+        "generated_artifacts.py",
+        "planning_v2_slice1.py",
+        "contract_runtime.py",
+        "workflows.py"
+      ],
+      "why_it_blocks_full_short": "The last Full Short stopped before a domain-valid Planning artifact and never entered Draft."
+    },
+    {
+      "acceptance_evidence": [
+        "typed finding ownership",
+        "unrelated prose byte preservation",
+        "bounded retry/no-progress stop",
+        "normal Draft parity"
+      ],
+      "blocker_id": "FSB-DRAFT-REPAIR-OWNERSHIP",
+      "can_combine_with_other_blockers": "YES",
+      "deferable": "NO",
+      "description": "Constrain Draft recovery to the typed failing ownership scope and preserve unrelated accepted prose.",
+      "estimated_risk": "MEDIUM_HIGH",
+      "external_call_required": "NO_FOR_OFFLINE_CLOSURE",
+      "model_visible_change_required": "YES_ONLY_ON_REPAIR_ATTEMPT",
+      "owner_module": [
+        "workflows.py",
+        "contract_runtime.py",
+        "draft validation/recovery owners"
+      ],
+      "why_it_blocks_full_short": "Current residual draft.retry_scope_too_broad can mutate already-accepted content after a localized validation finding."
+    },
+    {
+      "acceptance_evidence": [
+        "selection identity/provenance",
+        "stage ownership",
+        "polish and Final Review binding",
+        "absence-path parity"
+      ],
+      "blocker_id": "FSB-SELECTED-STYLE-FIDELITY",
+      "can_combine_with_other_blockers": "YES",
+      "deferable": "CONDITIONAL_NO_IF_SELECTED; YES_IF_EXPLICITLY_ABSENT",
+      "description": "When a style/reference is selected, bind its exact provenance through Draft/polish/Final Review and verify fidelity.",
+      "estimated_risk": "MEDIUM",
+      "external_call_required": "NO_FOR_OFFLINE_CLOSURE",
+      "model_visible_change_required": "YES_ONLY_WHEN_EXPLICIT_SELECTION_EXISTS",
+      "owner_module": [
+        "quality_references.py",
+        "workflows.py",
+        "quality_profiles.py",
+        "final review contract"
+      ],
+      "why_it_blocks_full_short": "A run cannot claim trustworthy adherence to an explicit selected style/reference if polish and Final Review cannot identify or evaluate that artifact."
+    }
+  ],
+  "conditional_hard_blocker_count": 1,
+  "hard_blocker_count": 2,
+  "not_promoted_to_blocker": [
+    "Skill V3/Hybrid cutover",
+    "remaining demand campaigns",
+    "canonical V2 cutover",
+    "long-fiction migration",
+    "token/cost optimization"
+  ],
+  "schema": "FullShortBlockerMatrixV1"
+}

@@ -1,0 +1,6 @@
+{
+  "command": "python -m unittest tests.canary.test_skill_v3_hybrid_architecture_disposition",
+  "external_calls": 0,
+  "schema": "FocusedTestReceiptV1",
+  "status": "PASS_8"
+}

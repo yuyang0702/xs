@@ -1,0 +1,38 @@
+{
+  "critical_dimensions": {
+    "causal_coherence": "INCONCLUSIVE",
+    "character_agency": "INCONCLUSIVE",
+    "setup_payoff_integrity": "REGRESSION"
+  },
+  "critical_summary": {
+    "better": 0,
+    "equivalent": 0,
+    "inconclusive": 2,
+    "regression": 1
+  },
+  "engineering_non_inferior": "YES",
+  "evaluator_by_batch_votes": "6_OF_6",
+  "independent_blind_evaluators": 2,
+  "mapping_contamination_count": 0,
+  "mapping_hidden_until_both_freezes": true,
+  "matched_pairs": 3,
+  "narrative_non_inferior": "NO",
+  "noncritical_dimensions": {
+    "anti_template_risk": "BETTER",
+    "scene_pressure": "BETTER",
+    "specificity": "BETTER",
+    "subtext_support": "BETTER",
+    "voice_readiness": "BETTER"
+  },
+  "noncritical_summary": {
+    "better": 5,
+    "equivalent": 0,
+    "inconclusive": 0,
+    "regression": 0
+  },
+  "pilot_disposition": "NO_GO_QUALITY",
+  "scalar_averaging_used": false,
+  "schema": "SkillV3HybridFinalQualityDecisionBindingV1",
+  "six_real_samples": "SEALED_VALID_6_OF_6",
+  "status": "EXACT"
+}

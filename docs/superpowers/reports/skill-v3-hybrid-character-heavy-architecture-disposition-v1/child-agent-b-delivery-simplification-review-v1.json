@@ -1,0 +1,50 @@
+{
+  "branch": "r1-ptr3/planning-repair-finding-propagation-20260817",
+  "confidence": "HIGH",
+  "dissent": "The literary disposition gate should close by archiving the NO_GO path; business delivery should move to lossless Planning finding propagation, bounded repair/freeze, deterministic assembly/global closure, then one fresh Full Short.",
+  "entry_exit_worktree": "CLEAN",
+  "external_actions": {
+    "credential": 0,
+    "model": 0,
+    "network": 0,
+    "paid": 0,
+    "provider": 0
+  },
+  "first_unrecovered_full_short_divergence": "Planning Call 1 planning_semantic_v2 semantic_validation_failed; whole-artifact recovery did not converge; Draft never entered.",
+  "frozen": true,
+  "head": "358c850b5a0fc4c063813576f868baae477f575b",
+  "independence": {
+    "external_calls": 0,
+    "fork_turns": "none",
+    "other_reviewer_output_read": false,
+    "worktree_modified": false
+  },
+  "keep_default_disabled": [
+    "planning_v2_slice1 artifact/freeze/recovery",
+    "selective compiler integrity primitives",
+    "Hybrid typed closure/budget/provenance/observer",
+    "runtime Skill profile builders as deterministic fixtures"
+  ],
+  "production_path_owner": [
+    "src/novel_flywheel/prompts.py::REQUIRED_SKILLS",
+    "src/novel_flywheel/skills.py::SkillGate.run_required",
+    "src/novel_flywheel/skill_prompts.py::SkillPromptCompactor.compact",
+    "src/novel_flywheel/workflows.py::WorkflowService._stage"
+  ],
+  "recommended_master": "MASTER_SHORT_PLANNING_CONVERGENCE_TO_FIRST_FULL_SHORT",
+  "remove_from_cutover_consideration": [
+    "Restored Skill V2",
+    "Demand-aware V2",
+    "Residual V3",
+    "Selective replacement",
+    "current Hybrid supplement",
+    "full-verbatim selected Skills",
+    "3000-char restart",
+    "single-sample hill climbing",
+    "remaining demand campaigns"
+  ],
+  "reviewer_role": "DELIVERY_SIMPLIFICATION",
+  "safest_production_skill_path": "REQUIRED_SKILLS[planning] -> SkillGate.run_required -> SkillPromptCompactor.compact -> build_stage_context_packet -> render_stage_system_context -> current ModelGateway/Contract Runtime",
+  "schema": "FrozenIndependentDeliverySimplificationReviewV1",
+  "shortest_policy": "CURRENT_RUNTIME_SKILL_IS_CONTROL_UNTIL_FIRST_FULL_SHORT=YES"
+}

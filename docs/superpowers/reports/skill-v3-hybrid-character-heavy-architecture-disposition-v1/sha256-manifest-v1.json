@@ -1,0 +1,113 @@
+{
+  "entries": [
+    {
+      "bytes": 597,
+      "path": "docs/superpowers/reports/skill-v3-hybrid-character-heavy-architecture-disposition-v1/accidental-cutover-safety-v1.json",
+      "sha256": "6d39b580bfdb72dcbaf38ab08581528b874250d05aae2887d39b7ce0c45efb7f"
+    },
+    {
+      "bytes": 378,
+      "path": "docs/superpowers/reports/skill-v3-hybrid-character-heavy-architecture-disposition-v1/authority-impact-map-v1.json",
+      "sha256": "795b0f2f2bbbdf9f07f5735dcfe65a39ae2858160e455f9ef87d7e7b698ac0df"
+    },
+    {
+      "bytes": 4490,
+      "path": "docs/superpowers/reports/skill-v3-hybrid-character-heavy-architecture-disposition-v1/baseline-binding-v1.json",
+      "sha256": "541896190d6563f475e9d4f52cb80a98df9e64f024465440cbe564582fa18c7f"
+    },
+    {
+      "bytes": 673,
+      "path": "docs/superpowers/reports/skill-v3-hybrid-character-heavy-architecture-disposition-v1/change-contract-v1.json",
+      "sha256": "802ca119926d67d05de07e14d0ad4e2bef54aa818a4cb55cd4cf8422f6916528"
+    },
+    {
+      "bytes": 2141,
+      "path": "docs/superpowers/reports/skill-v3-hybrid-character-heavy-architecture-disposition-v1/child-agent-a-literary-architecture-review-v1.json",
+      "sha256": "5541d635cb39540d233281952770079e7a14ad080b1cf0b5eef53523b67b507f"
+    },
+    {
+      "bytes": 2226,
+      "path": "docs/superpowers/reports/skill-v3-hybrid-character-heavy-architecture-disposition-v1/child-agent-b-delivery-simplification-review-v1.json",
+      "sha256": "7b905f3dfdda3b2b16b36b5afc94ca26332b0fb8e7e0c8bcdcfeb9e4db963225"
+    },
+    {
+      "bytes": 833,
+      "path": "docs/superpowers/reports/skill-v3-hybrid-character-heavy-architecture-disposition-v1/engineering-asset-disposition-v1.json",
+      "sha256": "e0a4ffd3bad5732b5896723f282a476b5ea98989a1f43f32ddcfc277c859c075"
+    },
+    {
+      "bytes": 1027,
+      "path": "docs/superpowers/reports/skill-v3-hybrid-character-heavy-architecture-disposition-v1/final-quality-decision-binding-v1.json",
+      "sha256": "024800030066c7b7e5dbfa0d254b798d6cb6333f54c7565dfb8420e59bdf45ee"
+    },
+    {
+      "bytes": 3807,
+      "path": "docs/superpowers/reports/skill-v3-hybrid-character-heavy-architecture-disposition-v1/final-report-v1.md",
+      "sha256": "b8e6cbb9406694fdfa63bd32840cd880672759c6d21e3df52fe1fc36fec3cdc4"
+    },
+    {
+      "bytes": 178,
+      "path": "docs/superpowers/reports/skill-v3-hybrid-character-heavy-architecture-disposition-v1/focused-test-receipt-v1.json",
+      "sha256": "056fd247bcaaadd5ce82646aeb3da3ddc9758ef91ea80f797589236e29e5b839"
+    },
+    {
+      "bytes": 3363,
+      "path": "docs/superpowers/reports/skill-v3-hybrid-character-heavy-architecture-disposition-v1/full-short-blocker-matrix-v1.json",
+      "sha256": "4bcc3efd6a8966ea944e9bb64c112a5c3d199d538184bb8bfbd616ce8bb98ae2"
+    },
+    {
+      "bytes": 994,
+      "path": "docs/superpowers/reports/skill-v3-hybrid-character-heavy-architecture-disposition-v1/model-visible-architecture-disposition-v1.json",
+      "sha256": "a8c5eda5818fa487751942e29bd9c162911ce9c70ab55e87025c32b8fd7782c9"
+    },
+    {
+      "bytes": 1305,
+      "path": "docs/superpowers/reports/skill-v3-hybrid-character-heavy-architecture-disposition-v1/next-master-gate-v1.json",
+      "sha256": "e24a65328d272787439ce426cead39af69d2f2a55d0b8a6004935c10ee6b7411"
+    },
+    {
+      "bytes": 401,
+      "path": "docs/superpowers/reports/skill-v3-hybrid-character-heavy-architecture-disposition-v1/privacy-scan-v1.json",
+      "sha256": "5df8cbea93a2d216156cf2f3c4d7422d479d28a2be602ae22c2890b624a69eb4"
+    },
+    {
+      "bytes": 533,
+      "path": "docs/superpowers/reports/skill-v3-hybrid-character-heavy-architecture-disposition-v1/README.md",
+      "sha256": "b4be9fd2a4785bc8f7f39884b311ebcb48312c534676ac417c1686f9b0e54c2c"
+    },
+    {
+      "bytes": 422,
+      "path": "docs/superpowers/reports/skill-v3-hybrid-character-heavy-architecture-disposition-v1/related-test-receipt-v1.json",
+      "sha256": "f23d56564da625940667afe7ed3756fe6d76df16e0702d12e9a3a379ead0999f"
+    },
+    {
+      "bytes": 1978,
+      "path": "docs/superpowers/reports/skill-v3-hybrid-character-heavy-architecture-disposition-v1/roadmap-to-full-short-v1.json",
+      "sha256": "36429b0df57c0dfe953062362195fe9e52aff85b0e971d11fc00afec2c91ffad"
+    },
+    {
+      "bytes": 3383,
+      "path": "docs/superpowers/reports/skill-v3-hybrid-character-heavy-architecture-disposition-v1/short-path-source-truth-audit-v1.json",
+      "sha256": "263c2d6ad92a7a62b17683047d88cb0378989b1d4bebba13c213df6b32b61cb1"
+    },
+    {
+      "bytes": 7854,
+      "path": "docs/superpowers/reports/skill-v3-hybrid-character-heavy-architecture-disposition-v1/skill-v3-asset-inventory-v1.json",
+      "sha256": "b3d6bd3681bc5ce902420bc4a3d739a6b98e61f3de440f189e9a8c151fcc4d65"
+    },
+    {
+      "bytes": 523,
+      "path": "docs/superpowers/reports/skill-v3-hybrid-character-heavy-architecture-disposition-v1/stop-loss-binding-v1.json",
+      "sha256": "b3feb396125bcee6fb9f571bda8fc1974d5f79aa4b3dd95f9ba6b98b1361ffe9"
+    },
+    {
+      "bytes": 191,
+      "path": "docs/superpowers/reports/skill-v3-hybrid-character-heavy-architecture-disposition-v1/strict-l3-receipt-v1.json",
+      "sha256": "700aec909fa6bd7c328458e40dbb7b62fe78d45acc2e67f93ad6ef62dc2fdccd"
+    }
+  ],
+  "entry_count": 21,
+  "root": "docs/superpowers/reports/skill-v3-hybrid-character-heavy-architecture-disposition-v1",
+  "schema": "SkillV3HybridArchitectureDispositionSha256ManifestV1",
+  "status": "EXACT"
+}

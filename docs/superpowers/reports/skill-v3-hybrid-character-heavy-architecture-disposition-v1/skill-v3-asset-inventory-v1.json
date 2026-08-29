@@ -1,0 +1,185 @@
+{
+  "components": [
+    {
+      "component": "Skill scanner / repo-local precedence",
+      "current_default": "ENABLED",
+      "disposition": "KEEP_PRODUCTION",
+      "engineering_value": "HIGH",
+      "literary_status": "CONTROL",
+      "model_visible_or_not": "YES",
+      "rationale": "Keep proven control/safety primitives; retire failed model-visible treatments without deleting useful infrastructure.",
+      "used_by_production": "YES"
+    },
+    {
+      "component": "SkillGate",
+      "current_default": "ENABLED",
+      "disposition": "KEEP_PRODUCTION",
+      "engineering_value": "HIGH",
+      "literary_status": "CONTROL",
+      "model_visible_or_not": "YES",
+      "rationale": "Keep proven control/safety primitives; retire failed model-visible treatments without deleting useful infrastructure.",
+      "used_by_production": "YES"
+    },
+    {
+      "component": "hard-rule extraction",
+      "current_default": "ENABLED",
+      "disposition": "KEEP_PRODUCTION",
+      "engineering_value": "HIGH",
+      "literary_status": "CONTROL",
+      "model_visible_or_not": "YES",
+      "rationale": "Keep proven control/safety primitives; retire failed model-visible treatments without deleting useful infrastructure.",
+      "used_by_production": "YES"
+    },
+    {
+      "component": "production SkillPromptCompactor",
+      "current_default": "ENABLED",
+      "disposition": "KEEP_PRODUCTION",
+      "engineering_value": "HIGH",
+      "literary_status": "CONTROL",
+      "model_visible_or_not": "YES",
+      "rationale": "Keep proven control/safety primitives; retire failed model-visible treatments without deleting useful infrastructure.",
+      "used_by_production": "YES"
+    },
+    {
+      "component": "Selective Verbatim compiler",
+      "current_default": "UNREACHABLE",
+      "disposition": "RETAIN_LIBRARY_RETIRE_CUTOVER",
+      "engineering_value": "MEDIUM",
+      "literary_status": "FAILED_REPLACEMENT",
+      "model_visible_or_not": "NO_IN_PRODUCTION",
+      "rationale": "Keep proven control/safety primitives; retire failed model-visible treatments without deleting useful infrastructure.",
+      "used_by_production": "NO"
+    },
+    {
+      "component": "Hybrid cross-Skill packet compiler",
+      "current_default": "DISABLED",
+      "disposition": "RETAIN_OFFLINE_RETIRE_MODEL_VISIBLE",
+      "engineering_value": "HIGH",
+      "literary_status": "NO_GO_QUALITY",
+      "model_visible_or_not": "NO_IN_PRODUCTION",
+      "rationale": "Keep proven control/safety primitives; retire failed model-visible treatments without deleting useful infrastructure.",
+      "used_by_production": "NO"
+    },
+    {
+      "component": "typed dependency closure",
+      "current_default": "DISABLED",
+      "disposition": "KEEP_OFFLINE",
+      "engineering_value": "HIGH",
+      "literary_status": "ENGINEERING_PASS",
+      "model_visible_or_not": "NO",
+      "rationale": "Keep proven control/safety primitives; retire failed model-visible treatments without deleting useful infrastructure.",
+      "used_by_production": "NO"
+    },
+    {
+      "component": "actionability classifier",
+      "current_default": "DISABLED",
+      "disposition": "KEEP_OFFLINE",
+      "engineering_value": "MEDIUM",
+      "literary_status": "DIAGNOSTIC",
+      "model_visible_or_not": "NO",
+      "rationale": "Keep proven control/safety primitives; retire failed model-visible treatments without deleting useful infrastructure.",
+      "used_by_production": "NO"
+    },
+    {
+      "component": "provenance receipts",
+      "current_default": "DISABLED",
+      "disposition": "KEEP_OFFLINE",
+      "engineering_value": "HIGH",
+      "literary_status": "ENGINEERING_PASS",
+      "model_visible_or_not": "NO",
+      "rationale": "Keep proven control/safety primitives; retire failed model-visible treatments without deleting useful infrastructure.",
+      "used_by_production": "NO"
+    },
+    {
+      "component": "context-budget accounting",
+      "current_default": "DISABLED",
+      "disposition": "KEEP_OFFLINE",
+      "engineering_value": "HIGH",
+      "literary_status": "ENGINEERING_PASS",
+      "model_visible_or_not": "NO",
+      "rationale": "Keep proven control/safety primitives; retire failed model-visible treatments without deleting useful infrastructure.",
+      "used_by_production": "NO"
+    },
+    {
+      "component": "reference/non-Skill identity binding",
+      "current_default": "DISABLED",
+      "disposition": "KEEP_OFFLINE",
+      "engineering_value": "HIGH",
+      "literary_status": "ENGINEERING_PASS",
+      "model_visible_or_not": "NO",
+      "rationale": "Keep proven control/safety primitives; retire failed model-visible treatments without deleting useful infrastructure.",
+      "used_by_production": "NO"
+    },
+    {
+      "component": "shadow observers",
+      "current_default": "DISABLED",
+      "disposition": "KEEP_OFFLINE",
+      "engineering_value": "HIGH",
+      "literary_status": "ENGINEERING_PASS",
+      "model_visible_or_not": "NO",
+      "rationale": "Keep proven control/safety primitives; retire failed model-visible treatments without deleting useful infrastructure.",
+      "used_by_production": "NO"
+    },
+    {
+      "component": "failure observability",
+      "current_default": "DISABLED_FAIL_OPEN",
+      "disposition": "KEEP_OFFLINE",
+      "engineering_value": "HIGH",
+      "literary_status": "ENGINEERING_PASS",
+      "model_visible_or_not": "NO",
+      "rationale": "Keep proven control/safety primitives; retire failed model-visible treatments without deleting useful infrastructure.",
+      "used_by_production": "NO"
+    },
+    {
+      "component": "JIT approval / durable approval store",
+      "current_default": "EXPERIMENT_ONLY",
+      "disposition": "KEEP_EXPERIMENT_CONTROL",
+      "engineering_value": "HIGH",
+      "literary_status": "SAFETY_CONTROL",
+      "model_visible_or_not": "NO",
+      "rationale": "Keep proven control/safety primitives; retire failed model-visible treatments without deleting useful infrastructure.",
+      "used_by_production": "NO"
+    },
+    {
+      "component": "durable nonce / one-shot runner",
+      "current_default": "EXPERIMENT_ONLY",
+      "disposition": "KEEP_EXPERIMENT_CONTROL",
+      "engineering_value": "HIGH",
+      "literary_status": "SAFETY_CONTROL",
+      "model_visible_or_not": "NO",
+      "rationale": "Keep proven control/safety primitives; retire failed model-visible treatments without deleting useful infrastructure.",
+      "used_by_production": "NO"
+    },
+    {
+      "component": "blind-evaluation infrastructure",
+      "current_default": "OFFLINE",
+      "disposition": "KEEP_OFFLINE",
+      "engineering_value": "HIGH",
+      "literary_status": "METHODOLOGY_PASS",
+      "model_visible_or_not": "NO",
+      "rationale": "Keep proven control/safety primitives; retire failed model-visible treatments without deleting useful infrastructure.",
+      "used_by_production": "NO"
+    },
+    {
+      "component": "execution-boundary closure",
+      "current_default": "EXPERIMENT_ONLY",
+      "disposition": "KEEP_EXPERIMENT_CONTROL",
+      "engineering_value": "HIGH",
+      "literary_status": "SAFETY_CONTROL",
+      "model_visible_or_not": "NO",
+      "rationale": "Keep proven control/safety primitives; retire failed model-visible treatments without deleting useful infrastructure.",
+      "used_by_production": "NO"
+    },
+    {
+      "component": "final-head authorization infrastructure",
+      "current_default": "EXPERIMENT_ONLY",
+      "disposition": "KEEP_EXPERIMENT_CONTROL",
+      "engineering_value": "HIGH",
+      "literary_status": "SAFETY_CONTROL",
+      "model_visible_or_not": "NO",
+      "rationale": "Keep proven control/safety primitives; retire failed model-visible treatments without deleting useful infrastructure.",
+      "used_by_production": "NO"
+    }
+  ],
+  "schema": "SkillV3AssetInventoryV1"
+}

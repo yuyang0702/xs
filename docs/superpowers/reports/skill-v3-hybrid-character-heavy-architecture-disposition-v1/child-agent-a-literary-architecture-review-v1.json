@@ -1,0 +1,53 @@
+{
+  "answers": {
+    "further_model_visible_micro_iteration_justified": "NO",
+    "local_salience_long_horizon_tension": "SUPPORTED_AS_BOUNDED_DESCRIPTION_NOT_CAUSAL_OR_NOVEL_LENGTH_PROOF",
+    "local_wins_vs_payoff_regression": "Hybrid strengthened scene-local enactment, embodiment, pressure, voice, implication, and anti-template behavior, while Skill-section dependency closure did not preserve concrete story-instance promises, consequences, object custody, or payoff endpoints.",
+    "retain": [
+      "protected baseline",
+      "default-disabled shadow seam",
+      "typed closure",
+      "capacity guards",
+      "actionability classifier",
+      "provenance receipts",
+      "failure observability",
+      "blind evaluation infrastructure"
+    ],
+    "retire": [
+      "selective replacement",
+      "3000-char compressed profile restart",
+      "single-sample hill climbing",
+      "exact-demand selector replacement",
+      "current Hybrid model-visible supplement"
+    ]
+  },
+  "branch": "r1-ptr3/planning-repair-finding-propagation-20260817",
+  "confidence": {
+    "bounded_tension": 0.9,
+    "causal_salience": 0.64,
+    "overall_disposition": 0.96
+  },
+  "disposition": "NO_GO_MODEL_VISIBLE_TUNING; ARCHIVE_CURRENT_HYBRID_TREATMENT; RETAIN_OFFLINE_ENGINEERING_MECHANISMS",
+  "dissent": "Ordering/salience is secondary support, not isolated causality; the bounded pilot cannot establish novel-length generalization.",
+  "external_actions": {
+    "credential": 0,
+    "model": 0,
+    "network": 0,
+    "paid": 0,
+    "provider": 0
+  },
+  "frozen": true,
+  "head": "358c850b5a0fc4c063813576f868baae477f575b",
+  "independence": {
+    "external_calls": 0,
+    "fork_turns": "none",
+    "other_reviewer_output_read": false
+  },
+  "pair_evidence": {
+    "pair_2": "Hybrid improved continuous scene embodiment but omitted evacuation/commander-conflict consequences.",
+    "pair_3": "Hybrid improved physical staging but introduced a hard ledger-custody contradiction."
+  },
+  "reviewer_role": "LITERARY_ARCHITECTURE_DISPOSITION",
+  "schema": "FrozenIndependentLiteraryArchitectureDispositionReviewV1",
+  "worktree_modified": false
+}

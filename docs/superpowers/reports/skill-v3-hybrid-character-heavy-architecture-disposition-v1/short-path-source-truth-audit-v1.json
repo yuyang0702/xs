@@ -1,0 +1,75 @@
+{
+  "draft_entered_in_failed_full_short": false,
+  "first_unrecovered_divergence": "planning_semantic_v2 Call 1 semantic_validation_failed",
+  "items": [
+    {
+      "area": "Baseline Skill runtime stability / production identity",
+      "classification": "ALREADY_SATISFIED",
+      "id": "A",
+      "source_truth": "Current SkillGate/SkillPromptCompactor path is reachable; experimental profiles are offline-only."
+    },
+    {
+      "area": "Planning V2 implementation / cutover",
+      "classification": "MUST_CLOSE_BEFORE_FULL_SHORT",
+      "id": "B",
+      "source_truth": "Only Slice1 shadow is implemented; seven-stage production integration/global closure/Draft projection are not cut over."
+    },
+    {
+      "area": "Planning real convergence",
+      "classification": "MUST_CLOSE_BEFORE_FULL_SHORT",
+      "id": "C",
+      "source_truth": "First unrecovered Full Short divergence is Planning Call 1 semantic_validation_failed; whole-artifact recovery did not converge."
+    },
+    {
+      "area": "Draft finding propagation / convergence",
+      "classification": "MUST_CLOSE_BEFORE_FULL_SHORT",
+      "id": "D",
+      "source_truth": "Exact finding propagation is fixed, but draft.retry_scope_too_broad remains and can rewrite unrelated accepted prose."
+    },
+    {
+      "area": "Selected style/reference provenance and fidelity",
+      "classification": "CONDITIONAL_MUST_CLOSE_BEFORE_FULL_SHORT",
+      "id": "E",
+      "source_truth": "When a project selects a style/reference, current context inclusion is draft-only and Final Review has no exact selected-artifact fidelity binding."
+    },
+    {
+      "area": "Stronger canonical V2 gate",
+      "classification": "CAN_DEFER_UNTIL_AFTER_FIRST_FULL_SHORT",
+      "id": "F",
+      "source_truth": "Feature is project-scoped and defaults false; first Short can remain on explicit legacy authority if fingerprinted and no V2 promotion is claimed."
+    },
+    {
+      "area": "StoryState / Canon / READY authority chain",
+      "classification": "ALREADY_SATISFIED",
+      "id": "G",
+      "source_truth": "Existing single-writer and authority boundaries remain unchanged."
+    },
+    {
+      "area": "Resume/runtime fingerprint",
+      "classification": "ALREADY_SATISFIED",
+      "id": "H",
+      "source_truth": "Fingerprint and approval-preflight machinery exists; future packet must bind current bytes and resume=false."
+    },
+    {
+      "area": "REF/DISTILL/LEARN/Blueprint provenance",
+      "classification": "ALREADY_SATISFIED_WITH_STYLE_EXCEPTION",
+      "id": "I",
+      "source_truth": "General provenance is present; explicit selected style/reference fidelity is handled by E."
+    },
+    {
+      "area": "Final artifact/checkpoint closure",
+      "classification": "ALREADY_SATISFIED_NEEDS_END_TO_END_REVALIDATION",
+      "id": "J",
+      "source_truth": "Mechanics exist; master must exercise them after Planning/Draft closure."
+    },
+    {
+      "area": "Full Short execution boundary / approval / Provider readiness",
+      "classification": "ALREADY_SATISFIED_AS_MECHANISM",
+      "id": "K",
+      "source_truth": "Fresh single-use packet/JIT/nonces exist; a new user authorization is still required only after offline readiness."
+    }
+  ],
+  "planning_v2_production_cutover": "NO",
+  "schema": "ShortPathSourceTruthAuditV1",
+  "terminal_output_limit_role": "AMPLIFIER_NOT_FIRST_BUSINESS_ROOT"
+}

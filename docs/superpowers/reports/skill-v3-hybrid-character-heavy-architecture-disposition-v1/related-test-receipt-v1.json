@@ -1,0 +1,14 @@
+{
+  "external_calls": 0,
+  "note": "The receipt records the actual local-only related matrix; it does not claim an unexecuted full-suite result.",
+  "runner": ".venv/Scripts/python.exe -m pytest",
+  "schema": "RelatedTestReceiptV1",
+  "scope": [
+    "SkillGate/SkillPromptCompactor",
+    "Hybrid disabled identity",
+    "Planning Slice1",
+    "PTR9/PTR12",
+    "Short canonical feature flag"
+  ],
+  "status": "PASS_267"
+}

@@ -1,0 +1,17 @@
+{
+  "credential_material_persisted": false,
+  "external_actions": {
+    "credential": 0,
+    "model": 0,
+    "network": 0,
+    "paid": 0,
+    "provider": 0
+  },
+  "forbidden_match_count": 0,
+  "raw_prompt_persisted": false,
+  "raw_provider_content_persisted": false,
+  "raw_story_persisted": false,
+  "scanned_file_count": 20,
+  "schema": "SkillV3HybridDispositionPrivacyScanV1",
+  "status": "PASS"
+}

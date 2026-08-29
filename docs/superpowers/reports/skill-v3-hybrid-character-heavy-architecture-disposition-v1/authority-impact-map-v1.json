@@ -1,0 +1,11 @@
+{
+  "authority_critical_source_changes": [],
+  "canon_changed": false,
+  "draft_authority_changed": false,
+  "planning_authority_changed": false,
+  "production_model_input_changed": false,
+  "ready_authority_changed": false,
+  "review_level": "L3_ARCHITECTURE_DISPOSITION_WITH_TWO_FRESH_INDEPENDENT_REVIEWS",
+  "schema": "AuthorityImpactMapV1",
+  "story_state_changed": false
+}

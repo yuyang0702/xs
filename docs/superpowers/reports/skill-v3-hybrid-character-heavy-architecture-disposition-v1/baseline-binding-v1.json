@@ -1,0 +1,104 @@
+{
+  "baml_src_diff_count": 0,
+  "branch": "r1-ptr3/planning-repair-finding-propagation-20260817",
+  "external_actions": {
+    "credential": 0,
+    "model": 0,
+    "network": 0,
+    "paid": 0,
+    "provider": 0
+  },
+  "production_source_bindings": [
+    {
+      "current_sha256": "e475ec46a45e6f8cc8336a4ac98b8da04bbeee6a64ad1fe85db23e4fc8b1802f",
+      "exact": true,
+      "path": "src/novel_flywheel/app.py",
+      "start_head_sha256": "e475ec46a45e6f8cc8336a4ac98b8da04bbeee6a64ad1fe85db23e4fc8b1802f"
+    },
+    {
+      "current_sha256": "0255030aa17a49926ca96bd220b7f59f1154999b37af509330412724b57ffd91",
+      "exact": true,
+      "path": "src/novel_flywheel/workflows.py",
+      "start_head_sha256": "0255030aa17a49926ca96bd220b7f59f1154999b37af509330412724b57ffd91"
+    },
+    {
+      "current_sha256": "7bfc447862ad6560ec765440c282c5d4893804db3bd3ff365eb90d8fac3282d4",
+      "exact": true,
+      "path": "src/novel_flywheel/skills.py",
+      "start_head_sha256": "7bfc447862ad6560ec765440c282c5d4893804db3bd3ff365eb90d8fac3282d4"
+    },
+    {
+      "current_sha256": "95e94c72eb33a0f1871f1aab4b3da73874b4aa865ae06b9eb04ea356066f1246",
+      "exact": true,
+      "path": "src/novel_flywheel/skill_prompts.py",
+      "start_head_sha256": "95e94c72eb33a0f1871f1aab4b3da73874b4aa865ae06b9eb04ea356066f1246"
+    },
+    {
+      "current_sha256": "07ef225e4903c4f4ce561f3afe1447f27e1aea484d904efe4d902bca7ab6e198",
+      "exact": true,
+      "path": "src/novel_flywheel/hybrid_skill_context.py",
+      "start_head_sha256": "07ef225e4903c4f4ce561f3afe1447f27e1aea484d904efe4d902bca7ab6e198"
+    },
+    {
+      "current_sha256": "81517aca5641ade803d7b79c4ce27fae57d5e5e54cf3edbc61b69f690f3d8617",
+      "exact": true,
+      "path": "src/novel_flywheel/selective_skill_compiler.py",
+      "start_head_sha256": "81517aca5641ade803d7b79c4ce27fae57d5e5e54cf3edbc61b69f690f3d8617"
+    },
+    {
+      "current_sha256": "28bd1656f2452bea03bbe8c0778847e973d5f3dca807121e028f17af747ce201",
+      "exact": true,
+      "path": "src/novel_flywheel/planning_v2_slice1.py",
+      "start_head_sha256": "28bd1656f2452bea03bbe8c0778847e973d5f3dca807121e028f17af747ce201"
+    },
+    {
+      "current_sha256": "b7ae7020fc26353578a83d757af67571c47fd7df2e4e0f4c583a3a327ec191ae",
+      "exact": true,
+      "path": "src/novel_flywheel/planning_semantics.py",
+      "start_head_sha256": "b7ae7020fc26353578a83d757af67571c47fd7df2e4e0f4c583a3a327ec191ae"
+    },
+    {
+      "current_sha256": "c4144fe5c56e5b83a9bdf51cf75c2c5a62102948919af8a08d62d8322ee3f37b",
+      "exact": true,
+      "path": "src/novel_flywheel/generated_artifacts.py",
+      "start_head_sha256": "c4144fe5c56e5b83a9bdf51cf75c2c5a62102948919af8a08d62d8322ee3f37b"
+    },
+    {
+      "current_sha256": "b9e7a642a9f08ba23d1f2b05875df2b2e8012f3c8c1f1eca3965edbeb5b0f695",
+      "exact": true,
+      "path": "src/novel_flywheel/short_canonical_promotion.py",
+      "start_head_sha256": "b9e7a642a9f08ba23d1f2b05875df2b2e8012f3c8c1f1eca3965edbeb5b0f695"
+    }
+  ],
+  "schema": "SkillV3HybridArchitectureDispositionBaselineBindingV1",
+  "sealed_manifests": [
+    {
+      "path": "docs/superpowers/reports/skill-v3-hybrid-character-heavy-mapping-reveal-decision-v1/sha256-manifest-v1.json",
+      "sha256": "26a61a7b67d395718589dfe8ee78acb45696229614f66591f4f59130838cc26f",
+      "verified_entry_count": 12
+    },
+    {
+      "path": "docs/superpowers/reports/skill-v3-hybrid-character-heavy-combined-blind-aggregation-v1/sha256-manifest-v1.json",
+      "sha256": "59138d75b2ebf76a8b25e01accd9f939831c447a39798677e7d7b78e852b7087",
+      "verified_entry_count": 6
+    },
+    {
+      "path": "docs/superpowers/reports/skill-v3-selective-compiler-multi-sample-quality-root-cause-v1/sha256-manifest-v1.json",
+      "sha256": "4fc742fe66d8a0a111da7974b4f8d8a6e9c919c950c903b68e9ac0fe7cdd7af8",
+      "verified_entry_count": 24
+    },
+    {
+      "path": "docs/superpowers/reports/skill-v3-hybrid-skill-context-architecture-design-v1/sha256-manifest-v1.json",
+      "sha256": "f0da1a567186adc712661298b175d4e55d1ea1ef96c239e4a6e5b052be71dc81",
+      "verified_entry_count": 26
+    },
+    {
+      "path": "docs/superpowers/reports/skill-v3-hybrid-skill-context-shadow-implementation-v1/sha256-manifest-v1.json",
+      "sha256": "082b4ea03b55ef3cdc1da5a35eef87251e15420fe26b1c6c9e0d8a5b931bbf7d",
+      "verified_entry_count": 29
+    }
+  ],
+  "start_head": "358c850b5a0fc4c063813576f868baae477f575b",
+  "status": "EXACT",
+  "worktree_at_entry": "CLEAN"
+}

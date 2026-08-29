@@ -1,0 +1,24 @@
+{
+  "delivery_reviewer_narrow_alternative": "MASTER_SHORT_PLANNING_CONVERGENCE_TO_FIRST_FULL_SHORT",
+  "exact_next_gate": "SHORT_TRUSTWORTHY_FULL_FLOW_READINESS_AND_CUTOVER_MASTER",
+  "excluded": [
+    "Skill V3 cutover",
+    "Hybrid iteration",
+    "canonical V2 cutover",
+    "real Provider call",
+    "Full Short execution"
+  ],
+  "main_decision": "Use the consolidated gate because Draft ownership is a known residual and selected-style fidelity is a hard condition when selected; keep canonical V2 explicitly deferred rather than expanding the implementation.",
+  "schema": "ShortNextMasterGateV1",
+  "scope": [
+    "freeze CURRENT_RUNTIME_SKILL control bytes",
+    "Planning typed findings and bounded recovery",
+    "deterministic Planning assembly/global closure/Draft projection",
+    "Draft repair ownership",
+    "conditional selected-style provenance/fidelity",
+    "legacy canonical authority explicitly fingerprinted",
+    "13K/20K/30K/current-project offline full-flow",
+    "fresh disabled single-use Full Short packet only after exact readiness"
+  ],
+  "why_consolidated": "Planning convergence and Draft ownership share the typed finding/recovery boundary; selected-style fidelity can be validated in the same production-shaped end-to-end matrix without reopening Skill architecture."
+}

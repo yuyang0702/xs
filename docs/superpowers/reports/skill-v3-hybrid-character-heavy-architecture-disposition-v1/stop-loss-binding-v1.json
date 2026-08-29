@@ -1,0 +1,13 @@
+{
+  "hybrid_stop_loss_active": "YES",
+  "new_real_sample_count": 0,
+  "no_automatic_extra_samples": "YES",
+  "no_automatic_remaining_demand_class_real_campaigns": "YES",
+  "no_criticality_change": "YES",
+  "no_model_change_to_hide_skill_failure": "YES",
+  "no_more_character_heavy_skill_context_microtuning": "YES",
+  "no_rubric_change": "YES",
+  "schema": "SkillV3HybridStopLossBindingV1",
+  "stop_loss": "HYBRID_AS_QUALITY_ENHANCEMENT_DOES_NOT_AUTO_ITERATE",
+  "supported_critical_regression": "setup_payoff_integrity"
+}

@@ -1,0 +1,59 @@
+{
+  "retired_hybrid_campaigns_included": false,
+  "schema": "RoadmapToTrustworthyFullShortV1",
+  "stages": [
+    {
+      "blockers": [],
+      "expected_evidence": [
+        "this disposition commit"
+      ],
+      "external_calls_needed": 0,
+      "goal": "Seal stop-loss, retain baseline, retire failed model-visible Skill V3 paths.",
+      "stage": "NOW",
+      "user_authorization_needed": "NO"
+    },
+    {
+      "blockers": [
+        "FSB-PLANNING-CONVERGENCE",
+        "FSB-DRAFT-REPAIR-OWNERSHIP",
+        "FSB-SELECTED-STYLE-FIDELITY if selected"
+      ],
+      "expected_evidence": [
+        "production-shaped offline flow",
+        "13K/20K/30K/current-project matrix",
+        "Strict L3",
+        "fresh exact packet",
+        "single execution receipt"
+      ],
+      "external_calls_needed": "ONE_FULL_SHORT_ONLY_AFTER_OFFLINE_GO",
+      "goal": "Close the consolidated offline master, materialize a fresh disabled packet, then execute exactly one authorized Full Short.",
+      "stage": "FIRST_TRUSTWORTHY_FULL_SHORT",
+      "user_authorization_needed": "YES_FRESH_SINGLE_USE"
+    },
+    {
+      "blockers": [
+        "first trustworthy Full Short must pass"
+      ],
+      "expected_evidence": [
+        "independent cohorts",
+        "variance and regression receipts"
+      ],
+      "external_calls_needed": "YES_BOUNDED_FRESH_APPROVALS",
+      "goal": "Only after first success, validate repeatability with separately approved cohorts.",
+      "stage": "REPEATED_FULL_SHORT_VALIDATION",
+      "user_authorization_needed": "YES_EACH_CAMPAIGN"
+    },
+    {
+      "blockers": [
+        "repeated Short validation"
+      ],
+      "expected_evidence": [
+        "long-path architecture and approval packet"
+      ],
+      "external_calls_needed": "UNKNOWN_FUTURE",
+      "goal": "Consider long-fiction, canonical V2 cutover, performance and new Skill research.",
+      "stage": "LONG_ONLY_LATER",
+      "user_authorization_needed": "YES_IF_EXTERNAL"
+    }
+  ]
+}

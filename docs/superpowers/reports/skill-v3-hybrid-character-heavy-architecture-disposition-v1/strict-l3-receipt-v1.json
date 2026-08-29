@@ -1,0 +1,9 @@
+{
+  "authority_critical_source_changes": 0,
+  "blockers": 0,
+  "declared_level": "L3",
+  "independent_review_count": 2,
+  "schema": "StrictL3ReceiptV1",
+  "status": "PASS",
+  "warnings": 0
+}

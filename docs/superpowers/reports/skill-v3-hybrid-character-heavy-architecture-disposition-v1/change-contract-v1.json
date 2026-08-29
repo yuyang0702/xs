@@ -1,0 +1,23 @@
+{
+  "authority_impact": "NONE; planning/draft/canon/StoryState/READY writers unchanged",
+  "goal": "Disposition failed model-visible Hybrid architecture and realign the Short path without changing production model input.",
+  "in_scope": [
+    "offline diagnostic tool",
+    "offline test",
+    "evidence root",
+    "one evidence/tool/test commit"
+  ],
+  "level": "L3",
+  "out_of_scope": [
+    "src/**",
+    "baml_src/**",
+    "Prompt",
+    "route/model",
+    "retry/fallback",
+    "budget",
+    "real calls",
+    "Full Short"
+  ],
+  "rollback": "Revert the single evidence/tool/test commit; runtime behavior is unaffected.",
+  "schema": "NovelDevCouncilChangeContractV1"
+}

@@ -1,0 +1,22 @@
+{
+  "current_runtime_skill_is_control_until_first_full_short": "YES",
+  "evaluated": [
+    "D1_RETAIN_CURRENT_BASELINE_RETIRE_SKILL_V3_MODEL_VISIBLE_AUGMENTATION",
+    "D2_RETAIN_BASELINE_REPURPOSE_HYBRID_AS_OFFLINE_DIAGNOSTIC",
+    "D3_ARCHIVE_FOR_FUTURE_NEW_ARCHITECTURE_RESEARCH",
+    "D4_OTHER_FUNDAMENTALLY_DIFFERENT_ARCHITECTURE"
+  ],
+  "hybrid_infrastructure_disposition": "RETAIN_DEFAULT_DISABLED_OFFLINE_DIAGNOSTIC_AND_EXPERIMENT_SAFETY_INFRASTRUCTURE",
+  "hybrid_model_visible_supplement_retired_for_current_short_path": "YES",
+  "model_visible_skill_v3_disposition": "RETAIN_CURRENT_BASELINE_RETIRE_SKILL_V3_MODEL_VISIBLE_AUGMENTATION",
+  "no_remaining_demand_class_validation_for_current_hybrid": "YES",
+  "production_skill_path": "CURRENT_BASELINE_SKILL_GATE_PLUS_SKILL_PROMPT_COMPACTOR",
+  "schema": "SkillV3ModelVisibleArchitectureDispositionV1",
+  "selected": [
+    "D1",
+    "D2",
+    "D3"
+  ],
+  "selective_replacement_retired": "YES",
+  "skill_v3_production_cutover": "NO"
+}
