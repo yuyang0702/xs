@@ -63,6 +63,38 @@ def _write_json(path: Path, value: Mapping[str, Any]) -> None:
     )
 
 
+def _verify_prior_manifest(root: Path) -> dict[str, Any]:
+    """Verify both historical flat and current enveloped manifest shapes."""
+
+    envelope = json.loads(
+        (root / "sha256-manifest-v1.json").read_text(encoding="utf-8"),
+    )
+    definition = envelope.get("definition")
+    manifest = definition if isinstance(definition, dict) else envelope
+    entries = manifest.get("entries")
+    if not isinstance(entries, list):
+        raise RuntimeError("prior_manifest_entries_missing")
+    covered = set()
+    for row in entries:
+        relative = str(row["path"])
+        covered.add(relative)
+        path = root / relative
+        if not path.is_file() or _sha_bytes(path.read_bytes()) != row["sha256"]:
+            raise RuntimeError(f"prior_manifest_drift:{relative}")
+    actual = {
+        path.relative_to(root).as_posix()
+        for path in root.rglob("*")
+        if path.is_file() and path.name != "sha256-manifest-v1.json"
+    }
+    if actual != covered:
+        raise RuntimeError("prior_manifest_coverage_drift")
+    return {
+        "status": "EXACT",
+        "entry_count": len(entries),
+        "definition_sha256": envelope.get("definition_sha256"),
+    }
+
+
 def _success_body(repo: Path, slot: str) -> dict[str, object]:
     fixture = json.loads((repo / hybrid.FIXTURE_PATH).read_text(encoding="utf-8"))
     narrative = json.dumps({
@@ -308,7 +340,7 @@ def materialize(
     prior = {}
     for name in PRIOR_ROOTS:
         root = repo / "docs/superpowers/reports" / name
-        prior[name] = hybrid.verify_manifest(root)
+        prior[name] = _verify_prior_manifest(root)
     result = asyncio.run(_dry_run(repo, head))
     sealed, route, destination = (
         hybrid.load_sealed_pilot(repo),
