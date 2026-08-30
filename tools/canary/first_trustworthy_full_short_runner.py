@@ -630,6 +630,7 @@ def _full_short_runtime_components(
     settings = Settings(data_dir.resolve(strict=True))
     configure_runtime_environment(settings.data_dir)
     db = Database(settings.database_path)
+    db.migrate()
     projects = ProjectStore(db, settings.data_dir / "projects")
     project = projects.get(project_id)
     references = ReferenceLibrary(db, settings.data_dir / "references")
@@ -708,6 +709,7 @@ async def execute_full_short_control_plane(
     settings = Settings(args.data_dir.resolve(strict=True))
     configure_runtime_environment(settings.data_dir)
     db = Database(settings.database_path)
+    db.migrate()
     execution_id = policy["run_id"]
     manager = RunTaskManager(db)
     if db.get_run(execution_id) is not None:
