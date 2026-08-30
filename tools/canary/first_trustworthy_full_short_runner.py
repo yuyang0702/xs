@@ -754,6 +754,7 @@ async def execute_full_short_control_plane(
         required_roles = tuple(
             required_stage_roles or policy.get("required_stage_roles") or ()
         )
+        closure_state["observed_roles"] = list(observed_roles)
         if sorted(set(required_roles) - set(observed_roles)):
             raise RuntimeError("FULL_SHORT_REQUIRED_STAGE_ROLE_NOT_EXECUTED")
         run_root = Path(str(live_authority["run_root"]))
@@ -786,6 +787,7 @@ async def execute_full_short_control_plane(
             short_canonical_v2_enabled=True,
             workflow_service=service, project=project,
         )
+        closure_state["terminal"] = terminal
         if terminal.get("completion_goal_outcome") != COMPLETION_GOAL:
             raise RuntimeError("FULL_SHORT_TERMINAL_VERIFICATION_NOT_EXACT")
         elapsed_seconds = _completion_elapsed_recheck(policy, ledger)
@@ -849,7 +851,34 @@ async def execute_full_short_control_plane(
                 await closed
     result = db.get_run(execution_id) or {}
     if result.get("status") != "completed":
-        raise RuntimeError("FULL_SHORT_SUPERVISED_RUN_NOT_COMPLETED")
+        terminal = closure_state.get("terminal")
+        diagnostic = {
+            "status": result.get("status"),
+            "current_stage": result.get("current_stage"),
+            "safe_error": result.get("error"),
+            "observed_roles": closure_state.get("observed_roles"),
+            "terminal_outcome": (
+                terminal.get("completion_goal_outcome")
+                if isinstance(terminal, dict) else None
+            ),
+            "final_artifact_binding": (
+                terminal.get("final_artifact", {}).get("binding_status")
+                if isinstance(terminal, dict) else None
+            ),
+            "ready_authority_binding": (
+                terminal.get("final_artifact", {}).get(
+                    "ready_authority_binding_status"
+                ) if isinstance(terminal, dict) else None
+            ),
+            "checkpoint_binding": (
+                terminal.get("final_checkpoint", {}).get("binding_status")
+                if isinstance(terminal, dict) else None
+            ),
+        }
+        raise RuntimeError(
+            "FULL_SHORT_SUPERVISED_RUN_NOT_COMPLETED:"
+            + json.dumps(diagnostic, ensure_ascii=True, sort_keys=True)
+        )
     completion = closure_state.get("completion")
     if not isinstance(completion, dict):
         raise RuntimeError("FULL_SHORT_COMPLETION_NOT_COMMITTED_AFTER_SAGA_CLEANUP")
