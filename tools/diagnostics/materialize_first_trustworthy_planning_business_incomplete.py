@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import re
 import subprocess
 import xml.etree.ElementTree as ET
 from pathlib import Path
@@ -17,6 +18,7 @@ START_HEAD = "a91aa04d6c9a0c7d5d1d7541d4e6734ad328d6d2"
 BRANCH = "r1-ptr3/planning-repair-finding-propagation-20260817"
 PROJECT_SHA = "a69d9140943781ee24b78ff87d8ef408d29c281c6e993981dc2ef4a8eb82f720"
 WORKLOAD_SHA = "da96465f6bad2392dcc5dcfe2cbb4776f690a621360af3fa3678fc8005de0b29"
+SHA256 = re.compile(r"^[0-9a-f]{64}$")
 
 
 def _git(repo: Path, *args: str) -> str:
@@ -39,7 +41,14 @@ def _write_json(path: Path, value: Any) -> None:
 
 def _junit(path: Path, *, command: str, classification: str) -> dict[str, Any]:
     root = ET.fromstring(path.read_bytes())
-    suites = [root] if root.tag == "testsuite" else list(root.findall("testsuite"))
+    if root.tag == "testsuite":
+        suites = [root]
+    elif root.tag == "testsuites":
+        suites = list(root.findall("testsuite"))
+    else:
+        raise ValueError("JUnit root must be testsuite or testsuites")
+    if not suites:
+        raise ValueError("JUnit receipt contains no test suites")
     result = {
         "schema": "OfflinePytestReceiptV1",
         "version": 1,
@@ -71,10 +80,10 @@ def _junit(path: Path, *, command: str, classification: str) -> dict[str, Any]:
         },
     }
     if classification.startswith("PASS") and (
-        result["failures"] or result["errors"]
+        not result["tests"] or result["failures"] or result["errors"]
     ):
         raise ValueError(
-            "PASS JUnit classification requires zero failures and errors"
+            "PASS JUnit classification requires tests and zero failures/errors"
         )
     return result
 
@@ -88,6 +97,8 @@ def _validate_replay(
         "schema": "FirstTrustworthyFullShortPrivateDryRunV2",
         "version": 2,
         "source_head": head,
+        "project_id_sha256": PROJECT_SHA,
+        "workload_sha256": WORKLOAD_SHA,
         "pass": True,
         "workflow_status": "completed",
         "completion_goal_outcome": (
@@ -104,6 +115,8 @@ def _validate_replay(
         "hard_max_http_posts": 71,
         "hard_max_network_attempts": 71,
         "additional_dispatch_hard_cap": 1,
+        "maximum_elapsed_seconds": 36_000,
+        "monetary_cost_cap_state": "UNKNOWN_NOT_SEALED",
         "dry_run_namespace": "two_isolated_temporary_copies",
         "dry_run_artifacts_cannot_be_mistaken_for_real_output": True,
         "raw_prompt_persisted": False,
@@ -142,9 +155,10 @@ def _validate_replay(
         "final_artifact_sha256", "runtime_authority_sha256",
         "style_reference_authority_sha256", "route_manifest_sha256",
         "destination_manifest_sha256", "egress_policy_sha256",
+        "store_root_sha256", "completion_receipt_sha256",
     ):
         current = value.get(key)
-        if not isinstance(current, str) or len(current) != 64:
+        if not isinstance(current, str) or not SHA256.fullmatch(current):
             mismatches[key] = {"expected": "sha256", "actual": current}
     for key in (
         "per_call_output_token_hard_cap",
@@ -155,6 +169,28 @@ def _validate_replay(
         current = value.get(key)
         if not isinstance(current, int) or current <= 0:
             mismatches[key] = {"expected": "positive_integer", "actual": current}
+    discovered_cap = value.get("discovered_plan_output_token_hard_cap")
+    repair_cap = value.get("planning_single_repair_output_token_hard_cap")
+    total_cap = value.get("total_output_token_hard_cap")
+    per_call_cap = value.get("per_call_output_token_hard_cap")
+    if all(isinstance(item, int) for item in (
+        discovered_cap, repair_cap, total_cap, per_call_cap,
+    )):
+        if total_cap != discovered_cap + repair_cap:
+            mismatches["total_output_token_hard_cap_arithmetic"] = {
+                "expected": discovered_cap + repair_cap,
+                "actual": total_cap,
+            }
+        if repair_cap > per_call_cap:
+            mismatches["planning_repair_within_per_call_cap"] = {
+                "expected": f"<= {per_call_cap}",
+                "actual": repair_cap,
+            }
+        if discovered_cap < per_call_cap:
+            mismatches["discovered_plan_cap_floor"] = {
+                "expected": f">= {per_call_cap}",
+                "actual": discovered_cap,
+            }
     if mismatches:
         raise ValueError(
             "production-shaped replay receipt mismatch: "
@@ -339,15 +375,29 @@ def main() -> int:
         head=head,
         injected=True,
     )
-    cap_fields = (
+    exact_cross_summary_fields = (
+        "project_id_sha256", "workload_sha256",
+        "runtime_authority_sha256", "style_reference_authority_sha256",
+        "route_manifest_sha256", "destination_manifest_sha256",
+        "egress_policy_sha256", "discovered_call_plan_sha256",
         "hard_max_provider_requests", "hard_max_http_posts",
         "hard_max_network_attempts", "per_call_output_token_hard_cap",
         "discovered_plan_output_token_hard_cap",
         "planning_single_repair_output_token_hard_cap",
         "total_output_token_hard_cap",
     )
-    if any(normal[key] != injected[key] for key in cap_fields):
-        raise ValueError("normal and injected replay cap bindings differ")
+    if any(
+        normal[key] != injected[key] for key in exact_cross_summary_fields
+    ):
+        raise ValueError("normal and injected replay authority/cap bindings differ")
+    if normal["executed_call_plan_sha256"] != normal[
+        "discovered_call_plan_sha256"
+    ]:
+        raise ValueError("normal replay execution plan differs from discovery")
+    if injected["executed_call_plan_sha256"] == injected[
+        "discovered_call_plan_sha256"
+    ]:
+        raise ValueError("injected replay did not record the additional attempt")
     if normal["final_artifact_sha256"] != injected["final_artifact_sha256"]:
         raise ValueError("normal and injected final artifacts differ")
 

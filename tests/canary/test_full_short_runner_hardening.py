@@ -143,6 +143,114 @@ def test_dry_run_failure_projection_is_hash_only() -> None:
     assert "safe_message" not in projection
 
 
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("project_id_sha256", "wrong"),
+        ("workload_sha256", "wrong"),
+        ("route_manifest_sha256", "z" * 64),
+        ("completion_receipt_sha256", None),
+        ("total_output_token_hard_cap", 1),
+        ("hard_max_provider_requests", 72),
+    ],
+)
+def test_replay_evidence_validation_rejects_stale_or_malformed_bindings(
+    field: str, value: object,
+) -> None:
+    from tools.diagnostics.materialize_first_trustworthy_planning_business_incomplete import (
+        PROJECT_SHA,
+        WORKLOAD_SHA,
+        _validate_replay,
+    )
+
+    head = "b" * 40
+    digest = "a" * 64
+    roles = [
+        "planning", "draft", "review", "reader_review", "polish",
+        "final_review", "maintenance",
+    ]
+    receipt = {
+        "schema": "FirstTrustworthyFullShortPrivateDryRunV2",
+        "version": 2,
+        "source_head": head,
+        "project_id_sha256": PROJECT_SHA,
+        "workload_sha256": WORKLOAD_SHA,
+        "pass": True,
+        "workflow_status": "completed",
+        "completion_goal_outcome": (
+            "SHORT_WORKFLOW_COMPLETED_AND_FINAL_REVIEW_ACCEPTED"
+        ),
+        "expected_stage_calls": 70,
+        "completed_stage_count": 70,
+        "all_dispatches_locally_closed": True,
+        "all_required_stage_roles_completed": True,
+        "planning_business_incomplete_injected": False,
+        "provider_request_count": 70,
+        "local_rejected_attempt_count": 0,
+        "hard_max_provider_requests": 71,
+        "hard_max_http_posts": 71,
+        "hard_max_network_attempts": 71,
+        "additional_dispatch_hard_cap": 1,
+        "maximum_elapsed_seconds": 36_000,
+        "monetary_cost_cap_state": "UNKNOWN_NOT_SEALED",
+        "dry_run_namespace": "two_isolated_temporary_copies",
+        "dry_run_artifacts_cannot_be_mistaken_for_real_output": True,
+        "raw_prompt_persisted": False,
+        "raw_story_persisted": False,
+        "raw_reference_persisted": False,
+        "raw_title_persisted": False,
+        "real_credential_lookup_count": 0,
+        "real_provider_client_creation_count": 0,
+        "real_provider_request_attempts": 0,
+        "real_http_post_attempts": 0,
+        "real_network_calls": 0,
+        "real_model_calls": 0,
+        "paid_calls": 0,
+        "required_stage_roles": roles,
+        "completed_stage_roles": roles,
+        "discovered_call_plan_sha256": digest,
+        "executed_call_plan_sha256": digest,
+        "final_artifact_sha256": digest,
+        "runtime_authority_sha256": digest,
+        "style_reference_authority_sha256": digest,
+        "route_manifest_sha256": digest,
+        "destination_manifest_sha256": digest,
+        "egress_policy_sha256": digest,
+        "store_root_sha256": digest,
+        "completion_receipt_sha256": digest,
+        "per_call_output_token_hard_cap": 100,
+        "discovered_plan_output_token_hard_cap": 1_000,
+        "planning_single_repair_output_token_hard_cap": 100,
+        "total_output_token_hard_cap": 1_100,
+    }
+    _validate_replay(receipt, head=head, injected=False)
+    receipt[field] = value
+
+    with pytest.raises(ValueError, match="replay receipt mismatch"):
+        _validate_replay(receipt, head=head, injected=False)
+
+
+@pytest.mark.parametrize(
+    "xml",
+    [
+        "<not-junit/>",
+        "<testsuites></testsuites>",
+        '<testsuite tests="0" failures="0" errors="0" skipped="0"/>',
+    ],
+)
+def test_evidence_materializer_rejects_empty_or_non_junit_pass_receipts(
+    tmp_path: Path, xml: str,
+) -> None:
+    from tools.diagnostics.materialize_first_trustworthy_planning_business_incomplete import (
+        _junit,
+    )
+
+    receipt = tmp_path / "receipt.xml"
+    receipt.write_text(xml, encoding="utf-8")
+    with pytest.raises(ValueError):
+        _junit(receipt, command="pytest", classification="PASS")
+
+
 def test_real_runner_fail_closes_orphaned_and_prelaunch_reservations() -> None:
     source = Path(runner.__file__).read_text(encoding="utf-8")
 
