@@ -1,0 +1,16 @@
+{
+  "schema": "FullShortIndependentReviewV1",
+  "version": 1,
+  "review_slice": "final_execution_network_restart",
+  "head": "4eb1831fe3c86452338e4559e794bbd6c91b3e9d",
+  "status": "passed",
+  "independent_reviews": [
+    {"reviewer":"final_network_review_v3","paths":["providers/http.py","providers/registry.py"],"tests":"114 passed"},
+    {"reviewer":"final_task_review_v3","paths":["db.py","tasks.py"],"tests":"11 focused and 57 complete task tests passed"},
+    {"reviewer":"final_anthropic_chat_adapter_review","paths":["providers/anthropic.py","providers/openai_chat.py"],"tests":"187 passed"},
+    {"reviewer":"final_openai_responses_adapter_review","paths":["providers/openai_responses.py"],"tests":"104 plus 4 passed"}
+  ],
+  "fake_only_blocker_count": 0,
+  "hard_blocker_count": 0,
+  "worktree": "clean"
+}

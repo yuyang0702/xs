@@ -1,0 +1,14 @@
+{
+  "schema": "FullShortIndependentReviewV1",
+  "version": 1,
+  "review_slice": "final_authority_quality",
+  "head": "4eb1831fe3c86452338e4559e794bbd6c91b3e9d",
+  "reviewer": "final_authority_review_v3",
+  "status": "passed",
+  "tests": ["16 passed with 379 deselected","32 passed with 38 deselected","5 passed with 26 deselected"],
+  "v12_sha256": "e81967d34c04fed4c9e9ba4d1b233c3631a151ba96408a168ddc0a13bbadf576",
+  "coordinated_integrity_content_and_sha_drift": "rejected_pre_promotion",
+  "normal_path": "pre_promotion_and_terminal_success",
+  "hard_blocker_count": 0,
+  "worktree": "clean"
+}

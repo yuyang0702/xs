@@ -1,0 +1,18 @@
+{
+  "schema": "FullShortStageMatrixV1",
+  "version": 1,
+  "total_expected_and_executed_calls": 70,
+  "call_plan_sha256": "998bd785ac46e1f4ef8fb07188a5393914e4a2945bf61a66814be8072798e6c6",
+  "stages": [
+    {"stage":"planning","executed":true,"real_control_flow":true,"typed_finding_recovery_closure":"exact"},
+    {"stage":"draft","executed":true,"real_control_flow":true,"repair_ownership":"exact","segment_and_whole_semantics":"passed"},
+    {"stage":"review","executed":true,"real_control_flow":true,"status":"passed"},
+    {"stage":"reader_review","executed":true,"real_control_flow":true,"status":"passed"},
+    {"stage":"polish","executed":true,"real_control_flow":true,"style_reference_provenance":"exact"},
+    {"stage":"final_review","executed":true,"real_control_flow":true,"terminal_authority":"exact"},
+    {"stage":"maintenance","executed":true,"real_control_flow":true,"story_state_canon_ready_projection":"exact"}
+  ],
+  "final_artifact_created_in_dry_run_namespace": true,
+  "final_checkpoint_created": true,
+  "completion_goal": "SHORT_WORKFLOW_COMPLETED_AND_FINAL_REVIEW_ACCEPTED"
+}

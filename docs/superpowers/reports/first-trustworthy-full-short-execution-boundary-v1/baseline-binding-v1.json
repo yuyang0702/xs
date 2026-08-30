@@ -1,0 +1,21 @@
+{
+  "schema": "FirstTrustworthyFullShortBaselineBindingV1",
+  "version": 1,
+  "branch": "r1-ptr3/planning-repair-finding-propagation-20260817",
+  "start_head": "757916547ce002e727bfdbb68d5998af89fc8324",
+  "implementation_head": "4eb1831fe3c86452338e4559e794bbd6c91b3e9d",
+  "worktree_at_validation": "clean",
+  "sealed_parent_manifest_sha256": "27c46290fcdbcd996ef859f37fc1bdbcc5a4a9d54a58852b826837efeaaaf7e6",
+  "project_id_sha256": "a69d9140943781ee24b78ff87d8ef408d29c281c6e993981dc2ef4a8eb82f720",
+  "workload_sha256": "da96465f6bad2392dcc5dcfe2cbb4776f690a621360af3fa3678fc8005de0b29",
+  "target_words": 13000,
+  "runtime_authority_sha256": "61fc7ca1f9da34e9d07655fc0b6971126c6548278e74097884461b6e58e0c3cb",
+  "style_reference_authority_sha256": "aaa5cb9770f11d8021309d3d130b998281dd239d962320dcf6295be54729e783",
+  "route_manifest_sha256": "eb1ffe799da8456332b0088708f7e4295a13678f1ea2e0f9d2f66dd0e0760f28",
+  "destination_manifest_sha256": "57c73c65a361bb0301e22af36b1390c3084e48277c08100944cc0f29087b7884",
+  "egress_policy_sha256": "a632322b0c498e7be87f812cdb78638a333b8e1e9c71f9fa665ffd6888ab1c85",
+  "production_skill_path": "CURRENT_BASELINE_SKILL_GATE_PLUS_SKILL_PROMPT_COMPACTOR",
+  "skill_v3_production_cutover": false,
+  "planning_v2_production_cutover": false,
+  "final_execution_head_derivation": "git HEAD after the evidence-only seal commit containing this directory"
+}

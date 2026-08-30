@@ -1,0 +1,19 @@
+{
+  "schema": "FullShortProductionIsolationV1",
+  "version": 1,
+  "dry_run_namespace": "two_isolated_temporary_copies",
+  "production_project_mutated": false,
+  "dry_run_artifacts_cannot_be_mistaken_for_real_output": true,
+  "lowest_stubbed_boundary": "HTTP transport",
+  "real_workflow_orchestration_used": true,
+  "real_local_parse_schema_domain_validation_used": true,
+  "credential_lookup_count": 0,
+  "provider_client_creation_count": 0,
+  "real_provider_request_attempts": 0,
+  "real_http_post_attempts": 0,
+  "network_calls": 0,
+  "model_calls": 0,
+  "paid_calls": 0,
+  "determinism": "PASS",
+  "discovered_and_executed_call_plan_sha256": "998bd785ac46e1f4ef8fb07188a5393914e4a2945bf61a66814be8072798e6c6"
+}

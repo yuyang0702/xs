@@ -1,0 +1,27 @@
+{
+  "schema": "OfflineFullSuiteReceiptV1",
+  "version": 1,
+  "head": "4eb1831fe3c86452338e4559e794bbd6c91b3e9d",
+  "passed": 3988,
+  "skipped": 41,
+  "xfailed": 6,
+  "failed": 187,
+  "errors": 199,
+  "warnings": 1,
+  "elapsed_seconds": 1841.35,
+  "baseline_failed": 187,
+  "baseline_errors": 199,
+  "failure_error_count_changed_from_pre_fix_baseline": false,
+  "new_full_short_boundary_regression_count": 0,
+  "new_owning_source_regression_count": 0,
+  "historical_failure_groups": [
+    "expired or unapproved historical Canary dependencies",
+    "sealed approval/materialization/current-HEAD hash gates",
+    "Skill V2/V3 campaign and blind-evidence gates",
+    "Planning Skill quality oracle fixtures",
+    "R0E/R0F live-parity and fixed-hash gates",
+    "legacy workflow fixtures missing later sealed style/final-review authority artifacts"
+  ],
+  "focused_and_related_current_boundary_suites": "passed",
+  "external_actions": 0
+}

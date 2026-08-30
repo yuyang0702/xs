@@ -1,0 +1,19 @@
+{
+  "schema": "FullShortRestartSafetyV1",
+  "version": 1,
+  "restart_policy_explicit": true,
+  "policy": "FAIL_CLOSED_NO_RESUME_OR_REDISPATCH",
+  "scenarios": [
+    {"point":"before_first_external_call","result":"safe_not_dispatched"},
+    {"point":"after_approval_before_nonce","result":"no_double_approval_or_nonce"},
+    {"point":"after_nonce_before_call","result":"terminal_fail_closed_no_redispatch"},
+    {"point":"after_one_completed_stage","result":"only_next_ordinal_may_schedule_in_same supervised execution; restart cannot redispatch"},
+    {"point":"after_local_stage_receipt_before_next_scheduling","result":"durable ordinal binding exact"},
+    {"point":"before_authority_promotion","result":"no promotion without exact terminal authority"},
+    {"point":"after_final_artifact_before_completion_receipt","result":"terminal closure remains active and exact; restart fail closed"}
+  ],
+  "no_duplicate_external_call_after_restart": true,
+  "no_double_approval": true,
+  "no_double_nonce": true,
+  "legacy_exact_once_rows_migrated_to": "exact_once_no_resume"
+}

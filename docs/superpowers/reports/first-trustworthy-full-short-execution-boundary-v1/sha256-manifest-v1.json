@@ -1,0 +1,31 @@
+{
+  "schema": "FirstTrustworthyFullShortEvidenceSha256ManifestV1",
+  "version": 1,
+  "algorithm": "sha256",
+  "manifest_self_excluded": true,
+  "entry_count": 22,
+  "entries": [
+    {"path":"approval-nonce-boundary-v1.json","sha256":"a85f7e82933d25f7bc8d563c726619a6c65461be6df035e350b62957a2c2093e","bytes":671},
+    {"path":"authority-quality-integration-v1.json","sha256":"60d3aca4feaba0d8cd7833714bfd386d86a286af4640f095f3b1979270cf7265","bytes":1004},
+    {"path":"baseline-binding-v1.json","sha256":"2e93242b97c91f1d735e194ffa73008b814db6eea2c75764e6f3ab6d2caf746f","bytes":1393},
+    {"path":"child-review-a-final-v1.json","sha256":"478bd38800fc64c0dc658e4fa9fbe64288517393b20cdc635e472bb1c6f05c88","bytes":816},
+    {"path":"child-review-a-initial-v1.json","sha256":"08177c5ae2e564d95d4a479167114757a8c59963fe63ac90624d079ad317857e","bytes":718},
+    {"path":"child-review-b-final-v1.json","sha256":"7d7a28b98fca430dea18cb77329626c87914dbb67a8417bedd9b5e55d2151fd9","bytes":598},
+    {"path":"child-review-b-initial-v1.json","sha256":"4e8cdcd20fb0953db839f20868fdf9f95d4d6a3919166794c3f91f288e047a7e","bytes":776},
+    {"path":"fake-shortcut-audit-v1.json","sha256":"846b59870248c913e373c9492d4aa0230ba3fd57c5d611351fb0521dfd498913","bytes":1170},
+    {"path":"focused-test-receipt-v1.json","sha256":"0eb3efece57df845b869b873a119229c1d93791bfd8d660e0ee10d3672b51312","bytes":370},
+    {"path":"full-short-stage-matrix-v1.json","sha256":"9c2142dc4543a93b8390bc6072eea85e96582155a01ec554737ffbc6040a0328","bytes":1102},
+    {"path":"full-suite-receipt-v1.json","sha256":"ee6e061f16fd27a6d494186593ebbcfef71d7f253fa3d665dc2150150874b80c","bytes":935},
+    {"path":"pre-authorization-final-report-v1.md","sha256":"32289cf8faed9ad552a0dcbe5b5fc3cafff9174b3ee86062732e1169e96f22f9","bytes":2953},
+    {"path":"privacy-scan-v1.json","sha256":"d3bfb596f2ec9acdbbb056db1f65a672549db39357b038c23998b9d585e792b3","bytes":562},
+    {"path":"production-isolation-v1.json","sha256":"27b17b75196da8648254ca59ff1682744e8c88634774a4c2d1257b889a428ab0","bytes":715},
+    {"path":"production-shaped-full-short-dry-run-v1.json","sha256":"b0f64d460b3bb7a3ae057230a7082c96414c1b153444a107250c730c9bda58c6","bytes":2325},
+    {"path":"README.md","sha256":"c54f4c27a706f7001879730b58895ee3dc0f83e57bfd991d92b83b7c0341e55c","bytes":1393},
+    {"path":"real-full-short-call-graph-v1.json","sha256":"69468db5a4c8c2bfe28303086948fb859a4b962a9d3da699b97a2e1ba11c0e26","bytes":8470},
+    {"path":"related-test-receipt-v1.json","sha256":"58b58af04265c939cf9b5ba2118c291286063c209e9fa06ef56edfbdcb7e242f","bytes":291},
+    {"path":"request-budget-policy-v1.json","sha256":"796cc2d0aece1833257907ac7801a159e47bf3d1268d9cb88f1602c455be062e","bytes":565},
+    {"path":"restart-safety-v1.json","sha256":"946d91ea26f5e06e59503d0bc71fe1e3d9c1d112e3239514c16ef9e64c5aab1a","bytes":1072},
+    {"path":"stop-failure-matrix-v1.json","sha256":"99996af519d6a0915934153af2f38150c6a3fdaf368cc11cfb33c9679af3b1a8","bytes":971},
+    {"path":"strict-l3-receipt-v1.json","sha256":"4a46187140a9380804db68141ed56cabe8658ef835559c5843390e59793a8286","bytes":439}
+  ]
+}

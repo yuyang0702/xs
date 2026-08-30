@@ -1,0 +1,13 @@
+{
+  "schema": "OfflineTestReceiptV1",
+  "version": 1,
+  "suite": "full_short_related_final",
+  "head": "4eb1831fe3c86452338e4559e794bbd6c91b3e9d",
+  "result": "passed",
+  "passed": 36,
+  "deselected": 418,
+  "failed": 0,
+  "errors": 0,
+  "elapsed_seconds": 221.30,
+  "external_actions": 0
+}

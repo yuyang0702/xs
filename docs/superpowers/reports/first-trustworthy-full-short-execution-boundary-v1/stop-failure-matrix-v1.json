@@ -1,0 +1,10 @@
+{
+  "schema": "FullShortStopFailureMatrixV1",
+  "version": 1,
+  "default_disposition": {"fail_closed":true,"unauthorized_later_stage":false,"duplicate_dispatch":false,"recovery_beyond_sealed_bounds":false,"durable_receipt":true,"authority_corruption":false},
+  "cases": [
+    "authorization_invalid","head_drift","worktree_drift","runtime_fingerprint_drift","project_workload_drift","authority_drift","style_reference_drift","route_drift","destination_drift","egress_drift","capacity_failure","approval_failure","nonce_failure","credential_boundary_failure","provider_client_boundary_failure","http_network_failure","provider_error","planning_failure","draft_failure","repair_ownership_failure","semantic_verification_failure","style_fidelity_failure","final_review_failure","maintenance_failure","story_state_cas_failure","final_artifact_failure","privacy_failure","budget_exhaustion","elapsed_expiry"
+  ],
+  "focused_matrix_status": "passed",
+  "external_actions": 0
+}

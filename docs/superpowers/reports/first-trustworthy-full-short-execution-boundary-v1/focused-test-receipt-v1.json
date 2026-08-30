@@ -1,0 +1,14 @@
+{
+  "schema": "OfflineTestReceiptV1",
+  "version": 1,
+  "suite": "full_short_focused_final",
+  "head": "4eb1831fe3c86452338e4559e794bbd6c91b3e9d",
+  "result": "passed",
+  "passed": 243,
+  "failed": 0,
+  "errors": 0,
+  "warnings": 1,
+  "warning_classification": "pre-existing Starlette TestClient httpx deprecation",
+  "elapsed_seconds": 47.82,
+  "external_actions": 0
+}

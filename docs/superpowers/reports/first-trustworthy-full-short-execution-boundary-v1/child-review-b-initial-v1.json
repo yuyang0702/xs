@@ -1,0 +1,14 @@
+{
+  "schema": "FullShortIndependentReviewV1",
+  "version": 1,
+  "review_slice": "initial_authority_quality_boundary",
+  "status": "hard_issues_found_and_closed_in_task",
+  "findings": [
+    "Terminal completion was not yet bound to one canonical manuscript identity.",
+    "Checkpoint attempt, score, profile, judge, review, issues and integrity fields could drift independently.",
+    "JSON booleans could masquerade as integer attempt identities.",
+    "Pre-promotion quality authority did not initially close every terminal tuple field.",
+    "A coordinated narrative-integrity content plus checkpoint-SHA drift could pass the pre-promotion physical-hash-only check."
+  ],
+  "disposition": "All findings were fixed and independently re-reviewed before evidence sealing."
+}

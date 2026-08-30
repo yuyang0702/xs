@@ -1,0 +1,17 @@
+{
+  "schema": "FullShortRequestBudgetPolicyV1",
+  "version": 1,
+  "expected_stage_calls": 70,
+  "hard_max_provider_requests": 70,
+  "hard_max_http_posts": 70,
+  "hard_max_network_attempts": 70,
+  "per_call_output_token_hard_cap": 8328,
+  "total_output_token_hard_cap": 249386,
+  "maximum_elapsed_seconds": 36000,
+  "maximum_elapsed_hours": 10,
+  "monetary_cost_cap_state": "UNKNOWN_NOT_SEALED",
+  "future_authorization_requires_actual_fee_risk_acceptance": true,
+  "transport_retry_allowed": false,
+  "resume_allowed": false,
+  "second_full_short_allowed": false
+}

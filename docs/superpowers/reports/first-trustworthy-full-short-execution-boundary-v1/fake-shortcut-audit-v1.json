@@ -1,0 +1,19 @@
+{
+  "schema": "FullShortFakeShortcutAuditV1",
+  "version": 1,
+  "real_path_fake_only_blocker_count": 0,
+  "classifications": [
+    {"pattern":"offline_fake-only branches","classification":"NOT_ON_REAL_PATH"},
+    {"pattern":"FakeApprovalStore-only dependencies","classification":"NOT_ON_REAL_PATH"},
+    {"pattern":"FakeNonceStore-only dependencies","classification":"NOT_ON_REAL_PATH"},
+    {"pattern":"FakeDispatcher-only dependencies","classification":"NOT_ON_REAL_PATH"},
+    {"pattern":"test-only resolver injection","classification":"VALID_TEST_DOUBLE_BELOW_REAL_SEAM"},
+    {"pattern":"deterministic dry-run HTTP oracle","classification":"VALID_TEST_DOUBLE_BELOW_REAL_SEAM"},
+    {"pattern":"direct hash injection","classification":"NOT_ON_REAL_PATH"},
+    {"pattern":"TODO or NotImplemented on real path","classification":"NOT_ON_REAL_PATH"},
+    {"pattern":"unwired production validator or runner","classification":"CLOSED_IN_THIS_TASK"},
+    {"pattern":"fake-only final artifact or authority promotion","classification":"NOT_ON_REAL_PATH"}
+  ],
+  "lowest_replaced_seam": "HTTP transport factory in isolated dry-run copies",
+  "real_workflow_bypassed": false
+}

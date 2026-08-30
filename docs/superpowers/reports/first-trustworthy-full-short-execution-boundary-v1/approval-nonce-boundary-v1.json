@@ -1,0 +1,16 @@
+{
+  "schema": "FullShortApprovalNonceBoundaryV1",
+  "version": 1,
+  "execution_permission_store": "FullShortDurableExecutionStoreV1",
+  "approval_policy": "fresh JIT signed approval after exact preflight",
+  "nonce_policy": "fresh durable single-use nonce created only after signed approval",
+  "approval_state": "NOT_CREATED",
+  "nonce_state": "NOT_CREATED",
+  "later_approval_or_nonce_precreation_allowed": false,
+  "single_use": true,
+  "ambiguous_dispatch_restart_policy": "FAIL_CLOSED_NO_REDISPATCH",
+  "restart_policy": "FAIL_CLOSED_NO_RESUME_OR_REDISPATCH",
+  "real_signed_approval_created": false,
+  "real_nonce_created": false,
+  "execution_authorized": false
+}

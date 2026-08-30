@@ -1,0 +1,16 @@
+{
+  "schema": "FullShortAuthorityQualityIntegrationV1",
+  "version": 1,
+  "planning_typed_findings_recovery_global_closure": "exact",
+  "draft_repair_ownership": "exact",
+  "style_reference_selection_status": "not_requested",
+  "style_reference_provenance_sha256": "aaa5cb9770f11d8021309d3d130b998281dd239d962320dcf6295be54729e783",
+  "final_review": "exact_terminal_review_bound",
+  "maintenance": "sealed_reduction_replayed_from_story_state",
+  "story_state_canon_ready": "same_lock_exact_authority",
+  "final_artifact_checkpoint": "canonical_text_identity_and_exact_quality_tuple",
+  "pre_promotion_integrity_requirements": ["physical_sha256","status_passed","publication_sha256_exact"],
+  "terminal_tuple_fields": ["manuscript_hash","best_attempt_exact_int","best_score","scoring_profile_id","judge_signature","review","issue_ledger","narrative_integrity"],
+  "coordinated_integrity_content_and_sha_drift_rejected_before_promotion": true,
+  "retired_skill_v3_or_hybrid_model_visible_leak_count": 0
+}
