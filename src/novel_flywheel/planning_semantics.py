@@ -712,6 +712,41 @@ def merge_planning_semantic_document_packets_v2(
     )
 
 
+PLANNING_SEMANTIC_MODEL_OWNED_REQUIRED_FIELDS_V2 = frozenset({
+    "version",
+    "initial_state",
+    "segments",
+    "kind",
+    "segment",
+    "title",
+    "events",
+    "formal_event_ordinal",
+    "narrative",
+    "exit_state",
+})
+
+
+def planning_semantic_model_visible_contract_v2() -> str:
+    """Render the compact wire contract that plain routes otherwise cannot see.
+
+    Strict structured-output routes also receive the generated JSON schema. Plain
+    routes do not, so the prompt must state every model-owned required member and
+    the continuation/terminal distinction without copying Runtime authority into
+    the model payload.
+    """
+
+    return (
+        "MODEL-VISIBLE PlanningSemanticDraftV2 OUTPUT CONTRACT (all requirements "
+        "are mandatory): Return exactly one JSON object. Required top-level "
+        "members, none of which may be omitted: version (the integer 2), "
+        "initial_state (a non-empty string describing the opening story state), "
+        "and segments (a non-empty array). Every segment requires kind, segment, "
+        "title, and events. Every event requires formal_event_ordinal and narrative. "
+        "A continuation segment additionally requires exit_state. A terminal "
+        "segment must omit exit_state. No additional fields are allowed.\n"
+    )
+
+
 def semantic_planning_packet_prompt_v2(
     *, global_segment: int, segment_count: int,
     global_event_ordinals: Iterable[int], formal_events: Iterable[dict[str, Any]],
@@ -743,7 +778,8 @@ def semantic_planning_packet_prompt_v2(
     } for index, event in enumerate(events, 1)]
     return (
         "IR_FIRST_SHORT_PLANNING_PACKET_V2\n"
-        "This is one Runtime-owned semantic packet of the complete short-story plan. "
+        + planning_semantic_model_visible_contract_v2()
+        + "This is one Runtime-owned semantic packet of the complete short-story plan. "
         "Return one canonical PlanningSemanticDraftV2 JSON object with exactly one local "
         "segment: kind=terminal, segment=1. Use the packet-local formal_event_ordinal "
         "values 1..N exactly once and in order. Do not return global event IDs, hashes, "
@@ -950,7 +986,9 @@ def semantic_planning_prompt_v2(
     } for index, event in enumerate(formal_events, 1)]
     return (
         "IR_FIRST_SHORT_PLANNING_V2\n"
-        "Return one JSON object matching the supplied schema. Do not return Markdown, "
+        + planning_semantic_model_visible_contract_v2()
+        + "Match the supplied schema when the route supports schema transport. "
+        "Do not return Markdown, "
         "event IDs, hashes, tool calls, or machine-control fields. Use formal_event_ordinal "
         "to claim every formal event in exact order. Adjacent segments may share one ordinal "
         "only when they split one continuous event; an ordinal may never re-enter later. "

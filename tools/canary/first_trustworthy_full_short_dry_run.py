@@ -24,6 +24,7 @@ from typing import Any, Callable
 import httpx
 
 from novel_flywheel.db import Database
+from novel_flywheel.failure_boundary import failure_evidence_sha256
 from novel_flywheel.full_short_execution import (
     FullShortExecutionPolicyV1,
     render_full_short_canonical_authorization_v1,
@@ -60,6 +61,22 @@ def _domain(value: object) -> str:
     return hashlib.sha256(json.dumps(
         value, ensure_ascii=False, sort_keys=True, separators=(",", ":"),
     ).encode("utf-8")).hexdigest()
+
+
+def _safe_failure_projection(
+    exc: BaseException, *, boundary: str,
+) -> dict[str, str]:
+    """Retain typed/hash-only diagnostics without persisting exception text."""
+
+    return {
+        "exception_type": type(exc).__name__,
+        "failure_sha256": failure_evidence_sha256(exc, boundary=boundary),
+    }
+
+
+def _optional_text_sha256(value: object) -> str | None:
+    text = str(value or "")
+    return hashlib.sha256(text.encode("utf-8")).hexdigest() if text else None
 
 
 def _git(repo: Path, *args: str) -> str:
@@ -534,8 +551,9 @@ class _OfflineHttpTransportFactory:
                 # prompt or response that crossed the mocked HTTP seam.
                 self.failure = {
                     "ordinal": len(self.call_plan), "role": role,
-                    "exception_type": type(exc).__name__,
-                    "safe_message": str(exc)[:240],
+                    **_safe_failure_projection(
+                        exc, boundary="offline_http_transport.oracle",
+                    ),
                     "known_protocol_markers": [
                         marker for marker in (
                             "SHORT_PLAN_ADAPTATION_REVIEW_V2",
@@ -601,9 +619,10 @@ class _DiagnosticObserverProxy:
             except Exception as exc:
                 self._factory.failure = {
                     "boundary": f"attempt_observer.{name}",
-                    "exception_type": type(exc).__name__,
+                    **_safe_failure_projection(
+                        exc, boundary=f"attempt_observer.{name}",
+                    ),
                     "reason_code": getattr(exc, "reason_code", None),
-                    "safe_message": str(exc)[:240],
                 }
                 raise
 
@@ -651,9 +670,10 @@ class _LowestHttpSeamRegistry(ProviderRegistry):
         except Exception as exc:
             self.transport_factory.failure = {
                 "boundary": "provider_registry.resolve",
-                "exception_type": type(exc).__name__,
+                **_safe_failure_projection(
+                    exc, boundary="provider_registry.resolve",
+                ),
                 "reason_code": getattr(exc, "reason_code", None),
-                "safe_message": str(exc)[:240],
             }
             raise
         previous = resolved.adapter.client
@@ -914,7 +934,10 @@ async def _run(args: argparse.Namespace) -> dict[str, Any]:
                     "severity": item.get("severity"),
                     "event_type": item.get("event_type"),
                     "stage": item.get("stage"),
-                    "message": str(item.get("message") or "")[:240],
+                    "message_present": bool(item.get("message")),
+                    "message_sha256": _optional_text_sha256(
+                        item.get("message")
+                    ),
                     "metadata_keys": sorted(
                         str(key) for key in (item.get("metadata") or {})
                     ),
@@ -939,15 +962,20 @@ async def _run(args: argparse.Namespace) -> dict[str, Any]:
             raise RuntimeError(
                 "FULL_SHORT_DRY_RUN_EXECUTION_FAILED:"
                 + json.dumps({
-                    "exception_type": type(exc).__name__,
-                    "safe_message": str(exc)[:500],
+                    **_safe_failure_projection(
+                        exc, boundary="full_short_dry_run.execution",
+                    ),
                     "mock_transport_failure": transport.failure,
                     "observed_call_count": len(transport.call_plan),
                     "observed_call_tail": transport.call_plan[-5:],
                     "ledger": ledger_state,
                     "run_state": {
-                        key: run_row.get(key)
-                        for key in ("status", "current_stage", "error")
+                        "status": run_row.get("status"),
+                        "current_stage": run_row.get("current_stage"),
+                        "error_present": bool(run_row.get("error")),
+                        "error_sha256": _optional_text_sha256(
+                            run_row.get("error")
+                        ),
                     },
                     "run_event_tail": event_tail,
                 }, ensure_ascii=True, sort_keys=True)

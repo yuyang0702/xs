@@ -6,12 +6,17 @@ import pytest
 
 from novel_flywheel.planning_compiler import TerminalClosureIR
 from novel_flywheel.planning_semantics import (
+    PLANNING_SEMANTIC_MODEL_OWNED_REQUIRED_FIELDS_V2,
     PlanningSemanticDraftV2,
     compile_planning_semantic_v2,
     merge_planning_semantic_document_packets_v2,
     merge_planning_semantic_event_packets_v2,
     parse_planning_semantic_v2,
     planning_semantic_packet_ownership_v2,
+    planning_semantic_model_visible_contract_v2,
+    planning_semantic_schema_v2,
+    semantic_planning_packet_prompt_v2,
+    semantic_planning_prompt_v2,
 )
 
 
@@ -59,6 +64,49 @@ def semantic_payload() -> dict:
             },
         ],
     }
+
+
+def _schema_required_names(value: object) -> set[str]:
+    if isinstance(value, dict):
+        names = {
+            str(item)
+            for item in value.get("required", [])
+            if isinstance(item, str)
+        }
+        for child in value.values():
+            names.update(_schema_required_names(child))
+        return names
+    if isinstance(value, list):
+        names: set[str] = set()
+        for child in value:
+            names.update(_schema_required_names(child))
+        return names
+    return set()
+
+
+def test_planning_plain_route_contract_names_every_schema_required_field() -> None:
+    required = _schema_required_names(planning_semantic_schema_v2())
+    assert required <= set(PLANNING_SEMANTIC_MODEL_OWNED_REQUIRED_FIELDS_V2)
+    assert {"initial_state", "segments"} <= required
+    visible = planning_semantic_model_visible_contract_v2()
+    assert all(name in visible for name in required)
+
+    full = semantic_planning_prompt_v2(
+        segment_count=3,
+        formal_events=formal_events(),
+        story_brief="A bounded story brief.",
+    )
+    packet = semantic_planning_packet_prompt_v2(
+        global_segment=1,
+        segment_count=3,
+        global_event_ordinals=(1,),
+        formal_events=formal_events(1),
+        story_brief_projection="A bounded story projection.",
+        parent_brief_sha256="a" * 64,
+    )
+    for prompt in (full, packet):
+        assert visible in prompt
+        assert all(name in prompt for name in required)
 
 
 def test_ir_first_planning_compiles_exact_ownership_and_terminal_topology() -> None:

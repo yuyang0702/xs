@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+import json
 import hashlib
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import pytest
@@ -122,6 +123,22 @@ def test_dry_run_has_no_test_owned_oracle_or_fixed_call_count() -> None:
     assert "expected_stage_calls=1" not in source
     assert "execute_full_short_control_plane(" in source
     assert "run_full_short_workflow_path(" in source
+
+
+def test_dry_run_failure_projection_is_hash_only() -> None:
+    from tools.canary.first_trustworthy_full_short_dry_run import (
+        _safe_failure_projection,
+    )
+
+    secret = "raw provider body with private story text"
+    projection = _safe_failure_projection(
+        RuntimeError(secret), boundary="offline-test",
+    )
+
+    assert projection["exception_type"] == "RuntimeError"
+    assert len(projection["failure_sha256"]) == 64
+    assert secret not in json.dumps(projection)
+    assert "safe_message" not in projection
 
 
 def test_real_runner_fail_closes_orphaned_and_prelaunch_reservations() -> None:

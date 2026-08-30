@@ -3,8 +3,9 @@
   "version": 1,
   "classification": "open_world_mechanism_level",
   "start_head": "a91aa04d6c9a0c7d5d1d7541d4e6734ad328d6d2",
-  "primary_root_cause_candidate": "PLANNING_DOMAIN_DIAGNOSTIC_PREEMPTED_BY_GENERIC_BUSINESS_GATE_WITH_UNCLOSED_SUCCESSFUL_DISPATCH",
+  "primary_root_cause_candidate": "PLANNING_PLAIN_ROUTE_MODEL_VISIBLE_CONTRACT_GAP_WITH_PREEMPTED_TYPED_RECOVERY",
   "in_scope": [
+    "state every existing PlanningSemanticDraftV2 model-owned required member in the model-visible prompt for plain routes",
     "order authoritative domain validation before generic post-conversion completeness acceptance",
     "retain generic completeness protection after a successful domain validator",
     "durably close a successful HTTP response that is rejected by local contract validation",
@@ -16,7 +17,7 @@
   "out_of_scope": [
     "weakening PlanningSemanticDraftV2",
     "inventing or locally defaulting model-owned narrative fields",
-    "changing prompt, provider, model, route, fallback order, retry count, output budget, StoryState, Canon, READY authority, Skill V3, or Hybrid paths",
+    "changing intended Planning semantics, provider, model, route, fallback order, retry count, output budget, StoryState, Canon, READY authority, Skill V3, or Hybrid paths",
     "reusing or mutating the consumed authorization, nonce, ledger, or real-run evidence",
     "external credential, network, provider, model, or paid actions"
   ],
