@@ -2277,6 +2277,13 @@ stage bridge therefore repeats only the selected lane for the already-sealed
 bounded attempt count. It never introduces a different route, enables
 fallback, or expands the hard request/token caps.
 
+An actionable required-field miss is not committed to route qualification
+memory between attempts of that same typed recovery sequence. Otherwise the
+severe qualification would quarantine the route before the propagated finding
+could be consumed. A final miss is still recorded as negative capability; a
+successful next attempt records `valid`. Generic missing-field contracts with
+no authoritative domain finding remain immediately fail-closed.
+
 An actionable mixed-script Draft finding first enters the closed
 `draft_local_repair_contract`. Runtime binds every exact occurrence to one
 immutable paragraph unit and dispatches those units independently in

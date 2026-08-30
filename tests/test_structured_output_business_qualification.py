@@ -25,6 +25,13 @@ from novel_flywheel.providers.probe import CapabilityProbe, ProbeResult
 from novel_flywheel.production_incidents import classify_production_failure
 from novel_flywheel.secrets import MemorySecretStore
 from novel_flywheel.providers.registry import ResolvedModel
+from novel_flywheel.planning_semantics import (
+    PlanningSemanticDraftV2,
+    extract_planning_semantic_v2_findings,
+    normalize_planning_semantic_v2_payload,
+    planning_semantic_schema_v2,
+    render_actionable_planning_semantic_findings,
+)
 from novel_flywheel.structured_artifacts import StructuredArtifactContract
 
 
@@ -581,6 +588,93 @@ async def test_one_present_required_field_cannot_mask_partial_business_output(
         schema_sha256=contract.schema_sha256(),
     )
     assert strict_state["last_failure_reason"] == "required_fields_missing"
+
+
+async def test_actionable_planning_missing_field_does_not_quarantine_mid_recovery(
+    tmp_path,
+) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    db.save_role_binding("planning", "relay", "model", None, None)
+    valid = {
+        "version": 2,
+        "initial_state": "雨夜里所有人仍在站台等待最后一班车",
+        "segments": [{
+            "kind": "terminal", "segment": 1, "title": "最后一班车",
+            "events": [{
+                "formal_event_ordinal": 1,
+                "narrative": "林澈查清车票去向并决定留下足以公开的证据",
+            }],
+        }],
+    }
+    incomplete = dict(valid)
+    incomplete.pop("initial_state")
+
+    class Adapter:
+        def __init__(self) -> None:
+            self.requests = []
+
+        async def complete(self, request):
+            self.requests.append(request)
+            payload = incomplete if len(self.requests) == 1 else valid
+            return ModelResponse(tool_calls=[ToolCall(
+                id=f"attempt-{len(self.requests)}",
+                name=request.required_tool,
+                arguments=payload,
+            )], finish_reason="tool_use")
+
+    adapter = Adapter()
+
+    class Registry:
+        @staticmethod
+        def resolve(provider_id, model_id):
+            return ResolvedModel(
+                provider_id, model_id, model_id, adapter,
+                {"structured_output": "strict_tool"}, "5" * 64,
+            )
+
+    contract = StructuredArtifactContract(
+        name="planning_semantic_v2", version=2,
+        schema=planning_semantic_schema_v2(),
+        runtime_authority={"repair_target_identity_sha256": "a" * 64},
+    )
+
+    result = await execute_contract_runtime(
+        ModelGateway(db, Registry()),
+        role="planning", system="Return JSON", user="immutable task",
+        execution_spec=ExecutableContractSpec(
+            contract_name="planning_semantic_v2",
+            structured_contract=contract,
+            semantic_normalizer=normalize_planning_semantic_v2_payload,
+            domain_validator=PlanningSemanticDraftV2.model_validate,
+            domain_diagnostic_extractor=lambda payload: (
+                extract_planning_semantic_v2_findings(
+                    payload,
+                    domain_validator=PlanningSemanticDraftV2.model_validate,
+                )
+            ),
+            domain_diagnostic_metadata={
+                "contract_name": "planning_semantic_v2",
+                "repair_target_identity_sha256": "a" * 64,
+            },
+            domain_retry_renderer=render_actionable_planning_semantic_findings,
+            retry_domain_failures=True,
+        ),
+        same_route_attempts=2, fallback_attempts=0,
+    )
+
+    assert result.payload == valid
+    assert len(adapter.requests) == 2
+    assert all(request.required_tool == "planning_semantic_v2"
+               for request in adapter.requests)
+    state = db.get_structured_route_qualification(
+        provider_id="relay", model_id="model", route_fingerprint="5" * 64,
+        execution_mode="strict_tool", contract_name="planning_semantic_v2",
+        schema_sha256=contract.schema_sha256(),
+    )
+    assert state["status"] == "qualified"
+    assert state["consecutive_failures"] == 0
+    assert state["success_count"] == 1
 
 
 def test_production_fixture_is_sanitized_and_classifies_the_recurrence() -> None:

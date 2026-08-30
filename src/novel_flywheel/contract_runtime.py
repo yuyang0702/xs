@@ -1579,21 +1579,35 @@ async def execute_contract_runtime(
             )
             if incomplete_reason is not None:
                 last_business_incomplete_reason = incomplete_reason
-            _record_business_outcome(
-                gateway, response, structured_contract,
-                outcome=(
-                    incomplete_reason
-                    or (
-                        "output_limited"
-                        if output_limited(
-                            receipt if isinstance(receipt, dict) else None
-                        )
-                        else "semantic_invalid"
-                    )
-                ),
-                failure_reason=incomplete_reason,
-                expected_output_characters=expected_output_characters,
+            actionable_required_field_recovery = bool(
+                incomplete_reason == "required_fields_missing"
+                and execution_spec.domain_diagnostic_extractor is not None
+                and execution_spec.domain_retry_renderer is not None
+                and execution_spec.retry_domain_failures
+                and not attempt.is_last
             )
+            if not actionable_required_field_recovery:
+                # Route qualification is a contract-level outcome.  Do not
+                # quarantine the exact route between two attempts in the same
+                # already-authorized typed recovery sequence; doing so would
+                # make the propagated finding unreachable.  A terminal miss
+                # is still persisted fail-closed, while a successful next
+                # attempt records the route as valid below.
+                _record_business_outcome(
+                    gateway, response, structured_contract,
+                    outcome=(
+                        incomplete_reason
+                        or (
+                            "output_limited"
+                            if output_limited(
+                                receipt if isinstance(receipt, dict) else None
+                            )
+                            else "semantic_invalid"
+                        )
+                    ),
+                    failure_reason=incomplete_reason,
+                    expected_output_characters=expected_output_characters,
+                )
             if output_limited(receipt if isinstance(receipt, dict) else None):
                 previous_budget = attempt_output_tokens
                 target_budget = expanded_output_budget(previous_budget)
