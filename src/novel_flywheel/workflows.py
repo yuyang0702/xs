@@ -29661,16 +29661,6 @@ class WorkflowService:
                 else ("primary",) if primary_only
                 else None
             )
-            # A preselected lane constrains *which* route may own the
-            # contract; it is not a replacement for the contract runtime's
-            # already-bounded same-route attempt schedule.  Preserve the
-            # sealed two-attempt contract policy without widening the route
-            # set or enabling fallback.
-            contract_attempt_routes = (
-                requested_routes * 2
-                if execution_spec is not None and requested_routes is not None
-                else requested_routes
-            )
             selected_route = (
                 requested_routes[0] if requested_routes else "primary"
             )
@@ -29890,7 +29880,7 @@ class WorkflowService:
                             expected_output_characters or 0
                         ),
                         same_route_attempts=2, fallback_attempts=2,
-                        attempt_routes=contract_attempt_routes,
+                        attempt_routes=requested_routes,
                         audit_sink=lambda audit: write_conversion_audit(
                             run_path / "outputs" / "conversion-audits", audit,
                         ),
