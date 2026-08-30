@@ -153,13 +153,12 @@ class _PrivateDryRunOracle:
         paragraphs: list[str] = []
         turn = 0
         while len("".join(paragraphs)) < target:
-            owner = owned[turn % len(owned)]
             actor = actors[turn % len(actors)]
             partner = actors[(turn + 2) % len(actors)]
             place = places[(turn * 3) % len(places)]
             action = actions[(turn * 2) % len(actions)]
             paragraphs.append(
-                f"{place}里的光线随第{turn + 1}次核查改变。{actor}围绕{owner}{action}，"
+                f"{place}里的光线随第{turn + 1}次核查改变。{actor}围绕当前正式事件{action}，"
                 f"在{partner}提出反证后重新排列时间、证物与知情边界；行动得到可复核结果，"
                 "人物关系由戒备推进为有限合作，当前因果状态完整交给下一事件。"
             )
