@@ -17132,6 +17132,8 @@ class WorkflowService:
                     "terminal_review_complete": True,
                     "terminal_reviewed_hash": digest,
                     "terminal_review": final_review,
+                    "best_attempt": attempt + 1,
+                    "best_score": final_review["score"],
                     "scoring_profile_id": str(
                         final_review.get("scoring_profile_id") or profile
                     ),
@@ -17333,8 +17335,11 @@ class WorkflowService:
             and report.get("terminal_reviewed_hash") == digest
             and isinstance(checkpoint, dict)
             and checkpoint.get("outcome") == "passed"
+            and checkpoint.get("manuscript_path")
+            == "outputs/best-candidate.md"
             and checkpoint.get("manuscript_hash") == digest
             and checkpoint.get("terminal_reviewed_hash") == digest
+            and checkpoint.get("best_attempt") == report.get("best_attempt")
         ):
             raise RuntimeError(
                 "Formal promotion requires a hash-bound passing quality review"

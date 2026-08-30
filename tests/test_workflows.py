@@ -18021,9 +18021,12 @@ async def test_post_mutation_quality_pass_binds_exact_publication_hash(
     assert calls == 1
     assert report["status"] == "passed"
     assert report["terminal_reviewed_hash"] == digest
+    assert report["best_attempt"] == 1
     assert checkpoint is not None
     assert checkpoint["outcome"] == "passed"
+    assert checkpoint["manuscript_path"] == "outputs/best-candidate.md"
     assert checkpoint["manuscript_hash"] == digest
+    assert checkpoint["best_attempt"] == report["best_attempt"]
     service._require_short_formal_quality_authority(run_path, report, publication)
 
 
