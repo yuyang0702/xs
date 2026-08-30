@@ -445,6 +445,70 @@ async def test_planning_typed_finding_reaches_the_next_bounded_attempt() -> None
     assert "strict_integer_required" in calls[1]
 
 
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("missing_fields", "expected_paths"),
+    [
+        (("initial_state",), ("/initial_state",)),
+        (("segments",), ("/segments",)),
+        (
+            ("initial_state", "segments"),
+            ("/initial_state", "/segments"),
+        ),
+    ],
+)
+async def test_planning_missing_root_fields_reach_typed_bounded_recovery(
+    missing_fields: tuple[str, ...], expected_paths: tuple[str, ...],
+) -> None:
+    incomplete = _valid_semantic_payload()
+    for field in missing_fields:
+        incomplete.pop(field)
+    valid = _valid_semantic_payload()
+    calls: list[str] = []
+    local_rejections: list[dict] = []
+
+    async def execute(attempt, role, system, user, max_output_tokens, contract):
+        calls.append(user)
+        payload = incomplete if len(calls) == 1 else valid
+        return ModelResult(
+            json.dumps(payload, ensure_ascii=False),
+            {"finish_reason": "end_turn", "model_name": "offline-fake"},
+        )
+
+    spec = ExecutableContractSpec(
+        contract_name="planning_semantic_v2",
+        structured_contract=StructuredArtifactContract(
+            name="planning_semantic_v2", version=2,
+            schema=planning_semantic_schema_v2(),
+            runtime_authority={"repair_target_identity_sha256": SHA},
+        ),
+        semantic_normalizer=normalize_planning_semantic_v2_payload,
+        domain_validator=PlanningSemanticDraftV2.model_validate,
+        domain_diagnostic_extractor=extract_planning_semantic_v2_findings,
+        domain_diagnostic_metadata={
+            "contract_name": "planning_semantic_v2",
+            "repair_target_identity_sha256": SHA,
+        },
+        domain_retry_renderer=render_actionable_planning_semantic_findings,
+        retry_domain_failures=True,
+    )
+    result = await execute_contract_runtime(
+        SimpleNamespace(), role="planning", system="sealed", user="task",
+        execution_spec=spec, attempt_routes=("primary", "primary"),
+        attempt_executor=execute,
+        local_rejection_sink=local_rejections.append,
+    )
+
+    assert result.payload == valid
+    assert len(calls) == 2
+    assert all(path in calls[1] for path in expected_paths)
+    assert "required_field_missing" in calls[1]
+    assert len(local_rejections) == 1
+    assert local_rejections[0]["failure_kind"] == "domain_validation"
+    assert local_rejections[0]["raw_content_persisted"] is False
+    assert "response_text" not in local_rejections[0]
+
+
 def test_schema_valid_planning_authority_failure_emits_typed_finding() -> None:
     payload = _valid_semantic_payload()
     payload["segments"][0]["events"][0]["formal_event_ordinal"] = 2

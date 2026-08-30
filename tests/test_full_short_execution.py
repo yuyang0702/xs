@@ -196,6 +196,24 @@ def _dispatch_and_close(
     return observer
 
 
+def _local_rejection(*, route_attempt: int = 1) -> dict:
+    return {
+        "schema": "ContractLocalRejectionReceiptV1",
+        "version": 1,
+        "contract_name": "planning_semantic_v2",
+        "contract_version": 2,
+        "contract_schema_sha256": "1" * 64,
+        "attempt_index": route_attempt,
+        "route": "primary",
+        "route_attempt": route_attempt,
+        "failure_kind": "domain_validation",
+        "failure_reason_sha256": "2" * 64,
+        "response_text_sha256": "3" * 64,
+        "conversion_audit_sha256": "4" * 64,
+        "raw_content_persisted": False,
+    }
+
+
 def test_live_authority_drift_fails_before_credential_lookup_or_nonce_consumption(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -371,6 +389,106 @@ def test_restart_after_dispatch_before_local_receipt_never_redispatches(
         )
     assert caught.value.reason_code == "NONCE_ALREADY_CONSUMED_NO_RESTART"
     assert len(store.load_ledger("restart-blocked")["attempts"]) == 1
+
+
+def test_closed_local_rejection_allows_only_same_session_bounded_recovery(
+    tmp_path: Path,
+) -> None:
+    store = _store(tmp_path)
+    permission, approval, nonce = _authorize_offline(
+        store, "local-rejection-recovery",
+    )
+    observer = _observer(
+        store, "local-rejection-recovery", session_id="one-session",
+    )
+    observer.before_http_dispatch(
+        method="POST", url="https://unit.test/v1/messages", payload=_payload(),
+    )
+    observer.after_http_response(status_code=200)
+    role_binding = observer.bound_route["role_binding_sha256"]
+    observer.mark_local_attempt_rejected(
+        stage="planning-semantic-v2", role="planning",
+        role_binding_sha256=role_binding,
+        rejection=_local_rejection(),
+    )
+
+    with pytest.raises(FullShortExecutionBoundaryError) as restarted:
+        _observer(
+            store, "local-rejection-recovery", session_id="new-session",
+        )
+    assert restarted.value.reason_code == "NONCE_ALREADY_CONSUMED_NO_RESTART"
+
+    observer.bind_route(
+        role="planning", lane="primary", provider_id="provider",
+        model_id="model-id", route_fingerprint="9" * 64,
+    )
+    observer.bind_model_request(protocol="anthropic", request=_request())
+    observer.before_http_dispatch(
+        method="POST", url="https://unit.test/v1/messages", payload=_payload(),
+    )
+    observer.after_http_response(status_code=200)
+    observer.mark_local_stage_complete(
+        stage="planning", role="planning",
+        role_binding_sha256=observer.bound_route["role_binding_sha256"],
+        output_sha256="a" * 64, receipt_sha256="b" * 64,
+    )
+
+    ledger = store.load_ledger("local-rejection-recovery")
+    assert [attempt["state"] for attempt in ledger["attempts"]] == [
+        "LOCAL_ATTEMPT_REJECTED", "LOCAL_STAGE_COMPLETE",
+    ]
+    assert len(ledger["completed_stage_receipts"]) == 1
+    completion = build_full_short_completion_receipt_v1(
+        execution_id="local-rejection-recovery", policy=_policy(store),
+        permission_sha256=permission["permission_sha256"],
+        signed_approval_sha256=approval["signed_approval_sha256"],
+        nonce_sha256=nonce["nonce_sha256"], ledger=ledger,
+        final_bindings={
+            "manuscript_sha256": "4" * 64,
+            "chapter_sha256": "5" * 64,
+            "canon_sha256": "6" * 64,
+            "story_state_sha256": "7" * 64,
+            "quality_checkpoint_sha256": "8" * 64,
+            "terminal_verification_sha256": _terminal()[
+                "verification_receipt_sha256"
+            ],
+        },
+        terminal_verification=_terminal(),
+    )
+    assert completion["provider_request_count"] == 2
+    assert completion["completed_stage_count"] == 1
+    store.commit_completion(
+        execution_id="local-rejection-recovery", policy=_policy(store),
+        receipt=completion,
+    )
+
+
+def test_local_rejection_receipt_rejects_raw_content_and_stays_pending(
+    tmp_path: Path,
+) -> None:
+    store = _store(tmp_path)
+    _authorize_offline(store, "local-rejection-privacy")
+    observer = _observer(store, "local-rejection-privacy")
+    observer.before_http_dispatch(
+        method="POST", url="https://unit.test/v1/messages", payload=_payload(),
+    )
+    observer.after_http_response(status_code=200)
+    rejection = {
+        **_local_rejection(),
+        "raw_provider_content": "must never be persisted",
+    }
+    with pytest.raises(FullShortExecutionBoundaryError) as invalid:
+        observer.mark_local_attempt_rejected(
+            stage="planning", role="planning",
+            role_binding_sha256=observer.bound_route[
+                "role_binding_sha256"
+            ],
+            rejection=rejection,
+        )
+    assert invalid.value.reason_code == "LOCAL_REJECTION_RECEIPT_SHAPE_INVALID"
+    ledger = store.load_ledger("local-rejection-privacy")
+    assert ledger["state"] == "RESPONSE_RECEIVED_AWAITING_LOCAL_RECEIPT"
+    assert "raw_provider_content" not in json.dumps(ledger)
 
 
 def test_restart_before_dispatch_is_also_fail_closed(tmp_path: Path) -> None:

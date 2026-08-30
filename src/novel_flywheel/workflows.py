@@ -29840,6 +29840,37 @@ class WorkflowService:
                             diagnostic_context=attempt_diagnostic_context,
                         )
 
+                    execution_observer = getattr(
+                        getattr(self.gateway, "registry", None),
+                        "attempt_observer", None,
+                    )
+                    mark_local_attempt_rejected = getattr(
+                        execution_observer,
+                        "mark_local_attempt_rejected",
+                        None,
+                    )
+
+                    def close_local_rejection(
+                        rejection: Mapping[str, Any],
+                    ) -> None:
+                        if not callable(mark_local_attempt_rejected):
+                            return
+                        bound_route = getattr(
+                            execution_observer, "bound_route", None,
+                        )
+                        if not isinstance(bound_route, Mapping):
+                            raise RuntimeError(
+                                "Full Short local rejection has no exact route binding"
+                            )
+                        mark_local_attempt_rejected(
+                            stage=f"{stage}{suffix}",
+                            role=gateway_role,
+                            role_binding_sha256=str(
+                                bound_route.get("role_binding_sha256") or ""
+                            ),
+                            rejection=rejection,
+                        )
+
                     contract_runtime = await execute_contract_runtime(
                         self.gateway,
                         role=gateway_role, system=system, user=user,
@@ -29855,6 +29886,7 @@ class WorkflowService:
                         ),
                         attempt_executor=contract_attempt_executor,
                         attempt_observer=attempt_observations.append,
+                        local_rejection_sink=close_local_rejection,
                         diagnostic_context=diagnostic_context,
                     )
                     result = contract_runtime.model_response

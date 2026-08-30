@@ -2254,6 +2254,16 @@ unsupported cross-kind edges, and cycles fail closed. Planning adaptation also
 has a persisted, non-resetting total transition bound so latent findings cannot
 move indefinitely between otherwise accepted candidates.
 
+For a converted Planning mapping that omits a required root field, the strict
+Pydantic/domain diagnostic boundary runs before the coarse shared
+`required_fields_missing` classifier can consume the attempt. This preserves
+the same strict schema and existing attempt schedule while making the exact,
+value-free missing-field path available to the next already-authorized
+attempt. Contracts without an authoritative typed diagnostic path, and
+domain-valid but underfilled responses, remain protected by the shared
+business-completeness classifier. Runtime never derives `initial_state` or
+`segments` locally and never stores the rejected payload.
+
 An actionable mixed-script Draft finding first enters the closed
 `draft_local_repair_contract`. Runtime binds every exact occurrence to one
 immutable paragraph unit and dispatches those units independently in
@@ -2302,6 +2312,17 @@ including one after a locally closed stage, fails closed and cannot redispatch.
 Only the same claimed observer session may continue to the next planned stage
 after the prior response, local output, and receipt hashes are durably closed.
 An exclusively stored completion receipt permanently prevents another dispatch.
+
+A successful HTTP response that fails conversion, business completeness, or
+domain validation is durably closed as `LOCAL_ATTEMPT_REJECTED` with only
+contract, route, classification, and content hashes. It is not a completed
+logical stage and cannot satisfy the Full Short completion matrix. The same
+observer session may consume only the next attempt already present in the
+existing bounded workflow schedule; restart, ambiguous transport outcomes,
+new retries, and cap expansion remain unauthorized. Completion counts all
+physical dispatches against request/HTTP/network/token caps while separately
+requiring the exact expected count of `LOCAL_STAGE_COMPLETE` receipts and the
+full required-role matrix.
 
 `tools/canary/first_trustworthy_full_short_runner.py` is the sole dedicated
 entry for this boundary. Its default preflight mode cannot construct a secret

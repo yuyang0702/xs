@@ -1,0 +1,112 @@
+{
+  "schema": "FirstTrustworthyFullShortRealFailureBindingV1",
+  "version": 1,
+  "receipt_kind": "PRE_CHANGE_READ_ONLY_FAILURE_RECEIPT",
+  "observed_at_utc": "2026-08-30T12:29:37Z",
+  "branch": "r1-ptr3/planning-repair-finding-propagation-20260817",
+  "start_head": "a91aa04d6c9a0c7d5d1d7541d4e6734ad328d6d2",
+  "worktree_before_receipt": "clean",
+  "run_id": "first-trustworthy-full-short-a91aa04-20260830t115010z-001",
+  "project_id_sha256": "a69d9140943781ee24b78ff87d8ef408d29c281c6e993981dc2ef4a8eb82f720",
+  "workload_sha256": "da96465f6bad2392dcc5dcfe2cbb4776f690a621360af3fa3678fc8005de0b29",
+  "durable_ledger": {
+    "file_sha256": "1ee6b2a76f8bbd068700aefb6216dcb1e86dd1b31159a39f5868348c27a0dee0",
+    "embedded_ledger_sha256": "3458cd5347aabaf7c4c490807623b4259db4bf8b87a18c20f34ba2674fafabf5",
+    "state": "RESPONSE_RECEIVED_AWAITING_LOCAL_RECEIPT",
+    "attempt_count": 1,
+    "completed_stage_receipt_count": 0,
+    "nonce_sha256": "78d8741b07a40ba2bc4088af960fd19c82b0e05ee72fee5d5e979c501f8698d8",
+    "nonce_file_sha256": "e063f8b825e7b226d158e107c1fb71a1ec7f1f15d921ee685f7e7655a88918ed",
+    "approval_file_sha256": "879ee7579523a11bc422c040bda24910b66edad540d8b0c62b3fbc0c3e749099"
+  },
+  "provider_observation": {
+    "route_fingerprint": "30e9cbaf86fbb4b89b43614d71cc11b359ad41e7411e8ebda5d3ce4199879bf0",
+    "protocol": "anthropic",
+    "execution_mode": "plain",
+    "request_shape_sha256": "abd9f2220d2aaf668314bb9abc74cb6d5e4aae4066308c8331c2ca4e2fe9f67c",
+    "provider_payload_sha256": "92cd111ccfbd8861161aadaa7de348a47ef11d6f487ad256c8c8776fa71db3e7",
+    "requested_output_tokens": 3724,
+    "actual_output_tokens": 3230,
+    "visible_characters": 5004,
+    "finish_reason": "end_turn",
+    "transport_complete": true,
+    "temperature": "OMITTED_USE_PROVIDER_DEFAULT",
+    "http_post_attempts": 1,
+    "retry_count": 0,
+    "fallback_count": 0,
+    "resume_dispatch_count": 0,
+    "second_dispatch_count": 0
+  },
+  "conversion_audit": {
+    "file_sha256": "532b8a238c9410c2e5b97fdf38d51f076400a61f53147cc1bc7ae5c863d11be5",
+    "contract_name": "planning_semantic_v2",
+    "contract_version": 2,
+    "raw_sha256": "e5170ab88e06704345041047f6210ff3e94f16a065e3b84d110f1e4558e6aaad",
+    "canonical_sha256": "1db94ca61b00af660c59de0c76674888a729b638b163dcaf9baae4fa3be776d3",
+    "method": "exact_json",
+    "transformations": [],
+    "quarantined_paths": [],
+    "candidate_count": 1,
+    "semantic_valid_flag": true,
+    "semantic_valid_flag_meaning": "semantic_normalizer_returned_a_mapping_candidate_not_pydantic_domain_acceptance",
+    "lossless_disposition": "AUDIT_PROVES_EXACT_JSON_WITH_ZERO_TRANSFORMATIONS_BUT_RAW_BYTES_ARE_NOT_PERSISTED_FOR_INDEPENDENT_BYTE_REPLAY"
+  },
+  "persisted_payload_availability": {
+    "raw_provider_response": "ABSENT_BY_HASH_ONLY_PRIVACY_DESIGN",
+    "exact_converted_json": "ABSENT_BY_HASH_ONLY_PRIVACY_DESIGN",
+    "run_output_file_count_excluding_style_authority_and_conversion_audit": 0,
+    "captured_byte_replay_available": false,
+    "no_reconstruction_or_guessing_allowed": true
+  },
+  "contract_binding": {
+    "planning_semantic_schema_sha256": "f23bb155296d9df6bf8e8992108c651c3354fd4d791dc0bbbcc46d2943cd42c7",
+    "schema_required_top_level_fields": [
+      "initial_state",
+      "segments"
+    ],
+    "structured_qualification_failure_reason": "required_fields_missing",
+    "exact_missing_member_identity": "UNAVAILABLE_BECAUSE_RAW_AND_CANONICAL_BYTES_WERE_NOT_PERSISTED",
+    "business_incomplete_reason_source_sha256": "916a370984488961e3ba71c1219f177e174dc5efc7c76190ec5021ee8afe9956",
+    "planning_semantic_model_source_sha256": "0301a5415e80b03d8c20efc589698302d2a45b255f5a06b587e689d1343deb7e",
+    "planning_packet_prompt_source_sha256": "b597240686ceae8ae87dc15c43a52e6cc593dc30562e5337971047f70cb6cb03",
+    "planning_normalizer_source_sha256": "d4aea1b98100803e9e953d319c18a4a9a56e83163cd0f5c1a10d9f1a3c87a286",
+    "planning_parser_source_sha256": "d9ef3340f7ded9488621b3dbde983860f5de1aa6d84ac5503ffa21b16d17a681",
+    "generated_gateway_source_sha256": "8294be1044c6cd28b1ed90d467b8bae60755d7392aa79a4a1f60254af0730feb"
+  },
+  "model_input_binding": {
+    "planning_context_packet_sha256": "68e0910a9b588d8a08aea922eeb43deb3ec81190489f734ca340b27b6cdae4b1",
+    "planning_node_input_sha256": "1f502144963f49fb50c64af42fcae9c4428a79285daa09f68cdcc12842de8ae1",
+    "planning_node_authority_sha256": "d342fb20d26336c4bba0ad7b9f83f29f952cc9e94b131636ea8cd1ab9e7788d8",
+    "source_prompt_characters": 21345,
+    "compacted_prompt_characters": 8927,
+    "source_constraint_characters": 37229,
+    "compacted_constraint_characters": 5189
+  },
+  "failure_ordering": {
+    "json_conversion": "PASSED",
+    "semantic_normalizer_candidate_detection": "PASSED",
+    "generic_business_completeness_gate": "FAILED_REQUIRED_FIELDS_MISSING",
+    "pydantic_domain_validation": "NOT_REACHED",
+    "typed_domain_finding_extraction": "NOT_REACHED",
+    "local_stage_receipt": "ABSENT",
+    "authority_promotion": "NOT_PERFORMED"
+  },
+  "authority_non_mutation": {
+    "story_state_revision": 2,
+    "story_state_sha256": "db8cc3b36a3efe74bbc7d79ab1fe87138ae9bc7a5f2acdcf95d7b734d437afba",
+    "canon_fact_count": 0,
+    "canon_facts_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+    "story_candidate_count": 0,
+    "old_authorization_preflight_with_external_actions_disabled": "PASS",
+    "old_authorization_preflight_receipt_sha256": "8277d32c23895f3e7db229129de3d9aee17d0ddde5f19cc38d285db26cb007db"
+  },
+  "external_actions_during_receipt_creation": {
+    "credential_lookup_count": 0,
+    "provider_client_creation_count": 0,
+    "provider_request_attempts": 0,
+    "http_post_attempts": 0,
+    "network_calls": 0,
+    "model_calls": 0,
+    "paid_calls": 0
+  }
+}

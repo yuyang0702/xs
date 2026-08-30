@@ -127,8 +127,14 @@ def _quality_review() -> str:
 class _PrivateDryRunOracle:
     """Deterministic response producer behind the lowest HTTP seam."""
 
-    def __init__(self) -> None:
+    def __init__(
+        self, *, inject_planning_business_incomplete_once: bool = False,
+    ) -> None:
         self.base = DeterministicShortBoundary()
+        self.inject_planning_business_incomplete_once = (
+            inject_planning_business_incomplete_once
+        )
+        self.planning_business_incomplete_injected = False
 
     @staticmethod
     def _result(role: str, text: str) -> ModelResult:
@@ -358,6 +364,24 @@ class _PrivateDryRunOracle:
         self, role: str, system: str, user: str,
         max_output_tokens: int | None = None,
     ) -> ModelResult:
+        if (
+            self.inject_planning_business_incomplete_once
+            and not self.planning_business_incomplete_injected
+            and "ACTIONABLE_PLANNING_SEMANTIC_FINDINGS" not in user
+            and any(marker in user for marker in (
+                "IR_FIRST_SHORT_PLANNING_PACKET_V2",
+                "IR_FIRST_SHORT_PLANNING_V2",
+            ))
+        ):
+            complete = await self.base.complete(
+                role, system, user, max_output_tokens=max_output_tokens,
+            )
+            payload = json.loads(complete.text)
+            payload.pop("initial_state")
+            self.planning_business_incomplete_injected = True
+            return self._result(
+                role, json.dumps(payload, ensure_ascii=False),
+            )
         # The semantic-validation protocol names include the shorter fragment
         # generation marker.  Match the more-specific protocol first so the
         # fixture cannot misroute a validator request into the generator.
@@ -465,8 +489,14 @@ class _PrivateDryRunOracle:
 class _OfflineHttpTransportFactory:
     """The only response stub: one in-memory ``httpx`` transport factory."""
 
-    def __init__(self) -> None:
-        self.oracle = _PrivateDryRunOracle()
+    def __init__(
+        self, *, inject_planning_business_incomplete_once: bool = False,
+    ) -> None:
+        self.oracle = _PrivateDryRunOracle(
+            inject_planning_business_incomplete_once=(
+                inject_planning_business_incomplete_once
+            ),
+        )
         self.call_plan: list[dict[str, Any]] = []
         self.failure: dict[str, Any] | None = None
 
@@ -761,9 +791,8 @@ async def _run(args: argparse.Namespace) -> dict[str, Any]:
         per_call_cap = max(
             int(item["requested_output_tokens"]) for item in call_plan
         )
-        total_cap = sum(
-            int(item["requested_output_tokens"]) for item in call_plan
-        )
+        total_cap = per_call_cap * expected_calls * 4
+        hard_max_dispatches = expected_calls * 4
         policy = FullShortExecutionPolicyV1(
             execution_head=actual["head"], branch=actual["branch"],
             run_id=EXECUTION_ID,
@@ -779,9 +808,9 @@ async def _run(args: argparse.Namespace) -> dict[str, Any]:
             store_root_sha256=actual["store_root_sha256"],
             required_stage_roles=discovered_roles,
             expected_stage_calls=expected_calls,
-            hard_max_provider_requests=expected_calls,
-            hard_max_http_posts=expected_calls,
-            hard_max_network_attempts=expected_calls,
+            hard_max_provider_requests=hard_max_dispatches,
+            hard_max_http_posts=hard_max_dispatches,
+            hard_max_network_attempts=hard_max_dispatches,
             per_call_output_token_hard_cap=per_call_cap,
             total_output_token_hard_cap=total_cap,
             maximum_elapsed_seconds=36_000,
@@ -798,7 +827,11 @@ async def _run(args: argparse.Namespace) -> dict[str, Any]:
             repo=repo, data_dir=execution_data, store_root=store_root,
             authorization_raw=raw, activated_sha256=activated_sha256,
         )
-        transport = _OfflineHttpTransportFactory()
+        transport = _OfflineHttpTransportFactory(
+            inject_planning_business_incomplete_once=(
+                args.inject_planning_business_incomplete_once
+            ),
+        )
         execution = await execute_full_short_control_plane(
             control_args, authorization,
             external_actions_enabled=False,
@@ -808,11 +841,26 @@ async def _run(args: argparse.Namespace) -> dict[str, Any]:
             required_stage_roles=discovered_roles,
         )
         observed_plan = execution["call_plan"]
-        if observed_plan != call_plan:
+        ledger = execution["ledger"]
+        rejected_ordinals = {
+            int(item["ordinal"])
+            for item in ledger["attempts"]
+            if item.get("state") == "LOCAL_ATTEMPT_REJECTED"
+        }
+        successful_observed_plan = [
+            {**item, "ordinal": index}
+            for index, item in enumerate(
+                (
+                    item for item in observed_plan
+                    if int(item["ordinal"]) not in rejected_ordinals
+                ),
+                1,
+            )
+        ]
+        if successful_observed_plan != call_plan:
             raise RuntimeError("FULL_SHORT_DRY_RUN_CALL_PLAN_DRIFT")
         completion = execution["completion"]
         terminal = execution["terminal"]
-        ledger = execution["ledger"]
         result = execution["workflow_result"]
         manuscript = (
             execution_data / "projects" / source_project.name
@@ -841,17 +889,29 @@ async def _run(args: argparse.Namespace) -> dict[str, Any]:
             "discovered_call_plan_sha256": _domain(call_plan),
             "executed_call_plan_sha256": _domain(observed_plan),
             "expected_stage_calls": expected_calls,
+            "hard_max_provider_requests": hard_max_dispatches,
+            "hard_max_http_posts": hard_max_dispatches,
+            "hard_max_network_attempts": hard_max_dispatches,
             "per_call_output_token_hard_cap": per_call_cap,
             "total_output_token_hard_cap": total_cap,
             "maximum_elapsed_seconds": 36_000,
             "provider_request_count": len(ledger["attempts"]),
+            "completed_stage_count": len(
+                ledger.get("completed_stage_receipts") or []
+            ),
+            "local_rejected_attempt_count": len(rejected_ordinals),
+            "planning_business_incomplete_injected": (
+                transport.oracle.planning_business_incomplete_injected
+            ),
             "required_stage_roles": list(discovered_roles),
             "completed_stage_roles": sorted(set(execution["observed_roles"])),
             "all_required_stage_roles_completed": set(
                 FULL_SHORT_REQUIRED_EXECUTION_ROLES
             ).issubset(execution["observed_roles"]),
             "all_dispatches_locally_closed": all(
-                item.get("state") == "LOCAL_STAGE_COMPLETE"
+                item.get("state") in {
+                    "LOCAL_STAGE_COMPLETE", "LOCAL_ATTEMPT_REJECTED",
+                }
                 for item in ledger["attempts"]
             ),
             "elapsed_seconds_at_completion_recheck": execution[
@@ -870,13 +930,22 @@ async def _run(args: argparse.Namespace) -> dict[str, Any]:
             "pass": (
                 result["status"] == "completed"
                 and terminal["completion_goal_outcome"] == COMPLETION_GOAL
-                and len(ledger["attempts"]) == expected_calls
-                and observed_plan == call_plan
+                and len(ledger.get("completed_stage_receipts") or [])
+                == expected_calls
+                and len(ledger["attempts"])
+                == expected_calls + int(
+                    args.inject_planning_business_incomplete_once
+                )
+                and successful_observed_plan == call_plan
+                and transport.oracle.planning_business_incomplete_injected
+                is args.inject_planning_business_incomplete_once
                 and set(FULL_SHORT_REQUIRED_EXECUTION_ROLES).issubset(
                     execution["observed_roles"]
                 )
                 and all(
-                    item.get("state") == "LOCAL_STAGE_COMPLETE"
+                    item.get("state") in {
+                        "LOCAL_STAGE_COMPLETE", "LOCAL_ATTEMPT_REJECTED",
+                    }
                     for item in ledger["attempts"]
                 )
             ),
@@ -889,6 +958,10 @@ def main() -> int:
     parser.add_argument("--repo", type=Path, required=True)
     parser.add_argument("--project-id", required=True)
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument(
+        "--inject-planning-business-incomplete-once",
+        action="store_true",
+    )
     args = parser.parse_args()
     if args.output.exists():
         raise SystemExit("output already exists")

@@ -49,6 +49,7 @@ DomainRetryRenderer = Callable[
 TextValidator = Callable[[str], Any]
 AuditSink = Callable[[ArtifactConversionAudit], None]
 AttemptObserver = Callable[[dict[str, Any]], None]
+LocalRejectionSink = Callable[[Mapping[str, Any]], None]
 ModelRoute = Literal["primary", "configured_fallback"]
 ContractAttemptExecutor = Callable[
     [
@@ -861,6 +862,52 @@ def _record_business_outcome(
         return
 
 
+def _emit_local_rejection(
+    sink: LocalRejectionSink | None,
+    *,
+    response: Any,
+    contract: StructuredArtifactContract,
+    attempt: ProtocolReceiptAttempt,
+    audit: ArtifactConversionAudit,
+    failure_kind: Literal[
+        "artifact_conversion", "business_incomplete", "domain_validation",
+    ],
+    failure_reason: str,
+) -> None:
+    """Close one successful dispatch with content-free local rejection proof.
+
+    This is control-plane authority rather than best-effort telemetry.  A sink
+    failure propagates so the Full Short boundary cannot dispatch again from
+    an ambiguous durable state.  Only stable hashes and typed classifications
+    cross the boundary; provider text and converted payload never do.
+    """
+
+    if sink is None:
+        return
+    sink({
+        "schema": "ContractLocalRejectionReceiptV1",
+        "version": 1,
+        "contract_name": contract.name,
+        "contract_version": contract.version,
+        "contract_schema_sha256": contract.schema_sha256(),
+        "attempt_index": attempt.attempt_index,
+        "route": attempt.route,
+        "route_attempt": attempt.route_attempt,
+        "failure_kind": failure_kind,
+        "failure_reason_sha256": hashlib.sha256(
+            failure_reason.encode("utf-8"),
+        ).hexdigest(),
+        "response_text_sha256": hashlib.sha256(
+            str(getattr(response, "text", response)).encode("utf-8"),
+        ).hexdigest(),
+        "conversion_audit_sha256": domain_sha256(
+            "novel-flywheel-artifact-conversion-audit-v1",
+            audit.model_dump(mode="json"),
+        ),
+        "raw_content_persisted": False,
+    })
+
+
 async def execute_contract_runtime(
     gateway: Any,
     *,
@@ -878,6 +925,7 @@ async def execute_contract_runtime(
     audit_sink: AuditSink | None = None,
     attempt_executor: ContractAttemptExecutor | None = None,
     attempt_observer: AttemptObserver | None = None,
+    local_rejection_sink: LocalRejectionSink | None = None,
     diagnostic_context: ModelDiagnosticContextV1 | None = None,
 ) -> ContractRuntimeResult:
     """Run one shared syntax/adapter/schema recovery ladder on explicit routes.
@@ -1252,6 +1300,18 @@ async def execute_contract_runtime(
             )
             if incomplete_reason is not None:
                 last_business_incomplete_reason = incomplete_reason
+            _emit_local_rejection(
+                local_rejection_sink,
+                response=response,
+                contract=structured_contract,
+                attempt=attempt,
+                audit=exc.audit,
+                failure_kind="artifact_conversion",
+                failure_reason=(
+                    incomplete_reason
+                    or str(exc.audit.failure_code or "artifact_conversion")
+                ),
+            )
             _record_business_outcome(
                 gateway, response, structured_contract,
                 outcome=(
@@ -1344,7 +1404,12 @@ async def execute_contract_runtime(
             payload=conversion.payload,
             expected_output_characters=expected_output_characters,
         )
-        if incomplete_reason is not None:
+        authoritative_domain_diagnostics = bool(
+            incomplete_reason == "required_fields_missing"
+            and execution_spec.domain_diagnostic_extractor is not None
+            and execution_spec.domain_retry_renderer is not None
+        )
+        if incomplete_reason is not None and not authoritative_domain_diagnostics:
             _observe_attempt(
                 attempt_observer, attempt_id=str(attempt.attempt_index),
                 parent_attempt_id=(str(attempt.attempt_index - 1) if attempt.attempt_index > 1 else None),
@@ -1360,6 +1425,15 @@ async def execute_contract_runtime(
                 outcome=incomplete_reason,
                 failure_reason=incomplete_reason,
                 expected_output_characters=expected_output_characters,
+            )
+            _emit_local_rejection(
+                local_rejection_sink,
+                response=response,
+                contract=structured_contract,
+                attempt=attempt,
+                audit=conversion.audit,
+                failure_kind="business_incomplete",
+                failure_reason=incomplete_reason,
             )
             if output_limited(receipt if isinstance(receipt, dict) else None):
                 previous_budget = attempt_output_tokens
@@ -1428,6 +1502,15 @@ async def execute_contract_runtime(
         try:
             domain_value = execution_spec.domain_validator(conversion.payload)
         except (TypeError, ValueError) as exc:
+            _emit_local_rejection(
+                local_rejection_sink,
+                response=response,
+                contract=structured_contract,
+                attempt=attempt,
+                audit=conversion.audit,
+                failure_kind="domain_validation",
+                failure_reason=type(exc).__name__,
+            )
             diagnostic_findings: Sequence[Mapping[str, Any]] = ()
             if execution_spec.domain_diagnostic_extractor is not None:
                 try:
@@ -1540,6 +1623,40 @@ async def execute_contract_runtime(
                     **cap_values,
                 )
                 attempt_output_tokens = target_budget
+            continue
+        if incomplete_reason is not None:
+            # An authoritative domain validator is expected to reject a
+            # required-field omission.  Keep the generic gate as a fail-closed
+            # backstop if a future diagnostic validator is accidentally weak.
+            _observe_attempt(
+                attempt_observer, attempt_id=str(attempt.attempt_index),
+                parent_attempt_id=(str(attempt.attempt_index - 1) if attempt.attempt_index > 1 else None),
+                route=attempt.route, route_attempt=attempt.route_attempt,
+                action=str(attempt.action or RecoveryAction.RECEIPT_ONLY_RETRY),
+                outcome="business_incomplete", failure_class=incomplete_reason,
+                model_call_delta=1,
+            )
+            last_business_incomplete_reason = incomplete_reason
+            receipt = getattr(response, "receipt", None)
+            _record_business_outcome(
+                gateway, response, structured_contract,
+                outcome=incomplete_reason,
+                failure_reason=incomplete_reason,
+                expected_output_characters=expected_output_characters,
+            )
+            _emit_local_rejection(
+                local_rejection_sink,
+                response=response,
+                contract=structured_contract,
+                attempt=attempt,
+                audit=conversion.audit,
+                failure_kind="business_incomplete",
+                failure_reason=incomplete_reason,
+            )
+            last_error = ContractBusinessOutputIncompleteError(
+                incomplete_reason,
+                receipt=(dict(receipt) if isinstance(receipt, Mapping) else {}),
+            )
             continue
         observe_domain_validation_snapshot(
             attempt_context,

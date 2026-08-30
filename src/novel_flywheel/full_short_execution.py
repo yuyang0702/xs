@@ -64,6 +64,15 @@ _FULL_SHORT_EGRESS_FORBIDDEN = (
     "credentials", "unrelated_project_data", "raw_provider_evidence",
     "retired_skill_v3_hybrid_context",
 )
+_CLOSED_LOCAL_ATTEMPT_STATES = frozenset({
+    "LOCAL_STAGE_COMPLETE", "LOCAL_ATTEMPT_REJECTED",
+})
+_LOCAL_REJECTION_RECEIPT_FIELDS = frozenset({
+    "schema", "version", "contract_name", "contract_version",
+    "contract_schema_sha256", "attempt_index", "route", "route_attempt",
+    "failure_kind", "failure_reason_sha256", "response_text_sha256",
+    "conversion_audit_sha256", "raw_content_persisted",
+})
 
 
 class FullShortExecutionBoundaryError(RuntimeError):
@@ -895,7 +904,7 @@ class FullShortDurableExecutionStoreV1:
             )
             if attempts:
                 _require(
-                    attempts[-1].get("state") == "LOCAL_STAGE_COMPLETE"
+                    attempts[-1].get("state") in _CLOSED_LOCAL_ATTEMPT_STATES
                     and attempts[-1].get("session_id") == session_id,
                     "AMBIGUOUS_OR_UNCLOSED_DISPATCH_NO_RESTART",
                 )
@@ -1064,7 +1073,7 @@ class FullShortDurableExecutionStoreV1:
                 ledger.get("state") == "READY_FOR_NEXT_STAGE"
                 and isinstance(attempts, list)
                 and bool(attempts)
-                and all(item.get("state") == "LOCAL_STAGE_COMPLETE"
+                and all(item.get("state") in _CLOSED_LOCAL_ATTEMPT_STATES
                         for item in attempts)
                 and value.get("provider_request_count") == len(attempts),
                 "COMPLETION_LEDGER_NOT_EXACT",
@@ -1260,7 +1269,7 @@ class FullShortDispatchLedgerObserverV1:
         if attempts:
             previous = attempts[-1]
             _require(
-                previous.get("state") == "LOCAL_STAGE_COMPLETE"
+                previous.get("state") in _CLOSED_LOCAL_ATTEMPT_STATES
                 and previous.get("session_id") == self.session_id,
                 "AMBIGUOUS_OR_UNCLOSED_DISPATCH_NO_RESTART",
             )
@@ -1430,6 +1439,102 @@ class FullShortDispatchLedgerObserverV1:
         self.expected_provider_payload = None
         self.egress_intent_sha256 = None
 
+    def mark_local_attempt_rejected(
+        self, *, stage: str, role: str, role_binding_sha256: str,
+        rejection: Mapping[str, Any],
+    ) -> None:
+        """Durably close one 2xx response rejected by local contract logic.
+
+        The state authorizes only the already-sealed next attempt in this same
+        observer session.  It is not a stage receipt and cannot satisfy the
+        logical Full Short completion matrix.
+        """
+
+        ordinal = self.pending_ordinal
+        _require(ordinal is not None, "NO_RESPONSE_TO_REJECT")
+        value = dict(rejection)
+        _require(
+            set(value) == _LOCAL_REJECTION_RECEIPT_FIELDS,
+            "LOCAL_REJECTION_RECEIPT_SHAPE_INVALID",
+        )
+        _require(
+            value.get("schema") == "ContractLocalRejectionReceiptV1"
+            and value.get("version") == 1
+            and isinstance(value.get("contract_name"), str)
+            and bool(value.get("contract_name"))
+            and type(value.get("contract_version")) is int
+            and int(value["contract_version"]) > 0
+            and type(value.get("attempt_index")) is int
+            and int(value["attempt_index"]) > 0
+            and type(value.get("route_attempt")) is int
+            and int(value["route_attempt"]) > 0
+            and value.get("failure_kind") in {
+                "artifact_conversion", "business_incomplete",
+                "domain_validation",
+            }
+            and value.get("raw_content_persisted") is False,
+            "LOCAL_REJECTION_RECEIPT_INVALID",
+        )
+        for field in (
+            "contract_schema_sha256", "failure_reason_sha256",
+            "response_text_sha256", "conversion_audit_sha256",
+        ):
+            _require(
+                _HEX64.fullmatch(str(value.get(field))) is not None,
+                "LOCAL_REJECTION_RECEIPT_HASH_INVALID",
+            )
+        _require(
+            _HEX64.fullmatch(role_binding_sha256) is not None,
+            "ROLE_BINDING_SHA256_INVALID",
+        )
+        rejection_receipt_sha256 = domain_sha256(
+            "novel-flywheel-contract-local-rejection-receipt-v1", value,
+        )
+
+        def mutate(body: dict[str, Any]) -> dict[str, Any]:
+            attempts = list(body["attempts"])
+            _require(0 < ordinal <= len(attempts), "PENDING_ORDINAL_INVALID")
+            current = dict(attempts[ordinal - 1])
+            _require(
+                current.get("ordinal") == ordinal
+                and current.get("session_id") == self.session_id
+                and current.get("state") == "RESPONSE_RECEIVED",
+                "RESPONSE_NOT_RECEIVED",
+            )
+            _require(current.get("bound_role") == role, "STAGE_ROLE_DRIFT")
+            _require(
+                current.get("role_binding_sha256") == role_binding_sha256,
+                "ROLE_BINDING_DRIFT",
+            )
+            _require(
+                self.bound_route is not None
+                and value.get("route") == self.bound_route.get("lane"),
+                "LOCAL_REJECTION_ROUTE_DRIFT",
+            )
+            current.update({
+                "state": "LOCAL_ATTEMPT_REJECTED",
+                "local_rejection_receipt_sha256": rejection_receipt_sha256,
+                "local_rejection_failure_kind": value["failure_kind"],
+                "local_rejection_failure_reason_sha256": value[
+                    "failure_reason_sha256"
+                ],
+                "contract_name": value["contract_name"],
+                "contract_version": value["contract_version"],
+                "contract_schema_sha256": value["contract_schema_sha256"],
+                "stage": stage,
+                "role": role,
+            })
+            attempts[ordinal - 1] = current
+            body["attempts"] = attempts
+            body["state"] = "READY_FOR_RECOVERY_ATTEMPT"
+            return body
+
+        self.store.update_ledger(self.execution_id, mutate)
+        self.pending_ordinal = None
+        self.bound_route = None
+        self.expected_provider_payload = None
+        self.egress_intent_sha256 = None
+
 
 def build_full_short_completion_receipt_v1(
     *, execution_id: str, policy: Mapping[str, Any],
@@ -1454,7 +1559,7 @@ def build_full_short_completion_receipt_v1(
     attempts = sealed_ledger.get("attempts")
     _require(isinstance(attempts, list) and attempts, "LEDGER_HAS_NO_DISPATCH")
     _require(
-        all(item.get("state") == "LOCAL_STAGE_COMPLETE" for item in attempts),
+        all(item.get("state") in _CLOSED_LOCAL_ATTEMPT_STATES for item in attempts),
         "LEDGER_HAS_UNCLOSED_DISPATCH",
     )
     _require(
@@ -1463,7 +1568,8 @@ def build_full_short_completion_receipt_v1(
         "LEDGER_ORDINALS_INVALID",
     )
     _require(
-        len(attempts) == validated["expected_stage_calls"],
+        len(sealed_ledger.get("completed_stage_receipts") or [])
+        == validated["expected_stage_calls"],
         "EXPECTED_STAGE_CALL_COUNT_MISMATCH",
     )
     _require(
@@ -1497,9 +1603,12 @@ def build_full_short_completion_receipt_v1(
     )
     receipts = sealed_ledger.get("completed_stage_receipts")
     _require(
-        isinstance(receipts, list) and len(receipts) == len(attempts)
+        isinstance(receipts, list)
+        and len(receipts) == validated["expected_stage_calls"]
+        and all(type(item.get("ordinal")) is int for item in receipts)
         and [item.get("ordinal") for item in receipts]
-        == list(range(1, len(attempts) + 1)),
+        == sorted({item.get("ordinal") for item in receipts})
+        and all(0 < item["ordinal"] <= len(attempts) for item in receipts),
         "STAGE_MATRIX_INVALID",
     )
     required_roles = set(validated["required_stage_roles"])
@@ -1507,7 +1616,17 @@ def build_full_short_completion_receipt_v1(
         {item.get("role") for item in receipts} == required_roles,
         "REQUIRED_STAGE_ROLE_MATRIX_INCOMPLETE",
     )
-    for attempt, stage_receipt in zip(attempts, receipts, strict=True):
+    receipt_by_ordinal = {item["ordinal"]: item for item in receipts}
+    _require(
+        all(
+            (attempt.get("ordinal") in receipt_by_ordinal)
+            == (attempt.get("state") == "LOCAL_STAGE_COMPLETE")
+            for attempt in attempts
+        ),
+        "STAGE_MATRIX_INVALID",
+    )
+    for stage_receipt in receipts:
+        attempt = attempts[stage_receipt["ordinal"] - 1]
         _require(
             attempt.get("stage") == stage_receipt.get("stage")
             and attempt.get("role") == stage_receipt.get("role")
@@ -1569,6 +1688,7 @@ def build_full_short_completion_receipt_v1(
         "provider_request_count": len(attempts),
         "http_post_count": len(attempts),
         "network_attempt_count": len(attempts),
+        "completed_stage_count": len(receipts),
         "requested_output_tokens": requested_total,
         "required_stage_roles": sorted(required_roles),
         "final_bindings": dict(sorted(final_bindings.items())),

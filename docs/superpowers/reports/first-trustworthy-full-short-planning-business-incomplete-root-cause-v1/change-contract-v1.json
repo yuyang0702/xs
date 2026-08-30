@@ -1,0 +1,49 @@
+{
+  "schema": "FirstTrustworthyFullShortPlanningBusinessIncompleteChangeContractV1",
+  "version": 1,
+  "classification": "open_world_mechanism_level",
+  "start_head": "a91aa04d6c9a0c7d5d1d7541d4e6734ad328d6d2",
+  "primary_root_cause_candidate": "PLANNING_DOMAIN_DIAGNOSTIC_PREEMPTED_BY_GENERIC_BUSINESS_GATE_WITH_UNCLOSED_SUCCESSFUL_DISPATCH",
+  "in_scope": [
+    "order authoritative domain validation before generic post-conversion completeness acceptance",
+    "retain generic completeness protection after a successful domain validator",
+    "durably close a successful HTTP response that is rejected by local contract validation",
+    "allow only the existing same-session bounded contract recovery schedule after such a closed rejection",
+    "count logical completed stages separately from total provider dispatches",
+    "inject a realistic planning omission through the production-shaped offline HTTP seam",
+    "recompute future Full Short authorization caps mechanically from the existing four-attempt contract schedule"
+  ],
+  "out_of_scope": [
+    "weakening PlanningSemanticDraftV2",
+    "inventing or locally defaulting model-owned narrative fields",
+    "changing prompt, provider, model, route, fallback order, retry count, output budget, StoryState, Canon, READY authority, Skill V3, or Hybrid paths",
+    "reusing or mutating the consumed authorization, nonce, ledger, or real-run evidence",
+    "external credential, network, provider, model, or paid actions"
+  ],
+  "protected_invariants": [
+    "ambiguous or transport-failed dispatches remain fail-closed and non-resumable",
+    "a locally rejected dispatch can be followed only in the same observer session",
+    "typed findings remain bounded, value-free, source-bound, and contract-bound",
+    "raw provider content, prompt, story, and converted payload are not persisted",
+    "completion requires the exact logical stage count and required role matrix",
+    "all dispatch and token hard caps remain enforced against total physical attempts"
+  ],
+  "proof_obligations": [
+    "missing initial_state and/or segments reaches Pydantic findings before generic failure",
+    "weak domain validators remain protected by the generic business gate",
+    "same-session recovery works without enabling restart, resume, transport retry, or a new route",
+    "completion accepts closed rejected attempts only when every expected logical stage completed",
+    "normal 70-call production-shaped replay remains unchanged",
+    "one injected Planning omission requires exactly one additional bounded dispatch and then completes",
+    "focused, related, full offline, Strict L3, privacy, determinism, and production-isolation gates pass or are truthfully classified"
+  ],
+  "external_action_counters": {
+    "credential_lookup": 0,
+    "provider_client_creation": 0,
+    "provider_request": 0,
+    "http_post": 0,
+    "network": 0,
+    "model": 0,
+    "paid": 0
+  }
+}
