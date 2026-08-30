@@ -390,6 +390,7 @@ class _OfflineHttpTransportFactory:
     def __init__(self) -> None:
         self.oracle = _PrivateDryRunOracle()
         self.call_plan: list[dict[str, Any]] = []
+        self.failure: dict[str, Any] | None = None
 
     def build(self, *, protocol: str, destination: str) -> httpx.MockTransport:
         async def respond(request: httpx.Request) -> httpx.Response:
@@ -414,9 +415,19 @@ class _OfflineHttpTransportFactory:
                     "requested_output_tokens": maximum,
                 }),
             })
-            result = await self.oracle.complete(
-                role, system, user, max_output_tokens=maximum,
-            )
+            try:
+                result = await self.oracle.complete(
+                    role, system, user, max_output_tokens=maximum,
+                )
+            except Exception as exc:
+                # Retain only bounded protocol diagnostics; never retain the
+                # prompt or response that crossed the mocked HTTP seam.
+                self.failure = {
+                    "ordinal": len(self.call_plan), "role": role,
+                    "exception_type": type(exc).__name__,
+                    "safe_message": str(exc)[:240],
+                }
+                raise
             if protocol == "openai-chat":
                 body = {
                     "id": "offline", "choices": [{
@@ -556,6 +567,7 @@ async def _discover_plan(
             key: result.get(key)
             for key in ("status", "current_stage", "error")
         }
+        failure["mock_transport_failure"] = factory.failure
         raise RuntimeError(
             "FULL_SHORT_DRY_RUN_PLAN_DID_NOT_COMPLETE:"
             + json.dumps(failure, ensure_ascii=True, sort_keys=True)
