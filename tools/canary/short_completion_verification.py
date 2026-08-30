@@ -698,8 +698,10 @@ def verify_short_completion_v1(
         == manuscript_sha256
         and checkpoint.get("manuscript_hash") == manuscript_sha256
         and checkpoint.get("terminal_reviewed_hash") == manuscript_sha256
-        and isinstance(report.get("best_attempt"), int)
+        and type(report.get("best_attempt")) is int
         and report["best_attempt"] >= 1
+        and type(checkpoint.get("best_attempt")) is int
+        and checkpoint["best_attempt"] >= 1
         and checkpoint.get("best_attempt") == report.get("best_attempt")
         and isinstance(report.get("best_score"), (int, float))
         and not isinstance(report.get("best_score"), bool)

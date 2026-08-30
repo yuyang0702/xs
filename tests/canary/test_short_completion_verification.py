@@ -317,7 +317,9 @@ def test_suffixed_repair_adjudication_is_the_terminal_review_authority(
     ("checkpoint_ledger_drift", "WORKFLOW_COMPLETED_CHECKPOINT_UNCLOSED"),
     ("checkpoint_path_drift", "WORKFLOW_COMPLETED_CHECKPOINT_UNCLOSED"),
     ("checkpoint_best_attempt_drift", "WORKFLOW_COMPLETED_CHECKPOINT_UNCLOSED"),
+    ("checkpoint_best_attempt_bool", "WORKFLOW_COMPLETED_CHECKPOINT_UNCLOSED"),
     ("report_best_attempt_drift", "WORKFLOW_COMPLETED_CHECKPOINT_UNCLOSED"),
+    ("report_best_attempt_bool", "WORKFLOW_COMPLETED_CHECKPOINT_UNCLOSED"),
     ("report_best_score_drift", "WORKFLOW_COMPLETED_CHECKPOINT_UNCLOSED"),
     ("report_profile_drift", "WORKFLOW_COMPLETED_CHECKPOINT_UNCLOSED"),
     ("report_judge_drift", "WORKFLOW_COMPLETED_CHECKPOINT_UNCLOSED"),
@@ -340,12 +342,15 @@ def test_completion_failures_are_typed(
         report = json.loads((fx["run"] / "outputs/quality-report.json").read_text())
         field = {
             "report_best_attempt_drift": "best_attempt",
+            "report_best_attempt_bool": "best_attempt",
             "report_best_score_drift": "best_score",
             "report_profile_drift": "scoring_profile_id",
             "report_judge_drift": "judge_signature",
         }[mutation]
         report[field] = {
-            "best_attempt": 999,
+            "best_attempt": (
+                True if mutation == "report_best_attempt_bool" else 999
+            ),
             "best_score": 1,
             "scoring_profile_id": "other-profile",
             "judge_signature": "other/judge",
@@ -378,6 +383,7 @@ def test_completion_failures_are_typed(
             "checkpoint_ledger_drift": "issue_ledger",
             "checkpoint_path_drift": "manuscript_path",
             "checkpoint_best_attempt_drift": "best_attempt",
+            "checkpoint_best_attempt_bool": "best_attempt",
         }[mutation]
         checkpoint[field] = {
             "review": {**checkpoint["review"], "decision": "fail"},
@@ -386,7 +392,9 @@ def test_completion_failures_are_typed(
             "judge_signature": "other/judge",
             "issue_ledger": [{"issue_id": "unbound"}],
             "manuscript_path": "outputs/checkpoint-alternate.md",
-            "best_attempt": 999,
+            "best_attempt": (
+                True if mutation == "checkpoint_best_attempt_bool" else 999
+            ),
         }[field]
         _write_json(fx["run"] / "outputs/quality-checkpoint.json", checkpoint)
     assert _verify(fx)["completion_goal_outcome"] == outcome
