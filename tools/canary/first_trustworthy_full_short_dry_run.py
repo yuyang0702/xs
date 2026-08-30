@@ -552,7 +552,14 @@ async def _discover_plan(
     finally:
         await registry.close()
     if result.get("status") != "completed":
-        raise RuntimeError("FULL_SHORT_DRY_RUN_PLAN_DID_NOT_COMPLETE")
+        failure = {
+            key: result.get(key)
+            for key in ("status", "current_stage", "error")
+        }
+        raise RuntimeError(
+            "FULL_SHORT_DRY_RUN_PLAN_DID_NOT_COMPLETE:"
+            + json.dumps(failure, ensure_ascii=True, sort_keys=True)
+        )
     missing = sorted(
         set(FULL_SHORT_REQUIRED_EXECUTION_ROLES) - set(registry.observed_roles)
     )
