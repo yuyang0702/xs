@@ -34,7 +34,10 @@ from novel_flywheel.projects import ProjectStore
 from novel_flywheel.providers.http import SingleDispatchTransportPolicyV1
 from novel_flywheel.providers.registry import ProviderRegistry
 from novel_flywheel.secrets import MemorySecretStore
-from tools.canary.fake_boundary import DeterministicShortBoundary
+from tools.canary.fake_boundary import (
+    DeterministicShortBoundary,
+    _execution_manifest_receipt,
+)
 from tools.canary.short_completion import COMPLETION_GOAL
 from tools.canary.first_trustworthy_full_short_runner import (
     FULL_SHORT_REQUIRED_EXECUTION_ROLES,
@@ -304,6 +307,15 @@ class _PrivateDryRunOracle:
         self, role: str, system: str, user: str,
         max_output_tokens: int | None = None,
     ) -> ModelResult:
+        # The semantic-validation protocol names include the shorter fragment
+        # generation marker.  Match the more-specific protocol first so the
+        # fixture cannot misroute a validator request into the generator.
+        if any(marker in user for marker in (
+            "SHORT_EXECUTION_MANIFEST_SEMANTIC_VALIDATION",
+            "SHORT_EXECUTION_MANIFEST_FRAGMENT_SEMANTIC_VALIDATION_V3",
+            "SHORT_EXECUTION_MANIFEST_FRAGMENT_SEMANTIC_VALIDATION_V4",
+        )):
+            return self._result(role, _execution_manifest_receipt(user))
         if "SHORT_CAUSAL_CHAIN_STANDALONE" in user:
             return self._result(role, self._causal_chain(user))
         if "SHORT_CAUSAL_CHAIN_EVENT_PACKET_V2" in user:
