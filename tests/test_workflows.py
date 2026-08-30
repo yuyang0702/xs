@@ -17995,6 +17995,8 @@ async def test_post_mutation_quality_pass_binds_exact_publication_hash(
     )
     run_path = project.path / "runs" / "quality-source"
     passing = service._review(quality_review())
+    passing["scoring_profile_id"] = "legacy-v1"
+    passing["judge_signature"] = "legacy-unknown"
     mutated = source + "\n\n\u5979\u53ea\u6539\u5199\u4e86\u4e0e\u53c2\u8003\u6587\u672c\u8fd1\u4f3c\u7684\u8868\u8fbe\u3002"
     calls = 0
 
@@ -18027,7 +18029,103 @@ async def test_post_mutation_quality_pass_binds_exact_publication_hash(
     assert checkpoint["manuscript_path"] == "outputs/best-candidate.md"
     assert checkpoint["manuscript_hash"] == digest
     assert checkpoint["best_attempt"] == report["best_attempt"]
+    integrity_path = run_path / "outputs" / "polish-integrity-authority-test.json"
+    integrity_path.write_text(json.dumps({
+        "status": "passed", "publication_sha256": digest,
+    }), encoding="utf-8")
+    checkpoint["narrative_integrity"] = {
+        "path": "outputs/polish-integrity-authority-test.json",
+        "sha256": hashlib.sha256(integrity_path.read_bytes()).hexdigest(),
+    }
+    write_quality_checkpoint(run_path, checkpoint)
     service._require_short_formal_quality_authority(run_path, report, publication)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("mutation", [
+    "report_attempt_bool",
+    "checkpoint_attempt_bool",
+    "report_score",
+    "checkpoint_score",
+    "report_profile",
+    "checkpoint_profile",
+    "report_judge",
+    "checkpoint_judge",
+    "checkpoint_review",
+    "checkpoint_issues",
+    "checkpoint_integrity",
+])
+async def test_short_formal_promotion_rejects_quality_authority_drift(
+    tmp_path, monkeypatch, mutation,
+) -> None:
+    service, project, source, _ledger, _state = _short_revision_service(
+        tmp_path, [], target_words=500,
+    )
+    run_path = project.path / "runs" / "quality-source"
+    passing = service._review(quality_review())
+    passing["scoring_profile_id"] = "legacy-v1"
+    passing["judge_signature"] = "legacy-unknown"
+    mutated = source + "\n\n她只改写了与参考文本近似的表达。"
+
+    async def passed_review(*args, **kwargs):
+        return passing, {
+            "coverage": 1.0, "windows": [], "review_mode": "full",
+            "reviewed_windows": 1, "window_count": 1,
+        }
+
+    monkeypatch.setattr(service, "_full_manuscript_review", passed_review)
+    monkeypatch.setattr(service, "_analyze_manuscript", lambda *args, **kwargs: {})
+    selected, report = await service._close_post_quality_mutation(
+        "quality-source", run_path, project, "constraints", mutated,
+        passing, {"status": "passed"}, suffix="-originality",
+        max_corrections=0,
+    )
+    publication = "\n\n".join(service._split_segments(selected))
+    checkpoint = load_quality_checkpoint(run_path)
+    assert checkpoint is not None
+    report = dict(report)
+    checkpoint = dict(checkpoint)
+    digest = hashlib.sha256(publication.encode("utf-8")).hexdigest()
+    integrity_path = run_path / "outputs" / "polish-integrity-authority-test.json"
+    integrity_path.write_text(json.dumps({
+        "status": "passed", "publication_sha256": digest,
+    }), encoding="utf-8")
+    checkpoint["narrative_integrity"] = {
+        "path": "outputs/polish-integrity-authority-test.json",
+        "sha256": hashlib.sha256(integrity_path.read_bytes()).hexdigest(),
+    }
+    if mutation == "report_attempt_bool":
+        report["best_attempt"] = True
+    elif mutation == "checkpoint_attempt_bool":
+        checkpoint["best_attempt"] = True
+    elif mutation == "report_score":
+        report["best_score"] = 1
+    elif mutation == "checkpoint_score":
+        checkpoint["score"] = 1
+    elif mutation == "report_profile":
+        report["scoring_profile_id"] = "tampered-profile"
+    elif mutation == "checkpoint_profile":
+        checkpoint["scoring_profile_id"] = "tampered-profile"
+    elif mutation == "report_judge":
+        report["judge_signature"] = "tampered/judge"
+    elif mutation == "checkpoint_judge":
+        checkpoint["judge_signature"] = "tampered/judge"
+    elif mutation == "checkpoint_review":
+        checkpoint["review"] = {**checkpoint["review"], "decision": "rewrite"}
+    elif mutation == "checkpoint_issues":
+        checkpoint["issue_ledger"] = [{"issue_id": "tampered"}]
+    elif mutation == "checkpoint_integrity":
+        checkpoint["narrative_integrity"] = {
+            **checkpoint["narrative_integrity"], "sha256": "0" * 64,
+        }
+    write_quality_checkpoint(run_path, checkpoint)
+
+    with pytest.raises(
+        RuntimeError, match="Formal promotion requires a hash-bound passing quality review",
+    ):
+        service._require_short_formal_quality_authority(
+            run_path, report, publication,
+        )
 
 
 def test_maintenance_authority_is_incremental_and_conflicts_fail_closed() -> None:

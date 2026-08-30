@@ -17329,17 +17329,76 @@ class WorkflowService:
 
         digest = hashlib.sha256(publication.encode("utf-8")).hexdigest()
         checkpoint = load_quality_checkpoint(run_path)
+        terminal_review = report.get("terminal_review")
+        best_candidate = run_path / "outputs" / "best-candidate.md"
+        try:
+            best_candidate_exact = (
+                hashlib.sha256(
+                    best_candidate.read_text(encoding="utf-8").encode("utf-8")
+                ).hexdigest() == digest
+            )
+        except (OSError, UnicodeError):
+            best_candidate_exact = False
+        narrative_integrity = (
+            checkpoint.get("narrative_integrity")
+            if isinstance(checkpoint, dict) else None
+        )
+        integrity_exact = False
+        if isinstance(narrative_integrity, dict):
+            relative = narrative_integrity.get("path")
+            if isinstance(relative, str) and relative:
+                candidate = (run_path / relative).resolve()
+                try:
+                    candidate.relative_to(run_path.resolve())
+                except ValueError:
+                    pass
+                else:
+                    try:
+                        integrity_exact = (
+                            candidate.is_file()
+                            and hashlib.sha256(candidate.read_bytes()).hexdigest()
+                            == narrative_integrity.get("sha256")
+                        )
+                    except OSError:
+                        integrity_exact = False
         if not (
             report.get("status") == "passed"
             and report.get("terminal_review_complete") is True
             and report.get("terminal_reviewed_hash") == digest
             and isinstance(checkpoint, dict)
+            and isinstance(terminal_review, dict)
             and checkpoint.get("outcome") == "passed"
             and checkpoint.get("manuscript_path")
             == "outputs/best-candidate.md"
+            and best_candidate_exact
             and checkpoint.get("manuscript_hash") == digest
             and checkpoint.get("terminal_reviewed_hash") == digest
+            and type(report.get("best_attempt")) is int
+            and report["best_attempt"] >= 1
+            and type(checkpoint.get("best_attempt")) is int
+            and checkpoint["best_attempt"] >= 1
             and checkpoint.get("best_attempt") == report.get("best_attempt")
+            and type(report.get("best_score")) in {int, float}
+            and type(checkpoint.get("score")) in {int, float}
+            and type(terminal_review.get("score")) in {int, float}
+            and checkpoint.get("score") == report.get("best_score")
+            and report.get("best_score") == terminal_review.get("score")
+            and isinstance(report.get("scoring_profile_id"), str)
+            and bool(report["scoring_profile_id"])
+            and report.get("scoring_profile_id")
+            == terminal_review.get("scoring_profile_id")
+            and checkpoint.get("scoring_profile_id")
+            == report.get("scoring_profile_id")
+            and isinstance(report.get("judge_signature"), str)
+            and bool(report["judge_signature"])
+            and report.get("judge_signature")
+            == terminal_review.get("judge_signature")
+            and checkpoint.get("judge_signature")
+            == report.get("judge_signature")
+            and checkpoint.get("review") == terminal_review
+            and checkpoint.get("issue_ledger")
+            == issue_ledger(terminal_review.get("issues", []))
+            and integrity_exact
         ):
             raise RuntimeError(
                 "Formal promotion requires a hash-bound passing quality review"
