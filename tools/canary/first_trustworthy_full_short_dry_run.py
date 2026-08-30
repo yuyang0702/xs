@@ -426,6 +426,23 @@ class _OfflineHttpTransportFactory:
                     "ordinal": len(self.call_plan), "role": role,
                     "exception_type": type(exc).__name__,
                     "safe_message": str(exc)[:240],
+                    "known_protocol_markers": [
+                        marker for marker in (
+                            "SHORT_PLAN_ADAPTATION_REVIEW_V2",
+                            "SHORT_PLAN_ADAPTATION_WHOLE_STORY_REVIEW_V2",
+                            "SHORT_CAUSAL_CHAIN_STANDALONE",
+                            "SHORT_CAUSAL_CHAIN_EVENT_PACKET_V2",
+                            "SHORT_EXECUTION_MANIFEST_V2",
+                            "SHORT_EXECUTION_MANIFEST_FRAGMENT_V3",
+                            "SHORT_EXECUTION_MANIFEST_FRAGMENT_V4",
+                            "SHORT_EXECUTION_MANIFEST_SEMANTIC_VALIDATION",
+                            "SHORT_EXECUTION_MANIFEST_FRAGMENT_SEMANTIC_VALIDATION_V3",
+                            "SHORT_EXECUTION_MANIFEST_FRAGMENT_SEMANTIC_VALIDATION_V4",
+                            "DRAFT_SEMANTIC_VALIDATION",
+                            "DRAFT_WHOLE_SEMANTIC_VALIDATION",
+                            "CURRENT_TASK_CONTRACT",
+                        ) if marker in user
+                    ],
                 }
                 raise
             if protocol == "openai-chat":
