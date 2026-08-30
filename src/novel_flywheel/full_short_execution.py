@@ -1515,9 +1515,15 @@ class FullShortDispatchLedgerObserverV1:
                 current.get("role_binding_sha256") == role_binding_sha256,
                 "ROLE_BINDING_DRIFT",
             )
+            contract_route = value.get("route")
+            manifest_lane = (
+                "fallback"
+                if contract_route == "configured_fallback"
+                else contract_route
+            )
             _require(
                 self.bound_route is not None
-                and value.get("route") == self.bound_route.get("lane"),
+                and manifest_lane == self.bound_route.get("lane"),
                 "LOCAL_REJECTION_ROUTE_DRIFT",
             )
             current.update({

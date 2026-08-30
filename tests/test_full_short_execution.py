@@ -80,8 +80,10 @@ def _routes() -> tuple[dict, ...]:
 def _policy(
     store: FullShortDurableExecutionStoreV1 | None = None, *,
     expected_stage_calls: int = 1,
+    routes: tuple[dict, ...] | None = None,
 ) -> dict:
     store_hash = store.store_root_sha256 if store is not None else "0" * 64
+    bound_routes = routes or _routes()
     return FullShortExecutionPolicyV1(
         execution_head="a" * 40,
         branch="test",
@@ -90,10 +92,10 @@ def _policy(
         workload_sha256="c" * 64,
         runtime_authority_sha256="d" * 64,
         style_reference_authority_sha256="e" * 64,
-        route_manifest_sha256=_hash(list(_routes())),
-        destination_manifest_sha256=_hash([
-            "https://unit.test:443/v1/messages",
-        ]),
+        route_manifest_sha256=_hash(list(bound_routes)),
+        destination_manifest_sha256=_hash(sorted({
+            str(item["destination"]) for item in bound_routes
+        })),
         egress_policy_sha256=_hash(_egress()),
         store_root_sha256=store_hash,
         required_stage_roles=("planning",),
@@ -519,6 +521,65 @@ def test_local_rejection_receipt_rejects_raw_content_and_stays_pending(
     ledger = store.load_ledger("local-rejection-privacy")
     assert ledger["state"] == "RESPONSE_RECEIVED_AWAITING_LOCAL_RECEIPT"
     assert "raw_provider_content" not in json.dumps(ledger)
+
+
+def test_local_rejection_normalizes_only_configured_fallback_lane(
+    tmp_path: Path,
+) -> None:
+    store = _store(tmp_path)
+    routes = (_routes()[0], {
+        **_routes()[0],
+        "lane": "fallback",
+        "provider_id_sha256": hashlib.sha256(b"fallback-provider").hexdigest(),
+        "model_id_sha256": hashlib.sha256(b"fallback-model-id").hexdigest(),
+        "model_name": "offline-fallback",
+        "route_fingerprint": "8" * 64,
+    })
+    policy = _policy(store, routes=routes)
+    permission = store.create_permission(
+        execution_id="fallback-local-rejection",
+        authorization_text_sha256="3" * 64,
+        policy=policy, external_actions_enabled=False,
+    )
+    approval = store.create_jit_approval(
+        execution_id="fallback-local-rejection", policy=policy,
+        permission=permission, external_actions_enabled=False,
+    )
+    store.reserve_nonce(
+        execution_id="fallback-local-rejection", policy=policy,
+        approval=approval, external_actions_enabled=False,
+    )
+    observer = FullShortDispatchLedgerObserverV1(
+        store=store, execution_id="fallback-local-rejection", policy=policy,
+        authorized_routes=routes, egress_policy=_egress(),
+    )
+    observer.bind_route(
+        role="planning", lane="fallback", provider_id="fallback-provider",
+        model_id="fallback-model-id", route_fingerprint="8" * 64,
+    )
+    request = ModelRequest(
+        model="offline-fallback", messages=[], max_output_tokens=128,
+    )
+    payload = {
+        "model": "offline-fallback", "messages": [], "max_tokens": 128,
+        "stream": True,
+    }
+    observer.bind_model_request(protocol="anthropic", request=request)
+    observer.before_http_dispatch(
+        method="POST", url="https://unit.test/v1/messages", payload=payload,
+    )
+    observer.after_http_response(status_code=200)
+    observer.mark_local_attempt_rejected(
+        stage="planning", role="planning",
+        role_binding_sha256=observer.bound_route["role_binding_sha256"],
+        rejection={
+            **_local_rejection(),
+            "route": "configured_fallback",
+        },
+    )
+    assert store.load_ledger("fallback-local-rejection")["attempts"][0][
+        "state"
+    ] == "LOCAL_ATTEMPT_REJECTED"
 
 
 def test_restart_before_dispatch_is_also_fail_closed(tmp_path: Path) -> None:

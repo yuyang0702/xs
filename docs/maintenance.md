@@ -2264,6 +2264,12 @@ domain-valid but underfilled responses, remain protected by the shared
 business-completeness classifier. Runtime never derives `initial_state` or
 `segments` locally and never stores the rejected payload.
 
+The contract runtime names its alternate lane `configured_fallback`, while the
+sealed Full Short route manifest names that same lane `fallback`. Local
+rejection receipts normalize only this fixed vocabulary pair before checking
+the already-bound route; no other alias, route selection, or fallback is
+accepted.
+
 An actionable mixed-script Draft finding first enters the closed
 `draft_local_repair_contract`. Runtime binds every exact occurrence to one
 immutable paragraph unit and dispatches those units independently in
