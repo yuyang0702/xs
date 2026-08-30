@@ -36,6 +36,7 @@ from novel_flywheel.providers.registry import ProviderRegistry
 from novel_flywheel.secrets import MemorySecretStore
 from tools.canary.fake_boundary import (
     DeterministicShortBoundary,
+    _draft_semantic_receipt,
     _execution_manifest_receipt,
 )
 from tools.canary.short_completion import COMPLETION_GOAL
@@ -368,6 +369,19 @@ class _PrivateDryRunOracle:
             return self._result(role, _execution_manifest_receipt(user))
         if "DRAFT_WHOLE_SEMANTIC_VALIDATION" in user:
             return self._result(role, self._whole_draft_receipt(user))
+        if "DRAFT_SEMANTIC_VALIDATION" in user:
+            contract_match = re.search(r"TASK CONTRACT: (\{[^\n]+\})", user)
+            if contract_match is None or "PROSE:\n" not in user:
+                raise AssertionError("draft semantic authority is incomplete")
+            contract = json.loads(contract_match.group(1))
+            prose = user.split("PROSE:\n", 1)[1]
+            return self._result(
+                role,
+                json.dumps(
+                    _draft_semantic_receipt(contract, prose),
+                    ensure_ascii=False,
+                ),
+            )
         if "SHORT_CAUSAL_CHAIN_STANDALONE" in user:
             return self._result(role, self._causal_chain(user))
         if "SHORT_CAUSAL_CHAIN_EVENT_PACKET_V2" in user:
