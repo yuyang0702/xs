@@ -87,6 +87,8 @@ class RunTaskManager:
         actual launch.
         """
 
+        if workflow != "short-story":
+            raise ValueError("Exact one-shot reservation requires short-story workflow")
         if (
             not run_id
             or run_id in self._exact_once_reservations

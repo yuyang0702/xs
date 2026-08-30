@@ -11,7 +11,7 @@ from novel_flywheel.quality_records import load_quality_checkpoint
 from novel_flywheel.maintenance_authority import MaintenanceReductionV1
 from novel_flywheel.maintenance_authority import validate_maintenance_reduction
 from novel_flywheel.project_transactions import ProjectMutationJournalV1
-from novel_flywheel.quality import review_windows
+from novel_flywheel.quality import issue_ledger, review_windows
 from novel_flywheel.receipt_contracts import (
     validate_final_review_verdict_receipt,
 )
@@ -658,11 +658,25 @@ def verify_short_completion_v1(
     checkpoint_sha256 = (
         file_sha256(checkpoint_path) if checkpoint_path.is_file() else None
     )
+    terminal_review = report.get("terminal_review") if report else None
+    terminal_review_exact = isinstance(terminal_review, dict)
+    expected_issue_ledger = (
+        issue_ledger(terminal_review.get("issues", []))
+        if terminal_review_exact else None
+    )
     checkpoint_binding = (
         "exact" if isinstance(checkpoint, dict)
+        and terminal_review_exact
         and checkpoint.get("outcome") == "passed"
         and checkpoint.get("manuscript_hash") == manuscript_sha256
         and checkpoint.get("terminal_reviewed_hash") == manuscript_sha256
+        and checkpoint.get("review") == terminal_review
+        and checkpoint.get("score") == terminal_review.get("score")
+        and checkpoint.get("scoring_profile_id")
+        == terminal_review.get("scoring_profile_id")
+        and checkpoint.get("judge_signature")
+        == terminal_review.get("judge_signature")
+        and checkpoint.get("issue_ledger") == expected_issue_ledger
         and isinstance(checkpoint.get("narrative_integrity"), dict)
         and (
             run_root / str(checkpoint["narrative_integrity"].get("path") or "")

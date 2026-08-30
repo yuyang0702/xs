@@ -101,6 +101,28 @@ class HttpProvider:
             )
         self._model_logical_calls += 1
 
+    def _bind_model_request(self, protocol: str, request: Any) -> None:
+        if self.attempt_observer is None:
+            return
+        callback = getattr(self.attempt_observer, "bind_model_request", None)
+        if callable(callback):
+            callback(protocol=protocol, request=request)
+
+    @staticmethod
+    def _contains_exact_scalar(value: Any, forbidden: str) -> bool:
+        if isinstance(value, dict):
+            return any(
+                key == forbidden
+                or HttpProvider._contains_exact_scalar(item, forbidden)
+                for key, item in value.items()
+            )
+        if isinstance(value, (list, tuple)):
+            return any(
+                HttpProvider._contains_exact_scalar(item, forbidden)
+                for item in value
+            )
+        return isinstance(value, str) and value == forbidden
+
     def _before_http_post_attempt(
         self, *, url: str, payload: dict[str, Any],
     ) -> None:
@@ -109,13 +131,18 @@ class HttpProvider:
             raise SingleDispatchTransportGuardError(
                 "single_dispatch_http_post_attempt_limit_exhausted",
             )
-        self._http_post_attempts += 1
+        if self.api_key and self._contains_exact_scalar(payload, self.api_key):
+            raise SingleDispatchTransportGuardError(
+                "credential_reflection_rejected",
+            )
         if self.attempt_observer is not None:
             before_dispatch = getattr(
                 self.attempt_observer, "before_http_dispatch", None,
             )
             if callable(before_dispatch):
                 before_dispatch(method="POST", url=url, payload=payload)
+        self._http_post_attempts += 1
+        if self.attempt_observer is not None:
             self.attempt_observer.before_http_post()
             self.attempt_observer.before_network_request()
 

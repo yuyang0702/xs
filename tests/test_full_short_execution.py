@@ -8,11 +8,13 @@ import httpx
 import pytest
 
 from novel_flywheel.db import Database
+from novel_flywheel.domain.models import Message, ModelRequest
 from novel_flywheel.full_short_execution import (
     FullShortDispatchLedgerObserverV1,
     FullShortDurableExecutionStoreV1,
     FullShortExecutionBoundaryError,
     FullShortExecutionPolicyV1,
+    _expected_provider_payload_v1,
     build_full_short_completion_receipt_v1,
     render_full_short_canonical_authorization_v1,
     validate_full_short_canonical_authorization_v1,
@@ -20,6 +22,7 @@ from novel_flywheel.full_short_execution import (
 )
 from novel_flywheel.providers.http import (
     HttpProvider,
+    SingleDispatchTransportGuardError,
     SingleDispatchTransportPolicyV1,
 )
 from novel_flywheel.providers.registry import ProviderRegistry
@@ -36,7 +39,30 @@ def _hash(value: object) -> str:
 
 
 def _egress() -> dict:
-    return {"allowed": ["system", "task", "authority", "schema"]}
+    return {
+        "allowed": [
+            "system_context", "task_contract", "authority", "story_slice",
+            "current_baseline_skill_context", "output_contract",
+            "provider_request_metadata",
+        ],
+        "forbidden": [
+            "credentials", "unrelated_project_data", "raw_provider_evidence",
+            "retired_skill_v3_hybrid_context",
+        ],
+    }
+
+
+def _request(max_tokens: int = 128) -> ModelRequest:
+    return ModelRequest(
+        model="offline", messages=[], max_output_tokens=max_tokens,
+    )
+
+
+def _payload(max_tokens: int = 128) -> dict:
+    return {
+        "model": "offline", "messages": [], "max_tokens": max_tokens,
+        "stream": True,
+    }
 
 
 def _routes() -> tuple[dict, ...]:
@@ -116,7 +142,7 @@ def _authorize_offline(
 
 def _observer(
     store: FullShortDurableExecutionStoreV1, execution_id: str, *,
-    session_id: str | None = None,
+    session_id: str | None = None, max_tokens: int = 128,
 ) -> FullShortDispatchLedgerObserverV1:
     observer = FullShortDispatchLedgerObserverV1(
         store=store, execution_id=execution_id, policy=_policy(store),
@@ -126,6 +152,9 @@ def _observer(
     observer.bind_route(
         role="planning", lane="primary", provider_id="provider",
         model_id="model-id", route_fingerprint="9" * 64,
+    )
+    observer.bind_model_request(
+        protocol="anthropic", request=_request(max_tokens),
     )
     return observer
 
@@ -156,7 +185,7 @@ def _dispatch_and_close(
     observer = _observer(store, execution_id)
     observer.before_http_dispatch(
         method="POST", url="https://unit.test/v1/messages",
-        payload={"model": "offline", "max_tokens": 128},
+        payload=_payload(),
     )
     observer.after_http_response(status_code=200)
     observer.mark_local_stage_complete(
@@ -184,7 +213,7 @@ async def test_lowest_transport_seam_is_durable_and_completable(tmp_path: Path) 
     await original.aclose()
 
     assert await provider.post("v1/messages", payload={
-        "model": "offline", "max_tokens": 128,
+        **_payload(),
     }, headers={}) == {"ok": True}
     response_hash = hashlib.sha256(b"offline-response").hexdigest()
     receipt_hash = hashlib.sha256(b"offline-receipt").hexdigest()
@@ -222,10 +251,11 @@ async def test_lowest_transport_seam_is_durable_and_completable(tmp_path: Path) 
         role="planning", lane="primary", provider_id="provider",
         model_id="model-id", route_fingerprint="9" * 64,
     )
+    observer.bind_model_request(protocol="anthropic", request=_request())
     with pytest.raises(FullShortExecutionBoundaryError) as replay:
         observer.before_http_dispatch(
             method="POST", url="https://unit.test/v1/messages",
-            payload={"model": "offline", "max_tokens": 128},
+            payload=_payload(),
         )
     assert replay.value.reason_code == "EXECUTION_ALREADY_COMPLETED"
     await provider.client.aclose()
@@ -239,7 +269,7 @@ def test_restart_after_dispatch_before_local_receipt_never_redispatches(
     first = _observer(store, "restart-blocked", session_id="session-one")
     first.before_http_dispatch(
         method="POST", url="https://unit.test/v1/messages",
-        payload={"model": "offline", "max_tokens": 128},
+        payload=_payload(),
     )
     first.after_http_response(status_code=200)
 
@@ -275,10 +305,163 @@ def test_nonce_and_approval_are_exclusive_and_destination_is_exact(tmp_path: Pat
     with pytest.raises(FullShortExecutionBoundaryError) as destination:
         observer.before_http_dispatch(
             method="POST", url="https://other.test/v1/messages",
-            payload={"model": "offline", "max_tokens": 128},
+            payload=_payload(),
         )
     assert destination.value.reason_code == "DESTINATION_DRIFT"
     assert store.load_ledger("single-use")["attempts"] == []
+
+
+@pytest.mark.parametrize("mutation", [
+    {"credentials": "secret"},
+    {"unrelated_project_data": "foreign"},
+    {"raw_provider_evidence": "raw"},
+    {"retired_skill_v3_hybrid_context": "retired"},
+    {"unexpected_extension": True},
+])
+def test_egress_payload_drift_is_rejected_before_nonce_or_dispatch(
+    tmp_path: Path, mutation: dict,
+) -> None:
+    store = _store(tmp_path)
+    _authorize_offline(store, "egress-drift")
+    observer = _observer(store, "egress-drift")
+    payload = {**_payload(), **mutation}
+
+    with pytest.raises(FullShortExecutionBoundaryError) as caught:
+        observer.before_http_dispatch(
+            method="POST", url="https://unit.test/v1/messages",
+            payload=payload,
+        )
+
+    assert caught.value.reason_code == "EGRESS_PAYLOAD_SCHEMA_OR_CONTENT_DRIFT"
+    assert store._read("egress-drift", "nonce")["state"] == "RESERVED"
+    assert store.load_ledger("egress-drift")["attempts"] == []
+
+
+def test_egress_model_request_content_is_exactly_bound(tmp_path: Path) -> None:
+    store = _store(tmp_path)
+    _authorize_offline(store, "egress-content")
+    observer = FullShortDispatchLedgerObserverV1(
+        store=store, execution_id="egress-content", policy=_policy(store),
+        authorized_routes=_routes(), egress_policy=_egress(),
+    )
+    observer.bind_route(
+        role="planning", lane="primary", provider_id="provider",
+        model_id="model-id", route_fingerprint="9" * 64,
+    )
+    request = ModelRequest(
+        model="offline", messages=[Message(role="user", content="authorized")],
+        max_output_tokens=128,
+    )
+    observer.bind_model_request(protocol="anthropic", request=request)
+
+    with pytest.raises(FullShortExecutionBoundaryError) as caught:
+        observer.before_http_dispatch(
+            method="POST", url="https://unit.test/v1/messages",
+            payload={
+                "model": "offline",
+                "messages": [{"role": "user", "content": "changed"}],
+                "max_tokens": 128,
+                "stream": True,
+            },
+        )
+
+    assert caught.value.reason_code == "EGRESS_PAYLOAD_SCHEMA_OR_CONTENT_DRIFT"
+    assert store._read("egress-content", "nonce")["state"] == "RESERVED"
+    assert store.load_ledger("egress-content")["attempts"] == []
+
+
+@pytest.mark.parametrize(("protocol", "token_key", "content_key"), [
+    ("anthropic", "max_tokens", "messages"),
+    ("openai-chat", "max_tokens", "messages"),
+    ("openai-responses", "max_output_tokens", "input"),
+])
+def test_closed_egress_projection_covers_each_provider_protocol(
+    protocol: str, token_key: str, content_key: str,
+) -> None:
+    request = ModelRequest(
+        model="offline",
+        messages=[Message(role="user", content="authorized")],
+        max_output_tokens=128,
+    )
+    payload = _expected_provider_payload_v1(
+        protocol, request, destination="https://unit.test:443/v1/messages",
+    )
+
+    assert payload["model"] == "offline"
+    assert payload[token_key] == 128
+    assert payload[content_key] == [{"role": "user", "content": "authorized"}]
+    assert payload["stream"] is True
+
+
+def test_egress_intent_persists_only_hashes_not_raw_content(tmp_path: Path) -> None:
+    store = _store(tmp_path)
+    _authorize_offline(store, "egress-private")
+    observer = FullShortDispatchLedgerObserverV1(
+        store=store, execution_id="egress-private", policy=_policy(store),
+        authorized_routes=_routes(), egress_policy=_egress(),
+    )
+    observer.bind_route(
+        role="planning", lane="primary", provider_id="provider",
+        model_id="model-id", route_fingerprint="9" * 64,
+    )
+    sentinel = "RAW-STORY-SENTINEL-MUST-NOT-PERSIST"
+    request = ModelRequest(
+        model="offline", messages=[Message(role="user", content=sentinel)],
+        max_output_tokens=128,
+    )
+    observer.bind_model_request(protocol="anthropic", request=request)
+    observer.before_http_dispatch(
+        method="POST", url="https://unit.test/v1/messages",
+        payload={
+            "model": "offline",
+            "messages": [{"role": "user", "content": sentinel}],
+            "max_tokens": 128,
+            "stream": True,
+        },
+    )
+
+    persisted = b"\n".join(
+        path.read_bytes() for path in store.root.rglob("*")
+        if path.is_file()
+    )
+    assert sentinel.encode("utf-8") not in persisted
+    attempt = store.load_ledger("egress-private")["attempts"][0]
+    assert len(attempt["egress_intent_sha256"]) == 64
+    assert len(attempt["provider_payload_sha256"]) == 64
+
+
+@pytest.mark.asyncio
+async def test_credential_reflection_is_rejected_before_attempt_accounting(
+    tmp_path: Path,
+) -> None:
+    store = _store(tmp_path)
+    _authorize_offline(store, "credential-reflection")
+    observer = _observer(store, "credential-reflection")
+    provider = HttpProvider(
+        "https://unit.test", "offline-key",
+        transport_policy=SingleDispatchTransportPolicyV1.phase_b(),
+        attempt_observer=observer,
+    )
+    original = provider.client
+    provider.client = httpx.AsyncClient(transport=httpx.MockTransport(
+        lambda request: pytest.fail("transport must not be reached"),
+    ))
+    await original.aclose()
+
+    with pytest.raises(
+        SingleDispatchTransportGuardError,
+        match="credential_reflection_rejected",
+    ):
+        await provider.post(
+            "v1/messages",
+            payload={**_payload(), "unexpected_extension": "offline-key"},
+            headers={},
+        )
+
+    assert provider.transport_attempt_snapshot()["http_post_attempts"] == 0
+    assert store._read("credential-reflection", "nonce")["state"] == "RESERVED"
+    assert store.load_ledger("credential-reflection")["attempts"] == []
+    await provider.client.aclose()
 
 
 def test_pre_dispatch_store_never_accepts_worktree_location(tmp_path: Path) -> None:
@@ -430,7 +613,7 @@ def test_restart_after_completed_stage_is_explicitly_fail_closed(
     first = _observer(store, "completed-stage-restart", session_id="session-one")
     first.before_http_dispatch(
         method="POST", url="https://unit.test/v1/messages",
-        payload={"model": "offline", "max_tokens": 128},
+        payload=_payload(),
     )
     first.after_http_response(status_code=200)
     first.mark_local_stage_complete(
@@ -488,10 +671,10 @@ def test_total_requested_output_cap_is_enforced_before_second_dispatch(
 ) -> None:
     store = _store(tmp_path)
     _authorize_offline(store, "token-cap")
-    observer = _observer(store, "token-cap")
+    observer = _observer(store, "token-cap", max_tokens=3000)
     observer.before_http_dispatch(
         method="POST", url="https://unit.test/v1/messages",
-        payload={"model": "offline", "max_tokens": 3000},
+        payload=_payload(3000),
     )
     observer.after_http_response(status_code=200)
     observer.mark_local_stage_complete(
@@ -504,10 +687,13 @@ def test_total_requested_output_cap_is_enforced_before_second_dispatch(
         role="planning", lane="primary", provider_id="provider",
         model_id="model-id", route_fingerprint="9" * 64,
     )
+    observer.bind_model_request(
+        protocol="anthropic", request=_request(2000),
+    )
     with pytest.raises(FullShortExecutionBoundaryError) as capped:
         observer.before_http_dispatch(
             method="POST", url="https://unit.test/v1/messages",
-            payload={"model": "offline", "max_tokens": 2000},
+            payload=_payload(2000),
         )
     assert capped.value.reason_code == "TOTAL_OUTPUT_TOKEN_CAP_EXHAUSTED"
     ledger = store.load_ledger("token-cap")
@@ -525,7 +711,7 @@ def test_nonce_is_consumed_before_first_dispatch_and_duplicate_is_blocked(
 
     observer.before_http_dispatch(
         method="POST", url="https://unit.test/v1/messages",
-        payload={"model": "offline", "max_tokens": 128},
+        payload=_payload(),
     )
 
     nonce = store._read("nonce-consumed", "nonce")
@@ -534,7 +720,7 @@ def test_nonce_is_consumed_before_first_dispatch_and_duplicate_is_blocked(
     with pytest.raises(FullShortExecutionBoundaryError) as duplicate:
         observer.before_http_dispatch(
             method="POST", url="https://unit.test/v1/messages",
-            payload={"model": "offline", "max_tokens": 128},
+            payload=_payload(),
         )
     assert duplicate.value.reason_code == "AMBIGUOUS_OR_UNCLOSED_DISPATCH_NO_RESTART"
     assert len(store.load_ledger("nonce-consumed")["attempts"]) == 1
@@ -571,7 +757,7 @@ def test_only_success_response_can_close_and_success_cannot_be_rewritten(
     failed = _observer(failed_store, "http-failed")
     failed.before_http_dispatch(
         method="POST", url="https://unit.test/v1/messages",
-        payload={"model": "offline", "max_tokens": 128},
+        payload=_payload(),
     )
     with pytest.raises(FullShortExecutionBoundaryError) as status:
         failed.after_http_response(status_code=500)
@@ -589,7 +775,7 @@ def test_only_success_response_can_close_and_success_cannot_be_rewritten(
     success = _observer(success_store, "http-success")
     success.before_http_dispatch(
         method="POST", url="https://unit.test/v1/messages",
-        payload={"model": "offline", "max_tokens": 128},
+        payload=_payload(),
     )
     success.after_http_response(status_code=200)
     with pytest.raises(FullShortExecutionBoundaryError) as rewrite:
@@ -654,9 +840,10 @@ def test_mark_local_stage_complete_closes_only_pending_ordinal(tmp_path: Path) -
         role="planning", lane="primary", provider_id="provider",
         model_id="model-id", route_fingerprint="9" * 64,
     )
+    observer.bind_model_request(protocol="anthropic", request=_request())
     observer.before_http_dispatch(
         method="POST", url="https://unit.test/v1/messages",
-        payload={"model": "offline", "max_tokens": 128},
+        payload=_payload(),
     )
     observer.after_http_response(status_code=200)
     binding = observer.bound_route["role_binding_sha256"]

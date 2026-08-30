@@ -21,6 +21,7 @@ class AnthropicAdapter(HttpProvider):
     DIAGNOSTIC_ADAPTER_VERSION = 1
 
     async def complete(self, request: ModelRequest) -> ModelResponse:
+        self._bind_model_request("anthropic", request)
         system = "\n\n".join(message.content for message in request.messages if message.role == "system")
         payload = {
             "model": request.model,

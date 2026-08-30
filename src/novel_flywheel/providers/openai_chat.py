@@ -21,6 +21,7 @@ class OpenAIChatAdapter(HttpProvider):
     DIAGNOSTIC_ADAPTER_VERSION = 1
 
     async def complete(self, request: ModelRequest) -> ModelResponse:
+        self._bind_model_request("openai-chat", request)
         payload = {
             "model": request.model,
             "messages": [message.model_dump() for message in request.messages],

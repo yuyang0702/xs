@@ -26,6 +26,7 @@ import secrets
 from typing import Any, Iterator, Mapping
 from urllib.parse import urlsplit
 
+from novel_flywheel.domain.models import ModelRequest
 from novel_flywheel.runtime_fingerprint_build import (
     CANONICALIZATION_VERSION,
     canonical_json_bytes,
@@ -54,6 +55,15 @@ REQUIRED_FINAL_BINDING_KEYS = frozenset({
 _HEX40 = re.compile(r"^[0-9a-f]{40}$")
 _HEX64 = re.compile(r"^[0-9a-f]{64}$")
 _ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,159}$")
+_FULL_SHORT_EGRESS_ALLOWED = (
+    "system_context", "task_contract", "authority", "story_slice",
+    "current_baseline_skill_context", "output_contract",
+    "provider_request_metadata",
+)
+_FULL_SHORT_EGRESS_FORBIDDEN = (
+    "credentials", "unrelated_project_data", "raw_provider_evidence",
+    "retired_skill_v3_hybrid_context",
+)
 
 
 class FullShortExecutionBoundaryError(RuntimeError):
@@ -71,6 +81,113 @@ def _now() -> str:
     return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace(
         "+00:00", "Z",
     )
+
+
+def _expected_provider_payload_v1(
+    protocol: str, request: ModelRequest, *, destination: str,
+) -> dict[str, Any]:
+    """Project one typed model request into the exact adapter wire payload."""
+
+    if protocol == "anthropic":
+        system = "\n\n".join(
+            message.content for message in request.messages
+            if message.role == "system"
+        )
+        payload: dict[str, Any] = {
+            "model": request.model,
+            "messages": [
+                message.model_dump() for message in request.messages
+                if message.role != "system"
+            ],
+            "max_tokens": request.max_output_tokens or 8192,
+        }
+        if system:
+            payload["system"] = system
+        if request.temperature is not None:
+            payload["temperature"] = request.temperature
+        if request.response_schema is not None:
+            schema = request.response_schema.get(
+                "schema", request.response_schema,
+            )
+            payload["output_config"] = {
+                "format": {"type": "json_schema", "schema": schema},
+            }
+        if request.tools:
+            payload["tools"] = [{
+                "name": tool.name,
+                "description": tool.description,
+                "input_schema": tool.input_schema,
+            } for tool in request.tools]
+        if request.required_tool:
+            payload["tool_choice"] = {
+                "type": "tool", "name": request.required_tool,
+            }
+        payload["stream"] = True
+        return payload
+    if protocol == "openai-chat":
+        payload = {
+            "model": request.model,
+            "messages": [message.model_dump() for message in request.messages],
+        }
+        if request.temperature is not None:
+            payload["temperature"] = request.temperature
+        if request.max_output_tokens is not None:
+            payload["max_tokens"] = request.max_output_tokens
+        if request.response_schema is not None:
+            payload["response_format"] = {
+                "type": "json_schema", "json_schema": request.response_schema,
+            }
+        elif request.response_format == "json_object":
+            payload["response_format"] = {"type": "json_object"}
+        if request.tools:
+            payload["tools"] = [{"type": "function", "function": {
+                "name": tool.name,
+                "description": tool.description,
+                "parameters": tool.input_schema,
+            }} for tool in request.tools]
+        if request.required_tool:
+            payload["tool_choice"] = {
+                "type": "function",
+                "function": {"name": request.required_tool},
+            }
+        if urlsplit(destination).hostname == "api.moonshot.cn" and (
+            request.required_tool
+            or request.response_schema
+            or request.response_format
+        ):
+            payload["thinking"] = {"type": "disabled"}
+        payload["stream"] = True
+        payload["stream_options"] = {"include_usage": True}
+        return payload
+    if protocol == "openai-responses":
+        payload = {
+            "model": request.model,
+            "input": [message.model_dump() for message in request.messages],
+        }
+        if request.temperature is not None:
+            payload["temperature"] = request.temperature
+        if request.max_output_tokens is not None:
+            payload["max_output_tokens"] = request.max_output_tokens
+        if request.response_schema is not None:
+            payload["text"] = {
+                "format": {"type": "json_schema", **request.response_schema},
+            }
+        elif request.response_format == "json_object":
+            payload["text"] = {"format": {"type": "json_object"}}
+        if request.tools:
+            payload["tools"] = [{
+                "type": "function",
+                "name": tool.name,
+                "description": tool.description,
+                "parameters": tool.input_schema,
+            } for tool in request.tools]
+        if request.required_tool:
+            payload["tool_choice"] = {
+                "type": "function", "name": request.required_tool,
+            }
+        payload["stream"] = True
+        return payload
+    raise FullShortExecutionBoundaryError("EGRESS_PROTOCOL_NOT_AUTHORIZED")
 
 
 def _seal(domain: str, body: Mapping[str, Any], field: str) -> dict[str, Any]:
@@ -991,11 +1108,21 @@ class FullShortDispatchLedgerObserverV1:
             _canonical_sha256(egress_policy) == self.policy["egress_policy_sha256"],
             "EGRESS_POLICY_DRIFT",
         )
+        _require(
+            set(egress_policy) == {"allowed", "forbidden"}
+            and tuple(egress_policy.get("allowed") or ())
+            == _FULL_SHORT_EGRESS_ALLOWED
+            and tuple(egress_policy.get("forbidden") or ())
+            == _FULL_SHORT_EGRESS_FORBIDDEN,
+            "EGRESS_POLICY_NOT_CLOSED",
+        )
         self.egress_policy_sha256 = self.policy["egress_policy_sha256"]
         self.session_id = session_id or secrets.token_hex(16)
         self.external_actions_enabled = external_actions_enabled
         self.pending_ordinal: int | None = None
         self.bound_route: dict[str, Any] | None = None
+        self.expected_provider_payload: dict[str, Any] | None = None
+        self.egress_intent_sha256: str | None = None
         self.store.verify_ready_chain(
             execution_id=execution_id, policy=self.policy,
             external_actions_enabled=external_actions_enabled,
@@ -1033,6 +1160,32 @@ class FullShortDispatchLedgerObserverV1:
         )
         self.bound_route = route
 
+    def bind_model_request(
+        self, *, protocol: str, request: ModelRequest,
+    ) -> None:
+        """Bind typed model intent before an adapter constructs wire bytes."""
+
+        route = self.bound_route
+        _require(route is not None, "ROUTE_NOT_BOUND_BEFORE_MODEL_REQUEST")
+        _require(self.pending_ordinal is None, "PRIOR_DISPATCH_STILL_PENDING")
+        _require(
+            self.expected_provider_payload is None,
+            "MODEL_REQUEST_ALREADY_BOUND",
+        )
+        _require(protocol == route.get("protocol"), "EGRESS_PROTOCOL_DRIFT")
+        expected = _expected_provider_payload_v1(
+            protocol, request, destination=str(route["destination"]),
+        )
+        self.expected_provider_payload = expected
+        self.egress_intent_sha256 = domain_sha256(
+            "novel-flywheel-full-short-egress-intent-v1",
+            {
+                "protocol": protocol,
+                "role_binding_sha256": route["role_binding_sha256"],
+                "provider_payload_sha256": _canonical_sha256(expected),
+            },
+        )
+
     def before_http_dispatch(
         self, *, method: str, url: str, payload: Mapping[str, Any],
     ) -> None:
@@ -1048,6 +1201,16 @@ class FullShortDispatchLedgerObserverV1:
         route = self.bound_route
         _require(route is not None, "ROUTE_NOT_BOUND_BEFORE_CREDENTIAL_OR_HTTP")
         _require(normalized == route.get("destination"), "DESTINATION_DRIFT")
+        expected_payload = self.expected_provider_payload
+        _require(
+            expected_payload is not None
+            and self.egress_intent_sha256 is not None,
+            "MODEL_REQUEST_EGRESS_INTENT_NOT_BOUND",
+        )
+        _require(
+            dict(payload) == expected_payload,
+            "EGRESS_PAYLOAD_SCHEMA_OR_CONTENT_DRIFT",
+        )
         _require(
             str(payload.get("model") or "") == route.get("model_name"),
             "MODEL_BINDING_DRIFT",
@@ -1062,6 +1225,11 @@ class FullShortDispatchLedgerObserverV1:
             "requested_output_tokens": int(
                 payload.get("max_tokens") or payload.get("max_output_tokens") or 0,
             ),
+            "provider_payload_sha256": _canonical_sha256(payload),
+            "message_count": len(
+                payload.get("messages") or payload.get("input") or [],
+            ),
+            "tool_count": len(payload.get("tools") or []),
         }
         request_shape_sha256 = domain_sha256(
             "novel-flywheel-full-short-request-shape-v1", request_shape,
@@ -1116,6 +1284,13 @@ class FullShortDispatchLedgerObserverV1:
             "destination": normalized,
             "destination_sha256": hashlib.sha256(normalized.encode("utf-8")).hexdigest(),
             "egress_policy_sha256": self.egress_policy_sha256,
+            "egress_intent_sha256": self.egress_intent_sha256,
+            "provider_payload_sha256": request_shape[
+                "provider_payload_sha256"
+            ],
+            "protocol_schema_id": f"{route['protocol']}-wire-v1",
+            "message_count": request_shape["message_count"],
+            "tool_count": request_shape["tool_count"],
             "role_binding_sha256": route["role_binding_sha256"],
             "bound_role": route["role"],
             "bound_lane": route["lane"],
@@ -1246,6 +1421,8 @@ class FullShortDispatchLedgerObserverV1:
         self.store.update_ledger(self.execution_id, mutate)
         self.pending_ordinal = None
         self.bound_route = None
+        self.expected_provider_payload = None
+        self.egress_intent_sha256 = None
 
 
 def build_full_short_completion_receipt_v1(

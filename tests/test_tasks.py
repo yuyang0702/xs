@@ -95,6 +95,21 @@ async def test_exact_one_shot_start_binds_identity_and_has_zero_retry_budget(
 
 
 @pytest.mark.asyncio
+async def test_exact_one_shot_rejects_non_short_workflow_before_reservation(
+    tmp_path,
+) -> None:
+    db, manager = make_manager(tmp_path)
+
+    with pytest.raises(ValueError, match="requires short-story workflow"):
+        manager.reserve_exact_once(
+            "wrong-workflow", "book", "not-a-workflow",
+        )
+
+    assert db.get_run("wrong-workflow") is None
+    assert not db.has_active_runs("book")
+
+
+@pytest.mark.asyncio
 async def test_exact_one_shot_reserves_writer_before_external_approval(
     tmp_path,
 ) -> None:

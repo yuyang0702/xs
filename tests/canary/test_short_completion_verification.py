@@ -118,8 +118,13 @@ def _fixture(tmp_path: Path) -> dict:
     _write_json(run / "outputs" / "quality-report.json", {
         "status": "passed", "terminal_review_complete": True,
         "terminal_reviewed_hash": digest,
+        "scoring_profile_id": "zhihu-short-v2",
+        "judge_signature": "provider/final-model",
         "terminal_review": {
-            **terminal_review_body, "style_reference_fidelity": fidelity,
+            **terminal_review_body,
+            "scoring_profile_id": "zhihu-short-v2",
+            "judge_signature": "provider/final-model",
+            "style_reference_fidelity": fidelity,
         },
         "final_review_evidence": audit,
     })
@@ -154,7 +159,16 @@ def _fixture(tmp_path: Path) -> dict:
     _write_json(run / "outputs" / "quality-checkpoint.json", {
         "version": 1, "manuscript_path": "outputs/best-candidate.md",
         "manuscript_hash": digest, "terminal_reviewed_hash": digest,
-        "outcome": "passed", "score": 9.0,
+        "outcome": "passed", "score": 92,
+        "scoring_profile_id": "zhihu-short-v2",
+        "judge_signature": "provider/final-model",
+        "review": {
+            **terminal_review_body,
+            "scoring_profile_id": "zhihu-short-v2",
+            "judge_signature": "provider/final-model",
+            "style_reference_fidelity": fidelity,
+        },
+        "issue_ledger": [],
         "narrative_integrity": {
             "path": "outputs/polish-integrity.json",
             "sha256": hashlib.sha256(polish_integrity_path.read_bytes()).hexdigest(),
@@ -259,6 +273,11 @@ def test_exact_final_review_maintenance_artifact_and_checkpoint_pass(tmp_path: P
     ("maintenance_invalid", "WORKFLOW_COMPLETED_MAINTENANCE_INCOMPLETE"),
     ("artifact_unbound", "WORKFLOW_COMPLETED_FINAL_ARTIFACT_UNBOUND"),
     ("checkpoint_stale", "WORKFLOW_COMPLETED_CHECKPOINT_UNCLOSED"),
+    ("checkpoint_review_drift", "WORKFLOW_COMPLETED_CHECKPOINT_UNCLOSED"),
+    ("checkpoint_score_drift", "WORKFLOW_COMPLETED_CHECKPOINT_UNCLOSED"),
+    ("checkpoint_profile_drift", "WORKFLOW_COMPLETED_CHECKPOINT_UNCLOSED"),
+    ("checkpoint_judge_drift", "WORKFLOW_COMPLETED_CHECKPOINT_UNCLOSED"),
+    ("checkpoint_ledger_drift", "WORKFLOW_COMPLETED_CHECKPOINT_UNCLOSED"),
 ])
 def test_completion_failures_are_typed(
     tmp_path: Path, mutation: str, outcome: str,
@@ -285,6 +304,23 @@ def test_completion_failures_are_typed(
     elif mutation == "checkpoint_stale":
         checkpoint = json.loads((fx["run"] / "outputs/quality-checkpoint.json").read_text())
         checkpoint["manuscript_hash"] = "b" * 64
+        _write_json(fx["run"] / "outputs/quality-checkpoint.json", checkpoint)
+    elif mutation.startswith("checkpoint_"):
+        checkpoint = json.loads((fx["run"] / "outputs/quality-checkpoint.json").read_text())
+        field = {
+            "checkpoint_review_drift": "review",
+            "checkpoint_score_drift": "score",
+            "checkpoint_profile_drift": "scoring_profile_id",
+            "checkpoint_judge_drift": "judge_signature",
+            "checkpoint_ledger_drift": "issue_ledger",
+        }[mutation]
+        checkpoint[field] = {
+            "review": {**checkpoint["review"], "decision": "fail"},
+            "score": 9.0,
+            "scoring_profile_id": "other-profile",
+            "judge_signature": "other/judge",
+            "issue_ledger": [{"issue_id": "unbound"}],
+        }[field]
         _write_json(fx["run"] / "outputs/quality-checkpoint.json", checkpoint)
     assert _verify(fx)["completion_goal_outcome"] == outcome
 

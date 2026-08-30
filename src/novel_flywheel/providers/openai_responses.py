@@ -32,6 +32,7 @@ class OpenAIResponsesAdapter(HttpProvider):
     DIAGNOSTIC_ADAPTER_VERSION = 1
 
     async def complete(self, request: ModelRequest) -> ModelResponse:
+        self._bind_model_request("openai-responses", request)
         payload = {
             "model": request.model,
             "input": [message.model_dump() for message in request.messages],
