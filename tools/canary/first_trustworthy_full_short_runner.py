@@ -836,7 +836,7 @@ async def execute_full_short_control_plane(
         def commit_after_saga_cleanup() -> dict[str, Any]:
             try:
                 completion = store.commit_completion(
-                    execution_id=execution_id, receipt=receipt,
+                    execution_id=execution_id, policy=policy, receipt=receipt,
                 )
             except Exception as exc:
                 closure_state["terminal_failure"] = {
