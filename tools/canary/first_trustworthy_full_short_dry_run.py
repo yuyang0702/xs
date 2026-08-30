@@ -597,6 +597,14 @@ async def _discover_plan(
             for key in ("status", "current_stage", "error")
         }
         failure["mock_transport_failure"] = factory.failure
+        failure["observed_call_count"] = len(factory.call_plan)
+        failure["observed_call_tail"] = factory.call_plan[-5:]
+        project_row = db.get_project(project_id) or {}
+        project_root = Path(str(project_row.get("path") or ""))
+        outputs = project_root / "runs" / DISCOVERY_ID / "outputs"
+        failure["output_file_names"] = sorted(
+            item.name for item in outputs.glob("*") if item.is_file()
+        )[-40:]
         raise RuntimeError(
             "FULL_SHORT_DRY_RUN_PLAN_DID_NOT_COMPLETE:"
             + json.dumps(failure, ensure_ascii=True, sort_keys=True)
