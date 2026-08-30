@@ -524,6 +524,14 @@ class _OfflineHttpTransportFactory:
             payload = json.loads(request.content.decode("utf-8"))
             system, user = _request_messages(payload)
             role = bound_role or _request_role(system, user)
+            contract_marker = (
+                "planning_semantic_v2"
+                if any(marker in user for marker in (
+                    "IR_FIRST_SHORT_PLANNING_PACKET_V2",
+                    "IR_FIRST_SHORT_PLANNING_V2",
+                ))
+                else None
+            )
             maximum = int(
                 payload.get("max_tokens")
                 or payload.get("max_output_tokens") or 0
@@ -531,6 +539,7 @@ class _OfflineHttpTransportFactory:
             self.call_plan.append({
                 "ordinal": len(self.call_plan) + 1,
                 "role": role,
+                "contract_marker": contract_marker,
                 "requested_output_tokens": maximum,
                 "destination_sha256": hashlib.sha256(
                     destination.encode("utf-8"),
@@ -854,8 +863,25 @@ async def _run(args: argparse.Namespace) -> dict[str, Any]:
         per_call_cap = max(
             int(item["requested_output_tokens"]) for item in call_plan
         )
-        total_cap = per_call_cap * expected_calls * 4
-        hard_max_dispatches = expected_calls * 4
+        planning_retry_caps = [
+            int(item["requested_output_tokens"])
+            for item in call_plan
+            if item.get("contract_marker") == "planning_semantic_v2"
+        ]
+        if not planning_retry_caps:
+            raise RuntimeError(
+                "FULL_SHORT_DRY_RUN_PLAN_MISSING_PLANNING_REPAIR_BOUNDARY"
+            )
+        planning_retry_cap = planning_retry_caps[0]
+        discovered_plan_total_cap = sum(
+            int(item["requested_output_tokens"]) for item in call_plan
+        )
+        # This incident authorizes/proves at most one already-existing typed
+        # Planning regeneration, not the entire four-attempt topology at every
+        # model stage. The normal run therefore leaves one narrow unused slot;
+        # the injected run consumes exactly that one slot.
+        hard_max_dispatches = expected_calls + 1
+        total_cap = discovered_plan_total_cap + planning_retry_cap
         policy = FullShortExecutionPolicyV1(
             execution_head=actual["head"], branch=actual["branch"],
             run_id=EXECUTION_ID,
@@ -1034,6 +1060,11 @@ async def _run(args: argparse.Namespace) -> dict[str, Any]:
             "hard_max_network_attempts": hard_max_dispatches,
             "per_call_output_token_hard_cap": per_call_cap,
             "total_output_token_hard_cap": total_cap,
+            "discovered_plan_output_token_hard_cap": (
+                discovered_plan_total_cap
+            ),
+            "planning_single_repair_output_token_hard_cap": planning_retry_cap,
+            "additional_dispatch_hard_cap": 1,
             "maximum_elapsed_seconds": 36_000,
             "provider_request_count": len(ledger["attempts"]),
             "completed_stage_count": len(

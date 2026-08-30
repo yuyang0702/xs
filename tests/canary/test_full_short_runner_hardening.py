@@ -123,6 +123,8 @@ def test_dry_run_has_no_test_owned_oracle_or_fixed_call_count() -> None:
     assert "expected_stage_calls=1" not in source
     assert "execute_full_short_control_plane(" in source
     assert "run_full_short_workflow_path(" in source
+    assert "expected_calls * 4" not in source
+    assert "discovered_plan_total_cap + planning_retry_cap" in source
 
 
 def test_dry_run_failure_projection_is_hash_only() -> None:

@@ -40,7 +40,7 @@ def _write_json(path: Path, value: Any) -> None:
 def _junit(path: Path, *, command: str, classification: str) -> dict[str, Any]:
     root = ET.fromstring(path.read_bytes())
     suites = [root] if root.tag == "testsuite" else list(root.findall("testsuite"))
-    return {
+    result = {
         "schema": "OfflinePytestReceiptV1",
         "version": 1,
         "command": command,
@@ -70,6 +70,97 @@ def _junit(path: Path, *, command: str, classification: str) -> dict[str, Any]:
             "paid": 0,
         },
     }
+    if classification.startswith("PASS") and (
+        result["failures"] or result["errors"]
+    ):
+        raise ValueError(
+            "PASS JUnit classification requires zero failures and errors"
+        )
+    return result
+
+
+def _validate_replay(
+    value: Any, *, head: str, injected: bool,
+) -> dict[str, Any]:
+    if not isinstance(value, dict):
+        raise ValueError("production-shaped replay receipt must be an object")
+    exact = {
+        "schema": "FirstTrustworthyFullShortPrivateDryRunV2",
+        "version": 2,
+        "source_head": head,
+        "pass": True,
+        "workflow_status": "completed",
+        "completion_goal_outcome": (
+            "SHORT_WORKFLOW_COMPLETED_AND_FINAL_REVIEW_ACCEPTED"
+        ),
+        "expected_stage_calls": 70,
+        "completed_stage_count": 70,
+        "all_dispatches_locally_closed": True,
+        "all_required_stage_roles_completed": True,
+        "planning_business_incomplete_injected": injected,
+        "provider_request_count": 71 if injected else 70,
+        "local_rejected_attempt_count": 1 if injected else 0,
+        "hard_max_provider_requests": 71,
+        "hard_max_http_posts": 71,
+        "hard_max_network_attempts": 71,
+        "additional_dispatch_hard_cap": 1,
+        "dry_run_namespace": "two_isolated_temporary_copies",
+        "dry_run_artifacts_cannot_be_mistaken_for_real_output": True,
+        "raw_prompt_persisted": False,
+        "raw_story_persisted": False,
+        "raw_reference_persisted": False,
+        "raw_title_persisted": False,
+        "real_credential_lookup_count": 0,
+        "real_provider_client_creation_count": 0,
+        "real_provider_request_attempts": 0,
+        "real_http_post_attempts": 0,
+        "real_network_calls": 0,
+        "real_model_calls": 0,
+        "paid_calls": 0,
+    }
+    mismatches = {
+        key: {"expected": expected, "actual": value.get(key)}
+        for key, expected in exact.items()
+        if value.get(key) != expected
+    }
+    required_roles = {
+        "planning", "draft", "review", "reader_review", "polish",
+        "final_review", "maintenance",
+    }
+    if set(value.get("required_stage_roles") or []) != required_roles:
+        mismatches["required_stage_roles"] = {
+            "expected": sorted(required_roles),
+            "actual": value.get("required_stage_roles"),
+        }
+    if set(value.get("completed_stage_roles") or []) != required_roles:
+        mismatches["completed_stage_roles"] = {
+            "expected": sorted(required_roles),
+            "actual": value.get("completed_stage_roles"),
+        }
+    for key in (
+        "discovered_call_plan_sha256", "executed_call_plan_sha256",
+        "final_artifact_sha256", "runtime_authority_sha256",
+        "style_reference_authority_sha256", "route_manifest_sha256",
+        "destination_manifest_sha256", "egress_policy_sha256",
+    ):
+        current = value.get(key)
+        if not isinstance(current, str) or len(current) != 64:
+            mismatches[key] = {"expected": "sha256", "actual": current}
+    for key in (
+        "per_call_output_token_hard_cap",
+        "discovered_plan_output_token_hard_cap",
+        "planning_single_repair_output_token_hard_cap",
+        "total_output_token_hard_cap",
+    ):
+        current = value.get(key)
+        if not isinstance(current, int) or current <= 0:
+            mismatches[key] = {"expected": "positive_integer", "actual": current}
+    if mismatches:
+        raise ValueError(
+            "production-shaped replay receipt mismatch: "
+            + json.dumps(mismatches, sort_keys=True)
+        )
+    return value
 
 
 def _forward_risk() -> dict[str, Any]:
@@ -238,8 +329,27 @@ def main() -> int:
     head = _git(repo, "rev-parse", "HEAD")
     branch = _git(repo, "branch", "--show-current")
     changed = _git(repo, "diff", "--name-only", f"{START_HEAD}..{head}").splitlines()
-    normal = json.loads(args.normal.read_text(encoding="utf-8"))
-    injected = json.loads(args.injected.read_text(encoding="utf-8"))
+    normal = _validate_replay(
+        json.loads(args.normal.read_text(encoding="utf-8")),
+        head=head,
+        injected=False,
+    )
+    injected = _validate_replay(
+        json.loads(args.injected.read_text(encoding="utf-8")),
+        head=head,
+        injected=True,
+    )
+    cap_fields = (
+        "hard_max_provider_requests", "hard_max_http_posts",
+        "hard_max_network_attempts", "per_call_output_token_hard_cap",
+        "discovered_plan_output_token_hard_cap",
+        "planning_single_repair_output_token_hard_cap",
+        "total_output_token_hard_cap",
+    )
+    if any(normal[key] != injected[key] for key in cap_fields):
+        raise ValueError("normal and injected replay cap bindings differ")
+    if normal["final_artifact_sha256"] != injected["final_artifact_sha256"]:
+        raise ValueError("normal and injected final artifacts differ")
 
     baseline = {
         "schema": "FirstTrustworthyFullShortPlanningFailureBaselineV1",
