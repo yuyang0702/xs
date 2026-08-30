@@ -595,12 +595,37 @@ def _copy_private_data(
     shutil.copy2(repo / "data" / "app.db", data / "app.db")
     private_project = projects_root / source_project.name
     shutil.copytree(source_project, private_project)
+    source_references = (repo / "data" / "references").resolve()
+    private_references = data / "references"
+    if source_references.is_dir():
+        shutil.copytree(source_references, private_references)
+    else:
+        private_references.mkdir()
     db = Database(data / "app.db")
     for row in db.list_projects():
         private_path = projects_root / f"unselected-{row['id']}"
         if str(row["id"]) == project_id:
             private_path = private_project
         db.update_project_path(str(row["id"]), private_path)
+    with db.connect() as connection:
+        versions = connection.execute(
+            "SELECT id,storage_path FROM reference_versions ORDER BY id",
+        ).fetchall()
+        for version in versions:
+            source_path = Path(str(version["storage_path"])).resolve()
+            try:
+                relative = source_path.relative_to(source_references)
+            except ValueError as exc:
+                raise ValueError(
+                    "reference source escapes the live storage root"
+                ) from exc
+            private_path = private_references / relative
+            if not private_path.is_file():
+                raise ValueError("reference source is missing from private copy")
+            connection.execute(
+                "UPDATE reference_versions SET storage_path=? WHERE id=?",
+                (str(private_path), str(version["id"])),
+            )
     ProjectStore(db, projects_root).get(project_id)
     # Authority closure is enabled only in the isolated copies.  The live
     # project remains untouched and must be separately enabled before a real
