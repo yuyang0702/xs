@@ -700,39 +700,82 @@ async def execute_full_short_control_plane(
     db = Database(settings.database_path)
     execution_id = policy["run_id"]
     manager = RunTaskManager(db)
+    if db.get_run(execution_id) is not None:
+        if manager.fail_closed_exact_once_reservation(
+            execution_id,
+            reason_code="ORPHANED_EXACT_ONCE_RESERVATION_NO_RESUME",
+        ):
+            raise RuntimeError(
+                "FULL_SHORT_ORPHANED_RESERVATION_FAILED_CLOSED:"
+                "NEW_SINGLE_USE_AUTHORIZATION_REQUIRED"
+            )
     manager.reserve_exact_once(
         execution_id, str(bindings["project_id"]), "short-story",
     )
-    store = FullShortDurableExecutionStoreV1(
-        repo_root=args.repo, store_root=args.store_root,
+
+    def prelaunch(step: Callable[[], Any], reason_code: str) -> Any:
+        try:
+            return step()
+        except Exception:
+            if not manager.fail_closed_exact_once_reservation(
+                execution_id, reason_code=reason_code,
+            ):
+                raise RuntimeError(
+                    "FULL_SHORT_PRELAUNCH_RESERVATION_CLEANUP_FAILED"
+                )
+            raise
+
+    store = prelaunch(
+        lambda: FullShortDurableExecutionStoreV1(
+            repo_root=args.repo, store_root=args.store_root,
+        ),
+        "FULL_SHORT_STORE_BINDING_FAILED_BEFORE_LAUNCH",
     )
-    permission = store.create_permission(
-        execution_id=execution_id,
-        authorization_text_sha256=args.activated_sha256,
-        policy=policy, external_actions_enabled=external_actions_enabled,
+    permission = prelaunch(
+        lambda: store.create_permission(
+            execution_id=execution_id,
+            authorization_text_sha256=args.activated_sha256,
+            policy=policy, external_actions_enabled=external_actions_enabled,
+        ),
+        "FULL_SHORT_PERMISSION_FAILED_BEFORE_LAUNCH",
     )
-    approval = store.create_jit_approval(
-        execution_id=execution_id, policy=policy, permission=permission,
-        external_actions_enabled=external_actions_enabled,
+    approval = prelaunch(
+        lambda: store.create_jit_approval(
+            execution_id=execution_id, policy=policy, permission=permission,
+            external_actions_enabled=external_actions_enabled,
+        ),
+        "FULL_SHORT_APPROVAL_FAILED_BEFORE_LAUNCH",
     )
-    nonce = store.reserve_nonce(
-        execution_id=execution_id, policy=policy, approval=approval,
-        external_actions_enabled=external_actions_enabled,
+    nonce = prelaunch(
+        lambda: store.reserve_nonce(
+            execution_id=execution_id, policy=policy, approval=approval,
+            external_actions_enabled=external_actions_enabled,
+        ),
+        "FULL_SHORT_NONCE_FAILED_BEFORE_LAUNCH",
     )
-    observer = FullShortDispatchLedgerObserverV1(
-        store=store, execution_id=execution_id, policy=policy,
-        authorized_routes=tuple(bindings["routes"]),
-        egress_policy=bindings["egress_policy"],
-        external_actions_enabled=external_actions_enabled,
+    observer = prelaunch(
+        lambda: FullShortDispatchLedgerObserverV1(
+            store=store, execution_id=execution_id, policy=policy,
+            authorized_routes=tuple(bindings["routes"]),
+            egress_policy=bindings["egress_policy"],
+            external_actions_enabled=external_actions_enabled,
+        ),
+        "FULL_SHORT_OBSERVER_FAILED_BEFORE_LAUNCH",
     )
-    registry = _registry_from_factory(
-        registry_factory, db=db, secret_store=secret_store_factory(),
-        observer=observer, http_transport_factory=http_transport_factory,
+    registry = prelaunch(
+        lambda: _registry_from_factory(
+            registry_factory, db=db, secret_store=secret_store_factory(),
+            observer=observer, http_transport_factory=http_transport_factory,
+        ),
+        "FULL_SHORT_REGISTRY_FAILED_BEFORE_LAUNCH",
     )
-    db, project, service, manager = _full_short_runtime_components(
-        repo=args.repo, data_dir=settings.data_dir,
-        project_id=str(bindings["project_id"]), execution_id=execution_id,
-        registry=registry, manager=manager,
+    db, project, service, manager = prelaunch(
+        lambda: _full_short_runtime_components(
+            repo=args.repo, data_dir=settings.data_dir,
+            project_id=str(bindings["project_id"]), execution_id=execution_id,
+            registry=registry, manager=manager,
+        ),
+        "FULL_SHORT_RUNTIME_COMPONENTS_FAILED_BEFORE_LAUNCH",
     )
     closure_state: dict[str, Any] = {}
 
@@ -849,8 +892,11 @@ async def execute_full_short_control_plane(
 
         return commit_after_saga_cleanup
 
-    terminal_finalizer = service.bind_full_short_terminal_finalizer(
-        execution_id, project.id, terminal_closure,
+    terminal_finalizer = prelaunch(
+        lambda: service.bind_full_short_terminal_finalizer(
+            execution_id, project.id, terminal_closure,
+        ),
+        "FULL_SHORT_TERMINAL_FINALIZER_FAILED_BEFORE_LAUNCH",
     )
     try:
         await _launch_exact_short(
@@ -861,6 +907,17 @@ async def execute_full_short_control_plane(
             terminal_finalizer=terminal_finalizer,
             already_reserved=True,
         )
+    except Exception:
+        run = db.get_run(execution_id)
+        if run is not None and run.get("status") == "queued":
+            if not manager.fail_closed_exact_once_reservation(
+                execution_id,
+                reason_code="FULL_SHORT_LAUNCH_FAILED_BEFORE_RUNNING",
+            ):
+                raise RuntimeError(
+                    "FULL_SHORT_PRELAUNCH_RESERVATION_CLEANUP_FAILED"
+                )
+        raise
     finally:
         close = getattr(registry, "close", None)
         if callable(close):

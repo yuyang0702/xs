@@ -86,6 +86,11 @@ def _fixture(tmp_path: Path) -> dict:
         "score": 92, "hard_fail": False, "decision": "pass",
         "issues": [], "reconciliations": [], "request_full_review": False,
     }
+    adjudication_text = json.dumps(terminal_review_body, ensure_ascii=False)
+    adjudication_artifact = {
+        "path": "outputs/final_review-adjudication.md",
+        "sha256": hashlib.sha256(adjudication_text.encode("utf-8")).hexdigest(),
+    }
     fidelity_body = {
         "schema": "FinalReviewStyleReferenceReceiptV1", "version": 1,
         "status": "not_requested",
@@ -111,6 +116,10 @@ def _fixture(tmp_path: Path) -> dict:
         "coverage": 1.0, "window_count": len(windows),
         "reviewed_windows": len(windows), "prior_issue_ids": [],
         "reconciliations": [], "windows": windows,
+        "adjudication_artifact": adjudication_artifact,
+        "adjudication_receipt": {
+            "accepted_stage_artifact": adjudication_artifact,
+        },
     }
     _write_json(run / "outputs" / "final-review-evidence.json", {
         "windows": windows, "audit": audit,
@@ -129,7 +138,7 @@ def _fixture(tmp_path: Path) -> dict:
         "final_review_evidence": audit,
     })
     (run / "outputs" / "final_review-adjudication.md").write_text(
-        json.dumps(terminal_review_body, ensure_ascii=False), encoding="utf-8",
+        adjudication_text, encoding="utf-8",
     )
     review_text = "{}"
     (run / "outputs" / "review.md").write_text(review_text, encoding="utf-8")
@@ -263,6 +272,32 @@ def test_exact_final_review_maintenance_artifact_and_checkpoint_pass(tmp_path: P
     assert receipt["final_review"]["binding_status"] == "exact"
     assert receipt["maintenance"]["closure_status"] == "exact"
     assert "sanitized final manuscript" not in json.dumps(receipt)
+
+
+def test_suffixed_repair_adjudication_is_the_terminal_review_authority(
+    tmp_path: Path,
+) -> None:
+    fx = _fixture(tmp_path)
+    outputs = fx["run"] / "outputs"
+    original = outputs / "final_review-adjudication.md"
+    repaired = outputs / "final_review-2-adjudication.md"
+    original.rename(repaired)
+    artifact = {
+        "path": "outputs/final_review-2-adjudication.md",
+        "sha256": hashlib.sha256(repaired.read_bytes()).hexdigest(),
+    }
+    report = json.loads((outputs / "quality-report.json").read_text())
+    report["final_review_evidence"]["adjudication_artifact"] = artifact
+    report["final_review_evidence"]["adjudication_receipt"][
+        "accepted_stage_artifact"
+    ] = artifact
+    _write_json(outputs / "quality-report.json", report)
+    _write_json(outputs / "final-review-evidence.json", {
+        "windows": report["final_review_evidence"]["windows"],
+        "audit": report["final_review_evidence"],
+    })
+
+    assert _verify(fx)["completion_goal_outcome"] == COMPLETION_GOAL
 
 
 @pytest.mark.parametrize("mutation,outcome", [

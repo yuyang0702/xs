@@ -110,6 +110,36 @@ async def test_exact_one_shot_rejects_non_short_workflow_before_reservation(
 
 
 @pytest.mark.asyncio
+async def test_exact_one_shot_restart_fails_orphaned_reservation_closed(
+    tmp_path,
+) -> None:
+    db, first = make_manager(tmp_path)
+    first.reserve_exact_once(
+        "orphaned-before-dispatch", "book", "short-story",
+    )
+
+    restarted = RunTaskManager(db)
+    assert restarted.fail_closed_exact_once_reservation(
+        "orphaned-before-dispatch",
+        reason_code="ORPHANED_EXACT_ONCE_RESERVATION_NO_RESUME",
+    ) is True
+
+    run = db.get_run("orphaned-before-dispatch")
+    supervision = db.get_workflow_supervision("orphaned-before-dispatch")
+    assert run["status"] == "failed"
+    assert run["error"] == "ORPHANED_EXACT_ONCE_RESERVATION_NO_RESUME"
+    assert supervision["state"] == "irrecoverable"
+    assert supervision["retry_budgets"] == {
+        "transport": 0, "protocol": 0, "semantic": 0,
+        "quality": 0, "provider_wait": 0,
+    }
+    assert not db.has_active_runs("book")
+    assert restarted.fail_closed_exact_once_reservation(
+        "orphaned-before-dispatch", reason_code="NO_REUSE",
+    ) is False
+
+
+@pytest.mark.asyncio
 async def test_exact_one_shot_reserves_writer_before_external_approval(
     tmp_path,
 ) -> None:

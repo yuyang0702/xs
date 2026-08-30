@@ -130,6 +130,34 @@ class RunTaskManager:
         )
         return self.db.get_run(run_id) or {"id": run_id, "status": "queued"}
 
+    def fail_closed_exact_once_reservation(
+        self, run_id: str, *, reason_code: str,
+    ) -> bool:
+        """Terminalize a durable queued reservation without launching it."""
+
+        run = self.db.get_run(run_id)
+        supervision = self.db.get_workflow_supervision(run_id)
+        if (
+            run is None
+            or supervision is None
+            or run.get("workflow") != "short-story"
+            or run.get("status") != "queued"
+            or supervision.get("state") != "queued"
+            or supervision.get("resume_payload") != {}
+            or supervision.get("retry_budgets") != {
+                "transport": 0,
+                "protocol": 0,
+                "semantic": 0,
+                "quality": 0,
+                "provider_wait": 0,
+            }
+        ):
+            return False
+        self._exact_once_reservations.discard(run_id)
+        return self.db.commit_exact_once_reservation_failure(
+            run_id=run_id, reason_code=reason_code,
+        )
+
     def resume(
         self, run_id: str, operation: RunOperation, *,
         allow_interrupted: bool = False,

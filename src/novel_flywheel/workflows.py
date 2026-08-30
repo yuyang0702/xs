@@ -17138,6 +17138,7 @@ class WorkflowService:
                     "judge_signature": str(
                         final_review.get("judge_signature") or "legacy-unknown"
                     ),
+                    "final_review_evidence": audit,
                     "post_mutation_attempts": attempts,
                 }
                 self._save_quality_checkpoint(
@@ -19611,6 +19612,31 @@ class WorkflowService:
             )
             return payload
 
+        def bind_accepted_stage_artifact(
+            raw_stage: str, accepted_suffix: str,
+        ) -> str:
+            if recovery_kind != "review":
+                return raw_stage
+            path = run_path / "outputs" / f"final_review{accepted_suffix}.md"
+            try:
+                raw_bytes = path.read_bytes()
+                decoded = raw_bytes.decode("utf-8")
+            except (OSError, UnicodeError) as exc:
+                raise ValueError(
+                    "Accepted Final Review artifact is unavailable"
+                ) from exc
+            if decoded != str(raw_stage):
+                raise ValueError("Accepted Final Review artifact content drift")
+            if isinstance(raw_stage, StageText):
+                raw_stage.receipt = {
+                    **getattr(raw_stage, "receipt", {}),
+                    "accepted_stage_artifact": {
+                        "path": f"outputs/{path.name}",
+                        "sha256": hashlib.sha256(raw_bytes).hexdigest(),
+                    },
+                }
+            return raw_stage
+
         contract_name = (
             "final_review_window" if recovery_kind == "window" else
             "final_review_regional" if recovery_kind == "regional" else
@@ -19655,6 +19681,7 @@ class WorkflowService:
         try:
             if stage_error is not None:
                 raise stage_error
+            raw = bind_accepted_stage_artifact(raw, suffix)
             return raw, bind_style_fidelity_after_stage(convert(raw), raw)
         except (json.JSONDecodeError, ValueError, RuntimeError) as primary_error:
             binding = self.db.get_role_binding("final_review") or {}
@@ -19683,6 +19710,10 @@ class WorkflowService:
                         bounded_protocol_output=True,
                         execution_spec=review_spec(prompt),
                     )
+                    fallback_suffix = f"{suffix}-json-fallback"
+                    fallback_raw = bind_accepted_stage_artifact(
+                        fallback_raw, fallback_suffix,
+                    )
                     return fallback_raw, bind_style_fidelity_after_stage(
                         convert(fallback_raw), fallback_raw,
                     )
@@ -19702,16 +19733,18 @@ class WorkflowService:
             compact_error: Exception | None = None
             compact_raw = ""
             compact_payload: dict | None = None
+            accepted_compact_suffix: str | None = None
             compact_routes = [False] + ([True] if configured_fallback else [])
             for use_fallback in compact_routes:
                 try:
+                    compact_suffix = (
+                        f"{suffix}-compact-recovery"
+                        + ("-fallback" if use_fallback else "")
+                    )
                     compact_raw = await self._stage(
                         run_id, run_path, project, "final_review", constraints,
                         compact_prompt,
-                        suffix=(
-                            f"{suffix}-compact-recovery"
-                            + ("-fallback" if use_fallback else "")
-                        ),
+                        suffix=compact_suffix,
                         allow_tools=False,
                         primary_only=not use_fallback,
                         prefer_configured_fallback=use_fallback,
@@ -19726,6 +19759,7 @@ class WorkflowService:
                     compact_payload = bind_style_fidelity_after_stage(
                         convert(compact_raw), compact_raw,
                     )
+                    accepted_compact_suffix = compact_suffix
                 except (json.JSONDecodeError, ValueError, RuntimeError) as exc:
                     compact_error = exc
                     continue
@@ -19739,6 +19773,10 @@ class WorkflowService:
                     "终审模型返回内容不完整，精简报告恢复也未完成；已保留最佳稿",
                     detail,
                 ) from compact_error
+            assert accepted_compact_suffix is not None
+            compact_raw = bind_accepted_stage_artifact(
+                compact_raw, accepted_compact_suffix,
+            )
             if isinstance(compact_raw, StageText):
                 compact_raw.receipt = {
                     **getattr(compact_raw, "receipt", {}),
@@ -20437,6 +20475,11 @@ class WorkflowService:
             "reconciliations": reconciliations,
             "windows": evidence,
             "adjudication_receipt": getattr(raw_final, "receipt", {}),
+            "adjudication_artifact": dict(
+                getattr(raw_final, "receipt", {}).get(
+                    "accepted_stage_artifact", {},
+                )
+            ),
             "review_mode": "full",
             "detail_mode": "separate" if detail_windows else "compact",
             "detail_analysis": {

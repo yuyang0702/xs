@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 from pathlib import Path
+import re
 from typing import Any, Mapping
 
 from novel_flywheel.quality_records import load_quality_checkpoint
@@ -361,7 +362,30 @@ def _terminal_quality_evidence(
             raise ValueError("stale style fidelity")
         normalized_terminal_review = dict(terminal_review)
         normalized_terminal_review.pop("style_reference_fidelity", None)
-        verdict_path = run_root / "outputs" / "final_review-adjudication.md"
+        adjudication_artifact = audit.get("adjudication_artifact")
+        adjudication_receipt = audit.get("adjudication_receipt")
+        if (
+            not isinstance(adjudication_artifact, Mapping)
+            or set(adjudication_artifact) != {"path", "sha256"}
+            or not isinstance(adjudication_receipt, Mapping)
+            or adjudication_receipt.get("accepted_stage_artifact")
+            != dict(adjudication_artifact)
+        ):
+            raise ValueError("terminal adjudication artifact is unbound")
+        relative_verdict = str(adjudication_artifact.get("path") or "")
+        if re.fullmatch(
+            r"outputs/final_review(?:-[A-Za-z0-9._-]+)?\.md",
+            relative_verdict,
+        ) is None:
+            raise ValueError("terminal adjudication artifact path is invalid")
+        verdict_path = (run_root / relative_verdict).resolve()
+        if (
+            not verdict_path.is_relative_to(run_root.resolve())
+            or not verdict_path.is_file()
+            or file_sha256(verdict_path)
+            != adjudication_artifact.get("sha256")
+        ):
+            raise ValueError("terminal adjudication artifact is stale")
         raw_terminal_review = json.loads(verdict_path.read_text(encoding="utf-8"))
         typed_terminal_review = validate_final_review_verdict_receipt(
             raw_terminal_review,

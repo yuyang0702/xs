@@ -448,15 +448,20 @@ async def test_credential_reflection_is_rejected_before_attempt_accounting(
     ))
     await original.aclose()
 
-    with pytest.raises(
-        SingleDispatchTransportGuardError,
-        match="credential_reflection_rejected",
+    for reflected in (
+        "offline-key",
+        "prefix offline-key suffix",
+        {"nested": ["prefix-offline-key-suffix"]},
     ):
-        await provider.post(
-            "v1/messages",
-            payload={**_payload(), "unexpected_extension": "offline-key"},
-            headers={},
-        )
+        with pytest.raises(
+            SingleDispatchTransportGuardError,
+            match="credential_reflection_rejected",
+        ):
+            await provider.post(
+                "v1/messages",
+                payload={**_payload(), "unexpected_extension": reflected},
+                headers={},
+            )
 
     assert provider.transport_attempt_snapshot()["http_post_attempts"] == 0
     assert store._read("credential-reflection", "nonce")["state"] == "RESERVED"

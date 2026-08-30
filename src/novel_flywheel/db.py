@@ -2124,6 +2124,40 @@ class Database:
             event_metadata=audit_metadata,
         )
 
+    def commit_exact_once_reservation_failure(
+        self, *, run_id: str, reason_code: str,
+    ) -> bool:
+        """Fail-close an orphaned pre-dispatch Full Short reservation.
+
+        This transition is deliberately terminal: a process restart must not
+        reconstruct launch authority or reuse an approval/nonce window.
+        """
+
+        if not reason_code or len(reason_code) > 160:
+            raise ValueError("exact once reservation reason is invalid")
+        failure_sha256 = hashlib.sha256(reason_code.encode("utf-8")).hexdigest()
+        return self._commit_supervised_transition(
+            run_id=run_id,
+            expected_run_statuses={"queued"},
+            expected_supervision_states={"queued"},
+            run_status="failed",
+            run_stage="authorization_boundary",
+            run_error=reason_code,
+            supervision_state="irrecoverable",
+            used_budgets={},
+            next_retry_at=None,
+            failure_class="exact_once_reservation_fail_closed",
+            failure_sha256=failure_sha256,
+            last_error_summary=reason_code,
+            attempt_action="exact_once_reservation_fail_closed",
+            attempt_metadata={"redispatch_allowed": False},
+            event_severity="error",
+            event_type="exact_once_reservation_fail_closed",
+            event_stage="authorization_boundary",
+            event_message="Exact one-shot reservation failed closed before dispatch",
+            event_metadata={"redispatch_allowed": False},
+        )
+
     def commit_supervised_terminal_failure(
         self, *, run_id: str, supervision_state: str, stage: str,
         error_summary: str, used_budgets: dict[str, int],

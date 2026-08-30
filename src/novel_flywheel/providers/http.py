@@ -112,7 +112,7 @@ class HttpProvider:
     def _contains_exact_scalar(value: Any, forbidden: str) -> bool:
         if isinstance(value, dict):
             return any(
-                key == forbidden
+                forbidden in str(key)
                 or HttpProvider._contains_exact_scalar(item, forbidden)
                 for key, item in value.items()
             )
@@ -121,7 +121,7 @@ class HttpProvider:
                 HttpProvider._contains_exact_scalar(item, forbidden)
                 for item in value
             )
-        return isinstance(value, str) and value == forbidden
+        return isinstance(value, str) and forbidden in value
 
     def _before_http_post_attempt(
         self, *, url: str, payload: dict[str, Any],
@@ -141,6 +141,7 @@ class HttpProvider:
             )
             if callable(before_dispatch):
                 before_dispatch(method="POST", url=url, payload=payload)
+        self._begin_logical_call()
         self._http_post_attempts += 1
         if self.attempt_observer is not None:
             self.attempt_observer.before_http_post()
@@ -185,7 +186,6 @@ class HttpProvider:
         }
 
     async def post(self, path: str, *, payload: dict[str, Any], headers: dict[str, str]) -> dict[str, Any]:
-        self._begin_logical_call()
         url = f"{self.base_url}/{path.lstrip('/')}"
         max_attempts = 1 if self.transport_policy is not None else 2
         for attempt in range(max_attempts):
@@ -228,7 +228,6 @@ class HttpProvider:
     async def post_stream(
         self, path: str, *, payload: dict[str, Any], headers: dict[str, str],
     ) -> tuple[list[dict[str, Any]], dict[str, Any] | None]:
-        self._begin_logical_call()
         url = f"{self.base_url}/{path.lstrip('/')}"
         request_headers = {**headers, **self.headers}
         max_attempts = 1 if self.transport_policy is not None else 2

@@ -122,3 +122,12 @@ def test_dry_run_has_no_test_owned_oracle_or_fixed_call_count() -> None:
     assert "expected_stage_calls=1" not in source
     assert "execute_full_short_control_plane(" in source
     assert "run_full_short_workflow_path(" in source
+
+
+def test_real_runner_fail_closes_orphaned_and_prelaunch_reservations() -> None:
+    source = Path(runner.__file__).read_text(encoding="utf-8")
+
+    assert "fail_closed_exact_once_reservation(" in source
+    assert "ORPHANED_EXACT_ONCE_RESERVATION_NO_RESUME" in source
+    assert "NEW_SINGLE_USE_AUTHORIZATION_REQUIRED" in source
+    assert "FULL_SHORT_PRELAUNCH_RESERVATION_CLEANUP_FAILED" in source
