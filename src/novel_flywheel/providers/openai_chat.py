@@ -1,4 +1,5 @@
 import json
+from urllib.parse import urlsplit
 
 from novel_flywheel.domain.models import ModelRequest, ModelResponse, ToolCall
 from novel_flywheel.model_diagnostics import (
@@ -42,7 +43,7 @@ class OpenAIChatAdapter(HttpProvider):
             payload["tool_choice"] = {
                 "type": "function", "function": {"name": request.required_tool},
             }
-        if "api.moonshot.cn" in self.base_url and (
+        if urlsplit(self.base_url).hostname == "api.moonshot.cn" and (
             request.required_tool or request.response_schema or request.response_format
         ):
             payload["thinking"] = {"type": "disabled"}

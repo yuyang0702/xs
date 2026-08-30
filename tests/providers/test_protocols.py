@@ -5,6 +5,7 @@ import pytest
 import respx
 
 from novel_flywheel.domain.models import Message, ModelRequest, ToolDefinition
+from novel_flywheel.full_short_execution import _expected_provider_payload_v1
 from novel_flywheel.providers.anthropic import AnthropicAdapter
 from novel_flywheel.providers.http import ProviderResponseError
 from novel_flywheel.providers.openai_chat import OpenAIChatAdapter
@@ -121,6 +122,38 @@ async def test_moonshot_disables_thinking_for_structured_output() -> None:
 
     payload = json.loads(route.calls.last.request.content)
     assert payload["thinking"] == {"type": "disabled"}
+
+
+@pytest.mark.asyncio
+@respx.mock
+@pytest.mark.parametrize("base_url", [
+    "https://api.moonshot.cn/v1",
+    "https://API.MOONSHOT.CN/v1",
+    "https://relay.test/api.moonshot.cn/v1",
+])
+async def test_openai_chat_payload_matches_full_short_hostname_projection(
+    base_url: str,
+) -> None:
+    route = respx.post(f"{base_url}/chat/completions").mock(
+        return_value=httpx.Response(200, json={
+            "id": "req-json-parity",
+            "choices": [{"message": {"content": '{"ok":true}'}}],
+            "usage": {},
+        }),
+    )
+    request = ModelRequest(
+        model="kimi-k3",
+        messages=[Message(role="user", content="Return JSON")],
+        response_schema={"name": "probe", "schema": {"type": "object"}},
+    )
+
+    await OpenAIChatAdapter(base_url, "secret").complete(request)
+
+    actual = json.loads(route.calls.last.request.content)
+    expected = _expected_provider_payload_v1(
+        "openai-chat", request, destination=base_url,
+    )
+    assert actual == expected
 
 
 @pytest.mark.asyncio
