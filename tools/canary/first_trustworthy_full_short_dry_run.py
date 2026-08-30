@@ -832,14 +832,49 @@ async def _run(args: argparse.Namespace) -> dict[str, Any]:
                 args.inject_planning_business_incomplete_once
             ),
         )
-        execution = await execute_full_short_control_plane(
-            control_args, authorization,
-            external_actions_enabled=False,
-            secret_store_factory=_memory_secrets(execution_data),
-            registry_factory=_registry_factory,
-            http_transport_factory=transport,
-            required_stage_roles=discovered_roles,
-        )
+        try:
+            execution = await execute_full_short_control_plane(
+                control_args, authorization,
+                external_actions_enabled=False,
+                secret_store_factory=_memory_secrets(execution_data),
+                registry_factory=_registry_factory,
+                http_transport_factory=transport,
+                required_stage_roles=discovered_roles,
+            )
+        except Exception as exc:
+            ledger_state: dict[str, Any] | None = None
+            ledger_paths = sorted(store_root.glob("*.ledger.json"))
+            if len(ledger_paths) == 1:
+                ledger = json.loads(ledger_paths[0].read_text(encoding="utf-8"))
+                ledger_state = {
+                    "state": ledger.get("state"),
+                    "attempt_count": len(ledger.get("attempts") or []),
+                    "completed_stage_count": len(
+                        ledger.get("completed_stage_receipts") or []
+                    ),
+                    "attempt_state_tail": [
+                        {
+                            "ordinal": item.get("ordinal"),
+                            "state": item.get("state"),
+                            "role": item.get("bound_role"),
+                            "local_rejection_failure_kind": item.get(
+                                "local_rejection_failure_kind"
+                            ),
+                        }
+                        for item in (ledger.get("attempts") or [])[-5:]
+                    ],
+                }
+            raise RuntimeError(
+                "FULL_SHORT_DRY_RUN_EXECUTION_FAILED:"
+                + json.dumps({
+                    "exception_type": type(exc).__name__,
+                    "safe_message": str(exc)[:500],
+                    "mock_transport_failure": transport.failure,
+                    "observed_call_count": len(transport.call_plan),
+                    "observed_call_tail": transport.call_plan[-5:],
+                    "ledger": ledger_state,
+                }, ensure_ascii=True, sort_keys=True)
+            ) from exc
         observed_plan = execution["call_plan"]
         ledger = execution["ledger"]
         rejected_ordinals = {
