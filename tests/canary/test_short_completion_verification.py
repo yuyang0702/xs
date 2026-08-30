@@ -127,6 +127,8 @@ def _fixture(tmp_path: Path) -> dict:
     _write_json(run / "outputs" / "quality-report.json", {
         "status": "passed", "terminal_review_complete": True,
         "terminal_reviewed_hash": digest,
+        "best_attempt": 1,
+        "best_score": 92,
         "scoring_profile_id": "zhihu-short-v2",
         "judge_signature": "provider/final-model",
         "terminal_review": {
@@ -168,7 +170,7 @@ def _fixture(tmp_path: Path) -> dict:
     _write_json(run / "outputs" / "quality-checkpoint.json", {
         "version": 1, "manuscript_path": "outputs/best-candidate.md",
         "manuscript_hash": digest, "terminal_reviewed_hash": digest,
-        "outcome": "passed", "score": 92,
+        "outcome": "passed", "score": 92, "best_attempt": 1,
         "scoring_profile_id": "zhihu-short-v2",
         "judge_signature": "provider/final-model",
         "review": {
@@ -315,6 +317,10 @@ def test_suffixed_repair_adjudication_is_the_terminal_review_authority(
     ("checkpoint_ledger_drift", "WORKFLOW_COMPLETED_CHECKPOINT_UNCLOSED"),
     ("checkpoint_path_drift", "WORKFLOW_COMPLETED_CHECKPOINT_UNCLOSED"),
     ("checkpoint_best_attempt_drift", "WORKFLOW_COMPLETED_CHECKPOINT_UNCLOSED"),
+    ("report_best_attempt_drift", "WORKFLOW_COMPLETED_CHECKPOINT_UNCLOSED"),
+    ("report_best_score_drift", "WORKFLOW_COMPLETED_CHECKPOINT_UNCLOSED"),
+    ("report_profile_drift", "WORKFLOW_COMPLETED_CHECKPOINT_UNCLOSED"),
+    ("report_judge_drift", "WORKFLOW_COMPLETED_CHECKPOINT_UNCLOSED"),
 ])
 def test_completion_failures_are_typed(
     tmp_path: Path, mutation: str, outcome: str,
@@ -329,6 +335,21 @@ def test_completion_failures_are_typed(
     elif mutation == "review_stale":
         report = json.loads((fx["run"] / "outputs/quality-report.json").read_text())
         report["terminal_reviewed_hash"] = "b" * 64
+        _write_json(fx["run"] / "outputs/quality-report.json", report)
+    elif mutation.startswith("report_"):
+        report = json.loads((fx["run"] / "outputs/quality-report.json").read_text())
+        field = {
+            "report_best_attempt_drift": "best_attempt",
+            "report_best_score_drift": "best_score",
+            "report_profile_drift": "scoring_profile_id",
+            "report_judge_drift": "judge_signature",
+        }[mutation]
+        report[field] = {
+            "best_attempt": 999,
+            "best_score": 1,
+            "scoring_profile_id": "other-profile",
+            "judge_signature": "other/judge",
+        }[field]
         _write_json(fx["run"] / "outputs/quality-report.json", report)
     elif mutation == "maintenance_missing":
         (fx["run"] / "receipts/maintenance-inventory-initial.json").unlink()

@@ -698,7 +698,21 @@ def verify_short_completion_v1(
         == manuscript_sha256
         and checkpoint.get("manuscript_hash") == manuscript_sha256
         and checkpoint.get("terminal_reviewed_hash") == manuscript_sha256
+        and isinstance(report.get("best_attempt"), int)
+        and report["best_attempt"] >= 1
         and checkpoint.get("best_attempt") == report.get("best_attempt")
+        and isinstance(report.get("best_score"), (int, float))
+        and not isinstance(report.get("best_score"), bool)
+        and report.get("best_score") == terminal_review.get("score")
+        and checkpoint.get("score") == report.get("best_score")
+        and isinstance(report.get("scoring_profile_id"), str)
+        and bool(report["scoring_profile_id"])
+        and report.get("scoring_profile_id")
+        == terminal_review.get("scoring_profile_id")
+        and isinstance(report.get("judge_signature"), str)
+        and bool(report["judge_signature"])
+        and report.get("judge_signature")
+        == terminal_review.get("judge_signature")
         and checkpoint.get("review") == terminal_review
         and checkpoint.get("score") == terminal_review.get("score")
         and checkpoint.get("scoring_profile_id")
