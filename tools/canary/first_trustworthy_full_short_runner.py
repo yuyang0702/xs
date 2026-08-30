@@ -792,14 +792,18 @@ async def execute_full_short_control_plane(
             raise RuntimeError("FULL_SHORT_TERMINAL_VERIFICATION_NOT_EXACT")
         try:
             elapsed_seconds = _completion_elapsed_recheck(policy, ledger)
-            manuscript = project_root / "manuscript" / "story.md"
             receipt = build_full_short_completion_receipt_v1(
                 execution_id=execution_id, policy=policy,
                 permission_sha256=permission["permission_sha256"],
                 signed_approval_sha256=approval["signed_approval_sha256"],
                 nonce_sha256=nonce["nonce_sha256"], ledger=ledger,
                 final_bindings={
-                    "manuscript_sha256": _sha256(manuscript),
+                    # Terminal verification binds the canonical UTF-8 text
+                    # identity used by Final Review.  Physical file bytes are
+                    # independently exact-bound by the mutation journal.
+                    "manuscript_sha256": str(
+                        terminal["final_manuscript_sha256"]
+                    ),
                     "chapter_sha256": _sha256(
                         project_root / "chapters" / "chapter-01.md"
                     ),
