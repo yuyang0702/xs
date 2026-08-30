@@ -313,6 +313,8 @@ def test_suffixed_repair_adjudication_is_the_terminal_review_authority(
     ("checkpoint_profile_drift", "WORKFLOW_COMPLETED_CHECKPOINT_UNCLOSED"),
     ("checkpoint_judge_drift", "WORKFLOW_COMPLETED_CHECKPOINT_UNCLOSED"),
     ("checkpoint_ledger_drift", "WORKFLOW_COMPLETED_CHECKPOINT_UNCLOSED"),
+    ("checkpoint_path_drift", "WORKFLOW_COMPLETED_CHECKPOINT_UNCLOSED"),
+    ("checkpoint_best_attempt_drift", "WORKFLOW_COMPLETED_CHECKPOINT_UNCLOSED"),
 ])
 def test_completion_failures_are_typed(
     tmp_path: Path, mutation: str, outcome: str,
@@ -342,12 +344,19 @@ def test_completion_failures_are_typed(
         _write_json(fx["run"] / "outputs/quality-checkpoint.json", checkpoint)
     elif mutation.startswith("checkpoint_"):
         checkpoint = json.loads((fx["run"] / "outputs/quality-checkpoint.json").read_text())
+        if mutation == "checkpoint_path_drift":
+            duplicate = fx["run"] / "outputs/checkpoint-alternate.md"
+            duplicate.write_bytes(
+                (fx["run"] / "outputs/best-candidate.md").read_bytes()
+            )
         field = {
             "checkpoint_review_drift": "review",
             "checkpoint_score_drift": "score",
             "checkpoint_profile_drift": "scoring_profile_id",
             "checkpoint_judge_drift": "judge_signature",
             "checkpoint_ledger_drift": "issue_ledger",
+            "checkpoint_path_drift": "manuscript_path",
+            "checkpoint_best_attempt_drift": "best_attempt",
         }[mutation]
         checkpoint[field] = {
             "review": {**checkpoint["review"], "decision": "fail"},
@@ -355,6 +364,8 @@ def test_completion_failures_are_typed(
             "scoring_profile_id": "other-profile",
             "judge_signature": "other/judge",
             "issue_ledger": [{"issue_id": "unbound"}],
+            "manuscript_path": "outputs/checkpoint-alternate.md",
+            "best_attempt": 999,
         }[field]
         _write_json(fx["run"] / "outputs/quality-checkpoint.json", checkpoint)
     assert _verify(fx)["completion_goal_outcome"] == outcome

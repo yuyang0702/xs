@@ -695,6 +695,16 @@ async def execute_full_short_control_plane(
         raise ValueError("FULL_SHORT_AUTHORIZATION_OBJECT_DRIFT")
     policy = authorization["policy"]
     bindings = authorization["public_bindings"]
+
+    def recheck_live_authority() -> None:
+        """Re-collect every credential-free binding at each dispatch edge."""
+
+        current, _receipt = preflight_full_short_control_plane(
+            args, raw, external_actions_enabled=external_actions_enabled,
+        )
+        if current != authorization:
+            raise ValueError("FULL_SHORT_AUTHORIZATION_OBJECT_DRIFT")
+
     settings = Settings(args.data_dir.resolve(strict=True))
     configure_runtime_environment(settings.data_dir)
     db = Database(settings.database_path)
@@ -725,6 +735,10 @@ async def execute_full_short_control_plane(
                 )
             raise
 
+    prelaunch(
+        recheck_live_authority,
+        "FULL_SHORT_LIVE_AUTHORITY_DRIFT_BEFORE_JIT_APPROVAL",
+    )
     store = prelaunch(
         lambda: FullShortDurableExecutionStoreV1(
             repo_root=args.repo, store_root=args.store_root,
@@ -759,6 +773,7 @@ async def execute_full_short_control_plane(
             authorized_routes=tuple(bindings["routes"]),
             egress_policy=bindings["egress_policy"],
             external_actions_enabled=external_actions_enabled,
+            live_authority_recheck=recheck_live_authority,
         ),
         "FULL_SHORT_OBSERVER_FAILED_BEFORE_LAUNCH",
     )

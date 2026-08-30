@@ -558,6 +558,7 @@ CREATE TABLE IF NOT EXISTS workflow_supervision(
   run_id TEXT PRIMARY KEY REFERENCES runs(id) ON DELETE CASCADE,
   contract_version INTEGER NOT NULL DEFAULT 1,
   state TEXT NOT NULL,
+  restart_policy TEXT NOT NULL DEFAULT 'recoverable',
   resume_payload_json TEXT NOT NULL DEFAULT '{}',
   retry_budgets_json TEXT NOT NULL DEFAULT '{}',
   used_budgets_json TEXT NOT NULL DEFAULT '{}',
@@ -785,6 +786,16 @@ class Database:
                 "UPDATE workflow_node_checkpoints SET checkpoint_version=2 "
                 "WHERE checkpoint_version<2"
             )
+            supervision_columns = {
+                row["name"] for row in connection.execute(
+                    "PRAGMA table_info(workflow_supervision)"
+                )
+            }
+            if "restart_policy" not in supervision_columns:
+                connection.execute(
+                    "ALTER TABLE workflow_supervision ADD COLUMN "
+                    "restart_policy TEXT NOT NULL DEFAULT 'recoverable'"
+                )
             connection.execute(
                 "UPDATE schema_version SET version=4 WHERE version<4"
             )
@@ -1174,6 +1185,7 @@ class Database:
             rows = connection.execute(
                 "SELECT s.run_id FROM workflow_supervision s JOIN runs r ON r.id=s.run_id "
                 "WHERE s.state IN ('waiting_provider','interrupted') "
+                "AND s.restart_policy='recoverable' "
                 "AND r.status IN ('waiting_provider','interrupted') "
                 + due_clause +
                 "ORDER BY COALESCE(s.next_retry_at,s.created_at),s.run_id",
@@ -1666,6 +1678,7 @@ class Database:
         resume_payload: dict[str, Any], retry_budgets: dict[str, int],
         expected_statuses: set[str] | None = None,
         attempt_action: str | None = None,
+        restart_policy: str = "recoverable",
     ) -> bool:
         """Atomically create/claim a run and install its queued supervisor.
 
@@ -1676,6 +1689,8 @@ class Database:
         """
 
         payload = self.validate_workflow_resume_payload(workflow, resume_payload)
+        if restart_policy not in {"recoverable", "exact_once_no_resume"}:
+            raise ValueError("unsupported supervised run restart policy")
         active = ",".join("?" for _ in ACTIVE_RUN_STATUSES)
         with self.connect() as connection:
             connection.execute("BEGIN IMMEDIATE")
@@ -1683,7 +1698,8 @@ class Database:
                 "SELECT * FROM runs WHERE id=?", (run_id,),
             ).fetchone()
             current_supervision = connection.execute(
-                "SELECT state FROM workflow_supervision WHERE run_id=?", (run_id,),
+                "SELECT state,restart_policy FROM workflow_supervision WHERE run_id=?",
+                (run_id,),
             ).fetchone()
             if expected_statuses is None:
                 if current_run is not None:
@@ -1700,6 +1716,12 @@ class Database:
                 action = "created"
             else:
                 if current_run is None:
+                    return False
+                if (
+                    current_supervision is not None
+                    and str(current_supervision["restart_policy"])
+                    != restart_policy
+                ):
                     return False
                 ordered = sorted(expected_statuses)
                 if not ordered:
@@ -1733,19 +1755,21 @@ class Database:
 
             connection.execute(
                 """INSERT INTO workflow_supervision
-                (run_id,contract_version,state,resume_payload_json,retry_budgets_json,
+                (run_id,contract_version,state,restart_policy,resume_payload_json,retry_budgets_json,
                  used_budgets_json,next_retry_at,lease_owner,lease_expires_at,
                  last_failure_class,last_failure_sha256,last_error_summary,
                  created_at,updated_at)
-                VALUES (?,?,'queued',?,?,?,NULL,NULL,NULL,NULL,NULL,NULL,
+                VALUES (?,?,'queued',?,?,?,?,NULL,NULL,NULL,NULL,NULL,NULL,
                         datetime('now'),datetime('now'))
                 ON CONFLICT(run_id) DO UPDATE SET
                 contract_version=excluded.contract_version,
-                state='queued',resume_payload_json=excluded.resume_payload_json,
+                state='queued',restart_policy=excluded.restart_policy,
+                resume_payload_json=excluded.resume_payload_json,
                 next_retry_at=NULL,lease_owner=NULL,lease_expires_at=NULL,
                 updated_at=datetime('now')""",
                 (
                     run_id, WORKFLOW_SUPERVISION_CONTRACT_VERSION,
+                    restart_policy,
                     json.dumps(payload, ensure_ascii=False, sort_keys=True),
                     json.dumps(retry_budgets, ensure_ascii=False, sort_keys=True),
                     json.dumps({}, ensure_ascii=False, sort_keys=True),
@@ -2138,8 +2162,8 @@ class Database:
         failure_sha256 = hashlib.sha256(reason_code.encode("utf-8")).hexdigest()
         return self._commit_supervised_transition(
             run_id=run_id,
-            expected_run_statuses={"queued"},
-            expected_supervision_states={"queued"},
+            expected_run_statuses={"queued", "interrupted"},
+            expected_supervision_states={"queued", "interrupted"},
             run_status="failed",
             run_stage="authorization_boundary",
             run_error=reason_code,
@@ -2564,6 +2588,60 @@ class Database:
         )
         with self.connect() as connection:
             connection.execute("BEGIN IMMEDIATE")
+            # Exact one-shot Full Short runs must never enter the ordinary
+            # startup resume scheduler.  The classification is durable and
+            # remains attached after the in-memory launcher disappears.
+            exact_rows = connection.execute(
+                "SELECT r.id FROM runs r JOIN workflow_supervision s "
+                "ON s.run_id=r.id WHERE s.restart_policy='exact_once_no_resume' "
+                "AND r.status IN ('queued','running','cancelling',"
+                "'recovering_protocol','recovering_semantic','quality_repair',"
+                "'waiting_provider','interrupted') "
+                "AND s.state IN ('queued','running','recovering_protocol',"
+                "'recovering_semantic','quality_repair','waiting_provider',"
+                "'interrupted')"
+            ).fetchall()
+            exact_reason = "EXACT_ONCE_RUN_INTERRUPTED_NO_RESUME"
+            exact_failure_sha256 = hashlib.sha256(
+                exact_reason.encode("utf-8")
+            ).hexdigest()
+            for row in exact_rows:
+                connection.execute(
+                    "UPDATE runs SET status='failed',"
+                    "current_stage='authorization_boundary',error=?,"
+                    "updated_at=datetime('now') WHERE id=?",
+                    (exact_reason, row["id"]),
+                )
+                connection.execute(
+                    "UPDATE workflow_supervision SET state='irrecoverable',"
+                    "next_retry_at=NULL,lease_owner=NULL,lease_expires_at=NULL,"
+                    "last_failure_class='exact_once_restart_fail_closed',"
+                    "last_failure_sha256=?,last_error_summary=?,"
+                    "updated_at=datetime('now') WHERE run_id=?",
+                    (exact_failure_sha256, exact_reason, row["id"]),
+                )
+                attempt = int(connection.execute(
+                    "SELECT COALESCE(MAX(attempt),0)+1 FROM workflow_attempts "
+                    "WHERE run_id=?", (row["id"],),
+                ).fetchone()[0])
+                connection.execute(
+                    """INSERT INTO workflow_attempts
+                    (run_id,attempt,state,action,failure_class,failure_sha256,
+                     authority_sha256,checkpoint_sha256,metadata_json,created_at)
+                    VALUES (?,?,'irrecoverable','exact_once_restart_fail_closed',
+                            'exact_once_restart_fail_closed',?,NULL,NULL,
+                            '{"redispatch_allowed":false}',datetime('now'))""",
+                    (row["id"], attempt, exact_failure_sha256),
+                )
+                connection.execute(
+                    """INSERT INTO run_events
+                    (run_id,severity,event_type,stage,message,metadata_json,created_at)
+                    VALUES (?,'error','exact_once_restart_fail_closed',
+                            'authorization_boundary',
+                            'Exact one-shot run failed closed after process restart',
+                            '{"redispatch_allowed":false}',datetime('now'))""",
+                    (row["id"],),
+                )
             # A last-resort interrupted state retains the business outcome in
             # a hash-only attempt envelope.  Reconcile that intent before the
             # generic interrupted-run scheduler can replay completed,
@@ -2766,7 +2844,7 @@ class Database:
                     "VALUES (?, 'warning', 'interrupted', NULL, '程序重启，任务已中断', '{}', datetime('now'))",
                     (row["id"],),
                 )
-        return len(rows)
+        return len(rows) + len(exact_rows)
 
     def save_tool_receipt(self, *, run_id: str | None, stage: str, model_id: str,
                           execution_mode: str, tool_name: str | None = None,

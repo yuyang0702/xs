@@ -4,6 +4,7 @@ from novel_flywheel.app import create_app
 from novel_flywheel.db import Database
 from novel_flywheel.launcher import data_dir_fingerprint, runtime_fingerprint
 from novel_flywheel.secrets import MemorySecretStore
+from novel_flywheel.tasks import RunTaskManager
 
 
 def test_health(tmp_path) -> None:
@@ -46,3 +47,35 @@ def test_lifespan_owns_durable_recovery_once_per_app(tmp_path, monkeypatch) -> N
         assert client.get("/api/health").status_code == 200
 
     assert calls == ["runs", "references"]
+
+
+def test_app_startup_terminalizes_exact_once_reservation_before_recovery(
+    tmp_path,
+) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    db.save_project("book", "Book", "short", workspace / "book")
+    RunTaskManager(db).reserve_exact_once(
+        "exact-once-before-restart", "book", "short-story",
+    )
+
+    app = create_app(
+        db, MemorySecretStore(), skill_roots=[],
+        workspace_root=workspace,
+    )
+
+    run = db.get_run("exact-once-before-restart")
+    supervision = db.get_workflow_supervision("exact-once-before-restart")
+    assert run["status"] == "failed"
+    assert run["error"] == "EXACT_ONCE_RUN_INTERRUPTED_NO_RESUME"
+    assert supervision["state"] == "irrecoverable"
+    assert supervision["restart_policy"] == "exact_once_no_resume"
+    assert app.state.run_tasks.recover_due_runs() == []
+    assert db.list_recoverable_workflow_supervisions(
+        include_future=True,
+    ) == []
+    assert db.list_workflow_attempts("exact-once-before-restart")[-1][
+        "action"
+    ] == "exact_once_restart_fail_closed"

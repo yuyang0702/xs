@@ -692,8 +692,13 @@ def verify_short_completion_v1(
         "exact" if isinstance(checkpoint, dict)
         and terminal_review_exact
         and checkpoint.get("outcome") == "passed"
+        and checkpoint.get("manuscript_path") == "outputs/best-candidate.md"
+        and (run_root / "outputs" / "best-candidate.md").is_file()
+        and file_sha256(run_root / "outputs" / "best-candidate.md")
+        == manuscript_sha256
         and checkpoint.get("manuscript_hash") == manuscript_sha256
         and checkpoint.get("terminal_reviewed_hash") == manuscript_sha256
+        and checkpoint.get("best_attempt") == report.get("best_attempt")
         and checkpoint.get("review") == terminal_review
         and checkpoint.get("score") == terminal_review.get("score")
         and checkpoint.get("scoring_profile_id")

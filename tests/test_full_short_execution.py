@@ -196,6 +196,98 @@ def _dispatch_and_close(
     return observer
 
 
+def test_live_authority_drift_fails_before_credential_lookup_or_nonce_consumption(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    store = _store(tmp_path / "credential-boundary")
+    _authorize_offline(store, "authority-drift-before-secret")
+
+    def reject_drift() -> None:
+        raise FullShortExecutionBoundaryError("LIVE_AUTHORITY_DRIFT")
+
+    observer = FullShortDispatchLedgerObserverV1(
+        store=store, execution_id="authority-drift-before-secret",
+        policy=_policy(store), authorized_routes=_routes(),
+        egress_policy=_egress(), live_authority_recheck=reject_drift,
+    )
+    db = Database(tmp_path / "credential-boundary" / "app.db")
+    db.migrate()
+    db.save_provider(
+        provider_id="provider", name="Provider", protocol="anthropic",
+        base_url="https://unit.test/v1", auth_type="x-api-key",
+        timeout_seconds=30, extra_headers={},
+    )
+    db.save_model(
+        model_id="model-id", provider_id="provider", display_name="Model",
+        model_name="offline", context_window=None, max_output_tokens=4096,
+    )
+
+    class CountingSecrets:
+        calls = 0
+
+        def get(self, _provider_id: str) -> str:
+            self.calls += 1
+            return "never-read"
+
+    secrets = CountingSecrets()
+    registry = ProviderRegistry(db, secrets, attempt_observer=observer)
+    monkeypatch.setattr(
+        registry, "route_fingerprint", lambda _provider, _model: "9" * 64,
+    )
+
+    with pytest.raises(FullShortExecutionBoundaryError) as drift:
+        registry.resolve(
+            "provider", "model-id", role="planning", lane="primary",
+        )
+
+    assert drift.value.reason_code == "LIVE_AUTHORITY_DRIFT"
+    assert secrets.calls == 0
+    assert store._read(
+        "authority-drift-before-secret", "nonce",
+    )["state"] == "RESERVED"
+    assert store.load_ledger(
+        "authority-drift-before-secret",
+    )["attempts"] == []
+
+
+def test_live_authority_is_rechecked_again_before_nonce_consumption(
+    tmp_path: Path,
+) -> None:
+    store = _store(tmp_path / "wire-boundary")
+    _authorize_offline(store, "authority-drift-before-wire")
+    calls = 0
+
+    def drift_on_wire() -> None:
+        nonlocal calls
+        calls += 1
+        if calls == 2:
+            raise FullShortExecutionBoundaryError("LIVE_AUTHORITY_DRIFT")
+
+    observer = FullShortDispatchLedgerObserverV1(
+        store=store, execution_id="authority-drift-before-wire",
+        policy=_policy(store), authorized_routes=_routes(),
+        egress_policy=_egress(), live_authority_recheck=drift_on_wire,
+    )
+    observer.bind_route(
+        role="planning", lane="primary", provider_id="provider",
+        model_id="model-id", route_fingerprint="9" * 64,
+    )
+    observer.bind_model_request(protocol="anthropic", request=_request())
+
+    with pytest.raises(FullShortExecutionBoundaryError) as drift:
+        observer.before_http_dispatch(
+            method="POST", url="https://unit.test/v1/messages",
+            payload=_payload(),
+        )
+
+    assert drift.value.reason_code == "LIVE_AUTHORITY_DRIFT"
+    assert calls == 2
+    assert store._read(
+        "authority-drift-before-wire", "nonce",
+    )["state"] == "RESERVED"
+    assert store.load_ledger("authority-drift-before-wire")["attempts"] == []
+
+
 @pytest.mark.asyncio
 async def test_lowest_transport_seam_is_durable_and_completable(tmp_path: Path) -> None:
     store = _store(tmp_path)

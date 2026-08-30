@@ -23,7 +23,7 @@ import os
 from pathlib import Path
 import re
 import secrets
-from typing import Any, Iterator, Mapping
+from typing import Any, Callable, Iterator, Mapping
 from urllib.parse import urlsplit
 
 from novel_flywheel.domain.models import ModelRequest
@@ -1082,6 +1082,7 @@ class FullShortDispatchLedgerObserverV1:
         authorized_routes: tuple[Mapping[str, Any], ...],
         egress_policy: Mapping[str, Any], session_id: str | None = None,
         external_actions_enabled: bool = False,
+        live_authority_recheck: Callable[[], None] | None = None,
     ) -> None:
         self.store = store
         self.execution_id = execution_id
@@ -1119,6 +1120,7 @@ class FullShortDispatchLedgerObserverV1:
         self.egress_policy_sha256 = self.policy["egress_policy_sha256"]
         self.session_id = session_id or secrets.token_hex(16)
         self.external_actions_enabled = external_actions_enabled
+        self.live_authority_recheck = live_authority_recheck
         self.pending_ordinal: int | None = None
         self.bound_route: dict[str, Any] | None = None
         self.expected_provider_payload: dict[str, Any] | None = None
@@ -1138,6 +1140,8 @@ class FullShortDispatchLedgerObserverV1:
     ) -> None:
         """Bind the next route before ProviderRegistry reads a credential."""
 
+        if self.live_authority_recheck is not None:
+            self.live_authority_recheck()
         _require(self.pending_ordinal is None, "PRIOR_DISPATCH_STILL_PENDING")
         _require(self.bound_route is None, "ROUTE_ALREADY_BOUND")
         provider_hash = hashlib.sha256(provider_id.encode("utf-8")).hexdigest()
@@ -1189,6 +1193,8 @@ class FullShortDispatchLedgerObserverV1:
     def before_http_dispatch(
         self, *, method: str, url: str, payload: Mapping[str, Any],
     ) -> None:
+        if self.live_authority_recheck is not None:
+            self.live_authority_recheck()
         target = urlsplit(url)
         normalized = f"{target.scheme}://{target.hostname}:{target.port or 443}{target.path}"
         _require(method == "POST", "HTTP_METHOD_NOT_AUTHORIZED")

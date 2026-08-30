@@ -102,6 +102,7 @@ class RunTaskManager:
         if not self.db.activate_supervised_run(
             run_id=run_id, project_id=project_id, workflow=workflow,
             resume_payload={}, retry_budgets=no_retry.model_dump(),
+            restart_policy="exact_once_no_resume",
         ):
             raise ProjectRunActiveError(
                 "This project already has an active run or the exact run id is unavailable."
@@ -117,17 +118,26 @@ class RunTaskManager:
 
         asyncio.get_running_loop()
         run = self.db.get_run(run_id)
+        supervision = self.db.get_workflow_supervision(run_id)
         if (
             run_id not in self._exact_once_reservations
             or run is None
             or run.get("status") != "queued"
+            or supervision is None
+            or supervision.get("restart_policy") != "exact_once_no_resume"
             or run_id in self.tasks
         ):
             raise ValueError("Exact one-shot reservation is unavailable")
         self._exact_once_reservations.remove(run_id)
-        self._launch_activated_run(
-            run_id, operation, terminal_finalizer=terminal_finalizer,
-        )
+        try:
+            self._launch_activated_run(
+                run_id, operation, terminal_finalizer=terminal_finalizer,
+            )
+        except Exception:
+            self.fail_closed_exact_once_reservation(
+                run_id, reason_code="EXACT_ONCE_WORKER_LAUNCH_FAILED_NO_RESUME",
+            )
+            raise
         return self.db.get_run(run_id) or {"id": run_id, "status": "queued"}
 
     def fail_closed_exact_once_reservation(
@@ -141,8 +151,9 @@ class RunTaskManager:
             run is None
             or supervision is None
             or run.get("workflow") != "short-story"
-            or run.get("status") != "queued"
-            or supervision.get("state") != "queued"
+            or run.get("status") not in {"queued", "interrupted"}
+            or supervision.get("state") not in {"queued", "interrupted"}
+            or supervision.get("restart_policy") != "exact_once_no_resume"
             or supervision.get("resume_payload") != {}
             or supervision.get("retry_budgets") != {
                 "transport": 0,
@@ -166,8 +177,13 @@ class RunTaskManager:
         run = self.db.get_run(run_id)
         if run is None:
             raise LookupError("Run not found")
+        supervision = self.db.get_workflow_supervision(run_id)
+        if (
+            supervision is not None
+            and supervision.get("restart_policy") == "exact_once_no_resume"
+        ):
+            raise ValueError("Exact one-shot run cannot be resumed")
         if resume_payload is None:
-            supervision = self.db.get_workflow_supervision(run_id)
             if supervision is not None:
                 resume_payload = supervision["resume_payload"]
         resume_payload = self.db.validate_workflow_resume_payload(
@@ -560,6 +576,11 @@ class RunTaskManager:
                 continue
             run = self.db.get_run(run_id)
             if run is None:
+                continue
+            if supervision.get("restart_policy") == "exact_once_no_resume":
+                self.fail_closed_exact_once_reservation(
+                    run_id, reason_code="EXACT_ONCE_STARTUP_RECOVERY_DENIED",
+                )
                 continue
             if (
                 int(supervision.get("contract_version") or 0)
