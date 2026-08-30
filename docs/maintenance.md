@@ -2270,6 +2270,13 @@ rejection receipts normalize only this fixed vocabulary pair before checking
 the already-bound route; no other alias, route selection, or fallback is
 accepted.
 
+When a caller preselects one structured-contract lane (`primary` or
+`configured_fallback`), that selection constrains route identity but does not
+replace the contract runtime's existing two-attempt same-lane schedule. The
+stage bridge therefore repeats only the selected lane for the already-sealed
+bounded attempt count. It never introduces a different route, enables
+fallback, or expands the hard request/token caps.
+
 An actionable mixed-script Draft finding first enters the closed
 `draft_local_repair_contract`. Runtime binds every exact occurrence to one
 immutable paragraph unit and dispatches those units independently in
