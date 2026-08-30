@@ -694,7 +694,7 @@ def verify_short_completion_v1(
         and checkpoint.get("outcome") == "passed"
         and checkpoint.get("manuscript_path") == "outputs/best-candidate.md"
         and (run_root / "outputs" / "best-candidate.md").is_file()
-        and file_sha256(run_root / "outputs" / "best-candidate.md")
+        and _text_hash(run_root / "outputs" / "best-candidate.md")
         == manuscript_sha256
         and checkpoint.get("manuscript_hash") == manuscript_sha256
         and checkpoint.get("terminal_reviewed_hash") == manuscript_sha256

@@ -381,6 +381,19 @@ def test_old_review_cannot_prove_revised_formal_manuscript(tmp_path: Path) -> No
     )
 
 
+def test_checkpoint_content_binding_uses_canonical_text_across_crlf(
+    tmp_path: Path,
+) -> None:
+    fx = _fixture(tmp_path)
+    manuscript = "first line\n\nsecond line"
+    digest = hashlib.sha256(manuscript.encode("utf-8")).hexdigest()
+    path = fx["run"] / "outputs/best-candidate.md"
+    path.write_bytes(manuscript.replace("\n", "\r\n").encode("utf-8"))
+
+    assert completion_verification._text_hash(path) == digest
+    assert hashlib.sha256(path.read_bytes()).hexdigest() != digest
+
+
 def test_workflow_terminal_and_isolation_unknown_never_succeed(tmp_path: Path) -> None:
     fx = _fixture(tmp_path)
     assert _verify(fx, status="failed")["completion_goal_outcome"] == "WORKFLOW_TERMINAL"
