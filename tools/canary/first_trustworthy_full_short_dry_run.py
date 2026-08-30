@@ -456,11 +456,13 @@ class _OfflineHttpTransportFactory:
         self.call_plan: list[dict[str, Any]] = []
         self.failure: dict[str, Any] | None = None
 
-    def build(self, *, protocol: str, destination: str) -> httpx.MockTransport:
+    def build(
+        self, *, protocol: str, destination: str, bound_role: str | None = None,
+    ) -> httpx.MockTransport:
         async def respond(request: httpx.Request) -> httpx.Response:
             payload = json.loads(request.content.decode("utf-8"))
             system, user = _request_messages(payload)
-            role = _request_role(system, user)
+            role = bound_role or _request_role(system, user)
             maximum = int(
                 payload.get("max_tokens")
                 or payload.get("max_output_tokens") or 0
@@ -570,7 +572,7 @@ class _LowestHttpSeamRegistry(ProviderRegistry):
         previous = resolved.adapter.client
         resolved.adapter.client = httpx.AsyncClient(
             transport=self.transport_factory.build(
-                protocol=protocol, destination=destination,
+                protocol=protocol, destination=destination, bound_role=role,
             ), timeout=30,
         )
         self.open_clients.extend([previous, resolved.adapter.client])
