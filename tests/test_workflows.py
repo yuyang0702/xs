@@ -18054,6 +18054,7 @@ async def test_post_mutation_quality_pass_binds_exact_publication_hash(
     "checkpoint_review",
     "checkpoint_issues",
     "checkpoint_integrity",
+    "checkpoint_integrity_semantic",
 ])
 async def test_short_formal_promotion_rejects_quality_authority_drift(
     tmp_path, monkeypatch, mutation,
@@ -18117,6 +18118,14 @@ async def test_short_formal_promotion_rejects_quality_authority_drift(
     elif mutation == "checkpoint_integrity":
         checkpoint["narrative_integrity"] = {
             **checkpoint["narrative_integrity"], "sha256": "0" * 64,
+        }
+    elif mutation == "checkpoint_integrity_semantic":
+        integrity_path.write_text(json.dumps({
+            "status": "passed", "publication_sha256": "0" * 64,
+        }), encoding="utf-8")
+        checkpoint["narrative_integrity"] = {
+            **checkpoint["narrative_integrity"],
+            "sha256": hashlib.sha256(integrity_path.read_bytes()).hexdigest(),
         }
     write_quality_checkpoint(run_path, checkpoint)
 

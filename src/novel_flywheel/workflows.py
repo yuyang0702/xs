@@ -17354,12 +17354,20 @@ class WorkflowService:
                     pass
                 else:
                     try:
-                        integrity_exact = (
-                            candidate.is_file()
-                            and hashlib.sha256(candidate.read_bytes()).hexdigest()
-                            == narrative_integrity.get("sha256")
+                        integrity_bytes = candidate.read_bytes()
+                        integrity_payload = json.loads(
+                            integrity_bytes.decode("utf-8")
                         )
-                    except OSError:
+                        integrity_exact = bool(
+                            candidate.is_file()
+                            and hashlib.sha256(integrity_bytes).hexdigest()
+                            == narrative_integrity.get("sha256")
+                            and isinstance(integrity_payload, dict)
+                            and integrity_payload.get("status") == "passed"
+                            and integrity_payload.get("publication_sha256")
+                            == digest
+                        )
+                    except (OSError, UnicodeError, json.JSONDecodeError):
                         integrity_exact = False
         if not (
             report.get("status") == "passed"
