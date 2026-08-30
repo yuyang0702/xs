@@ -144,21 +144,32 @@ class _PrivateDryRunOracle:
             user.split("CURRENT_TASK_CONTRACT:\n", 1)[1].split("\n\n", 1)[0]
         )
         target = max(600, int(contract.get("target_han") or 600))
-        event_ids = [str(item) for item in contract.get("event_ids") or []]
-        beat_ids = [str(item) for item in contract.get("beat_ids") or []]
-        owned = beat_ids or event_ids or [str(contract.get("task_id") or "event")]
+        segment_match = re.search(
+            r"segment-(\d+)", str(contract.get("task_id") or ""), re.IGNORECASE,
+        )
+        segment = int(segment_match.group(1)) if segment_match else 1
         actors = ("调查员", "档案员", "见证人", "审核员", "联络人", "保管员")
         places = ("档案室", "河堤仓库", "夜班车站", "听证室", "钟楼夹层")
         actions = ("核验签章", "比对时序", "追问见证", "封存副本", "公开底账")
+        themes = (
+            "雨水沿铜窗落下，蓝线目录把调查引向封存柜。",
+            "河堤潮气改变纸张卷曲方向，搬运记录与口供发生冲突。",
+            "夜班车站只亮着白灯，错位时刻表迫使众人重排见证顺序。",
+            "听证室座次森严，公开质询让旧同盟无法掩盖账目缺口。",
+            "钟楼夹层积着多年灰尘，新鞋印把怀疑推进为有限信任。",
+            "晨光越过河面进入大厅，零散索引汇成可复核的完整底账。",
+        )
         paragraphs: list[str] = []
         turn = 0
         while len("".join(paragraphs)) < target:
-            actor = actors[turn % len(actors)]
-            partner = actors[(turn + 2) % len(actors)]
-            place = places[(turn * 3) % len(places)]
-            action = actions[(turn * 2) % len(actions)]
+            actor = actors[(segment + turn) % len(actors)]
+            partner = actors[(segment + turn + 2) % len(actors)]
+            place = places[(segment * 3 + turn) % len(places)]
+            action = actions[(segment + turn * 2) % len(actions)]
             paragraphs.append(
-                f"{place}里的光线随第{turn + 1}次核查改变。{actor}围绕当前正式事件{action}，"
+                themes[(segment - 1) % len(themes)]
+                + f"第{segment}段第{turn + 1}次核查发生在{place}。"
+                f"{actor}围绕当前正式事件{action}，"
                 f"在{partner}提出反证后重新排列时间、证物与知情边界；行动得到可复核结果，"
                 "人物关系由戒备推进为有限合作，当前因果状态完整交给下一事件。"
             )
