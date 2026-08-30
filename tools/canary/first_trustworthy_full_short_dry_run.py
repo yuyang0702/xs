@@ -881,6 +881,15 @@ async def _run(args: argparse.Namespace) -> dict[str, Any]:
                     "failure_class": (item.get("metadata") or {}).get(
                         "failure_class"
                     ),
+                    "failure_code": (item.get("metadata") or {}).get(
+                        "failure_code"
+                    ),
+                    "failure_family": (item.get("metadata") or {}).get(
+                        "failure_family"
+                    ),
+                    "recovery_action": (item.get("metadata") or {}).get(
+                        "recovery_action"
+                    ),
                 }
                 for item in failure_db.list_run_events(EXECUTION_ID)[-15:]
             ]
