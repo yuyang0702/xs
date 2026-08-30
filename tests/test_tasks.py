@@ -140,6 +140,87 @@ async def test_exact_one_shot_restart_fails_orphaned_reservation_closed(
 
 
 @pytest.mark.asyncio
+async def test_legacy_exact_once_rows_are_backfilled_before_startup_recovery(
+    tmp_path,
+) -> None:
+    db, _manager = make_manager(tmp_path)
+    exact_ids = {
+        "legacy-exact-queued": "queued",
+        "legacy-exact-running": "running",
+        "legacy-exact-interrupted": "interrupted",
+    }
+    for index, (run_id, state) in enumerate(exact_ids.items(), 1):
+        project_id = f"legacy-exact-book-{index}"
+        db.save_project(
+            project_id, project_id, "short", tmp_path / project_id,
+        )
+        manager = RunTaskManager(db)
+        manager.reserve_exact_once(run_id, project_id, "short-story")
+        if state == "running":
+            assert db.enter_supervised_run_running(run_id) is True
+        elif state == "interrupted":
+            with db.connect() as connection:
+                connection.execute(
+                    "UPDATE runs SET status='interrupted' WHERE id=?", (run_id,),
+                )
+                connection.execute(
+                    "UPDATE workflow_supervision SET state='interrupted' "
+                    "WHERE run_id=?", (run_id,),
+                )
+
+    normal_id = "legacy-normal-interrupted"
+    normal_project = "legacy-normal-book"
+    db.save_project(
+        normal_project, normal_project, "short", tmp_path / normal_project,
+    )
+    assert db.activate_supervised_run(
+        run_id=normal_id, project_id=normal_project, workflow="short-story",
+        resume_payload={}, retry_budgets={
+            "transport": 1, "protocol": 1, "semantic": 1,
+            "quality": 1, "provider_wait": 1,
+        },
+    ) is True
+    with db.connect() as connection:
+        connection.execute(
+            "UPDATE runs SET status='interrupted' WHERE id=?", (normal_id,),
+        )
+        connection.execute(
+            "UPDATE workflow_supervision SET state='interrupted' WHERE run_id=?",
+            (normal_id,),
+        )
+        connection.execute(
+            "ALTER TABLE workflow_supervision DROP COLUMN restart_policy"
+        )
+
+    db.migrate()
+
+    for run_id in exact_ids:
+        supervision = db.get_workflow_supervision(run_id)
+        assert supervision["restart_policy"] == "exact_once_no_resume"
+        with pytest.raises(ValueError, match="cannot be resumed"):
+            RunTaskManager(db).resume(
+                run_id, lambda _run_id: None, allow_interrupted=True,
+            )
+    assert db.get_workflow_supervision(normal_id)["restart_policy"] == (
+        "recoverable"
+    )
+
+    assert db.interrupt_active_runs() == len(exact_ids)
+    for run_id in exact_ids:
+        assert db.get_run(run_id)["status"] == "failed"
+        assert db.get_workflow_supervision(run_id)["state"] == "irrecoverable"
+        assert db.list_workflow_attempts(run_id)[-1]["action"] == (
+            "exact_once_restart_fail_closed"
+        )
+    assert db.get_run(normal_id)["status"] == "interrupted"
+    assert [
+        item["run_id"] for item in db.list_recoverable_workflow_supervisions(
+            include_future=True,
+        )
+    ] == [normal_id]
+
+
+@pytest.mark.asyncio
 async def test_exact_one_shot_reserves_writer_before_external_approval(
     tmp_path,
 ) -> None:

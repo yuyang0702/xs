@@ -796,6 +796,47 @@ class Database:
                     "ALTER TABLE workflow_supervision ADD COLUMN "
                     "restart_policy TEXT NOT NULL DEFAULT 'recoverable'"
                 )
+            # The immediately preceding exact-one-shot implementation already
+            # persisted its durable contract, but older databases lack the
+            # explicit restart-policy column.  Empty short-story resume state
+            # plus the exact all-zero retry envelope is unique to that public
+            # boundary; ordinary starts use RetryBudgets defaults.  Backfill
+            # it idempotently before startup interruption can make it resumable.
+            exact_no_retry = {
+                "transport": 0,
+                "protocol": 0,
+                "semantic": 0,
+                "quality": 0,
+                "provider_wait": 0,
+            }
+            legacy_rows = connection.execute(
+                "SELECT r.id,r.workflow,s.resume_payload_json,"
+                "s.retry_budgets_json FROM runs r "
+                "JOIN workflow_supervision s ON s.run_id=r.id "
+                "WHERE s.restart_policy='recoverable'"
+            ).fetchall()
+            for row in legacy_rows:
+                try:
+                    resume_payload = json.loads(
+                        row["resume_payload_json"] or "{}"
+                    )
+                    retry_budgets = json.loads(
+                        row["retry_budgets_json"] or "{}"
+                    )
+                except (TypeError, json.JSONDecodeError):
+                    continue
+                if (
+                    row["workflow"] == "short-story"
+                    and resume_payload == {}
+                    and retry_budgets == exact_no_retry
+                ):
+                    connection.execute(
+                        "UPDATE workflow_supervision SET "
+                        "restart_policy='exact_once_no_resume',"
+                        "updated_at=datetime('now') WHERE run_id=? "
+                        "AND restart_policy='recoverable'",
+                        (row["id"],),
+                    )
             connection.execute(
                 "UPDATE schema_version SET version=4 WHERE version<4"
             )
