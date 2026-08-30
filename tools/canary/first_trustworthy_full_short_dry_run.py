@@ -581,6 +581,35 @@ class _OfflineHttpTransportFactory:
         return httpx.MockTransport(respond)
 
 
+class _DiagnosticObserverProxy:
+    """Forward the real observer while retaining only typed failure metadata."""
+
+    def __init__(
+        self, target: Any, factory: _OfflineHttpTransportFactory,
+    ) -> None:
+        self._target = target
+        self._factory = factory
+
+    def __getattr__(self, name: str) -> Any:
+        attribute = getattr(self._target, name)
+        if not callable(attribute):
+            return attribute
+
+        def call(*args: Any, **kwargs: Any) -> Any:
+            try:
+                return attribute(*args, **kwargs)
+            except Exception as exc:
+                self._factory.failure = {
+                    "boundary": f"attempt_observer.{name}",
+                    "exception_type": type(exc).__name__,
+                    "reason_code": getattr(exc, "reason_code", None),
+                    "safe_message": str(exc)[:240],
+                }
+                raise
+
+        return call
+
+
 class _LowestHttpSeamRegistry(ProviderRegistry):
     """Real resolver/adapters with only their HTTP client transport replaced."""
 
@@ -589,10 +618,15 @@ class _LowestHttpSeamRegistry(ProviderRegistry):
         http_transport_factory: _OfflineHttpTransportFactory | None = None,
         **kwargs: Any,
     ) -> None:
-        super().__init__(*args, **kwargs)
         if http_transport_factory is None:
             raise ValueError("offline HTTP transport factory is required")
         self.transport_factory = http_transport_factory
+        observer = kwargs.get("attempt_observer")
+        if observer is not None:
+            kwargs["attempt_observer"] = _DiagnosticObserverProxy(
+                observer, http_transport_factory,
+            )
+        super().__init__(*args, **kwargs)
         self.open_clients: list[httpx.AsyncClient] = []
 
     @property
@@ -610,9 +644,18 @@ class _LowestHttpSeamRegistry(ProviderRegistry):
         provider = self.db.get_provider(provider_id) or {}
         protocol = str(provider.get("protocol") or "")
         destination = str(provider.get("base_url") or "").rstrip("/")
-        resolved = super().resolve(
-            provider_id, model_id, role=role, lane=lane,
-        )
+        try:
+            resolved = super().resolve(
+                provider_id, model_id, role=role, lane=lane,
+            )
+        except Exception as exc:
+            self.transport_factory.failure = {
+                "boundary": "provider_registry.resolve",
+                "exception_type": type(exc).__name__,
+                "reason_code": getattr(exc, "reason_code", None),
+                "safe_message": str(exc)[:240],
+            }
+            raise
         previous = resolved.adapter.client
         resolved.adapter.client = httpx.AsyncClient(
             transport=self.transport_factory.build(
