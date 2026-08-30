@@ -306,6 +306,36 @@ def test_live_authority_is_rechecked_again_before_nonce_consumption(
     assert store.load_ledger("authority-drift-before-wire")["attempts"] == []
 
 
+def test_exact_pre_dispatch_route_rebind_is_idempotent_but_drift_fails(
+    tmp_path: Path,
+) -> None:
+    store = _store(tmp_path)
+    _authorize_offline(store, "pre-dispatch-route-rebind")
+    observer = FullShortDispatchLedgerObserverV1(
+        store=store, execution_id="pre-dispatch-route-rebind",
+        policy=_policy(store), authorized_routes=_routes(),
+        egress_policy=_egress(),
+    )
+    observer.bind_route(
+        role="planning", lane="primary", provider_id="provider",
+        model_id="model-id", route_fingerprint="9" * 64,
+    )
+    observer.bind_route(
+        role="planning", lane="primary", provider_id="provider",
+        model_id="model-id", route_fingerprint="9" * 64,
+    )
+    assert observer.pending_ordinal is None
+    assert observer.expected_provider_payload is None
+
+    with pytest.raises(FullShortExecutionBoundaryError) as drift:
+        observer.bind_route(
+            role="planning", lane="configured_fallback",
+            provider_id="provider", model_id="model-id",
+            route_fingerprint="9" * 64,
+        )
+    assert drift.value.reason_code == "ROUTE_BINDING_DRIFT"
+
+
 @pytest.mark.asyncio
 async def test_lowest_transport_seam_is_durable_and_completable(tmp_path: Path) -> None:
     store = _store(tmp_path)

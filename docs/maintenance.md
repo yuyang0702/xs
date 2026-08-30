@@ -2324,6 +2324,12 @@ physical dispatches against request/HTTP/network/token caps while separately
 requiring the exact expected count of `LOCAL_STAGE_COMPLETE` receipts and the
 full required-role matrix.
 
+An input-capacity split may resolve the same exact route before it recursively
+enters its first child packet. That pre-dispatch rebind is idempotent only while
+no model request or egress intent has been bound and no dispatch is pending;
+any provider, model, lane, fingerprint, destination, or role drift still fails
+before credentials or nonce consumption.
+
 `tools/canary/first_trustworthy_full_short_runner.py` is the sole dedicated
 entry for this boundary. Its default preflight mode cannot construct a secret
 store or Provider client. Real execution additionally requires `--execute`

@@ -1152,7 +1152,6 @@ class FullShortDispatchLedgerObserverV1:
         if self.live_authority_recheck is not None:
             self.live_authority_recheck()
         _require(self.pending_ordinal is None, "PRIOR_DISPATCH_STILL_PENDING")
-        _require(self.bound_route is None, "ROUTE_ALREADY_BOUND")
         provider_hash = hashlib.sha256(provider_id.encode("utf-8")).hexdigest()
         model_hash = hashlib.sha256(model_id.encode("utf-8")).hexdigest()
         matches = [item for item in self.authorized_routes if (
@@ -1171,6 +1170,17 @@ class FullShortDispatchLedgerObserverV1:
                 "model_name", "protocol", "route_fingerprint", "destination",
             )},
         )
+        if self.bound_route is not None:
+            _require(
+                self.expected_provider_payload is None
+                and self.egress_intent_sha256 is None,
+                "ROUTE_ALREADY_BOUND",
+            )
+            _require(
+                self.bound_route == route,
+                "PRE_DISPATCH_ROUTE_REBIND_DRIFT",
+            )
+            return
         self.bound_route = route
 
     def bind_model_request(
