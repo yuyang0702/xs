@@ -1176,11 +1176,10 @@ class FullShortDispatchLedgerObserverV1:
                 and self.egress_intent_sha256 is None,
                 "ROUTE_ALREADY_BOUND",
             )
-            _require(
-                self.bound_route == route,
-                "PRE_DISPATCH_ROUTE_REBIND_DRIFT",
-            )
-            return
+            # Capacity preflight may resolve more than one already-authorized
+            # lane before constructing any model request.  The latest exact
+            # manifest member becomes the candidate; wire binding below still
+            # makes the eventual dispatch lane/destination immutable.
         self.bound_route = route
 
     def bind_model_request(
