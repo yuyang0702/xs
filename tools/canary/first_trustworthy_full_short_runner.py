@@ -790,31 +790,38 @@ async def execute_full_short_control_plane(
         closure_state["terminal"] = terminal
         if terminal.get("completion_goal_outcome") != COMPLETION_GOAL:
             raise RuntimeError("FULL_SHORT_TERMINAL_VERIFICATION_NOT_EXACT")
-        elapsed_seconds = _completion_elapsed_recheck(policy, ledger)
-        manuscript = project_root / "manuscript" / "story.md"
-        receipt = build_full_short_completion_receipt_v1(
-            execution_id=execution_id, policy=policy,
-            permission_sha256=permission["permission_sha256"],
-            signed_approval_sha256=approval["signed_approval_sha256"],
-            nonce_sha256=nonce["nonce_sha256"], ledger=ledger,
-            final_bindings={
-                "manuscript_sha256": _sha256(manuscript),
-                "chapter_sha256": _sha256(
-                    project_root / "chapters" / "chapter-01.md"
-                ),
-                "canon_sha256": str(live_authority["canon_sha256"]),
-                "story_state_sha256": str(
-                    live_authority["story_state_sha256"]
-                ),
-                "quality_checkpoint_sha256": _sha256(
-                    run_root / "outputs" / "quality-checkpoint.json"
-                ),
-                "terminal_verification_sha256": str(
-                    terminal["verification_receipt_sha256"]
-                ),
-            },
-            terminal_verification=terminal,
-        )
+        try:
+            elapsed_seconds = _completion_elapsed_recheck(policy, ledger)
+            manuscript = project_root / "manuscript" / "story.md"
+            receipt = build_full_short_completion_receipt_v1(
+                execution_id=execution_id, policy=policy,
+                permission_sha256=permission["permission_sha256"],
+                signed_approval_sha256=approval["signed_approval_sha256"],
+                nonce_sha256=nonce["nonce_sha256"], ledger=ledger,
+                final_bindings={
+                    "manuscript_sha256": _sha256(manuscript),
+                    "chapter_sha256": _sha256(
+                        project_root / "chapters" / "chapter-01.md"
+                    ),
+                    "canon_sha256": str(live_authority["canon_sha256"]),
+                    "story_state_sha256": str(
+                        live_authority["story_state_sha256"]
+                    ),
+                    "quality_checkpoint_sha256": _sha256(
+                        run_root / "outputs" / "quality-checkpoint.json"
+                    ),
+                    "terminal_verification_sha256": str(
+                        terminal["verification_receipt_sha256"]
+                    ),
+                },
+                terminal_verification=terminal,
+            )
+        except Exception as exc:
+            closure_state["terminal_failure"] = {
+                "exception_type": type(exc).__name__,
+                "safe_code": str(exc)[:240],
+            }
+            raise
         closure_state.update({
             "terminal": terminal, "ledger": ledger,
             "elapsed_seconds": elapsed_seconds,
@@ -874,6 +881,7 @@ async def execute_full_short_control_plane(
                 terminal.get("final_checkpoint", {}).get("binding_status")
                 if isinstance(terminal, dict) else None
             ),
+            "terminal_failure": closure_state.get("terminal_failure"),
         }
         raise RuntimeError(
             "FULL_SHORT_SUPERVISED_RUN_NOT_COMPLETED:"
