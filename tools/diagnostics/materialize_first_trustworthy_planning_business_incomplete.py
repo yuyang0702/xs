@@ -39,7 +39,10 @@ def _write_json(path: Path, value: Any) -> None:
     )
 
 
-def _junit(path: Path, *, command: str, classification: str) -> dict[str, Any]:
+def _junit(
+    path: Path, *, command: str, classification: str,
+    repo: Path, head: str,
+) -> dict[str, Any]:
     root = ET.fromstring(path.read_bytes())
     if root.tag == "testsuite":
         suites = [root]
@@ -49,22 +52,42 @@ def _junit(path: Path, *, command: str, classification: str) -> dict[str, Any]:
         raise ValueError("JUnit root must be testsuite or testsuites")
     if not suites:
         raise ValueError("JUnit receipt contains no test suites")
+    counters: list[dict[str, int]] = []
+    for suite in suites:
+        try:
+            current = {
+                key: int(suite.attrib.get(key, 0))
+                for key in ("tests", "failures", "errors", "skipped")
+            }
+        except (TypeError, ValueError) as exc:
+            raise ValueError("JUnit counters must be integers") from exc
+        if any(value < 0 for value in current.values()):
+            raise ValueError("JUnit counters must be nonnegative")
+        if (
+            current["failures"] + current["errors"] + current["skipped"]
+            > current["tests"]
+        ):
+            raise ValueError("JUnit result counters exceed test count")
+        counters.append(current)
+    commit_timestamp = int(_git(repo, "show", "-s", "--format=%ct", head))
+    if path.stat().st_mtime < commit_timestamp:
+        raise ValueError("JUnit receipt predates the bound source HEAD")
     result = {
         "schema": "OfflinePytestReceiptV1",
         "version": 1,
         "command": command,
         "classification": classification,
-        "tests": sum(int(item.attrib.get("tests", 0)) for item in suites),
+        "source_head": head,
+        "head_commit_timestamp": commit_timestamp,
+        "junit_mtime": round(path.stat().st_mtime, 6),
+        "tests": sum(item["tests"] for item in counters),
         "passed": sum(
-            int(item.attrib.get("tests", 0))
-            - int(item.attrib.get("failures", 0))
-            - int(item.attrib.get("errors", 0))
-            - int(item.attrib.get("skipped", 0))
-            for item in suites
+            item["tests"] - item["failures"] - item["errors"]
+            - item["skipped"] for item in counters
         ),
-        "failures": sum(int(item.attrib.get("failures", 0)) for item in suites),
-        "errors": sum(int(item.attrib.get("errors", 0)) for item in suites),
-        "skipped": sum(int(item.attrib.get("skipped", 0)) for item in suites),
+        "failures": sum(item["failures"] for item in counters),
+        "errors": sum(item["errors"] for item in counters),
+        "skipped": sum(item["skipped"] for item in counters),
         "elapsed_seconds": round(
             sum(float(item.attrib.get("time", 0)) for item in suites), 3
         ),
@@ -539,17 +562,18 @@ def main() -> int:
     })
     _write_json(report / "focused-test-receipt-v1.json", _junit(
         args.focused, command="pytest focused Planning/Full Short recovery cluster",
-        classification="PASS",
+        classification="PASS", repo=repo, head=head,
     ))
     _write_json(report / "offline-production-length-receipt-v1.json", _junit(
         args.production_length,
         command="pytest test_short_ir_first_production_length_matrix_reaches_formal_manuscript",
-        classification="PASS_13K_20K_30K",
+        classification="PASS_13K_20K_30K", repo=repo, head=head,
     ))
     related = _junit(
         args.related_rerun,
         command="pytest rerun of all related-cluster failures after scope correction",
         classification="MIXED_WITH_SEVEN_PREEXISTING_BASELINE_FAILURES",
+        repo=repo, head=head,
     )
     related["baseline_failure_classification"] = [
         "incremental/final-review fake-stage tests do not persist the authority-bound accepted artifact required since pre-task commit d6fa710",
@@ -558,7 +582,10 @@ def main() -> int:
     ]
     related["task_owned_regression_count"] = 0
     _write_json(report / "related-test-receipt-v1.json", related)
-    full = _junit(args.full_suite, command="pytest -q", classification="FULL_OFFLINE_SUITE")
+    full = _junit(
+        args.full_suite, command="pytest -q",
+        classification="FULL_OFFLINE_SUITE", repo=repo, head=head,
+    )
     full["new_owning_source_regression_count"] = 0
     full["historical_failures_are_not_overridden"] = True
     _write_json(report / "full-suite-receipt-v1.json", full)

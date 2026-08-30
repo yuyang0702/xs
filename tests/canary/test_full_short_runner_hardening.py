@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import hashlib
+import os
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -236,19 +237,50 @@ def test_replay_evidence_validation_rejects_stale_or_malformed_bindings(
         "<not-junit/>",
         "<testsuites></testsuites>",
         '<testsuite tests="0" failures="0" errors="0" skipped="0"/>',
+        '<testsuite tests="-1" failures="0" errors="0" skipped="0"/>',
+        '<testsuite tests="1" failures="0" errors="0" skipped="2"/>',
     ],
 )
 def test_evidence_materializer_rejects_empty_or_non_junit_pass_receipts(
     tmp_path: Path, xml: str,
 ) -> None:
     from tools.diagnostics.materialize_first_trustworthy_planning_business_incomplete import (
+        _git,
         _junit,
     )
 
     receipt = tmp_path / "receipt.xml"
     receipt.write_text(xml, encoding="utf-8")
     with pytest.raises(ValueError):
-        _junit(receipt, command="pytest", classification="PASS")
+        _junit(
+            receipt, command="pytest", classification="PASS",
+            repo=Path.cwd(), head=_git(Path.cwd(), "rev-parse", "HEAD"),
+        )
+
+
+def test_evidence_materializer_rejects_junit_older_than_bound_head(
+    tmp_path: Path,
+) -> None:
+    from tools.diagnostics.materialize_first_trustworthy_planning_business_incomplete import (
+        _git,
+        _junit,
+    )
+
+    repo = Path.cwd()
+    head = _git(repo, "rev-parse", "HEAD")
+    commit_timestamp = int(_git(repo, "show", "-s", "--format=%ct", head))
+    receipt = tmp_path / "stale.xml"
+    receipt.write_text(
+        '<testsuite tests="1" failures="0" errors="0" skipped="0"/>',
+        encoding="utf-8",
+    )
+    os.utime(receipt, (commit_timestamp - 1, commit_timestamp - 1))
+
+    with pytest.raises(ValueError, match="predates"):
+        _junit(
+            receipt, command="pytest", classification="PASS",
+            repo=repo, head=head,
+        )
 
 
 def test_real_runner_fail_closes_orphaned_and_prelaunch_reservations() -> None:
