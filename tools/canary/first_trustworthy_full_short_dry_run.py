@@ -864,6 +864,26 @@ async def _run(args: argparse.Namespace) -> dict[str, Any]:
                         for item in (ledger.get("attempts") or [])[-5:]
                     ],
                 }
+            failure_db = Database(execution_data / "app.db")
+            run_row = failure_db.get_run(EXECUTION_ID) or {}
+            event_tail = [
+                {
+                    "severity": item.get("severity"),
+                    "event_type": item.get("event_type"),
+                    "stage": item.get("stage"),
+                    "message": str(item.get("message") or "")[:240],
+                    "metadata_keys": sorted(
+                        str(key) for key in (item.get("metadata") or {})
+                    ),
+                    "error_type": (item.get("metadata") or {}).get(
+                        "error_type"
+                    ),
+                    "failure_class": (item.get("metadata") or {}).get(
+                        "failure_class"
+                    ),
+                }
+                for item in failure_db.list_run_events(EXECUTION_ID)[-15:]
+            ]
             raise RuntimeError(
                 "FULL_SHORT_DRY_RUN_EXECUTION_FAILED:"
                 + json.dumps({
@@ -873,6 +893,11 @@ async def _run(args: argparse.Namespace) -> dict[str, Any]:
                     "observed_call_count": len(transport.call_plan),
                     "observed_call_tail": transport.call_plan[-5:],
                     "ledger": ledger_state,
+                    "run_state": {
+                        key: run_row.get(key)
+                        for key in ("status", "current_stage", "error")
+                    },
+                    "run_event_tail": event_tail,
                 }, ensure_ascii=True, sort_keys=True)
             ) from exc
         observed_plan = execution["call_plan"]
