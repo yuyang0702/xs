@@ -313,6 +313,46 @@ class _PrivateDryRunOracle:
             "covered_event_ids": owned,
         }, ensure_ascii=False)
 
+    @staticmethod
+    def _whole_draft_receipt(user: str) -> str:
+        if "WHOLE AUTHORITY INDEX: " in user:
+            source = user.split("WHOLE AUTHORITY INDEX: ", 1)[1]
+            index, _end = json.JSONDecoder().raw_decode(source)
+            authority = str(index["authority_sha256"])
+            draft_sha = str(index["draft_sha256"])
+            segment_hashes = list(index["segment_sha256"])
+            event_ids = list(index["event_ids"])
+        else:
+            authority = re.search(
+                r"AUTHORITY SHA256: ([0-9a-f]{64})", user,
+            ).group(1)
+            draft_sha = re.search(
+                r"DRAFT SHA256: ([0-9a-f]{64})", user,
+            ).group(1)
+            segment_hashes = json.loads(re.search(
+                r"SEGMENT SHA256: (\[[^\n]+\])", user,
+            ).group(1))
+            event_ids = json.loads(re.search(
+                r"EXPECTED EVENT IDS: (\[[^\n]+\])", user,
+            ).group(1))
+        opening = user.split("OPENING EXCERPT: ", 1)[1].split(
+            "\nENDING EXCERPT:", 1,
+        )[0]
+        ending = user.split("ENDING EXCERPT: ", 1)[1]
+        return json.dumps({
+            "authority_sha256": authority, "draft_sha256": draft_sha,
+            "segment_sha256": segment_hashes, "event_ids": event_ids,
+            "missing_event_ids": [], "duplicate_event_ids": [],
+            "out_of_order_event_ids": [], "causal_order_valid": True,
+            "continuity_valid": True, "ending_valid": True,
+            "commitments_valid": True,
+            "evidence": [
+                {"kind": "opening", "excerpt": opening[:20]},
+                {"kind": "ending", "excerpt": ending[-20:]},
+            ],
+            "summary": "整篇正文保持事件顺序、连续性、承诺兑现与确认结局。",
+        }, ensure_ascii=False)
+
     async def complete(
         self, role: str, system: str, user: str,
         max_output_tokens: int | None = None,
@@ -326,6 +366,8 @@ class _PrivateDryRunOracle:
             "SHORT_EXECUTION_MANIFEST_FRAGMENT_SEMANTIC_VALIDATION_V4",
         )):
             return self._result(role, _execution_manifest_receipt(user))
+        if "DRAFT_WHOLE_SEMANTIC_VALIDATION" in user:
+            return self._result(role, self._whole_draft_receipt(user))
         if "SHORT_CAUSAL_CHAIN_STANDALONE" in user:
             return self._result(role, self._causal_chain(user))
         if "SHORT_CAUSAL_CHAIN_EVENT_PACKET_V2" in user:
