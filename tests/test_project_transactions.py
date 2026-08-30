@@ -352,6 +352,14 @@ def test_project_mutation_defers_terminal_state_to_hash_bound_business_gate(
         finalize_project_mutation(projects, run_id)
     receipt.write_text('{"status":"passed"}\n', encoding="utf-8")
 
+    cleanup_only = finalize_project_mutation(
+        projects, run_id, finalize_run=False,
+    )
+
+    assert cleanup_only.status == "committed"
+    assert db.get_run(run_id)["status"] == "running"
+    assert not (project.path / "snapshots" / run_id).exists()
+
     finalized = finalize_project_mutation(projects, run_id)
 
     assert finalized.status == "committed"

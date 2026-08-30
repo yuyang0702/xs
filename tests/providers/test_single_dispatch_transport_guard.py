@@ -42,6 +42,58 @@ async def _provider(handler, *, guarded: bool) -> HttpProvider:
     return provider
 
 
+class _RecordingBoundaryObserver:
+    def __init__(self) -> None:
+        self.events: list[str] = []
+
+    def before_http_dispatch(self, **_kwargs) -> None:
+        self.events.append("dispatch")
+
+    def before_http_post(self) -> None:
+        self.events.append("post")
+
+    def before_network_request(self) -> None:
+        self.events.append("network")
+
+    def after_http_response(self, *, status_code: int) -> None:
+        self.events.append(f"response:{status_code}")
+
+    def after_http_failure(self, *, failure_kind: str) -> None:
+        self.events.append(f"failure:{failure_kind}")
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "response,terminal",
+    [
+        (lambda request: httpx.Response(500, text="failed", request=request),
+         "failure:HTTPStatusError"),
+        (lambda request: httpx.Response(
+            200, content=b"not-json",
+            headers={"content-type": "application/json"}, request=request,
+        ), "failure:ProviderResponseError"),
+    ],
+)
+async def test_response_observer_never_marks_http_or_protocol_failure_successful(
+    response, terminal: str,
+) -> None:
+    observer = _RecordingBoundaryObserver()
+    provider = HttpProvider(
+        "https://provider.example.invalid", "test-only-secret",
+        transport_policy=SingleDispatchTransportPolicyV1.phase_b(),
+        attempt_observer=observer,
+    )
+    await provider.client.aclose()
+    provider.client = httpx.AsyncClient(transport=httpx.MockTransport(response))
+    try:
+        with pytest.raises((httpx.HTTPStatusError, ProviderResponseError)):
+            await provider.post("messages", payload={"max_tokens": 10}, headers={})
+    finally:
+        await provider.client.aclose()
+
+    assert observer.events == ["dispatch", "post", "network", terminal]
+
+
 @pytest.mark.asyncio
 async def test_guarded_success_records_exactly_one_http_attempt() -> None:
     attempts = 0

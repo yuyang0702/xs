@@ -6,7 +6,7 @@ import pytest
 
 from novel_flywheel.db import Database
 from novel_flywheel.recovery_engine import FailureClass
-from novel_flywheel.tasks import RunTaskManager
+from novel_flywheel.tasks import ProjectRunActiveError, RunTaskManager
 
 
 def make_manager(tmp_path):
@@ -66,6 +66,162 @@ async def test_task_manager_returns_immediately_and_records_completion(tmp_path)
     assert [item["event_type"] for item in db.list_run_events(run["id"])] == [
         "queued", "started", "completed",
     ]
+
+
+@pytest.mark.asyncio
+async def test_exact_one_shot_start_binds_identity_and_has_zero_retry_budget(
+    tmp_path,
+) -> None:
+    db, manager = make_manager(tmp_path)
+
+    async def operation(run_id):
+        assert run_id == "authorized-full-short-v1"
+
+    run = manager.start_exact_once(
+        "authorized-full-short-v1", "book", "short-story", operation,
+    )
+    await manager.wait(run["id"])
+
+    assert db.get_run(run["id"])["status"] == "completed"
+    supervision = db.get_workflow_supervision(run["id"])
+    assert supervision["retry_budgets"] == {
+        "transport": 0, "protocol": 0, "semantic": 0,
+        "quality": 0, "provider_wait": 0,
+    }
+    with pytest.raises(ValueError, match="identity is unavailable"):
+        manager.start_exact_once(
+            "authorized-full-short-v1", "book", "short-story", operation,
+        )
+
+
+@pytest.mark.asyncio
+async def test_exact_one_shot_reserves_writer_before_external_approval(
+    tmp_path,
+) -> None:
+    db, manager = make_manager(tmp_path)
+    operation_calls = 0
+    approval_observations = []
+
+    reserved = manager.reserve_exact_once(
+        "reserved-before-approval", "book", "short-story",
+    )
+    approval_observations.append({
+        "status": db.get_run(reserved["id"])["status"],
+        "writer_active": db.has_active_runs("book"),
+        "task_launched": reserved["id"] in manager.tasks,
+    })
+
+    async def operation(run_id):
+        nonlocal operation_calls
+        operation_calls += 1
+        return {"run_id": run_id}
+
+    with pytest.raises(ProjectRunActiveError, match="active run"):
+        manager.start("book", "short-story", operation)
+    manager.launch_reserved_exact_once(reserved["id"], operation)
+    with pytest.raises(ValueError, match="reservation is unavailable"):
+        manager.launch_reserved_exact_once(reserved["id"], operation)
+    await manager.wait(reserved["id"])
+
+    assert approval_observations == [{
+        "status": "queued", "writer_active": True, "task_launched": False,
+    }]
+    assert operation_calls == 1
+    assert db.get_run(reserved["id"])["status"] == "completed"
+    assert db.get_workflow_supervision(reserved["id"])["retry_budgets"] == {
+        "transport": 0, "protocol": 0, "semantic": 0,
+        "quality": 0, "provider_wait": 0,
+    }
+
+
+@pytest.mark.asyncio
+async def test_exact_one_shot_defers_completion_until_terminal_finalizer_succeeds(
+    tmp_path,
+) -> None:
+    db, manager = make_manager(tmp_path)
+    finalizer_entered = asyncio.Event()
+    release_finalizer = asyncio.Event()
+    operation_calls = 0
+    finalizer_calls = 0
+
+    async def operation(run_id):
+        nonlocal operation_calls
+        operation_calls += 1
+        return {"run_id": run_id, "artifact": "validated"}
+
+    async def finalizer(run_id, result):
+        nonlocal finalizer_calls
+        finalizer_calls += 1
+        assert result == {"run_id": run_id, "artifact": "validated"}
+        assert db.get_run(run_id)["status"] == "running"
+        assert db.has_active_runs("book") is True
+        finalizer_entered.set()
+        await release_finalizer.wait()
+
+    manager.reserve_exact_once(
+        "deferred-terminal-success", "book", "short-story",
+    )
+    manager.launch_reserved_exact_once(
+        "deferred-terminal-success", operation,
+        terminal_finalizer=finalizer,
+    )
+    await finalizer_entered.wait()
+
+    assert db.get_run("deferred-terminal-success")["status"] == "running"
+    assert "completed" not in {
+        item["event_type"]
+        for item in db.list_run_events("deferred-terminal-success")
+    }
+    with pytest.raises(ProjectRunActiveError, match="active run"):
+        manager.start("book", "short-story", operation)
+
+    release_finalizer.set()
+    await manager.wait("deferred-terminal-success")
+    assert db.get_run("deferred-terminal-success")["status"] == "completed"
+    assert operation_calls == 1
+    assert finalizer_calls == 1
+
+
+@pytest.mark.asyncio
+async def test_exact_one_shot_terminal_finalizer_failure_is_terminal_without_retry(
+    tmp_path,
+) -> None:
+    db, manager = make_manager(tmp_path)
+    operation_calls = 0
+    finalizer_calls = 0
+
+    async def operation(run_id):
+        nonlocal operation_calls
+        operation_calls += 1
+        return {"run_id": run_id}
+
+    def finalizer(run_id, _result):
+        nonlocal finalizer_calls
+        finalizer_calls += 1
+        assert db.get_run(run_id)["status"] == "running"
+        raise RuntimeError("terminal completion closure rejected")
+
+    manager.reserve_exact_once(
+        "deferred-terminal-failure", "book", "short-story",
+    )
+    manager.launch_reserved_exact_once(
+        "deferred-terminal-failure", operation,
+        terminal_finalizer=finalizer,
+    )
+    await manager.wait("deferred-terminal-failure")
+
+    run = db.get_run("deferred-terminal-failure")
+    supervision = db.get_workflow_supervision("deferred-terminal-failure")
+    assert run["status"] == "failed"
+    assert supervision["state"] == "irrecoverable"
+    assert supervision["used_budgets"] == {}
+    assert operation_calls == 1
+    assert finalizer_calls == 1
+    assert "completed" not in {
+        item["event_type"]
+        for item in db.list_run_events("deferred-terminal-failure")
+    }
+    assert db.has_active_runs("book") is False
 
 
 @pytest.mark.asyncio

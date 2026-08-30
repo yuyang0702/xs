@@ -1,6 +1,7 @@
 import asyncio
 import hashlib
 import hmac
+import inspect
 import json
 import math
 import os
@@ -1346,7 +1347,7 @@ _SHORT_CHECKPOINT_RESTORE_LOCK = threading.Lock()
 
 class WorkflowService:
     SHORT_SEGMENT_SEPARATOR = "\n\n<!-- NOVEL_FLYWHEEL_SEGMENT -->\n\n"
-    SHORT_CHECKPOINT_VERSION = 4
+    SHORT_CHECKPOINT_VERSION = 5
     SHORT_PLAN_FIELD_ALIASES = PLAN_FIELD_ALIASES
     INITIAL_POLISH_INPUT_CAP = 120_000
     STRUCTURAL_POLISH_INPUT_CAP = 60_000
@@ -1399,6 +1400,11 @@ class WorkflowService:
         self.generated_artifacts = GeneratedArtifactGateway()
         self.protocol_route_circuit = ProtocolRouteCircuitBreaker()
         self.coordinator = WorkflowCoordinator(self)
+        # Process-local opt-in used only by the exact-once Full Short runner.
+        # Durable writer ownership remains in workflow_supervision; this set
+        # merely tells the Short Saga not to publish its terminal run status
+        # before the runner's external terminal closure has executed.
+        self._deferred_full_short_completion_runs: set[str] = set()
 
     def _observe_hybrid_skill_context_shadow(
         self,
@@ -1804,6 +1810,261 @@ class WorkflowService:
         return await self.coordinator.run_short(
             project_id, use_crewai=use_crewai, run_id=run_id,
         )
+
+    def bind_full_short_terminal_finalizer(
+        self, run_id: str, project_id: str,
+        closure: Callable[[str, object, Mapping[str, object]], object],
+    ) -> Callable[[str, object], object]:
+        """Bind Full Short terminal closure to one locked live authority read.
+
+        This opt-in boundary is for the dedicated external Full Short runner.
+        The supervised run must still be the active writer.  StoryState,
+        Canon, and the canonical READY receipt are re-read under the same
+        process mutation lock used by formal promotion, and the external
+        verification/completion closure runs before that lock or the writer
+        lease is released.  Ordinary workflow calls do not use this method.
+        """
+
+        reserved = self.db.get_run(run_id)
+        supervision = self.db.get_workflow_supervision(run_id)
+        zero_budgets = {
+            "transport": 0, "protocol": 0, "semantic": 0,
+            "quality": 0, "provider_wait": 0,
+        }
+        if (
+            reserved is None
+            or reserved.get("project_id") != project_id
+            or reserved.get("workflow") != "short-story"
+            or reserved.get("status") != "queued"
+            or supervision is None
+            or supervision.get("retry_budgets") != zero_budgets
+            or not short_canonical_feature_snapshot(
+                self.db, project_id,
+            ).enabled
+            or run_id in self._deferred_full_short_completion_runs
+        ):
+            raise RuntimeError(
+                "Full Short terminal finalizer requires one canonical exact-once reservation"
+            )
+        self._deferred_full_short_completion_runs.add(run_id)
+
+        def finalize(actual_run_id: str, operation_result: object) -> object:
+            if actual_run_id != run_id:
+                raise RuntimeError(
+                    "Full Short terminal finalizer received a different run identity"
+                )
+            try:
+                with WIZARD_MUTATION_LOCK:
+                    run = self.db.get_run(run_id)
+                    if (
+                        run is None
+                        or run.get("project_id") != project_id
+                        or run.get("workflow") != "short-story"
+                        or run.get("status") != "running"
+                        or not self.db.has_active_runs(project_id)
+                    ):
+                        raise RuntimeError(
+                            "Full Short terminal closure lost its active writer authority"
+                        )
+                    project = self.projects.get(project_id)
+                    state = self.story_states.get(project_id)
+                    if state is None:
+                        raise RuntimeError(
+                            "Full Short terminal closure lacks live StoryState authority"
+                        )
+                    canon_path = project.path / "memory" / "canon.json"
+                    try:
+                        canon_bytes = canon_path.read_bytes()
+                        canon = json.loads(canon_bytes.decode("utf-8"))
+                    except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+                        raise RuntimeError(
+                            "Full Short terminal closure lacks live Canon authority"
+                        ) from exc
+                    if not isinstance(canon, Mapping):
+                        raise RuntimeError(
+                            "Full Short terminal closure lacks live Canon authority"
+                        )
+                    journal_path = project_mutation_journal_path(
+                        project.path, run_id,
+                    )
+                    try:
+                        journal = load_project_mutation_journal(journal_path)
+                    except Exception as exc:
+                        raise RuntimeError(
+                            "Full Short terminal closure lacks committed READY authority"
+                        ) from exc
+                    gate = journal.post_commit_gate
+                    state_sha256 = canonical_json_sha256(state.data)
+                    if (
+                        journal.status != "committed"
+                        or journal.operation != "short-story"
+                        or journal.run_id != run_id
+                        or journal.project_id != project_id
+                        or journal.story_state is None
+                        or journal.story_state.target_revision != state.revision
+                        or journal.story_state.state_sha256 != state_sha256
+                        or journal.story_state.data != state.data
+                        or gate is None
+                        or gate.name != SHORT_CANONICAL_GATE_NAME
+                        or gate.status != "passed"
+                        or gate.payload.get("lane") != "short_canonical_v2"
+                    ):
+                        raise RuntimeError(
+                            "Full Short terminal closure lacks committed READY authority"
+                        )
+                    if not self._short_canonical_live_authority_exact(
+                        canon, state.data, gate.payload,
+                    ):
+                        raise RuntimeError(
+                            "Full Short terminal closure found stale live Canon authority"
+                        )
+                    receipt_input = gate.payload.get("receipt_input")
+                    if (
+                        not isinstance(receipt_input, Mapping)
+                        or receipt_input.get("canonical_gate_result") != "eligible"
+                        or receipt_input.get("operational_readiness") != "ready"
+                        or not gate.receipt_path
+                        or not gate.receipt_sha256
+                    ):
+                        raise RuntimeError(
+                            "Full Short terminal closure lacks committed READY authority"
+                        )
+                    ready_receipt_path = project.path / gate.receipt_path
+                    try:
+                        ready_receipt_bytes = ready_receipt_path.read_bytes()
+                        ready_receipt = json.loads(
+                            ready_receipt_bytes.decode("utf-8"),
+                        )
+                    except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+                        raise RuntimeError(
+                            "Full Short terminal closure lacks committed READY authority"
+                        ) from exc
+                    if (
+                        hashlib.sha256(ready_receipt_bytes).hexdigest()
+                        != gate.receipt_sha256
+                        or not isinstance(ready_receipt, Mapping)
+                        or ready_receipt.get("canonical_gate_result") != "eligible"
+                        or ready_receipt.get("operational_readiness") != "ready"
+                        or ready_receipt.get("target_revision") != state.revision
+                        or ready_receipt.get("target_authority_hash") != state_sha256
+                    ):
+                        raise RuntimeError(
+                            "Full Short terminal closure lacks committed READY authority"
+                        )
+                    live_authority: dict[str, object] = {
+                        "project_root": project.path,
+                        "run_root": project.path / "runs" / run_id,
+                        "story_state_revision": state.revision,
+                        "story_state_sha256": state_sha256,
+                        "story_state_data": state.data,
+                        "canon_sha256": hashlib.sha256(canon_bytes).hexdigest(),
+                        "canon": dict(canon),
+                        "ready_receipt_path": ready_receipt_path,
+                        "ready_receipt_sha256": gate.receipt_sha256,
+                        "ready_receipt": dict(ready_receipt),
+                    }
+                    post_cleanup_commit = closure(
+                        run_id, operation_result, live_authority,
+                    )
+                    if inspect.isawaitable(post_cleanup_commit):
+                        raise TypeError(
+                            "Full Short terminal closure must be synchronous while authority is locked"
+                        )
+                    if not callable(post_cleanup_commit):
+                        raise TypeError(
+                            "Full Short terminal closure must return a post-cleanup commit callable"
+                        )
+                    finalized = finalize_project_mutation(
+                        self.projects, run_id, finalize_run=False,
+                    )
+                    if finalized.status != "committed":
+                        raise RuntimeError(
+                            "Full Short terminal closure did not finalize its Saga"
+                        )
+                    still_active = self.db.get_run(run_id)
+                    if (
+                        still_active is None
+                        or still_active.get("status") != "running"
+                        or not self.db.has_active_runs(project_id)
+                    ):
+                        raise RuntimeError(
+                            "Full Short Saga cleanup released its active writer authority"
+                        )
+                    result = post_cleanup_commit()
+                    if inspect.isawaitable(result):
+                        raise TypeError(
+                            "Full Short post-cleanup commit must be synchronous while authority is locked"
+                        )
+                    return result
+            finally:
+                self._deferred_full_short_completion_runs.discard(run_id)
+
+        return finalize
+
+    @staticmethod
+    def _short_canonical_live_authority_exact(
+        canon: Mapping[str, object],
+        story_state_data: Mapping[str, object],
+        gate_payload: Mapping[str, object],
+    ) -> bool:
+        """Prove Canon is the canonical V2 projection of live StoryState.
+
+        Canon may contain projection-only facts emitted by accepted canonical
+        mutations, so byte equality with ``confirmed_facts`` would reject the
+        legitimate writer plan.  Every such extra fact must instead name one
+        of the exact mutation identities sealed by the READY gate.
+        """
+
+        facts = canon.get("facts")
+        if not isinstance(facts, list) or any(
+            not isinstance(item, Mapping) for item in facts
+        ):
+            return False
+
+        def fact_key(value: Mapping[str, object]) -> tuple[str, str]:
+            key = str(value.get("key") or value.get("fact_key") or "")
+            return key, canonical_json_sha256(value.get("value"))
+
+        confirmed = list(story_state_data.get("confirmed_facts") or [])
+        if any(not isinstance(item, Mapping) for item in confirmed):
+            return False
+        confirmed_keys = {fact_key(item) for item in confirmed}
+        canon_keys = {fact_key(item) for item in facts}
+        if not confirmed_keys.issubset(canon_keys):
+            return False
+        accepted = {
+            str(value) for value in (
+                gate_payload.get("accepted_mutation_ids") or []
+            ) if str(value)
+        }
+        extras = [item for item in facts if fact_key(item) not in confirmed_keys]
+        extra_sources = {
+            str(item.get("source") or "").removeprefix("canonical-v2:")
+            for item in extras
+            if str(item.get("source") or "").startswith("canonical-v2:")
+        }
+        return bool(
+            all(
+                str(item.get("source") or "").startswith("canonical-v2:")
+                for item in extras
+            )
+            and extra_sources.issubset(accepted)
+            and canon.get("state")
+            == dict(story_state_data.get("character_states") or {})
+            and canon.get("world_rules")
+            == list(story_state_data.get("world_rules") or [])
+            and canon.get("timeline")
+            == list(story_state_data.get("timeline_events") or [])
+        )
+
+    def _finalize_short_canonical_saga(
+        self, run_id: str, journal_path: Path,
+    ) -> ProjectMutationJournalV1:
+        """Finalize normally, or retain one explicitly deferred active run."""
+
+        if run_id in self._deferred_full_short_completion_runs:
+            return load_project_mutation_journal(journal_path)
+        return finalize_project_mutation(self.projects, run_id)
 
     async def run_short_revision(
         self, project_id: str, issue_ids: list[str],
@@ -4510,8 +4771,52 @@ class WorkflowService:
             constraints = self.projects.load_constraints(project.id)
             target_words = int(project.metadata["target_words"])
             segment_count = self._short_segment_count(target_words)
+            # Freeze style/reference authority before checkpoint discovery.  A
+            # Draft is model-visible output, so a checkpoint created under one
+            # selected style/reference identity cannot be reused under another
+            # and then retrospectively "validated" by a later Final Review.
+            quality_reference_group = (
+                self.db.latest_quality_reference_group(
+                    project.id, profile_for_project(project),
+                ) or {}
+            )
+            current_style_authority = selected_style_reference_provenance(
+                project, quality_reference_group, initialize_missing_profile=True,
+            )
+            public_style_authority = {
+                key: value for key, value in current_style_authority.items()
+                if key != "style_profile_text"
+            }
+            style_authority_path = (
+                run_path / "outputs" / "style-reference-authority-v1.json"
+            )
+            if style_authority_path.is_file():
+                try:
+                    frozen_style_authority = json.loads(
+                        style_authority_path.read_text(encoding="utf-8"),
+                    )
+                except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+                    raise ValueError(
+                        "frozen style/reference authority is unreadable before "
+                        "checkpoint discovery"
+                    ) from exc
+                frozen_style_authority = validate_frozen_style_reference_authority(
+                    frozen_style_authority, public_style_authority,
+                )
+            else:
+                frozen_style_authority = public_style_authority
+                atomic_write(
+                    style_authority_path,
+                    json.dumps(
+                        frozen_style_authority, ensure_ascii=False,
+                        sort_keys=True, indent=2,
+                    ),
+                )
             checkpoint_context = self._short_checkpoint_context(
                 project, state.revision, state.data, constraints, segment_count,
+                style_reference_authority_sha256=str(
+                    frozen_style_authority["authority_sha256"],
+                ),
             )
             readiness_conflicts = detect_canon_conflicts(
                 project, state.data,
@@ -4836,11 +5141,24 @@ class WorkflowService:
             if review_checkpoint:
                 try:
                     review_text = review_checkpoint.read_text(encoding="utf-8")
+                    review_binding = self._load_short_review_binding(
+                        review_checkpoint.parent,
+                        review_text=review_text,
+                        draft=draft,
+                        checkpoint_context=checkpoint_context,
+                    )
                     review = self._review(review_text)
                 except (ValueError, json.JSONDecodeError):
                     review = None
                 else:
                     atomic_write(run_path / "outputs" / "review.md", review_text)
+                    atomic_write(
+                        run_path / "outputs" / "review-binding-v1.json",
+                        json.dumps(
+                            review_binding, ensure_ascii=False,
+                            sort_keys=True, indent=2,
+                        ),
+                    )
                     self.db.add_run_event(
                         run_id, "success", "checkpoint_reused", "已复用上一轮有效编辑审核",
                         stage="review", metadata={"source_run": review_checkpoint.parent.parent.name},
@@ -4853,23 +5171,31 @@ class WorkflowService:
                         observation_status="unknown",
                         payload={
                             "artifact_type": "review.md",
-                            "binding_status": "unverifiable_legacy",
-                            "binding_lane": "legacy",
+                            "binding_status": "exact",
+                            "binding_lane": "exact_v2",
                             "expected_input_sha256": hashlib.sha256(
                                 draft.encode("utf-8")
                             ).hexdigest(),
-                            "actual_input_sha256": None,
-                            "binding_metadata_present": False,
+                            "actual_input_sha256": review_binding[
+                                "reviewed_draft_sha256"
+                            ],
+                            "binding_metadata_present": True,
                             "input_object_hash": hashlib.sha256(
                                 draft.encode("utf-8")
                             ).hexdigest(),
                             "output_object_hash": hashlib.sha256(
                                 review_text.encode("utf-8")
                             ).hexdigest(),
-                            "reviewed_object_hash": None,
-                            "policy": "legacy-review-resume",
-                            "policy_version": None,
-                            "validator_set": [],
+                            "reviewed_object_hash": review_binding[
+                                "reviewed_draft_sha256"
+                            ],
+                            "policy": "ShortInitialReviewBindingV1",
+                            "policy_version": 1,
+                            "validator_set": [
+                                "review_sha256", "draft_sha256",
+                                "generation_context_sha256",
+                                "style_reference_authority_sha256",
+                            ],
                             "parent_artifact": "draft.md",
                             "superseded_artifact": None,
                             "source_run_sha256": hashlib.sha256(
@@ -4912,6 +5238,12 @@ class WorkflowService:
                     ),
                 )
                 review = self._review(review_text)
+                self._save_short_review_binding(
+                    run_path / "outputs",
+                    review_text=str(review_text),
+                    draft=draft,
+                    checkpoint_context=checkpoint_context,
+                )
             if checkpoint and checkpoint.parent.name == run_id:
                 polish_parts = self._split_polish_segments(draft)
                 checkpoint_root = run_path / "outputs" / "polish-checkpoints" / "initial"
@@ -5341,8 +5673,13 @@ class WorkflowService:
                         self.projects, run_id, status="passed",
                         receipt_path=receipt_path,
                     )
-                    completed_journal = finalize_project_mutation(
-                        self.projects, run_id,
+                    # The exact-once runner, when explicitly bound, still
+                    # owns the active DB writer lease.  Its locked terminal
+                    # finalizer will re-read this committed authority, perform
+                    # the external completion closure, and only then finalize
+                    # the run.  Every ordinary run keeps the existing path.
+                    completed_journal = self._finalize_short_canonical_saga(
+                        run_id, promotion_journal_path,
                     )
                     emit_observation(
                         project.path,
@@ -5473,6 +5810,9 @@ class WorkflowService:
         finally:
             if promotion_lock_acquired:
                 WIZARD_MUTATION_LOCK.release()
+            terminal = self.db.get_run(run_id) or {}
+            if terminal.get("status") not in {"queued", "running"}:
+                self._deferred_full_short_completion_runs.discard(run_id)
 
     def _extract_short_causal_chain(
         self, run_id: str, plan: str,
@@ -21213,7 +21553,8 @@ class WorkflowService:
     @classmethod
     def _short_checkpoint_context(
         cls, project: Project, state_revision: int, state: dict,
-        constraints: str, segment_count: int,
+        constraints: str, segment_count: int, *,
+        style_reference_authority_sha256: str = "",
     ) -> dict:
         outline = str(((state.get("outline") or {}).get("content")) or "")
         context = {
@@ -21229,11 +21570,78 @@ class WorkflowService:
             ).encode("utf-8")).hexdigest(),
             "target_words": int(project.metadata["target_words"]),
             "segment_count": int(segment_count),
+            "style_reference_authority_sha256": str(
+                style_reference_authority_sha256,
+            ),
         }
         context["generation_context_sha256"] = hashlib.sha256(json.dumps(
             context, ensure_ascii=False, sort_keys=True, separators=(",", ":"),
         ).encode("utf-8")).hexdigest()
         return context
+
+    @staticmethod
+    def _short_review_binding_payload(
+        *, review_text: str, draft: str, checkpoint_context: Mapping[str, object],
+    ) -> dict[str, object]:
+        """Bind a reusable editorial review to its exact Draft authority."""
+
+        payload: dict[str, object] = {
+            "schema": "ShortInitialReviewBindingV1",
+            "version": 1,
+            "review_sha256": hashlib.sha256(
+                review_text.encode("utf-8"),
+            ).hexdigest(),
+            "reviewed_draft_sha256": hashlib.sha256(
+                draft.encode("utf-8"),
+            ).hexdigest(),
+            "generation_context_sha256": str(
+                checkpoint_context.get("generation_context_sha256") or "",
+            ),
+            "style_reference_authority_sha256": str(
+                checkpoint_context.get(
+                    "style_reference_authority_sha256",
+                ) or "",
+            ),
+        }
+        payload["binding_sha256"] = canonical_sha256(payload)
+        return payload
+
+    @classmethod
+    def _save_short_review_binding(
+        cls, outputs: Path, *, review_text: str, draft: str,
+        checkpoint_context: Mapping[str, object],
+    ) -> dict[str, object]:
+        payload = cls._short_review_binding_payload(
+            review_text=review_text,
+            draft=draft,
+            checkpoint_context=checkpoint_context,
+        )
+        atomic_write(
+            outputs / "review-binding-v1.json",
+            json.dumps(payload, ensure_ascii=False, sort_keys=True, indent=2),
+        )
+        return payload
+
+    @classmethod
+    def _load_short_review_binding(
+        cls, outputs: Path, *, review_text: str, draft: str,
+        checkpoint_context: Mapping[str, object],
+    ) -> dict[str, object]:
+        path = outputs / "review-binding-v1.json"
+        try:
+            value = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+            raise ValueError(
+                "reusable Short review lacks an exact Draft binding",
+            ) from exc
+        expected = cls._short_review_binding_payload(
+            review_text=review_text,
+            draft=draft,
+            checkpoint_context=checkpoint_context,
+        )
+        if not isinstance(value, dict) or value != expected:
+            raise ValueError("reusable Short review authority binding is stale")
+        return value
 
     @staticmethod
     def _checkpoint_segment_events(
@@ -21550,7 +21958,7 @@ class WorkflowService:
             "planning.md", "planning-ir.json", "draft.md",
             "short-checkpoint.json", "short-execution-index.json",
             "draft-integrity.json", "short-causal-chain.json",
-            "segment-events.json",
+            "segment-events.json", "style-reference-authority-v1.json",
         )
         texts = {
             name: (source / name).read_text(encoding="utf-8")
@@ -21566,6 +21974,12 @@ class WorkflowService:
             draft_integrity = json.loads(texts["draft-integrity.json"])
             causal_chain = json.loads(texts["short-causal-chain.json"])
             segment_events = json.loads(texts["segment-events.json"])
+            style_authority = json.loads(
+                texts["style-reference-authority-v1.json"],
+            )
+            style_authority = validate_frozen_style_reference_authority(
+                style_authority, style_authority,
+            )
             if (
                 not isinstance(draft_integrity, dict)
                 or not isinstance(causal_chain, dict)
@@ -21637,6 +22051,8 @@ class WorkflowService:
         )
         invalid = (
             any(checkpoint.get(key) != value for key, value in context.items())
+            or style_authority.get("authority_sha256")
+            != context.get("style_reference_authority_sha256")
             or checkpoint.get("planning_sha256") != planning_sha256
             or checkpoint.get("planning_ir_schema")
             != "planning-document-ir-v1"
@@ -21787,6 +22203,27 @@ class WorkflowService:
     ) -> _ShortCheckpointBundle:
         """Capture the currently valid partial prefix without writing it."""
 
+        try:
+            source_style_authority = json.loads(
+                (source / "style-reference-authority-v1.json").read_text(
+                    encoding="utf-8",
+                ),
+            )
+        except (OSError, UnicodeError, json.JSONDecodeError, TypeError) as exc:
+            raise ValueError(
+                "partial checkpoint lacks frozen style/reference authority",
+            ) from exc
+        current_style_authority = selected_style_reference_provenance(
+            project,
+            self.db.latest_quality_reference_group(
+                project.id, profile_for_project(project),
+            ) or {},
+            initialize_missing_profile=False,
+        )
+        source_style_authority = validate_frozen_style_reference_authority(
+            source_style_authority, current_style_authority,
+        )
+
         plan_text = (source / "planning.md").read_text(encoding="utf-8")
         planning_ir_text = (source / "planning-ir.json").read_text(
             encoding="utf-8",
@@ -21918,6 +22355,9 @@ class WorkflowService:
             "segment_count": segment_count,
             "story_state_sha256": story_state_sha256,
             "execution_manifest_sha256": manifest_hash,
+            "style_reference_authority_sha256": source_style_authority[
+                "authority_sha256"
+            ],
             "location_catalog": sorted(
                 (alias, ref.name, ref.root)
                 for alias, ref in location_catalog.items()
@@ -24957,7 +25397,21 @@ class WorkflowService:
             "segment_count": count,
             "story_state_sha256": story_state_sha256,
             "execution_manifest_sha256": execution_manifest_hash,
+            "style_reference_authority_sha256": "",
         }
+        try:
+            style_authority = json.loads(
+                (run_path / "outputs" / "style-reference-authority-v1.json").read_text(
+                    encoding="utf-8",
+                ),
+            )
+            authority_payload["style_reference_authority_sha256"] = str(
+                style_authority["authority_sha256"],
+            )
+        except (OSError, UnicodeError, json.JSONDecodeError, KeyError, TypeError) as exc:
+            raise ValueError(
+                "Draft generation lacks frozen style/reference authority",
+            ) from exc
         authority_hash = hashlib.sha256(json.dumps({
             **authority_payload,
             "location_catalog": sorted(
@@ -29612,7 +30066,11 @@ class WorkflowService:
             name = f"{stage}{suffix}"
             atomic_write(run_path / "outputs" / f"{name}.md", result.text)
             receipt = {"model": result.receipt, "skills": [receipt.__dict__ for receipt in skill_run.receipts]}
-            atomic_write(run_path / "receipts" / f"{name}.json", json.dumps(receipt, ensure_ascii=False, indent=2))
+            stage_receipt_path = run_path / "receipts" / f"{name}.json"
+            atomic_write(
+                stage_receipt_path,
+                json.dumps(receipt, ensure_ascii=False, indent=2),
+            )
             self.db.save_workflow_node_checkpoint(
                 run_id=run_id,
                 node_key=node_key,
@@ -29720,6 +30178,30 @@ class WorkflowService:
                 object_old_hash=business_input_sha256,
                 object_new_hash=output_sha256,
             )
+            execution_observer = getattr(
+                getattr(self.gateway, "registry", None),
+                "attempt_observer", None,
+            )
+            mark_stage_complete = getattr(
+                execution_observer, "mark_local_stage_complete", None,
+            )
+            if callable(mark_stage_complete):
+                bound_route = getattr(execution_observer, "bound_route", None)
+                if not isinstance(bound_route, Mapping):
+                    raise RuntimeError(
+                        "Full Short stage completed without an exact route binding"
+                    )
+                mark_stage_complete(
+                    stage=name,
+                    role=gateway_role,
+                    role_binding_sha256=str(
+                        bound_route.get("role_binding_sha256") or ""
+                    ),
+                    output_sha256=output_sha256,
+                    receipt_sha256=hashlib.sha256(
+                        stage_receipt_path.read_bytes(),
+                    ).hexdigest(),
+                )
             return StageText(result.text, result.receipt)
         except asyncio.CancelledError:
             self.db.add_run_event(run_id, "warning", "stage_cancelled", f"{stage} 已终止", stage=stage)

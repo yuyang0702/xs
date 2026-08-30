@@ -101,7 +101,9 @@ class HttpProvider:
             )
         self._model_logical_calls += 1
 
-    def _before_http_post_attempt(self) -> None:
+    def _before_http_post_attempt(
+        self, *, url: str, payload: dict[str, Any],
+    ) -> None:
         policy = self.transport_policy
         if policy is not None and self._http_post_attempts >= policy.max_http_post_attempts:
             raise SingleDispatchTransportGuardError(
@@ -109,8 +111,27 @@ class HttpProvider:
             )
         self._http_post_attempts += 1
         if self.attempt_observer is not None:
+            before_dispatch = getattr(
+                self.attempt_observer, "before_http_dispatch", None,
+            )
+            if callable(before_dispatch):
+                before_dispatch(method="POST", url=url, payload=payload)
             self.attempt_observer.before_http_post()
             self.attempt_observer.before_network_request()
+
+    def _after_http_response(self, status_code: int) -> None:
+        if self.attempt_observer is None:
+            return
+        callback = getattr(self.attempt_observer, "after_http_response", None)
+        if callable(callback):
+            callback(status_code=status_code)
+
+    def _after_http_failure(self, exc: BaseException) -> None:
+        if self.attempt_observer is None:
+            return
+        callback = getattr(self.attempt_observer, "after_http_failure", None)
+        if callable(callback):
+            callback(failure_kind=type(exc).__name__)
 
     def transport_attempt_snapshot(self) -> dict[str, Any]:
         policy = self.transport_policy
@@ -138,33 +159,44 @@ class HttpProvider:
 
     async def post(self, path: str, *, payload: dict[str, Any], headers: dict[str, str]) -> dict[str, Any]:
         self._begin_logical_call()
+        url = f"{self.base_url}/{path.lstrip('/')}"
         max_attempts = 1 if self.transport_policy is not None else 2
         for attempt in range(max_attempts):
             try:
-                self._before_http_post_attempt()
+                self._before_http_post_attempt(url=url, payload=payload)
                 response = await self.client.post(
-                    f"{self.base_url}/{path.lstrip('/')}",
+                    url,
                     json=payload,
                     headers={**headers, **self.headers},
                 )
                 break
             except httpx.TransportError as exc:
+                self._after_http_failure(exc)
                 if (self.transport_policy is not None
                         or isinstance(exc, httpx.TimeoutException) or attempt):
                     raise
                 await asyncio.sleep(0.25)
-        if response.status_code in {400, 404, 422} and "tools" in payload:
-            detail = response.text.lower()
-            if any(term in detail for term in ("tool", "function calling", "function_call")):
-                raise ToolCapabilityError(response.text[:500])
-        response.raise_for_status()
         try:
-            return response.json()
-        except ValueError as exc:
-            content_type = response.headers.get("content-type", "unknown")
-            raise ProviderResponseError(
-                f"Provider endpoint returned non-JSON content ({content_type}) from {response.url}"
-            ) from exc
+            if response.status_code in {400, 404, 422} and "tools" in payload:
+                detail = response.text.lower()
+                if any(term in detail for term in ("tool", "function calling", "function_call")):
+                    raise ToolCapabilityError(response.text[:500])
+            response.raise_for_status()
+            try:
+                result = response.json()
+            except ValueError as exc:
+                content_type = response.headers.get("content-type", "unknown")
+                raise ProviderResponseError(
+                    f"Provider endpoint returned non-JSON content ({content_type}) from {response.url}"
+                ) from exc
+        except Exception as exc:
+            self._after_http_failure(exc)
+            raise
+        # A response is successful only after HTTP and protocol parsing.  This
+        # prevents an error response from being rewritten as a completed local
+        # stage by a later observer callback.
+        self._after_http_response(response.status_code)
+        return result
 
     async def post_stream(
         self, path: str, *, payload: dict[str, Any], headers: dict[str, str],
@@ -176,7 +208,7 @@ class HttpProvider:
         for attempt in range(max_attempts):
             events: list[dict[str, Any]] = []
             try:
-                self._before_http_post_attempt()
+                self._before_http_post_attempt(url=url, payload=payload)
                 async with self.client.stream("POST", url, json=payload, headers=request_headers) as response:
                     if response.status_code >= 400:
                         await response.aread()
@@ -203,12 +235,14 @@ class HttpProvider:
                     if "text/event-stream" not in content_type:
                         await response.aread()
                         try:
-                            return [], response.json()
+                            result = response.json()
                         except ValueError as exc:
                             raise ProviderResponseError(
                                 f"Provider endpoint returned non-JSON content ({content_type or 'unknown'}) "
                                 f"from {response.url}"
                             ) from exc
+                        self._after_http_response(response.status_code)
+                        return [], result
 
                     data_lines: list[str] = []
                     async for line in response.aiter_lines():
@@ -230,10 +264,15 @@ class HttpProvider:
                         raw = "\n".join(data_lines)
                         if raw != "[DONE]":
                             events.append(json.loads(raw))
+                    self._after_http_response(response.status_code)
                     return events, None
             except httpx.TransportError as exc:
+                self._after_http_failure(exc)
                 if (self.transport_policy is not None
                         or isinstance(exc, httpx.TimeoutException) or events or attempt):
                     raise
                 await asyncio.sleep(0.25)
+            except Exception as exc:
+                self._after_http_failure(exc)
+                raise
         raise RuntimeError("unreachable")

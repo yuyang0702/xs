@@ -145,14 +145,31 @@ class ProviderRegistry:
         assert updated is not None
         return updated
 
-    def resolve(self, provider_id: str, model_id: str) -> ResolvedModel:
+    def resolve(
+        self, provider_id: str, model_id: str, *,
+        role: str | None = None, lane: str | None = None,
+    ) -> ResolvedModel:
         provider = self.db.get_provider(provider_id)
         model = self.db.get_model(model_id)
-        secret = self.secrets.get(provider_id)
         if provider is None or not provider["enabled"]:
             raise ValueError("provider_not_found")
         if model is None or model["provider_id"] != provider_id:
             raise ValueError("model_not_found")
+        # Validate all public route identity before crossing the credential
+        # boundary.  The dedicated Full Short launcher performs its complete
+        # immutable preflight before calling ``resolve``; this local ordering
+        # additionally guarantees that an invalid provider/model identifier
+        # cannot cause even a needless secret lookup.
+        fingerprint = self.route_fingerprint(provider, model)
+        if self.attempt_observer is not None:
+            bind_route = getattr(self.attempt_observer, "bind_route", None)
+            if callable(bind_route):
+                bind_route(
+                    role=str(role or ""), lane=str(lane or ""),
+                    provider_id=provider_id, model_id=model_id,
+                    route_fingerprint=fingerprint,
+                )
+        secret = self.secrets.get(provider_id)
         if not secret:
             raise ValueError("missing_api_key")
         adapter = ADAPTERS[provider["protocol"]](provider["base_url"], secret,
@@ -160,7 +177,6 @@ class ProviderRegistry:
                                                   auth_type=provider["auth_type"],
                                                   transport_policy=self.transport_policy,
                                                   attempt_observer=self.attempt_observer)
-        fingerprint = self.route_fingerprint(provider, model)
         capabilities = self._effective_capabilities(
             model.get("capabilities") or {}, fingerprint,
         )

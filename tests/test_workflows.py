@@ -3,6 +3,7 @@ import hashlib
 import json
 import os
 import re
+import threading
 from collections.abc import Sequence
 from dataclasses import asdict, replace
 from pathlib import Path
@@ -10,8 +11,9 @@ from types import SimpleNamespace
 from typing import get_type_hints
 
 import pytest
+import httpx
 
-from novel_flywheel.db import Database
+from novel_flywheel.db import Database, WIZARD_MUTATION_LOCK
 from novel_flywheel.context_policy import (
     build_polish_authority_packet,
     classify_model_failure,
@@ -38,10 +40,20 @@ from novel_flywheel.material_audit_authority import (
     build_material_reference_authority,
 )
 from novel_flywheel.models import (
+    ModelGateway,
     ModelResult,
     ModelRoutesExhaustedError,
     TransportInterruptedError,
 )
+from novel_flywheel.full_short_execution import (
+    FullShortDispatchLedgerObserverV1,
+    FullShortDurableExecutionStoreV1,
+    FullShortExecutionPolicyV1,
+    build_full_short_completion_receipt_v1,
+)
+from novel_flywheel.providers.http import SingleDispatchTransportPolicyV1
+from novel_flywheel.providers.registry import ProviderRegistry
+from novel_flywheel.secrets import MemorySecretStore
 from novel_flywheel.narrative_ledger import build_narrative_ledger
 from novel_flywheel.outlines import narrative_outline_event_contracts, outline_events
 from novel_flywheel.planning_adaptation import (
@@ -75,8 +87,17 @@ from novel_flywheel.planning_semantics import (
     planning_semantic_schema_v2,
     planning_semantic_packet_ownership_v2,
 )
-from novel_flywheel.prompts import IMMUTABLE_RECEIPT_SYSTEM
+from novel_flywheel.prompts import IMMUTABLE_RECEIPT_SYSTEM, STAGE_SYSTEM
 from novel_flywheel.projects import ProjectCreate, ProjectStore
+from novel_flywheel.project_transactions import (
+    ProjectMutationArtifactV1,
+    ProjectMutationJournalV1,
+    ProjectMutationPostCommitGateV1,
+    ProjectMutationStoryStateV1,
+    canonical_json_sha256 as project_authority_sha256,
+    project_mutation_journal_path,
+    write_project_mutation_journal,
+)
 from novel_flywheel.quality import issue_ledger, review_windows
 from novel_flywheel.quality_profiles import score_review
 from novel_flywheel.quality_records import load_quality_checkpoint, write_quality_checkpoint
@@ -88,10 +109,12 @@ from novel_flywheel.reference_library import ReferenceLibrary
 from novel_flywheel.revision import segment_map
 from novel_flywheel.revision_operations import RevisionOperationError
 from novel_flywheel.scene_continuity import LocationRef
+from novel_flywheel.short_canonical_promotion import SHORT_CANONICAL_GATE_NAME
 from novel_flywheel.skills import SkillGate, SkillScanner
 from novel_flywheel.story_state import StoryStateStore
 from novel_flywheel.storage import ProjectSnapshot, atomic_write
 from novel_flywheel.structured_artifacts import StructuredArtifactContract
+from novel_flywheel.tasks import RunTaskManager
 from novel_flywheel.workflows import (
     ContextCapacityPreflightError,
     DraftReceiptProtocolError,
@@ -105,6 +128,8 @@ from novel_flywheel.workflows import (
     WorkflowService,
 )
 from novel_flywheel.draft_split import DraftTaskContract
+from tools.canary.short_completion import COMPLETION_GOAL
+from tools.canary.short_completion_verification import verify_short_completion_v1
 
 
 REQUIRED_SKILLS = {
@@ -325,6 +350,315 @@ def test_snapshot_recovery_failure_is_logged_without_replacing_primary_error(tmp
     assert "Invalid argument" not in json.dumps(
         event["metadata"], ensure_ascii=False,
     )
+
+
+def _install_committed_full_short_authority(
+    service: WorkflowService, project, run_id: str,
+):
+    state_store = StoryStateStore(service.db)
+    base = state_store.ensure(project.id, project.path)
+    target_data = {
+        **base.data,
+        "confirmed_facts": [{
+            "fact_key": "terminal.authority",
+            "value": "ready",
+        }],
+        "manuscript_revision": int(
+            base.data.get("manuscript_revision", 0),
+        ) + 1,
+    }
+    candidate = state_store.create_candidate(
+        project.id, run_id, base.revision, "polish",
+        hashlib.sha256(b"full-short-final").hexdigest(),
+    )
+    state = state_store.commit(candidate.id, base.revision, target_data)
+    files = {
+        "manuscript/story.md": "终局正文。",
+        "chapters/chapter-01.md": "# Chapter 1\n\n终局正文。\n",
+        "memory/canon.json": json.dumps({
+            "facts": target_data["confirmed_facts"],
+            "state": target_data.get("character_states", {}),
+            "world_rules": target_data.get("world_rules", []),
+            "timeline": target_data.get("timeline_events", []),
+        }, ensure_ascii=False, indent=2),
+    }
+    managed_paths = [project.path / relative for relative in files]
+    snapshot = ProjectSnapshot.create(
+        project.path,
+        project.path / "snapshots" / f"{run_id}-terminal",
+        managed_paths,
+    )
+    artifacts = []
+    for relative, content in files.items():
+        path = project.path / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(content, encoding="utf-8")
+        artifacts.append(ProjectMutationArtifactV1(
+            path=relative,
+            sha256=hashlib.sha256(path.read_bytes()).hexdigest(),
+        ))
+    state_sha256 = project_authority_sha256(state.data)
+    ready_receipt = {
+        "canonical_gate_result": "eligible",
+        "operational_readiness": "ready",
+        "target_revision": state.revision,
+        "target_authority_hash": state_sha256,
+    }
+    receipt_path = (
+        project.path / "runs" / run_id / "receipts"
+        / "short-canonical-commit-receipt-v1.json"
+    )
+    receipt_path.parent.mkdir(parents=True, exist_ok=True)
+    receipt_path.write_text(
+        json.dumps(ready_receipt, ensure_ascii=False, sort_keys=True),
+        encoding="utf-8",
+    )
+    gate_payload = {
+        "lane": "short_canonical_v2",
+        "receipt_input": {
+            "canonical_gate_result": "eligible",
+            "operational_readiness": "ready",
+        },
+    }
+    gate = ProjectMutationPostCommitGateV1(
+        name=SHORT_CANONICAL_GATE_NAME,
+        payload_sha256=project_authority_sha256(gate_payload),
+        payload=gate_payload,
+        status="passed",
+        receipt_path=receipt_path.relative_to(project.path).as_posix(),
+        receipt_sha256=hashlib.sha256(receipt_path.read_bytes()).hexdigest(),
+    )
+    journal = ProjectMutationJournalV1(
+        status="committed", operation="short-story", run_id=run_id,
+        project_id=project.id,
+        snapshot_path=snapshot.snapshot_root.relative_to(
+            project.path,
+        ).as_posix(),
+        source_authority_sha256="a" * 64,
+        expected_story_state_revision=base.revision,
+        managed_paths=tuple(sorted(files)),
+        artifacts=tuple(sorted(artifacts, key=lambda item: item.path)),
+        story_state=ProjectMutationStoryStateV1(
+            candidate_id=candidate.id,
+            expected_revision=base.revision,
+            target_revision=state.revision,
+            state_sha256=state_sha256,
+            data=state.data,
+        ),
+        post_commit_gate=gate,
+    )
+    journal_path = project_mutation_journal_path(project.path, run_id)
+    write_project_mutation_journal(journal_path, journal)
+    return journal_path, state, ready_receipt, snapshot.snapshot_root
+
+
+def test_short_canonical_saga_keeps_ordinary_completion_default(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    projects = ProjectStore(db, tmp_path / "workspace")
+    project = projects.create(ProjectCreate(
+        title="Ordinary terminal", mode="short", genre="mystery",
+        premise="Keep the existing completion behavior.", target_words=1000,
+    ))
+    service = WorkflowService(
+        db, projects, FakeGateway(), SkillGate(db, SkillScanner([])),
+    )
+    run_id = "ordinary-short-terminal"
+    db.create_run(run_id, project.id, "short-story", status="running")
+    journal_path, _state, _ready, snapshot_root = (
+        _install_committed_full_short_authority(service, project, run_id)
+    )
+
+    finalized = service._finalize_short_canonical_saga(
+        run_id, journal_path,
+    )
+
+    assert finalized.status == "committed"
+    assert db.get_run(run_id)["status"] == "completed"
+    assert not snapshot_root.exists()
+
+
+@pytest.mark.asyncio
+async def test_full_short_terminal_closure_reads_live_authority_before_completion(
+    tmp_path, monkeypatch,
+) -> None:
+    monkeypatch.setenv("NOVEL_SHORT_CANONICAL_V2", "1")
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    projects = ProjectStore(db, tmp_path / "workspace")
+    project = projects.create(ProjectCreate(
+        title="Deferred terminal", mode="short", genre="mystery",
+        premise="Verify the live ending authority.", target_words=1000,
+    ))
+    db.set_feature_flag(
+        "short_canonical_v2", True,
+        scope_type="project", scope_id=project.id,
+    )
+    service = WorkflowService(
+        db, projects, FakeGateway(), SkillGate(db, SkillScanner([])),
+    )
+    manager = RunTaskManager(db)
+    run_id = "full-short-live-authority"
+    manager.reserve_exact_once(run_id, project.id, "short-story")
+    closure_observations = []
+    snapshot_root = None
+
+    def closure(actual_run_id, operation_result, live_authority):
+        lock_probe = []
+
+        def probe_lock_from_other_thread():
+            acquired = WIZARD_MUTATION_LOCK.acquire(blocking=False)
+            lock_probe.append(acquired)
+            if acquired:
+                WIZARD_MUTATION_LOCK.release()
+
+        probe = threading.Thread(target=probe_lock_from_other_thread)
+        probe.start()
+        probe.join()
+        lock_was_held = lock_probe == [False]
+        closure_observations.append({
+            "run_id": actual_run_id,
+            "operation_result": operation_result,
+            "status": db.get_run(actual_run_id)["status"],
+            "writer_active": db.has_active_runs(project.id),
+            "lock_was_held": lock_was_held,
+            "story_state_revision": live_authority[
+                "story_state_revision"
+            ],
+            "canon_sha256": live_authority["canon_sha256"],
+            "ready": live_authority["ready_receipt"][
+                "operational_readiness"
+            ],
+        })
+
+        def commit_external_completion():
+            closure_observations.append({
+                "post_cleanup_status": db.get_run(actual_run_id)["status"],
+                "post_cleanup_writer_active": db.has_active_runs(project.id),
+                "snapshot_discarded": (
+                    snapshot_root is not None and not snapshot_root.exists()
+                ),
+            })
+            return {"external_completion": "committed"}
+
+        return commit_external_completion
+
+    finalizer = service.bind_full_short_terminal_finalizer(
+        run_id, project.id, closure,
+    )
+
+    async def operation(actual_run_id):
+        nonlocal snapshot_root
+        journal_path, state, _ready, snapshot_root = (
+            _install_committed_full_short_authority(
+                service, project, actual_run_id,
+            )
+        )
+        retained = service._finalize_short_canonical_saga(
+            actual_run_id, journal_path,
+        )
+        assert retained.status == "committed"
+        assert db.get_run(actual_run_id)["status"] == "running"
+        assert db.has_active_runs(project.id) is True
+        return {"state_revision": state.revision}
+
+    manager.launch_reserved_exact_once(
+        run_id, operation, terminal_finalizer=finalizer,
+    )
+    await manager.wait(run_id)
+
+    assert db.get_run(run_id)["status"] == "completed"
+    assert closure_observations == [
+        {
+            "run_id": run_id,
+            "operation_result": {"state_revision": 2},
+            "status": "running",
+            "writer_active": True,
+            "lock_was_held": True,
+            "story_state_revision": 2,
+            "canon_sha256": hashlib.sha256(
+                (project.path / "memory" / "canon.json").read_bytes(),
+            ).hexdigest(),
+            "ready": "ready",
+        },
+        {
+            "post_cleanup_status": "running",
+            "post_cleanup_writer_active": True,
+            "snapshot_discarded": True,
+        },
+    ]
+    assert service._deferred_full_short_completion_runs == set()
+
+
+@pytest.mark.asyncio
+async def test_full_short_external_terminal_closure_failure_does_not_complete_run(
+    tmp_path, monkeypatch,
+) -> None:
+    monkeypatch.setenv("NOVEL_SHORT_CANONICAL_V2", "1")
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    projects = ProjectStore(db, tmp_path / "workspace")
+    project = projects.create(ProjectCreate(
+        title="Rejected terminal", mode="short", genre="mystery",
+        premise="Reject an invalid external completion.", target_words=1000,
+    ))
+    db.set_feature_flag(
+        "short_canonical_v2", True,
+        scope_type="project", scope_id=project.id,
+    )
+    service = WorkflowService(
+        db, projects, FakeGateway(), SkillGate(db, SkillScanner([])),
+    )
+    manager = RunTaskManager(db)
+    run_id = "full-short-terminal-rejected"
+    manager.reserve_exact_once(run_id, project.id, "short-story")
+    closure_calls = 0
+    post_cleanup_calls = 0
+    snapshot_root = None
+
+    def closure(_run_id, _operation_result, _live_authority):
+        nonlocal closure_calls
+        closure_calls += 1
+
+        def reject_external_completion():
+            nonlocal post_cleanup_calls
+            post_cleanup_calls += 1
+            assert snapshot_root is not None
+            assert not snapshot_root.exists()
+            assert db.get_run(run_id)["status"] == "running"
+            assert db.has_active_runs(project.id) is True
+            raise RuntimeError("external completion store rejected receipt")
+
+        return reject_external_completion
+
+    finalizer = service.bind_full_short_terminal_finalizer(
+        run_id, project.id, closure,
+    )
+
+    async def operation(actual_run_id):
+        nonlocal snapshot_root
+        journal_path, _state, _ready, snapshot_root = (
+            _install_committed_full_short_authority(
+                service, project, actual_run_id,
+            )
+        )
+        service._finalize_short_canonical_saga(actual_run_id, journal_path)
+        return {"authority": "committed"}
+
+    manager.launch_reserved_exact_once(
+        run_id, operation, terminal_finalizer=finalizer,
+    )
+    await manager.wait(run_id)
+
+    assert closure_calls == 1
+    assert post_cleanup_calls == 1
+    assert db.get_run(run_id)["status"] == "failed"
+    assert db.get_workflow_supervision(run_id)["state"] == "irrecoverable"
+    assert "completed" not in {
+        event["event_type"] for event in db.list_run_events(run_id)
+    }
+    assert db.has_active_runs(project.id) is False
+    assert service._deferred_full_short_completion_runs == set()
 
 
 @pytest.mark.asyncio
@@ -968,6 +1302,41 @@ class ProductionSizedShortGateway:
         }, ensure_ascii=False)
 
     @staticmethod
+    def _plan_hierarchy_receipt(user: str) -> str:
+        source_sha256 = re.search(
+            r"SOURCE SHA256: ([0-9a-f]{64})", user,
+        ).group(1)
+        segments = json.loads(re.search(
+            r"EXPECTED SEGMENTS: (\[[^\n]+\])", user,
+        ).group(1))
+        expected = json.loads(re.search(
+            r"EXPECTED EVENT IDS: (\[[^\n]+\])", user,
+        ).group(1))
+        return json.dumps({
+            "source_sha256": source_sha256,
+            "segment_numbers": segments,
+            "event_ids": expected,
+            "causal_order_preserved": True,
+            "adjacent_handoffs_preserved": True,
+            "knowledge_progression_preserved": True,
+            "relationship_progression_preserved": True,
+            "viewpoint_timeline_preserved": True,
+            "promises_ending_preserved": True,
+            "formal_direction_preserved": True,
+            "affected_segments": [],
+            "affected_event_ids": [],
+            "entry_state": "当前区域从已确认入口状态开始。",
+            "exit_state": "当前区域按正式顺序交接到下一范围。",
+            "knowledge_state": "人物知情状态按正式事件逐步推进。",
+            "relationship_state": "关系变化由当前范围内行动支撑。",
+            "viewpoint_timeline": "叙事视角与展示顺序保持不变。",
+            "open_promises": ["正式未决承诺仍由后续事件承接"],
+            "resolved_promises": [],
+            "reason": "",
+            "summary": "当前连续范围保留正式因果、人物主动性与交接。",
+        }, ensure_ascii=False)
+
+    @staticmethod
     def _planning_repair_patch(user: str) -> str:
         """Return a bounded patch for Runtime-selected planning anchors.
 
@@ -1242,6 +1611,11 @@ class ProductionSizedShortGateway:
             raise AssertionError("production-sized whole planning bypassed the splitter")
         if "SHORT_PLAN_ADAPTATION_REVIEW_V2" in user:
             return self._result(role, self._plan_segment_receipt(user))
+        if (
+            "SHORT_PLAN_ADAPTATION_REGIONAL_REVIEW_V3" in user
+            or "SHORT_PLAN_ADAPTATION_HIERARCHY_REDUCTION_V3" in user
+        ):
+            return self._result(role, self._plan_hierarchy_receipt(user))
         if "SHORT_PLAN_ADAPTATION_WHOLE_STORY_REVIEW_V2" in user:
             return self._result(role, self._plan_whole_receipt(user))
         if "SHORT_PLAN_EVIDENCE_PATCH_V3" in user:
@@ -1315,8 +1689,23 @@ class ProductionSizedShortGateway:
                 "evidence": "正文保持正式事件与结局。",
             } for item in ledger]
             return self._result(role, json.dumps(payload, ensure_ascii=False))
+        if role == "reader_review":
+            payload = json.loads(quality_review(91, 92, 90, issues=[]))
+            payload["reader_signals"] = {
+                "would_continue": True,
+                "would_pay": True,
+                "abandonment_point": "none",
+                "payoff_felt": True,
+            }
+            return self._result(role, json.dumps(payload, ensure_ascii=False))
         if role == "review":
             return self._result(role, quality_review(91, 92, 90, issues=[]))
+        if role == "maintenance" and "maintenance-window-request-v1" in user:
+            return self._result(role, json.dumps({
+                "version": "maintenance-window-receipt-v1",
+                "facts": [], "state_deltas": [], "state_transitions": [],
+                "world_rules": [], "timeline": [],
+            }, ensure_ascii=False))
         if role == "maintenance":
             return self._result(role, json.dumps({
                 "facts": [{
@@ -1343,6 +1732,120 @@ class ProductionSizedShortGateway:
         return await self.complete(
             role, system, user, max_output_tokens=max_output_tokens,
         )
+
+
+def _offline_request_messages(payload: dict) -> tuple[str, str]:
+    messages = payload.get("messages") or payload.get("input") or []
+    system_parts = []
+    user_parts = []
+    for item in messages:
+        if not isinstance(item, dict):
+            continue
+        target = system_parts if item.get("role") == "system" else user_parts
+        target.append(str(item.get("content") or ""))
+    system = str(payload.get("system") or payload.get("instructions") or "")
+    return system or "\n\n".join(system_parts), "\n\n".join(user_parts)
+
+
+def _offline_role_for_anthropic_request(payload: dict) -> str:
+    """Recover the production role below request construction, without prose."""
+
+    system, user = _offline_request_messages(payload)
+    if "TARGET READER SIMULATION" in user:
+        return "reader_review"
+    if any(marker in user for marker in (
+        "FULL MANUSCRIPT WINDOW SUMMARY",
+        "终审详细事件和伏笔单独分析",
+        "REGIONAL EVIDENCE REDUCTION",
+        "FULL MANUSCRIPT FINAL ADJUDICATION",
+    )):
+        return "final_review"
+    if "CURRENT_TASK_CONTRACT" in user:
+        return "draft"
+    if "MANUSCRIPT SEGMENT:\n" in user:
+        return "polish"
+    for role in (
+        "planning", "draft", "review", "polish", "final_review", "maintenance",
+    ):
+        if system.startswith(STAGE_SYSTEM[role]):
+            return role
+    # Immutable receipt calls intentionally share one system contract.  Their
+    # request markers are handled by ``ProductionSizedShortGateway`` before
+    # role-specific output is considered, so planning is the safe identity.
+    return "planning"
+
+
+class _LowestSeamProductionRegistry(ProviderRegistry):
+    """Use the real registry/adapter/HttpProvider and replace only HTTP I/O."""
+
+    def __init__(self, *args, oracle: ProductionSizedShortGateway,
+                 transport_observer: FullShortDispatchLedgerObserverV1 | None = None,
+                 **kwargs) -> None:
+        super().__init__(*args, attempt_observer=transport_observer, **kwargs)
+        self.oracle = oracle
+        self.open_clients: list[httpx.AsyncClient] = []
+
+    def resolve(
+        self, provider_id: str, model_id: str, *,
+        role: str | None = None, lane: str | None = None,
+    ):
+        provider = self.db.get_provider(provider_id) or {}
+        protocol = str(provider.get("protocol") or "")
+        resolved = super().resolve(
+            provider_id, model_id, role=role, lane=lane,
+        )
+        previous = resolved.adapter.client
+
+        async def respond(request: httpx.Request) -> httpx.Response:
+            payload = json.loads(request.content.decode("utf-8"))
+            role = _offline_role_for_anthropic_request(payload)
+            system, user = _offline_request_messages(payload)
+            result = await self.oracle.complete(
+                role, system, user,
+                max_output_tokens=int(
+                    payload.get("max_tokens")
+                    or payload.get("max_output_tokens") or 0
+                ),
+            )
+            if protocol == "openai-chat":
+                body = {
+                    "id": "offline-production-shaped",
+                    "choices": [{
+                        "message": {"role": "assistant", "content": result.text},
+                        "finish_reason": "stop",
+                    }],
+                    "usage": {"prompt_tokens": 2400, "completion_tokens": 1200},
+                }
+            elif protocol == "openai-responses":
+                body = {
+                    "id": "offline-production-shaped", "status": "completed",
+                    "output": [{
+                        "type": "message", "role": "assistant",
+                        "content": [{"type": "output_text", "text": result.text}],
+                    }],
+                    "usage": {"input_tokens": 2400, "output_tokens": 1200},
+                }
+            else:
+                body = {
+                    "id": "offline-production-shaped",
+                    "content": [{"type": "text", "text": result.text}],
+                    "stop_reason": "end_turn",
+                    "usage": {"input_tokens": 2400, "output_tokens": 1200},
+                }
+            return httpx.Response(
+                200, json=body, request=request,
+            )
+
+        resolved.adapter.client = httpx.AsyncClient(
+            transport=httpx.MockTransport(respond), timeout=30,
+        )
+        self.open_clients.extend([previous, resolved.adapter.client])
+        return resolved
+
+    async def close(self) -> None:
+        for client in self.open_clients:
+            await client.aclose()
+        self.open_clients.clear()
 
 
 def expose_test_primary_route(gateway):
@@ -1704,6 +2207,33 @@ def save_test_complete_short_checkpoint(
     constraints: str = "test constraints", state_override: dict | None = None,
     planning_adaptation: dict | None = None,
 ) -> None:
+    style_module = __import__(
+        "novel_flywheel.style_context",
+        fromlist=["selected_style_reference_provenance"],
+    )
+    style_authority = style_module.selected_style_reference_provenance(
+        project, {}, initialize_missing_profile=False,
+    )
+    style_authority = {
+        key: value for key, value in style_authority.items()
+        if key != "style_profile_text"
+    }
+    if not context.get("style_reference_authority_sha256"):
+        context["style_reference_authority_sha256"] = style_authority[
+            "authority_sha256"
+        ]
+        context_without_generation = {
+            key: value for key, value in context.items()
+            if key != "generation_context_sha256"
+        }
+        context["generation_context_sha256"] = hashlib.sha256(json.dumps(
+            context_without_generation, ensure_ascii=False, sort_keys=True,
+            separators=(",", ":"),
+        ).encode("utf-8")).hexdigest()
+    (outputs / "style-reference-authority-v1.json").write_text(
+        json.dumps(style_authority, ensure_ascii=False, sort_keys=True, indent=2),
+        encoding="utf-8",
+    )
     plan = (outputs / "planning.md").read_text(encoding="utf-8")
     draft = (outputs / "draft.md").read_text(encoding="utf-8")
     chain = {
@@ -3191,6 +3721,143 @@ async def test_short_ir_first_production_length_matrix_reaches_formal_manuscript
     assert "planning_semantic_packets_reduced" in event_types
     assert "draft_integrity_passed" in event_types
     assert "story_state_committed" in event_types
+
+
+@pytest.mark.asyncio
+async def test_full_short_real_http_seam(
+    tmp_path, monkeypatch,
+) -> None:
+    """Complete the real Short workflow with only ``httpx`` replaced."""
+
+    repo_root = tmp_path / "repo"
+    repo_root.mkdir()
+    db = Database(repo_root / "app.db")
+    db.migrate()
+    db.save_provider(
+        provider_id="offline", name="Offline Anthropic", protocol="anthropic",
+        base_url="https://offline.invalid/v1", auth_type="x-api-key",
+        timeout_seconds=30, extra_headers={},
+    )
+    for model_id, context_window, max_output in (
+        ("planning-small", 32_768, 16_384),
+        ("offline-large", 262_144, 32_768),
+    ):
+        db.save_model(
+            model_id=model_id, provider_id="offline",
+            display_name=model_id, model_name=model_id,
+            context_window=context_window, max_output_tokens=max_output,
+        )
+    db.save_role_binding("planning", "offline", "planning-small", None, None)
+    for role in (
+        "review", "draft", "polish", "final_review", "maintenance",
+        "reader_review", "revision_plan",
+    ):
+        db.save_role_binding(role, "offline", "offline-large", None, None)
+
+    projects = ProjectStore(db, repo_root / "workspace")
+    project = projects.create(ProjectCreate(
+        title="FS", mode="short", genre="mystery",
+        premise="A missing archivist leaves a contradictory evidence chain.",
+        target_words=13_000,
+    ))
+    (project.path / "characters" / "shen-yan.md").write_text(
+        "---\nname: 沈砚\nrole: protagonist\n---\n", encoding="utf-8",
+    )
+    skill_root = repo_root / "skills"
+    make_prompt_skills(skill_root)
+
+    secrets = MemorySecretStore()
+    secrets.set("offline", "offline-test-secret")
+    oracle = ProductionSizedShortGateway()
+    registry = _LowestSeamProductionRegistry(
+        db, secrets, oracle=oracle,
+        transport_policy=SingleDispatchTransportPolicyV1.phase_b(),
+    )
+    service = WorkflowService(
+        db, projects, ModelGateway(db, registry),
+        SkillGate(db, SkillScanner([skill_root])),
+        crewai_data_dir=repo_root / "crewai",
+    )
+
+    segment_count = service._short_segment_count(13_000)
+    formal_events = []
+    for event_index in range(1, segment_count * 2 + 1):
+        formal_events.append({
+            "id": f"EV-{event_index:08X}",
+            "label": f"档案链正式事件 {event_index}",
+            "evidence": "".join(
+                f"事件{event_index}证据{unit}：沈砚核验签章与时间，顾岚依据现场行动"
+                f"推进关系状态{event_index}-{unit}并保留结局线索。"
+                for unit in range(1, 13)
+            ),
+        })
+    initial_state = service.story_states.ensure(project.id, project.path)
+    authority_text = json.dumps(formal_events, ensure_ascii=False)
+    candidate = service.story_states.create_candidate(
+        project.id, None, initial_state.revision, "outline",
+        hashlib.sha256(authority_text.encode()).hexdigest(),
+    )
+    service.story_states.commit(candidate.id, initial_state.revision, {
+        **initial_state.data,
+        "character_states": {"沈砚": {"knowledge": {"public-ledger": False}}},
+        "outline": {"content": "", "events": formal_events},
+        "ending": {
+            "surface_goal": "天亮前公开完整底账并找到失踪档案员",
+            "inner_goal": "调查员接受公开真相造成的关系代价",
+            "cost": "与旧同盟公开决裂",
+            "final_image": "晨光照在已公开的完整底账上",
+        },
+        "confirmed_facts": [{
+            "fact_key": "archive.deadline",
+            "value": "完整底账必须在天亮前公开",
+        }],
+    })
+    base_state = service.story_states.ensure(project.id, project.path)
+    base_state_sha256 = hashlib.sha256(json.dumps(
+        base_state.data, ensure_ascii=False, sort_keys=True,
+        separators=(",", ":"),
+    ).encode("utf-8")).hexdigest()
+    maintenance_source_sha256 = service._text_hash(json.dumps(
+        service._short_maintenance_state_authority(base_state.data),
+        ensure_ascii=False, sort_keys=True, separators=(",", ":"),
+    ))
+    db.set_feature_flag(
+        "short_canonical_v2", True,
+        scope_type="project", scope_id=project.id,
+    )
+    monkeypatch.setenv("NOVEL_SHORT_CANONICAL_V2", "1")
+
+    try:
+        result = await service.run_short(project.id, use_crewai=True)
+    finally:
+        await registry.close()
+
+    run_path = project.path / "runs" / result["id"]
+    manuscript = project.path / "manuscript" / "story.md"
+    assert result["status"] == "completed"
+    assert effective_han_characters(manuscript.read_text(encoding="utf-8")) >= 13_000
+    assert {"planning", "draft", "review", "polish", "final_review", "maintenance"} <= set(
+        oracle.roles
+    )
+    assert (run_path / "outputs" / "project-mutation-journal.json").is_file()
+    live_state = service.story_states.ensure(project.id, project.path)
+    terminal = verify_short_completion_v1(
+        project_root=project.path, run_root=run_path,
+        run_identity=result["id"], workload_sha256="b" * 64,
+        workflow_final_status=result["status"], live_parity_status="exact",
+        live_story_state_revision=live_state.revision,
+        live_story_state_sha256=hashlib.sha256(json.dumps(
+            live_state.data, ensure_ascii=False, sort_keys=True,
+            separators=(",", ":"),
+        ).encode("utf-8")).hexdigest(),
+        live_story_state_data=live_state.data,
+        expected_base_story_state_revision=base_state.revision,
+        expected_base_story_state_sha256=base_state_sha256,
+        expected_maintenance_source_state_sha256=maintenance_source_sha256,
+        short_canonical_v2_enabled=True,
+        workflow_service=service, project=project,
+    )
+    assert terminal["completion_goal_outcome"] == COMPLETION_GOAL, terminal
 
 
 def test_new_short_project_uses_stable_project_brief_event_authority(tmp_path) -> None:

@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 import asyncio
 import hashlib
+import inspect
 import json
 import time
 from typing import Literal
@@ -164,6 +165,18 @@ class ModelGateway:
         self.db = db
         self.registry = registry
 
+    def _resolve_bound_route(
+        self, provider_id: str, model_id: str, *, role: str, lane: str,
+    ):
+        """Pass role authority to production registries without breaking old doubles."""
+
+        parameters = inspect.signature(self.registry.resolve).parameters
+        if "role" in parameters and "lane" in parameters:
+            return self.registry.resolve(
+                provider_id, model_id, role=role, lane=lane,
+            )
+        return self.registry.resolve(provider_id, model_id)
+
     def has_configured_fallback(self, role: str) -> bool:
         binding = self.db.get_role_binding(role) or {}
         return bool(
@@ -191,8 +204,9 @@ class ModelGateway:
         )
         resolved = None
         try:
-            resolved = self.registry.resolve(
+            resolved = self._resolve_bound_route(
                 binding["primary_provider_id"], binding["primary_model_id"],
+                role=role, lane="primary",
             )
             return await self._complete_resolved(
                 role, system, user, resolved, primary_limit,
@@ -215,7 +229,7 @@ class ModelGateway:
                 except Exception as retry_exc:
                     exc = retry_exc
             try:
-                fallback = self._resolve_configured_fallback(binding)
+                fallback = self._resolve_configured_fallback(binding, role=role)
             except asyncio.CancelledError:
                 raise
             except Exception as fallback_exc:
@@ -370,7 +384,13 @@ class ModelGateway:
         primary = routes[0] if routes else ("", "")
         for index, (provider_id, model_id) in enumerate(routes):
             try:
-                resolved = self.registry.resolve(provider_id, model_id)
+                resolved = self._resolve_bound_route(
+                    provider_id, model_id, role=role,
+                    lane=(
+                        "primary" if index == 0 else
+                        "fallback" if index == 1 else "capability_roster"
+                    ),
+                )
                 requested_limit = (
                     max_output_tokens if index == 0
                     else fallback_max_output_tokens
@@ -426,8 +446,9 @@ class ModelGateway:
         binding = self.db.get_role_binding(role)
         if binding is None:
             raise LookupError(f"Model role is not configured: {role}")
-        resolved = self.registry.resolve(
+        resolved = self._resolve_bound_route(
             binding["primary_provider_id"], binding["primary_model_id"],
+            role=role, lane="primary",
         )
         return await self._complete_resolved(
             role, system, user, resolved,
@@ -449,7 +470,7 @@ class ModelGateway:
         binding = self.db.get_role_binding(role)
         if binding is None:
             raise LookupError(f"Model role is not configured: {role}")
-        fallback = self._resolve_configured_fallback(binding)
+        fallback = self._resolve_configured_fallback(binding, role=role)
         if fallback is None:
             raise LookupError(f"Model role has no configured fallback: {role}")
         result = await self._complete_resolved(
@@ -893,8 +914,9 @@ class ModelGateway:
             raise LookupError(f"Model role is not configured: {role}")
         resolved = None
         try:
-            resolved = self.registry.resolve(
+            resolved = self._resolve_bound_route(
                 binding["primary_provider_id"], binding["primary_model_id"],
+                role=role, lane="primary",
             )
             return await self._complete_with_tools_resolved(
                 role, system, user, toolbox, fallback_context, run_id,
@@ -923,7 +945,7 @@ class ModelGateway:
                     if recovered is not None:
                         return recovered
             try:
-                fallback = self._resolve_configured_fallback(binding)
+                fallback = self._resolve_configured_fallback(binding, role=role)
             except asyncio.CancelledError:
                 raise
             except Exception as fallback_exc:
@@ -984,11 +1006,12 @@ class ModelGateway:
         if binding is None:
             raise LookupError(f"Model role is not configured: {role}")
         if route == "primary":
-            resolved = self.registry.resolve(
+            resolved = self._resolve_bound_route(
                 binding["primary_provider_id"], binding["primary_model_id"],
+                role=role, lane="primary",
             )
         elif route == "configured_fallback":
-            resolved = self._resolve_configured_fallback(binding)
+            resolved = self._resolve_configured_fallback(binding, role=role)
             if resolved is None:
                 raise LookupError(f"Model role has no configured fallback: {role}")
         else:  # pragma: no cover - Literal plus shared dispatcher validates it
@@ -1206,12 +1229,14 @@ class ModelGateway:
                 max_output_tokens,
             )
 
-    def _resolve_configured_fallback(self, binding):
+    def _resolve_configured_fallback(self, binding, *, role: str):
         provider_id = binding.get("fallback_provider_id")
         model_id = binding.get("fallback_model_id")
         if not provider_id or not model_id:
             return None
-        return self.registry.resolve(provider_id, model_id)
+        return self._resolve_bound_route(
+            provider_id, model_id, role=role, lane="fallback",
+        )
 
     def _route_output_limit(self, model_id: str | None,
                             requested: int | None) -> int | None:

@@ -2283,3 +2283,32 @@ equivalence, same-pen claims, and unsupported stylistic equivalence are
 rejected. A changed live selection fails before the next model dispatch. These
 offline contracts do not enable Hybrid, Planning V2 cutover, real Provider
 access, or Full Short execution authorization.
+
+## One-shot trustworthy Full Short execution boundary
+
+`src/novel_flywheel/full_short_execution.py` is a default-off control plane
+for one separately authorized Full Short. Its canonical policy binds the exact
+Git HEAD and branch, run/project/workload identity, Runtime and style authority,
+the complete route/destination/egress manifests, request and cumulative output
+caps, elapsed policy, and the disabled Skill V3/Planning V2 cutovers. The real
+runner validates those public bindings with external actions disabled before it
+may create a durable permission, one JIT approval, or one nonce.
+
+The permission, approval, nonce, dispatch ledger, and terminal completion
+receipt live outside the Git worktree. Every transport dispatch re-reads and
+hash-verifies that chain, writes the exact destination and request shape before
+HTTP, and enforces the request and cumulative output caps. Any process restart,
+including one after a locally closed stage, fails closed and cannot redispatch.
+Only the same claimed observer session may continue to the next planned stage
+after the prior response, local output, and receipt hashes are durably closed.
+An exclusively stored completion receipt permanently prevents another dispatch.
+
+`tools/canary/first_trustworthy_full_short_runner.py` is the sole dedicated
+entry for this boundary. Its default preflight mode cannot construct a secret
+store or Provider client. Real execution additionally requires `--execute`
+and a freshly user-activated canonical authorization SHA from outside the
+worktree. Ordinary UI/API Short behavior, prompts, route/model assignments,
+workflow retries, output budgets, literary Skills, StoryState, Canon, and READY
+semantics are unchanged. The offline rehearsal replaces only the lowest HTTP
+transport and persists no project prose, prompts, references, credentials, or
+Provider bodies in its hash-only evidence.

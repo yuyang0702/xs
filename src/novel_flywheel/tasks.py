@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
+import inspect
 import uuid
 from collections.abc import Awaitable, Callable
 from datetime import datetime, timezone
@@ -17,6 +18,7 @@ from novel_flywheel.production_incidents import classify_production_failure
 
 
 RunOperation = Callable[[str], Awaitable[object]]
+RunTerminalFinalizer = Callable[[str, object], object | Awaitable[object]]
 RunOperationResolver = Callable[[dict[str, Any], dict[str, Any]], RunOperation | None]
 
 
@@ -34,6 +36,7 @@ class RunTaskManager:
         self.operation_resolver = operation_resolver
         self.tasks: dict[str, asyncio.Task] = {}
         self._operations: dict[str, RunOperation] = {}
+        self._exact_once_reservations: set[str] = set()
 
     def start(
         self, project_id: str, workflow: str, operation: RunOperation, *,
@@ -53,6 +56,76 @@ class RunTaskManager:
                 "This project already has an active run. Wait for it to finish before starting another."
             )
         self._launch_activated_run(run_id, operation)
+        return self.db.get_run(run_id) or {"id": run_id, "status": "queued"}
+
+    def start_exact_once(
+        self, run_id: str, project_id: str, workflow: str,
+        operation: RunOperation, *,
+        terminal_finalizer: RunTerminalFinalizer | None = None,
+    ) -> dict:
+        """Start a policy-bound run with no process-level redispatch budget.
+
+        This dedicated boundary is used only by the separately authorized
+        Full Short runner. Ordinary application starts retain their existing
+        generated identity and RetryBudgets defaults.
+        """
+
+        asyncio.get_running_loop()
+        self.reserve_exact_once(run_id, project_id, workflow)
+        return self.launch_reserved_exact_once(
+            run_id, operation, terminal_finalizer=terminal_finalizer,
+        )
+
+    def reserve_exact_once(
+        self, run_id: str, project_id: str, workflow: str,
+    ) -> dict:
+        """Claim the exact run identity and project writer lease without launch.
+
+        The dedicated Full Short runner uses this boundary before creating its
+        external JIT approval.  The reservation is a durable supervised queued
+        run, so another workflow writer cannot enter between approval and the
+        actual launch.
+        """
+
+        if (
+            not run_id
+            or run_id in self._exact_once_reservations
+            or self.db.get_run(run_id) is not None
+        ):
+            raise ValueError("Exact one-shot run identity is unavailable")
+        no_retry = RetryBudgets(
+            transport=0, protocol=0, semantic=0, quality=0,
+            provider_wait=0,
+        )
+        if not self.db.activate_supervised_run(
+            run_id=run_id, project_id=project_id, workflow=workflow,
+            resume_payload={}, retry_budgets=no_retry.model_dump(),
+        ):
+            raise ProjectRunActiveError(
+                "This project already has an active run or the exact run id is unavailable."
+            )
+        self._exact_once_reservations.add(run_id)
+        return self.db.get_run(run_id) or {"id": run_id, "status": "queued"}
+
+    def launch_reserved_exact_once(
+        self, run_id: str, operation: RunOperation, *,
+        terminal_finalizer: RunTerminalFinalizer | None = None,
+    ) -> dict:
+        """Launch one exact reservation and defer completion through finalizer."""
+
+        asyncio.get_running_loop()
+        run = self.db.get_run(run_id)
+        if (
+            run_id not in self._exact_once_reservations
+            or run is None
+            or run.get("status") != "queued"
+            or run_id in self.tasks
+        ):
+            raise ValueError("Exact one-shot reservation is unavailable")
+        self._exact_once_reservations.remove(run_id)
+        self._launch_activated_run(
+            run_id, operation, terminal_finalizer=terminal_finalizer,
+        )
         return self.db.get_run(run_id) or {"id": run_id, "status": "queued"}
 
     def resume(
@@ -91,11 +164,14 @@ class RunTaskManager:
         return self.db.get_run(run_id) or {"id": run_id, "status": "queued"}
 
     def _launch_activated_run(
-        self, run_id: str, operation: RunOperation,
+        self, run_id: str, operation: RunOperation, *,
+        terminal_finalizer: RunTerminalFinalizer | None = None,
     ) -> asyncio.Task:
         self._operations[run_id] = operation
         try:
-            return self._launch(run_id, operation)
+            return self._launch(
+                run_id, operation, terminal_finalizer=terminal_finalizer,
+            )
         except Exception as exc:
             self._operations.pop(run_id, None)
             evidence = f"{type(exc).__name__}:{str(exc)}"
@@ -107,9 +183,15 @@ class RunTaskManager:
             )
             raise
 
-    def _launch(self, run_id: str, operation: RunOperation) -> asyncio.Task:
+    def _launch(
+        self, run_id: str, operation: RunOperation, *,
+        terminal_finalizer: RunTerminalFinalizer | None = None,
+    ) -> asyncio.Task:
         task = asyncio.create_task(
-            self._execute(run_id, operation), name=f"novel-run-{run_id}",
+            self._execute(
+                run_id, operation, terminal_finalizer=terminal_finalizer,
+            ),
+            name=f"novel-run-{run_id}",
         )
         self.tasks[run_id] = task
         task.add_done_callback(
@@ -136,6 +218,7 @@ class RunTaskManager:
             "completed", "failed", "cancelled", "interrupted", "waiting_user",
         }:
             self._operations.pop(run_id, None)
+            self._exact_once_reservations.discard(run_id)
 
     def _commit_worker_outcome(
         self, run_id: str, action: str, intended_outcome: str,
@@ -180,7 +263,10 @@ class RunTaskManager:
                 from last_error
         return False
 
-    async def _execute(self, run_id: str, operation: RunOperation) -> None:
+    async def _execute(
+        self, run_id: str, operation: RunOperation, *,
+        terminal_finalizer: RunTerminalFinalizer | None = None,
+    ) -> None:
         try:
             entered = self.db.enter_supervised_run_running(run_id)
         except Exception as exc:
@@ -201,7 +287,13 @@ class RunTaskManager:
         if not entered:
             return
         try:
-            await operation(run_id)
+            operation_result = await operation(run_id)
+            if terminal_finalizer is not None:
+                finalizer_result = terminal_finalizer(
+                    run_id, operation_result,
+                )
+                if inspect.isawaitable(finalizer_result):
+                    await finalizer_result
         except asyncio.CancelledError:
             self._commit_worker_outcome(
                 run_id, "cancelled_by_user", "cancelled",
@@ -505,6 +597,15 @@ class RunTaskManager:
         if run["status"] in {"completed", "failed", "cancelled", "interrupted"}:
             return run
         task = self.tasks.get(run_id)
+        if run_id in self._exact_once_reservations and run["status"] == "queued":
+            self._exact_once_reservations.remove(run_id)
+            self._commit_worker_outcome(
+                run_id, "cancelled_by_user", "cancelled",
+                lambda: self.db.commit_supervised_cancellation(run_id),
+                lambda failure_sha256: self.db.commit_supervised_cancellation(
+                    run_id, degraded_failure_sha256=failure_sha256,
+                ),
+            )
         if task is not None:
             self.db.update_run(run_id, "cancelling", run.get("current_stage"))
             self.db.add_run_event(

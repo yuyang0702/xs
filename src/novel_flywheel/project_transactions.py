@@ -541,7 +541,18 @@ def _advance_project_mutation(
         raise RuntimeError(
             "Project mutation requires its business post-commit gate"
         )
-    if finalize_run and journal.post_commit_gate is not None:
+    if (
+        not finalize_run
+        and allow_post_commit_gate
+        and journal.post_commit_gate is None
+    ):
+        raise RuntimeError(
+            "Cleanup-only finalization requires a business post-commit gate"
+        )
+    if (
+        (finalize_run or allow_post_commit_gate)
+        and journal.post_commit_gate is not None
+    ):
         gate = journal.post_commit_gate
         if gate.status != "passed":
             raise RuntimeError("Project mutation post-commit gate has not passed")
@@ -597,8 +608,8 @@ def _advance_project_mutation(
             terminal = store.db.get_run(run_id)
             if terminal is None or terminal.get("status") != "completed":
                 raise RuntimeError("Project mutation terminal state was not durable")
-            if snapshot_path.is_dir():
-                ProjectSnapshot.load(project.path, snapshot_path).discard()
+        if (finalize_run or allow_post_commit_gate) and snapshot_path.is_dir():
+            ProjectSnapshot.load(project.path, snapshot_path).discard()
         return journal
 
     snapshot = ProjectSnapshot.load(project.path, snapshot_path)
@@ -662,6 +673,7 @@ def _advance_project_mutation(
         terminal = store.db.get_run(run_id)
         if terminal is None or terminal.get("status") != "completed":
             raise RuntimeError("Project mutation terminal state was not durable")
+    if finalize_run or allow_post_commit_gate:
         snapshot.discard()
     return journal
 
@@ -681,12 +693,21 @@ def commit_project_mutation_authority(
 
 def finalize_project_mutation(
     store: _ProjectStore,
-    run_id: str,
+    run_id: str, *,
+    finalize_run: bool = True,
 ) -> ProjectMutationJournalV1:
-    """Finalize a two-phase Saga after its domain owner proves the gate."""
+    """Finalize a gated Saga, optionally retaining the active run lease.
+
+    ``finalize_run=False`` is the narrow Full Short terminal-closure seam: it
+    verifies the passed business gate and discards the rollback snapshot while
+    leaving the supervised run active for an external exact-once completion
+    commit.  All existing callers retain the original terminal behavior.
+    """
 
     journal = _advance_project_mutation(
-        store, run_id, finalize_run=True, allow_post_commit_gate=True,
+        store, run_id,
+        finalize_run=finalize_run,
+        allow_post_commit_gate=True,
     )
     _observe_project_mutation(store, journal)
     return journal
