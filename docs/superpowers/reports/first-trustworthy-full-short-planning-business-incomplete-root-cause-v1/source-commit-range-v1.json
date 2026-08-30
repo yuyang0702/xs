@@ -1,0 +1,30 @@
+{
+  "schema": "PlanningBusinessIncompleteSourceCommitRangeV1",
+  "version": 1,
+  "branch": "r1-ptr3/planning-repair-finding-propagation-20260817",
+  "start_head": "a91aa04d6c9a0c7d5d1d7541d4e6734ad328d6d2",
+  "implementation_head": "a62bb88d400338f6daafffb4623495f4b73b0945",
+  "commits": [
+    "3fb7327098d23466328d7f182d4ce8f1a3d27e19",
+    "6e08b4df443d1e8e49a4c7c6c076461d2d7c7d47",
+    "695c5d371170db9f57c34dd91dbc4aff637364ba",
+    "0438a95b68501a8ba224aa93ef273dfd9e8831f5",
+    "0afa92df65562cbbac480ebfc617411c459e053d",
+    "1a31d3c01fa9f247fb03ed9a1be075a0544d0e72",
+    "b81584bd76825cacfabb628b5c4267e47ef2fd7c",
+    "b88c4c2b79eba5f20360b68121838bb874861229",
+    "9380677e646355344c61ee9a56a38f0bef529ff9",
+    "d46456101071646987db069f2c7d64969c6f2b87",
+    "7c8251d6ba3478d58e227269513c7d89599107ab",
+    "7639ce4d94163697cf4313df1b8784d94c127fe3",
+    "9a11555727acd596c032f75731652aa5ecfcc0bc",
+    "dd5560055af07a8b6e4c841e29547a7039a95e07",
+    "a62bb88d400338f6daafffb4623495f4b73b0945"
+  ],
+  "production_source_files": [
+    "src/novel_flywheel/contract_runtime.py",
+    "src/novel_flywheel/full_short_execution.py",
+    "src/novel_flywheel/planning_semantics.py",
+    "src/novel_flywheel/workflows.py"
+  ]
+}

@@ -1,0 +1,31 @@
+{
+  "baseline_failure_classification": [
+    "incremental/final-review fake-stage tests do not persist the authority-bound accepted artifact required since pre-task commit d6fa710",
+    "legacy Draft tests predate current typed Draft/IR-first production behavior",
+    "legacy production-shaped Planning gateway does not implement IR_FIRST_SHORT_PLANNING_PACKET_V2 introduced before START_HEAD"
+  ],
+  "classification": "MIXED_WITH_SEVEN_PREEXISTING_BASELINE_FAILURES",
+  "command": "pytest rerun of all related-cluster failures after scope correction",
+  "elapsed_seconds": 127.455,
+  "errors": 0,
+  "external_actions": {
+    "credential_lookup": 0,
+    "http_posts": 0,
+    "model": 0,
+    "network": 0,
+    "paid": 0,
+    "provider_client_creation": 0,
+    "provider_requests": 0
+  },
+  "failures": 7,
+  "head_commit_timestamp": 1788102691,
+  "junit_mtime": 1788103696.988603,
+  "junit_sha256": "170334012d98be6cd332f9934dd6f298df27fc8c5674ca0edc7fe51fb00dbc1c",
+  "passed": 4,
+  "schema": "OfflinePytestReceiptV1",
+  "skipped": 0,
+  "source_head": "a62bb88d400338f6daafffb4623495f4b73b0945",
+  "task_owned_regression_count": 0,
+  "tests": 11,
+  "version": 1
+}

@@ -1,0 +1,11 @@
+{
+  "canonical_response_bytes": "ABSENT_BY_HASH_ONLY_PRIVACY_DESIGN",
+  "canonical_sha256": "1db94ca61b00af660c59de0c76674888a729b638b163dcaf9baae4fa3be776d3",
+  "exact_byte_replay_available": false,
+  "no_reconstruction_or_guessing": true,
+  "provable_missing_set": "NONEMPTY_SUBSET_OF_{initial_state,segments}",
+  "raw_provider_response": "ABSENT_BY_HASH_ONLY_PRIVACY_DESIGN",
+  "raw_sha256": "e5170ab88e06704345041047f6210ff3e94f16a065e3b84d110f1e4558e6aaad",
+  "schema": "PlanningRawResponseAvailabilityV1",
+  "version": 1
+}

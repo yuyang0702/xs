@@ -1,0 +1,13 @@
+{
+  "exact_next_gate": "FIRST_TRUSTWORTHY_FULL_SHORT_CAPTURED_RESPONSE_REPLAY_REQUIREMENT_DISPOSITION",
+  "final_authorization_ready": "NO",
+  "final_head_binding_closed": "NO",
+  "full_short": "NOT_EXECUTED",
+  "full_short_execution_authorized": "NO",
+  "full_short_production_shaped_dry_run": "PASS",
+  "hard_blocker": "MANDATORY_CAPTURED_REAL_RESPONSE_BYTES_WERE_NOT_PERSISTED_AND_CANNOT_BE_RECONSTRUCTED_FROM_HASHES",
+  "primary_root_cause": "PLANNING_PLAIN_ROUTE_MODEL_VISIBLE_REQUIRED_FIELD_CONTRACT_OMITTED_WITH_GENERIC_GATE_PREEMPTING_TYPED_RECOVERY_AND_UNCLOSED_LOCAL_REJECTION",
+  "schema": "FirstTrustworthyFullShortPlanningRecoveryReadinessV1",
+  "trustworthy_full_short_readiness": "NO",
+  "version": 1
+}

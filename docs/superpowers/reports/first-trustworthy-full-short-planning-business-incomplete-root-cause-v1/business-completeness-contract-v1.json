@@ -1,0 +1,140 @@
+{
+  "columns": [
+    "field_or_invariant",
+    "ownership",
+    "declared_in_schema",
+    "declared_in_prompt",
+    "declared_in_business_validator",
+    "required_downstream",
+    "real_response_status",
+    "failure_reason",
+    "real_execution_plain_prompt_status",
+    "post_fix_plain_prompt_status"
+  ],
+  "hidden_business_critical_invariant_count": 0,
+  "local_derivation_of_model_owned_content_allowed": false,
+  "rows": [
+    {
+      "declared_in_business_validator": "NO",
+      "declared_in_prompt": "YES",
+      "declared_in_schema": "NO",
+      "failure_reason": "not incident-required",
+      "field_or_invariant": "version",
+      "ownership": "LOCAL_DERIVED_DEFAULT",
+      "post_fix_plain_prompt_status": "EXPLICIT",
+      "real_execution_plain_prompt_status": "IMPLICIT_TYPE_NAME_ONLY",
+      "real_response_status": "PRESENT_OR_DEFAULTED",
+      "required_downstream": "YES"
+    },
+    {
+      "declared_in_business_validator": "YES",
+      "declared_in_prompt": "YES",
+      "declared_in_schema": "YES",
+      "failure_reason": "required root",
+      "field_or_invariant": "initial_state",
+      "ownership": "MODEL_OWNED",
+      "post_fix_plain_prompt_status": "EXPLICIT",
+      "real_execution_plain_prompt_status": "NOT_EXPLICIT_ON_PLAIN_ROUTE",
+      "real_response_status": "PRESENT_OR_MISSING_UNKNOWN",
+      "required_downstream": "YES"
+    },
+    {
+      "declared_in_business_validator": "YES",
+      "declared_in_prompt": "YES",
+      "declared_in_schema": "YES",
+      "failure_reason": "required non-empty sequence",
+      "field_or_invariant": "segments",
+      "ownership": "MODEL_OWNED",
+      "post_fix_plain_prompt_status": "EXPLICIT",
+      "real_execution_plain_prompt_status": "ONLY_SEGMENT_COUNT_EXPLICIT",
+      "real_response_status": "PRESENT_OR_MISSING_UNKNOWN",
+      "required_downstream": "YES"
+    },
+    {
+      "declared_in_business_validator": "YES",
+      "declared_in_prompt": "YES",
+      "declared_in_schema": "YES",
+      "failure_reason": "union discriminator",
+      "field_or_invariant": "segments[].kind",
+      "ownership": "MODEL_OWNED_WITH_RUNTIME_TOPOLOGY_CHECK",
+      "post_fix_plain_prompt_status": "EXPLICIT",
+      "real_execution_plain_prompt_status": "EXPLICIT",
+      "real_response_status": "UNKNOWN",
+      "required_downstream": "YES"
+    },
+    {
+      "declared_in_business_validator": "YES",
+      "declared_in_prompt": "YES",
+      "declared_in_schema": "YES",
+      "failure_reason": "contiguous ownership",
+      "field_or_invariant": "segments[].segment",
+      "ownership": "AUTHORITY_DERIVED_BUT_WIRE_REQUIRED",
+      "post_fix_plain_prompt_status": "EXPLICIT",
+      "real_execution_plain_prompt_status": "EXPLICIT",
+      "real_response_status": "UNKNOWN",
+      "required_downstream": "YES"
+    },
+    {
+      "declared_in_business_validator": "YES",
+      "declared_in_prompt": "YES",
+      "declared_in_schema": "YES",
+      "failure_reason": "non-empty semantic label",
+      "field_or_invariant": "segments[].title",
+      "ownership": "MODEL_OWNED",
+      "post_fix_plain_prompt_status": "EXPLICIT",
+      "real_execution_plain_prompt_status": "NOT_EXPLICIT",
+      "real_response_status": "UNKNOWN",
+      "required_downstream": "YES"
+    },
+    {
+      "declared_in_business_validator": "YES",
+      "declared_in_prompt": "YES",
+      "declared_in_schema": "YES",
+      "failure_reason": "non-empty realization list",
+      "field_or_invariant": "segments[].events",
+      "ownership": "MODEL_OWNED",
+      "post_fix_plain_prompt_status": "EXPLICIT",
+      "real_execution_plain_prompt_status": "IMPLIED",
+      "real_response_status": "UNKNOWN",
+      "required_downstream": "YES"
+    },
+    {
+      "declared_in_business_validator": "YES",
+      "declared_in_prompt": "YES",
+      "declared_in_schema": "YES",
+      "failure_reason": "exact formal ownership",
+      "field_or_invariant": "events[].formal_event_ordinal",
+      "ownership": "AUTHORITY_DERIVED_BUT_WIRE_REQUIRED",
+      "post_fix_plain_prompt_status": "EXPLICIT",
+      "real_execution_plain_prompt_status": "EXPLICIT",
+      "real_response_status": "UNKNOWN",
+      "required_downstream": "YES"
+    },
+    {
+      "declared_in_business_validator": "YES",
+      "declared_in_prompt": "YES",
+      "declared_in_schema": "YES",
+      "failure_reason": "creative realization",
+      "field_or_invariant": "events[].narrative",
+      "ownership": "MODEL_OWNED",
+      "post_fix_plain_prompt_status": "EXPLICIT",
+      "real_execution_plain_prompt_status": "IMPLIED",
+      "real_response_status": "UNKNOWN",
+      "required_downstream": "YES"
+    },
+    {
+      "declared_in_business_validator": "YES",
+      "declared_in_prompt": "YES",
+      "declared_in_schema": "YES",
+      "failure_reason": "handoff invariant",
+      "field_or_invariant": "continuation.exit_state",
+      "ownership": "MODEL_OWNED_OR_PACKET_DERIVED",
+      "post_fix_plain_prompt_status": "EXPLICIT",
+      "real_execution_plain_prompt_status": "EXPLICIT",
+      "real_response_status": "UNKNOWN",
+      "required_downstream": "YES"
+    }
+  ],
+  "schema": "PlanningBusinessCompletenessContractV1",
+  "version": 1
+}

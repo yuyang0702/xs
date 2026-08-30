@@ -1,0 +1,25 @@
+{
+  "classification": "PASS",
+  "command": "pytest focused Planning/Full Short recovery cluster",
+  "elapsed_seconds": 31.356,
+  "errors": 0,
+  "external_actions": {
+    "credential_lookup": 0,
+    "http_posts": 0,
+    "model": 0,
+    "network": 0,
+    "paid": 0,
+    "provider_client_creation": 0,
+    "provider_requests": 0
+  },
+  "failures": 0,
+  "head_commit_timestamp": 1788102691,
+  "junit_mtime": 1788103599.41354,
+  "junit_sha256": "0039fdf7e154ae2ec98e7c64e89cc25438cc8424f20d31ab66d005bbe853cddc",
+  "passed": 270,
+  "schema": "OfflinePytestReceiptV1",
+  "skipped": 0,
+  "source_head": "a62bb88d400338f6daafffb4623495f4b73b0945",
+  "tests": 270,
+  "version": 1
+}

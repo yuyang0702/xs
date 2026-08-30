@@ -1,0 +1,25 @@
+{
+  "changes": [
+    "State every existing PlanningSemanticDraftV2 model-owned required member in both full and packet prompts so plain routes receive the same business contract.",
+    "Defer coarse required_fields_missing only to an existing authoritative Planning domain extractor/renderer.",
+    "Delay severe route qualification for an actionable nonterminal required-field miss until the bounded sequence resolves.",
+    "Close a successful HTTP/local rejection as hash-only LOCAL_ATTEMPT_REJECTED before any next dispatch.",
+    "Inject one realistic missing-root response at the offline HTTP seam."
+  ],
+  "rollback": "Revert task commits after START_HEAD; no data migration is required.",
+  "schema": "PlanningBusinessIncompleteNarrowFixV1",
+  "unchanged": [
+    "Planning business semantics",
+    "schema",
+    "model",
+    "route",
+    "fallback scope",
+    "attempt counts",
+    "output budget",
+    "validator",
+    "StoryState",
+    "Canon",
+    "READY"
+  ],
+  "version": 1
+}

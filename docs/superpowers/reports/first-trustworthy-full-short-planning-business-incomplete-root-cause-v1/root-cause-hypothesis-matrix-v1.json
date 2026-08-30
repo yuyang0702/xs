@@ -1,0 +1,62 @@
+{
+  "rows": [
+    {
+      "confidence": 0.99,
+      "counterevidence": "The generated Pydantic schema itself was strict on the incident-critical roots.",
+      "evidence": "The real route was plain and did not transport provider schema; the prompt referred to a supplied schema but did not name initial_state or the complete nested wire members.",
+      "hypothesis": "H1_PROMPT_BUSINESS_REQUIREMENT_NOT_EXPLICIT",
+      "status": "SUPPORTED"
+    },
+    {
+      "confidence": 0.05,
+      "counterevidence": "Relay enforcement is not independently provable.",
+      "evidence": "Generated schema requires initial_state and segments and is closed.",
+      "hypothesis": "H2_STRUCTURED_SCHEMA_TOO_WEAK",
+      "status": "NOT_SUPPORTED"
+    },
+    {
+      "confidence": 0.99,
+      "counterevidence": "No invariant was weakened.",
+      "evidence": "Invariant is correct, but coarse gate preempted authoritative Pydantic diagnostics.",
+      "hypothesis": "H3_VALIDATOR_OVERSTRICT_OR_WRONG_LAYER",
+      "status": "PARTIALLY_SUPPORTED"
+    },
+    {
+      "confidence": 0.05,
+      "counterevidence": "Semantic early stop cannot be disproved without bytes.",
+      "evidence": "end_turn, transport complete, 3230 of 3724 tokens, exact closed JSON.",
+      "hypothesis": "H4_PROVIDER_OUTPUT_TRUNCATION_OR_CAPACITY",
+      "status": "NOT_SUPPORTED"
+    },
+    {
+      "confidence": 0.05,
+      "counterevidence": "Raw block topology is unavailable.",
+      "evidence": "exact_json, zero transformations, zero quarantine.",
+      "hypothesis": "H5_PROVIDER_STRUCTURED_OUTPUT_CONVERSION_LOSS",
+      "status": "NOT_SUPPORTED"
+    },
+    {
+      "confidence": 0.4,
+      "counterevidence": "The plain model-visible prompt did not expose the complete required contract, and the exact historical member is unavailable.",
+      "evidence": "At least one schema-required root was absent.",
+      "hypothesis": "H6_MODEL_COMPLIANCE_FAILURE_WITH_CLEAR_CONTRACT",
+      "status": "INSUFFICIENT"
+    },
+    {
+      "confidence": 0.99,
+      "counterevidence": "The real workflow and validator boundary were otherwise exercised.",
+      "evidence": "Old oracle always emitted fully complete Planning roots.",
+      "hypothesis": "H7_OFFLINE_DRY_RUN_FIXTURE_BLIND_SPOT",
+      "status": "SUPPORTED"
+    },
+    {
+      "confidence": 0.99,
+      "counterevidence": "No truncation or conversion loss evidence exists.",
+      "evidence": "Plain-route contract omission plus provider underfill plus diagnostic preemption plus premature severe quarantine plus fixture gap.",
+      "hypothesis": "H8_MULTI_FACTOR",
+      "status": "SUPPORTED"
+    }
+  ],
+  "schema": "PlanningRootCauseHypothesisMatrixV1",
+  "version": 1
+}

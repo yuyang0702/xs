@@ -1,0 +1,20 @@
+{
+  "schema": "NovelDevCouncilStrictGateReceiptV1",
+  "version": 1,
+  "declared_level": "L3",
+  "recommended_level": "L3",
+  "source_head": "a62bb88d400338f6daafffb4623495f4b73b0945",
+  "command": ".venv\\Scripts\\python.exe .agents\\skills\\novel-dev-council\\scripts\\inspect_change_gate.py --baseline %LOCALAPPDATA%\\Temp\\first-trustworthy-full-short-business-incomplete-baseline-v1.json --declared-level L3 --forward-risk-report docs/superpowers/reports/first-trustworthy-full-short-planning-business-incomplete-root-cause-v1/forward-risk-report-v2.json --strict",
+  "ok": false,
+  "classification": "FAIL_CONTAINED_OPEN_WORLD_REQUIREMENT_UNRESOLVED",
+  "blockers": [],
+  "warnings": [
+    "Forward-risk report resolution_status=contained; containment or an unresolved path cannot satisfy completion.",
+    "Open-world requirements require resolution_status=systemically_resolved; a case-only or containment result must not be reported complete."
+  ],
+  "resolution_status": "contained",
+  "resolution_detail": "Runtime mechanism is corrected and independently reviewed, but exact captured-byte replay remains impossible because historical response bytes were not persisted.",
+  "strict_l3": "FAIL",
+  "green_status_was_not_forced": true,
+  "external_actions": 0
+}

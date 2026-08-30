@@ -1,0 +1,12 @@
+{
+  "byte_identity_proven": false,
+  "candidate_count": 1,
+  "conversion_loss_evidence": "NO",
+  "file_sha256": "532b8a238c9410c2e5b97fdf38d51f076400a61f53147cc1bc7ae5c863d11be5",
+  "method": "exact_json",
+  "quarantined_paths": [],
+  "schema": "PlanningConversionAuditBindingV1",
+  "semantic_valid_meaning": "MAPPING_CANDIDATE_DETECTED_NOT_PYDANTIC_ACCEPTED",
+  "transformations": [],
+  "version": 1
+}

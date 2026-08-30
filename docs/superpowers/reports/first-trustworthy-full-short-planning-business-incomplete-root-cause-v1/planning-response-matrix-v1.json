@@ -1,0 +1,92 @@
+{
+  "rows": [
+    {
+      "case": 1,
+      "evidence": "raw bytes unavailable; all provable missing-root sets replayed",
+      "expected": "UNAVAILABLE_EXACT_BYTES_SYNTHETIC_EQUIVALENCE_REJECTED",
+      "shape": "exact real incomplete response"
+    },
+    {
+      "case": 2,
+      "evidence": "focused contract runtime",
+      "expected": "ACCEPT",
+      "shape": "complete valid response"
+    },
+    {
+      "case": 3,
+      "evidence": "initial_state and segments parametrized",
+      "expected": "TYPED_REJECT_THEN_BOUNDED_RECOVERY",
+      "shape": "one model-owned root missing"
+    },
+    {
+      "case": 4,
+      "evidence": "root/nested Pydantic matrix",
+      "expected": "TYPED_REJECT",
+      "shape": "each critical component missing one-at-a-time"
+    },
+    {
+      "case": 5,
+      "evidence": "Planning semantics validation",
+      "expected": "TYPED_REJECT",
+      "shape": "malformed optional field"
+    },
+    {
+      "case": 6,
+      "evidence": "version default; no narrative derivation",
+      "expected": "ACCEPT_ONLY_WHERE_CONTRACT_DEFAULTS",
+      "shape": "locally derivable field omitted"
+    },
+    {
+      "case": 7,
+      "evidence": "duplicate ownership/ordinal checks",
+      "expected": "REJECT",
+      "shape": "duplicate semantic item"
+    },
+    {
+      "case": 8,
+      "evidence": "compiler authority checks",
+      "expected": "REJECT",
+      "shape": "inconsistent IDs/references"
+    },
+    {
+      "case": 9,
+      "evidence": "canonical minimal payload",
+      "expected": "ACCEPT",
+      "shape": "business-complete minimal response"
+    },
+    {
+      "case": 10,
+      "evidence": "capacity/production-length matrix",
+      "expected": "ACCEPT",
+      "shape": "near-output-cap complete response"
+    },
+    {
+      "case": 11,
+      "evidence": "no cap increase",
+      "expected": "REJECT_OR_EXISTING_BOUNDED_RECOVERY",
+      "shape": "near-output-cap incomplete response"
+    },
+    {
+      "case": 12,
+      "evidence": "domain-valid sparse payload",
+      "expected": "ACCEPT",
+      "shape": "provider-style sparse but valid response"
+    },
+    {
+      "case": 13,
+      "evidence": "existing schedule only",
+      "expected": "TERMINAL_FAIL_CLOSED",
+      "shape": "repair still incomplete/no progress"
+    },
+    {
+      "case": 14,
+      "evidence": "no guessing",
+      "expected": "FAIL_CLOSED",
+      "shape": "unknown or ambiguous wrapper"
+    }
+  ],
+  "schema": "PlanningResponseMatrixV1",
+  "stale_finding_count": 0,
+  "status": "BLOCKED_EXACT_REAL_CASE_UNAVAILABLE_SYNTHETIC_MATRIX_PASS",
+  "version": 1
+}

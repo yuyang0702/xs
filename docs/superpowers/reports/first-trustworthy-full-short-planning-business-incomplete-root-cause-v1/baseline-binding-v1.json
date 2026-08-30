@@ -1,0 +1,42 @@
+{
+  "baml_src_diff_count": 0,
+  "branch": "r1-ptr3/planning-repair-finding-propagation-20260817",
+  "external_actions": {
+    "credential_lookup": 0,
+    "http_posts": 0,
+    "model": 0,
+    "network": 0,
+    "paid": 0,
+    "provider_client_creation": 0,
+    "provider_requests": 0
+  },
+  "implementation_head": "a62bb88d400338f6daafffb4623495f4b73b0945",
+  "project_id_sha256": "a69d9140943781ee24b78ff87d8ef408d29c281c6e993981dc2ef4a8eb82f720",
+  "schema": "FirstTrustworthyFullShortPlanningFailureBaselineV1",
+  "source_diff": [
+    "src/novel_flywheel/contract_runtime.py",
+    "src/novel_flywheel/full_short_execution.py",
+    "src/novel_flywheel/planning_semantics.py",
+    "src/novel_flywheel/workflows.py"
+  ],
+  "start_head": "a91aa04d6c9a0c7d5d1d7541d4e6734ad328d6d2",
+  "task_changed_files": [
+    "docs/maintenance.md",
+    "docs/superpowers/reports/first-trustworthy-full-short-planning-business-incomplete-root-cause-v1/change-contract-v1.json",
+    "docs/superpowers/reports/first-trustworthy-full-short-planning-business-incomplete-root-cause-v1/real-failure-binding-v1.json",
+    "src/novel_flywheel/contract_runtime.py",
+    "src/novel_flywheel/full_short_execution.py",
+    "src/novel_flywheel/planning_semantics.py",
+    "src/novel_flywheel/workflows.py",
+    "tests/canary/test_full_short_runner_hardening.py",
+    "tests/test_full_short_execution.py",
+    "tests/test_planning_semantics.py",
+    "tests/test_short_trustworthy_full_flow.py",
+    "tests/test_structured_output_business_qualification.py",
+    "tools/canary/first_trustworthy_full_short_dry_run.py",
+    "tools/diagnostics/materialize_first_trustworthy_planning_business_incomplete.py"
+  ],
+  "version": 1,
+  "workload_sha256": "da96465f6bad2392dcc5dcfe2cbb4776f690a621360af3fa3678fc8005de0b29",
+  "worktree_clean_before_materialization": true
+}

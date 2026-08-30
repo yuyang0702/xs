@@ -1,0 +1,32 @@
+{
+  "attempt_count_policy_changed": false,
+  "baml_src_diff_count": 0,
+  "canon_authority_changed": false,
+  "external_actions": {
+    "credential_lookup": 0,
+    "http_posts": 0,
+    "model": 0,
+    "network": 0,
+    "paid": 0,
+    "provider_client_creation": 0,
+    "provider_requests": 0
+  },
+  "fallback_scope_changed": false,
+  "model_or_route_config_changed": false,
+  "output_budget_changed": false,
+  "prompt_change_kind": "SEMANTICS_PRESERVING_MODEL_VISIBLE_WIRE_CONTRACT_EXPLICITNESS",
+  "prompt_changed": true,
+  "provider_adapter_changed": false,
+  "ready_authority_changed": false,
+  "retired_hybrid_reenabled": false,
+  "schema": "PlanningRecoveryProductionIsolationV1",
+  "src_changed": [
+    "src/novel_flywheel/contract_runtime.py",
+    "src/novel_flywheel/full_short_execution.py",
+    "src/novel_flywheel/planning_semantics.py",
+    "src/novel_flywheel/workflows.py"
+  ],
+  "story_state_authority_changed": false,
+  "validator_changed": false,
+  "version": 1
+}

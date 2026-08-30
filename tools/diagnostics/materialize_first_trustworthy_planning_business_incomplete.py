@@ -245,9 +245,10 @@ def _forward_risk() -> dict[str, Any]:
             "Do not treat exact_json candidate detection as Pydantic/domain acceptance.",
             "Do not permit restart, uncounted dispatch, or raw provider content persistence.",
         ],
-        "resolution_status": (
-            "runtime_mechanism_resolved_readiness_blocked_by_missing_"
-            "historical_response_bytes"
+        "resolution_status": "contained",
+        "resolution_detail": (
+            "runtime mechanism resolved; readiness blocked by missing "
+            "historical response bytes"
         ),
         "constraint_traceability": [
             {

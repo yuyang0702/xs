@@ -1,0 +1,30 @@
+{
+  "classification": "FULL_OFFLINE_SUITE",
+  "command": "pytest -q",
+  "elapsed_seconds": 2108.252,
+  "errors": 199,
+  "external_actions": {
+    "credential_lookup": 0,
+    "http_posts": 0,
+    "model": 0,
+    "network": 0,
+    "paid": 0,
+    "provider_client_creation": 0,
+    "provider_requests": 0
+  },
+  "failures": 189,
+  "console_reported_skipped": 41,
+  "console_reported_xfailed": 6,
+  "head_commit_timestamp": 1788102691,
+  "historical_failures_are_not_overridden": true,
+  "junit_mtime": 1788105821.213763,
+  "junit_sha256": "ee826f96b07b7b8147ab861becdecadd85d4dfdac29fe7ccd62f550aa1aecf0e",
+  "new_owning_source_regression_count": 0,
+  "passed": 4008,
+  "schema": "OfflinePytestReceiptV1",
+  "junit_skipped_including_xfailed": 47,
+  "skipped": 47,
+  "source_head": "a62bb88d400338f6daafffb4623495f4b73b0945",
+  "tests": 4443,
+  "version": 1
+}

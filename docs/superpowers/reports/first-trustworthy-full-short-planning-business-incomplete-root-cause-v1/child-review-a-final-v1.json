@@ -1,0 +1,25 @@
+{
+  "schema": "IndependentPlanningProviderContractReviewV1",
+  "version": 1,
+  "review_phase": "FINAL_DELTA",
+  "reviewer_scope": "PROMPT_SCHEMA_CONTRACT_REPLAY_AND_CAPS",
+  "review_mode": "FRESH_CHILD_AGENT_INDEPENDENT_REVIEW",
+  "source_head": "a62bb88d400338f6daafffb4623495f4b73b0945",
+  "result": "DELTA_PASS",
+  "checks": {
+    "plain_route_required_roots_explicit": "PASS",
+    "strict_schema_preserved": "PASS",
+    "typed_finding_path_precedes_generic_backstop": "PASS",
+    "speculative_output_cap_change": "ABSENT",
+    "speculative_retry_or_route_change": "ABSENT",
+    "synthetic_equivalence_replay_truthfully_labeled": "PASS",
+    "junit_source_head_and_counter_validation": "PASS"
+  },
+  "focused_hardening_tests": {
+    "passed": 18,
+    "failed": 0
+  },
+  "readiness_blocker": "MANDATORY_CAPTURED_REAL_RESPONSE_BYTES_WERE_NOT_PERSISTED_AND_CANNOT_BE_RECONSTRUCTED_FROM_HASHES",
+  "trustworthy_full_short_readiness": "NO",
+  "external_actions": 0
+}

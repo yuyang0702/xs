@@ -1,0 +1,25 @@
+{
+  "schema": "NovelDevCouncilSplitReviewReportV1",
+  "version": 1,
+  "declared_level": "L3",
+  "review_topology": "TWO_INITIAL_AND_TWO_FRESH_FINAL_INDEPENDENT_SHARDS",
+  "source_head": "a62bb88d400338f6daafffb4623495f4b73b0945",
+  "authority_critical_source_sha256": {
+    "src/novel_flywheel/contract_runtime.py": "d08736973f0d595f71f4489610f167ff1d69cbf58d0bb465758b9d00e346a705",
+    "src/novel_flywheel/full_short_execution.py": "443c67b714486b8a9181cec05b73cf3414a1c4ff18bc2c51776ea0fc7fb7cc3d",
+    "src/novel_flywheel/planning_semantics.py": "143d4f6fbfbc9030f18dbcdf9bd925cf251daf7058468da44268cec711c40d7f",
+    "src/novel_flywheel/workflows.py": "043dda64cd8b2904dafb298eab57a7329b17f736bcb9056494de5c49dc5c5111"
+  },
+  "initial_reviews": {
+    "provider_contract": "CONTAINED_ROOT_CAUSE_SUPPORTED",
+    "business_authority": "CONTAINED_ROOT_CAUSE_SUPPORTED"
+  },
+  "final_reviews": {
+    "provider_contract_delta": "PASS",
+    "business_authority_delta": "PASS"
+  },
+  "first_failing_open_world_invariant": "MANDATORY_CAPTURED_REAL_RESPONSE_BYTES_AVAILABLE_FOR_EXACT_POST_FIX_REPLAY",
+  "overall_completion_disposition": "CONTAINED_NOT_COMPLETE",
+  "new_hard_issue_in_implemented_delta": false,
+  "external_actions": 0
+}

@@ -1,0 +1,8 @@
+{
+  "dry_run_fixture_realism_gap": "ORACLE_ALWAYS_EMITTED_COMPLETE_PLANNING_ROOTS_WITH_NO_BUSINESS_INCOMPLETE_INJECTION",
+  "fix": "One-shot missing-initial_state injection at the lowest mocked HTTP transport.",
+  "realistic_structured_output_failure_injection": "PASS",
+  "schema": "PlanningDryRunFixtureGapV1",
+  "validator_boundary_bypassed": false,
+  "version": 1
+}

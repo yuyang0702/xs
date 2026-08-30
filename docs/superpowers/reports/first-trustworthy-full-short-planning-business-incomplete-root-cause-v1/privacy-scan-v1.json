@@ -1,0 +1,22 @@
+{
+  "allowed_evidence": [
+    "hashes",
+    "shape/count",
+    "typed status",
+    "test names",
+    "public Git identities"
+  ],
+  "credential_value_persisted_count": 0,
+  "files_scanned_before_manifest": 30,
+  "private_key_pattern_count": 0,
+  "raw_prompt_persisted_count": 0,
+  "raw_provider_content_persisted_count": 0,
+  "raw_story_persisted_count": 0,
+  "rejected_payload_persisted_count": 0,
+  "secret_assignment_pattern_count": 0,
+  "sk_style_token_pattern_count": 0,
+  "bearer_token_pattern_count": 0,
+  "schema": "PlanningBusinessIncompletePrivacyScanV1",
+  "status": "PASS",
+  "version": 1
+}

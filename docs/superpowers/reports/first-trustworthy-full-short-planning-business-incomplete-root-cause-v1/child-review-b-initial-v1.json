@@ -1,0 +1,33 @@
+{
+  "schema": "IndependentPlanningBusinessAuthorityReviewV1",
+  "version": 1,
+  "review_phase": "INITIAL",
+  "reviewer_scope": "BUSINESS_COMPLETENESS_AND_AUTHORITY",
+  "review_mode": "FRESH_CHILD_AGENT_INDEPENDENT_REVIEW",
+  "source_head": "a91aa04d6c9a0c7d5d1d7541d4e6734ad328d6d2",
+  "result": "CONTAINED_ROOT_CAUSE_SUPPORTED",
+  "failed_invariant": "THE_PLANNING_SEMANTIC_V2_ROOT MUST CONTAIN MODEL_OWNED INITIAL_STATE AND SEGMENTS",
+  "ownership": {
+    "initial_state": "MODEL_OWNED",
+    "segments": "MODEL_OWNED",
+    "safe_local_derivation": false,
+    "authority_semantics_changed": false
+  },
+  "findings": [
+    "The validator correctly rejected a genuinely incomplete artifact; weakening it would violate the sealed Planning contract.",
+    "Required-root membership existed in schema and validator but was insufficiently explicit in the plain-route model-visible contract.",
+    "The former dry-run oracle always emitted complete Planning roots, so it did not exercise realistic structured-but-business-incomplete output.",
+    "Generic business rejection prevented existing typed Planning finding propagation and left the local attempt unclosed.",
+    "No StoryState, Canon, READY, stage receipt, or planning artifact was promoted in the failed real run."
+  ],
+  "required_regressions": [
+    "missing initial_state",
+    "missing segments",
+    "missing both required roots",
+    "one bounded repairable omission",
+    "multi-finding and no-progress fail-close",
+    "same-session continuation without restart",
+    "authority non-mutation"
+  ],
+  "external_actions": 0
+}

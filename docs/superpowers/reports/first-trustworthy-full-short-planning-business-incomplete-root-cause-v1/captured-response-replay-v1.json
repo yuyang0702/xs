@@ -1,0 +1,15 @@
+{
+  "captured_bytes_available": false,
+  "cases": [
+    "missing initial_state",
+    "missing segments",
+    "missing both"
+  ],
+  "disposition": "UNAVAILABLE_HISTORICAL_BYTES_NOT_PERSISTED",
+  "limitation": "No historical prose or missing-member identity was reconstructed; synthetic equivalence is not claimed as captured-byte replay.",
+  "method": "EXHAUSTIVE_PROVABLE_MISSING_ROOT_EQUIVALENCE_CLASS_REPLAY",
+  "required_disposition_gate_satisfied": false,
+  "result": "Synthetic equivalence cases are each rejected locally, emit value-free exact findings, and do not promote authority.",
+  "schema": "CapturedPlanningResponseReplayV1",
+  "version": 1
+}

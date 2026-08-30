@@ -1,0 +1,39 @@
+{
+  "schema": "IndependentPlanningProviderContractReviewV1",
+  "version": 1,
+  "review_phase": "INITIAL",
+  "reviewer_scope": "PROVIDER_AND_STRUCTURED_OUTPUT_CONTRACT",
+  "review_mode": "FRESH_CHILD_AGENT_INDEPENDENT_REVIEW",
+  "source_head": "a91aa04d6c9a0c7d5d1d7541d4e6734ad328d6d2",
+  "result": "CONTAINED_ROOT_CAUSE_SUPPORTED",
+  "exact_missing_identity": "UNAVAILABLE_FROM_RETAINED_HASH_ONLY_EVIDENCE",
+  "provable_missing_set": "NONEMPTY_SUBSET_OF_INITIAL_STATE_AND_SEGMENTS",
+  "provider_shape": {
+    "finish_reason": "end_turn",
+    "requested_output_tokens": 3724,
+    "actual_output_tokens": 3230,
+    "visible_characters": 5004,
+    "conversion_method": "exact_json",
+    "transformation_count": 0,
+    "quarantine_count": 0
+  },
+  "findings": [
+    "At least one schema-required top-level member, initial_state or segments, was absent.",
+    "The normalizer admitted a partial mapping, but the generic required-field gate ran before Pydantic/domain finding extraction.",
+    "The packet prompt relied on schema identity and did not make the two required roots salient in the plain-route model-visible contract.",
+    "No evidence supports transport truncation, output-cap exhaustion, or provider conversion key loss.",
+    "Raw and canonical bytes were not persisted, so exact member identity and byte replay must remain unavailable."
+  ],
+  "ranked_hypotheses": [
+    "runtime diagnostic-path ordering mismatch",
+    "required-root omission despite executable schema",
+    "plain-route prompt salience gap",
+    "relay structured-output enforcement uncertainty"
+  ],
+  "recommended_narrow_fix": [
+    "Make initial_state and segments explicit in the plain-route model-visible contract.",
+    "Allow authoritative typed domain findings to precede the generic backstop for Planning partial mappings.",
+    "Preserve strict schema, fail-closed authority, bounded recovery, and privacy-safe diagnostics."
+  ],
+  "external_actions": 0
+}

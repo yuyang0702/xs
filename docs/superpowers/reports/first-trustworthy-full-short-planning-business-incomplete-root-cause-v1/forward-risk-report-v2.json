@@ -1,0 +1,170 @@
+{
+  "constraint_traceability": [
+    {
+      "evidence": "Missing initial_state, segments, and both produce exact JSON-pointer findings and one-hop propagation.",
+      "implementation": "contract_runtime.py defers the coarse required-field gate only when an authoritative extractor and renderer exist.",
+      "requirement": "Missing Planning roots reach the existing typed finding path.",
+      "test_paths": [
+        "tests/test_short_trustworthy_full_flow.py",
+        "tests/test_contract_runtime.py"
+      ]
+    },
+    {
+      "evidence": "The same strict-tool identity remains usable for attempt two; successful recovery records qualified with zero consecutive failures.",
+      "implementation": "contract_runtime.py commits route qualification only after terminal failure or accepted recovery.",
+      "requirement": "An actionable intermediate miss cannot quarantine its own already-authorized recovery attempt.",
+      "test_paths": [
+        "tests/test_structured_output_business_qualification.py"
+      ]
+    },
+    {
+      "evidence": "Restart, raw fields, route drift, stale session, cap breach, and unclosed response all fail closed.",
+      "implementation": "full_short_execution.py records a hash-only LOCAL_ATTEMPT_REJECTED state and permits only same-session progression within policy caps.",
+      "requirement": "Every successful HTTP response is durably closed before another Full Short dispatch.",
+      "test_paths": [
+        "tests/test_full_short_execution.py",
+        "tests/canary/test_full_short_runner_hardening.py"
+      ]
+    },
+    {
+      "evidence": "Production-shaped injection yields 71 physical attempts, 70 completed logical stages, all seven roles, and the accepted terminal goal.",
+      "implementation": "first_trustworthy_full_short_dry_run.py injects one missing Planning root only at the lowest mocked HTTP seam.",
+      "requirement": "The realistic negative fixture crosses the real local validator boundary and the repaired flow reaches final authority.",
+      "test_paths": [
+        "tests/test_workflows.py",
+        "tests/test_short_trustworthy_full_flow.py"
+      ]
+    }
+  ],
+  "forbidden_narrowing": [
+    "Do not special-case the unavailable real response bytes or one field name.",
+    "Do not weaken required fields or synthesize model-owned narrative content.",
+    "Do not add retry, fallback, route, model, output budget, or Provider branches.",
+    "Do not treat exact_json candidate detection as Pydantic/domain acceptance.",
+    "Do not permit restart, uncounted dispatch, or raw provider content persistence."
+  ],
+  "historical_incident_families_checked": [
+    "planning semantic_validation_failed finding propagation",
+    "planning repair_scope_mutation_not_proven residual",
+    "provider structured_output_business_incomplete",
+    "reasoning-only max_tokens final artifact unavailable",
+    "ContractOutputLimitExhausted terminal amplification",
+    "Draft retry_scope_too_broad residual",
+    "stale nonce, restart, and ambiguous dispatch"
+  ],
+  "invalid_output_variants_tested": [
+    "empty or rootless object remains generic fail-closed",
+    "duplicate, inconsistent, or out-of-authority event identity",
+    "repair still incomplete or no-progress repair"
+  ],
+  "invariant_test_paths": [
+    "tests/test_contract_runtime.py",
+    "tests/test_structured_output_business_qualification.py",
+    "tests/test_planning_semantics.py",
+    "tests/test_short_trustworthy_full_flow.py",
+    "tests/test_full_short_execution.py",
+    "tests/test_workflows.py"
+  ],
+  "model_output_boundary_changed": true,
+  "model_output_topology_classes_tested": [
+    "canonical object",
+    "single semantic wrapper",
+    "array/event packet",
+    "markdown or fenced packet",
+    "strict-tool arguments"
+  ],
+  "model_output_variants_tested": [
+    "canonical complete PlanningSemanticDraftV2",
+    "missing initial_state",
+    "missing segments",
+    "missing both required roots",
+    "nested required field omission",
+    "minimal business-complete planning response",
+    "near-cap complete response",
+    "provider-style sparse but domain-valid response"
+  ],
+  "next_authoritative_boundary_tests": [
+    "tests/test_workflows.py",
+    "tests/test_full_short_execution.py",
+    "tests/test_short_trustworthy_full_flow.py"
+  ],
+  "operational_definition": "Every converted PlanningSemanticDraftV2 candidate with a missing required model-owned field reaches authoritative value-free diagnostics; only an already-bounded next attempt may consume those findings; qualification memory cannot preempt that sequence; terminal misses remain fail-closed.",
+  "original_requirement": "Resolve the first Trustworthy Full Short Planning business-incomplete failure offline, preserve the intended business contract, cross the next authoritative boundary, and re-close Full Short readiness without any external action.",
+  "production_shaped_tests": [
+    "tests/test_workflows.py",
+    "tests/test_short_trustworthy_full_flow.py",
+    "tests/canary/test_full_short_runner_hardening.py"
+  ],
+  "projected_failure_mechanisms": [
+    "missing required root and nested members",
+    "generic validator shadowing authoritative diagnostics",
+    "premature route qualification quarantine",
+    "conversion ambiguity and malformed wrappers",
+    "transport interruption and output limit",
+    "ledger response-to-local-receipt ambiguity",
+    "finding replay, staleness, or scope mutation"
+  ],
+  "remaining_risks": [
+    "The exact historical response bytes are unavailable by prior privacy design, so the mandatory captured-byte replay cannot be performed or claimed as PASS.",
+    "The canonical authorization policy has global per-call and total output caps but no literal stage-specific cap map; no authorization is materialized while readiness is blocked.",
+    "A future real Full Short remains unexecuted and cannot be authorized by this blocked evidence set."
+  ],
+  "resolution_detail": "runtime mechanism resolved; readiness blocked by missing historical response bytes",
+  "resolution_status": "contained",
+  "scope_classification": "open_world",
+  "sibling_boundaries": [
+    {
+      "boundary": "causal chain",
+      "disposition": "tested_not_susceptible",
+      "evidence": "Injected recovery compiles exact Planning ownership before causal-chain generation."
+    },
+    {
+      "boundary": "execution manifest",
+      "disposition": "tested_not_susceptible",
+      "evidence": "Production-shaped replay completes manifest validation with the same formal IDs."
+    },
+    {
+      "boundary": "drafting",
+      "disposition": "tested_not_susceptible",
+      "evidence": "13K/20K/30K and current-project replays reach complete Draft candidates."
+    },
+    {
+      "boundary": "split and merge",
+      "disposition": "tested_not_susceptible",
+      "evidence": "Production-length matrix preserves deterministic packet ownership and reconstruction."
+    },
+    {
+      "boundary": "polish",
+      "disposition": "tested_not_susceptible",
+      "evidence": "Normal and injected full-flow artifacts share the same final artifact SHA."
+    },
+    {
+      "boundary": "targeted and manual revision",
+      "disposition": "not_applicable",
+      "evidence": "No revision owner or capability changed."
+    },
+    {
+      "boundary": "final review",
+      "disposition": "tested_not_susceptible",
+      "evidence": "Both current-project replays reach accepted Final Review and all required roles."
+    },
+    {
+      "boundary": "formal promotion",
+      "disposition": "tested_not_susceptible",
+      "evidence": "Production-length and current-project runs reach the existing terminal authority chain."
+    }
+  ],
+  "transport_capacity_variants_tested": [
+    "output-limited structured response under existing expansion policy",
+    "interrupted transport with no false business quarantine",
+    "near-cap incomplete response"
+  ],
+  "unknown_variant_behavior": "Unknown, ambiguous, duplicated, incomplete, or machine-control-bearing shapes remain rejected or enter only the registered bounded recovery; Runtime never guesses narrative values.",
+  "unseen_valid_variants_tested": [
+    "artifact_bundle single-candidate wrapper",
+    "delivery_envelope nested single-candidate wrapper",
+    "sparse complete canonical object"
+  ],
+  "version": 2,
+  "why_previous_tests_missed": "The prior HTTP-seam oracle always emitted fully populated Planning roots; it exercised the real validator boundary only with unrealistically perfect success payloads and had no one-shot business-incomplete injection."
+}
