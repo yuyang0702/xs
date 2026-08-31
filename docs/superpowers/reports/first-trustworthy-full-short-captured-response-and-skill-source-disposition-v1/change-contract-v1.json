@@ -1,0 +1,102 @@
+{
+  "schema": "FirstTrustworthyCapturedResponseAndSkillSourceChangeContractV1",
+  "version": 1,
+  "status": "PRE_IMPLEMENTATION",
+  "branch": "r1-ptr3/planning-repair-finding-propagation-20260817",
+  "start_head": "2005a80fc7f261d3c479d93b5ed5ad0d38b56812",
+  "risk_level": "L3",
+  "scope_classification": "open_world",
+  "authorization": "implementation_and_offline_validation_only",
+  "requested_outcome": [
+    "Truthfully disposition the unavailable historical exact-response replay requirement.",
+    "If justified by evidence, make future provider responses exactly capturable and replayable before lossy conversion.",
+    "Revalidate Planning and all real Full Short stage business-completeness contracts.",
+    "Prove the effective current production Skill source and correct misleading Skill-page/API presentation without changing runtime resolution."
+  ],
+  "material_requirements": [
+    {
+      "requirement": "Never fabricate or relabel synthetic bytes as the historical response.",
+      "operational_definition": "Only recovered byte-identical persisted content may satisfy historical replay; otherwise record permanent non-replayability.",
+      "forbidden_narrowing": "A synthetic equivalence fixture cannot satisfy the historical byte-replay claim.",
+      "implementation_boundary": "historical search and evidence disposition",
+      "completion_evidence": "historical-byte-search-v1.json and historical-replay-requirement-disposition-v1.json"
+    },
+    {
+      "requirement": "Future real provider calls must be exactly replayable at the required byte boundary.",
+      "operational_definition": "Immutable worktree-external capture precedes lossy/semantic conversion and binds run/call/stage/provider/model/route/hash/length/encoding with tamper and metadata fail-close.",
+      "forbidden_narrowing": "Do not capture only canonical JSON or successful responses; conversion failures and crash windows remain covered.",
+      "implementation_boundary": "shared provider response boundary and replay loader",
+      "completion_evidence": "capture/replay matrix plus production-shaped Full Short receipts"
+    },
+    {
+      "requirement": "Audit structurally valid but business-incomplete behavior across every real Full Short model stage.",
+      "operational_definition": "Map schema, model-visible requirements, local validators, derivation ownership, typed recovery, and at least one negative fixture per applicable stage.",
+      "forbidden_narrowing": "Planning-only coverage is insufficient.",
+      "implementation_boundary": "existing stage contract and validation owners",
+      "completion_evidence": "all-stage-business-contract-alignment-v1.json and tests"
+    },
+    {
+      "requirement": "Skill page must distinguish configured roots from the actual effective runtime source.",
+      "operational_definition": "Mechanically prove precedence and representative Planning/Draft identities; presentation-only repair must not change model-visible Skill bytes.",
+      "forbidden_narrowing": "Do not assume the displayed C-drive root is the runtime source and do not silently alter resolver precedence.",
+      "implementation_boundary": "Skill scanner/API/UI only as source truth proves",
+      "completion_evidence": "skill-source-truth-audit-v1.json and UI/API tests"
+    }
+  ],
+  "current_behavior_and_evidence": {
+    "historical_raw_and_canonical_bytes": "NOT_FOUND_IN_SEALED_RUN_OUTPUT_OR_DURABLE_LEDGER_AS_OF_INITIAL_SEARCH",
+    "planning_runtime_fix": "IMPLEMENTED_AT_A62BB88_AND_SEALED_AT_2005A80",
+    "planning_production_shaped_replay": "PASS_70_NORMAL_AND_71_PHYSICAL_FAULT_INJECTION",
+    "skill_page_observed_issue": "AUDIT_PENDING"
+  },
+  "allowed_changes": [
+    "shared prospective provider response capture and exact replay",
+    "privacy-safe receipts and worktree-external storage",
+    "stage business-contract negative fixtures and narrow alignment fixes if proven",
+    "Skill page/API display fields and tests",
+    "evidence, maintenance documentation, and offline tooling"
+  ],
+  "protected_unchanged_behavior": [
+    "StoryState, Canon, READY, formal manuscript, current candidate, and protected best candidate authority",
+    "provider/model/route/fallback/retry/output-budget identities",
+    "Planning business strictness and bounded recovery",
+    "CURRENT_BASELINE_SKILL_GATE_PLUS_SKILL_PROMPT_COMPACTOR production path",
+    "retired Selective/Hybrid model-visible paths",
+    "credentials, prior consumed authorization/nonce/ledger, live run history, and project content"
+  ],
+  "authority_impact": {
+    "formal_manuscript": "read_only",
+    "candidate_and_best_candidate": "read_only",
+    "story_state_canon_ready": "read_only",
+    "planning_and_downstream_receipts": "validation_behavior_revalidated",
+    "provider_response_runtime_storage": "changed_prospectively_if_accepted",
+    "provider_model_route_fallback_budget": "unchanged",
+    "runtime_skill_resolution": "read_only_unless_exact_defect_proven",
+    "ui_and_api": "changed_only_if_presentation_disposition_supports",
+    "credentials_and_private_sources": "read_only_forbidden_no_lookup"
+  },
+  "smallest_safe_implementation_scope": "One shared pre-conversion capture/replay boundary plus presentation-only Skill source disclosure, with stage contract gaps repaired only where source truth proves hidden critical invariants.",
+  "rollback_path": "Revert task commits; capture is additive and disabled from authority decisions, UI display remains presentation-only, and old validation/Skill resolver authority remains intact.",
+  "focused_tests": [
+    "provider response capture/replay matrix",
+    "Planning business-completeness and exact finding propagation",
+    "Skill resolver/source-display API and UI tests"
+  ],
+  "related_tests": [
+    "provider adapters and generated artifact conversion",
+    "Full Short failure/restart and completion",
+    "Draft/review/polish/final-review/maintenance contracts",
+    "Skill scanning, project switching, and current baseline identity"
+  ],
+  "full_suite_requirement": true,
+  "selected_approach": "PENDING_INDEPENDENT_EVIDENCE_AND_SOURCE_AUDIT",
+  "rejected_alternatives": [
+    "fabricating or reconstructing historical prose from hashes",
+    "waiving the requirement without a versioned assurance disposition",
+    "capturing credentials, headers, request prompts, or unrelated metadata",
+    "changing Skill runtime precedence merely to make UI labels look correct",
+    "reopening Selective or Hybrid model-visible augmentation"
+  ],
+  "resolution_status": "unresolved",
+  "unresolved_user_decisions": []
+}
