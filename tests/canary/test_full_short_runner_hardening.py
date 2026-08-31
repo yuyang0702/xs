@@ -144,6 +144,33 @@ def test_dry_run_failure_projection_is_hash_only() -> None:
     assert "safe_message" not in projection
 
 
+def test_dry_run_adapter_fault_is_one_local_projection_only() -> None:
+    from tools.canary.first_trustworthy_full_short_dry_run import (
+        _OfflineHttpTransportFactory,
+    )
+
+    class Adapter:
+        @staticmethod
+        def _aggregate_stream(events):
+            return {"events": events}
+
+    factory = _OfflineHttpTransportFactory(
+        inject_adapter_failure_after_exact_capture_once=True,
+    )
+    adapter = Adapter()
+    factory.install_adapter_failure_after_exact_capture_once(adapter)
+
+    with pytest.raises(
+        RuntimeError, match="local adapter failure after exact capture",
+    ):
+        adapter._aggregate_stream([{"type": "message_stop"}])
+    assert adapter._aggregate_stream([{"type": "message_stop"}]) == {
+        "events": [{"type": "message_stop"}],
+    }
+    assert factory.adapter_failure_after_exact_capture_injected is True
+    assert factory.adapter_projection_call_count == 2
+
+
 @pytest.mark.parametrize(
     ("field", "value"),
     [

@@ -536,6 +536,7 @@ class _OfflineHttpTransportFactory:
 
     def __init__(
         self, *, inject_planning_business_incomplete_once: bool = False,
+        inject_adapter_failure_after_exact_capture_once: bool = False,
     ) -> None:
         self.oracle = _PrivateDryRunOracle(
             inject_planning_business_incomplete_once=(
@@ -544,6 +545,35 @@ class _OfflineHttpTransportFactory:
         )
         self.call_plan: list[dict[str, Any]] = []
         self.failure: dict[str, Any] | None = None
+        self.inject_adapter_failure_after_exact_capture_once = (
+            inject_adapter_failure_after_exact_capture_once
+        )
+        self.adapter_failure_after_exact_capture_injected = False
+        self.adapter_projection_call_count = 0
+
+    def install_adapter_failure_after_exact_capture_once(
+        self, adapter: Any,
+    ) -> None:
+        """Inject one local projection fault without touching HTTP dispatch."""
+
+        if (
+            not self.inject_adapter_failure_after_exact_capture_once
+            or self.adapter_failure_after_exact_capture_injected
+            or not hasattr(adapter, "_aggregate_stream")
+        ):
+            return
+        aggregate = adapter._aggregate_stream
+
+        def fail_once_after_capture(events: list[dict[str, Any]]) -> dict:
+            self.adapter_projection_call_count += 1
+            if not self.adapter_failure_after_exact_capture_injected:
+                self.adapter_failure_after_exact_capture_injected = True
+                raise RuntimeError(
+                    "injected local adapter failure after exact capture"
+                )
+            return aggregate(events)
+
+        adapter._aggregate_stream = fail_once_after_capture
 
     def build(
         self, *, protocol: str, destination: str, bound_role: str | None = None,
@@ -797,6 +827,9 @@ class _LowestHttpSeamRegistry(ProviderRegistry):
             self.transport_factory.build(
                 protocol=protocol, destination=destination, bound_role=role,
             ), timeout_seconds=30,
+        )
+        self.transport_factory.install_adapter_failure_after_exact_capture_once(
+            resolved.adapter,
         )
         self.open_clients.extend([previous, resolved.adapter.client])
         return resolved
@@ -1199,6 +1232,9 @@ async def _run(args: argparse.Namespace) -> dict[str, Any]:
             inject_planning_business_incomplete_once=(
                 args.inject_planning_business_incomplete_once
             ),
+            inject_adapter_failure_after_exact_capture_once=(
+                args.inject_adapter_failure_after_exact_capture_once
+            ),
         )
         try:
             execution = await execute_full_short_control_plane(
@@ -1409,6 +1445,16 @@ async def _run(args: argparse.Namespace) -> dict[str, Any]:
             "planning_business_incomplete_injected": (
                 transport.oracle.planning_business_incomplete_injected
             ),
+            "adapter_failure_after_exact_capture_injected": (
+                transport.adapter_failure_after_exact_capture_injected
+            ),
+            "adapter_projection_call_count_at_injection": (
+                transport.adapter_projection_call_count
+            ),
+            "adapter_failure_recovered_by_exact_local_replay": (
+                transport.adapter_failure_after_exact_capture_injected
+                and transport.adapter_projection_call_count == 2
+            ),
             "required_stage_roles": list(discovered_roles),
             "completed_stage_roles": sorted(set(execution["observed_roles"])),
             "all_required_stage_roles_completed": set(
@@ -1445,6 +1491,12 @@ async def _run(args: argparse.Namespace) -> dict[str, Any]:
                 and successful_observed_plan == call_plan
                 and transport.oracle.planning_business_incomplete_injected
                 is args.inject_planning_business_incomplete_once
+                and transport.adapter_failure_after_exact_capture_injected
+                is args.inject_adapter_failure_after_exact_capture_once
+                and (
+                    not args.inject_adapter_failure_after_exact_capture_once
+                    or transport.adapter_projection_call_count == 2
+                )
                 and set(FULL_SHORT_REQUIRED_EXECUTION_ROLES).issubset(
                     execution["observed_roles"]
                 )
@@ -1470,6 +1522,10 @@ def main() -> int:
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument(
         "--inject-planning-business-incomplete-once",
+        action="store_true",
+    )
+    parser.add_argument(
+        "--inject-adapter-failure-after-exact-capture-once",
         action="store_true",
     )
     args = parser.parse_args()
