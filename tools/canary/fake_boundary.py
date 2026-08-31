@@ -518,18 +518,45 @@ class DeterministicShortBoundary:
                     "abandonment_point": "none", "payoff_felt": True,
                 },
             }))
+        if role == "draft":
+            return self._result(
+                role,
+                "# Draft\nThe investigator follows the approved evidence, makes the "
+                "authorized decision, and reaches the fixed ending.",
+            )
+        if role == "review":
+            return self._result(role, json.dumps({
+                "dimensions": {"commercial": 90, "story": 91, "prose": 90},
+                "hard_fail": False, "decision": "pass", "issues": [],
+            }))
+        if role == "polish":
+            source = (
+                user.rsplit("MANUSCRIPT SEGMENT:\n", 1)[1]
+                if "MANUSCRIPT SEGMENT:\n" in user
+                else "# Final Story\nThe approved evidence reaches the fixed ending."
+            )
+            return self._result(role, source)
+        if role == "final_review":
+            ledger = []
+            if "AUTHORITATIVE REVIEW ISSUE LEDGER:\n" in user:
+                ledger, _ = json.JSONDecoder().raw_decode(user.split(
+                    "AUTHORITATIVE REVIEW ISSUE LEDGER:\n", 1,
+                )[1])
+            return self._result(role, json.dumps({
+                "dimensions": {"commercial": 92, "story": 92, "prose": 92},
+                "hard_fail": False, "decision": "pass", "issues": [],
+                "reconciliations": [{
+                    "issue_id": item["issue_id"], "status": "resolved",
+                    "severity": item.get("severity", "medium"),
+                    "evidence": "The final manuscript preserves approved evidence.",
+                } for item in ledger],
+            }))
+        if role == "maintenance":
+            return self._result(role, json.dumps({
+                "facts": [], "state": {}, "state_transitions": [],
+                "world_rules": [], "timeline": [],
+            }))
         text = next(self.responses)
-        if role == "final_review" and "AUTHORITATIVE REVIEW ISSUE LEDGER:" in user:
-            payload = json.loads(text)
-            ledger, _ = json.JSONDecoder().raw_decode(user.split(
-                "AUTHORITATIVE REVIEW ISSUE LEDGER:\n", 1,
-            )[1])
-            payload["reconciliations"] = [{
-                "issue_id": item["issue_id"], "status": "resolved",
-                "severity": item.get("severity", "medium"),
-                "evidence": "investigator follows the evidence",
-            } for item in ledger]
-            text = json.dumps(payload)
         return self._result(role, text)
 
     async def complete_primary(
