@@ -95,13 +95,14 @@ async def _materialize(args: argparse.Namespace) -> dict:
             repo=repo, source_project=source_project,
             project_id=args.project_id, target=Path(name),
         )
-        call_plan = await _discover_plan(
+        call_plan, logical_stage_plan = await _discover_plan(
             repo=repo, data_dir=discovery_data, project_id=args.project_id,
         )
 
     actual, public = collect_live_bindings(
         repo=repo, data_dir=data_dir, project_id=args.project_id,
-        run_id=args.run_id, store_root=store_root,
+        run_id=args.run_id, logical_stage_plan=logical_stage_plan,
+        store_root=store_root,
     )
     if actual["head"] != head or actual["branch"] != branch:
         raise RuntimeError("AUTHORIZATION_HEAD_OR_BRANCH_DRIFT")
@@ -139,6 +140,7 @@ async def _materialize(args: argparse.Namespace) -> dict:
         egress_policy_sha256=actual["egress_policy_sha256"],
         store_root_sha256=actual["store_root_sha256"],
         required_stage_roles=roles,
+        logical_stage_plan=tuple(logical_stage_plan),
         expected_stage_calls=len(call_plan),
         hard_max_provider_requests=hard_max,
         hard_max_http_posts=hard_max,
@@ -193,6 +195,13 @@ async def _materialize(args: argparse.Namespace) -> dict:
         "policy_sha256": policy["policy_sha256"],
         "response_capture_policy_sha256": policy[
             "response_capture_policy_sha256"
+        ],
+        "logical_stage_plan_sha256": policy["logical_stage_plan_sha256"],
+        "transport_recovery_policy_sha256": policy[
+            "transport_recovery_policy_sha256"
+        ],
+        "transport_recovery_policy_identity": policy[
+            "transport_recovery_policy_identity"
         ],
         "expected_stage_calls": len(call_plan),
         "hard_max_provider_requests": hard_max,

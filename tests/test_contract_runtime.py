@@ -303,6 +303,50 @@ async def test_contract_runtime_observer_reports_attempt_dag_without_changing_ca
 
 
 @pytest.mark.asyncio
+async def test_contract_input_capture_does_not_turn_business_exception_terminal() -> None:
+    class DurableObserver:
+        terminal_closes = 0
+
+        @staticmethod
+        def provider_protocol_capture_complete() -> bool:
+            return True
+
+        @staticmethod
+        def contract_runtime_capture_present() -> bool:
+            return True
+
+        def mark_post_capture_terminal_failure(self, **_kwargs) -> None:
+            self.terminal_closes += 1
+
+    durable = DurableObserver()
+    gateway = SimpleNamespace(
+        registry=SimpleNamespace(attempt_observer=durable),
+    )
+    calls = 0
+
+    async def business_exception(*_args, **_kwargs):
+        nonlocal calls
+        calls += 1
+        raise ValueError("contract-owned business rejection")
+
+    observations = []
+    with pytest.raises(ValueError, match="business rejection"):
+        await execute_contract_runtime(
+            gateway,
+            role="planning", system="same", user="same",
+            execution_spec=execution_spec(), fallback_attempts=0,
+            attempt_executor=business_exception,
+            attempt_observer=observations.append,
+        )
+
+    assert calls == 2
+    assert durable.terminal_closes == 0
+    assert [item["outcome"] for item in observations] == [
+        "transport_failure", "transport_failure",
+    ]
+
+
+@pytest.mark.asyncio
 async def test_contract_runtime_retries_original_task_when_no_semantics_exist() -> None:
     class Gateway:
         def __init__(self):

@@ -25,6 +25,7 @@ from novel_flywheel.db import Database
 from novel_flywheel.failure_boundary import failure_evidence_sha256
 from novel_flywheel.full_short_execution import (
     FullShortExecutionPolicyV1,
+    full_short_logical_stage_id_v1,
     render_full_short_canonical_authorization_v1,
     validate_full_short_canonical_authorization_v1,
 )
@@ -775,6 +776,91 @@ class _DiagnosticObserverProxy:
         return call
 
 
+class _LogicalStagePlanDiscoveryObserver:
+    """Collect the credential-free ordered logical plan during dry discovery."""
+
+    def __init__(self) -> None:
+        self.logical_stage_plan: list[dict[str, Any]] = []
+        self.pending: dict[str, Any] | None = None
+        self.bound_route: dict[str, Any] | None = None
+
+    def bind_stage_context(self, **value: Any) -> None:
+        stage_id = str(value["stage_id"])
+        occurrence = 1 + sum(
+            item["logical_stage_base_id"] == stage_id
+            for item in self.logical_stage_plan
+        )
+        self.pending = {
+            "stage_id": stage_id,
+            "logical_stage_base_id": stage_id,
+            "logical_stage_id": full_short_logical_stage_id_v1(
+                stage_id, occurrence,
+            ),
+            "contract_name": str(value["contract_name"]),
+            "contract_version": int(value["contract_version"]),
+            "contract_schema_sha256": str(value["contract_schema_sha256"]),
+            "contract_runtime_input_required": bool(
+                value.get("contract_runtime_input_required")
+            ),
+        }
+
+    def bind_route(
+        self, *, role: str, lane: str, provider_id: str, model_id: str,
+        route_fingerprint: str,
+    ) -> None:
+        self.bound_route = {
+            "role": role, "lane": lane,
+            "role_binding_sha256": _domain({
+                "role": role, "lane": lane,
+                "provider_id_sha256": hashlib.sha256(
+                    provider_id.encode("utf-8")
+                ).hexdigest(),
+                "model_id_sha256": hashlib.sha256(
+                    model_id.encode("utf-8")
+                ).hexdigest(),
+                "route_fingerprint": route_fingerprint,
+            }),
+        }
+
+    def bind_model_request(self, *, protocol: str, request: Any) -> None:
+        if self.pending is None:
+            raise RuntimeError("FULL_SHORT_DISCOVERY_STAGE_CONTEXT_MISSING")
+        self.pending["requested_output_tokens"] = int(
+            request.max_output_tokens or 8192
+        )
+
+    def before_http_dispatch(self, **_value: Any) -> None:
+        if self.pending is None or self.bound_route is None:
+            raise RuntimeError("FULL_SHORT_DISCOVERY_PLAN_BINDING_MISSING")
+        self.logical_stage_plan.append({
+            "ordinal": len(self.logical_stage_plan) + 1,
+            **self.pending,
+            "role": self.bound_route["role"],
+        })
+
+    def before_http_post(self) -> None:
+        return None
+
+    def before_network_request(self) -> None:
+        return None
+
+    def after_http_response(self, **_value: Any) -> None:
+        return None
+
+    def after_http_failure(self, **_value: Any) -> None:
+        return None
+
+    def capture_provider_protocol_input(self, **_value: Any) -> None:
+        return None
+
+    def capture_contract_runtime_input(self, **_value: Any) -> None:
+        return None
+
+    def mark_local_stage_complete(self, **_value: Any) -> None:
+        self.pending = None
+        self.bound_route = None
+
+
 class _LowestHttpSeamRegistry(ProviderRegistry):
     """Real resolver/adapters with only their HTTP client transport replaced."""
 
@@ -787,6 +873,10 @@ class _LowestHttpSeamRegistry(ProviderRegistry):
             raise ValueError("offline HTTP transport factory is required")
         self.transport_factory = http_transport_factory
         observer = kwargs.get("attempt_observer")
+        if observer is None:
+            observer = _LogicalStagePlanDiscoveryObserver()
+            kwargs["attempt_observer"] = observer
+        self.logical_stage_plan_observer = observer
         if observer is not None:
             kwargs["attempt_observer"] = _DiagnosticObserverProxy(
                 observer, http_transport_factory,
@@ -911,7 +1001,7 @@ def _memory_secrets(data_dir: Path) -> Callable[[], MemorySecretStore]:
 
 async def _discover_plan(
     *, repo: Path, data_dir: Path, project_id: str,
-) -> list[dict[str, Any]]:
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     factory = _OfflineHttpTransportFactory()
     db = Database(data_dir / "app.db")
     registry = _LowestHttpSeamRegistry(
@@ -951,7 +1041,12 @@ async def _discover_plan(
         raise RuntimeError("FULL_SHORT_DRY_RUN_PLAN_MISSING_REQUIRED_ROLE")
     if not registry.call_plan:
         raise RuntimeError("FULL_SHORT_DRY_RUN_PLAN_EMPTY")
-    return registry.call_plan
+    logical_stage_plan = list(
+        registry.logical_stage_plan_observer.logical_stage_plan
+    )
+    if len(logical_stage_plan) != len(registry.call_plan):
+        raise RuntimeError("FULL_SHORT_DRY_RUN_LOGICAL_PLAN_INCOMPLETE")
+    return registry.call_plan, logical_stage_plan
 
 
 def _replayed_adapter_text(
@@ -1150,7 +1245,7 @@ async def _run(args: argparse.Namespace) -> dict[str, Any]:
             repo=repo, source_project=source_project, project_id=project_id,
             target=private_root / "discovery",
         )
-        call_plan = await _discover_plan(
+        call_plan, logical_stage_plan = await _discover_plan(
             repo=repo, data_dir=discovery_data, project_id=project_id,
         )
         execution_data = _copy_private_data(
@@ -1160,7 +1255,8 @@ async def _run(args: argparse.Namespace) -> dict[str, Any]:
         store_root = private_root / "control-store"
         actual, public = collect_live_bindings(
             repo=repo, data_dir=execution_data, project_id=project_id,
-            run_id=EXECUTION_ID, store_root=store_root,
+            run_id=EXECUTION_ID, logical_stage_plan=logical_stage_plan,
+            store_root=store_root,
         )
         if actual["head"] != start_head:
             raise RuntimeError("FULL_SHORT_DRY_RUN_HEAD_DRIFT")
@@ -1208,6 +1304,7 @@ async def _run(args: argparse.Namespace) -> dict[str, Any]:
             egress_policy_sha256=actual["egress_policy_sha256"],
             store_root_sha256=actual["store_root_sha256"],
             required_stage_roles=discovered_roles,
+            logical_stage_plan=tuple(logical_stage_plan),
             expected_stage_calls=expected_calls,
             hard_max_provider_requests=hard_max_dispatches,
             hard_max_http_posts=hard_max_dispatches,
@@ -1412,6 +1509,15 @@ async def _run(args: argparse.Namespace) -> dict[str, Any]:
                 "completion_receipt_sha256"
             ],
             "discovered_call_plan_sha256": _domain(call_plan),
+            "logical_stage_plan_sha256": policy[
+                "logical_stage_plan_sha256"
+            ],
+            "transport_recovery_policy_sha256": policy[
+                "transport_recovery_policy_sha256"
+            ],
+            "transport_recovery_policy_identity": policy[
+                "transport_recovery_policy_identity"
+            ],
             "executed_call_plan_sha256": _domain(observed_plan),
             "expected_stage_calls": expected_calls,
             "hard_max_provider_requests": hard_max_dispatches,

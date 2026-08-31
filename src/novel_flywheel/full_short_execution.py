@@ -49,7 +49,7 @@ LEDGER_SCHEMA = "FullShortDispatchLedgerV1"
 COMPLETION_SCHEMA = "FullShortCompletionReceiptV1"
 AUTHORIZATION_SCHEMA = "FullShortCanonicalAuthorizationV1"
 PREFLIGHT_SCHEMA = "FullShortAuthorizationPreflightReceiptV1"
-POLICY_VERSION = "full-short-trustworthy-execution-v1"
+POLICY_VERSION = "full-short-trustworthy-execution-v2"
 SHORT_COMPLETION_GOAL = "SHORT_WORKFLOW_COMPLETED_AND_FINAL_REVIEW_ACCEPTED"
 REQUIRED_FINAL_BINDING_KEYS = frozenset({
     "manuscript_sha256",
@@ -88,9 +88,81 @@ RESPONSE_CAPTURE_POLICY_V1 = {
 RESPONSE_CAPTURE_POLICY_SHA256 = hashlib.sha256(
     canonical_json_bytes(RESPONSE_CAPTURE_POLICY_V1),
 ).hexdigest()
+TRANSPORT_RECOVERY_POLICY_V1 = {
+    "schema": "FullShortTransportRecoveryPolicyV1",
+    "version": 1,
+    "identity": "EXACT_REPLAY_ONLY",
+    "ordered_outcome_matrix": [
+        {
+            "outcome_class": "complete_valid",
+            "action": "LOCAL_EXACT_CAPTURE_REPLAY_ALLOWED",
+            "response_bytes_present": True,
+            "valid_completion": True,
+            "explicit_error": False,
+            "ambiguity": False,
+            "max_retry": 0,
+            "fresh_nonce": False,
+            "budget_counted": True,
+        },
+        {
+            "outcome_class": "explicit_provider_error",
+            "action": "FAIL_CLOSED_NO_REDISPATCH",
+            "response_bytes_present": True,
+            "valid_completion": False,
+            "explicit_error": True,
+            "ambiguity": False,
+            "max_retry": 0,
+            "fresh_nonce": False,
+            "budget_counted": True,
+        },
+        {
+            "outcome_class": "proven_pre_response",
+            "action": "FAIL_CLOSED_NO_REDISPATCH",
+            "response_bytes_present": False,
+            "valid_completion": False,
+            "explicit_error": False,
+            "ambiguity": False,
+            "max_retry": 0,
+            "fresh_nonce": False,
+            "budget_counted": True,
+        },
+        {
+            "outcome_class": "ambiguous",
+            "action": "FAIL_CLOSED_NO_REDISPATCH",
+            "response_bytes_present": False,
+            "valid_completion": False,
+            "explicit_error": False,
+            "ambiguity": True,
+            "max_retry": 0,
+            "fresh_nonce": False,
+            "budget_counted": True,
+        },
+    ],
+    "captured_bytes_required_for_local_replay": True,
+    "local_replay_creates_physical_dispatch": False,
+    "max_network_retries": 0,
+    "fresh_nonce_allowed": False,
+    "network_redispatch_allowed": False,
+    "route_switch_allowed": False,
+}
+TRANSPORT_RECOVERY_POLICY_SHA256 = hashlib.sha256(
+    canonical_json_bytes(TRANSPORT_RECOVERY_POLICY_V1),
+).hexdigest()
+_LOGICAL_STAGE_PLAN_KEYS = frozenset({
+    "ordinal", "stage_id", "logical_stage_base_id", "logical_stage_id",
+    "role", "contract_name", "contract_version", "contract_schema_sha256",
+    "contract_runtime_input_required", "requested_output_tokens",
+})
 _CLOSED_LOCAL_ATTEMPT_STATES = frozenset({
     "LOCAL_STAGE_COMPLETE", "LOCAL_ATTEMPT_REJECTED",
 })
+_PROVIDER_PROTOCOL_ADAPTER_IDS = {
+    "anthropic": frozenset({"anthropic"}),
+    "openai-chat": frozenset({"openai-chat", "openai_chat"}),
+    "openai-responses": frozenset({
+        "openai-responses", "openai_responses",
+    }),
+}
 _LOCAL_REJECTION_RECEIPT_FIELDS = frozenset({
     "schema", "version", "contract_name", "contract_version",
     "contract_schema_sha256", "attempt_index", "route", "route_attempt",
@@ -238,6 +310,72 @@ def _canonical_sha256(value: Any) -> str:
     return hashlib.sha256(canonical_json_bytes(value)).hexdigest()
 
 
+def full_short_logical_stage_id_v1(stage_id: str, occurrence: int) -> str:
+    """Return the canonical identity for one ordered logical-stage occurrence."""
+
+    _require(_ID.fullmatch(stage_id) is not None, "LOGICAL_STAGE_BASE_ID_INVALID")
+    _require(type(occurrence) is int and occurrence > 0,
+             "LOGICAL_STAGE_OCCURRENCE_INVALID")
+    if occurrence == 1:
+        return stage_id
+    digest = hashlib.sha256(stage_id.encode("utf-8")).hexdigest()[:8]
+    suffix = f".{occurrence}.{digest}"
+    return f"{stage_id[:160 - len(suffix)]}{suffix}"
+
+
+def validate_full_short_logical_stage_plan_v1(value: Any) -> list[dict[str, Any]]:
+    """Validate the exact ordered logical plan authorized for one Full Short."""
+
+    _require(isinstance(value, (list, tuple)) and bool(value),
+             "LOGICAL_STAGE_PLAN_INVALID")
+    plan: list[dict[str, Any]] = []
+    occurrences: dict[str, int] = {}
+    for expected_ordinal, raw in enumerate(value, 1):
+        _require(isinstance(raw, Mapping), "LOGICAL_STAGE_PLAN_INVALID")
+        item = dict(raw)
+        _require(set(item) == _LOGICAL_STAGE_PLAN_KEYS,
+                 "LOGICAL_STAGE_PLAN_KEYS_INVALID")
+        _require(item.get("ordinal") == expected_ordinal,
+                 "LOGICAL_STAGE_PLAN_ORDER_INVALID")
+        stage_id = str(item.get("stage_id") or "")
+        base_id = str(item.get("logical_stage_base_id") or "")
+        _require(stage_id == base_id and _ID.fullmatch(base_id) is not None,
+                 "LOGICAL_STAGE_PLAN_STAGE_INVALID")
+        occurrences[base_id] = occurrences.get(base_id, 0) + 1
+        _require(
+            item.get("logical_stage_id") == full_short_logical_stage_id_v1(
+                base_id, occurrences[base_id],
+            ),
+            "LOGICAL_STAGE_PLAN_IDENTITY_INVALID",
+        )
+        _require(_ID.fullmatch(str(item.get("role") or "")) is not None,
+                 "LOGICAL_STAGE_PLAN_ROLE_INVALID")
+        _require(isinstance(item.get("contract_name"), str)
+                 and bool(item["contract_name"]),
+                 "LOGICAL_STAGE_PLAN_CONTRACT_INVALID")
+        _require(type(item.get("contract_version")) is int
+                 and int(item["contract_version"]) > 0,
+                 "LOGICAL_STAGE_PLAN_CONTRACT_INVALID")
+        _require(_HEX64.fullmatch(str(item.get("contract_schema_sha256")))
+                 is not None, "LOGICAL_STAGE_PLAN_CONTRACT_INVALID")
+        _require(type(item.get("contract_runtime_input_required")) is bool,
+                 "LOGICAL_STAGE_PLAN_CONTRACT_INVALID")
+        _require(type(item.get("requested_output_tokens")) is int
+                 and int(item["requested_output_tokens"]) > 0,
+                 "LOGICAL_STAGE_PLAN_OUTPUT_CAP_INVALID")
+        plan.append(deepcopy(item))
+    _require(len({item["logical_stage_id"] for item in plan}) == len(plan),
+             "LOGICAL_STAGE_PLAN_IDENTITY_DUPLICATE")
+    return plan
+
+
+def full_short_logical_stage_plan_sha256_v1(value: Any) -> str:
+    return domain_sha256(
+        "novel-flywheel-full-short-logical-stage-plan-v1",
+        validate_full_short_logical_stage_plan_v1(value),
+    )
+
+
 def _inside(path: Path, root: Path) -> bool:
     try:
         path.relative_to(root)
@@ -299,6 +437,7 @@ class FullShortExecutionPolicyV1:
     egress_policy_sha256: str
     store_root_sha256: str
     required_stage_roles: tuple[str, ...]
+    logical_stage_plan: tuple[Mapping[str, Any], ...]
     expected_stage_calls: int
     hard_max_provider_requests: int
     hard_max_http_posts: int
@@ -310,6 +449,9 @@ class FullShortExecutionPolicyV1:
     monetary_cost_cap_state: str = "UNKNOWN_NOT_SEALED"
 
     def document(self) -> dict[str, Any]:
+        logical_stage_plan = validate_full_short_logical_stage_plan_v1(
+            self.logical_stage_plan,
+        )
         body = {
             "schema": POLICY_SCHEMA,
             "version": 1,
@@ -332,6 +474,17 @@ class FullShortExecutionPolicyV1:
             ),
             "store_root_sha256": self.store_root_sha256,
             "required_stage_roles": list(self.required_stage_roles),
+            "logical_stage_plan": logical_stage_plan,
+            "logical_stage_plan_sha256": (
+                full_short_logical_stage_plan_sha256_v1(logical_stage_plan)
+            ),
+            "transport_recovery_policy": deepcopy(
+                TRANSPORT_RECOVERY_POLICY_V1,
+            ),
+            "transport_recovery_policy_sha256": (
+                TRANSPORT_RECOVERY_POLICY_SHA256
+            ),
+            "transport_recovery_policy_identity": "EXACT_REPLAY_ONLY",
             "expected_stage_calls": self.expected_stage_calls,
             "hard_max_provider_requests": self.hard_max_provider_requests,
             "hard_max_http_posts": self.hard_max_http_posts,
@@ -398,6 +551,22 @@ def render_full_short_canonical_authorization_v1(
         _canonical_sha256(public_bindings.get("response_capture_policy"))
         == validated["response_capture_policy_sha256"],
         "AUTHORIZATION_RESPONSE_CAPTURE_POLICY_MISMATCH",
+    )
+    _require(
+        public_bindings.get("logical_stage_plan")
+        == validated["logical_stage_plan"]
+        and public_bindings.get("logical_stage_plan_sha256")
+        == validated["logical_stage_plan_sha256"],
+        "AUTHORIZATION_LOGICAL_STAGE_PLAN_MISMATCH",
+    )
+    _require(
+        public_bindings.get("transport_recovery_policy")
+        == validated["transport_recovery_policy"]
+        and public_bindings.get("transport_recovery_policy_sha256")
+        == validated["transport_recovery_policy_sha256"]
+        and public_bindings.get("transport_recovery_policy_identity")
+        == "EXACT_REPLAY_ONLY",
+        "AUTHORIZATION_TRANSPORT_RECOVERY_POLICY_MISMATCH",
     )
     body = {
         "schema": AUTHORIZATION_SCHEMA,
@@ -472,6 +641,11 @@ def validate_full_short_preflight_v1(
         "response_capture_policy_sha256": validated[
             "response_capture_policy_sha256"
         ],
+        "logical_stage_plan_sha256": validated["logical_stage_plan_sha256"],
+        "transport_recovery_policy_sha256": validated[
+            "transport_recovery_policy_sha256"
+        ],
+        "transport_recovery_policy_identity": "EXACT_REPLAY_ONLY",
         "store_root_sha256": validated["store_root_sha256"],
     }
     for field, expected in required_equal.items():
@@ -495,6 +669,11 @@ def validate_full_short_preflight_v1(
         "schema": PREFLIGHT_SCHEMA,
         "version": 1,
         "policy_sha256": validated["policy_sha256"],
+        "logical_stage_plan_sha256": validated["logical_stage_plan_sha256"],
+        "transport_recovery_policy_sha256": validated[
+            "transport_recovery_policy_sha256"
+        ],
+        "transport_recovery_policy_identity": "EXACT_REPLAY_ONLY",
         "authorization_text_sha256": authorization_text_sha256,
         "binding_status": "exact",
         "external_actions_enabled": bool(external_actions_enabled),
@@ -525,6 +704,7 @@ def validate_policy_v1(value: Mapping[str, Any]) -> dict[str, Any]:
         "style_reference_authority_sha256", "route_manifest_sha256",
         "destination_manifest_sha256", "egress_policy_sha256",
         "response_capture_policy_sha256",
+        "logical_stage_plan_sha256", "transport_recovery_policy_sha256",
         "store_root_sha256",
     ):
         _require(_HEX64.fullmatch(str(body.get(field))) is not None, f"{field.upper()}_INVALID")
@@ -532,6 +712,23 @@ def validate_policy_v1(value: Mapping[str, Any]) -> dict[str, Any]:
         body["response_capture_policy_sha256"]
         == RESPONSE_CAPTURE_POLICY_SHA256,
         "RESPONSE_CAPTURE_POLICY_NOT_ENFORCED",
+    )
+    logical_stage_plan = validate_full_short_logical_stage_plan_v1(
+        body.get("logical_stage_plan"),
+    )
+    _require(
+        body["logical_stage_plan_sha256"]
+        == full_short_logical_stage_plan_sha256_v1(logical_stage_plan),
+        "LOGICAL_STAGE_PLAN_SHA256_MISMATCH",
+    )
+    _require(
+        body.get("transport_recovery_policy")
+        == TRANSPORT_RECOVERY_POLICY_V1
+        and body["transport_recovery_policy_sha256"]
+        == TRANSPORT_RECOVERY_POLICY_SHA256
+        and body.get("transport_recovery_policy_identity")
+        == "EXACT_REPLAY_ONLY",
+        "TRANSPORT_RECOVERY_POLICY_NOT_EXACT_REPLAY_ONLY",
     )
     for field in (
         "expected_stage_calls", "hard_max_provider_requests",
@@ -545,6 +742,14 @@ def validate_policy_v1(value: Mapping[str, Any]) -> dict[str, Any]:
         == body["hard_max_http_posts"] == body["hard_max_network_attempts"],
         "CAPS_INVALID",
     )
+    _require(
+        body["expected_stage_calls"] == len(logical_stage_plan)
+        and max(item["requested_output_tokens"] for item in logical_stage_plan)
+        <= body["per_call_output_token_hard_cap"]
+        and sum(item["requested_output_tokens"] for item in logical_stage_plan)
+        <= body["total_output_token_hard_cap"],
+        "LOGICAL_STAGE_PLAN_CAPS_MISMATCH",
+    )
     _require(body.get("single_use") is True, "POLICY_NOT_SINGLE_USE")
     _require(body.get("transport_retry_allowed") is False, "TRANSPORT_RETRY_ENABLED")
     _require(body.get("full_short_count") == 1, "FULL_SHORT_COUNT_INVALID")
@@ -554,6 +759,10 @@ def validate_policy_v1(value: Mapping[str, Any]) -> dict[str, Any]:
         and all(isinstance(role, str) and _ID.fullmatch(role) for role in roles)
         and len(roles) == len(set(roles)),
         "REQUIRED_STAGE_ROLES_INVALID",
+    )
+    _require(
+        set(roles) == {item["role"] for item in logical_stage_plan},
+        "REQUIRED_STAGE_ROLE_PLAN_MISMATCH",
     )
     _require(
         body.get("restart_policy") == "FAIL_CLOSED_NO_RESUME_OR_REDISPATCH",
@@ -653,6 +862,13 @@ class FullShortDurableExecutionStoreV1:
             "execution_id": execution_id,
             "authorization_text_sha256": authorization_text_sha256,
             "policy_sha256": validated["policy_sha256"],
+            "logical_stage_plan_sha256": validated[
+                "logical_stage_plan_sha256"
+            ],
+            "transport_recovery_policy_sha256": validated[
+                "transport_recovery_policy_sha256"
+            ],
+            "transport_recovery_policy_identity": "EXACT_REPLAY_ONLY",
             "execution_head": validated["execution_head"],
             "store_root_sha256": self.store_root_sha256,
             "external_actions_enabled": external_actions_enabled,
@@ -682,6 +898,13 @@ class FullShortDurableExecutionStoreV1:
             "execution_id": execution_id,
             "permission_sha256": permission["permission_sha256"],
             "policy_sha256": validated["policy_sha256"],
+            "logical_stage_plan_sha256": validated[
+                "logical_stage_plan_sha256"
+            ],
+            "transport_recovery_policy_sha256": validated[
+                "transport_recovery_policy_sha256"
+            ],
+            "transport_recovery_policy_identity": "EXACT_REPLAY_ONLY",
             "execution_head": validated["execution_head"],
             "store_root_sha256": self.store_root_sha256,
             "external_actions_enabled": external_actions_enabled,
@@ -712,6 +935,13 @@ class FullShortDurableExecutionStoreV1:
             "execution_id": execution_id,
             "signed_approval_sha256": approval["signed_approval_sha256"],
             "policy_sha256": validated["policy_sha256"],
+            "logical_stage_plan_sha256": validated[
+                "logical_stage_plan_sha256"
+            ],
+            "transport_recovery_policy_sha256": validated[
+                "transport_recovery_policy_sha256"
+            ],
+            "transport_recovery_policy_identity": "EXACT_REPLAY_ONLY",
             "execution_head": validated["execution_head"],
             "store_root_sha256": self.store_root_sha256,
             "external_actions_enabled": external_actions_enabled,
@@ -738,6 +968,13 @@ class FullShortDurableExecutionStoreV1:
             "execution_id": execution_id,
             "nonce_sha256": reservation["nonce_sha256"],
             "policy_sha256": validated["policy_sha256"],
+            "logical_stage_plan_sha256": validated[
+                "logical_stage_plan_sha256"
+            ],
+            "transport_recovery_policy_sha256": validated[
+                "transport_recovery_policy_sha256"
+            ],
+            "transport_recovery_policy_identity": "EXACT_REPLAY_ONLY",
             "store_root_sha256": self.store_root_sha256,
             "state": "READY", "attempts": [], "completed_stage_receipts": [],
             "created_at": _now(), "updated_at": _now(),
@@ -823,6 +1060,18 @@ class FullShortDurableExecutionStoreV1:
                 value.get("store_root_sha256") == self.store_root_sha256,
                 "EXECUTION_CHAIN_STORE_ROOT_MISMATCH",
             )
+            _require(
+                value.get("logical_stage_plan_sha256")
+                == validated["logical_stage_plan_sha256"],
+                "EXECUTION_CHAIN_LOGICAL_STAGE_PLAN_MISMATCH",
+            )
+            _require(
+                value.get("transport_recovery_policy_sha256")
+                == validated["transport_recovery_policy_sha256"]
+                and value.get("transport_recovery_policy_identity")
+                == "EXACT_REPLAY_ONLY",
+                "EXECUTION_CHAIN_TRANSPORT_RECOVERY_POLICY_MISMATCH",
+            )
         _require(
             approval.get("permission_sha256") == permission["permission_sha256"],
             "APPROVAL_PERMISSION_MISMATCH",
@@ -864,6 +1113,15 @@ class FullShortDurableExecutionStoreV1:
             _require(
                 nonce.get("policy_sha256") == validated["policy_sha256"],
                 "EXECUTION_CHAIN_POLICY_MISMATCH",
+            )
+            _require(
+                nonce.get("logical_stage_plan_sha256")
+                == validated["logical_stage_plan_sha256"]
+                and nonce.get("transport_recovery_policy_sha256")
+                == validated["transport_recovery_policy_sha256"]
+                and nonce.get("transport_recovery_policy_identity")
+                == "EXACT_REPLAY_ONLY",
+                "EXECUTION_CHAIN_PLAN_OR_RECOVERY_POLICY_MISMATCH",
             )
             _require(
                 nonce.get("observer_session_sha256") is None,
@@ -924,7 +1182,13 @@ class FullShortDurableExecutionStoreV1:
                 _require(
                     value.get("execution_id") == execution_id
                     and value.get("policy_sha256") == validated["policy_sha256"]
-                    and value.get("store_root_sha256") == self.store_root_sha256,
+                    and value.get("store_root_sha256") == self.store_root_sha256
+                    and value.get("logical_stage_plan_sha256")
+                    == validated["logical_stage_plan_sha256"]
+                    and value.get("transport_recovery_policy_sha256")
+                    == validated["transport_recovery_policy_sha256"]
+                    and value.get("transport_recovery_policy_identity")
+                    == "EXACT_REPLAY_ONLY",
                     "EXECUTION_CHAIN_MISMATCH",
                 )
             _require(
@@ -1099,7 +1363,13 @@ class FullShortDurableExecutionStoreV1:
                     and chain_value.get("policy_sha256")
                     == validated["policy_sha256"]
                     and chain_value.get("store_root_sha256")
-                    == self.store_root_sha256,
+                    == self.store_root_sha256
+                    and chain_value.get("logical_stage_plan_sha256")
+                    == validated["logical_stage_plan_sha256"]
+                    and chain_value.get("transport_recovery_policy_sha256")
+                    == validated["transport_recovery_policy_sha256"]
+                    and chain_value.get("transport_recovery_policy_identity")
+                    == "EXACT_REPLAY_ONLY",
                     "EXECUTION_CHAIN_MISMATCH",
                 )
             _require(
@@ -1202,6 +1472,35 @@ class FullShortDispatchLedgerObserverV1:
             session_id=self.session_id,
         )
 
+    def _next_logical_stage_plan_entry(self) -> dict[str, Any]:
+        ledger = self.store.load_ledger(self.execution_id)
+        completed = list(ledger.get("completed_stage_receipts") or [])
+        plan = self.policy["logical_stage_plan"]
+        _require(len(completed) < len(plan),
+                 "LOGICAL_STAGE_PLAN_EXHAUSTED")
+        return deepcopy(plan[len(completed)])
+
+    def _validate_pending_logical_stage_plan(self) -> dict[str, Any]:
+        pending = self.pending_stage_context
+        _require(isinstance(pending, dict),
+                 "CAPTURE_STAGE_CONTEXT_NOT_BOUND")
+        expected = self._next_logical_stage_plan_entry()
+        _require(
+            pending.get("stage_id") == expected["stage_id"]
+            and pending.get("logical_stage_base_id")
+            == expected["logical_stage_base_id"]
+            and pending.get("logical_stage_id") == expected["logical_stage_id"]
+            and pending.get("contract_name") == expected["contract_name"]
+            and pending.get("contract_version") == expected["contract_version"]
+            and pending.get("contract_schema_sha256")
+            == expected["contract_schema_sha256"]
+            and pending.get("contract_runtime_input_required")
+            is expected["contract_runtime_input_required"],
+            "LOGICAL_STAGE_PLAN_CONTEXT_DRIFT",
+        )
+        pending["logical_stage_ordinal"] = expected["ordinal"]
+        return expected
+
     def bind_stage_context(
         self, *, stage_id: str, contract_name: str, contract_version: int,
         contract_schema_sha256: str,
@@ -1250,6 +1549,7 @@ class FullShortDispatchLedgerObserverV1:
             "contract_route_attempt": contract_route_attempt,
             "capture_enforcement_required": True,
         }
+        self._validate_pending_logical_stage_plan()
 
     def _logical_stage_identity(self, stage_id: str) -> str:
         """Allocate one durable logical occurrence, reusing only a rejection."""
@@ -1272,11 +1572,7 @@ class FullShortDispatchLedgerObserverV1:
         occurrence = len({
             str(item.get("logical_stage_id") or "") for item in matching
         }) + 1
-        if occurrence == 1:
-            return stage_id
-        digest = hashlib.sha256(stage_id.encode("utf-8")).hexdigest()[:8]
-        suffix = f".{occurrence}.{digest}"
-        return f"{stage_id[:160 - len(suffix)]}{suffix}"
+        return full_short_logical_stage_id_v1(stage_id, occurrence)
 
     def bind_route(
         self, *, role: str, lane: str, provider_id: str, model_id: str,
@@ -1297,6 +1593,10 @@ class FullShortDispatchLedgerObserverV1:
             and item.get("route_fingerprint") == route_fingerprint
         )]
         _require(len(matches) == 1, "ROUTE_BINDING_DRIFT")
+        if self.pending_stage_context is not None:
+            expected_stage = self._validate_pending_logical_stage_plan()
+            _require(role == expected_stage["role"],
+                     "LOGICAL_STAGE_PLAN_ROLE_DRIFT")
         route = deepcopy(matches[0])
         route["role_binding_sha256"] = domain_sha256(
             "novel-flywheel-full-short-role-binding-v1",
@@ -1348,6 +1648,14 @@ class FullShortDispatchLedgerObserverV1:
                 "contract_route_attempt": None,
                 "capture_enforcement_required": False,
             }
+        expected_stage = self._validate_pending_logical_stage_plan()
+        _require(route.get("role") == expected_stage["role"],
+                 "LOGICAL_STAGE_PLAN_ROLE_DRIFT")
+        _require(
+            int(request.max_output_tokens or 8192)
+            == expected_stage["requested_output_tokens"],
+            "LOGICAL_STAGE_PLAN_OUTPUT_CAP_DRIFT",
+        )
         _require(protocol == route.get("protocol"), "EGRESS_PROTOCOL_DRIFT")
         expected = _expected_provider_payload_v1(
             protocol, request, destination=str(route["destination"]),
@@ -1511,6 +1819,9 @@ class FullShortDispatchLedgerObserverV1:
                 "logical_stage_base_id"
             ],
             "logical_stage_id": logical_stage_id,
+            "logical_stage_ordinal": self.pending_stage_context[
+                "logical_stage_ordinal"
+            ],
             "contract_name": self.pending_stage_context["contract_name"],
             "contract_version": self.pending_stage_context["contract_version"],
             "contract_schema_sha256": self.pending_stage_context[
@@ -1534,7 +1845,10 @@ class FullShortDispatchLedgerObserverV1:
             "response_status_sha256": None,
             "local_stage_receipt_sha256": None,
             "provider_protocol_capture_receipt_sha256": None,
+            "provider_protocol_capture_transport_complete": None,
+            "provider_protocol_capture_http_success": None,
             "contract_runtime_capture_receipt_sha256": None,
+            "contract_runtime_capture_transport_complete": None,
         }
         self.store.consume_nonce_and_record_dispatch(
             execution_id=self.execution_id, policy=self.policy,
@@ -1581,6 +1895,8 @@ class FullShortDispatchLedgerObserverV1:
 
     def _record_capture_receipt(
         self, *, field: str, receipt_sha256: str,
+        transport_complete: bool, http_success: bool | None = None,
+        status_code: int | None = None,
     ) -> None:
         ordinal = self.pending_ordinal
         _require(ordinal is not None, "DISPATCH_NOT_DURABLY_RECORDED")
@@ -1596,6 +1912,22 @@ class FullShortDispatchLedgerObserverV1:
             )
             _require(current.get(field) is None, "CAPTURE_RECEIPT_DUPLICATE")
             current[field] = receipt_sha256
+            current[
+                field.replace("_receipt_sha256", "_transport_complete")
+            ] = transport_complete
+            if field == "provider_protocol_capture_receipt_sha256":
+                _require(
+                    type(http_success) is bool,
+                    "CAPTURE_HTTP_SUCCESS_CLASSIFICATION_REQUIRED",
+                )
+                current["provider_protocol_capture_http_success"] = http_success
+                _require(
+                    type(status_code) is int and 100 <= status_code <= 599,
+                    "CAPTURE_HTTP_STATUS_INVALID",
+                )
+                current["response_status_sha256"] = hashlib.sha256(
+                    str(status_code).encode("ascii"),
+                ).hexdigest()
             attempts[ordinal - 1] = current
             body["attempts"] = attempts
             return body
@@ -1624,6 +1956,9 @@ class FullShortDispatchLedgerObserverV1:
                 "novel-flywheel-provider-response-capture-receipt-v1",
                 receipt.document(),
             ),
+            transport_complete=transport_complete,
+            http_success=200 <= status_code < 300,
+            status_code=status_code,
         )
 
     def capture_contract_runtime_input(
@@ -1645,6 +1980,26 @@ class FullShortDispatchLedgerObserverV1:
                 "novel-flywheel-provider-response-capture-receipt-v1",
                 receipt.document(),
             ),
+            transport_complete=transport_complete,
+        )
+
+    def provider_protocol_capture_complete(self) -> bool:
+        """Return whether the pending attempt has an anchored complete entity."""
+
+        if self.pending_ordinal is None:
+            return False
+        ledger = self.store.load_ledger(self.execution_id)
+        attempts = list(ledger.get("attempts") or [])
+        if len(attempts) < self.pending_ordinal:
+            return False
+        current = attempts[self.pending_ordinal - 1]
+        return bool(
+            _HEX64.fullmatch(str(current.get(
+                "provider_protocol_capture_receipt_sha256"
+            )))
+            and current.get(
+                "provider_protocol_capture_transport_complete"
+            ) is True
         )
 
     def contract_runtime_capture_present(self) -> bool:
@@ -1667,20 +2022,30 @@ class FullShortDispatchLedgerObserverV1:
         def mutate(body: dict[str, Any]) -> dict[str, Any]:
             attempts = list(body["attempts"])
             current = dict(attempts[ordinal - 1])
+            status_sha256 = hashlib.sha256(
+                str(status_code).encode("ascii"),
+            ).hexdigest()
+            if current.get("state") == "HTTP_RESPONSE_FAILED_CLOSED":
+                _require(
+                    current.get("response_status_sha256") in {
+                        None, status_sha256,
+                    },
+                    "HTTP_RESPONSE_STATUS_DRIFT",
+                )
+                current["response_status_sha256"] = status_sha256
+                attempts[ordinal - 1] = current
+                body["attempts"] = attempts
+                return body
             _require(current.get("state") == "DISPATCH_ATTEMPTED", "DISPATCH_STATE_INVALID")
             if not 200 <= status_code < 300:
                 current["state"] = "HTTP_RESPONSE_FAILED_CLOSED"
-                current["response_status_sha256"] = hashlib.sha256(
-                    str(status_code).encode("ascii"),
-                ).hexdigest()
+                current["response_status_sha256"] = status_sha256
                 attempts[ordinal - 1] = current
                 body["attempts"] = attempts
                 body["state"] = "RECONCILIATION_REQUIRED_NO_REDISPATCH"
                 return body
             current["state"] = "RESPONSE_RECEIVED"
-            current["response_status_sha256"] = hashlib.sha256(
-                str(status_code).encode("ascii"),
-            ).hexdigest()
+            current["response_status_sha256"] = status_sha256
             current["response_received_at"] = _now()
             attempts[ordinal - 1] = current
             body["attempts"] = attempts
@@ -1690,7 +2055,9 @@ class FullShortDispatchLedgerObserverV1:
         self.store.update_ledger(self.execution_id, mutate)
         _require(200 <= status_code < 300, "HTTP_RESPONSE_NOT_SUCCESSFUL")
 
-    def after_http_failure(self, *, failure_kind: str) -> None:
+    def after_http_failure(
+        self, *, failure_kind: str, failure_class: str | None = None,
+    ) -> None:
         ordinal = self.pending_ordinal
         if ordinal is None:
             # A local authorization/cap failure before the durable dispatch
@@ -1706,6 +2073,37 @@ class FullShortDispatchLedgerObserverV1:
         def mutate(body: dict[str, Any]) -> dict[str, Any]:
             attempts = list(body["attempts"])
             current = dict(attempts[ordinal - 1])
+            if current.get("state") == "HTTP_RESPONSE_FAILED_CLOSED":
+                # ``raise_for_status`` and adapter error paths may report the
+                # same already-closed response.  Never weaken exact HTTP
+                # evidence into an ambiguous transport outcome.
+                return body
+            complete_capture = bool(
+                _HEX64.fullmatch(str(current.get(
+                    "provider_protocol_capture_receipt_sha256"
+                )))
+                and current.get(
+                    "provider_protocol_capture_transport_complete"
+                ) is True
+            )
+            if complete_capture:
+                current["state"] = (
+                    "HTTP_RESPONSE_FAILED_CLOSED"
+                    if current.get(
+                        "provider_protocol_capture_http_success"
+                    ) is False
+                    else "POST_CAPTURE_TERMINAL_FAILED_CLOSED"
+                )
+                current["failure_kind_sha256"] = hashlib.sha256(
+                    failure_kind.encode("utf-8"),
+                ).hexdigest()
+                current["failure_class"] = (
+                    failure_class or "provider_protocol_terminal"
+                )
+                attempts[ordinal - 1] = current
+                body["attempts"] = attempts
+                body["state"] = "RECONCILIATION_REQUIRED_NO_REDISPATCH"
+                return body
             _require(
                 current.get("state") == "DISPATCH_ATTEMPTED",
                 "SUCCESSFUL_RESPONSE_CANNOT_BE_REWRITTEN_AS_FAILURE",
@@ -1714,6 +2112,94 @@ class FullShortDispatchLedgerObserverV1:
             current["failure_kind_sha256"] = hashlib.sha256(
                 failure_kind.encode("utf-8"),
             ).hexdigest()
+            attempts[ordinal - 1] = current
+            body["attempts"] = attempts
+            body["state"] = "RECONCILIATION_REQUIRED_NO_REDISPATCH"
+            return body
+
+        self.store.update_ledger(self.execution_id, mutate)
+
+    def mark_post_capture_terminal_failure(
+        self, *, failure_kind: str, failure_class: str,
+        contract_attempt_index: int, contract_route: str,
+        contract_route_attempt: int,
+    ) -> None:
+        """Durably type a terminal exception after a complete response.
+
+        This close is deliberately not a recoverable local rejection: the
+        provider entity completed, but the provider protocol/adapter boundary
+        raised before it could yield a Contract Runtime value.  No later
+        network attempt may replace that exact outcome.
+        """
+
+        ordinal = self.pending_ordinal
+        _require(ordinal is not None, "NO_CAPTURED_RESPONSE_TO_CLOSE")
+        _require(bool(failure_kind), "POST_CAPTURE_FAILURE_KIND_INVALID")
+        _require(bool(failure_class), "POST_CAPTURE_FAILURE_CLASS_INVALID")
+
+        def mutate(body: dict[str, Any]) -> dict[str, Any]:
+            attempts = list(body["attempts"])
+            _require(0 < ordinal <= len(attempts), "PENDING_ORDINAL_INVALID")
+            current = dict(attempts[ordinal - 1])
+            _require(
+                current.get("state") in {
+                    "DISPATCH_ATTEMPTED", "RESPONSE_RECEIVED",
+                    "HTTP_RESPONSE_FAILED_CLOSED",
+                    "POST_CAPTURE_TERMINAL_FAILED_CLOSED",
+                },
+                "POST_CAPTURE_TERMINAL_STATE_INVALID",
+            )
+            _require(
+                _HEX64.fullmatch(str(current.get(
+                    "provider_protocol_capture_receipt_sha256"
+                ))) is not None
+                and current.get(
+                    "provider_protocol_capture_transport_complete"
+                ) is True,
+                "COMPLETE_PROVIDER_CAPTURE_REQUIRED",
+            )
+            if current.get("state") == "HTTP_RESPONSE_FAILED_CLOSED":
+                # The HTTP close is already more exact than a generic adapter
+                # terminal classification.  Preserve it byte-for-byte.
+                return body
+            if current.get("contract_attempt_index") is not None:
+                _require(
+                    int(current["contract_attempt_index"])
+                    == contract_attempt_index
+                    and current.get("contract_route") == contract_route
+                    and int(current["contract_route_attempt"])
+                    == contract_route_attempt,
+                    "POST_CAPTURE_ATTEMPT_IDENTITY_MISMATCH",
+                )
+            failure_kind_sha256 = hashlib.sha256(
+                failure_kind.encode("utf-8"),
+            ).hexdigest()
+            if current.get("state") == "POST_CAPTURE_TERMINAL_FAILED_CLOSED":
+                _require(
+                    current.get("failure_kind_sha256") == failure_kind_sha256
+                    and current.get("failure_class") in {
+                        failure_class, "provider_protocol_terminal",
+                    },
+                    "POST_CAPTURE_TERMINAL_FAILURE_DRIFT",
+                )
+                current.update({
+                    "failure_class": failure_class,
+                    "terminal_contract_attempt_index": contract_attempt_index,
+                    "terminal_contract_route": contract_route,
+                    "terminal_contract_route_attempt": contract_route_attempt,
+                })
+                attempts[ordinal - 1] = current
+                body["attempts"] = attempts
+                return body
+            current.update({
+                "state": "POST_CAPTURE_TERMINAL_FAILED_CLOSED",
+                "failure_kind_sha256": failure_kind_sha256,
+                "failure_class": failure_class,
+                "terminal_contract_attempt_index": contract_attempt_index,
+                "terminal_contract_route": contract_route,
+                "terminal_contract_route_attempt": contract_route_attempt,
+                "terminal_closed_at": _now(),
+            })
             attempts[ordinal - 1] = current
             body["attempts"] = attempts
             body["state"] = "RECONCILIATION_REQUIRED_NO_REDISPATCH"
@@ -1774,6 +2260,9 @@ class FullShortDispatchLedgerObserverV1:
             attempts[ordinal - 1] = current
             receipts.append({
                 "ordinal": ordinal,
+                "logical_stage_ordinal": current["logical_stage_ordinal"],
+                "logical_stage_id": current["logical_stage_id"],
+                "logical_stage_base_id": current["logical_stage_base_id"],
                 "stage": stage,
                 "role": role,
                 "role_binding_sha256": role_binding_sha256,
@@ -2048,6 +2537,15 @@ def build_full_short_completion_receipt_v1(
     completed_stage_receipts = list(
         sealed_ledger.get("completed_stage_receipts") or []
     )
+    _require(
+        sealed_ledger.get("logical_stage_plan_sha256")
+        == validated["logical_stage_plan_sha256"]
+        and sealed_ledger.get("transport_recovery_policy_sha256")
+        == validated["transport_recovery_policy_sha256"]
+        and sealed_ledger.get("transport_recovery_policy_identity")
+        == "EXACT_REPLAY_ONLY",
+        "COMPLETION_PLAN_OR_RECOVERY_POLICY_MISMATCH",
+    )
     validate_full_short_dispatch_accounting_v1(
         logical_stage_count=len(completed_stage_receipts),
         physical_dispatch_count=len(attempts),
@@ -2101,6 +2599,29 @@ def build_full_short_completion_receipt_v1(
             for item in receipts
         }) == validated["expected_stage_calls"],
         "LOGICAL_STAGE_MATRIX_DUPLICATE",
+    )
+    completed_plan = []
+    for stage_receipt in receipts:
+        attempt = attempts[stage_receipt["ordinal"] - 1]
+        completed_plan.append({
+            "ordinal": stage_receipt.get("logical_stage_ordinal"),
+            "stage_id": attempt.get("stage"),
+            "logical_stage_base_id": attempt.get("logical_stage_base_id"),
+            "logical_stage_id": attempt.get("logical_stage_id"),
+            "role": attempt.get("bound_role"),
+            "contract_name": attempt.get("contract_name"),
+            "contract_version": attempt.get("contract_version"),
+            "contract_schema_sha256": attempt.get("contract_schema_sha256"),
+            "contract_runtime_input_required": attempt.get(
+                "contract_runtime_input_required"
+            ),
+            "requested_output_tokens": attempt.get("requested_output_tokens"),
+        })
+    _require(
+        completed_plan == validated["logical_stage_plan"]
+        and full_short_logical_stage_plan_sha256_v1(completed_plan)
+        == validated["logical_stage_plan_sha256"],
+        "COMPLETION_LOGICAL_STAGE_PLAN_MISMATCH",
     )
     required_roles = set(validated["required_stage_roles"])
     _require(
@@ -2192,6 +2713,147 @@ def build_full_short_completion_receipt_v1(
     )
 
 
+def reconcile_full_short_capture_anchor_v1(
+    *, store: FullShortDurableExecutionStoreV1, execution_id: str,
+    ordinal: int, byte_domain: str = PROVIDER_PROTOCOL_INPUT_BYTES,
+) -> dict[str, Any]:
+    """Anchor one atomically published capture without any network access.
+
+    Publication intentionally precedes the ledger mutation.  If the process
+    stops in that interval, this routine accepts exactly one envelope whose
+    immutable call/route/contract identity matches the already-recorded
+    dispatch and whose length and byte hashes pass the capture-store audit.
+    Any extra, mismatched, partial, or tampered candidate fails closed.
+    """
+
+    _require(type(ordinal) is int and ordinal > 0,
+             "CAPTURE_RECONCILIATION_ORDINAL_INVALID")
+    _require(
+        byte_domain in {
+            PROVIDER_PROTOCOL_INPUT_BYTES, CONTRACT_RUNTIME_INPUT_BYTES,
+        },
+        "CAPTURE_RECONCILIATION_DOMAIN_INVALID",
+    )
+    sealed = FullShortDurableExecutionStoreV1._verify_seal(
+        store.load_ledger(execution_id),
+        domain="novel-flywheel-full-short-dispatch-ledger-v1",
+        field="ledger_sha256", reason="LEDGER_SHA256_MISMATCH",
+    )
+    attempts = list(sealed.get("attempts") or [])
+    _require(ordinal <= len(attempts), "CAPTURE_RECONCILIATION_ATTEMPT_MISSING")
+    attempt = attempts[ordinal - 1]
+    _require(
+        attempt.get("ordinal") == ordinal,
+        "CAPTURE_RECONCILIATION_ATTEMPT_IDENTITY_INVALID",
+    )
+    capture_store = ProviderResponseCaptureStoreV1(
+        repo_root=store.repo_root,
+        store_root=store.root / "provider-response-captures-v1",
+    )
+    candidates = [
+        item for item in capture_store.audit_all()
+        if item["byte_domain"] == byte_domain
+        and item["execution_id"] == execution_id
+        and item["call_id"] == f"{execution_id}:{ordinal}"
+    ]
+
+    def identity_matches(item: Mapping[str, Any], current: Mapping[str, Any]) -> bool:
+        metadata = item.get("metadata")
+        if not isinstance(metadata, Mapping):
+            return False
+        exact = (
+            metadata.get("execution_id") == execution_id
+            and metadata.get("call_id") == f"{execution_id}:{ordinal}"
+            and metadata.get("stage_id") == current.get("stage")
+            and metadata.get("provider_id_sha256")
+            == current.get("provider_id_sha256")
+            and metadata.get("model_id_sha256")
+            == current.get("model_id_sha256")
+            and metadata.get("route_fingerprint")
+            == current.get("route_fingerprint")
+            and current.get("protocol_schema_id")
+            == f"{metadata.get('protocol')}-wire-v1"
+            and metadata.get("contract_name") == current.get("contract_name")
+            and metadata.get("contract_version")
+            == current.get("contract_version")
+            and metadata.get("contract_schema_sha256")
+            == current.get("contract_schema_sha256")
+            and metadata.get("transport_complete") is True
+        )
+        protocol = str(metadata.get("protocol") or "")
+        exact = exact and (
+            metadata.get("adapter_id")
+            in _PROVIDER_PROTOCOL_ADAPTER_IDS.get(protocol, frozenset())
+            and metadata.get("adapter_version") == 1
+        )
+        return bool(exact)
+
+    matches = [item for item in candidates if identity_matches(item, attempt)]
+    _require(
+        len(candidates) == 1 and len(matches) == 1,
+        "CAPTURE_RECONCILIATION_IDENTITY_NOT_EXACT",
+    )
+    capture = matches[0]
+    receipt_sha256 = str(capture.get("ledger_receipt_sha256") or "")
+    _require(
+        _HEX64.fullmatch(receipt_sha256) is not None,
+        "CAPTURE_RECONCILIATION_RECEIPT_INVALID",
+    )
+    # Replay performs a second independent envelope/hash/path check using the
+    # exact audited metadata before any ledger write is attempted.
+    capture_store.replay(
+        byte_domain=byte_domain,
+        expected_metadata=capture["metadata"],
+        expected_receipt_sha256=receipt_sha256,
+    )
+    field = (
+        "provider_protocol_capture_receipt_sha256"
+        if byte_domain == PROVIDER_PROTOCOL_INPUT_BYTES
+        else "contract_runtime_capture_receipt_sha256"
+    )
+    complete_field = field.replace(
+        "_receipt_sha256", "_transport_complete",
+    )
+
+    def mutate(body: dict[str, Any]) -> dict[str, Any]:
+        current_attempts = list(body.get("attempts") or [])
+        _require(
+            ordinal <= len(current_attempts),
+            "CAPTURE_RECONCILIATION_ATTEMPT_MISSING",
+        )
+        current = dict(current_attempts[ordinal - 1])
+        _require(
+            identity_matches(capture, current),
+            "CAPTURE_RECONCILIATION_LEDGER_IDENTITY_DRIFT",
+        )
+        existing = current.get(field)
+        _require(
+            existing in {None, receipt_sha256},
+            "CAPTURE_RECONCILIATION_RECEIPT_DRIFT",
+        )
+        if existing == receipt_sha256:
+            _require(
+                current.get(complete_field) is True,
+                "CAPTURE_RECONCILIATION_COMPLETENESS_DRIFT",
+            )
+            return body
+        _require(
+            current.get("state") in {
+                "DISPATCH_ATTEMPTED", "RESPONSE_RECEIVED",
+                "HTTP_RESPONSE_FAILED_CLOSED",
+                "POST_CAPTURE_TERMINAL_FAILED_CLOSED",
+            },
+            "CAPTURE_RECONCILIATION_LEDGER_STATE_INVALID",
+        )
+        current[field] = receipt_sha256
+        current[complete_field] = True
+        current_attempts[ordinal - 1] = current
+        body["attempts"] = current_attempts
+        return body
+
+    return store.update_ledger(execution_id, mutate)
+
+
 def replay_full_short_provider_attempt_v1(
     *, store: FullShortDurableExecutionStoreV1, execution_id: str,
     ordinal: int,
@@ -2212,6 +2874,29 @@ def replay_full_short_provider_attempt_v1(
     receipt_sha256 = attempt.get(
         "provider_protocol_capture_receipt_sha256"
     )
+    if receipt_sha256 is None:
+        # The only recovery from the capture-publication crash window is an
+        # exact local reconciliation.  It cannot resolve credentials, construct
+        # an HTTP client, consume a nonce, or authorize another dispatch.
+        orphan_store = ProviderResponseCaptureStoreV1(
+            repo_root=store.repo_root,
+            store_root=store.root / "provider-response-captures-v1",
+        )
+        orphan_candidates = [
+            item for item in orphan_store.audit_all()
+            if item["byte_domain"] == PROVIDER_PROTOCOL_INPUT_BYTES
+            and item["execution_id"] == execution_id
+            and item["call_id"] == f"{execution_id}:{ordinal}"
+        ]
+        if orphan_candidates:
+            reconcile_full_short_capture_anchor_v1(
+                store=store, execution_id=execution_id, ordinal=ordinal,
+            )
+            ledger = store.load_ledger(execution_id)
+            attempt = list(ledger.get("attempts") or [])[ordinal - 1]
+            receipt_sha256 = attempt.get(
+                "provider_protocol_capture_receipt_sha256"
+            )
     _require(
         isinstance(receipt_sha256, str)
         and _HEX64.fullmatch(receipt_sha256) is not None,

@@ -29,7 +29,11 @@ from novel_flywheel.full_short_execution import (
     FullShortDurableExecutionStoreV1,
     RESPONSE_CAPTURE_POLICY_SHA256,
     RESPONSE_CAPTURE_POLICY_V1,
+    TRANSPORT_RECOVERY_POLICY_SHA256,
+    TRANSPORT_RECOVERY_POLICY_V1,
     build_full_short_completion_receipt_v1,
+    full_short_logical_stage_plan_sha256_v1,
+    validate_full_short_logical_stage_plan_v1,
     validate_full_short_canonical_authorization_v1,
     validate_full_short_preflight_v1,
 )
@@ -174,10 +178,16 @@ def _destination(provider: dict) -> str:
 
 def collect_live_bindings(
     *, repo: Path, data_dir: Path, project_id: str, run_id: str,
-    store_root: Path | None = None,
+    logical_stage_plan: list[dict[str, Any]], store_root: Path | None = None,
 ) -> tuple[dict, dict]:
     """Collect public, credential-free live bindings from source truth."""
 
+    logical_stage_plan = validate_full_short_logical_stage_plan_v1(
+        logical_stage_plan,
+    )
+    logical_stage_plan_sha256 = full_short_logical_stage_plan_sha256_v1(
+        logical_stage_plan,
+    )
     repo = repo.resolve(strict=True)
     data_dir = data_dir.resolve(strict=True)
     exact_store_root = _canonical_store_root(
@@ -477,6 +487,11 @@ def collect_live_bindings(
         "destination_manifest_sha256": destination_manifest_sha256,
         "egress_policy_sha256": _domain(egress),
         "response_capture_policy_sha256": RESPONSE_CAPTURE_POLICY_SHA256,
+        "logical_stage_plan_sha256": logical_stage_plan_sha256,
+        "transport_recovery_policy_sha256": (
+            TRANSPORT_RECOVERY_POLICY_SHA256
+        ),
+        "transport_recovery_policy_identity": "EXACT_REPLAY_ONLY",
         "store_root_sha256": hashlib.sha256(
             str(exact_store_root).encode("utf-8"),
         ).hexdigest(),
@@ -507,6 +522,13 @@ def collect_live_bindings(
         } for destination in sorted(destinations)],
         "egress_policy": egress,
         "response_capture_policy": RESPONSE_CAPTURE_POLICY_V1,
+        "logical_stage_plan": logical_stage_plan,
+        "logical_stage_plan_sha256": logical_stage_plan_sha256,
+        "transport_recovery_policy": TRANSPORT_RECOVERY_POLICY_V1,
+        "transport_recovery_policy_sha256": (
+            TRANSPORT_RECOVERY_POLICY_SHA256
+        ),
+        "transport_recovery_policy_identity": "EXACT_REPLAY_ONLY",
         "maximum_configured_output_tokens_per_call": max_per_call,
         "store_root": str(exact_store_root),
         "store_root_sha256": hashlib.sha256(
@@ -532,7 +554,9 @@ def preflight_full_short_control_plane(
     actual, live_public = collect_live_bindings(
         repo=args.repo, data_dir=args.data_dir,
         project_id=str(bindings["project_id"]),
-        run_id=str(policy["run_id"]), store_root=args.store_root,
+        run_id=str(policy["run_id"]),
+        logical_stage_plan=list(bindings["logical_stage_plan"]),
+        store_root=args.store_root,
     )
     if live_public != bindings:
         raise ValueError("PUBLIC_BINDINGS_DRIFT")

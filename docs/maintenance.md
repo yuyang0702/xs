@@ -2317,6 +2317,18 @@ caps, elapsed policy, and the disabled Skill V3/Planning V2 cutovers. The real
 runner validates those public bindings with external actions disabled before it
 may create a durable permission, one JIT approval, or one nonce.
 
+The final authorization boundary also binds the complete ordered logical-stage
+plan, not merely its call count or distinct role set. Each plan entry includes
+its logical ordinal and occurrence identity, workflow node, role, exact contract
+schema identity, Contract Runtime input policy, and requested output-token cap.
+The plan document and its domain-separated SHA-256 are copied through the live
+public bindings, canonical authorization, disabled preflight receipt, durable
+permission, JIT signed approval, nonce, dispatch ledger, and completion receipt.
+Runtime checks the next entry before route resolution, again before model-request
+binding, and reconstructs the same ordered plan from completed ledger attempts.
+A reordered, omitted, duplicated, stale, or otherwise drifted plan fails closed;
+packets created under `full-short-trustworthy-execution-v1` are not reusable.
+
 The permission, approval, nonce, dispatch ledger, and terminal completion
 receipt live outside the Git worktree. Every transport dispatch re-reads and
 hash-verifies that chain, writes the exact destination and request shape before
@@ -2368,6 +2380,15 @@ length, and SHA-256 before parsing. Request prompts, request bodies, headers,
 credentials, and tool arguments are never capture metadata. Restart never
 authorizes a network redispatch; captured bytes are the only offline replay
 source.
+
+Transport recovery uses the canonical `FullShortTransportRecoveryPolicyV1`
+document and hash with identity `EXACT_REPLAY_ONLY`. Its ordered outcome matrix
+covers `complete_valid`, `explicit_provider_error`, `proven_pre_response`, and
+`ambiguous`. Only an immutable complete valid capture may be replayed locally;
+the other outcomes fail closed. The policy fixes network retries at zero and
+forbids a fresh nonce, network redispatch, and route switching. A string label
+alone is not authority: every authorization-chain object must match the exact
+canonical policy hash.
 
 Anthropic streaming responses are terminal-state validated before adapter
 projection: a single balanced message must end with a stop reason and exactly

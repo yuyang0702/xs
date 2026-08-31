@@ -970,6 +970,41 @@ def _emit_final_artifact_rejection(
     })
 
 
+def _close_durable_post_capture_exception(
+    gateway: Any, *, error: BaseException,
+    failure_class: str, attempt: ProtocolReceiptAttempt,
+) -> bool:
+    """Close a complete provider entity before Contract Runtime can retry it."""
+
+    registry = getattr(gateway, "registry", None)
+    observer = getattr(registry, "attempt_observer", None)
+    capture_complete = getattr(
+        observer, "provider_protocol_capture_complete", None,
+    )
+    contract_input_present = getattr(
+        observer, "contract_runtime_capture_present", None,
+    )
+    close_terminal = getattr(
+        observer, "mark_post_capture_terminal_failure", None,
+    )
+    if (
+        not callable(capture_complete)
+        or not callable(contract_input_present)
+        or not callable(close_terminal)
+    ):
+        return False
+    if not capture_complete() or contract_input_present():
+        return False
+    close_terminal(
+        failure_kind=type(error).__name__,
+        failure_class=failure_class,
+        contract_attempt_index=attempt.attempt_index,
+        contract_route=attempt.route,
+        contract_route_attempt=attempt.route_attempt,
+    )
+    return True
+
+
 async def execute_contract_runtime(
     gateway: Any,
     *,
@@ -1287,6 +1322,10 @@ async def execute_contract_runtime(
                 "final_artifact_unavailable"
                 if final_artifact_failure else classify_model_failure(exc)
             )
+            post_capture_terminal = _close_durable_post_capture_exception(
+                gateway, error=exc, failure_class=failure_class,
+                attempt=attempt,
+            )
             error_receipt = getattr(exc, "receipt", None)
             provider_call_executed = not (
                 final_artifact_failure
@@ -1299,13 +1338,21 @@ async def execute_contract_runtime(
                 route=attempt.route, route_attempt=attempt.route_attempt,
                 action=str(attempt.action or RecoveryAction.RETRY_SAME_ROUTE),
                 outcome=(
-                    "final_artifact_capability_failure"
-                    if final_artifact_failure else "transport_failure"
+                    "post_capture_terminal_failure"
+                    if post_capture_terminal
+                    else (
+                        "final_artifact_capability_failure"
+                        if final_artifact_failure else "transport_failure"
+                    )
                 ),
                 failure_class=failure_class,
                 error_class=type(exc).__name__,
                 model_call_delta=1 if provider_call_executed else 0,
             )
+            if post_capture_terminal:
+                # The complete entity is authoritative.  Propagate its exact
+                # adapter/protocol exception and forbid a second provider call.
+                raise
             last_error = exc
             if isinstance(error_receipt, Mapping):
                 last_receipt = dict(error_receipt)

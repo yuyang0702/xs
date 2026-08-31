@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 from pathlib import Path
+from types import SimpleNamespace
 
 import httpx
 import pytest
@@ -15,12 +16,23 @@ from novel_flywheel.full_short_execution import (
     FullShortExecutionBoundaryError,
     FullShortExecutionPolicyV1,
     RESPONSE_CAPTURE_POLICY_V1,
+    TRANSPORT_RECOVERY_POLICY_SHA256,
+    TRANSPORT_RECOVERY_POLICY_V1,
     _expected_provider_payload_v1,
     build_full_short_completion_receipt_v1,
+    reconcile_full_short_capture_anchor_v1,
     replay_full_short_provider_attempt_v1,
     render_full_short_canonical_authorization_v1,
     validate_full_short_canonical_authorization_v1,
     validate_full_short_preflight_v1,
+    validate_policy_v1,
+)
+from novel_flywheel.contract_runtime import (
+    ExecutableContractSpec,
+    execute_contract_runtime,
+)
+from novel_flywheel.provider_response_capture import (
+    ProviderResponseCaptureError,
 )
 from novel_flywheel.providers.http import (
     HttpProvider,
@@ -30,6 +42,7 @@ from novel_flywheel.providers.http import (
 from novel_flywheel.providers.registry import ProviderRegistry
 from novel_flywheel.projects import ProjectCreate, ProjectStore
 from novel_flywheel.story_state import StoryStateStore
+from novel_flywheel.structured_artifacts import StructuredArtifactContract
 from novel_flywheel.runtime_fingerprint_build import domain_sha256
 from tools.canary import first_trustworthy_full_short_runner as real_runner
 
@@ -79,13 +92,58 @@ def _routes() -> tuple[dict, ...]:
     },)
 
 
+def _logical_stage_plan(
+    *stages: tuple[str, str, str, int, str, bool, int],
+) -> tuple[dict, ...]:
+    if not stages:
+        stages = ((
+            "planning", "planning", "unstructured_text", 1,
+            _hash({}), False, 128,
+        ),)
+    occurrences: dict[str, int] = {}
+    result = []
+    for ordinal, (
+        stage_id, role, contract_name, contract_version,
+        contract_schema_sha256, runtime_input_required, output_tokens,
+    ) in enumerate(stages, 1):
+        occurrences[stage_id] = occurrences.get(stage_id, 0) + 1
+        occurrence = occurrences[stage_id]
+        logical_stage_id = stage_id
+        if occurrence > 1:
+            suffix = (
+                f".{occurrence}."
+                f"{hashlib.sha256(stage_id.encode('utf-8')).hexdigest()[:8]}"
+            )
+            logical_stage_id = f"{stage_id[:160-len(suffix)]}{suffix}"
+        result.append({
+            "ordinal": ordinal,
+            "stage_id": stage_id,
+            "logical_stage_base_id": stage_id,
+            "logical_stage_id": logical_stage_id,
+            "role": role,
+            "contract_name": contract_name,
+            "contract_version": contract_version,
+            "contract_schema_sha256": contract_schema_sha256,
+            "contract_runtime_input_required": runtime_input_required,
+            "requested_output_tokens": output_tokens,
+        })
+    return tuple(result)
+
+
 def _policy(
     store: FullShortDurableExecutionStoreV1 | None = None, *,
     expected_stage_calls: int = 1,
     routes: tuple[dict, ...] | None = None,
+    logical_stage_plan: tuple[dict, ...] | None = None,
 ) -> dict:
     store_hash = store.store_root_sha256 if store is not None else "0" * 64
     bound_routes = routes or _routes()
+    bound_plan = logical_stage_plan or _logical_stage_plan(*(
+        (
+            "planning", "planning", "unstructured_text", 1,
+            _hash({}), False, 128,
+        ) for _ in range(expected_stage_calls)
+    ))
     return FullShortExecutionPolicyV1(
         execution_head="a" * 40,
         branch="test",
@@ -101,6 +159,7 @@ def _policy(
         egress_policy_sha256=_hash(_egress()),
         store_root_sha256=store_hash,
         required_stage_roles=("planning",),
+        logical_stage_plan=bound_plan,
         expected_stage_calls=expected_stage_calls,
         hard_max_provider_requests=4,
         hard_max_http_posts=4,
@@ -122,8 +181,13 @@ def _store(tmp_path: Path) -> FullShortDurableExecutionStoreV1:
 def _authorize_offline(
     store: FullShortDurableExecutionStoreV1, execution_id: str,
     *, expected_stage_calls: int = 1,
+    routes: tuple[dict, ...] | None = None,
+    logical_stage_plan: tuple[dict, ...] | None = None,
 ) -> tuple[dict, dict, dict]:
-    policy = _policy(store, expected_stage_calls=expected_stage_calls)
+    policy = _policy(
+        store, expected_stage_calls=expected_stage_calls, routes=routes,
+        logical_stage_plan=logical_stage_plan,
+    )
     permission = store.create_permission(
         execution_id=execution_id,
         authorization_text_sha256="3" * 64,
@@ -396,14 +460,290 @@ async def test_lowest_transport_seam_is_durable_and_completable(tmp_path: Path) 
         role="planning", lane="primary", provider_id="provider",
         model_id="model-id", route_fingerprint="9" * 64,
     )
-    observer.bind_model_request(protocol="anthropic", request=_request())
     with pytest.raises(FullShortExecutionBoundaryError) as replay:
+        observer.bind_model_request(protocol="anthropic", request=_request())
+    assert replay.value.reason_code == "LOGICAL_STAGE_PLAN_EXHAUSTED"
+    await provider.client.aclose()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("status_code", [422, 503])
+async def test_complete_non_2xx_response_keeps_typed_http_close(
+    tmp_path: Path, status_code: int,
+) -> None:
+    store = _store(tmp_path)
+    execution_id = f"complete-non-2xx-{status_code}"
+    _authorize_offline(store, execution_id)
+    observer = _observer(store, execution_id)
+    provider = HttpProvider(
+        "https://unit.test", "offline-key",
+        transport_policy=SingleDispatchTransportPolicyV1.phase_b(),
+        attempt_observer=observer,
+    )
+    original = provider.client
+    provider.client = httpx.AsyncClient(transport=httpx.MockTransport(
+        lambda request: httpx.Response(
+            status_code, json={"error": "terminal provider rejection"},
+            request=request,
+        ),
+    ))
+    await original.aclose()
+
+    with pytest.raises(httpx.HTTPStatusError):
+        await provider.post(
+            "v1/messages", payload=_payload(), headers={},
+        )
+
+    attempt = store.load_ledger(execution_id)["attempts"][0]
+    assert attempt["state"] == "HTTP_RESPONSE_FAILED_CLOSED"
+    assert attempt["provider_protocol_capture_transport_complete"] is True
+    assert attempt["provider_protocol_capture_http_success"] is False
+    assert len(store.load_ledger(execution_id)["attempts"]) == 1
+    await provider.client.aclose()
+
+
+def test_partial_capture_remains_ambiguous_transport_failure(
+    tmp_path: Path,
+) -> None:
+    store = _store(tmp_path)
+    execution_id = "partial-capture-ambiguous"
+    _authorize_offline(store, execution_id)
+    observer = _observer(store, execution_id)
+    observer.before_http_dispatch(
+        method="POST", url="https://unit.test/v1/messages", payload=_payload(),
+    )
+    observer.capture_provider_protocol_input(
+        data=b'data: {"type":"content_block_delta"}', status_code=200,
+        content_type="text/event-stream", encoding="utf-8",
+        transport_complete=False,
+    )
+    observer.after_http_failure(failure_kind="ReadTimeout")
+
+    attempt = store.load_ledger(execution_id)["attempts"][0]
+    assert attempt["provider_protocol_capture_transport_complete"] is False
+    assert attempt["state"] == "OUTCOME_UNKNOWN_FAIL_CLOSED"
+
+
+def test_capture_publication_crash_reconciles_exactly_without_network(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    store = _store(tmp_path)
+    execution_id = "capture-anchor-crash"
+    _authorize_offline(store, execution_id)
+    observer = _observer(store, execution_id)
+    observer.before_http_dispatch(
+        method="POST", url="https://unit.test/v1/messages", payload=_payload(),
+    )
+    events = [
+        {"type": "message_start", "message": {
+            "id": "offline", "usage": {"input_tokens": 1},
+        }},
+        {"type": "content_block_start", "index": 0,
+         "content_block": {"type": "text", "text": ""}},
+        {"type": "content_block_delta", "index": 0,
+         "delta": {"type": "text_delta", "text": "reconciled"}},
+        {"type": "content_block_stop", "index": 0},
+        {"type": "message_delta", "delta": {"stop_reason": "end_turn"},
+         "usage": {"output_tokens": 1}},
+        {"type": "message_stop"},
+    ]
+    entity = "".join(
+        "data: " + json.dumps(event, separators=(",", ":")) + "\n\n"
+        for event in events
+    ).encode("utf-8")
+    with monkeypatch.context() as crash:
+        crash.setattr(
+            store, "update_ledger",
+            lambda *_args, **_kwargs: (_ for _ in ()).throw(
+                RuntimeError("injected ledger-anchor crash")
+            ),
+        )
+        with pytest.raises(RuntimeError, match="ledger-anchor crash"):
+            observer.capture_provider_protocol_input(
+                data=entity, status_code=200,
+                content_type="text/event-stream", encoding="utf-8",
+                transport_complete=True,
+            )
+
+    assert store.load_ledger(execution_id)["attempts"][0][
+        "provider_protocol_capture_receipt_sha256"
+    ] is None
+    reconciled = reconcile_full_short_capture_anchor_v1(
+        store=store, execution_id=execution_id, ordinal=1,
+    )
+    assert reconciled["attempts"][0][
+        "provider_protocol_capture_transport_complete"
+    ] is True
+    assert replay_full_short_provider_attempt_v1(
+        store=store, execution_id=execution_id, ordinal=1,
+    ).text == "reconciled"
+
+
+def test_capture_reconciliation_rejects_tampered_published_bytes(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    store = _store(tmp_path)
+    execution_id = "capture-anchor-tamper"
+    _authorize_offline(store, execution_id)
+    observer = _observer(store, execution_id)
+    observer.before_http_dispatch(
+        method="POST", url="https://unit.test/v1/messages", payload=_payload(),
+    )
+    with monkeypatch.context() as crash:
+        crash.setattr(
+            store, "update_ledger",
+            lambda *_args, **_kwargs: (_ for _ in ()).throw(RuntimeError("crash")),
+        )
+        with pytest.raises(RuntimeError, match="crash"):
+            observer.capture_provider_protocol_input(
+                data=b'{"ok":true}', status_code=200,
+                content_type="application/json", encoding="utf-8",
+                transport_complete=True,
+            )
+    capture_path = next(observer.capture_store.root.glob("*.capture"))
+    payload = capture_path.read_bytes()
+    capture_path.write_bytes(payload[:-1] + bytes([payload[-1] ^ 1]))
+
+    with pytest.raises(ProviderResponseCaptureError, match="SHA256_MISMATCH"):
+        reconcile_full_short_capture_anchor_v1(
+            store=store, execution_id=execution_id, ordinal=1,
+        )
+    assert store.load_ledger(execution_id)["attempts"][0][
+        "provider_protocol_capture_receipt_sha256"
+    ] is None
+
+
+@pytest.mark.parametrize("protocol", ["openai-chat", "openai-responses"])
+def test_capture_reconciliation_binds_openai_protocol_adapter_identity(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, protocol: str,
+) -> None:
+    store = _store(tmp_path)
+    execution_id = f"capture-anchor-{protocol}"
+    path = (
+        "chat/completions" if protocol == "openai-chat" else "responses"
+    )
+    route = ({
+        **_routes()[0],
+        "protocol": protocol,
+        "destination": f"https://unit.test:443/v1/{path}",
+    },)
+    _authorize_offline(store, execution_id, routes=route)
+    observer = FullShortDispatchLedgerObserverV1(
+        store=store, execution_id=execution_id,
+        policy=_policy(store, routes=route),
+        authorized_routes=route, egress_policy=_egress(),
+    )
+    observer.bind_route(
+        role="planning", lane="primary", provider_id="provider",
+        model_id="model-id", route_fingerprint="9" * 64,
+    )
+    request = _request()
+    observer.bind_model_request(protocol=protocol, request=request)
+    payload = _expected_provider_payload_v1(
+        protocol, request, destination=route[0]["destination"],
+    )
+    observer.before_http_dispatch(
+        method="POST", url=route[0]["destination"], payload=payload,
+    )
+    with monkeypatch.context() as crash:
+        crash.setattr(
+            store, "update_ledger",
+            lambda *_args, **_kwargs: (_ for _ in ()).throw(RuntimeError("crash")),
+        )
+        with pytest.raises(RuntimeError, match="crash"):
+            observer.capture_provider_protocol_input(
+                data=b'{"ok":true}', status_code=200,
+                content_type="application/json", encoding="utf-8",
+                transport_complete=True,
+            )
+
+    reconciled = reconcile_full_short_capture_anchor_v1(
+        store=store, execution_id=execution_id, ordinal=1,
+    )
+    attempt = reconciled["attempts"][0]
+    assert attempt["provider_protocol_capture_transport_complete"] is True
+    assert len(attempt["provider_protocol_capture_receipt_sha256"]) == 64
+
+
+@pytest.mark.asyncio
+async def test_contract_runtime_terminal_exception_after_complete_capture_never_retries(
+    tmp_path: Path,
+) -> None:
+    contract = StructuredArtifactContract(
+        name="interview_planning", version=1,
+        schema={
+            "type": "object",
+            "properties": {"message": {"type": "string"}},
+            "required": ["message"],
+            "additionalProperties": False,
+        },
+    )
+    plan = _logical_stage_plan((
+        "planning", "planning", contract.name, contract.version,
+        contract.schema_sha256(), True, 128,
+    ))
+    store = _store(tmp_path)
+    execution_id = "post-capture-terminal"
+    _authorize_offline(store, execution_id, logical_stage_plan=plan)
+    observer = FullShortDispatchLedgerObserverV1(
+        store=store, execution_id=execution_id,
+        policy=_policy(store, logical_stage_plan=plan),
+        authorized_routes=_routes(), egress_policy=_egress(),
+    )
+    observer.bind_stage_context(
+        stage_id="planning", contract_name=contract.name,
+        contract_version=contract.version,
+        contract_schema_sha256=contract.schema_sha256(),
+        contract_runtime_input_required=True,
+        contract_attempt_index=1, contract_route="primary",
+        contract_route_attempt=1,
+    )
+    observer.bind_route(
+        role="planning", lane="primary", provider_id="provider",
+        model_id="model-id", route_fingerprint="9" * 64,
+    )
+    observer.bind_model_request(protocol="anthropic", request=_request())
+    gateway = SimpleNamespace(
+        registry=SimpleNamespace(attempt_observer=observer),
+    )
+    calls = 0
+
+    async def terminal_adapter_failure(*_args, **_kwargs):
+        nonlocal calls
+        calls += 1
         observer.before_http_dispatch(
             method="POST", url="https://unit.test/v1/messages",
             payload=_payload(),
         )
-    assert replay.value.reason_code == "EXECUTION_ALREADY_COMPLETED"
-    await provider.client.aclose()
+        observer.capture_provider_protocol_input(
+            data=b'{"terminal":"provider-protocol-error"}', status_code=200,
+            content_type="application/json", encoding="utf-8",
+            transport_complete=True,
+        )
+        observer.after_http_response(status_code=200)
+        raise RuntimeError("adapter terminal protocol exception")
+
+    observations: list[dict] = []
+    spec = ExecutableContractSpec(
+        contract_name=contract.name, structured_contract=contract,
+        semantic_normalizer=lambda value: value,
+        domain_validator=lambda value: value,
+    )
+    with pytest.raises(RuntimeError, match="adapter terminal protocol exception"):
+        await execute_contract_runtime(
+            gateway, role="planning", system="", user="",
+            execution_spec=spec,
+            same_route_attempts=2, fallback_attempts=0,
+            attempt_executor=terminal_adapter_failure,
+            attempt_observer=observations.append,
+        )
+
+    assert calls == 1
+    assert observations[0]["outcome"] == "post_capture_terminal_failure"
+    assert observations[0]["outcome"] != "transport_failure"
+    attempt = store.load_ledger(execution_id)["attempts"][0]
+    assert attempt["state"] == "POST_CAPTURE_TERMINAL_FAILED_CLOSED"
+    assert attempt["failure_class"] == "normal_invalid_output"
 
 
 def test_restart_after_dispatch_before_local_receipt_never_redispatches(
@@ -922,6 +1262,11 @@ def _preflight_actual() -> dict:
         "response_capture_policy_sha256": (
             policy["response_capture_policy_sha256"]
         ),
+        "logical_stage_plan_sha256": policy["logical_stage_plan_sha256"],
+        "transport_recovery_policy_sha256": policy[
+            "transport_recovery_policy_sha256"
+        ],
+        "transport_recovery_policy_identity": "EXACT_REPLAY_ONLY",
         "store_root_sha256": policy["store_root_sha256"],
         "skill_v3_production_cutover": False,
         "planning_v2_production_cutover": False,
@@ -934,28 +1279,158 @@ def _preflight_actual() -> dict:
 
 
 def test_canonical_authorization_and_disabled_preflight_are_exact() -> None:
+    policy = _policy()
     bindings = {
         "project_workload": "hash-bound-test",
         "routes": list(_routes()),
         "destinations": ["https://unit.test:443/v1/messages"],
         "egress_policy": _egress(),
         "response_capture_policy": RESPONSE_CAPTURE_POLICY_V1,
+        "logical_stage_plan": policy["logical_stage_plan"],
+        "logical_stage_plan_sha256": policy["logical_stage_plan_sha256"],
+        "transport_recovery_policy": TRANSPORT_RECOVERY_POLICY_V1,
+        "transport_recovery_policy_sha256": (
+            TRANSPORT_RECOVERY_POLICY_SHA256
+        ),
+        "transport_recovery_policy_identity": "EXACT_REPLAY_ONLY",
         "store_root_sha256": "0" * 64,
     }
     raw = render_full_short_canonical_authorization_v1(
-        policy=_policy(), public_bindings=bindings,
+        policy=policy, public_bindings=bindings,
     )
     authorization = validate_full_short_canonical_authorization_v1(
-        raw, policy=_policy(), public_bindings=bindings,
+        raw, policy=policy, public_bindings=bindings,
     )
     receipt = validate_full_short_preflight_v1(
-        policy=_policy(), actual=_preflight_actual(),
+        policy=policy, actual=_preflight_actual(),
         authorization_text_sha256=authorization["authorization_text_sha256"],
         external_actions_enabled=False,
     )
     assert receipt["binding_status"] == "exact"
     assert receipt["approval_state"] == "NOT_CREATED"
     assert receipt["nonce_state"] == "NOT_CREATED"
+    assert receipt["logical_stage_plan_sha256"] == policy[
+        "logical_stage_plan_sha256"
+    ]
+    assert receipt["transport_recovery_policy_identity"] == "EXACT_REPLAY_ONLY"
+
+
+def test_policy_binds_canonical_exact_replay_matrix_and_old_packets_fail() -> None:
+    policy = _policy()
+    assert policy["transport_recovery_policy"] == TRANSPORT_RECOVERY_POLICY_V1
+    assert [item["outcome_class"] for item in policy[
+        "transport_recovery_policy"
+    ]["ordered_outcome_matrix"]] == [
+        "complete_valid", "explicit_provider_error",
+        "proven_pre_response", "ambiguous",
+    ]
+    assert policy["transport_recovery_policy"]["max_network_retries"] == 0
+    assert policy["transport_recovery_policy"]["fresh_nonce_allowed"] is False
+    assert policy["transport_recovery_policy"][
+        "network_redispatch_allowed"
+    ] is False
+    matrix = policy["transport_recovery_policy"]["ordered_outcome_matrix"]
+    assert [
+        {
+            key: item[key] for key in (
+                "response_bytes_present", "valid_completion",
+                "explicit_error", "ambiguity", "max_retry",
+                "fresh_nonce", "budget_counted",
+            )
+        }
+        for item in matrix
+    ] == [
+        {
+            "response_bytes_present": True, "valid_completion": True,
+            "explicit_error": False, "ambiguity": False,
+            "max_retry": 0, "fresh_nonce": False, "budget_counted": True,
+        },
+        {
+            "response_bytes_present": True, "valid_completion": False,
+            "explicit_error": True, "ambiguity": False,
+            "max_retry": 0, "fresh_nonce": False, "budget_counted": True,
+        },
+        {
+            "response_bytes_present": False, "valid_completion": False,
+            "explicit_error": False, "ambiguity": False,
+            "max_retry": 0, "fresh_nonce": False, "budget_counted": True,
+        },
+        {
+            "response_bytes_present": False, "valid_completion": False,
+            "explicit_error": False, "ambiguity": True,
+            "max_retry": 0, "fresh_nonce": False, "budget_counted": True,
+        },
+    ]
+
+    old_packet = dict(policy)
+    old_packet.pop("policy_sha256")
+    old_packet.pop("logical_stage_plan")
+    old_packet.pop("logical_stage_plan_sha256")
+    old_packet["policy_version"] = "full-short-trustworthy-execution-v1"
+    with pytest.raises(FullShortExecutionBoundaryError) as rejected:
+        validate_policy_v1(old_packet)
+    assert rejected.value.reason_code == "POLICY_VERSION_MISMATCH"
+
+
+def test_authorization_candidate_rejects_same_count_role_plan_reordering() -> None:
+    plan = _logical_stage_plan(
+        ("planning", "planning", "planning_text", 1,
+         "1" * 64, False, 128),
+        ("draft", "planning", "draft_text", 1,
+         "2" * 64, False, 128),
+    )
+    policy = _policy(expected_stage_calls=2, logical_stage_plan=plan)
+    bindings = {
+        "routes": list(_routes()),
+        "destinations": ["https://unit.test:443/v1/messages"],
+        "egress_policy": _egress(),
+        "response_capture_policy": RESPONSE_CAPTURE_POLICY_V1,
+        "logical_stage_plan": list(reversed(policy["logical_stage_plan"])),
+        "logical_stage_plan_sha256": policy["logical_stage_plan_sha256"],
+        "transport_recovery_policy": TRANSPORT_RECOVERY_POLICY_V1,
+        "transport_recovery_policy_sha256": TRANSPORT_RECOVERY_POLICY_SHA256,
+        "transport_recovery_policy_identity": "EXACT_REPLAY_ONLY",
+        "store_root_sha256": "0" * 64,
+    }
+    with pytest.raises(FullShortExecutionBoundaryError) as rejected:
+        render_full_short_canonical_authorization_v1(
+            policy=policy, public_bindings=bindings,
+        )
+    assert rejected.value.reason_code == (
+        "AUTHORIZATION_LOGICAL_STAGE_PLAN_MISMATCH"
+    )
+
+
+def test_signed_chain_and_stage_dispatch_bind_exact_plan_and_recovery(
+    tmp_path: Path,
+) -> None:
+    store = _store(tmp_path)
+    permission, approval, nonce = _authorize_offline(store, "exact-plan-chain")
+    policy = _policy(store)
+    for value in (permission, approval, nonce, store.load_ledger(
+        "exact-plan-chain"
+    )):
+        assert value["logical_stage_plan_sha256"] == policy[
+            "logical_stage_plan_sha256"
+        ]
+        assert value["transport_recovery_policy_sha256"] == (
+            TRANSPORT_RECOVERY_POLICY_SHA256
+        )
+        assert value["transport_recovery_policy_identity"] == (
+            "EXACT_REPLAY_ONLY"
+        )
+
+    observer = FullShortDispatchLedgerObserverV1(
+        store=store, execution_id="exact-plan-chain", policy=policy,
+        authorized_routes=_routes(), egress_policy=_egress(),
+    )
+    with pytest.raises(FullShortExecutionBoundaryError) as rejected:
+        observer.bind_stage_context(
+            stage_id="draft", contract_name="unstructured_text",
+            contract_version=1, contract_schema_sha256=_hash({}),
+        )
+    assert rejected.value.reason_code == "LOGICAL_STAGE_PLAN_CONTEXT_DRIFT"
+    assert store.load_ledger("exact-plan-chain")["attempts"] == []
 
 
 def test_post_authorization_head_drift_fails_before_external_actions() -> None:
@@ -1011,6 +1486,12 @@ def test_invalid_public_route_identity_never_crosses_credential_boundary(
         ("egress_policy_sha256", "9" * 64, "EGRESS_POLICY_SHA256_DRIFT"),
         ("response_capture_policy_sha256", "9" * 64,
          "RESPONSE_CAPTURE_POLICY_SHA256_DRIFT"),
+        ("logical_stage_plan_sha256", "9" * 64,
+         "LOGICAL_STAGE_PLAN_SHA256_DRIFT"),
+        ("transport_recovery_policy_sha256", "9" * 64,
+         "TRANSPORT_RECOVERY_POLICY_SHA256_DRIFT"),
+        ("transport_recovery_policy_identity", "NETWORK_RETRY",
+         "TRANSPORT_RECOVERY_POLICY_IDENTITY_DRIFT"),
         ("store_root_sha256", "9" * 64, "STORE_ROOT_SHA256_DRIFT"),
         ("skill_v3_production_cutover", True, "SKILL_V3_CUTOVER_DRIFT"),
         ("planning_v2_production_cutover", True, "PLANNING_V2_CUTOVER_DRIFT"),
@@ -1094,36 +1575,17 @@ def test_durable_chain_tamper_and_external_authority_mismatch_fail_closed(
 def test_total_requested_output_cap_is_enforced_before_second_dispatch(
     tmp_path: Path,
 ) -> None:
-    store = _store(tmp_path)
-    _authorize_offline(store, "token-cap")
-    observer = _observer(store, "token-cap", max_tokens=3000)
-    observer.before_http_dispatch(
-        method="POST", url="https://unit.test/v1/messages",
-        payload=_payload(3000),
-    )
-    observer.after_http_response(status_code=200)
-    observer.mark_local_stage_complete(
-        stage="planning", role="planning",
-        role_binding_sha256=observer.bound_route["role_binding_sha256"],
-        output_sha256="a" * 64,
-        receipt_sha256="b" * 64,
-    )
-    observer.bind_route(
-        role="planning", lane="primary", provider_id="provider",
-        model_id="model-id", route_fingerprint="9" * 64,
-    )
-    observer.bind_model_request(
-        protocol="anthropic", request=_request(2000),
-    )
     with pytest.raises(FullShortExecutionBoundaryError) as capped:
-        observer.before_http_dispatch(
-            method="POST", url="https://unit.test/v1/messages",
-            payload=_payload(2000),
+        _policy(
+            _store(tmp_path), expected_stage_calls=2,
+            logical_stage_plan=_logical_stage_plan(
+                ("planning", "planning", "unstructured_text", 1,
+                 _hash({}), False, 3000),
+                ("planning", "planning", "unstructured_text", 1,
+                 _hash({}), False, 2000),
+            ),
         )
-    assert capped.value.reason_code == "TOTAL_OUTPUT_TOKEN_CAP_EXHAUSTED"
-    ledger = store.load_ledger("token-cap")
-    assert len(ledger["attempts"]) == 1
-    assert ledger["total_requested_output_tokens"] == 3000
+    assert capped.value.reason_code == "LOGICAL_STAGE_PLAN_CAPS_MISMATCH"
 
 
 def test_nonce_is_consumed_before_first_dispatch_and_duplicate_is_blocked(
@@ -1301,10 +1763,17 @@ def test_local_rejection_must_match_current_logical_attempt_identity(
     tmp_path: Path,
 ) -> None:
     store = _store(tmp_path)
-    _authorize_offline(store, "rejection-attempt-identity")
+    plan = _logical_stage_plan((
+        "planning", "planning", "planning_semantic_v2", 2,
+        "1" * 64, False, 128,
+    ))
+    _authorize_offline(
+        store, "rejection-attempt-identity", logical_stage_plan=plan,
+    )
     observer = FullShortDispatchLedgerObserverV1(
         store=store, execution_id="rejection-attempt-identity",
-        policy=_policy(store), authorized_routes=_routes(),
+        policy=_policy(store, logical_stage_plan=plan),
+        authorized_routes=_routes(),
         egress_policy=_egress(),
     )
     observer.bind_stage_context(
@@ -1352,23 +1821,13 @@ def test_new_logical_stage_over_cap_is_rejected_before_dispatch(
     store = _store(tmp_path)
     _authorize_offline(store, "logical-cap")
     observer = _dispatch_and_close(store, "logical-cap")
-    observer.bind_stage_context(
-        stage_id="draft", contract_name="unstructured_text",
-        contract_version=1, contract_schema_sha256=_hash({}),
-    )
-    observer.bind_route(
-        role="planning", lane="primary", provider_id="provider",
-        model_id="model-id", route_fingerprint="9" * 64,
-    )
-    observer.bind_model_request(protocol="anthropic", request=_request())
-
     with pytest.raises(FullShortExecutionBoundaryError) as capped:
-        observer.before_http_dispatch(
-            method="POST", url="https://unit.test/v1/messages",
-            payload=_payload(),
+        observer.bind_stage_context(
+            stage_id="draft", contract_name="unstructured_text",
+            contract_version=1, contract_schema_sha256=_hash({}),
         )
 
-    assert capped.value.reason_code == "LOGICAL_STAGE_CALL_CAP_EXHAUSTED"
+    assert capped.value.reason_code == "LOGICAL_STAGE_PLAN_EXHAUSTED"
     assert len(store.load_ledger("logical-cap")["attempts"]) == 1
 
 
@@ -1377,8 +1836,17 @@ def test_repeated_workflow_node_allocates_distinct_logical_occurrences(
 ) -> None:
     store = _store(tmp_path)
     execution_id = "repeated-workflow-node"
-    policy = _policy(store, expected_stage_calls=2)
-    _authorize_offline(store, execution_id, expected_stage_calls=2)
+    plan = _logical_stage_plan(*(
+        ("draft", "planning", "draft_text", 1, _hash({}), False, 128)
+        for _ in range(2)
+    ))
+    policy = _policy(
+        store, expected_stage_calls=2, logical_stage_plan=plan,
+    )
+    _authorize_offline(
+        store, execution_id, expected_stage_calls=2,
+        logical_stage_plan=plan,
+    )
     observer = FullShortDispatchLedgerObserverV1(
         store=store, execution_id=execution_id, policy=policy,
         authorized_routes=_routes(), egress_policy=_egress(),
@@ -1483,11 +1951,17 @@ def test_real_runner_collects_live_bindings_without_secret_lookup(
 
     actual, public = real_runner.collect_live_bindings(
         repo=repo, data_dir=data, project_id=project.id,
-        run_id="one-trustworthy-full-short", store_root=tmp_path / "store",
+        run_id="one-trustworthy-full-short",
+        logical_stage_plan=list(_logical_stage_plan()),
+        store_root=tmp_path / "store",
     )
 
     assert actual["worktree_clean"] is True
     assert actual["run_id"] == "one-trustworthy-full-short"
+    assert actual["logical_stage_plan_sha256"] == public[
+        "logical_stage_plan_sha256"
+    ]
+    assert public["transport_recovery_policy"] == TRANSPORT_RECOVERY_POLICY_V1
     assert public["destinations"] == [
         "https://unit.test:443/v1/messages",
     ]

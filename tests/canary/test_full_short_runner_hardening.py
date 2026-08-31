@@ -6,6 +6,7 @@ import os
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
+import httpx
 import pytest
 
 from novel_flywheel.db import Database
@@ -13,6 +14,21 @@ from novel_flywheel.projects import ProjectCreate, ProjectStore
 from novel_flywheel.skills import SkillScanner
 from novel_flywheel.story_state import StoryStateStore
 from tools.canary import first_trustworthy_full_short_runner as runner
+
+
+def _logical_plan() -> list[dict]:
+    return [{
+        "ordinal": 1,
+        "stage_id": "planning",
+        "logical_stage_base_id": "planning",
+        "logical_stage_id": "planning",
+        "role": "planning",
+        "contract_name": "unstructured_text",
+        "contract_version": 1,
+        "contract_schema_sha256": hashlib.sha256(b"{}").hexdigest(),
+        "contract_runtime_input_required": False,
+        "requested_output_tokens": 128,
+    }]
 
 
 def _bound_project(tmp_path: Path) -> tuple[Path, Path, str, Database]:
@@ -64,7 +80,8 @@ def test_live_bindings_seal_v2_runtime_skill_style_and_store_source_truth(
 
     actual, public = runner.collect_live_bindings(
         repo=repo, data_dir=data, project_id=project_id,
-        run_id="hardening", store_root=store_root,
+        run_id="hardening", logical_stage_plan=_logical_plan(),
+        store_root=store_root,
     )
 
     runtime = public["runtime_authority"]
@@ -100,7 +117,8 @@ def test_live_bindings_reject_missing_ready_authority(
     with pytest.raises(ValueError, match="READY authority"):
         runner.collect_live_bindings(
             repo=repo, data_dir=data, project_id=project_id,
-            run_id="hardening", store_root=tmp_path / "control-store",
+            run_id="hardening", logical_stage_plan=_logical_plan(),
+            store_root=tmp_path / "control-store",
         )
 
 
@@ -169,6 +187,47 @@ def test_dry_run_adapter_fault_is_one_local_projection_only() -> None:
     }
     assert factory.adapter_failure_after_exact_capture_injected is True
     assert factory.adapter_projection_call_count == 2
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("scenario", "expected_status", "expected_error"),
+    [
+        ("provider_unavailable_complete_response", 503, None),
+        ("ambiguous_external_completion", None, httpx.ReadTimeout),
+    ],
+)
+async def test_production_transport_failure_injection_is_one_dispatch(
+    scenario, expected_status, expected_error,
+) -> None:
+    from novel_flywheel.offline_http_transport import (
+        build_offline_http_client_v1,
+    )
+    from tools.canary.full_short_transport_failure_dry_run import (
+        _FailureInjectionTransportFactory,
+    )
+
+    factory = _FailureInjectionTransportFactory(scenario)
+    client = build_offline_http_client_v1(factory.build(
+        protocol="openai-chat", destination="https://offline.invalid/v1",
+        bound_role="planning",
+    ))
+    try:
+        if expected_error is None:
+            response = await client.post(
+                "https://offline.invalid/v1/chat/completions",
+                json={"messages": [], "max_tokens": 32},
+            )
+            assert response.status_code == expected_status
+        else:
+            with pytest.raises(expected_error):
+                await client.post(
+                    "https://offline.invalid/v1/chat/completions",
+                    json={"messages": [], "max_tokens": 32},
+                )
+    finally:
+        await client.aclose()
+    assert len(factory.call_plan) == 1
 
 
 @pytest.mark.parametrize(
