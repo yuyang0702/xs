@@ -161,10 +161,15 @@ class _InjectedStream(httpx.AsyncByteStream):
         return None
 
 
-async def _actual_stream_timeout(*, mid_stream: bool) -> dict[str, Any]:
+async def _actual_stream_timeout(*, position: str) -> dict[str, Any]:
     entity = _sse(*_normal_events())
+    chunks = {
+        "before_first_byte": [],
+        "mid_stream": [entity[:80]],
+        "after_complete_body": [entity],
+    }[position]
     stream = _InjectedStream(
-        [entity[:80]] if mid_stream else [],
+        chunks,
         httpx.ReadTimeout("offline injected read timeout"),
     )
     adapter = AnthropicAdapter(
@@ -180,19 +185,33 @@ async def _actual_stream_timeout(*, mid_stream: bool) -> dict[str, Any]:
     ))
     try:
         try:
-            await adapter.complete(ModelRequest(
+            response = await adapter.complete(ModelRequest(
                 model="offline", messages=[Message(role="user", content="offline")],
                 max_output_tokens=32,
             ))
         except httpx.ReadTimeout as exc:
+            if position == "after_complete_body":
+                raise AssertionError(
+                    "complete terminal body was not recovered locally"
+                ) from exc
             return {
                 "observed": type(exc).__name__,
                 "physical_dispatch_count": adapter.transport_attempt_snapshot()[
                     "http_post_attempts"
                 ],
-                "mid_stream": mid_stream,
+                "position": position,
             }
-        raise AssertionError("injected timeout was not observed")
+        if position != "after_complete_body":
+            raise AssertionError("injected timeout was not observed")
+        assert response.text == "offline-complete"
+        return {
+            "observed": "EXACT_LOCAL_REPLAY_AFTER_READ_TIMEOUT",
+            "physical_dispatch_count": adapter.transport_attempt_snapshot()[
+                "http_post_attempts"
+            ],
+            "position": position,
+            "network_redispatch_count": 0,
+        }
     finally:
         await adapter.client.aclose()
 
@@ -245,7 +264,100 @@ async def _actual_complete_body_local_replay(
         await adapter.client.aclose()
 
 
-async def _actual_unavailable_policy() -> dict[str, Any]:
+class _CaptureOnlyObserver:
+    def __init__(
+        self, store: ProviderResponseCaptureStoreV1,
+        metadata: dict[str, Any],
+    ) -> None:
+        self.store = store
+        self.metadata = dict(metadata)
+        self.receipt = None
+
+    def before_http_post(self) -> None:
+        return None
+
+    def before_network_request(self) -> None:
+        return None
+
+    def capture_provider_protocol_input(self, **kwargs: Any) -> None:
+        metadata = {
+            **self.metadata,
+            "content_type": kwargs["content_type"],
+            "encoding": kwargs["encoding"],
+            "transport_complete": kwargs["transport_complete"],
+        }
+        self.receipt = self.store.capture(
+            byte_domain=PROVIDER_PROTOCOL_INPUT_BYTES,
+            data=kwargs["data"], metadata=metadata,
+        )
+
+
+def _diagnostic_metadata(
+    source: dict[str, Any], *, execution_id: str,
+) -> dict[str, Any]:
+    return {
+        **source,
+        "execution_id": execution_id,
+        "call_id": f"{execution_id}:1",
+        "stage_id": execution_id,
+    }
+
+
+async def _actual_capture_then_adapter_failure(
+    *, repo_root: Path, source_metadata: dict[str, Any],
+) -> dict[str, Any]:
+    with tempfile.TemporaryDirectory(prefix="nf-capture-adapter-failure-") as name:
+        capture_store = ProviderResponseCaptureStoreV1(
+            repo_root=repo_root, store_root=Path(name) / "captures",
+        )
+        observer = _CaptureOnlyObserver(
+            capture_store,
+            _diagnostic_metadata(
+                source_metadata, execution_id="offline-adapter-failure",
+            ),
+        )
+        adapter = AnthropicAdapter(
+            "https://offline.invalid/v1", "offline-memory-secret",
+            transport_policy=SingleDispatchTransportPolicyV1.phase_b(),
+            attempt_observer=observer,
+        )
+        await adapter.client.aclose()
+        malformed = _sse(_normal_events()[2])
+        adapter.client = httpx.AsyncClient(transport=httpx.MockTransport(
+            lambda request: httpx.Response(
+                200, content=malformed, request=request,
+                headers={"content-type": "text/event-stream"},
+            )
+        ))
+        try:
+            try:
+                await adapter.complete(ModelRequest(
+                    model="offline",
+                    messages=[Message(role="user", content="offline")],
+                    max_output_tokens=32,
+                ))
+            except AnthropicStreamProtocolError as exc:
+                assert observer.receipt is not None
+                audited = capture_store.audit_all()
+                assert len(audited) == 1
+                assert audited[0]["byte_sha256"] == _sha(malformed)
+                return {
+                    "observed": type(exc).__name__,
+                    "capture_count": len(audited),
+                    "capture_byte_sha256": audited[0]["byte_sha256"],
+                    "transport_complete": audited[0]["metadata"][
+                        "transport_complete"
+                    ],
+                    "physical_dispatch_count": 1,
+                }
+            raise AssertionError("malformed captured SSE was accepted")
+        finally:
+            await adapter.client.aclose()
+
+
+async def _actual_unavailable_policy(
+    *, repo_root: Path, source_metadata: dict[str, Any],
+) -> dict[str, Any]:
     requests = 0
 
     def handler(request: httpx.Request) -> httpx.Response:
@@ -253,34 +365,54 @@ async def _actual_unavailable_policy() -> dict[str, Any]:
         requests += 1
         return httpx.Response(503, text="offline unavailable", request=request)
 
-    adapter = AnthropicAdapter(
-        "https://offline.invalid/v1", "offline-memory-secret",
-        transport_policy=SingleDispatchTransportPolicyV1.phase_b(),
-    )
-    await adapter.client.aclose()
-    adapter.client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
-    try:
-        try:
-            await adapter.complete(ModelRequest(
-                model="offline", messages=[Message(role="user", content="offline")],
-                max_output_tokens=32,
-            ))
-        except httpx.HTTPStatusError as exc:
-            decision = decide_full_short_transport_recovery_v1(
-                FullShortTransportEvidenceStateV1.PROVEN_PRE_RESPONSE_NON_COMPLETION,
-            )
-            assert requests == 1 and decision.network_retry_allowed is False
-            return {
-                "observed": type(exc).__name__, "policy_action": decision.action,
-                "physical_dispatch_count": requests, "network_retry_count": 0,
-            }
-        raise AssertionError("503 was not surfaced")
-    finally:
+    with tempfile.TemporaryDirectory(prefix="nf-capture-unavailable-") as name:
+        capture_store = ProviderResponseCaptureStoreV1(
+            repo_root=repo_root, store_root=Path(name) / "captures",
+        )
+        observer = _CaptureOnlyObserver(
+            capture_store,
+            _diagnostic_metadata(
+                source_metadata, execution_id="offline-provider-unavailable",
+            ),
+        )
+        adapter = AnthropicAdapter(
+            "https://offline.invalid/v1", "offline-memory-secret",
+            transport_policy=SingleDispatchTransportPolicyV1.phase_b(),
+            attempt_observer=observer,
+        )
         await adapter.client.aclose()
+        adapter.client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+        try:
+            try:
+                await adapter.complete(ModelRequest(
+                    model="offline", messages=[Message(role="user", content="offline")],
+                    max_output_tokens=32,
+                ))
+            except httpx.HTTPStatusError as exc:
+                decision = decide_full_short_transport_recovery_v1(
+                    FullShortTransportEvidenceStateV1.EXPLICIT_PROVIDER_ERROR,
+                )
+                audited = capture_store.audit_all()
+                assert requests == 1 and decision.network_retry_allowed is False
+                assert len(audited) == 1
+                return {
+                    "observed": type(exc).__name__,
+                    "evidence_state": decision.state.value,
+                    "policy_action": decision.action,
+                    "response_bytes_present": audited[0]["byte_length"] > 0,
+                    "transport_complete": audited[0]["metadata"][
+                        "transport_complete"
+                    ],
+                    "physical_dispatch_count": requests,
+                    "network_retry_count": 0,
+                }
+            raise AssertionError("503 was not surfaced")
+        finally:
+            await adapter.client.aclose()
 
 
 async def _actual_ambiguous_policy() -> dict[str, Any]:
-    evidence = await _actual_stream_timeout(mid_stream=True)
+    evidence = await _actual_stream_timeout(position="mid_stream")
     decision = decide_full_short_transport_recovery_v1(
         FullShortTransportEvidenceStateV1.AMBIGUOUS_EXTERNAL_COMPLETION,
     )
@@ -412,21 +544,19 @@ def _matrix(
             )
         )),
         _expect(14, "timeout before first byte", lambda: asyncio.run(
-            _actual_stream_timeout(mid_stream=False)
+            _actual_stream_timeout(position="before_first_byte")
         )),
         _expect(15, "timeout mid-stream", lambda: asyncio.run(
-            _actual_stream_timeout(mid_stream=True)
+            _actual_stream_timeout(position="mid_stream")
         )),
-        _expect(16, "timeout after body complete replays locally", lambda: (
-            asyncio.run(_actual_complete_body_local_replay(
-                injected_exception=TimeoutError,
-            ))
+        _expect(16, "transport timeout after terminal body replays locally", lambda: (
+            asyncio.run(_actual_stream_timeout(position="after_complete_body"))
         )),
-        _expect(17, "capture succeeds then adapter fails", lambda: (
-            AnthropicAdapter.replay_protocol_input_bytes_v1(
-                _sse(_normal_events()[2]), content_type="text/event-stream"
+        _expect(17, "capture succeeds then adapter fails", lambda: asyncio.run(
+            _actual_capture_then_adapter_failure(
+                repo_root=store.repo_root, source_metadata=segment1_meta,
             )
-        ), AnthropicStreamProtocolError),
+        )),
     ]
     with tempfile.TemporaryDirectory(prefix="nf-capture-tamper-") as temporary:
         temp_root = Path(temporary)
@@ -459,7 +589,9 @@ def _matrix(
             ))
         )),
         _expect(21, "genuine unavailable no completion", lambda: asyncio.run(
-            _actual_unavailable_policy()
+            _actual_unavailable_policy(
+                repo_root=store.repo_root, source_metadata=segment1_meta,
+            )
         )),
         _expect(22, "ambiguous completion", lambda: asyncio.run(
             _actual_ambiguous_policy()
@@ -470,6 +602,33 @@ def _matrix(
                 expected_stage_calls=70, physical_dispatch_hard_cap=71,
                 exact_replay_physical_dispatch_delta=0,
             )),
+        _expect(24, "terminal SSE frame without blank delimiter", lambda: (
+            AnthropicAdapter.replay_protocol_input_bytes_v1(
+                normal[:-1], content_type="text/event-stream",
+            )
+        ), ProviderResponseCaptureError),
+        _expect(25, "ping between message delta and message stop", lambda: (
+            AnthropicAdapter.replay_protocol_input_bytes_v1(
+                _sse(*_normal_events()[:-1], {"type": "ping"},
+                     _normal_events()[-1]),
+                content_type="text/event-stream",
+            )
+        )),
+        _expect(26, "out of order content block indices", lambda: (
+            AnthropicAdapter.replay_protocol_input_bytes_v1(
+                _sse(
+                    _normal_events()[0],
+                    {"type": "content_block_start", "index": 1,
+                     "content_block": {"type": "text", "text": ""}},
+                    {"type": "content_block_stop", "index": 1},
+                    {"type": "content_block_start", "index": 0,
+                     "content_block": {"type": "text", "text": ""}},
+                    {"type": "content_block_stop", "index": 0},
+                    _normal_events()[-2], _normal_events()[-1],
+                ),
+                content_type="text/event-stream",
+            )
+        ), AnthropicStreamProtocolError),
     ])
     return {
         "schema": "TransportSseRecoveryMatrixV1",
