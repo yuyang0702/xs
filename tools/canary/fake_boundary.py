@@ -453,6 +453,42 @@ class DeterministicShortBoundary:
                 "ending": "Reach the approved ending",
                 "covered_event_ids": event_ids,
             }))
+        if role == "final_review" and "FULL MANUSCRIPT WINDOW SUMMARY" in user:
+            return self._result(role, json.dumps({
+                "summary": "The window preserves approved events and continuity.",
+                "issues": [],
+            }))
+        if role == "final_review" and "终审详细事件和伏笔单独分析" in user:
+            return self._result(role, json.dumps({
+                "events": ["Approved events complete in formal order."],
+                "promises": ["The approved ending promise is fulfilled."],
+                "character_states": ["Knowledge and relationships advance causally."],
+                "timeline": ["All segments retain the formal chronology."],
+            }))
+        if role == "final_review" and "REGIONAL EVIDENCE REDUCTION" in user:
+            return self._result(role, json.dumps({
+                "summary": "Regional evidence preserves continuity and promises.",
+                "issues": [],
+            }))
+        if role == "final_review" and "FULL MANUSCRIPT FINAL ADJUDICATION" in user:
+            ledger = json.loads(user.split(
+                "AUTHORITATIVE REVIEW ISSUE LEDGER:\n", 1,
+            )[1].split("\n\n", 1)[0])
+            return self._result(role, json.dumps({
+                "dimensions": {"commercial": 92, "story": 92, "prose": 92},
+                "hard_fail": False, "decision": "pass", "issues": [],
+                "reconciliations": [{
+                    "issue_id": item["issue_id"], "status": "resolved",
+                    "severity": item.get("severity", "medium"),
+                    "evidence": "The final manuscript preserves approved evidence.",
+                } for item in ledger],
+            }))
+        if role == "maintenance" and "maintenance-window-request-v1" in user:
+            return self._result(role, json.dumps({
+                "version": "maintenance-window-receipt-v1",
+                "facts": [], "state_deltas": [], "state_transitions": [],
+                "world_rules": [], "timeline": [],
+            }))
         text = next(self.responses)
         if "TARGET READER SIMULATION" in user:
             payload = json.loads(text)
