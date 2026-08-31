@@ -23,6 +23,8 @@ from novel_flywheel.completion_supervisor import classify_completion_failure
 from novel_flywheel.contract_runtime import FinalArtifactCapabilityExhaustedError
 from novel_flywheel.domain.models import Message, ModelRequest
 from novel_flywheel.full_short_execution import (
+    TRANSPORT_RECOVERY_POLICY_SHA256,
+    TRANSPORT_RECOVERY_POLICY_V1,
     validate_full_short_dispatch_accounting_v1,
 )
 from novel_flywheel.models import (
@@ -832,7 +834,9 @@ def main() -> int:
     })
     _write(report_dir / "transport-recovery-policy-v1.json", {
         "schema": "FullShortTransportRecoveryPolicyV1", "version": 1,
-        "policy": "EXACT_REPLAY_ONLY",
+        "policy": TRANSPORT_RECOVERY_POLICY_V1["identity"],
+        "definition_sha256": TRANSPORT_RECOVERY_POLICY_SHA256,
+        "canonical_policy": TRANSPORT_RECOVERY_POLICY_V1,
         "network_retry_enabled": False, "max_network_retry": 0,
         "route_switch_requires_separate_authorization": True,
         "logical_stage_count": 70, "physical_dispatch_hard_cap": 71,
@@ -846,16 +850,7 @@ def main() -> int:
             "network_redispatch": False,
             "authority_mutation_from_ambiguous_state": False,
         },
-        "matrix": [
-            {"family": "A_COMPLETE_VALID_CAPTURE", "local_replay_first": True,
-             "network_retry_allowed": False, "restart_allowed": "read_only_local_replay"},
-            {"family": "B_EXPLICIT_PROVIDER_ERROR", "local_replay_first": True,
-             "network_retry_allowed": False, "restart_allowed": "read_only_classification"},
-            {"family": "C_PROVEN_PRE_RESPONSE_NON_COMPLETION", "local_replay_first": False,
-             "network_retry_allowed": False, "restart_allowed": False},
-            {"family": "D_AMBIGUOUS_EXTERNAL_COMPLETION", "local_replay_first": False,
-             "network_retry_allowed": False, "restart_allowed": "reconciliation_only"},
-        ],
+        "matrix": TRANSPORT_RECOVERY_POLICY_V1["ordered_outcome_matrix"],
     })
     matrix = _matrix(store, segment1, segment1_meta, segment2, segment2_meta)
     _write(report_dir / "transport-sse-recovery-matrix-v1.json", matrix)
