@@ -94,7 +94,8 @@ class C0AFakeWorkflowService(WorkflowService):
             def boundary(value: BaseException) -> str:
                 frames = traceback.extract_tb(value.__traceback__)
                 function = frames[-1].name if frames else "unknown"
-                return f"{type(value).__name__}@{function}"
+                line = frames[-1].lineno if frames else 0
+                return f"{type(value).__name__}@{function}:{line}"
 
             types = [boundary(exc)]
             for attribute in ("primary_error", "fallback_error"):
