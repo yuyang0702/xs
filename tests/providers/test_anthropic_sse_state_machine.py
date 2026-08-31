@@ -323,6 +323,50 @@ async def test_transient_local_aggregation_failure_replays_without_dispatch() ->
 
 
 @pytest.mark.asyncio
+async def test_transient_local_projection_failure_replays_without_dispatch() -> None:
+    class FailOnceAdapter(AnthropicAdapter):
+        projection_calls = 0
+
+        @staticmethod
+        def _model_response_from_body(body, *, provider_state_extra=None):
+            FailOnceAdapter.projection_calls += 1
+            if FailOnceAdapter.projection_calls == 1:
+                raise RuntimeError("injected local projection failure")
+            return AnthropicAdapter._model_response_from_body(
+                body, provider_state_extra=provider_state_extra,
+            )
+
+    adapter = FailOnceAdapter(
+        "https://offline.invalid/v1", "offline-memory-secret",
+        transport_policy=SingleDispatchTransportPolicyV1.phase_b(),
+    )
+    adapter.client = httpx.AsyncClient(transport=httpx.MockTransport(
+        lambda request: httpx.Response(
+            200,
+            json={
+                "id": "offline",
+                "content": [{"type": "text", "text": "exact replay"}],
+                "stop_reason": "end_turn",
+                "usage": {"input_tokens": 7, "output_tokens": 9},
+            },
+            request=request,
+            headers={"content-type": "application/json"},
+        )
+    ))
+    try:
+        response = await adapter.complete(ModelRequest(
+            model="offline", messages=[Message(role="user", content="offline")],
+            max_output_tokens=32,
+        ))
+    finally:
+        await adapter.client.aclose()
+
+    assert response.text == "exact replay"
+    assert FailOnceAdapter.projection_calls == 2
+    assert adapter.transport_attempt_snapshot()["http_post_attempts"] == 1
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize(
     "failure",
     [

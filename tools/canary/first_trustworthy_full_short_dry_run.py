@@ -560,21 +560,25 @@ class _OfflineHttpTransportFactory:
         if (
             not self.inject_adapter_failure_after_exact_capture_once
             or self.adapter_failure_after_exact_capture_injected
-            or not hasattr(adapter, "_aggregate_stream")
+            or not hasattr(adapter, "_model_response_from_body")
         ):
             return
-        aggregate = adapter._aggregate_stream
+        project = adapter._model_response_from_body
 
-        def fail_once_after_capture(events: list[dict[str, Any]]) -> dict:
+        def fail_once_after_capture(
+            body: dict[str, Any], *, provider_state_extra: dict | None = None,
+        ) -> Any:
             self.adapter_projection_call_count += 1
             if not self.adapter_failure_after_exact_capture_injected:
                 self.adapter_failure_after_exact_capture_injected = True
                 raise RuntimeError(
                     "injected local adapter failure after exact capture"
                 )
-            return aggregate(events)
+            return project(
+                body, provider_state_extra=provider_state_extra,
+            )
 
-        adapter._aggregate_stream = fail_once_after_capture
+        adapter._model_response_from_body = fail_once_after_capture
 
     def build(
         self, *, protocol: str, destination: str, bound_role: str | None = None,

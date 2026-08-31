@@ -201,8 +201,8 @@ def test_dry_run_adapter_fault_is_one_local_projection_only() -> None:
 
     class Adapter:
         @staticmethod
-        def _aggregate_stream(events):
-            return {"events": events}
+        def _model_response_from_body(body, *, provider_state_extra=None):
+            return {"body": body, "provider_state_extra": provider_state_extra}
 
     factory = _OfflineHttpTransportFactory(
         inject_adapter_failure_after_exact_capture_once=True,
@@ -213,9 +213,9 @@ def test_dry_run_adapter_fault_is_one_local_projection_only() -> None:
     with pytest.raises(
         RuntimeError, match="local adapter failure after exact capture",
     ):
-        adapter._aggregate_stream([{"type": "message_stop"}])
-    assert adapter._aggregate_stream([{"type": "message_stop"}]) == {
-        "events": [{"type": "message_stop"}],
+        adapter._model_response_from_body({"type": "message"})
+    assert adapter._model_response_from_body({"type": "message"}) == {
+        "body": {"type": "message"}, "provider_state_extra": None,
     }
     assert factory.adapter_failure_after_exact_capture_injected is True
     assert factory.adapter_projection_call_count == 2

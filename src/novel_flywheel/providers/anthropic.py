@@ -208,9 +208,9 @@ class AnthropicAdapter(HttpProvider):
                 calls=call_inputs,
                 snapshot_status=status,
             )
-        try:
+        def project_response(projected_body: dict) -> ModelResponse:
             response = self._model_response_from_body(
-                body,
+                projected_body,
                 provider_state_extra=({
                     "_r1_pa1_tool_shape_snapshot": snapshot.model_dump(
                         mode="json", by_alias=True,
@@ -219,7 +219,7 @@ class AnthropicAdapter(HttpProvider):
             )
             if content_snapshot is not None:
                 try:
-                    content_snapshot = finalize_provider_content_block_snapshot(
+                    finalized_snapshot = finalize_provider_content_block_snapshot(
                         content_snapshot,
                         normalized_text=response.text,
                         normalized_tool_call_count=len(response.tool_calls),
@@ -228,7 +228,7 @@ class AnthropicAdapter(HttpProvider):
                         "provider_state": {
                             **response.provider_state,
                             "_r1_ptr1_provider_content_snapshot": (
-                                content_snapshot.model_dump(
+                                finalized_snapshot.model_dump(
                                     mode="json", by_alias=True,
                                 )
                             ),
@@ -237,7 +237,33 @@ class AnthropicAdapter(HttpProvider):
                 except Exception:
                     pass
             return response
+
+        try:
+            return project_response(body)
         except Exception as exc:
+            replayed = self._replay_last_protocol_input_v1()
+            if replayed is not None:
+                decision = decide_full_short_transport_recovery_v1(
+                    FullShortTransportEvidenceStateV1.COMPLETE_VALID_CAPTURE,
+                )
+                if decision.exact_local_replay_allowed:
+                    replay_events, replay_body = replayed
+                    try:
+                        if replay_body is None:
+                            replay_body = self._aggregate_stream(replay_events)
+                        return project_response(replay_body)
+                    except Exception as replay_exc:
+                        if snapshot is not None:
+                            attach_exception_snapshot(
+                                replay_exc, provider_snapshot_with_status(
+                                    snapshot, "adapter_exception_with_snapshot",
+                                ),
+                            )
+                        if content_snapshot is not None:
+                            attach_provider_content_snapshot(
+                                replay_exc, content_snapshot,
+                            )
+                        raise
             if snapshot is not None:
                 attach_exception_snapshot(
                     exc, provider_snapshot_with_status(
