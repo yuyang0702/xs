@@ -162,6 +162,38 @@ def test_dry_run_failure_projection_is_hash_only() -> None:
     assert "safe_message" not in projection
 
 
+def test_discovery_mirrors_unstructured_runtime_stage_fallback() -> None:
+    from types import SimpleNamespace
+
+    from tools.canary.first_trustworthy_full_short_dry_run import (
+        _LogicalStagePlanDiscoveryObserver,
+    )
+
+    observer = _LogicalStagePlanDiscoveryObserver()
+    observer.bind_route(
+        role="planning", lane="primary", provider_id="provider",
+        model_id="model", route_fingerprint="f" * 64,
+    )
+    observer.bind_model_request(
+        protocol="anthropic",
+        request=SimpleNamespace(response_schema=None, max_output_tokens=321),
+    )
+    observer.before_http_dispatch()
+
+    assert observer.logical_stage_plan == [{
+        "ordinal": 1,
+        "stage_id": "planning",
+        "logical_stage_base_id": "planning",
+        "logical_stage_id": "planning",
+        "contract_name": "unstructured_text",
+        "contract_version": 1,
+        "contract_schema_sha256": hashlib.sha256(b"{}").hexdigest(),
+        "contract_runtime_input_required": False,
+        "requested_output_tokens": 321,
+        "role": "planning",
+    }]
+
+
 def test_dry_run_adapter_fault_is_one_local_projection_only() -> None:
     from tools.canary.first_trustworthy_full_short_dry_run import (
         _OfflineHttpTransportFactory,

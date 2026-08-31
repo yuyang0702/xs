@@ -824,7 +824,28 @@ class _LogicalStagePlanDiscoveryObserver:
 
     def bind_model_request(self, *, protocol: str, request: Any) -> None:
         if self.pending is None:
-            raise RuntimeError("FULL_SHORT_DISCOVERY_STAGE_CONTEXT_MISSING")
+            if self.bound_route is None:
+                raise RuntimeError("FULL_SHORT_DISCOVERY_STAGE_CONTEXT_MISSING")
+            response_schema = request.response_schema or {}
+            schema_value = response_schema.get("schema", response_schema)
+            stage_id = str(self.bound_route["role"] or "model")
+            occurrence = 1 + sum(
+                item["logical_stage_base_id"] == stage_id
+                for item in self.logical_stage_plan
+            )
+            self.pending = {
+                "stage_id": stage_id,
+                "logical_stage_base_id": stage_id,
+                "logical_stage_id": full_short_logical_stage_id_v1(
+                    stage_id, occurrence,
+                ),
+                "contract_name": str(
+                    response_schema.get("name") or "unstructured_text"
+                ),
+                "contract_version": 1,
+                "contract_schema_sha256": _domain(schema_value),
+                "contract_runtime_input_required": bool(response_schema),
+            }
         self.pending["requested_output_tokens"] = int(
             request.max_output_tokens or 8192
         )
