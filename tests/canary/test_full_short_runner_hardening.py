@@ -221,6 +221,26 @@ def test_dry_run_adapter_fault_is_one_local_projection_only() -> None:
     assert factory.adapter_projection_call_count == 2
 
 
+def test_lowest_http_seam_adapter_fault_hook_is_optional() -> None:
+    from types import SimpleNamespace
+
+    from tools.canary.first_trustworthy_full_short_dry_run import (
+        _LowestHttpSeamRegistry,
+    )
+
+    registry = object.__new__(_LowestHttpSeamRegistry)
+    registry.transport_factory = SimpleNamespace()
+    registry._install_optional_adapter_failure_hook(object())
+
+    installed: list[object] = []
+    registry.transport_factory = SimpleNamespace(
+        install_adapter_failure_after_exact_capture_once=installed.append,
+    )
+    adapter = object()
+    registry._install_optional_adapter_failure_hook(adapter)
+    assert installed == [adapter]
+
+
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     ("scenario", "expected_status", "expected_error"),

@@ -911,6 +911,15 @@ class _LowestHttpSeamRegistry(ProviderRegistry):
         super().__init__(*args, **kwargs)
         self.open_clients: list[Any] = []
 
+    def _install_optional_adapter_failure_hook(self, adapter: Any) -> None:
+        hook = getattr(
+            self.transport_factory,
+            "install_adapter_failure_after_exact_capture_once",
+            None,
+        )
+        if callable(hook):
+            hook(adapter)
+
     @property
     def call_plan(self) -> list[dict[str, Any]]:
         return self.transport_factory.call_plan
@@ -945,9 +954,7 @@ class _LowestHttpSeamRegistry(ProviderRegistry):
                 protocol=protocol, destination=destination, bound_role=role,
             ), timeout_seconds=30,
         )
-        self.transport_factory.install_adapter_failure_after_exact_capture_once(
-            resolved.adapter,
-        )
+        self._install_optional_adapter_failure_hook(resolved.adapter)
         self.open_clients.extend([previous, resolved.adapter.client])
         return resolved
 
