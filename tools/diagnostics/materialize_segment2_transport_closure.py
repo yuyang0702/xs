@@ -47,6 +47,11 @@ def _public(summary: dict[str, Any]) -> dict[str, Any]:
         "replay_call_count", "replay_final_artifact_sha256",
         "final_artifact_sha256", "completion_goal_outcome",
         "local_rejected_attempt_count", "planning_business_incomplete_injected",
+        "adapter_failure_after_exact_capture_injected",
+        "adapter_projection_call_count_at_injection",
+        "adapter_failure_recovered_by_exact_local_replay",
+        "logical_stage_plan_sha256", "transport_recovery_policy_sha256",
+        "transport_recovery_policy_identity",
         "hard_max_provider_requests", "hard_max_http_posts",
         "hard_max_network_attempts", "per_call_output_token_hard_cap",
         "total_output_token_hard_cap", "maximum_elapsed_seconds",
@@ -82,15 +87,88 @@ def _production_matrix_receipt(path: Path) -> dict[str, Any]:
     }
 
 
+def _validate_adapter_replay(value: dict[str, Any]) -> None:
+    assert value["pass"] is True
+    assert value["provider_request_count"] == 70
+    assert value["completed_stage_count"] == 70
+    assert value["adapter_failure_after_exact_capture_injected"] is True
+    assert value["adapter_projection_call_count_at_injection"] == 2
+    assert value["adapter_failure_recovered_by_exact_local_replay"] is True
+    assert value["replay_call_count"] == 70
+    assert value["final_artifact_sha256"] == value[
+        "replay_final_artifact_sha256"
+    ]
+
+
+def _validated_failure_scenarios(
+    value: dict[str, Any],
+) -> dict[str, dict[str, Any]]:
+    assert value["status"] == "PASS"
+    assert value["pass"] is True
+    assert value["real_external_action_counters_all_zero"] is True
+    scenarios = {
+        str(item["scenario"]): item for item in value["scenarios"]
+    }
+    expected = {
+        "provider_unavailable_complete_response": (
+            "HTTP_RESPONSE_FAILED_CLOSED", 1, True,
+        ),
+        "ambiguous_external_completion": (
+            "OUTCOME_UNKNOWN_FAIL_CLOSED", 0, False,
+        ),
+    }
+    assert set(scenarios) == set(expected)
+    for name, (attempt_state, capture_count, bytes_present) in expected.items():
+        scenario = scenarios[name]
+        assert scenario["status"] == "PASS_EXPECTED_FAIL_CLOSED"
+        assert scenario["physical_dispatch_count"] == 1
+        assert scenario["network_redispatch_count"] == 0
+        assert scenario["attempt_state"] == attempt_state
+        assert scenario["ledger_state"] == (
+            "RECONCILIATION_REQUIRED_NO_REDISPATCH"
+        )
+        assert scenario["provider_protocol_capture_count"] == capture_count
+        assert scenario["response_bytes_present"] is bytes_present
+        assert scenario["authority_sha256_unchanged"] is True
+        assert scenario["real_network_calls"] == 0
+        assert scenario["paid_calls"] == 0
+    return scenarios
+
+
+def _validate_common_evidence_binding(
+    *values: dict[str, Any], failure_scenarios: dict[str, dict[str, Any]],
+) -> None:
+    assert len({str(value["source_head"]) for value in values}) == 1
+    assert len({
+        str(value["logical_stage_plan_sha256"]) for value in values
+    }) == 1
+    assert len({
+        str(value["transport_recovery_policy_sha256"]) for value in values
+    }) == 1
+    expected_head = str(values[0]["source_head"])
+    expected_plan = str(values[0]["logical_stage_plan_sha256"])
+    expected_transport = str(values[0]["transport_recovery_policy_sha256"])
+    assert all(
+        str(value["source_head"]) == expected_head
+        and str(value["logical_stage_plan_sha256"]) == expected_plan
+        and str(value["transport_recovery_policy_sha256"]) == expected_transport
+        for value in failure_scenarios.values()
+    )
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--normal", type=Path, required=True)
     parser.add_argument("--injected", type=Path, required=True)
+    parser.add_argument("--adapter-replay", type=Path, required=True)
+    parser.add_argument("--failure-matrix", type=Path, required=True)
     parser.add_argument("--production-matrix-junit", type=Path, required=True)
     parser.add_argument("--report-dir", type=Path, required=True)
     args = parser.parse_args()
     normal = _read(args.normal)
     injected = _read(args.injected)
+    adapter_replay = _read(args.adapter_replay)
+    failure_matrix = _read(args.failure_matrix)
     production_matrix = _production_matrix_receipt(args.production_matrix_junit)
     report = args.report_dir.resolve()
     report.mkdir(parents=True, exist_ok=True)
@@ -103,6 +181,11 @@ def main() -> int:
         assert value["real_provider_request_attempts"] == 0
         assert value["all_captured_synthetic_responses_exactly_replayable"] is True
     assert normal["final_artifact_sha256"] == injected["final_artifact_sha256"]
+    _validate_adapter_replay(adapter_replay)
+    scenarios = _validated_failure_scenarios(failure_matrix)
+    _validate_common_evidence_binding(
+        normal, injected, adapter_replay, failure_scenarios=scenarios,
+    )
 
     _write(report / "planning-fix-revalidation-v1.json", {
         "schema": "PlanningFixRevalidationV1", "version": 1,
@@ -130,6 +213,10 @@ def main() -> int:
         "all_captures_replayed_through_adapter_contract_and_domain": True,
         "typed_failure_classification_shared_at_completion_supervisor": True,
         "transport_policy": "EXACT_REPLAY_ONLY",
+        "transport_recovery_policy_sha256": normal[
+            "transport_recovery_policy_sha256"
+        ],
+        "logical_stage_plan_sha256": normal["logical_stage_plan_sha256"],
         "physical_logical_accounting": "PASS",
         "authority_mutation_only_after_validated_stage_receipt": True,
     })
@@ -137,22 +224,32 @@ def main() -> int:
         "schema": "Segment2TransportProductionShapedFullShortRerunV1",
         "version": 1, "status": "PASS",
         "normal": _public(normal), "business_incomplete_injected": _public(injected),
+        "adapter_replay_after_exact_capture": _public(adapter_replay),
         "transport_injections": {
             "recoverable_local_adapter_failure_after_exact_capture": {
-                "status": "PASS", "network_dispatch_count": 1,
-                "local_projection_attempt_count": 2,
+                "status": "PASS",
+                "full_short_physical_dispatch_count": adapter_replay[
+                    "provider_request_count"
+                ],
+                "faulted_call_network_dispatch_count": 1,
+                "local_projection_attempt_count": adapter_replay[
+                    "adapter_projection_call_count_at_injection"
+                ],
                 "network_redispatch_count": 0,
-                "evidence": "test_transient_local_aggregation_failure_replays_without_dispatch",
+                "evidence_source_sha256": hashlib.sha256(
+                    args.adapter_replay.read_bytes()
+                ).hexdigest(),
             },
-            "genuine_provider_unavailable": {
-                "status": "PASS_FAIL_CLOSED", "network_retry_count": 0,
-                "evidence": "test_http_error_body_is_captured_before_status_failure",
-            },
-            "ambiguous_transport_completion": {
-                "status": "PASS_FAIL_CLOSED", "network_retry_count": 0,
-                "evidence": "test_zero_byte_interrupted_stream_records_incomplete_capture",
-            },
+            "genuine_provider_unavailable": scenarios[
+                "provider_unavailable_complete_response"
+            ],
+            "ambiguous_transport_completion": scenarios[
+                "ambiguous_external_completion"
+            ],
         },
+        "failure_matrix_source_sha256": hashlib.sha256(
+            args.failure_matrix.read_bytes()
+        ).hexdigest(),
         "all_required_stages_executed": True,
         "final_artifact_created_in_dry_run_namespace": True,
         "final_checkpoint_created": True,
@@ -200,6 +297,9 @@ def main() -> int:
         "transport_capacity_variants_tested": [
             "timeout before first byte", "timeout mid-stream",
             "cancel after complete body", "473171-byte entity",
+            "complete 503 response captured then closed without redispatch",
+            "ambiguous external completion closed without redispatch",
+            "post-capture adapter projection failure replayed locally",
         ],
         "projected_failure_mechanisms": [
             "reasoning consumes output cap before final projection",
@@ -227,6 +327,8 @@ def main() -> int:
         "production_shaped_tests": [
             "tools/canary/first_trustworthy_full_short_dry_run.py normal",
             "tools/canary/first_trustworthy_full_short_dry_run.py injected",
+            "tools/canary/first_trustworthy_full_short_dry_run.py adapter-replay",
+            "tools/canary/full_short_transport_failure_dry_run.py B/C",
         ],
         "next_authoritative_boundary_tests": [
             "70/70 final completion receipt", "71 physical/70 logical completion receipt",
