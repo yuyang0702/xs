@@ -41,3 +41,6 @@ path = "hatch_build.py"
 pythonpath = ["src"]
 testpaths = ["tests"]
 asyncio_mode = "auto"
+filterwarnings = [
+  "ignore:Using `httpx` with `starlette\\.testclient` is deprecated; install `httpx2` instead\\.",
+]

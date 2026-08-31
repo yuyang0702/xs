@@ -105,6 +105,7 @@ def test_candidate_and_patch_remain_non_executable(signed_packet) -> None:
             approval_path=signed_packet["candidate_path"],
             cli_approved_plan_sha256=plan["plan_sha256"],
             execution_requested=True,
+            now=SIGNED_AT,
         )
     with pytest.raises(CanaryLauncherError, match="authorization_patch_not_executable"):
         validate_packet(
@@ -112,6 +113,7 @@ def test_candidate_and_patch_remain_non_executable(signed_packet) -> None:
             approval_path=signed_packet["patch_path"],
             cli_approved_plan_sha256=plan["plan_sha256"],
             execution_requested=True,
+            now=SIGNED_AT,
         )
 
 
