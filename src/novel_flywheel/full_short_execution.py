@@ -1130,6 +1130,11 @@ class FullShortDurableExecutionStoreV1:
             self._exclusive_write(self._path(execution_id, "completion"), value)
         return value
 
+    def completion_exists(self, execution_id: str) -> bool:
+        """Cheap preflight only; the locked dispatch mutation rechecks it."""
+
+        return self._path(execution_id, "completion").exists()
+
 
 class FullShortDispatchLedgerObserverV1:
     """Durable observer attached to the production ``HttpProvider`` seam."""
@@ -1371,6 +1376,10 @@ class FullShortDispatchLedgerObserverV1:
             len(attempts) < self.policy["hard_max_provider_requests"],
             "PROVIDER_REQUEST_CAP_EXHAUSTED",
         )
+        _require(
+            not self.store.completion_exists(self.execution_id),
+            "EXECUTION_ALREADY_COMPLETED",
+        )
         if attempts:
             previous = attempts[-1]
             _require(
@@ -1392,6 +1401,32 @@ class FullShortDispatchLedgerObserverV1:
             total_requested <= self.policy["total_output_token_hard_cap"],
             "TOTAL_OUTPUT_TOKEN_CAP_EXHAUSTED",
         )
+        logical_stage_id = str(self.pending_stage_context["stage_id"])
+        prior_logical_attempts = [
+            item for item in attempts
+            if item.get("logical_stage_id", item.get("stage"))
+            == logical_stage_id
+        ]
+        distinct_logical_stage_ids = {
+            str(item.get("logical_stage_id", item.get("stage")) or "")
+            for item in attempts
+        }
+        if not prior_logical_attempts:
+            _require(
+                len(distinct_logical_stage_ids)
+                < self.policy["expected_stage_calls"],
+                "LOGICAL_STAGE_CALL_CAP_EXHAUSTED",
+            )
+        else:
+            _require(
+                prior_logical_attempts[-1].get("state")
+                == "LOCAL_ATTEMPT_REJECTED"
+                and not any(
+                    item.get("state") == "LOCAL_STAGE_COMPLETE"
+                    for item in prior_logical_attempts
+                ),
+                "LOGICAL_STAGE_REDISPATCH_NOT_AUTHORIZED",
+            )
         attempt = {
             "ordinal": ordinal,
             "session_id": self.session_id,
@@ -1415,6 +1450,7 @@ class FullShortDispatchLedgerObserverV1:
             "bound_role": route["role"],
             "bound_lane": route["lane"],
             "stage": self.pending_stage_context["stage_id"],
+            "logical_stage_id": logical_stage_id,
             "contract_name": self.pending_stage_context["contract_name"],
             "contract_version": self.pending_stage_context["contract_version"],
             "contract_schema_sha256": self.pending_stage_context[
@@ -1754,15 +1790,6 @@ class FullShortDispatchLedgerObserverV1:
             _HEX64.fullmatch(role_binding_sha256) is not None,
             "ROLE_BINDING_SHA256_INVALID",
         )
-        rejection_receipt_sha256 = domain_sha256(
-            (
-                "novel-flywheel-provider-final-artifact-rejection-receipt-v1"
-                if pre_contract_final_artifact
-                else "novel-flywheel-contract-local-rejection-receipt-v1"
-            ),
-            value,
-        )
-
         def mutate(body: dict[str, Any]) -> dict[str, Any]:
             attempts = list(body["attempts"])
             _require(0 < ordinal <= len(attempts), "PENDING_ORDINAL_INVALID")
@@ -1813,11 +1840,49 @@ class FullShortDispatchLedgerObserverV1:
                 and manifest_lane == self.bound_route.get("lane"),
                 "LOCAL_REJECTION_ROUTE_DRIFT",
             )
+            _require(
+                int(value["route_attempt"]) <= int(value["attempt_index"]),
+                "LOCAL_REJECTION_ATTEMPT_IDENTITY_INVALID",
+            )
+            prior_same_stage = [
+                item for item in attempts[:ordinal - 1]
+                if item.get("logical_stage_id", item.get("stage"))
+                == current["logical_stage_id"]
+            ]
+            _require(
+                int(value["attempt_index"]) == len(prior_same_stage) + 1,
+                "LOCAL_REJECTION_ATTEMPT_IDENTITY_INVALID",
+            )
+            bound_rejection = {
+                **value,
+                "physical_ordinal": ordinal,
+                "logical_stage_id": str(current["logical_stage_id"]),
+                "nonce_sha256": str(body["nonce_sha256"]),
+                "session_id_sha256": hashlib.sha256(
+                    self.session_id.encode("utf-8"),
+                ).hexdigest(),
+                "request_shape_sha256": str(current["request_shape_sha256"]),
+                "provider_protocol_capture_receipt_sha256": str(
+                    current["provider_protocol_capture_receipt_sha256"]
+                ),
+            }
+            rejection_receipt_sha256 = domain_sha256(
+                (
+                    "novel-flywheel-provider-final-artifact-rejection-receipt-v2"
+                    if pre_contract_final_artifact
+                    else "novel-flywheel-contract-local-rejection-receipt-v2"
+                ),
+                bound_rejection,
+            )
             current.update({
                 "state": "LOCAL_ATTEMPT_REJECTED",
                 "local_rejection_receipt_sha256": rejection_receipt_sha256,
                 "local_rejection_failure_kind": value["failure_kind"],
                 "local_rejection_schema": value["schema"],
+                "local_rejection_physical_ordinal": ordinal,
+                "local_rejection_logical_stage_id": str(
+                    current["logical_stage_id"]
+                ),
                 "local_rejection_failure_reason_sha256": value[
                     "failure_reason_sha256"
                 ],
@@ -1838,6 +1903,40 @@ class FullShortDispatchLedgerObserverV1:
         self.expected_provider_payload = None
         self.egress_intent_sha256 = None
         self.pending_stage_context = None
+
+
+def validate_full_short_dispatch_accounting_v1(
+    *, logical_stage_count: int, physical_dispatch_count: int,
+    expected_stage_calls: int, physical_dispatch_hard_cap: int,
+    exact_replay_physical_dispatch_delta: int = 0,
+) -> dict[str, int]:
+    """Validate physical/logical/replay counts through one closed boundary."""
+
+    values = (
+        logical_stage_count, physical_dispatch_count, expected_stage_calls,
+        physical_dispatch_hard_cap, exact_replay_physical_dispatch_delta,
+    )
+    _require(all(type(value) is int for value in values),
+             "DISPATCH_ACCOUNTING_TYPE_INVALID")
+    _require(
+        logical_stage_count == expected_stage_calls,
+        "EXPECTED_STAGE_CALL_COUNT_MISMATCH",
+    )
+    _require(
+        logical_stage_count <= physical_dispatch_count
+        <= physical_dispatch_hard_cap,
+        "COMPLETION_CALL_CAP_EXCEEDED",
+    )
+    _require(
+        exact_replay_physical_dispatch_delta == 0,
+        "EXACT_REPLAY_CREATED_PHYSICAL_DISPATCH",
+    )
+    return {
+        "logical_stage_count": logical_stage_count,
+        "physical_dispatch_count": physical_dispatch_count,
+        "physical_dispatch_hard_cap": physical_dispatch_hard_cap,
+        "exact_replay_physical_dispatch_delta": 0,
+    }
 
 
 def build_full_short_completion_receipt_v1(
@@ -1871,10 +1970,14 @@ def build_full_short_completion_receipt_v1(
         == list(range(1, len(attempts) + 1)),
         "LEDGER_ORDINALS_INVALID",
     )
-    _require(
-        len(sealed_ledger.get("completed_stage_receipts") or [])
-        == validated["expected_stage_calls"],
-        "EXPECTED_STAGE_CALL_COUNT_MISMATCH",
+    completed_stage_receipts = list(
+        sealed_ledger.get("completed_stage_receipts") or []
+    )
+    validate_full_short_dispatch_accounting_v1(
+        logical_stage_count=len(completed_stage_receipts),
+        physical_dispatch_count=len(attempts),
+        expected_stage_calls=validated["expected_stage_calls"],
+        physical_dispatch_hard_cap=validated["hard_max_provider_requests"],
     )
     _require(
         len(attempts) <= validated["hard_max_provider_requests"]
@@ -1905,7 +2008,7 @@ def build_full_short_completion_receipt_v1(
         <= validated["maximum_elapsed_seconds"],
         "MAXIMUM_ELAPSED_EXPIRED",
     )
-    receipts = sealed_ledger.get("completed_stage_receipts")
+    receipts = completed_stage_receipts
     _require(
         isinstance(receipts, list)
         and len(receipts) == validated["expected_stage_calls"]
@@ -1914,6 +2017,15 @@ def build_full_short_completion_receipt_v1(
         == sorted({item.get("ordinal") for item in receipts})
         and all(0 < item["ordinal"] <= len(attempts) for item in receipts),
         "STAGE_MATRIX_INVALID",
+    )
+    _require(
+        len({
+            str(attempts[item["ordinal"] - 1].get(
+                "logical_stage_id", attempts[item["ordinal"] - 1].get("stage")
+            ))
+            for item in receipts
+        }) == validated["expected_stage_calls"],
+        "LOGICAL_STAGE_MATRIX_DUPLICATE",
     )
     required_roles = set(validated["required_stage_roles"])
     _require(
@@ -2002,4 +2114,56 @@ def build_full_short_completion_receipt_v1(
     return _seal(
         "novel-flywheel-full-short-completion-receipt-v1", body,
         "completion_receipt_sha256",
+    )
+
+
+def replay_full_short_provider_attempt_v1(
+    *, store: FullShortDurableExecutionStoreV1, execution_id: str,
+    ordinal: int,
+):
+    """Read-only replay of one receipt-anchored captured provider entity.
+
+    This function deliberately has no provider registry, credential, client,
+    nonce mutation, or network path.  An orphan capture without an exact
+    ledger receipt fails closed and therefore cannot silently authorize a
+    restart or redispatch.
+    """
+
+    _require(type(ordinal) is int and ordinal > 0, "REPLAY_ORDINAL_INVALID")
+    ledger = store.load_ledger(execution_id)
+    attempts = list(ledger.get("attempts") or [])
+    _require(ordinal <= len(attempts), "REPLAY_ATTEMPT_MISSING")
+    attempt = attempts[ordinal - 1]
+    receipt_sha256 = attempt.get(
+        "provider_protocol_capture_receipt_sha256"
+    )
+    _require(
+        isinstance(receipt_sha256, str)
+        and _HEX64.fullmatch(receipt_sha256) is not None,
+        "REPLAY_LEDGER_CAPTURE_RECEIPT_MISSING",
+    )
+    capture_store = ProviderResponseCaptureStoreV1(
+        repo_root=store.repo_root,
+        store_root=store.root / "provider-response-captures-v1",
+    )
+    matches = [
+        item for item in capture_store.audit_all()
+        if item["byte_domain"] == PROVIDER_PROTOCOL_INPUT_BYTES
+        and item["execution_id"] == execution_id
+        and item["call_id"] == f"{execution_id}:{ordinal}"
+        and item["ledger_receipt_sha256"] == receipt_sha256
+    ]
+    _require(len(matches) == 1, "REPLAY_CAPTURE_IDENTITY_NOT_EXACT")
+    capture = matches[0]
+    data, metadata = capture_store.replay(
+        byte_domain=PROVIDER_PROTOCOL_INPUT_BYTES,
+        expected_metadata=capture["metadata"],
+        expected_receipt_sha256=receipt_sha256,
+    )
+    _require(metadata["protocol"] == "anthropic", "REPLAY_PROTOCOL_UNSUPPORTED")
+    from novel_flywheel.providers.anthropic import AnthropicAdapter
+
+    return AnthropicAdapter.replay_protocol_input_bytes_v1(
+        data, content_type=metadata["content_type"],
+        encoding=metadata["encoding"],
     )

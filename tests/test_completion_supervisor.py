@@ -21,6 +21,7 @@ from novel_flywheel.models import (
     ReasoningOnlyFinalArtifactUnavailableError,
 )
 from novel_flywheel.recovery_engine import FailureClass
+from novel_flywheel.recovery_engine import ReliabilityFailure
 
 
 def prepared_db(tmp_path) -> Database:
@@ -72,6 +73,28 @@ def test_task_incident_preserves_nested_reasoning_only_provenance() -> None:
     assert incident["incident_family"] == (
         "provider.reasoning_only_final_artifact_unavailable"
     )
+
+
+def test_task_incident_selects_provenance_matching_supervisor_class() -> None:
+    class TypedFailure(RuntimeError):
+        def __init__(self, code: str, failure_class: FailureClass) -> None:
+            self.reliability_failure = ReliabilityFailure(
+                code=code, failure_class=failure_class,
+                boundary="offline_mixed_route_fixture", retryable=False,
+            )
+            super().__init__(code)
+
+    wrapped = ModelRoutesExhaustedError(
+        TypedFailure("transport_child", FailureClass.TRANSPORT),
+        TypedFailure("credential_child", FailureClass.CREDENTIAL),
+    )
+    _, incident = RunTaskManager._safe_failure_record(
+        wrapped, FailureClass.CREDENTIAL.value,
+        workflow="short-story", stage="planning", revision=False,
+    )
+
+    assert incident["failure_class"] == "credential"
+    assert incident["incident_family"] == "provider.credentials_unavailable"
 
 
 def test_r0_migration_is_idempotent_and_exposes_durable_tables(tmp_path) -> None:

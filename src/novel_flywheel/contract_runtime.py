@@ -1309,13 +1309,14 @@ async def execute_contract_runtime(
             last_error = exc
             if isinstance(error_receipt, Mapping):
                 last_receipt = dict(error_receipt)
-            if final_artifact_failure:
+            if final_artifact_failure and provider_call_executed:
                 _emit_final_artifact_rejection(
                     local_rejection_sink,
                     error=exc,
                     contract=structured_contract,
                     attempt=attempt,
                 )
+            if final_artifact_failure:
                 final_artifact_failure_seen = True
                 fingerprint = str(
                     (error_receipt or {}).get("route_fingerprint")

@@ -10,6 +10,7 @@ from novel_flywheel.provider_response_capture import (
     ProviderResponseCaptureError,
     parse_provider_protocol_input_bytes_v1,
 )
+from novel_flywheel.recovery_engine import FailureClass, ReliabilityFailure
 
 
 class ToolCapabilityError(RuntimeError):
@@ -17,7 +18,15 @@ class ToolCapabilityError(RuntimeError):
 
 
 class ProviderResponseError(RuntimeError):
-    pass
+    def __init__(self, message: str) -> None:
+        self.reliability_failure = ReliabilityFailure(
+            code="provider_response_projection_failure",
+            failure_class=FailureClass.SYNTAX_PROTOCOL,
+            boundary="provider_response_projection",
+            message=message,
+            retryable=False,
+        )
+        super().__init__(message)
 
 
 class SingleDispatchTransportGuardError(RuntimeError):
@@ -132,6 +141,7 @@ class HttpProvider:
     def _before_http_post_attempt(
         self, *, url: str, payload: dict[str, Any],
     ) -> None:
+        self._last_protocol_input_v1 = None
         policy = self.transport_policy
         if policy is not None and self._http_post_attempts >= policy.max_http_post_attempts:
             raise SingleDispatchTransportGuardError(

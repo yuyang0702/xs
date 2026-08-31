@@ -180,11 +180,11 @@ class ModelGateway:
         self.db = db
         self.registry = registry
         # Negative final-artifact evidence blocks an exact fingerprint only
-        # inside this gateway/recovery lifetime.  The durable qualification is
-        # diagnostic evidence, not authority to poison a fresh, separately
-        # authorized execution forever.
+        # inside one explicitly identified run.  A gateway is application
+        # scoped, so gateway lifetime is not a safe proxy for authorization
+        # or recovery-schedule lifetime.
         self._final_artifact_route_blocks: set[
-            tuple[str, str, str, str, str]
+            tuple[str, str, str, str, str, str]
         ] = set()
 
     def _resolve_bound_route(
@@ -607,7 +607,12 @@ class ModelGateway:
                 if capability == StructuredOutputCapability.JSON_OBJECT
                 else "plain"
             )
+            final_artifact_recovery_scope = (
+                diagnostic_context.run_id
+                if diagnostic_context is not None else "unbound"
+            )
             final_artifact_key = (
+                final_artifact_recovery_scope,
                 resolved.provider_id,
                 resolved.model_id,
                 route_fingerprint,
@@ -814,6 +819,7 @@ class ModelGateway:
         )
         if guarded_shape is not None:
             self._final_artifact_route_blocks.add((
+                final_artifact_recovery_scope,
                 resolved.provider_id,
                 resolved.model_id,
                 route_fingerprint,

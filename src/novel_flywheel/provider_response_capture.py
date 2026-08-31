@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from enum import StrEnum
 import hashlib
 import json
 import os
@@ -18,6 +19,7 @@ import secrets
 from typing import Any, Mapping
 
 from novel_flywheel.runtime_fingerprint_build import domain_sha256
+from novel_flywheel.recovery_engine import FailureClass, ReliabilityFailure
 
 
 CAPTURE_SCHEMA = "ProviderResponseExactCaptureV1"
@@ -33,10 +35,74 @@ PROHIBITED_METADATA_KEYS = frozenset({
     "authorization", "api_key", "credential", "headers", "prompt",
     "request_body", "story", "system", "tool_arguments", "user",
 })
+PUBLIC_METADATA_FIELDS = frozenset({
+    "execution_id", "call_id", "stage_id", "provider_id_sha256",
+    "model_id_sha256", "route_fingerprint", "protocol", "contract_name",
+    "contract_version", "contract_schema_sha256", "adapter_id",
+    "adapter_version", "content_type", "encoding", "transport_complete",
+})
 
 
 class ProviderResponseCaptureError(RuntimeError):
     """Typed fail-closed response-capture or replay failure."""
+
+    def __init__(self, message: str) -> None:
+        self.reliability_failure = ReliabilityFailure(
+            code="provider_response_capture_integrity_failure",
+            failure_class=FailureClass.SYNTAX_PROTOCOL,
+            boundary="provider_response_capture",
+            message=message,
+            retryable=False,
+        )
+        super().__init__(message)
+
+
+class FullShortTransportEvidenceStateV1(StrEnum):
+    COMPLETE_VALID_CAPTURE = "complete_valid_capture"
+    EXPLICIT_PROVIDER_ERROR = "explicit_provider_error"
+    PROVEN_PRE_RESPONSE_NON_COMPLETION = "proven_pre_response_non_completion"
+    AMBIGUOUS_EXTERNAL_COMPLETION = "ambiguous_external_completion"
+
+
+@dataclass(frozen=True)
+class FullShortTransportRecoveryDecisionV1:
+    state: FullShortTransportEvidenceStateV1
+    action: str
+    exact_local_replay_allowed: bool
+    network_retry_allowed: bool = False
+    physical_dispatch_delta: int = 0
+
+
+def decide_full_short_transport_recovery_v1(
+    state: FullShortTransportEvidenceStateV1 | str,
+) -> FullShortTransportRecoveryDecisionV1:
+    """Closed offline recovery policy for the single-use Full Short run.
+
+    This policy never authorizes a network action.  A complete valid capture
+    may be projected locally; every other state is classified or reconciled
+    without consuming a nonce or creating another physical dispatch.
+    """
+
+    try:
+        typed = FullShortTransportEvidenceStateV1(state)
+    except ValueError as exc:
+        raise ProviderResponseCaptureError(
+            "FULL_SHORT_TRANSPORT_EVIDENCE_STATE_UNKNOWN"
+        ) from exc
+    actions = {
+        FullShortTransportEvidenceStateV1.COMPLETE_VALID_CAPTURE:
+            ("EXACT_LOCAL_REPLAY", True),
+        FullShortTransportEvidenceStateV1.EXPLICIT_PROVIDER_ERROR:
+            ("TERMINAL_TYPED_PROVIDER_FAILURE", False),
+        FullShortTransportEvidenceStateV1.PROVEN_PRE_RESPONSE_NON_COMPLETION:
+            ("TERMINAL_NO_CURRENT_AUTHORITY_FOR_REDISPATCH", False),
+        FullShortTransportEvidenceStateV1.AMBIGUOUS_EXTERNAL_COMPLETION:
+            ("FAIL_CLOSED_RECONCILIATION_ONLY", False),
+    }
+    action, replay = actions[typed]
+    return FullShortTransportRecoveryDecisionV1(
+        state=typed, action=action, exact_local_replay_allowed=replay,
+    )
 
 
 def _canonical_json_bytes(value: Mapping[str, Any]) -> bytes:
@@ -65,6 +131,18 @@ def _validate_public_metadata(metadata: Mapping[str, Any]) -> dict[str, Any]:
     if forbidden:
         raise ProviderResponseCaptureError(
             "PROVIDER_RESPONSE_CAPTURE_PROHIBITED_METADATA:" + ",".join(forbidden)
+        )
+    unknown = sorted(set(value) - PUBLIC_METADATA_FIELDS)
+    missing = sorted(PUBLIC_METADATA_FIELDS - set(value))
+    if unknown:
+        raise ProviderResponseCaptureError(
+            "PROVIDER_RESPONSE_CAPTURE_METADATA_FIELD_UNKNOWN:"
+            + ",".join(unknown)
+        )
+    if missing:
+        raise ProviderResponseCaptureError(
+            "PROVIDER_RESPONSE_CAPTURE_METADATA_FIELD_MISSING:"
+            + ",".join(missing)
         )
     required_strings = (
         "execution_id", "call_id", "stage_id", "provider_id_sha256",

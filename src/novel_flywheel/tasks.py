@@ -22,11 +22,14 @@ RunTerminalFinalizer = Callable[[str, object], object | Awaitable[object]]
 RunOperationResolver = Callable[[dict[str, Any], dict[str, Any]], RunOperation | None]
 
 
-def _nested_reliability_failure(exc: BaseException) -> object | None:
-    """Return the first typed descendant without persisting raw exception text."""
+def _nested_reliability_failure(
+    exc: BaseException, *, preferred_class: str | None = None,
+) -> object | None:
+    """Select typed provenance consistent with the supervisor's final class."""
 
     pending: list[BaseException] = [exc]
     seen: set[int] = set()
+    candidates: list[object] = []
     while pending:
         current = pending.pop(0)
         if id(current) in seen:
@@ -34,7 +37,7 @@ def _nested_reliability_failure(exc: BaseException) -> object | None:
         seen.add(id(current))
         reliability = getattr(current, "reliability_failure", None)
         if reliability is not None:
-            return reliability
+            candidates.append(reliability)
         for nested in (
             getattr(current, "primary_error", None),
             getattr(current, "fallback_error", None),
@@ -43,7 +46,12 @@ def _nested_reliability_failure(exc: BaseException) -> object | None:
         ):
             if isinstance(nested, BaseException):
                 pending.append(nested)
-    return None
+    if preferred_class is not None:
+        for reliability in candidates:
+            failure_class = getattr(reliability, "failure_class", None)
+            if str(getattr(failure_class, "value", failure_class)) == preferred_class:
+                return reliability
+    return candidates[0] if candidates else None
 
 
 class ProjectRunActiveError(RuntimeError):
@@ -516,7 +524,9 @@ class RunTaskManager:
     ) -> tuple[str, dict[str, str]]:
         """Classify raw evidence in memory and return persistence-safe fields."""
 
-        reliability = _nested_reliability_failure(exc)
+        reliability = _nested_reliability_failure(
+            exc, preferred_class=failure_class,
+        )
         raw_code = str(getattr(reliability, "code", "") or "")
         raw_evidence = f"{type(exc).__name__}:{str(exc)}:{raw_code}"
         failure_sha256 = hashlib.sha256(raw_evidence.encode("utf-8")).hexdigest()

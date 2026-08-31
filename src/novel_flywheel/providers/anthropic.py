@@ -2,6 +2,8 @@ import json
 
 from novel_flywheel.domain.models import ModelRequest, ModelResponse, ToolCall
 from novel_flywheel.provider_response_capture import (
+    FullShortTransportEvidenceStateV1,
+    decide_full_short_transport_recovery_v1,
     parse_provider_protocol_input_bytes_v1,
 )
 from novel_flywheel.recovery_engine import FailureClass, ReliabilityFailure
@@ -115,12 +117,27 @@ class AnthropicAdapter(HttpProvider):
             except Exception as exc:
                 replayed = self._replay_last_protocol_input_v1()
                 if replayed is not None:
-                    replay_events, replay_body = replayed
-                    body = (
-                        replay_body
-                        if replay_body is not None
-                        else self._aggregate_stream(replay_events)
+                    decision = decide_full_short_transport_recovery_v1(
+                        FullShortTransportEvidenceStateV1.COMPLETE_VALID_CAPTURE,
                     )
+                    if not decision.exact_local_replay_allowed:
+                        raise AnthropicStreamProtocolError(
+                            "ANTHROPIC_EXACT_LOCAL_REPLAY_NOT_AUTHORIZED"
+                        )
+                    replay_events, replay_body = replayed
+                    try:
+                        body = (
+                            replay_body
+                            if replay_body is not None
+                            else self._aggregate_stream(replay_events)
+                        )
+                    except Exception as replay_exc:
+                        if strict_snapshot_capture_requested():
+                            snapshot = self._stream_exception_snapshot(
+                                replay_events
+                            )
+                            attach_exception_snapshot(replay_exc, snapshot)
+                        raise
                     events = replay_events
                 else:
                     if strict_snapshot_capture_requested():
@@ -347,6 +364,10 @@ class AnthropicAdapter(HttpProvider):
                 raise AnthropicStreamProtocolError(
                     "ANTHROPIC_SSE_EVENT_AFTER_MESSAGE_STOP"
                 )
+            if message_delta_seen and kind != "message_stop":
+                raise AnthropicStreamProtocolError(
+                    "ANTHROPIC_SSE_EVENT_AFTER_MESSAGE_DELTA"
+                )
             if kind == "error":
                 error = event.get("error") or {}
                 raise AnthropicProviderTerminalError(str(error.get("type") or ""))
@@ -370,6 +391,12 @@ class AnthropicAdapter(HttpProvider):
                         "ANTHROPIC_SSE_DUPLICATE_CONTENT_BLOCK"
                     )
                 block = dict(event.get("content_block") or {})
+                if block.get("type") not in {
+                    "text", "tool_use", "thinking", "redacted_thinking",
+                }:
+                    raise AnthropicStreamProtocolError(
+                        "ANTHROPIC_SSE_CONTENT_BLOCK_TYPE_UNSUPPORTED"
+                    )
                 blocks[index] = block
                 open_blocks.add(index)
                 if block.get("type") == "tool_use":
@@ -381,9 +408,24 @@ class AnthropicAdapter(HttpProvider):
                         "ANTHROPIC_SSE_DELTA_OUTSIDE_CONTENT_BLOCK"
                     )
                 delta = event.get("delta") or {}
-                if delta.get("type") == "text_delta":
-                    blocks.setdefault(index, {"type": "text", "text": ""})["text"] += delta.get("text", "")
-                elif delta.get("type") == "input_json_delta":
+                block_type = blocks[index].get("type")
+                delta_type = delta.get("type")
+                allowed_deltas = {
+                    "text": {"text_delta"},
+                    "tool_use": {"input_json_delta"},
+                    "thinking": {"thinking_delta", "signature_delta"},
+                    "redacted_thinking": set(),
+                }
+                if delta_type not in allowed_deltas[block_type]:
+                    raise AnthropicStreamProtocolError(
+                        "ANTHROPIC_SSE_CONTENT_DELTA_TYPE_MISMATCH"
+                    )
+                if delta_type == "text_delta":
+                    blocks[index]["text"] = (
+                        str(blocks[index].get("text") or "")
+                        + str(delta.get("text") or "")
+                    )
+                elif delta_type == "input_json_delta":
                     tool_json.setdefault(index, []).append(delta.get("partial_json", ""))
             elif kind == "content_block_stop":
                 index = event.get("index", 0)
@@ -420,7 +462,12 @@ class AnthropicAdapter(HttpProvider):
         for index, parts in tool_json.items():
             raw = "".join(parts)
             if raw:
-                blocks[index]["input"] = json.loads(raw)
+                try:
+                    blocks[index]["input"] = json.loads(raw)
+                except ValueError as exc:
+                    raise AnthropicStreamProtocolError(
+                        "ANTHROPIC_SSE_TOOL_ARGUMENT_JSON_INVALID"
+                    ) from exc
         return {
             "id": message_id, "content": [blocks[index] for index in sorted(blocks)],
             "stop_reason": stop_reason,

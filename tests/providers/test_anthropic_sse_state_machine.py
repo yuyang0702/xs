@@ -13,6 +13,7 @@ from novel_flywheel.providers.anthropic import (
 )
 from novel_flywheel.domain.models import Message, ModelRequest
 from novel_flywheel.providers.http import SingleDispatchTransportPolicyV1
+from novel_flywheel.production_incidents import classify_production_failure
 
 
 def _sse(*events: dict) -> bytes:
@@ -85,6 +86,11 @@ def test_explicit_provider_error_before_content_is_not_transport() -> None:
             content_type="text/event-stream",
         )
     assert caught.value.error_type == "overloaded_error"
+    incident = classify_production_failure(
+        str(caught.value), workflow="short-story", stage="planning",
+        failure=caught.value.reliability_failure,
+    )
+    assert incident["incident_family"] == "provider.terminal_error_event"
 
 
 def test_explicit_provider_error_after_partial_content_is_not_accepted() -> None:
@@ -122,6 +128,55 @@ def test_delta_outside_open_block_is_protocol_error() -> None:
         AnthropicAdapter.replay_protocol_input_bytes_v1(
             _sse(*events), content_type="text/event-stream",
         )
+
+
+def test_block_after_message_delta_is_protocol_error() -> None:
+    events = _complete_events()
+    events.insert(-1, {
+        "type": "content_block_start", "index": 1,
+        "content_block": {"type": "text", "text": ""},
+    })
+    with pytest.raises(AnthropicStreamProtocolError) as caught:
+        AnthropicAdapter.replay_protocol_input_bytes_v1(
+            _sse(*events), content_type="text/event-stream",
+        )
+    assert caught.value.reason_code == "ANTHROPIC_SSE_EVENT_AFTER_MESSAGE_DELTA"
+
+
+@pytest.mark.parametrize(
+    "block,delta",
+    [
+        ({"type": "thinking", "thinking": ""},
+         {"type": "text_delta", "text": "leak"}),
+        ({"type": "text", "text": ""},
+         {"type": "input_json_delta", "partial_json": "{}"}),
+        ({"type": "tool_use", "id": "call", "name": "done"},
+         {"type": "unknown_delta"}),
+    ],
+)
+def test_block_delta_type_mismatch_is_typed_protocol_error(block, delta) -> None:
+    events = _complete_events()
+    events[1]["content_block"] = block
+    events[2]["delta"] = delta
+    with pytest.raises(AnthropicStreamProtocolError) as caught:
+        AnthropicAdapter.replay_protocol_input_bytes_v1(
+            _sse(*events), content_type="text/event-stream",
+        )
+    assert caught.value.reason_code == (
+        "ANTHROPIC_SSE_CONTENT_DELTA_TYPE_MISMATCH"
+    )
+
+
+def test_unknown_block_type_is_typed_protocol_error() -> None:
+    events = _complete_events()
+    events[1]["content_block"] = {"type": "future_private_block"}
+    with pytest.raises(AnthropicStreamProtocolError) as caught:
+        AnthropicAdapter.replay_protocol_input_bytes_v1(
+            _sse(*events), content_type="text/event-stream",
+        )
+    assert caught.value.reason_code == (
+        "ANTHROPIC_SSE_CONTENT_BLOCK_TYPE_UNSUPPORTED"
+    )
 
 
 @pytest.mark.asyncio

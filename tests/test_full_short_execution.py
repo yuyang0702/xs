@@ -17,6 +17,7 @@ from novel_flywheel.full_short_execution import (
     RESPONSE_CAPTURE_POLICY_V1,
     _expected_provider_payload_v1,
     build_full_short_completion_receipt_v1,
+    replay_full_short_provider_attempt_v1,
     render_full_short_canonical_authorization_v1,
     validate_full_short_canonical_authorization_v1,
     validate_full_short_preflight_v1,
@@ -422,6 +423,64 @@ def test_restart_after_dispatch_before_local_receipt_never_redispatches(
         )
     assert caught.value.reason_code == "NONCE_ALREADY_CONSUMED_NO_RESTART"
     assert len(store.load_ledger("restart-blocked")["attempts"]) == 1
+
+
+def test_restart_read_only_replay_uses_exact_ledger_anchored_capture(
+    tmp_path: Path,
+) -> None:
+    store = _store(tmp_path)
+    _authorize_offline(store, "anchored-local-replay")
+    observer = _observer(store, "anchored-local-replay")
+    observer.before_http_dispatch(
+        method="POST", url="https://unit.test/v1/messages", payload=_payload(),
+    )
+    events = [
+        {"type": "message_start", "message": {
+            "id": "offline", "usage": {"input_tokens": 2},
+        }},
+        {"type": "content_block_start", "index": 0,
+         "content_block": {"type": "text", "text": ""}},
+        {"type": "content_block_delta", "index": 0,
+         "delta": {"type": "text_delta", "text": "exact local artifact"}},
+        {"type": "content_block_stop", "index": 0},
+        {"type": "message_delta", "delta": {"stop_reason": "end_turn"},
+         "usage": {"output_tokens": 3}},
+        {"type": "message_stop"},
+    ]
+    entity = "".join(
+        "data: " + json.dumps(event, separators=(",", ":")) + "\n\n"
+        for event in events
+    ).encode("utf-8")
+    observer.capture_provider_protocol_input(
+        data=entity, status_code=200, content_type="text/event-stream",
+        encoding="utf-8", transport_complete=True,
+    )
+    observer.after_http_response(status_code=200)
+
+    replayed = replay_full_short_provider_attempt_v1(
+        store=store, execution_id="anchored-local-replay", ordinal=1,
+    )
+
+    assert replayed.text == "exact local artifact"
+    assert len(store.load_ledger("anchored-local-replay")["attempts"]) == 1
+
+
+def test_restart_read_only_replay_fails_closed_without_ledger_anchor(
+    tmp_path: Path,
+) -> None:
+    store = _store(tmp_path)
+    _authorize_offline(store, "unanchored-local-replay")
+    observer = _observer(store, "unanchored-local-replay")
+    observer.before_http_dispatch(
+        method="POST", url="https://unit.test/v1/messages", payload=_payload(),
+    )
+
+    with pytest.raises(FullShortExecutionBoundaryError) as missing:
+        replay_full_short_provider_attempt_v1(
+            store=store, execution_id="unanchored-local-replay", ordinal=1,
+        )
+
+    assert missing.value.reason_code == "REPLAY_LEDGER_CAPTURE_RECEIPT_MISSING"
 
 
 def test_closed_local_rejection_allows_only_same_session_bounded_recovery(
@@ -1196,7 +1255,17 @@ def test_completion_rejects_terminal_false_positive_and_binding_key_drift(
 def test_mark_local_stage_complete_closes_only_pending_ordinal(tmp_path: Path) -> None:
     store = _store(tmp_path)
     _authorize_offline(store, "pending-only")
-    observer = _dispatch_and_close(store, "pending-only")
+    observer = _observer(store, "pending-only")
+    observer.before_http_dispatch(
+        method="POST", url="https://unit.test/v1/messages",
+        payload=_payload(),
+    )
+    observer.after_http_response(status_code=200)
+    observer.mark_local_attempt_rejected(
+        stage="planning-semantic-v2", role="planning",
+        role_binding_sha256=observer.bound_route["role_binding_sha256"],
+        rejection=_local_rejection(),
+    )
     observer.bind_route(
         role="planning", lane="primary", provider_id="provider",
         model_id="model-id", route_fingerprint="9" * 64,
@@ -1221,6 +1290,58 @@ def test_mark_local_stage_complete_closes_only_pending_ordinal(tmp_path: Path) -
     ledger = store.load_ledger("pending-only")
     assert ledger["attempts"][0]["state"] == "RESPONSE_RECEIVED"
     assert ledger["attempts"][1]["state"] == "LOCAL_STAGE_COMPLETE"
+
+
+def test_local_rejection_must_match_current_logical_attempt_identity(
+    tmp_path: Path,
+) -> None:
+    store = _store(tmp_path)
+    _authorize_offline(store, "rejection-attempt-identity")
+    observer = _observer(store, "rejection-attempt-identity")
+    observer.before_http_dispatch(
+        method="POST", url="https://unit.test/v1/messages", payload=_payload(),
+    )
+    observer.after_http_response(status_code=200)
+
+    with pytest.raises(FullShortExecutionBoundaryError) as mismatch:
+        observer.mark_local_attempt_rejected(
+            stage="planning-semantic-v2", role="planning",
+            role_binding_sha256=observer.bound_route["role_binding_sha256"],
+            rejection=_local_rejection(route_attempt=2),
+        )
+
+    assert mismatch.value.reason_code == (
+        "LOCAL_REJECTION_ATTEMPT_IDENTITY_INVALID"
+    )
+    assert store.load_ledger("rejection-attempt-identity")["attempts"][0][
+        "state"
+    ] == "RESPONSE_RECEIVED"
+
+
+def test_new_logical_stage_over_cap_is_rejected_before_dispatch(
+    tmp_path: Path,
+) -> None:
+    store = _store(tmp_path)
+    _authorize_offline(store, "logical-cap")
+    observer = _dispatch_and_close(store, "logical-cap")
+    observer.bind_stage_context(
+        stage_id="draft", contract_name="unstructured_text",
+        contract_version=1, contract_schema_sha256=_hash({}),
+    )
+    observer.bind_route(
+        role="planning", lane="primary", provider_id="provider",
+        model_id="model-id", route_fingerprint="9" * 64,
+    )
+    observer.bind_model_request(protocol="anthropic", request=_request())
+
+    with pytest.raises(FullShortExecutionBoundaryError) as capped:
+        observer.before_http_dispatch(
+            method="POST", url="https://unit.test/v1/messages",
+            payload=_payload(),
+        )
+
+    assert capped.value.reason_code == "LOGICAL_STAGE_CALL_CAP_EXHAUSTED"
+    assert len(store.load_ledger("logical-cap")["attempts"]) == 1
 
 
 def test_real_runner_collects_live_bindings_without_secret_lookup(

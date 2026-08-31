@@ -9,6 +9,7 @@ typed dispositions under the requested report directory.
 from __future__ import annotations
 
 import argparse
+import asyncio
 from collections import Counter
 import hashlib
 import json
@@ -16,8 +17,14 @@ from pathlib import Path
 import tempfile
 from typing import Any, Callable
 
+import httpx
+
 from novel_flywheel.completion_supervisor import classify_completion_failure
 from novel_flywheel.contract_runtime import FinalArtifactCapabilityExhaustedError
+from novel_flywheel.domain.models import Message, ModelRequest
+from novel_flywheel.full_short_execution import (
+    validate_full_short_dispatch_accounting_v1,
+)
 from novel_flywheel.models import (
     ReasoningOnlyFinalArtifactUnavailableError,
     _reasoning_only_final_artifact_unavailable,
@@ -27,8 +34,11 @@ from novel_flywheel.provider_response_capture import (
     PROVIDER_PROTOCOL_INPUT_BYTES,
     ProviderResponseCaptureError,
     ProviderResponseCaptureStoreV1,
+    FullShortTransportEvidenceStateV1,
+    decide_full_short_transport_recovery_v1,
     parse_provider_protocol_input_bytes_v1,
 )
+from novel_flywheel.providers.http import SingleDispatchTransportPolicyV1
 from novel_flywheel.providers.anthropic import (
     AnthropicAdapter,
     AnthropicProviderTerminalError,
@@ -66,11 +76,12 @@ def _capture_by_sha(
     receipt = next(
         item for item in store.audit_all() if item["byte_sha256"] == sha256
     )
-    return store.replay(
+    data, _ = store.replay(
         byte_domain=receipt["byte_domain"],
         expected_metadata=receipt["metadata"],
         expected_receipt_sha256=receipt["ledger_receipt_sha256"],
     )
+    return data, dict(receipt["metadata"])
 
 
 def _event_summary(data: bytes, metadata: dict[str, Any]) -> dict[str, Any]:
@@ -136,6 +147,168 @@ def _normal_events(text: str = "offline-complete") -> list[dict[str, Any]]:
     ]
 
 
+class _InjectedStream(httpx.AsyncByteStream):
+    def __init__(self, chunks: list[bytes], error: BaseException) -> None:
+        self.chunks = chunks
+        self.error = error
+
+    async def __aiter__(self):
+        for chunk in self.chunks:
+            yield chunk
+        raise self.error
+
+    async def aclose(self) -> None:
+        return None
+
+
+async def _actual_stream_timeout(*, mid_stream: bool) -> dict[str, Any]:
+    entity = _sse(*_normal_events())
+    stream = _InjectedStream(
+        [entity[:80]] if mid_stream else [],
+        httpx.ReadTimeout("offline injected read timeout"),
+    )
+    adapter = AnthropicAdapter(
+        "https://offline.invalid/v1", "offline-memory-secret",
+        transport_policy=SingleDispatchTransportPolicyV1.phase_b(),
+    )
+    await adapter.client.aclose()
+    adapter.client = httpx.AsyncClient(transport=httpx.MockTransport(
+        lambda request: httpx.Response(
+            200, stream=stream, request=request,
+            headers={"content-type": "text/event-stream"},
+        )
+    ))
+    try:
+        try:
+            await adapter.complete(ModelRequest(
+                model="offline", messages=[Message(role="user", content="offline")],
+                max_output_tokens=32,
+            ))
+        except httpx.ReadTimeout as exc:
+            return {
+                "observed": type(exc).__name__,
+                "physical_dispatch_count": adapter.transport_attempt_snapshot()[
+                    "http_post_attempts"
+                ],
+                "mid_stream": mid_stream,
+            }
+        raise AssertionError("injected timeout was not observed")
+    finally:
+        await adapter.client.aclose()
+
+
+async def _actual_complete_body_local_replay(
+    *, injected_exception: type[Exception],
+) -> dict[str, Any]:
+    class FailOnceAdapter(AnthropicAdapter):
+        aggregate_calls = 0
+
+        @staticmethod
+        def _aggregate_stream(events):
+            FailOnceAdapter.aggregate_calls += 1
+            if FailOnceAdapter.aggregate_calls == 1:
+                raise injected_exception("offline injected local projection failure")
+            return AnthropicAdapter._aggregate_stream(events)
+
+    requests = 0
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal requests
+        requests += 1
+        return httpx.Response(
+            200, content=_sse(*_normal_events()), request=request,
+            headers={"content-type": "text/event-stream; charset=utf-8"},
+        )
+
+    adapter = FailOnceAdapter(
+        "https://offline.invalid/v1", "offline-memory-secret",
+        transport_policy=SingleDispatchTransportPolicyV1.phase_b(),
+    )
+    await adapter.client.aclose()
+    adapter.client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+    try:
+        response = await adapter.complete(ModelRequest(
+            model="offline", messages=[Message(role="user", content="offline")],
+            max_output_tokens=32,
+        ))
+        assert response.text == "offline-complete"
+        assert requests == 1
+        assert FailOnceAdapter.aggregate_calls == 2
+        return {
+            "observed": "EXACT_LOCAL_REPLAY",
+            "injected_exception": injected_exception.__name__,
+            "physical_dispatch_count": requests,
+            "local_projection_count": FailOnceAdapter.aggregate_calls,
+            "network_redispatch_count": 0,
+        }
+    finally:
+        await adapter.client.aclose()
+
+
+async def _actual_unavailable_policy() -> dict[str, Any]:
+    requests = 0
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal requests
+        requests += 1
+        return httpx.Response(503, text="offline unavailable", request=request)
+
+    adapter = AnthropicAdapter(
+        "https://offline.invalid/v1", "offline-memory-secret",
+        transport_policy=SingleDispatchTransportPolicyV1.phase_b(),
+    )
+    await adapter.client.aclose()
+    adapter.client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+    try:
+        try:
+            await adapter.complete(ModelRequest(
+                model="offline", messages=[Message(role="user", content="offline")],
+                max_output_tokens=32,
+            ))
+        except httpx.HTTPStatusError as exc:
+            decision = decide_full_short_transport_recovery_v1(
+                FullShortTransportEvidenceStateV1.PROVEN_PRE_RESPONSE_NON_COMPLETION,
+            )
+            assert requests == 1 and decision.network_retry_allowed is False
+            return {
+                "observed": type(exc).__name__, "policy_action": decision.action,
+                "physical_dispatch_count": requests, "network_retry_count": 0,
+            }
+        raise AssertionError("503 was not surfaced")
+    finally:
+        await adapter.client.aclose()
+
+
+async def _actual_ambiguous_policy() -> dict[str, Any]:
+    evidence = await _actual_stream_timeout(mid_stream=True)
+    decision = decide_full_short_transport_recovery_v1(
+        FullShortTransportEvidenceStateV1.AMBIGUOUS_EXTERNAL_COMPLETION,
+    )
+    assert evidence["physical_dispatch_count"] == 1
+    assert decision.network_retry_allowed is False
+    return {
+        **evidence,
+        "policy_action": decision.action,
+        "network_retry_allowed": False,
+        "network_redispatch_count": 0,
+    }
+
+
+def _restart_store_replay(
+    store: ProviderResponseCaptureStoreV1, sha256: str,
+) -> dict[str, Any]:
+    restarted = ProviderResponseCaptureStoreV1(
+        repo_root=store.repo_root, store_root=store.root,
+    )
+    data, metadata = _capture_by_sha(restarted, sha256)
+    return {
+        "observed": "FRESH_STORE_EXACT_LOCAL_REPLAY",
+        "byte_sha256": _sha(data),
+        "transport_complete": metadata["transport_complete"],
+        "physical_dispatch_delta": 0,
+    }
+
+
 def _expect(
     case_id: int, name: str, operation: Callable[[], Any],
     expected: type[BaseException] | None = None,
@@ -154,7 +327,7 @@ def _expect(
     return {
         "case": case_id, "name": name,
         "status": "PASS" if passed else "FAIL",
-        "observed": type(result).__name__,
+        "observed": result if isinstance(result, dict) else type(result).__name__,
         "expected": expected.__name__ if expected else "success",
     }
 
@@ -238,16 +411,16 @@ def _matrix(
                 content_type="text/event-stream",
             )
         )),
-        _expect(14, "timeout before first byte", lambda: (_ for _ in ()).throw(
-            TimeoutError("timed out before first byte")
-        ), TimeoutError),
-        _expect(15, "timeout mid-stream", lambda: (_ for _ in ()).throw(
-            TimeoutError("timed out mid-stream")
-        ), TimeoutError),
+        _expect(14, "timeout before first byte", lambda: asyncio.run(
+            _actual_stream_timeout(mid_stream=False)
+        )),
+        _expect(15, "timeout mid-stream", lambda: asyncio.run(
+            _actual_stream_timeout(mid_stream=True)
+        )),
         _expect(16, "timeout after body complete replays locally", lambda: (
-            AnthropicAdapter.replay_protocol_input_bytes_v1(
-                normal, content_type="text/event-stream"
-            )
+            asyncio.run(_actual_complete_body_local_replay(
+                injected_exception=TimeoutError,
+            ))
         )),
         _expect(17, "capture succeeds then adapter fails", lambda: (
             AnthropicAdapter.replay_protocol_input_bytes_v1(
@@ -278,25 +451,25 @@ def _matrix(
         ), ProviderResponseCaptureError))
     cases.extend([
         _expect(19, "restart then exact local replay", lambda: (
-            _capture_by_sha(store, SEGMENT_1_TRANSPORT_SHA)[0]
+            _restart_store_replay(store, SEGMENT_1_TRANSPORT_SHA)
         )),
         _expect(20, "valid completion plus local adapter failure is replay only", lambda: (
-            AnthropicAdapter.replay_protocol_input_bytes_v1(
-                normal, content_type="text/event-stream"
-            ).text
+            asyncio.run(_actual_complete_body_local_replay(
+                injected_exception=ValueError,
+            ))
         )),
-        {"case": 21, "name": "genuine unavailable no completion",
-         "status": "PASS", "observed": "NO_NETWORK_RETRY",
-         "expected": "EXACT_REPLAY_ONLY terminal typed failure"},
-        {"case": 22, "name": "ambiguous completion", "status": "PASS",
-         "observed": "FAIL_CLOSED_NO_REDISPATCH",
-         "expected": "fail closed"},
-        {"case": 23, "name": "second physical dispatch accounting",
-         "status": "PASS", "observed": {
-             "logical_stage_count": 70,
-             "physical_dispatch_hard_cap": 71,
-             "network_retry_dispatches": 0,
-         }, "expected": "every physical dispatch counted; replay adds zero"},
+        _expect(21, "genuine unavailable no completion", lambda: asyncio.run(
+            _actual_unavailable_policy()
+        )),
+        _expect(22, "ambiguous completion", lambda: asyncio.run(
+            _actual_ambiguous_policy()
+        )),
+        _expect(23, "second physical dispatch accounting", lambda:
+            validate_full_short_dispatch_accounting_v1(
+                logical_stage_count=70, physical_dispatch_count=71,
+                expected_stage_calls=70, physical_dispatch_hard_cap=71,
+                exact_replay_physical_dispatch_delta=0,
+            )),
     ])
     return {
         "schema": "TransportSseRecoveryMatrixV1",

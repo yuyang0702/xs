@@ -9,7 +9,10 @@ import pytest
 from novel_flywheel.db import Database
 from novel_flywheel.domain.models import Message, ModelRequest
 import novel_flywheel.providers.anthropic as anthropic_module
-from novel_flywheel.providers.anthropic import AnthropicAdapter
+from novel_flywheel.providers.anthropic import (
+    AnthropicAdapter,
+    AnthropicStreamProtocolError,
+)
 from novel_flywheel.providers.http import (
     HttpProvider,
     ProviderResponseError,
@@ -403,10 +406,12 @@ async def test_adapter_parse_failure_after_response_never_dispatches_twice() -> 
             "type": "content_block_delta", "index": 0,
             "delta": {"type": "input_json_delta", "partial_json": "{"},
         },
+        {"type": "content_block_stop", "index": 0},
         {
             "type": "message_delta", "delta": {"stop_reason": "end_turn"},
             "usage": {"output_tokens": 4},
         },
+        {"type": "message_stop"},
     ]
 
     def handler(request: httpx.Request) -> httpx.Response:
@@ -422,7 +427,10 @@ async def test_adapter_parse_failure_after_response_never_dispatches_twice() -> 
 
     adapter = await _anthropic_adapter(handler)
     try:
-        with pytest.raises(json.JSONDecodeError):
+        with pytest.raises(
+            AnthropicStreamProtocolError,
+            match="ANTHROPIC_SSE_TOOL_ARGUMENT_JSON_INVALID",
+        ):
             await adapter.complete(_anthropic_request())
     finally:
         await adapter.client.aclose()

@@ -94,23 +94,37 @@
     },
     {
       "case": 14,
-      "expected": "TimeoutError",
+      "expected": "success",
       "name": "timeout before first byte",
-      "observed": "TimeoutError",
+      "observed": {
+        "mid_stream": false,
+        "observed": "ReadTimeout",
+        "physical_dispatch_count": 1
+      },
       "status": "PASS"
     },
     {
       "case": 15,
-      "expected": "TimeoutError",
+      "expected": "success",
       "name": "timeout mid-stream",
-      "observed": "TimeoutError",
+      "observed": {
+        "mid_stream": true,
+        "observed": "ReadTimeout",
+        "physical_dispatch_count": 1
+      },
       "status": "PASS"
     },
     {
       "case": 16,
       "expected": "success",
       "name": "timeout after body complete replays locally",
-      "observed": "ModelResponse",
+      "observed": {
+        "injected_exception": "TimeoutError",
+        "local_projection_count": 2,
+        "network_redispatch_count": 0,
+        "observed": "EXACT_LOCAL_REPLAY",
+        "physical_dispatch_count": 1
+      },
       "status": "PASS"
     },
     {
@@ -131,37 +145,61 @@
       "case": 19,
       "expected": "success",
       "name": "restart then exact local replay",
-      "observed": "bytes",
+      "observed": {
+        "byte_sha256": "4bb0489d3ed9d4cacefa495b5627931c21d2ef0878402da32572121350914879",
+        "observed": "FRESH_STORE_EXACT_LOCAL_REPLAY",
+        "physical_dispatch_delta": 0,
+        "transport_complete": true
+      },
       "status": "PASS"
     },
     {
       "case": 20,
       "expected": "success",
       "name": "valid completion plus local adapter failure is replay only",
-      "observed": "str",
+      "observed": {
+        "injected_exception": "ValueError",
+        "local_projection_count": 2,
+        "network_redispatch_count": 0,
+        "observed": "EXACT_LOCAL_REPLAY",
+        "physical_dispatch_count": 1
+      },
       "status": "PASS"
     },
     {
       "case": 21,
-      "expected": "EXACT_REPLAY_ONLY terminal typed failure",
+      "expected": "success",
       "name": "genuine unavailable no completion",
-      "observed": "NO_NETWORK_RETRY",
+      "observed": {
+        "network_retry_count": 0,
+        "observed": "HTTPStatusError",
+        "physical_dispatch_count": 1,
+        "policy_action": "TERMINAL_NO_CURRENT_AUTHORITY_FOR_REDISPATCH"
+      },
       "status": "PASS"
     },
     {
       "case": 22,
-      "expected": "fail closed",
+      "expected": "success",
       "name": "ambiguous completion",
-      "observed": "FAIL_CLOSED_NO_REDISPATCH",
+      "observed": {
+        "mid_stream": true,
+        "network_redispatch_count": 0,
+        "network_retry_allowed": false,
+        "observed": "ReadTimeout",
+        "physical_dispatch_count": 1,
+        "policy_action": "FAIL_CLOSED_RECONCILIATION_ONLY"
+      },
       "status": "PASS"
     },
     {
       "case": 23,
-      "expected": "every physical dispatch counted; replay adds zero",
+      "expected": "success",
       "name": "second physical dispatch accounting",
       "observed": {
+        "exact_replay_physical_dispatch_delta": 0,
         "logical_stage_count": 70,
-        "network_retry_dispatches": 0,
+        "physical_dispatch_count": 71,
         "physical_dispatch_hard_cap": 71
       },
       "status": "PASS"

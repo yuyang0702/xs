@@ -22,6 +22,15 @@ class IncidentDefinition:
 # not one novel's names, file paths, segment numbers, or provider wording.
 INCIDENT_DEFINITIONS = (
     IncidentDefinition(
+        "provider.terminal_error_event",
+        "Provider emitted an explicit terminal error event",
+        "Preserve the exact response capture and classify the provider event locally. Do not treat it as an interrupted transport or redispatch under the consumed Full Short authority; any later provider attempt requires fresh explicit authorization.",
+        (
+            r"anthropic_provider_terminal_error",
+            r"provider emitted an explicit terminal error",
+        ),
+    ),
+    IncidentDefinition(
         "provider.route_rejected",
         "A configured model route was rejected before producing a terminal receipt",
         "Preserve the best authority-bound checkpoint, retry the same explicit route only within the bounded protocol budget, then select the configured independent fallback through the outer recovery schedule. Probe route capability without story data when diagnosis is needed. Treat authentication, route policy, and model availability as transport reliability—not story drift—and resume only the smallest blocked receipt.",
@@ -509,6 +518,8 @@ def classify_production_failure(
             "reasoning_only_final_artifact_unavailable",
             "final_artifact_capability_exhausted",
         }
+        else "provider.terminal_error_event"
+        if failure is not None and failure.code == "anthropic_provider_terminal_error"
         else _TYPED_INCIDENT_FAMILIES.get(failure.failure_class)
         if failure is not None else None
     )

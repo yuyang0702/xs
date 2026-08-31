@@ -21,6 +21,8 @@ from novel_flywheel.provider_response_capture import (
     PROVIDER_PROTOCOL_INPUT_BYTES,
     ProviderResponseCaptureError,
     ProviderResponseCaptureStoreV1,
+    FullShortTransportEvidenceStateV1,
+    decide_full_short_transport_recovery_v1,
     parse_provider_protocol_input_bytes_v1,
 )
 from novel_flywheel.providers.http import (
@@ -58,6 +60,38 @@ def _store(tmp_path: Path) -> ProviderResponseCaptureStoreV1:
     return ProviderResponseCaptureStoreV1(
         repo_root=repo, store_root=tmp_path / "private-captures",
     )
+
+
+@pytest.mark.parametrize(
+    "state,action,replay",
+    [
+        ("complete_valid_capture", "EXACT_LOCAL_REPLAY", True),
+        ("explicit_provider_error", "TERMINAL_TYPED_PROVIDER_FAILURE", False),
+        (
+            "proven_pre_response_non_completion",
+            "TERMINAL_NO_CURRENT_AUTHORITY_FOR_REDISPATCH", False,
+        ),
+        (
+            "ambiguous_external_completion",
+            "FAIL_CLOSED_RECONCILIATION_ONLY", False,
+        ),
+    ],
+)
+def test_full_short_transport_recovery_policy_is_closed_and_offline(
+    state: str, action: str, replay: bool,
+) -> None:
+    decision = decide_full_short_transport_recovery_v1(
+        FullShortTransportEvidenceStateV1(state),
+    )
+    assert decision.action == action
+    assert decision.exact_local_replay_allowed is replay
+    assert decision.network_retry_allowed is False
+    assert decision.physical_dispatch_delta == 0
+
+
+def test_full_short_transport_recovery_policy_rejects_unknown_state() -> None:
+    with pytest.raises(ProviderResponseCaptureError, match="STATE_UNKNOWN"):
+        decide_full_short_transport_recovery_v1("future_state")
 
 
 class _CaptureObserver:
@@ -246,6 +280,18 @@ def test_capture_metadata_rejects_secret_or_request_fields(
         store.capture(
             byte_domain=PROVIDER_PROTOCOL_INPUT_BYTES,
             data=b"safe", metadata=_metadata(**{field: "forbidden"}),
+        )
+
+
+def test_capture_metadata_rejects_unknown_header_like_field(tmp_path: Path) -> None:
+    store = _store(tmp_path)
+    with pytest.raises(
+        ProviderResponseCaptureError, match="METADATA_FIELD_UNKNOWN",
+    ):
+        store.capture(
+            byte_domain=PROVIDER_PROTOCOL_INPUT_BYTES,
+            data=b"safe",
+            metadata=_metadata(authorization_header="forbidden"),
         )
 
 

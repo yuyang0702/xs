@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from dataclasses import replace
 
 import pytest
 
@@ -397,6 +398,35 @@ async def test_negative_capability_prevents_second_provider_dispatch(tmp_path) -
             "primary", "planning", "system", "user", contract=contract,
         )
     assert primary.calls == 1
+
+
+@pytest.mark.asyncio
+async def test_negative_capability_is_scoped_to_explicit_run_identity(
+    tmp_path,
+) -> None:
+    _, gateway, primary, _ = _gateway(tmp_path, _reasoning_only_response())
+    contract = _contract()
+    first_run = _ptr12_context(tmp_path)
+    second_run = replace(first_run, run_id="fresh-separate-authorization")
+
+    with pytest.raises(ReasoningOnlyFinalArtifactUnavailableError):
+        await gateway.complete_route(
+            "primary", "planning", "system", "user", contract=contract,
+            diagnostic_context=first_run,
+        )
+    with pytest.raises(FinalArtifactRouteQuarantinedError) as quarantined:
+        await gateway.complete_route(
+            "primary", "planning", "system", "user", contract=contract,
+            diagnostic_context=first_run,
+        )
+    assert quarantined.value.receipt["provider_call_executed"] is False
+
+    with pytest.raises(ReasoningOnlyFinalArtifactUnavailableError):
+        await gateway.complete_route(
+            "primary", "planning", "system", "user", contract=contract,
+            diagnostic_context=second_run,
+        )
+    assert primary.calls == 2
 
 
 @pytest.mark.asyncio
