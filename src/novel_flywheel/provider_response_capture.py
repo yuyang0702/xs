@@ -472,40 +472,81 @@ def parse_provider_protocol_input_bytes_v1(
                 "PROVIDER_RESPONSE_REPLAY_JSON_OBJECT_REQUIRED"
             )
         return [], value
+    events, _done_seen = _parse_sse_events_v1(text)
+    return events, None
+
+
+def _parse_sse_events_v1(
+    text: str,
+) -> tuple[list[dict[str, Any]], bool]:
+    """Parse only delimiter-closed SSE events and retain the DONE terminal."""
+
     events: list[dict[str, Any]] = []
     data_lines: list[str] = []
+    done_seen = False
+
+    def dispatch() -> None:
+        nonlocal done_seen
+        raw = "\n".join(data_lines)
+        data_lines.clear()
+        if done_seen:
+            raise ProviderResponseCaptureError(
+                "PROVIDER_RESPONSE_REPLAY_SSE_EVENT_AFTER_DONE"
+            )
+        if raw == "[DONE]":
+            done_seen = True
+            return
+        try:
+            event = json.loads(raw)
+        except ValueError as exc:
+            raise ProviderResponseCaptureError(
+                "PROVIDER_RESPONSE_REPLAY_SSE_JSON_INVALID"
+            ) from exc
+        if not isinstance(event, dict):
+            raise ProviderResponseCaptureError(
+                "PROVIDER_RESPONSE_REPLAY_SSE_OBJECT_REQUIRED"
+            )
+        events.append(event)
+
     for line in text.splitlines():
         if not line:
             if data_lines:
-                raw = "\n".join(data_lines)
-                data_lines.clear()
-                if raw != "[DONE]":
-                    try:
-                        event = json.loads(raw)
-                    except ValueError as exc:
-                        raise ProviderResponseCaptureError(
-                            "PROVIDER_RESPONSE_REPLAY_SSE_JSON_INVALID"
-                        ) from exc
-                    if not isinstance(event, dict):
-                        raise ProviderResponseCaptureError(
-                            "PROVIDER_RESPONSE_REPLAY_SSE_OBJECT_REQUIRED"
-                        )
-                    events.append(event)
+                dispatch()
             continue
         if line.startswith("data:"):
             data_lines.append(line[5:].lstrip())
     if data_lines:
-        raw = "\n".join(data_lines)
-        if raw != "[DONE]":
-            try:
-                event = json.loads(raw)
-            except ValueError as exc:
-                raise ProviderResponseCaptureError(
-                    "PROVIDER_RESPONSE_REPLAY_SSE_JSON_INVALID"
-                ) from exc
-            if not isinstance(event, dict):
-                raise ProviderResponseCaptureError(
-                    "PROVIDER_RESPONSE_REPLAY_SSE_OBJECT_REQUIRED"
-                )
-            events.append(event)
-    return events, None
+        raise ProviderResponseCaptureError(
+            "PROVIDER_RESPONSE_REPLAY_SSE_EVENT_DELIMITER_MISSING"
+        )
+    return events, done_seen
+
+
+def provider_protocol_input_has_terminal_bytes_v1(
+    data: bytes, *, content_type: str, encoding: str = "utf-8",
+) -> bool:
+    """Return whether interrupted SSE bytes contain a closed terminal frame.
+
+    This is deliberately SSE-only: a parseable JSON prefix is not proof that
+    an interrupted HTTP entity had no remaining bytes.
+    """
+
+    if "text/event-stream" not in content_type.lower():
+        return False
+    try:
+        text = data.decode(encoding)
+        events, done_seen = _parse_sse_events_v1(text)
+    except (LookupError, UnicodeError, ProviderResponseCaptureError):
+        return False
+    if done_seen:
+        return True
+    if not events:
+        return False
+    terminal_type = events[-1].get("type")
+    return terminal_type in {
+        "error",
+        "message_stop",
+        "response.completed",
+        "response.failed",
+        "response.incomplete",
+    }

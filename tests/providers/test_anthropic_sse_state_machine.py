@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import json
 
 import pytest
@@ -47,6 +48,44 @@ def _complete_events(text: str = "可验证的完整结果") -> list[dict]:
     ]
 
 
+class _CaptureObserver:
+    def __init__(self) -> None:
+        self.captures: list[dict] = []
+        self.outcomes: list[str] = []
+
+    def before_http_dispatch(self, **_kwargs) -> None:
+        return None
+
+    def before_http_post(self) -> None:
+        return None
+
+    def before_network_request(self) -> None:
+        return None
+
+    def capture_provider_protocol_input(self, **kwargs) -> None:
+        self.captures.append(kwargs)
+
+    def after_http_failure(self, *, failure_kind: str) -> None:
+        self.outcomes.append(f"failure:{failure_kind}")
+
+    def after_http_response(self, *, status_code: int) -> None:
+        self.outcomes.append(f"response:{status_code}")
+
+
+class _InjectedStream(httpx.AsyncByteStream):
+    def __init__(self, chunks: list[bytes], failure: BaseException) -> None:
+        self.chunks = chunks
+        self.failure = failure
+
+    async def __aiter__(self):
+        for chunk in self.chunks:
+            yield chunk
+        raise self.failure
+
+    async def aclose(self) -> None:
+        return None
+
+
 def test_exact_local_replay_uses_terminal_state_and_shared_projection() -> None:
     response = AnthropicAdapter.replay_protocol_input_bytes_v1(
         _sse(*_complete_events()), content_type="text/event-stream; charset=utf-8",
@@ -74,6 +113,75 @@ def test_reasoning_only_terminal_response_is_complete_but_has_no_artifact() -> N
     assert response.provider_state["transport_complete"] is True
     assert response.output_shape.reasoning_block_count == 1
     assert response.output_shape.text_block_count == 0
+
+
+def test_ping_between_message_delta_and_message_stop_is_valid() -> None:
+    events = _complete_events()
+    events.insert(-1, {"type": "ping"})
+
+    response = AnthropicAdapter.replay_protocol_input_bytes_v1(
+        _sse(*events), content_type="text/event-stream",
+    )
+
+    assert response.text == "可验证的完整结果"
+    assert response.provider_state["protocol_terminal_event"] == "message_stop"
+
+
+def test_contiguous_multiple_content_blocks_preserve_index_order() -> None:
+    events = _complete_events("第一段")
+    events[4:4] = [
+        {
+            "type": "content_block_start", "index": 1,
+            "content_block": {"type": "text", "text": ""},
+        },
+        {
+            "type": "content_block_delta", "index": 1,
+            "delta": {"type": "text_delta", "text": "第二段"},
+        },
+        {"type": "content_block_stop", "index": 1},
+    ]
+
+    response = AnthropicAdapter.replay_protocol_input_bytes_v1(
+        _sse(*events), content_type="text/event-stream",
+    )
+
+    assert response.text == "第一段第二段"
+
+
+@pytest.mark.parametrize("bad_index", [1, 2, -1, True, None])
+def test_first_content_block_index_must_be_integer_zero(bad_index) -> None:
+    events = _complete_events()
+    events[1]["index"] = bad_index
+
+    with pytest.raises(AnthropicStreamProtocolError) as caught:
+        AnthropicAdapter.replay_protocol_input_bytes_v1(
+            _sse(*events), content_type="text/event-stream",
+        )
+
+    assert caught.value.reason_code in {
+        "ANTHROPIC_SSE_CONTENT_BLOCK_INDEX_INVALID",
+        "ANTHROPIC_SSE_CONTENT_BLOCK_INDEX_NONCONTIGUOUS",
+    }
+
+
+def test_later_content_block_index_gap_fails_closed() -> None:
+    events = _complete_events()
+    events[4:4] = [
+        {
+            "type": "content_block_start", "index": 2,
+            "content_block": {"type": "text", "text": ""},
+        },
+        {"type": "content_block_stop", "index": 2},
+    ]
+
+    with pytest.raises(AnthropicStreamProtocolError) as caught:
+        AnthropicAdapter.replay_protocol_input_bytes_v1(
+            _sse(*events), content_type="text/event-stream",
+        )
+
+    assert caught.value.reason_code == (
+        "ANTHROPIC_SSE_CONTENT_BLOCK_INDEX_NONCONTIGUOUS"
+    )
 
 
 def test_explicit_provider_error_before_content_is_not_transport() -> None:
@@ -212,3 +320,100 @@ async def test_transient_local_aggregation_failure_replays_without_dispatch() ->
     assert response.text == "可验证的完整结果"
     assert FailOnceAdapter.aggregate_calls == 2
     assert adapter.transport_attempt_snapshot()["http_post_attempts"] == 1
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "failure",
+    [
+        httpx.ReadTimeout("iterator timed out after terminal bytes"),
+        asyncio.CancelledError("iterator cancelled after terminal bytes"),
+    ],
+    ids=["timeout", "cancellation"],
+)
+async def test_terminal_bytes_recover_iterator_failure_by_exact_local_replay(
+    failure: BaseException,
+) -> None:
+    raw = _sse(*_complete_events("终态后仍可本地重放"))
+    observer = _CaptureObserver()
+    adapter = AnthropicAdapter(
+        "https://offline.invalid/v1", "offline-memory-secret",
+        transport_policy=SingleDispatchTransportPolicyV1.phase_b(),
+        attempt_observer=observer,
+    )
+    await adapter.client.aclose()
+
+    async def respond(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200, stream=_InjectedStream([raw], failure), request=request,
+            headers={"content-type": "text/event-stream; charset=utf-8"},
+        )
+
+    adapter.client = httpx.AsyncClient(transport=httpx.MockTransport(respond))
+    try:
+        response = await adapter.complete(ModelRequest(
+            model="offline",
+            messages=[Message(role="user", content="offline")],
+            max_output_tokens=32,
+        ))
+    finally:
+        await adapter.client.aclose()
+
+    assert observer.captures == [{
+        "data": raw,
+        "status_code": 200,
+        "content_type": "text/event-stream; charset=utf-8",
+        "encoding": "utf-8",
+        "transport_complete": True,
+    }]
+    assert observer.outcomes == ["response:200"]
+    assert adapter._last_protocol_input_v1 == (
+        raw, "text/event-stream; charset=utf-8", "utf-8",
+    )
+    replayed = AnthropicAdapter.replay_protocol_input_bytes_v1(
+        adapter._last_protocol_input_v1[0],
+        content_type=adapter._last_protocol_input_v1[1],
+        encoding=adapter._last_protocol_input_v1[2],
+    )
+    assert response.model_dump(exclude={"output_shape"}) == replayed.model_dump(
+        exclude={"output_shape"},
+    )
+    assert replayed.text == "终态后仍可本地重放"
+    assert adapter.transport_attempt_snapshot()["http_post_attempts"] == 1
+
+
+@pytest.mark.asyncio
+async def test_unterminated_bytes_before_timeout_remain_incomplete_and_unreplayable() -> None:
+    raw = _sse(*_complete_events()[:-1])
+    observer = _CaptureObserver()
+    adapter = AnthropicAdapter(
+        "https://offline.invalid/v1", "offline-memory-secret",
+        transport_policy=SingleDispatchTransportPolicyV1.phase_b(),
+        attempt_observer=observer,
+    )
+    await adapter.client.aclose()
+
+    async def respond(request: httpx.Request) -> httpx.Response:
+        failure = httpx.ReadTimeout(
+            "iterator timed out before terminal bytes", request=request,
+        )
+        return httpx.Response(
+            200, stream=_InjectedStream([raw], failure), request=request,
+            headers={"content-type": "text/event-stream"},
+        )
+
+    adapter.client = httpx.AsyncClient(transport=httpx.MockTransport(respond))
+    try:
+        with pytest.raises(httpx.ReadTimeout):
+            await adapter.complete(ModelRequest(
+                model="offline",
+                messages=[Message(role="user", content="offline")],
+                max_output_tokens=32,
+            ))
+    finally:
+        await adapter.client.aclose()
+
+    assert observer.captures[0]["data"] == raw
+    assert observer.captures[0]["transport_complete"] is False
+    assert observer.outcomes == ["failure:ReadTimeout"]
+    assert adapter._last_protocol_input_v1 is None

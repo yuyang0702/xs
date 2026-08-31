@@ -364,7 +364,7 @@ class AnthropicAdapter(HttpProvider):
                 raise AnthropicStreamProtocolError(
                     "ANTHROPIC_SSE_EVENT_AFTER_MESSAGE_STOP"
                 )
-            if message_delta_seen and kind != "message_stop":
+            if message_delta_seen and kind not in {"ping", "message_stop"}:
                 raise AnthropicStreamProtocolError(
                     "ANTHROPIC_SSE_EVENT_AFTER_MESSAGE_DELTA"
                 )
@@ -385,10 +385,22 @@ class AnthropicAdapter(HttpProvider):
                     raise AnthropicStreamProtocolError(
                         "ANTHROPIC_SSE_BLOCK_BEFORE_MESSAGE_START"
                     )
-                index = event.get("index", len(blocks))
+                index = event.get("index")
+                if type(index) is not int or index < 0:
+                    raise AnthropicStreamProtocolError(
+                        "ANTHROPIC_SSE_CONTENT_BLOCK_INDEX_INVALID"
+                    )
                 if index in blocks or index in open_blocks:
                     raise AnthropicStreamProtocolError(
                         "ANTHROPIC_SSE_DUPLICATE_CONTENT_BLOCK"
+                    )
+                if index != len(blocks):
+                    raise AnthropicStreamProtocolError(
+                        "ANTHROPIC_SSE_CONTENT_BLOCK_INDEX_NONCONTIGUOUS"
+                    )
+                if open_blocks:
+                    raise AnthropicStreamProtocolError(
+                        "ANTHROPIC_SSE_CONTENT_BLOCK_START_BEFORE_STOP"
                     )
                 block = dict(event.get("content_block") or {})
                 if block.get("type") not in {
@@ -402,7 +414,11 @@ class AnthropicAdapter(HttpProvider):
                 if block.get("type") == "tool_use":
                     tool_json[index] = []
             elif kind == "content_block_delta":
-                index = event.get("index", 0)
+                index = event.get("index")
+                if type(index) is not int or index < 0:
+                    raise AnthropicStreamProtocolError(
+                        "ANTHROPIC_SSE_CONTENT_BLOCK_INDEX_INVALID"
+                    )
                 if index not in open_blocks:
                     raise AnthropicStreamProtocolError(
                         "ANTHROPIC_SSE_DELTA_OUTSIDE_CONTENT_BLOCK"
@@ -428,7 +444,11 @@ class AnthropicAdapter(HttpProvider):
                 elif delta_type == "input_json_delta":
                     tool_json.setdefault(index, []).append(delta.get("partial_json", ""))
             elif kind == "content_block_stop":
-                index = event.get("index", 0)
+                index = event.get("index")
+                if type(index) is not int or index < 0:
+                    raise AnthropicStreamProtocolError(
+                        "ANTHROPIC_SSE_CONTENT_BLOCK_INDEX_INVALID"
+                    )
                 if index not in open_blocks:
                     raise AnthropicStreamProtocolError(
                         "ANTHROPIC_SSE_CONTENT_BLOCK_STOP_UNBALANCED"

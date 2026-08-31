@@ -9,6 +9,7 @@ import httpx
 from novel_flywheel.provider_response_capture import (
     ProviderResponseCaptureError,
     parse_provider_protocol_input_bytes_v1,
+    provider_protocol_input_has_terminal_bytes_v1,
 )
 from novel_flywheel.recovery_engine import FailureClass, ReliabilityFailure
 
@@ -349,12 +350,36 @@ class HttpProvider:
                             chunks.append(chunk)
                     except BaseException:
                         partial = b"".join(chunks)
+                        terminal_bytes_received = (
+                            provider_protocol_input_has_terminal_bytes_v1(
+                                partial, content_type=content_type,
+                                encoding=encoding,
+                            )
+                        )
                         self._capture_provider_protocol_input(
                             partial, status_code=response.status_code,
                             content_type=content_type,
                             encoding=encoding,
-                            transport_complete=False,
+                            transport_complete=terminal_bytes_received,
                         )
+                        if terminal_bytes_received:
+                            self._last_protocol_input_v1 = (
+                                partial, content_type, encoding,
+                            )
+                            try:
+                                events, result = (
+                                    parse_provider_protocol_input_bytes_v1(
+                                        partial, content_type=content_type,
+                                        encoding=encoding,
+                                    )
+                                )
+                            except ProviderResponseCaptureError as exc:
+                                raise ProviderResponseError(
+                                    "Provider returned invalid terminal "
+                                    f"response bytes from {response.url}"
+                                ) from exc
+                            self._after_http_response(response.status_code)
+                            return events, result
                         raise
                     entity = b"".join(chunks)
                     self._capture_provider_protocol_input(

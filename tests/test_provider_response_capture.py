@@ -172,6 +172,24 @@ def test_sse_parser_replays_unicode_newline_and_escaping_exactly() -> None:
     ]
 
 
+@pytest.mark.parametrize(
+    "raw",
+    [
+        b'data: {"type":"message_stop"}',
+        b'data: {"type":"message_stop"}\n',
+        b'data: [DONE]\r\n',
+    ],
+    ids=["no-newline", "single-newline", "done-single-newline"],
+)
+def test_sse_parser_rejects_eof_without_empty_line_delimiter(raw: bytes) -> None:
+    with pytest.raises(
+        ProviderResponseCaptureError, match="SSE_EVENT_DELIMITER_MISSING",
+    ):
+        parse_provider_protocol_input_bytes_v1(
+            raw, content_type="text/event-stream", encoding="utf-8",
+        )
+
+
 def test_duplicate_capture_is_rejected_without_overwrite(tmp_path: Path) -> None:
     store = _store(tmp_path)
     metadata = _metadata()
