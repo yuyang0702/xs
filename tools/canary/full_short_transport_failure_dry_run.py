@@ -12,6 +12,7 @@ import argparse
 import asyncio
 import hashlib
 import json
+import os
 from pathlib import Path
 import subprocess
 import tempfile
@@ -318,7 +319,15 @@ def main() -> int:
     args = parser.parse_args()
     if args.output.exists():
         raise SystemExit("output already exists")
-    result = asyncio.run(_run(args))
+    previous_canonical_flag = os.environ.get("NOVEL_SHORT_CANONICAL_V2")
+    os.environ["NOVEL_SHORT_CANONICAL_V2"] = "1"
+    try:
+        result = asyncio.run(_run(args))
+    finally:
+        if previous_canonical_flag is None:
+            os.environ.pop("NOVEL_SHORT_CANONICAL_V2", None)
+        else:
+            os.environ["NOVEL_SHORT_CANONICAL_V2"] = previous_canonical_flag
     args.output.write_text(
         json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
         encoding="utf-8",

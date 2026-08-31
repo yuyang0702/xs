@@ -294,6 +294,15 @@ def test_transport_failure_private_path_components_stay_bounded() -> None:
     assert max(map(len, _SCENARIO_SHORT_NAME.values())) == 1
 
 
+def test_transport_failure_dry_run_restores_canonical_environment_flag() -> None:
+    from tools.canary import full_short_transport_failure_dry_run as dry_run
+
+    source = Path(dry_run.__file__).read_text(encoding="utf-8")
+    assert 'previous_canonical_flag = os.environ.get(' in source
+    assert 'os.environ["NOVEL_SHORT_CANONICAL_V2"] = "1"' in source
+    assert 'os.environ.pop("NOVEL_SHORT_CANONICAL_V2", None)' in source
+
+
 @pytest.mark.parametrize(
     ("field", "value"),
     [
