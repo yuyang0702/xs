@@ -1218,14 +1218,44 @@ class FullShortDispatchLedgerObserverV1:
                  "CAPTURE_CONTRACT_SCHEMA_INVALID")
         _require(type(contract_runtime_input_required) is bool,
                  "CAPTURE_CONTRACT_INPUT_POLICY_INVALID")
+        logical_stage_id = self._logical_stage_identity(stage_id)
         self.pending_stage_context = {
             "stage_id": stage_id,
+            "logical_stage_base_id": stage_id,
+            "logical_stage_id": logical_stage_id,
             "contract_name": contract_name,
             "contract_version": contract_version,
             "contract_schema_sha256": contract_schema_sha256,
             "contract_runtime_input_required": contract_runtime_input_required,
             "capture_enforcement_required": True,
         }
+
+    def _logical_stage_identity(self, stage_id: str) -> str:
+        """Allocate one durable logical occurrence, reusing only a rejection."""
+
+        attempts = list(
+            self.store.load_ledger(self.execution_id).get("attempts") or []
+        )
+        matching = [
+            item for item in attempts
+            if item.get("logical_stage_base_id", item.get("logical_stage_id"))
+            == stage_id
+        ]
+        if matching and matching[-1].get("state") == "LOCAL_ATTEMPT_REJECTED":
+            logical_stage_id = str(matching[-1].get("logical_stage_id") or "")
+            _require(
+                _ID.fullmatch(logical_stage_id) is not None,
+                "LOGICAL_STAGE_ID_INVALID",
+            )
+            return logical_stage_id
+        occurrence = len({
+            str(item.get("logical_stage_id") or "") for item in matching
+        }) + 1
+        if occurrence == 1:
+            return stage_id
+        digest = hashlib.sha256(stage_id.encode("utf-8")).hexdigest()[:8]
+        suffix = f".{occurrence}.{digest}"
+        return f"{stage_id[:160 - len(suffix)]}{suffix}"
 
     def bind_route(
         self, *, role: str, lane: str, provider_id: str, model_id: str,
@@ -1281,8 +1311,11 @@ class FullShortDispatchLedgerObserverV1:
         if self.pending_stage_context is None:
             response_schema = request.response_schema or {}
             schema_value = response_schema.get("schema", response_schema)
+            stage_id = str(route.get("role") or "model")
             self.pending_stage_context = {
-                "stage_id": str(route.get("role") or "model"),
+                "stage_id": stage_id,
+                "logical_stage_base_id": stage_id,
+                "logical_stage_id": self._logical_stage_identity(stage_id),
                 "contract_name": str(
                     response_schema.get("name") or "unstructured_text"
                 ),
@@ -1401,7 +1434,7 @@ class FullShortDispatchLedgerObserverV1:
             total_requested <= self.policy["total_output_token_hard_cap"],
             "TOTAL_OUTPUT_TOKEN_CAP_EXHAUSTED",
         )
-        logical_stage_id = str(self.pending_stage_context["stage_id"])
+        logical_stage_id = str(self.pending_stage_context["logical_stage_id"])
         prior_logical_attempts = [
             item for item in attempts
             if item.get("logical_stage_id", item.get("stage"))
@@ -1450,6 +1483,9 @@ class FullShortDispatchLedgerObserverV1:
             "bound_role": route["role"],
             "bound_lane": route["lane"],
             "stage": self.pending_stage_context["stage_id"],
+            "logical_stage_base_id": self.pending_stage_context[
+                "logical_stage_base_id"
+            ],
             "logical_stage_id": logical_stage_id,
             "contract_name": self.pending_stage_context["contract_name"],
             "contract_version": self.pending_stage_context["contract_version"],
@@ -1626,6 +1662,14 @@ class FullShortDispatchLedgerObserverV1:
     def after_http_failure(self, *, failure_kind: str) -> None:
         ordinal = self.pending_ordinal
         if ordinal is None:
+            # A local authorization/cap failure before the durable dispatch
+            # seam cannot leave request identity attached to a later route.
+            # No external completion is possible because no attempt ordinal
+            # was recorded.
+            self.bound_route = None
+            self.expected_provider_payload = None
+            self.egress_intent_sha256 = None
+            self.pending_stage_context = None
             return
 
         def mutate(body: dict[str, Any]) -> dict[str, Any]:

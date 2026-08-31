@@ -121,8 +121,9 @@ def _store(tmp_path: Path) -> FullShortDurableExecutionStoreV1:
 
 def _authorize_offline(
     store: FullShortDurableExecutionStoreV1, execution_id: str,
+    *, expected_stage_calls: int = 1,
 ) -> tuple[dict, dict, dict]:
-    policy = _policy(store)
+    policy = _policy(store, expected_stage_calls=expected_stage_calls)
     permission = store.create_permission(
         execution_id=execution_id,
         authorization_text_sha256="3" * 64,
@@ -529,6 +530,10 @@ def test_closed_local_rejection_allows_only_same_session_bounded_recovery(
     assert [attempt["state"] for attempt in ledger["attempts"]] == [
         "LOCAL_ATTEMPT_REJECTED", "LOCAL_STAGE_COMPLETE",
     ]
+    assert ledger["attempts"][0]["logical_stage_id"] == (
+        ledger["attempts"][1]["logical_stage_id"]
+    )
+    assert ledger["attempts"][0]["logical_stage_base_id"] == "planning"
     assert len(ledger["completed_stage_receipts"]) == 1
     completion = build_full_short_completion_receipt_v1(
         execution_id="local-rejection-recovery", policy=_policy(store),
@@ -1342,6 +1347,71 @@ def test_new_logical_stage_over_cap_is_rejected_before_dispatch(
 
     assert capped.value.reason_code == "LOGICAL_STAGE_CALL_CAP_EXHAUSTED"
     assert len(store.load_ledger("logical-cap")["attempts"]) == 1
+
+
+def test_repeated_workflow_node_allocates_distinct_logical_occurrences(
+    tmp_path: Path,
+) -> None:
+    store = _store(tmp_path)
+    execution_id = "repeated-workflow-node"
+    policy = _policy(store, expected_stage_calls=2)
+    _authorize_offline(store, execution_id, expected_stage_calls=2)
+    observer = FullShortDispatchLedgerObserverV1(
+        store=store, execution_id=execution_id, policy=policy,
+        authorized_routes=_routes(), egress_policy=_egress(),
+    )
+
+    for _ in range(2):
+        observer.bind_stage_context(
+            stage_id="draft", contract_name="draft_text",
+            contract_version=1, contract_schema_sha256=_hash({}),
+        )
+        observer.bind_route(
+            role="planning", lane="primary", provider_id="provider",
+            model_id="model-id", route_fingerprint="9" * 64,
+        )
+        observer.bind_model_request(protocol="anthropic", request=_request())
+        observer.before_http_dispatch(
+            method="POST", url="https://unit.test/v1/messages",
+            payload=_payload(),
+        )
+        observer.capture_provider_protocol_input(
+            data=b"{}", status_code=200, content_type="application/json",
+            encoding="utf-8", transport_complete=True,
+        )
+        observer.after_http_response(status_code=200)
+        observer.mark_local_stage_complete(
+            stage="draft", role="planning",
+            role_binding_sha256=observer.bound_route["role_binding_sha256"],
+            output_sha256="a" * 64, receipt_sha256="b" * 64,
+        )
+
+    attempts = store.load_ledger(execution_id)["attempts"]
+    assert [item["logical_stage_base_id"] for item in attempts] == [
+        "draft", "draft",
+    ]
+    assert attempts[0]["logical_stage_id"] == "draft"
+    assert attempts[1]["logical_stage_id"].startswith("draft.2.")
+
+
+def test_pre_dispatch_failure_releases_only_unrecorded_request_binding(
+    tmp_path: Path,
+) -> None:
+    store = _store(tmp_path)
+    _authorize_offline(store, "pre-dispatch-release")
+    observer = _observer(store, "pre-dispatch-release")
+
+    observer.after_http_failure(failure_kind="LocalAuthorizationError")
+
+    assert observer.bound_route is None
+    assert observer.expected_provider_payload is None
+    assert observer.egress_intent_sha256 is None
+    assert observer.pending_stage_context is None
+    assert store.load_ledger("pre-dispatch-release")["attempts"] == []
+    observer.bind_route(
+        role="planning", lane="primary", provider_id="provider",
+        model_id="model-id", route_fingerprint="9" * 64,
+    )
 
 
 def test_real_runner_collects_live_bindings_without_secret_lookup(
