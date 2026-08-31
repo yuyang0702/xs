@@ -111,8 +111,6 @@ def classify_completion_failure(exc: BaseException) -> FailureClass:
     model_failure_classes = {
         "input_context_overflow": FailureClass.CONTEXT_CAPACITY,
         "output_limit": FailureClass.OUTPUT_TRUNCATION,
-        "transport_interrupted": FailureClass.TRANSPORT,
-        "provider_rejection": FailureClass.CREDENTIAL,
     }
     if model_failure in model_failure_classes:
         return model_failure_classes[model_failure]

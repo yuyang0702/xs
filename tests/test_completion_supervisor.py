@@ -54,6 +54,15 @@ def test_unknown_route_wrapper_does_not_default_to_transport() -> None:
     assert classify_completion_failure(wrapped) == FailureClass.UNKNOWN
 
 
+def test_untyped_transport_like_message_does_not_authorize_retry() -> None:
+    assert (
+        classify_completion_failure(
+            RuntimeError("ConnectError: all connection attempts failed")
+        )
+        == FailureClass.UNKNOWN
+    )
+
+
 def test_task_incident_preserves_nested_reasoning_only_provenance() -> None:
     original = ReasoningOnlyFinalArtifactUnavailableError(receipt={
         "finish_reason": "max_tokens",
