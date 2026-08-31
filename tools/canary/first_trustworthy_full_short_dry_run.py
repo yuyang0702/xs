@@ -21,8 +21,6 @@ import subprocess
 import tempfile
 from typing import Any, Callable
 
-import httpx
-
 from novel_flywheel.db import Database
 from novel_flywheel.failure_boundary import failure_evidence_sha256
 from novel_flywheel.full_short_execution import (
@@ -31,6 +29,12 @@ from novel_flywheel.full_short_execution import (
     validate_full_short_canonical_authorization_v1,
 )
 from novel_flywheel.models import ModelResult
+from novel_flywheel.offline_http_transport import (
+    OfflineHttpRequestV1,
+    OfflineHttpResponseV1,
+    build_offline_http_client_v1,
+    build_offline_http_transport_v1,
+)
 from novel_flywheel.provider_response_capture import (
     CONTRACT_RUNTIME_INPUT_BYTES,
     PROVIDER_PROTOCOL_INPUT_BYTES,
@@ -543,8 +547,8 @@ class _OfflineHttpTransportFactory:
 
     def build(
         self, *, protocol: str, destination: str, bound_role: str | None = None,
-    ) -> httpx.MockTransport:
-        async def respond(request: httpx.Request) -> httpx.Response:
+    ) -> Any:
+        async def respond(request: OfflineHttpRequestV1) -> OfflineHttpResponseV1:
             payload = json.loads(request.content.decode("utf-8"))
             system, user = _request_messages(payload)
             role = bound_role or _request_role(system, user)
@@ -627,9 +631,9 @@ class _OfflineHttpTransportFactory:
                     "stop_reason": "end_turn",
                     "usage": {"input_tokens": 2400, "output_tokens": 1200},
                 }
-            return httpx.Response(200, json=body, request=request)
+            return OfflineHttpResponseV1(200, json_body=body)
 
-        return httpx.MockTransport(respond)
+        return build_offline_http_transport_v1(respond)
 
 
 class _CapturedResponseReplayTransportFactory:
@@ -652,8 +656,8 @@ class _CapturedResponseReplayTransportFactory:
 
     def build(
         self, *, protocol: str, destination: str, bound_role: str | None = None,
-    ) -> httpx.MockTransport:
-        async def respond(request: httpx.Request) -> httpx.Response:
+    ) -> Any:
+        async def respond(request: OfflineHttpRequestV1) -> OfflineHttpResponseV1:
             ordinal = len(self.call_plan) + 1
             if ordinal > len(self.ledger["attempts"]):
                 raise RuntimeError("FULL_SHORT_CAPTURE_REPLAY_EXTRA_DISPATCH")
@@ -703,12 +707,12 @@ class _CapturedResponseReplayTransportFactory:
                     "provider_protocol_capture_receipt_sha256"
                 ],
             )
-            return httpx.Response(
-                200, content=data, request=request,
+            return OfflineHttpResponseV1(
+                200, content=data,
                 headers={"content-type": str(header["content_type"])},
             )
 
-        return httpx.MockTransport(respond)
+        return build_offline_http_transport_v1(respond)
 
 
 class _DiagnosticObserverProxy:
@@ -758,7 +762,7 @@ class _LowestHttpSeamRegistry(ProviderRegistry):
                 observer, http_transport_factory,
             )
         super().__init__(*args, **kwargs)
-        self.open_clients: list[httpx.AsyncClient] = []
+        self.open_clients: list[Any] = []
 
     @property
     def call_plan(self) -> list[dict[str, Any]]:
@@ -789,10 +793,10 @@ class _LowestHttpSeamRegistry(ProviderRegistry):
             }
             raise
         previous = resolved.adapter.client
-        resolved.adapter.client = httpx.AsyncClient(
-            transport=self.transport_factory.build(
+        resolved.adapter.client = build_offline_http_client_v1(
+            self.transport_factory.build(
                 protocol=protocol, destination=destination, bound_role=role,
-            ), timeout=30,
+            ), timeout_seconds=30,
         )
         self.open_clients.extend([previous, resolved.adapter.client])
         return resolved
