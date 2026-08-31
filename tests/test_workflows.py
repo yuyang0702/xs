@@ -1725,11 +1725,27 @@ class ProductionSizedShortGateway:
             return self._result(role, json.dumps(payload, ensure_ascii=False))
         if role == "review":
             return self._result(role, quality_review(91, 92, 90, issues=[]))
-        if role == "maintenance" and "maintenance-window-request-v1" in user:
+        if "maintenance-window-request-v1" in user:
             return self._result(role, json.dumps({
                 "version": "maintenance-window-receipt-v1",
                 "facts": [], "state_deltas": [], "state_transitions": [],
                 "world_rules": [], "timeline": [],
+            }, ensure_ascii=False))
+        if "short_maintenance_business_complete_v2" in user:
+            authority = json.loads(user)
+            manuscript_sha256 = authority["authoritative_manuscript"]["sha256"]
+            return self._result(role, json.dumps({
+                "facts": [{
+                    "fact_key": "ending.public_ledger",
+                    "value": "The investigator publishes the complete ledger.",
+                }],
+                "state": {},
+                "coverage": {
+                    "manuscript_sha256": manuscript_sha256,
+                    "complete": True,
+                },
+                "disposition": "changes",
+                "no_change_reason": "not_applicable_changes_present",
             }, ensure_ascii=False))
         if role == "maintenance":
             return self._result(role, json.dumps({
