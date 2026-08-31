@@ -7943,7 +7943,13 @@ class WorkflowService:
                 receipt: object = {}
                 last_issues = [{
                     "code": "receipt_schema",
-                    "message": safe_local_validation_message(exc),
+                    "message": "planning adaptation receipt schema is invalid",
+                    "failure": _safe_workflow_event_metadata(
+                        exc,
+                        boundary="planning.adaptation.segment_receipt",
+                        code="planning.adaptation_receipt_invalid",
+                        family="provider.response_invalid",
+                    ),
                 }]
             else:
                 receipt = normalize_planning_adaptation_receipt(
@@ -8935,7 +8941,7 @@ class WorkflowService:
                     )
                 except (TypeError, ValueError, json.JSONDecodeError) as exc:
                     last_issues = [
-                        "receipt_schema:" + safe_local_validation_message(exc)
+                        "receipt_schema:planning_adaptation_facet_invalid"
                     ]
                     rebound_fields: list[str] = []
                 else:
@@ -9281,7 +9287,7 @@ class WorkflowService:
                         contract_name="planning_adaptation_facet",
                     )
                 except (TypeError, ValueError, json.JSONDecodeError) as exc:
-                    last_error = safe_local_validation_message(exc)
+                    last_error = "planning adaptation facet receipt is invalid"
                 else:
                     (
                         receipt, semantic_issues, rebound_fields,
@@ -10424,13 +10430,12 @@ class WorkflowService:
                         expected_event_ids=expected_event_ids,
                     )
                 except (TypeError, ValueError, json.JSONDecodeError) as exc:
-                    last_error = safe_local_validation_message(exc)
+                    last_error = "planning hierarchy regional receipt is invalid"
                     if not attempt.is_last:
                         protocol_retries += 1
                         continue
                     raise ValueError(
-                        "规划分层区域审核回执在重试后仍不完整："
-                        + last_error[:500]
+                        "规划分层区域审核回执在重试后仍不完整"
                     ) from exc
                 self._save_planning_hierarchy_checkpoint(
                     run_path,
@@ -10646,7 +10651,7 @@ class WorkflowService:
                             inherited=batch,
                         )
                     except (TypeError, ValueError, json.JSONDecodeError) as exc:
-                        last_error = safe_local_validation_message(exc)
+                        last_error = "planning hierarchy merge receipt is invalid"
                         if not attempt.is_last:
                             protocol_retries += 1
                             continue
@@ -10877,7 +10882,13 @@ class WorkflowService:
                 receipt: object = {}
                 last_issues = [{
                     "code": "whole_receipt_schema",
-                    "message": safe_local_validation_message(exc),
+                    "message": "planning adaptation whole receipt schema is invalid",
+                    "failure": _safe_workflow_event_metadata(
+                        exc,
+                        boundary="planning.adaptation.whole_receipt",
+                        code="planning.adaptation_receipt_invalid",
+                        family="provider.response_invalid",
+                    ),
                 }]
             else:
                 receipt = normalize_planning_adaptation_whole_receipt(payload)
@@ -13367,6 +13378,16 @@ class WorkflowService:
                     == "planning_packet_protocol_exhausted"
                     for item in repair_feedback
                 )
+                failure_projection = _safe_workflow_event_metadata(
+                    exc,
+                    boundary="planning.adaptation.candidate_generation",
+                    code="planning.adaptation_candidate_failed",
+                    family="provider.response_invalid",
+                )
+                safe_repair_feedback = _safe_workflow_issue_metadata(
+                    repair_feedback,
+                    boundary="planning.adaptation.candidate_generation",
+                )
                 comparison = {
                     "improved": False,
                     "previous_issue_keys": sorted(planning_issue_keys(best_issues)),
@@ -13375,11 +13396,11 @@ class WorkflowService:
                     "resolved_issue_keys": [],
                     "retained_issue_keys": sorted(planning_issue_keys(best_issues)),
                     "reason": "candidate_generation_failed",
-                    "error": safe_local_validation_message(exc),
+                    "failure": failure_projection,
                     "failure_class": failure_class,
                     "candidate_segment": target_segment,
                     "candidate_segments": list(target_unit),
-                    "repair_feedback": repair_feedback,
+                    "repair_feedback": safe_repair_feedback,
                     **scope,
                 }
                 recovery_state = record_planning_candidate(
@@ -13391,18 +13412,18 @@ class WorkflowService:
                 )
                 if protocol_exhausted:
                     current_protocol_failures.append({
-                        "error": safe_local_validation_message(exc),
+                        "failure": failure_projection,
                         "mode": mode,
                         "attempt": attempt,
                         "candidate_segments": list(target_unit),
-                        "issues": repair_feedback,
+                        "issues": safe_repair_feedback,
                     })
                     if isinstance(exc, GeneratedArtifactShapeError):
                         last_protocol_exception = exc
                 if failure_class != "normal_invalid_output":
                     failure_record = {
                         "failure_class": failure_class,
-                        "error": safe_local_validation_message(exc),
+                        "failure": failure_projection,
                         "attempt": attempt,
                         "mode": mode,
                         "candidate_segment": target_segment,
@@ -15820,11 +15841,20 @@ class WorkflowService:
             chain = parse_chain(raw)
         except (TypeError, ValueError, json.JSONDecodeError) as exc:
             chain = None
-            last_error = safe_local_validation_message(exc)
+            last_failure = _safe_workflow_event_metadata(
+                exc,
+                boundary="planning.causal_chain.parse",
+                code="planning.causal_chain_invalid",
+                family="provider.response_invalid",
+            )
         else:
-            last_error = (
-                "" if chain is not None
-                else "semantic causal-chain validation failed"
+            last_failure = (
+                {}
+                if chain is not None else {
+                    "failure_contract": "domain-fixed-projection-v1",
+                    "failure_code": "planning.causal_chain_semantic_invalid",
+                    "failure_family": "runtime.semantic_validation",
+                }
             )
         for repair_attempt in range(1, 3):
             if valid(chain):
@@ -15833,7 +15863,7 @@ class WorkflowService:
                 run_id, "warning", "causal_chain_repair",
                 "因果链未覆盖全部正式事件，正在单独修正该资料",
                 stage="planning", metadata={
-                    "attempt": repair_attempt, "error": last_error[:300],
+                    "attempt": repair_attempt, "failure": last_failure,
                 },
             )
             if repair_attempt == 2:
@@ -15841,20 +15871,27 @@ class WorkflowService:
                     repaired = await split_causal_chain({
                         "trigger": "protocol_invalid",
                         "pressure": "split",
-                        "provider_error": last_error[:500],
+                        "provider_failure": last_failure,
                     })
                 except asyncio.CancelledError:
                     raise
                 except Exception as exc:
                     chain = None
-                    last_error = safe_local_validation_message(exc)
+                    last_failure = _safe_workflow_event_metadata(
+                        exc,
+                        boundary="planning.causal_chain.split_recovery",
+                        code="planning.causal_chain_invalid",
+                        family="provider.response_invalid",
+                    )
                     continue
             else:
                 repaired = await self._stage(
                     run_id, run_path, project, "planning", constraints,
                     prompt + (
-                        f"\n\n第 {repair_attempt} 次输出没有通过完整性检查："
-                        f"{last_error[:500]}\n重新返回完整 JSON，尤其确保"
+                        f"\n\n第 {repair_attempt} 次输出没有通过完整性检查。"
+                        "只依据以下固定失败投影修复协议："
+                        + json.dumps(last_failure, ensure_ascii=False)
+                        + "\n重新返回完整 JSON，尤其确保"
                         "covered_event_ids 与正式大纲事件 ID 完全同序、无缺失。"
                     ),
                     suffix=f"-causal-chain-repair-{repair_attempt}", allow_tools=False,
@@ -15881,17 +15918,26 @@ class WorkflowService:
                 chain = parse_chain(repaired)
             except (TypeError, ValueError, json.JSONDecodeError) as exc:
                 chain = None
-                last_error = safe_local_validation_message(exc)
+                last_failure = _safe_workflow_event_metadata(
+                    exc,
+                    boundary="planning.causal_chain.repair_parse",
+                    code="planning.causal_chain_invalid",
+                    family="provider.response_invalid",
+                )
             else:
-                last_error = (
-                    "" if chain is not None
-                    else "semantic causal-chain validation failed"
+                last_failure = (
+                    {}
+                    if chain is not None else {
+                        "failure_contract": "domain-fixed-projection-v1",
+                        "failure_code": "planning.causal_chain_semantic_invalid",
+                        "failure_family": "runtime.semantic_validation",
+                    }
                 )
         if not valid(chain):
             self.db.add_run_event(
                 run_id, "error", "causal_chain_not_ready",
                 "因果链尚未完整生成，已在正文开始前停止",
-                stage="planning", metadata={"error": last_error[:500]},
+                stage="planning", metadata={"failure": last_failure},
             )
             raise ValueError("短篇因果链未通过事件覆盖和因果完整性检查，尚未生成正文")
         self._validate_short_authority_graph(planning_ir, chain)
@@ -16374,7 +16420,13 @@ class WorkflowService:
             except (TypeError, ValueError, json.JSONDecodeError) as exc:
                 last_issues = [{
                     "code": "invalid_manifest_json",
-                    "message": safe_local_validation_message(exc),
+                    "message": "execution manifest JSON is invalid",
+                    "failure": _safe_workflow_event_metadata(
+                        exc,
+                        boundary="planning.execution_manifest.json",
+                        code="planning.execution_manifest_invalid",
+                        family="provider.response_invalid",
+                    ),
                 }]
                 if schema_repairs >= max_schema_repairs:
                     break
@@ -16390,7 +16442,13 @@ class WorkflowService:
                 except ValueError as exc:
                     last_issues = [{
                         "code": "source_evidence_authority_conflict",
-                        "message": safe_local_validation_message(exc),
+                        "message": "execution manifest evidence authority conflicts",
+                        "failure": _safe_workflow_event_metadata(
+                            exc,
+                            boundary="planning.execution_manifest.evidence",
+                            code="planning.execution_manifest_invalid",
+                            family="runtime.authority_conflict",
+                        ),
                     }]
                     if schema_repairs >= max_schema_repairs:
                         break
@@ -16456,7 +16514,13 @@ class WorkflowService:
                 except (TypeError, ValueError) as exc:
                     last_issues = [{
                     "code": "invalid_manifest_schema",
-                    "message": safe_local_validation_message(exc),
+                    "message": "execution manifest schema is invalid",
+                    "failure": _safe_workflow_event_metadata(
+                        exc,
+                        boundary="planning.execution_manifest.schema",
+                        code="planning.execution_manifest_invalid",
+                        family="provider.response_invalid",
+                    ),
                     }]
                     if schema_repairs >= max_schema_repairs:
                         break
@@ -16640,7 +16704,13 @@ class WorkflowService:
                 receipt_payload = {}
                 last_issues = [{
                     "code": "receipt_schema",
-                    "message": safe_local_validation_message(exc),
+                    "message": "execution manifest receipt schema is invalid",
+                    "failure": _safe_workflow_event_metadata(
+                        exc,
+                        boundary="review.execution_manifest_receipt.schema",
+                        code="review.execution_manifest_receipt_invalid",
+                        family="provider.response_invalid",
+                    ),
                 }]
             else:
                 for raw_item in (receipt_payload.get("beat_receipts") or []):
@@ -17166,7 +17236,13 @@ class WorkflowService:
                 "receipt_status": "failed" if protocol_failure else "not_ready",
                 "issues": failure_issues or [{
                     "code": "manifest_failure",
-                    "message": safe_local_validation_message(exc),
+                    "message": "execution manifest failed closed",
+                    "failure": _safe_workflow_event_metadata(
+                        exc,
+                        boundary="planning.execution_manifest.finalize",
+                        code="planning.execution_manifest_invalid",
+                        family="runtime.authority_conflict",
+                    ),
                 }],
             }, ensure_ascii=False, indent=2))
             self.db.add_run_event(
@@ -17792,7 +17868,13 @@ class WorkflowService:
             safe_state, safe_transitions = {}, []
             conflicts = [{
                 "state_path": "state",
-                "reason": safe_local_validation_message(exc),
+                "reason": "maintenance state proposal is invalid",
+                "failure": _safe_workflow_event_metadata(
+                    exc,
+                    boundary="maintenance.state_proposal",
+                    code="maintenance.state_proposal_invalid",
+                    family="runtime.authority_conflict",
+                ),
                 "proposal_sha256": canonical_sha256(candidate.get("state")),
             }]
         conflicts = [*shape_conflicts, *conflicts]
@@ -17855,7 +17937,13 @@ class WorkflowService:
                     fact_key = "invalid-fact"
                 conflicts.append({
                     "fact_key": fact_key,
-                    "reason": safe_local_validation_message(exc),
+                    "reason": "maintenance fact proposal is invalid",
+                    "failure": _safe_workflow_event_metadata(
+                        exc,
+                        boundary="maintenance.fact_proposal",
+                        code="maintenance.fact_proposal_invalid",
+                        family="runtime.authority_conflict",
+                    ),
                     "proposal_sha256": canonical_sha256(raw),
                 })
             else:
@@ -19318,7 +19406,7 @@ class WorkflowService:
                 if isinstance(exc, FinalReviewJSONError):
                     report["status"] = "final_review_incomplete"
                     report["failure_reasons"] = [
-                        safe_local_validation_message(exc)
+                        "终审结构化恢复未完成；最佳候选已保留。"
                     ]
                     report["failure_detail"] = exc.detail
                     report["final_review_recovery"] = {
@@ -21143,8 +21231,8 @@ class WorkflowService:
 
         try:
             topology = planning_ownership_topology(planning_ir)
-        except ValueError as exc:
-            return [safe_local_validation_message(exc)]
+        except ValueError:
+            return ["planning_ir_invalid"]
         raw_coverage = causal_chain.get("covered_event_ids")
         if not isinstance(raw_coverage, list):
             return ["causal_coverage_shape"]
@@ -24311,7 +24399,13 @@ class WorkflowService:
             except (json.JSONDecodeError, ValueError) as exc:
                 receipt_issues = [{
                     "code": "invalid_receipt",
-                    "message": safe_local_validation_message(exc),
+                    "message": "draft semantic receipt schema is invalid",
+                    "failure": _safe_workflow_event_metadata(
+                        exc,
+                        boundary="review.draft_semantic_receipt.schema",
+                        code="review.draft_semantic_receipt_invalid",
+                        family="provider.response_invalid",
+                    ),
                 }]
             else:
                 if semantic_authority is not None:
@@ -24600,10 +24694,10 @@ class WorkflowService:
                 catalog, expected_beat_ids=expected_beat_ids,
                 expected_manifest_sha256=expected_manifest_sha256,
             )
-        except ValueError as exc:
+        except ValueError:
             return [{
                 "code": "obligation_catalog",
-                "message": safe_local_validation_message(exc),
+                "message": "whole-story obligation catalog is invalid",
             }]
         return []
 
@@ -24868,7 +24962,13 @@ class WorkflowService:
             except (json.JSONDecodeError, ValueError) as exc:
                 receipt_issues = [{
                     "code": "receipt_schema",
-                    "message": safe_local_validation_message(exc),
+                    "message": "whole-draft semantic receipt schema is invalid",
+                    "failure": _safe_workflow_event_metadata(
+                        exc,
+                        boundary="review.whole_draft_receipt.schema",
+                        code="review.whole_draft_receipt_invalid",
+                        family="provider.response_invalid",
+                    ),
                 }]
             else:
                 if semantic_authority is not None:
@@ -26621,7 +26721,12 @@ class WorkflowService:
                                 "task_id": contract.task_id,
                                 "failed_unit_id": unit.unit_id,
                                 "accepted_unit_ids": sorted(accepted_by_id),
-                                "failure": safe_local_validation_message(exc),
+                                "failure": _safe_workflow_event_metadata(
+                                    exc,
+                                    boundary="draft.local_repair_unit",
+                                    code="draft.local_repair_unit_failed",
+                                    family="runtime.semantic_validation",
+                                ),
                                 "repair_scope_kind": "same_unit_resume",
                             },
                         )
@@ -26799,7 +26904,12 @@ class WorkflowService:
                         "task_id": contract.task_id,
                         "repair_scope_kind": "owned_segment_rebuild",
                         "unit_ids": [unit.unit_id for unit in units],
-                        "failure": safe_local_validation_message(exc),
+                        "failure": _safe_workflow_event_metadata(
+                            exc,
+                            boundary="draft.local_repair_escalation",
+                            code="draft.local_repair_escalated",
+                            family="runtime.semantic_validation",
+                        ),
                     },
                 )
                 return await retry_same_scope([
@@ -28483,7 +28593,7 @@ class WorkflowService:
                     family="model.protocol_invalid",
                 ),
             )
-            raise RevisionPlanError(f"Structural revision plan failed: {exc}") from exc
+            raise RevisionPlanError("Structural revision plan failed") from exc
         else:
             if plan.get("deferred_segments"):
                 self.db.add_run_event(
@@ -28556,7 +28666,11 @@ class WorkflowService:
         )
         report["status"] = "halted"
         report["halt_reason"] = reason
-        report["failure_reasons"] = [safe_local_validation_message(error)]
+        report["failure_reasons"] = [
+            "Structural revision plan failed"
+            if reason == "revision_plan_invalid"
+            else "Polish round input token budget exhausted"
+        ]
         atomic_write(run_path / "outputs" / "best-candidate.md", candidate)
         self._write_quality_report(run_path, report)
         self.db.add_run_event(
@@ -30319,7 +30433,7 @@ class WorkflowService:
                     # recovery may classify the unit, but cannot choose a
                     # hidden model route of its own.
                     raise TargetedGroupError(
-                        safe_local_validation_message(exc)
+                        "targeted stage route exhausted"
                     ) from exc
             if provider_capacity_split is not None:
                 return await complete_capacity_split(provider_capacity_split)
