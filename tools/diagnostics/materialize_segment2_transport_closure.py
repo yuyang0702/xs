@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
+import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Any
 
@@ -57,14 +59,39 @@ def _public(summary: dict[str, Any]) -> dict[str, Any]:
     return {key: summary[key] for key in keys}
 
 
+def _production_matrix_receipt(path: Path) -> dict[str, Any]:
+    root = ET.parse(path).getroot()
+    suites = [root] if root.tag == "testsuite" else list(root.findall("testsuite"))
+    cases = [case for suite in suites for case in suite.findall("testcase")]
+    expected = {"13000", "20000", "30000"}
+    observed: set[str] = set()
+    for case in cases:
+        name = case.get("name", "")
+        for target in expected:
+            if f"[{target}]" in name:
+                observed.add(target)
+        assert case.find("failure") is None
+        assert case.find("error") is None
+        assert case.find("skipped") is None
+    assert observed == expected
+    return {
+        target: "PASS" for target in sorted(expected, key=int)
+    } | {
+        "junit_sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+        "task_owned_regression_count": 0,
+    }
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--normal", type=Path, required=True)
     parser.add_argument("--injected", type=Path, required=True)
+    parser.add_argument("--production-matrix-junit", type=Path, required=True)
     parser.add_argument("--report-dir", type=Path, required=True)
     args = parser.parse_args()
     normal = _read(args.normal)
     injected = _read(args.injected)
+    production_matrix = _production_matrix_receipt(args.production_matrix_junit)
     report = args.report_dir.resolve()
     report.mkdir(parents=True, exist_ok=True)
     for value, expected_calls in ((normal, 70), (injected, 71)):
@@ -81,18 +108,13 @@ def main() -> int:
         "schema": "PlanningFixRevalidationV1", "version": 1,
         "status": "PASS",
         "model_visible_required_roots": ["initial_state", "segments"],
-        "typed_finding_propagation": "PASS_28_FOCUSED_TESTS",
+        "typed_finding_propagation": "PASS",
         "bounded_recovery": "PASS_ONE_LOCAL_REJECTION",
         "restart_fail_closed": True,
         "business_invariant_weakening": False,
         "normal_70_of_70": _public(normal),
         "injected_71_physical_70_logical": _public(injected),
-        "production_length_matrix": {
-            "30000": "PASS_CURRENT_RUN",
-            "13000": "PREEXISTING_FIXTURE_FAILURE_MAINTENANCE_FALLBACK",
-            "20000": "PREEXISTING_FIXTURE_FAILURE_MAINTENANCE_FALLBACK",
-            "task_owned_regression_count": 0,
-        },
+        "production_length_matrix": production_matrix,
     })
     _write(report / "full-short-transport-policy-wiring-v1.json", {
         "schema": "FullShortTransportPolicyWiringV1", "version": 1,
@@ -226,16 +248,16 @@ def main() -> int:
             "no real-capture content special case", "no business weakening",
             "no network retry", "no route/fallback expansion", "no raw evidence in Git",
         ],
-        "remaining_risks": [
-            "The legacy 13K/20K production-length fixture still falls through its "
-            "maintenance fake gateway; 30K and the current-project 70/71 flows pass."
-        ],
+        "remaining_risks": [],
         "why_previous_tests_missed": (
             "Guard and SSE tests stopped before the wrapper, durable ledger, and "
             "real captured reasoning-only topology crossed one integrated boundary."
         ),
-        "resolution_status": "complete",
-        "resolution_detail": "exact replay, typed provenance, durable closure and full flow pass",
+        "resolution_status": "systemically_resolved",
+        "resolution_detail": (
+            "exact replay, typed provenance, durable closure, 13K/20K/30K, "
+            "and full production-shaped flow pass"
+        ),
     })
     return 0
 
