@@ -282,6 +282,18 @@ async def test_production_transport_failure_injection_is_one_dispatch(
     assert len(factory.call_plan) == 1
 
 
+def test_transport_failure_private_path_components_stay_bounded() -> None:
+    from tools.canary.full_short_transport_failure_dry_run import (
+        _SCENARIO_SHORT_NAME,
+    )
+
+    assert _SCENARIO_SHORT_NAME == {
+        "provider_unavailable_complete_response": "b",
+        "ambiguous_external_completion": "c",
+    }
+    assert max(map(len, _SCENARIO_SHORT_NAME.values())) == 1
+
+
 @pytest.mark.parametrize(
     ("field", "value"),
     [

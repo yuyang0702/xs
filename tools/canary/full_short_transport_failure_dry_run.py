@@ -49,6 +49,12 @@ from tools.canary.first_trustworthy_full_short_runner import (
 )
 
 
+_SCENARIO_SHORT_NAME = {
+    "provider_unavailable_complete_response": "b",
+    "ambiguous_external_completion": "c",
+}
+
+
 def _git(repo: Path, *args: str) -> str:
     return subprocess.check_output(
         ["git", *args], cwd=repo, text=True, encoding="utf-8",
@@ -117,17 +123,18 @@ async def _run_scenario(
     private_root: Path, call_plan: list[dict[str, Any]],
     logical_stage_plan: list[dict[str, Any]], scenario: str,
 ) -> dict[str, Any]:
-    execution_id = f"private-full-short-{scenario}"
+    short_name = _SCENARIO_SHORT_NAME[scenario]
+    execution_id = f"private-fs-transport-{short_name}"
     execution_data = _copy_private_data(
         repo=repo, source_project=source_project, project_id=project_id,
-        target=private_root / scenario,
+        target=private_root / short_name,
     )
     private_project = (
         execution_data / "projects" / source_project.name
     )
     manuscript = private_project / "manuscript" / "story.md"
     authority_before = _file_sha256(manuscript)
-    store_root = private_root / f"{scenario}-control"
+    store_root = private_root / f"{short_name}-control"
     actual, public = collect_live_bindings(
         repo=repo, data_dir=execution_data, project_id=project_id,
         run_id=execution_id, logical_stage_plan=logical_stage_plan,
@@ -264,12 +271,12 @@ async def _run(args: argparse.Namespace) -> dict[str, Any]:
         raise RuntimeError("TRANSPORT_FAILURE_PROJECT_NOT_FOUND")
     source_project = Path(str(row["path"])).resolve(strict=True)
     with tempfile.TemporaryDirectory(
-        prefix="full-short-transport-failures-",
+        prefix="fs-tf-",
     ) as name:
         private_root = Path(name)
         discovery_data = _copy_private_data(
             repo=repo, source_project=source_project,
-            project_id=args.project_id, target=private_root / "discovery",
+            project_id=args.project_id, target=private_root / "d",
         )
         call_plan, logical_stage_plan = await _discover_plan(
             repo=repo, data_dir=discovery_data, project_id=args.project_id,
