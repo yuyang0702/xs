@@ -17,8 +17,6 @@ import subprocess
 import tempfile
 from typing import Any
 
-import httpx
-
 from novel_flywheel.db import Database
 from novel_flywheel.full_short_execution import (
     FullShortExecutionPolicyV1,
@@ -29,6 +27,7 @@ from novel_flywheel.offline_http_transport import (
     OfflineHttpRequestV1,
     OfflineHttpResponseV1,
     build_offline_http_transport_v1,
+    offline_read_timeout_v1,
 )
 from novel_flywheel.provider_response_capture import (
     PROVIDER_PROTOCOL_INPUT_BYTES,
@@ -105,7 +104,7 @@ class _FailureInjectionTransportFactory:
                     headers={"content-type": "application/json"},
                 )
             if self.scenario == "ambiguous_external_completion":
-                raise httpx.ReadTimeout(
+                raise offline_read_timeout_v1(
                     "offline injected ambiguous external completion",
                 )
             raise RuntimeError("TRANSPORT_FAILURE_SCENARIO_UNKNOWN")

@@ -60,3 +60,9 @@ def build_offline_http_client_v1(
     transport: Any, *, timeout_seconds: float = 30,
 ) -> Any:
     return httpx.AsyncClient(transport=transport, timeout=timeout_seconds)
+
+
+def offline_read_timeout_v1(message: str) -> BaseException:
+    """Create a typed offline transport timeout without exporting httpx."""
+
+    return httpx.ReadTimeout(message)
