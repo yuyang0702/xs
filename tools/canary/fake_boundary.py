@@ -266,6 +266,39 @@ def _planning_whole_receipt(user: str) -> str:
     })
 
 
+def _planning_hierarchy_receipt(user: str) -> str:
+    source_match = re.search(r"SOURCE SHA256: ([0-9a-f]{64})", user)
+    segments_match = re.search(r"EXPECTED SEGMENTS: (\[[^\n]+\])", user)
+    events_match = re.search(r"EXPECTED EVENT IDS: (\[[^\n]+\])", user)
+    if source_match is None or segments_match is None or events_match is None:
+        raise AssertionError("planning hierarchy authority is incomplete")
+    segments = json.loads(segments_match.group(1))
+    expected = json.loads(events_match.group(1))
+    return json.dumps({
+        "source_sha256": source_match.group(1),
+        "segment_numbers": segments,
+        "event_ids": expected,
+        "causal_order_preserved": True,
+        "adjacent_handoffs_preserved": True,
+        "knowledge_progression_preserved": True,
+        "relationship_progression_preserved": True,
+        "viewpoint_timeline_preserved": True,
+        "promises_ending_preserved": True,
+        "formal_direction_preserved": True,
+        "affected_segments": [],
+        "affected_event_ids": [],
+        "entry_state": "The accepted authority supplies the current entry state.",
+        "exit_state": "The current range hands off in formal order.",
+        "knowledge_state": "Knowledge advances only through owned events.",
+        "relationship_state": "Relationship changes remain action-supported.",
+        "viewpoint_timeline": "Viewpoint and chronology remain unchanged.",
+        "open_promises": ["The approved ending promise remains active."],
+        "resolved_promises": [],
+        "reason": "",
+        "summary": "The hierarchy range preserves the complete authority.",
+    })
+
+
 class DeterministicShortBoundary:
     """Sanitized full-Short responses; no client, credential, or transport."""
 
@@ -361,6 +394,11 @@ class DeterministicShortBoundary:
             return self._result(role, _planning_segment_receipt(user))
         if "SHORT_PLAN_ADAPTATION_WHOLE_STORY_REVIEW_V2" in user:
             return self._result(role, _planning_whole_receipt(user))
+        if (
+            "SHORT_PLAN_ADAPTATION_REGIONAL_REVIEW_V3" in user
+            or "SHORT_PLAN_ADAPTATION_HIERARCHY_REDUCTION_V3" in user
+        ):
+            return self._result(role, _planning_hierarchy_receipt(user))
         if (
             "SHORT_EXECUTION_MANIFEST_V2" in user
             or "SHORT_EXECUTION_MANIFEST_FRAGMENT_V3" in user
