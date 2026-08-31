@@ -1,0 +1,16 @@
+{
+  "schema": "ChildReviewReceiptV1",
+  "version": 1,
+  "reviewer": "initial-a-sse-transport-state-machine",
+  "fork_turns": "none",
+  "mode": "read_only_offline",
+  "result": "CONFIRMED",
+  "findings": [
+    "Both captures are complete valid Anthropic SSE entities.",
+    "Segment 1 has 1546 events and crosses byte-exactly into the 1985-byte Contract Runtime input.",
+    "Segment 2 has 3719 events, only thinking content, max_tokens and message_stop; no provider error is present.",
+    "The pre-contract final-artifact rejection had no legal durable ledger transition."
+  ],
+  "external_actions": 0,
+  "repository_edits": 0
+}

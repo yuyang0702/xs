@@ -1,0 +1,16 @@
+{
+  "schema": "ChildReviewReceiptV1",
+  "version": 1,
+  "reviewer": "initial-b-exception-provenance-adapter",
+  "fork_turns": "none",
+  "mode": "read_only_offline",
+  "result": "CONFIRMED",
+  "findings": [
+    "HTTP transport, SSE decode and Anthropic aggregation completed without exception.",
+    "ModelGateway raised ReasoningOnlyFinalArtifactUnavailableError before Contract Runtime input capture.",
+    "Contract Runtime preserved a typed final-artifact failure, but workflow fallback wrapped it in ModelRoutesExhaustedError.",
+    "CompletionSupervisor defaulted unknown wrapper children to transport, producing the false public outage message."
+  ],
+  "external_actions": 0,
+  "repository_edits": 0
+}

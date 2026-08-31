@@ -1,0 +1,16 @@
+{
+  "schema": "ChildReviewReceiptV1",
+  "version": 1,
+  "reviewer": "initial-c-recovery-idempotency-policy",
+  "fork_turns": "none",
+  "mode": "read_only_offline",
+  "result": "CONTAINED_POLICY_REQUIRED",
+  "findings": [
+    "Current exact-once dispatch prevents duplicate external calls but has no safe proof for a new network retry.",
+    "Complete captures must replay locally; explicit error, proven non-completion and ambiguous completion must not redispatch under current authority.",
+    "Logical and physical attempt identities are distinct; local replay adds zero physical attempts.",
+    "EXACT_REPLAY_ONLY is the safe policy for this authorization design and leaves the 71 physical hard cap unchanged."
+  ],
+  "external_actions": 0,
+  "repository_edits": 0
+}

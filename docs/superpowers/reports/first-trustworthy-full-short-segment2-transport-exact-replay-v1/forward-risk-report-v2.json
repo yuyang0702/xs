@@ -1,0 +1,149 @@
+{
+  "constraint_traceability": [
+    {
+      "evidence": "segment1/2 plus 70/71 capture replay",
+      "implementation": "shared Anthropic projection",
+      "requirement": "exact replay",
+      "test_paths": [
+        "tests/providers/test_anthropic_sse_state_machine.py"
+      ]
+    },
+    {
+      "evidence": "ledger closes without Contract Runtime input",
+      "implementation": "ProviderFinalArtifactRejectionReceiptV1",
+      "requirement": "typed durable rejection",
+      "test_paths": [
+        "tests/test_full_short_execution.py"
+      ]
+    },
+    {
+      "evidence": "nested final-artifact and unknown wrapper tests",
+      "implementation": "recursive classifier and UNKNOWN default",
+      "requirement": "never default downstream failures to transport",
+      "test_paths": [
+        "tests/test_completion_supervisor.py"
+      ]
+    }
+  ],
+  "forbidden_narrowing": [
+    "no real-capture content special case",
+    "no business weakening",
+    "no network retry",
+    "no route/fallback expansion",
+    "no raw evidence in Git"
+  ],
+  "historical_incident_families_checked": [
+    "provider.connection_failed",
+    "provider.reasoning_only_final_artifact_unavailable",
+    "model.output_truncated",
+    "parser.generated_artifact_shape",
+    "planning structured_output_business_incomplete"
+  ],
+  "invalid_output_variants_tested": [
+    "malformed JSON",
+    "delta outside block",
+    "duplicate terminal",
+    "EOF without terminal",
+    "tampered capture"
+  ],
+  "invariant_test_paths": [
+    "tests/providers/test_anthropic_sse_state_machine.py",
+    "tests/test_provider_response_capture.py",
+    "tests/test_final_artifact_guard.py",
+    "tests/test_full_short_execution.py",
+    "tests/test_completion_supervisor.py",
+    "tests/test_short_trustworthy_full_flow.py"
+  ],
+  "model_output_boundary_changed": true,
+  "model_output_topology_classes_tested": [
+    "thinking-only max_tokens",
+    "thinking then text",
+    "text",
+    "tool use",
+    "provider error",
+    "malformed event",
+    "missing terminal"
+  ],
+  "model_output_variants_tested": [
+    "real segment 1",
+    "real segment 2",
+    "normal complete SSE",
+    "partial then error",
+    "large Unicode stream"
+  ],
+  "next_authoritative_boundary_tests": [
+    "70/70 final completion receipt",
+    "71 physical/70 logical completion receipt",
+    "exact replay final artifact hash equality"
+  ],
+  "operational_definition": "Every captured response is terminal-state validated and replayable; non-transport failures never default to transport; only a validated stage receipt mutates authority.",
+  "original_requirement": "Recover exact Segment 2 transport truth offline, correct typed provenance and durable state, and re-close one Full Short authorization.",
+  "production_shaped_tests": [
+    "tools/canary/first_trustworthy_full_short_dry_run.py normal",
+    "tools/canary/first_trustworthy_full_short_dry_run.py injected"
+  ],
+  "projected_failure_mechanisms": [
+    "reasoning consumes output cap before final projection",
+    "wrapper loses exception provenance",
+    "pre-contract ledger remains open",
+    "persistent qualification incorrectly poisons a fresh execution",
+    "ambiguous completion causes redispatch"
+  ],
+  "remaining_risks": [
+    "The legacy 13K/20K production-length fixture still falls through its maintenance fake gateway; 30K and the current-project 70/71 flows pass."
+  ],
+  "resolution_detail": "exact replay, typed provenance, durable closure and full flow pass",
+  "resolution_status": "complete",
+  "scope_classification": "open_world",
+  "sibling_boundaries": [
+    {
+      "boundary": "draft",
+      "disposition": "tested_not_susceptible",
+      "evidence": "captured and replayed in 70/71-call production-shaped flow"
+    },
+    {
+      "boundary": "final_review",
+      "disposition": "tested_not_susceptible",
+      "evidence": "captured and replayed in 70/71-call production-shaped flow"
+    },
+    {
+      "boundary": "maintenance",
+      "disposition": "tested_not_susceptible",
+      "evidence": "captured and replayed in 70/71-call production-shaped flow"
+    },
+    {
+      "boundary": "planning",
+      "disposition": "tested_not_susceptible",
+      "evidence": "captured and replayed in 70/71-call production-shaped flow"
+    },
+    {
+      "boundary": "polish",
+      "disposition": "tested_not_susceptible",
+      "evidence": "captured and replayed in 70/71-call production-shaped flow"
+    },
+    {
+      "boundary": "reader_review",
+      "disposition": "tested_not_susceptible",
+      "evidence": "captured and replayed in 70/71-call production-shaped flow"
+    },
+    {
+      "boundary": "review",
+      "disposition": "tested_not_susceptible",
+      "evidence": "captured and replayed in 70/71-call production-shaped flow"
+    }
+  ],
+  "transport_capacity_variants_tested": [
+    "timeout before first byte",
+    "timeout mid-stream",
+    "cancel after complete body",
+    "473171-byte entity"
+  ],
+  "unknown_variant_behavior": "Reject typed; retain exact capture; do not guess or redispatch.",
+  "unseen_valid_variants_tested": [
+    "keepalive comments",
+    "Unicode multiline text",
+    "large complete entity"
+  ],
+  "version": 2,
+  "why_previous_tests_missed": "Guard and SSE tests stopped before the wrapper, durable ledger, and real captured reasoning-only topology crossed one integrated boundary."
+}

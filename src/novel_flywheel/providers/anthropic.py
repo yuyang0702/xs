@@ -113,10 +113,20 @@ class AnthropicAdapter(HttpProvider):
             try:
                 body = self._aggregate_stream(events)
             except Exception as exc:
-                if strict_snapshot_capture_requested():
-                    snapshot = self._stream_exception_snapshot(events)
-                    attach_exception_snapshot(exc, snapshot)
-                raise
+                replayed = self._replay_last_protocol_input_v1()
+                if replayed is not None:
+                    replay_events, replay_body = replayed
+                    body = (
+                        replay_body
+                        if replay_body is not None
+                        else self._aggregate_stream(replay_events)
+                    )
+                    events = replay_events
+                else:
+                    if strict_snapshot_capture_requested():
+                        snapshot = self._stream_exception_snapshot(events)
+                        attach_exception_snapshot(exc, snapshot)
+                    raise
         usage = body.get("usage", {})
         content = body.get("content", [])
         content_snapshot = safe_capture_provider_content_block_snapshot(

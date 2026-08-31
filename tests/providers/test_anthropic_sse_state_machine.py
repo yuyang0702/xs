@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 
 import pytest
+import httpx
 
 from novel_flywheel.providers.anthropic import (
     AnthropicAdapter,
@@ -10,6 +11,8 @@ from novel_flywheel.providers.anthropic import (
     AnthropicStreamIncompleteError,
     AnthropicStreamProtocolError,
 )
+from novel_flywheel.domain.models import Message, ModelRequest
+from novel_flywheel.providers.http import SingleDispatchTransportPolicyV1
 
 
 def _sse(*events: dict) -> bytes:
@@ -119,3 +122,38 @@ def test_delta_outside_open_block_is_protocol_error() -> None:
         AnthropicAdapter.replay_protocol_input_bytes_v1(
             _sse(*events), content_type="text/event-stream",
         )
+
+
+@pytest.mark.asyncio
+async def test_transient_local_aggregation_failure_replays_without_dispatch() -> None:
+    class FailOnceAdapter(AnthropicAdapter):
+        aggregate_calls = 0
+
+        @staticmethod
+        def _aggregate_stream(events):
+            FailOnceAdapter.aggregate_calls += 1
+            if FailOnceAdapter.aggregate_calls == 1:
+                raise RuntimeError("injected local adapter failure")
+            return AnthropicAdapter._aggregate_stream(events)
+
+    adapter = FailOnceAdapter(
+        "https://offline.invalid/v1", "offline-memory-secret",
+        transport_policy=SingleDispatchTransportPolicyV1.phase_b(),
+    )
+    adapter.client = httpx.AsyncClient(transport=httpx.MockTransport(
+        lambda request: httpx.Response(
+            200, content=_sse(*_complete_events()), request=request,
+            headers={"content-type": "text/event-stream; charset=utf-8"},
+        )
+    ))
+    try:
+        response = await adapter.complete(ModelRequest(
+            model="offline", messages=[Message(role="user", content="offline")],
+            max_output_tokens=32,
+        ))
+    finally:
+        await adapter.client.aclose()
+
+    assert response.text == "可验证的完整结果"
+    assert FailOnceAdapter.aggregate_calls == 2
+    assert adapter.transport_attempt_snapshot()["http_post_attempts"] == 1

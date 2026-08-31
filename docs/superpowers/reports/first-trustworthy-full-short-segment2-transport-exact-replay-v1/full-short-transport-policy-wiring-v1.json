@@ -1,0 +1,22 @@
+{
+  "all_calls_use_lowest_http_capture_seam": true,
+  "all_captures_replayed_through_adapter_contract_and_domain": true,
+  "authority_mutation_only_after_validated_stage_receipt": true,
+  "injected_provider_protocol_capture_count": 71,
+  "normal_provider_protocol_capture_count": 70,
+  "physical_logical_accounting": "PASS",
+  "roles": [
+    "draft",
+    "final_review",
+    "maintenance",
+    "planning",
+    "polish",
+    "reader_review",
+    "review"
+  ],
+  "schema": "FullShortTransportPolicyWiringV1",
+  "status": "PASS",
+  "transport_policy": "EXACT_REPLAY_ONLY",
+  "typed_failure_classification_shared_at_completion_supervisor": true,
+  "version": 1
+}

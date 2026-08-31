@@ -89,6 +89,7 @@ class HttpProvider:
         self.attempt_observer = attempt_observer
         self._model_logical_calls = 0
         self._http_post_attempts = 0
+        self._last_protocol_input_v1: tuple[bytes, str, str] | None = None
         if transport_policy is None:
             self.client = httpx.AsyncClient(timeout=timeout)
         else:
@@ -201,6 +202,19 @@ class HttpProvider:
                 finish_reason=finish_reason,
                 transport_complete=transport_complete,
             )
+
+    def _replay_last_protocol_input_v1(
+        self,
+    ) -> tuple[list[dict[str, Any]], dict[str, Any] | None] | None:
+        """Reparse the last complete entity locally without another dispatch."""
+
+        captured = self._last_protocol_input_v1
+        if captured is None:
+            return None
+        data, content_type, encoding = captured
+        return parse_provider_protocol_input_bytes_v1(
+            data, content_type=content_type, encoding=encoding,
+        )
 
     def transport_attempt_snapshot(self) -> dict[str, Any]:
         policy = self.transport_policy
@@ -337,6 +351,9 @@ class HttpProvider:
                         entity, status_code=response.status_code,
                         content_type=content_type, encoding=encoding,
                         transport_complete=True,
+                    )
+                    self._last_protocol_input_v1 = (
+                        entity, content_type, encoding,
                     )
                     try:
                         events, result = parse_provider_protocol_input_bytes_v1(
