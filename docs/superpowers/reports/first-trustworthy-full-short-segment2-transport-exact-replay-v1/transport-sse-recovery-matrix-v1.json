@@ -1,5 +1,5 @@
 {
-  "case_count": 23,
+  "case_count": 27,
   "cases": [
     {
       "case": 1,
@@ -97,9 +97,9 @@
       "expected": "success",
       "name": "timeout before first byte",
       "observed": {
-        "mid_stream": false,
         "observed": "ReadTimeout",
-        "physical_dispatch_count": 1
+        "physical_dispatch_count": 1,
+        "position": "before_first_byte"
       },
       "status": "PASS"
     },
@@ -108,30 +108,35 @@
       "expected": "success",
       "name": "timeout mid-stream",
       "observed": {
-        "mid_stream": true,
         "observed": "ReadTimeout",
-        "physical_dispatch_count": 1
+        "physical_dispatch_count": 1,
+        "position": "mid_stream"
       },
       "status": "PASS"
     },
     {
       "case": 16,
       "expected": "success",
-      "name": "timeout after body complete replays locally",
+      "name": "transport timeout after terminal body replays locally",
       "observed": {
-        "injected_exception": "TimeoutError",
-        "local_projection_count": 2,
         "network_redispatch_count": 0,
-        "observed": "EXACT_LOCAL_REPLAY",
-        "physical_dispatch_count": 1
+        "observed": "EXACT_LOCAL_REPLAY_AFTER_READ_TIMEOUT",
+        "physical_dispatch_count": 1,
+        "position": "after_complete_body"
       },
       "status": "PASS"
     },
     {
       "case": 17,
-      "expected": "AnthropicStreamProtocolError",
+      "expected": "success",
       "name": "capture succeeds then adapter fails",
-      "observed": "AnthropicStreamProtocolError",
+      "observed": {
+        "capture_byte_sha256": "91338171387fbb20dd564694744b0e83c6f4b90882f2a7fae5ff18db33e72911",
+        "capture_count": 1,
+        "observed": "AnthropicStreamProtocolError",
+        "physical_dispatch_count": 1,
+        "transport_complete": true
+      },
       "status": "PASS"
     },
     {
@@ -171,10 +176,13 @@
       "expected": "success",
       "name": "genuine unavailable no completion",
       "observed": {
+        "evidence_state": "explicit_provider_error",
         "network_retry_count": 0,
         "observed": "HTTPStatusError",
         "physical_dispatch_count": 1,
-        "policy_action": "TERMINAL_NO_CURRENT_AUTHORITY_FOR_REDISPATCH"
+        "policy_action": "TERMINAL_TYPED_PROVIDER_FAILURE",
+        "response_bytes_present": true,
+        "transport_complete": true
       },
       "status": "PASS"
     },
@@ -183,12 +191,12 @@
       "expected": "success",
       "name": "ambiguous completion",
       "observed": {
-        "mid_stream": true,
         "network_redispatch_count": 0,
         "network_retry_allowed": false,
         "observed": "ReadTimeout",
         "physical_dispatch_count": 1,
-        "policy_action": "FAIL_CLOSED_RECONCILIATION_ONLY"
+        "policy_action": "FAIL_CLOSED_RECONCILIATION_ONLY",
+        "position": "mid_stream"
       },
       "status": "PASS"
     },
@@ -201,6 +209,39 @@
         "logical_stage_count": 70,
         "physical_dispatch_count": 71,
         "physical_dispatch_hard_cap": 71
+      },
+      "status": "PASS"
+    },
+    {
+      "case": 24,
+      "expected": "ProviderResponseCaptureError",
+      "name": "terminal SSE frame without blank delimiter",
+      "observed": "ProviderResponseCaptureError",
+      "status": "PASS"
+    },
+    {
+      "case": 25,
+      "expected": "success",
+      "name": "ping between message delta and message stop",
+      "observed": "ModelResponse",
+      "status": "PASS"
+    },
+    {
+      "case": 26,
+      "expected": "AnthropicStreamProtocolError",
+      "name": "out of order content block indices",
+      "observed": "AnthropicStreamProtocolError",
+      "status": "PASS"
+    },
+    {
+      "case": 27,
+      "expected": "success",
+      "name": "cancellation after terminal body replays locally",
+      "observed": {
+        "network_redispatch_count": 0,
+        "observed": "EXACT_LOCAL_REPLAY_AFTER_READ_TIMEOUT",
+        "physical_dispatch_count": 1,
+        "position": "after_complete_body"
       },
       "status": "PASS"
     }

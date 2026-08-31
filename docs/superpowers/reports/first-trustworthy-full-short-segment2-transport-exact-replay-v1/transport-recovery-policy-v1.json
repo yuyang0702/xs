@@ -1,31 +1,109 @@
 {
   "attempt_identity": "physical dispatch uses the sealed execution nonce/session/ordinal; local replay uses immutable call_id plus capture SHA and creates no nonce",
+  "canonical_policy": {
+    "captured_bytes_required_for_local_replay": true,
+    "fresh_nonce_allowed": false,
+    "identity": "EXACT_REPLAY_ONLY",
+    "local_replay_creates_physical_dispatch": false,
+    "max_network_retries": 0,
+    "network_redispatch_allowed": false,
+    "ordered_outcome_matrix": [
+      {
+        "action": "LOCAL_EXACT_CAPTURE_REPLAY_ALLOWED",
+        "ambiguity": false,
+        "budget_counted": true,
+        "explicit_error": false,
+        "fresh_nonce": false,
+        "max_retry": 0,
+        "outcome_class": "complete_valid",
+        "response_bytes_present": true,
+        "valid_completion": true
+      },
+      {
+        "action": "FAIL_CLOSED_NO_REDISPATCH",
+        "ambiguity": false,
+        "budget_counted": true,
+        "explicit_error": true,
+        "fresh_nonce": false,
+        "max_retry": 0,
+        "outcome_class": "explicit_provider_error",
+        "response_bytes_present": true,
+        "valid_completion": false
+      },
+      {
+        "action": "FAIL_CLOSED_NO_REDISPATCH",
+        "ambiguity": false,
+        "budget_counted": true,
+        "explicit_error": false,
+        "fresh_nonce": false,
+        "max_retry": 0,
+        "outcome_class": "proven_pre_response",
+        "response_bytes_present": false,
+        "valid_completion": false
+      },
+      {
+        "action": "FAIL_CLOSED_NO_REDISPATCH",
+        "ambiguity": true,
+        "budget_counted": true,
+        "explicit_error": false,
+        "fresh_nonce": false,
+        "max_retry": 0,
+        "outcome_class": "ambiguous",
+        "response_bytes_present": false,
+        "valid_completion": false
+      }
+    ],
+    "route_switch_allowed": false,
+    "schema": "FullShortTransportRecoveryPolicyV1",
+    "version": 1
+  },
+  "definition_sha256": "d2967078bb7b0178860ae52bc690504ade15382ceb73ae91fda7c16bc08f2e84",
   "exact_replay_physical_dispatch_delta": 0,
   "logical_stage_count": 70,
   "matrix": [
     {
-      "family": "A_COMPLETE_VALID_CAPTURE",
-      "local_replay_first": true,
-      "network_retry_allowed": false,
-      "restart_allowed": "read_only_local_replay"
+      "action": "LOCAL_EXACT_CAPTURE_REPLAY_ALLOWED",
+      "ambiguity": false,
+      "budget_counted": true,
+      "explicit_error": false,
+      "fresh_nonce": false,
+      "max_retry": 0,
+      "outcome_class": "complete_valid",
+      "response_bytes_present": true,
+      "valid_completion": true
     },
     {
-      "family": "B_EXPLICIT_PROVIDER_ERROR",
-      "local_replay_first": true,
-      "network_retry_allowed": false,
-      "restart_allowed": "read_only_classification"
+      "action": "FAIL_CLOSED_NO_REDISPATCH",
+      "ambiguity": false,
+      "budget_counted": true,
+      "explicit_error": true,
+      "fresh_nonce": false,
+      "max_retry": 0,
+      "outcome_class": "explicit_provider_error",
+      "response_bytes_present": true,
+      "valid_completion": false
     },
     {
-      "family": "C_PROVEN_PRE_RESPONSE_NON_COMPLETION",
-      "local_replay_first": false,
-      "network_retry_allowed": false,
-      "restart_allowed": false
+      "action": "FAIL_CLOSED_NO_REDISPATCH",
+      "ambiguity": false,
+      "budget_counted": true,
+      "explicit_error": false,
+      "fresh_nonce": false,
+      "max_retry": 0,
+      "outcome_class": "proven_pre_response",
+      "response_bytes_present": false,
+      "valid_completion": false
     },
     {
-      "family": "D_AMBIGUOUS_EXTERNAL_COMPLETION",
-      "local_replay_first": false,
-      "network_retry_allowed": false,
-      "restart_allowed": "reconciliation_only"
+      "action": "FAIL_CLOSED_NO_REDISPATCH",
+      "ambiguity": true,
+      "budget_counted": true,
+      "explicit_error": false,
+      "fresh_nonce": false,
+      "max_retry": 0,
+      "outcome_class": "ambiguous",
+      "response_bytes_present": false,
+      "valid_completion": false
     }
   ],
   "max_network_retry": 0,
