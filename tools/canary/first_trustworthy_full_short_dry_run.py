@@ -1298,7 +1298,9 @@ async def _run(args: argparse.Namespace) -> dict[str, Any]:
         expected_final_artifact_sha256 = _sha256(source_manuscript)
         replay_workflow_proof = await _replay_full_workflow_from_captured_bytes(
             repo=repo, source_project=source_project, project_id=project_id,
-            replay_target=private_root / "captured-response-replay",
+            # Keep the Windows private-copy path short enough for historical
+            # run artifacts whose bounded filenames are already near MAX_PATH.
+            replay_target=private_root / "r",
             capture_store=capture_store, ledger=ledger,
             source_call_plan=observed_plan,
             expected_final_artifact_sha256=expected_final_artifact_sha256,
