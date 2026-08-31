@@ -48,7 +48,7 @@
     "replay_reentered_real_provider_adapter": true,
     "response_capture_receipts_created_for_all_synthetic_provider_calls": true,
     "schema": "FirstTrustworthyFullShortPrivateDryRunV2",
-    "source_head": "bb0f600b65e14691288cc5a54309bcbdd9054362",
+    "source_head": "f90828936f07729bb16f49873f923c2083639550",
     "total_output_token_hard_cap": 253110,
     "version": 2,
     "workflow_status": "completed"
@@ -106,7 +106,7 @@
     "replay_reentered_real_provider_adapter": true,
     "response_capture_receipts_created_for_all_synthetic_provider_calls": true,
     "schema": "FirstTrustworthyFullShortPrivateDryRunV2",
-    "source_head": "bb0f600b65e14691288cc5a54309bcbdd9054362",
+    "source_head": "f90828936f07729bb16f49873f923c2083639550",
     "total_output_token_hard_cap": 253110,
     "version": 2,
     "workflow_status": "completed"

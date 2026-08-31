@@ -181,12 +181,18 @@ def main() -> int:
             "tool use", "provider error", "malformed event", "missing terminal",
         ],
         "model_output_variants_tested": [
-            "real segment 1", "real segment 2", "normal complete SSE",
-            "partial then error", "large Unicode stream",
+            "real segment 1 complete response",
+            "normal complete SSE",
+            "clean terminal event plus EOF",
+            "keepalive and comment interleaving",
+            "Unicode multiline completion",
+            "large complete entity",
+            "restart exact local replay",
         ],
         "invalid_output_variants_tested": [
             "malformed JSON", "delta outside block", "duplicate terminal",
             "EOF without terminal", "tampered capture",
+            "real segment 2 reasoning-only max_tokens without final artifact",
         ],
         "unseen_valid_variants_tested": [
             "keepalive comments", "Unicode multiline text", "large complete entity",
@@ -200,6 +206,9 @@ def main() -> int:
             "wrapper loses exception provenance", "pre-contract ledger remains open",
             "persistent qualification incorrectly poisons a fresh execution",
             "ambiguous completion causes redispatch",
+            "repeated workflow node names collapse distinct logical stages",
+            "Contract Runtime route attempt identity is confused with physical dispatch",
+            "Windows audit paths exceed the legacy replacement limit",
         ],
         "historical_incident_families_checked": [
             "provider.connection_failed",

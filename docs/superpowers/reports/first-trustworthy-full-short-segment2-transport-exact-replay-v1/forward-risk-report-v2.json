@@ -44,7 +44,8 @@
     "delta outside block",
     "duplicate terminal",
     "EOF without terminal",
-    "tampered capture"
+    "tampered capture",
+    "real segment 2 reasoning-only max_tokens without final artifact"
   ],
   "invariant_test_paths": [
     "tests/providers/test_anthropic_sse_state_machine.py",
@@ -65,11 +66,13 @@
     "missing terminal"
   ],
   "model_output_variants_tested": [
-    "real segment 1",
-    "real segment 2",
+    "real segment 1 complete response",
     "normal complete SSE",
-    "partial then error",
-    "large Unicode stream"
+    "clean terminal event plus EOF",
+    "keepalive and comment interleaving",
+    "Unicode multiline completion",
+    "large complete entity",
+    "restart exact local replay"
   ],
   "next_authoritative_boundary_tests": [
     "70/70 final completion receipt",
@@ -87,13 +90,14 @@
     "wrapper loses exception provenance",
     "pre-contract ledger remains open",
     "persistent qualification incorrectly poisons a fresh execution",
-    "ambiguous completion causes redispatch"
+    "ambiguous completion causes redispatch",
+    "repeated workflow node names collapse distinct logical stages",
+    "Contract Runtime route attempt identity is confused with physical dispatch",
+    "Windows audit paths exceed the legacy replacement limit"
   ],
-  "remaining_risks": [
-    "The legacy 13K/20K production-length fixture still falls through its maintenance fake gateway; 30K and the current-project 70/71 flows pass."
-  ],
-  "resolution_detail": "exact replay, typed provenance, durable closure and full flow pass",
-  "resolution_status": "complete",
+  "remaining_risks": [],
+  "resolution_detail": "exact replay, typed provenance, durable closure, 13K/20K/30K, and full production-shaped flow pass",
+  "resolution_status": "systemically_resolved",
   "scope_classification": "open_world",
   "sibling_boundaries": [
     {
