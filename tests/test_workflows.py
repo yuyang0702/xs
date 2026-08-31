@@ -119,6 +119,7 @@ from novel_flywheel.workflows import (
     ContextCapacityPreflightError,
     DraftReceiptProtocolError,
     DraftSemanticValidationError,
+    FinalReviewJSONError,
     GeneratedArtifactShapeError,
     IncompleteModelOutputError,
     PolishTokenBudgetError,
@@ -15817,6 +15818,56 @@ async def test_final_review_retries_malformed_window_with_configured_fallback(tm
         event["event_type"] == "final_review_json_fallback"
         for event in db.list_run_events(run_id)
     )
+
+
+@pytest.mark.asyncio
+async def test_final_review_recovery_persists_only_safe_failure_projection(
+    tmp_path,
+) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    db.save_role_binding(
+        "final_review", "primary", "reviewer", "backup", "reviewer-2",
+    )
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Private review failure", mode="short", genre="suspense",
+        premise="A provider failure must remain private.", target_words=1000,
+    ))
+    service = WorkflowService(
+        db, store,
+        SimpleNamespace(complete_configured_fallback=lambda *_args, **_kwargs: None),
+        SimpleNamespace(),
+    )
+    run_id = "private-final-review"
+    db.create_run(run_id, project.id, "short-story", status="running")
+    run_path = project.path / "runs" / run_id
+    (run_path / "outputs").mkdir(parents=True)
+    (run_path / "receipts").mkdir()
+    sensitive = (
+        "authorization=super-secret C:\\private\\provider.json "
+        "RAW_PROVIDER_BODY_DO_NOT_PERSIST"
+    )
+
+    async def fake_stage(*_args, **_kwargs):
+        raise RuntimeError(sensitive)
+
+    service._stage = fake_stage
+    with pytest.raises(FinalReviewJSONError) as captured:
+        await service._final_review_json(
+            run_id, run_path, project, "constraints", "window prompt",
+            suffix="-private", recovery_kind="window",
+        )
+
+    persisted = json.dumps({
+        "detail": captured.value.detail,
+        "events": db.list_run_events(run_id),
+    }, ensure_ascii=False)
+    assert "super-secret" not in persisted
+    assert "RAW_PROVIDER_BODY_DO_NOT_PERSIST" not in persisted
+    assert "C:\\private" not in persisted
+    assert "safe-failure-envelope-v1" in persisted
+    assert persisted.count("failure_sha256") >= 3
 
 
 @pytest.mark.asyncio

@@ -19897,7 +19897,13 @@ class WorkflowService:
                     run_id, "warning", "final_review_json_fallback",
                     "终审模型返回内容不完整，正在用备用模型重做当前检查",
                     stage="final_review", metadata={
-                        "suffix": suffix, "error": str(primary_error)[:300],
+                        "suffix": suffix,
+                        "failure": _safe_workflow_event_metadata(
+                            primary_error,
+                            boundary="review.final_review.primary",
+                            code="review.final_review_response_invalid",
+                            family="provider.response_invalid",
+                        ),
                     },
                 )
                 try:
@@ -19928,8 +19934,21 @@ class WorkflowService:
                 "终审报告不完整，正在改用精简格式重新检查",
                 stage="final_review", metadata={
                     "suffix": suffix, "kind": recovery_kind,
-                    "primary_error": str(primary_error)[:300],
-                    "fallback_error": str(fallback_error)[:300] if fallback_error else None,
+                    "primary_failure": _safe_workflow_event_metadata(
+                        primary_error,
+                        boundary="review.final_review.primary",
+                        code="review.final_review_response_invalid",
+                        family="provider.response_invalid",
+                    ),
+                    "fallback_failure": (
+                        _safe_workflow_event_metadata(
+                            fallback_error,
+                            boundary="review.final_review.fallback",
+                            code="review.final_review_response_invalid",
+                            family="provider.response_invalid",
+                        )
+                        if fallback_error is not None else None
+                    ),
                 },
             )
             compact_error: Exception | None = None
@@ -20107,17 +20126,34 @@ class WorkflowService:
         primary: Exception, fallback: Exception | None, compact: Exception,
         suffix: str, kind: str,
     ) -> dict:
-        def error_info(error: Exception | None) -> dict | None:
+        def error_info(
+            error: Exception | None, *, boundary: str,
+        ) -> dict | None:
             if error is None:
                 return None
-            info = {"type": type(error).__name__, "message": str(error)[:500]}
+            info = {
+                "type": type(error).__name__,
+                **_safe_workflow_event_metadata(
+                    error, boundary=boundary,
+                    code="review.final_review_response_invalid",
+                    family="provider.response_invalid",
+                ),
+            }
             if isinstance(error, json.JSONDecodeError):
                 info.update({"line": error.lineno, "column": error.colno})
             return info
         return {
             "kind": "malformed_json", "stage": "final_review", "suffix": suffix,
-            "recovery_kind": kind, "primary": error_info(primary),
-            "fallback": error_info(fallback), "compact": error_info(compact),
+            "recovery_kind": kind,
+            "primary": error_info(
+                primary, boundary="review.final_review.primary",
+            ),
+            "fallback": error_info(
+                fallback, boundary="review.final_review.fallback",
+            ),
+            "compact": error_info(
+                compact, boundary="review.final_review.compact",
+            ),
         }
 
     def _final_review_adjudication_token_limit(self) -> int:
