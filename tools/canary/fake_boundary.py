@@ -491,9 +491,9 @@ class DeterministicShortBoundary:
                 "issues": [],
             }))
         if role == "final_review" and "FULL MANUSCRIPT FINAL ADJUDICATION" in user:
-            ledger = json.loads(user.split(
+            ledger, _ = json.JSONDecoder().raw_decode(user.split(
                 "AUTHORITATIVE REVIEW ISSUE LEDGER:\n", 1,
-            )[1].split("\n\n", 1)[0])
+            )[1])
             return self._result(role, json.dumps({
                 "dimensions": {"commercial": 92, "story": 92, "prose": 92},
                 "hard_fail": False, "decision": "pass", "issues": [],
@@ -521,10 +521,9 @@ class DeterministicShortBoundary:
         text = next(self.responses)
         if role == "final_review" and "AUTHORITATIVE REVIEW ISSUE LEDGER:" in user:
             payload = json.loads(text)
-            ledger_text = user.split(
+            ledger, _ = json.JSONDecoder().raw_decode(user.split(
                 "AUTHORITATIVE REVIEW ISSUE LEDGER:\n", 1,
-            )[1].split("\n\n", 1)[0]
-            ledger = json.loads(ledger_text)
+            )[1])
             payload["reconciliations"] = [{
                 "issue_id": item["issue_id"], "status": "resolved",
                 "severity": item.get("severity", "medium"),
