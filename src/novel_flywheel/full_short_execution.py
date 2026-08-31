@@ -1206,6 +1206,9 @@ class FullShortDispatchLedgerObserverV1:
         self, *, stage_id: str, contract_name: str, contract_version: int,
         contract_schema_sha256: str,
         contract_runtime_input_required: bool = False,
+        contract_attempt_index: int | None = None,
+        contract_route: str | None = None,
+        contract_route_attempt: int | None = None,
     ) -> None:
         """Bind the exact local stage/contract before any route resolution."""
 
@@ -1218,6 +1221,21 @@ class FullShortDispatchLedgerObserverV1:
                  "CAPTURE_CONTRACT_SCHEMA_INVALID")
         _require(type(contract_runtime_input_required) is bool,
                  "CAPTURE_CONTRACT_INPUT_POLICY_INVALID")
+        contract_identity = (
+            contract_attempt_index, contract_route, contract_route_attempt,
+        )
+        _require(
+            all(value is None for value in contract_identity)
+            or (
+                type(contract_attempt_index) is int
+                and contract_attempt_index > 0
+                and contract_route in {"primary", "configured_fallback"}
+                and type(contract_route_attempt) is int
+                and contract_route_attempt > 0
+                and contract_route_attempt <= contract_attempt_index
+            ),
+            "CONTRACT_ATTEMPT_IDENTITY_INVALID",
+        )
         logical_stage_id = self._logical_stage_identity(stage_id)
         self.pending_stage_context = {
             "stage_id": stage_id,
@@ -1227,6 +1245,9 @@ class FullShortDispatchLedgerObserverV1:
             "contract_version": contract_version,
             "contract_schema_sha256": contract_schema_sha256,
             "contract_runtime_input_required": contract_runtime_input_required,
+            "contract_attempt_index": contract_attempt_index,
+            "contract_route": contract_route,
+            "contract_route_attempt": contract_route_attempt,
             "capture_enforcement_required": True,
         }
 
@@ -1322,6 +1343,9 @@ class FullShortDispatchLedgerObserverV1:
                 "contract_version": 1,
                 "contract_schema_sha256": _canonical_sha256(schema_value),
                 "contract_runtime_input_required": bool(request.response_schema),
+                "contract_attempt_index": None,
+                "contract_route": None,
+                "contract_route_attempt": None,
                 "capture_enforcement_required": False,
             }
         _require(protocol == route.get("protocol"), "EGRESS_PROTOCOL_DRIFT")
@@ -1494,6 +1518,13 @@ class FullShortDispatchLedgerObserverV1:
             ],
             "contract_runtime_input_required": self.pending_stage_context[
                 "contract_runtime_input_required"
+            ],
+            "contract_attempt_index": self.pending_stage_context[
+                "contract_attempt_index"
+            ],
+            "contract_route": self.pending_stage_context["contract_route"],
+            "contract_route_attempt": self.pending_stage_context[
+                "contract_route_attempt"
             ],
             "capture_enforcement_required": self.pending_stage_context[
                 "capture_enforcement_required"
@@ -1888,15 +1919,15 @@ class FullShortDispatchLedgerObserverV1:
                 int(value["route_attempt"]) <= int(value["attempt_index"]),
                 "LOCAL_REJECTION_ATTEMPT_IDENTITY_INVALID",
             )
-            prior_same_stage = [
-                item for item in attempts[:ordinal - 1]
-                if item.get("logical_stage_id", item.get("stage"))
-                == current["logical_stage_id"]
-            ]
-            _require(
-                int(value["attempt_index"]) == len(prior_same_stage) + 1,
-                "LOCAL_REJECTION_ATTEMPT_IDENTITY_INVALID",
-            )
+            if current.get("contract_attempt_index") is not None:
+                _require(
+                    int(value["attempt_index"])
+                    == int(current["contract_attempt_index"])
+                    and value.get("route") == current.get("contract_route")
+                    and int(value["route_attempt"])
+                    == int(current["contract_route_attempt"]),
+                    "LOCAL_REJECTION_ATTEMPT_IDENTITY_INVALID",
+                )
             bound_rejection = {
                 **value,
                 "physical_ordinal": ordinal,

@@ -29853,7 +29853,11 @@ class WorkflowService:
                 else None
             )
 
-            def bind_response_capture_stage() -> None:
+            def bind_response_capture_stage(
+                *, contract_attempt_index: int | None = None,
+                contract_route: str | None = None,
+                contract_route_attempt: int | None = None,
+            ) -> None:
                 execution_observer = getattr(
                     getattr(self.gateway, "registry", None),
                     "attempt_observer", None,
@@ -29887,6 +29891,9 @@ class WorkflowService:
                     contract_runtime_input_required=(
                         structured_contract is not None
                     ),
+                    contract_attempt_index=contract_attempt_index,
+                    contract_route=contract_route,
+                    contract_route_attempt=contract_route_attempt,
                 )
 
             async def execute_route(
@@ -30036,7 +30043,11 @@ class WorkflowService:
                             attempt_index=attempt.attempt_index,
                             attempt_route=attempt.route,
                         )
-                        bind_response_capture_stage()
+                        bind_response_capture_stage(
+                            contract_attempt_index=attempt.attempt_index,
+                            contract_route=attempt.route,
+                            contract_route_attempt=attempt.route_attempt,
+                        )
                         return await dispatch_explicit_model_route(
                             self.gateway, attempt.route,
                             role=attempt_role, system=attempt_system,

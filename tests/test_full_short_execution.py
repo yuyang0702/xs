@@ -1302,9 +1302,32 @@ def test_local_rejection_must_match_current_logical_attempt_identity(
 ) -> None:
     store = _store(tmp_path)
     _authorize_offline(store, "rejection-attempt-identity")
-    observer = _observer(store, "rejection-attempt-identity")
+    observer = FullShortDispatchLedgerObserverV1(
+        store=store, execution_id="rejection-attempt-identity",
+        policy=_policy(store), authorized_routes=_routes(),
+        egress_policy=_egress(),
+    )
+    observer.bind_stage_context(
+        stage_id="planning", contract_name="planning_semantic_v2",
+        contract_version=2, contract_schema_sha256="1" * 64,
+        contract_attempt_index=1, contract_route="primary",
+        contract_route_attempt=1,
+    )
+    observer.bind_route(
+        role="planning", lane="primary", provider_id="provider",
+        model_id="model-id", route_fingerprint="9" * 64,
+    )
+    observer.bind_model_request(protocol="anthropic", request=_request())
     observer.before_http_dispatch(
         method="POST", url="https://unit.test/v1/messages", payload=_payload(),
+    )
+    observer.capture_provider_protocol_input(
+        data=b"{}", status_code=200, content_type="application/json",
+        encoding="utf-8", transport_complete=True,
+    )
+    observer.capture_contract_runtime_input(
+        data=b"{}", adapter_id="anthropic", adapter_version=1,
+        finish_reason="stop", transport_complete=True,
     )
     observer.after_http_response(status_code=200)
 
