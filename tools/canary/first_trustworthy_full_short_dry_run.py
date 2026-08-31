@@ -723,6 +723,12 @@ class _CapturedResponseReplayTransportFactory:
                 }),
             }
             if observed != source:
+                self.failure = {
+                    "reason_code": "FULL_SHORT_CAPTURE_REPLAY_REQUEST_DRIFT",
+                    "ordinal": ordinal,
+                    "expected_sha256": _domain(source),
+                    "observed_sha256": _domain(observed),
+                }
                 raise RuntimeError("FULL_SHORT_CAPTURE_REPLAY_REQUEST_DRIFT")
             self.call_plan.append(observed)
             call_id = f"{self.ledger['execution_id']}:{attempt['ordinal']}"
@@ -1222,7 +1228,18 @@ async def _replay_full_workflow_from_captured_bytes(
     finally:
         await registry.close()
     if result.get("status") != "completed":
-        raise RuntimeError("FULL_SHORT_CAPTURE_REPLAY_WORKFLOW_FAILED")
+        raise RuntimeError(
+            "FULL_SHORT_CAPTURE_REPLAY_WORKFLOW_FAILED:"
+            + json.dumps({
+                "status": result.get("status"),
+                "current_stage": result.get("current_stage"),
+                "error_present": bool(result.get("error")),
+                "error_sha256": _optional_text_sha256(result.get("error")),
+                "mock_transport_failure": factory.failure,
+                "observed_call_count": len(factory.call_plan),
+                "observed_call_tail": factory.call_plan[-5:],
+            }, ensure_ascii=True, sort_keys=True)
+        )
     if factory.call_plan != source_call_plan:
         raise RuntimeError("FULL_SHORT_CAPTURE_REPLAY_CALL_PLAN_DRIFT")
     replayed_manuscript = (
