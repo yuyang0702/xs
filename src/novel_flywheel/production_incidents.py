@@ -503,9 +503,15 @@ def classify_production_failure(
     failure: ReliabilityFailure | None = None,
 ) -> dict[str, str]:
     normalized = normalize_failure_text(message)
-    typed_family = _TYPED_INCIDENT_FAMILIES.get(
-        failure.failure_class,
-    ) if failure is not None else None
+    typed_family = (
+        "provider.reasoning_only_final_artifact_unavailable"
+        if failure is not None and failure.code in {
+            "reasoning_only_final_artifact_unavailable",
+            "final_artifact_capability_exhausted",
+        }
+        else _TYPED_INCIDENT_FAMILIES.get(failure.failure_class)
+        if failure is not None else None
+    )
     definition = next((
         item for item in INCIDENT_DEFINITIONS if item.family == typed_family
     ), None) if typed_family else next((

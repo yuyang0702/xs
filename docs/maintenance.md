@@ -2369,6 +2369,20 @@ credentials, and tool arguments are never capture metadata. Restart never
 authorizes a network redispatch; captured bytes are the only offline replay
 source.
 
+Anthropic streaming responses are terminal-state validated before adapter
+projection: a single balanced message must end with a stop reason and exactly
+one `message_stop`; provider `error` events, malformed state transitions, and
+missing terminal events remain distinct typed outcomes. A transport-complete
+`max_tokens` response containing reasoning but no text or tool artifact is a
+typed pre-Contract rejection, not a transport outage. Its provider capture is
+required, its absent Contract Runtime input is explicit, and the attempt is
+closed with a content-free hash receipt. Full Short transport recovery is
+`EXACT_REPLAY_ONLY`: immutable captured bytes may be replayed locally without a
+nonce or physical-dispatch increment, while network retry, ambiguous restart,
+and route switching remain unauthorized unless a separate sealed policy says
+otherwise. Nested local/adapter failures default to `unknown`, never to
+`transport`, when no typed transport evidence exists.
+
 For Full Short, Reader Review now requires explicit commercial/story/prose
 dimensions, hard-fail and decision controls, issues, and the four closed reader
 signals. Final Review requires the explicit dimensions/control verdict rather

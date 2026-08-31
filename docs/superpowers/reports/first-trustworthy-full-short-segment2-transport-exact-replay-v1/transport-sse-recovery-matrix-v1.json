@@ -1,0 +1,174 @@
+{
+  "case_count": 23,
+  "cases": [
+    {
+      "case": 1,
+      "expected": "success",
+      "name": "real segment 1 success capture",
+      "observed": "bytes",
+      "status": "PASS"
+    },
+    {
+      "case": 2,
+      "expected": "success",
+      "name": "real segment 2 failure capture",
+      "observed": "str",
+      "status": "PASS"
+    },
+    {
+      "case": 3,
+      "expected": "success",
+      "name": "normal complete SSE",
+      "observed": "ModelResponse",
+      "status": "PASS"
+    },
+    {
+      "case": 4,
+      "expected": "AnthropicProviderTerminalError",
+      "name": "explicit provider error before content",
+      "observed": "AnthropicProviderTerminalError",
+      "status": "PASS"
+    },
+    {
+      "case": 5,
+      "expected": "AnthropicProviderTerminalError",
+      "name": "provider error after partial content",
+      "observed": "AnthropicProviderTerminalError",
+      "status": "PASS"
+    },
+    {
+      "case": 6,
+      "expected": "success",
+      "name": "clean terminal event plus EOF",
+      "observed": "str",
+      "status": "PASS"
+    },
+    {
+      "case": 7,
+      "expected": "AnthropicStreamIncompleteError",
+      "name": "EOF without expected terminal event",
+      "observed": "AnthropicStreamIncompleteError",
+      "status": "PASS"
+    },
+    {
+      "case": 8,
+      "expected": "AnthropicStreamProtocolError",
+      "name": "malformed SSE state frame",
+      "observed": "AnthropicStreamProtocolError",
+      "status": "PASS"
+    },
+    {
+      "case": 9,
+      "expected": "ProviderResponseCaptureError",
+      "name": "malformed JSON event",
+      "observed": "ProviderResponseCaptureError",
+      "status": "PASS"
+    },
+    {
+      "case": 10,
+      "expected": "success",
+      "name": "keepalive comments",
+      "observed": "ModelResponse",
+      "status": "PASS"
+    },
+    {
+      "case": 11,
+      "expected": "AnthropicStreamProtocolError",
+      "name": "duplicate terminal event",
+      "observed": "AnthropicStreamProtocolError",
+      "status": "PASS"
+    },
+    {
+      "case": 12,
+      "expected": "success",
+      "name": "large body comparable to 473171 bytes",
+      "observed": "int",
+      "status": "PASS"
+    },
+    {
+      "case": 13,
+      "expected": "success",
+      "name": "Unicode multiline content",
+      "observed": "ModelResponse",
+      "status": "PASS"
+    },
+    {
+      "case": 14,
+      "expected": "TimeoutError",
+      "name": "timeout before first byte",
+      "observed": "TimeoutError",
+      "status": "PASS"
+    },
+    {
+      "case": 15,
+      "expected": "TimeoutError",
+      "name": "timeout mid-stream",
+      "observed": "TimeoutError",
+      "status": "PASS"
+    },
+    {
+      "case": 16,
+      "expected": "success",
+      "name": "timeout after body complete replays locally",
+      "observed": "ModelResponse",
+      "status": "PASS"
+    },
+    {
+      "case": 17,
+      "expected": "AnthropicStreamProtocolError",
+      "name": "capture succeeds then adapter fails",
+      "observed": "AnthropicStreamProtocolError",
+      "status": "PASS"
+    },
+    {
+      "case": 18,
+      "expected": "ProviderResponseCaptureError",
+      "name": "tampered capture",
+      "observed": "ProviderResponseCaptureError",
+      "status": "PASS"
+    },
+    {
+      "case": 19,
+      "expected": "success",
+      "name": "restart then exact local replay",
+      "observed": "bytes",
+      "status": "PASS"
+    },
+    {
+      "case": 20,
+      "expected": "success",
+      "name": "valid completion plus local adapter failure is replay only",
+      "observed": "str",
+      "status": "PASS"
+    },
+    {
+      "case": 21,
+      "expected": "EXACT_REPLAY_ONLY terminal typed failure",
+      "name": "genuine unavailable no completion",
+      "observed": "NO_NETWORK_RETRY",
+      "status": "PASS"
+    },
+    {
+      "case": 22,
+      "expected": "fail closed",
+      "name": "ambiguous completion",
+      "observed": "FAIL_CLOSED_NO_REDISPATCH",
+      "status": "PASS"
+    },
+    {
+      "case": 23,
+      "expected": "every physical dispatch counted; replay adds zero",
+      "name": "second physical dispatch accounting",
+      "observed": {
+        "logical_stage_count": 70,
+        "network_retry_dispatches": 0,
+        "physical_dispatch_hard_cap": 71
+      },
+      "status": "PASS"
+    }
+  ],
+  "policy": "EXACT_REPLAY_ONLY",
+  "schema": "TransportSseRecoveryMatrixV1",
+  "status": "PASS",
+  "version": 1
+}

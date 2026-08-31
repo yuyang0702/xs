@@ -1,0 +1,49 @@
+{
+  "schema": "NovelFlywheelChangeContractV1",
+  "version": 1,
+  "task": "first-trustworthy-full-short-segment2-transport-exact-replay",
+  "declared_risk_level": "L3",
+  "classification": "open_world",
+  "source_truth": {
+    "start_head": "0c975f076ca245dd847c5205b1e040c23ae54f2a",
+    "worktree_initially_clean": true,
+    "offline_only": true,
+    "consumed_execution_must_not_resume_or_redispatch": true
+  },
+  "problem_statement": "A transport-complete Anthropic SSE response containing only reasoning blocks and a max_tokens stop was correctly rejected before Contract Runtime input, but the durable attempt remained open and a wrapper was ultimately classified as generic transport failure.",
+  "invariants": [
+    "Exact provider response bytes and their existing hashes remain immutable.",
+    "No credential lookup, provider client creation, HTTP request, network call, model call, paid call, or Full Short execution occurs in this task.",
+    "A downstream parser, adapter, final-artifact, contract, or business failure is never defaulted to transport.",
+    "A captured complete response is handled by deterministic local replay only; it is never network-redispatched.",
+    "Ambiguous external completion remains fail-closed and cannot restart or redispatch.",
+    "Authority mutates only after a validated local stage receipt.",
+    "Logical stage counts remain distinct from physical dispatch counts and all physical dispatches count against hard caps."
+  ],
+  "selected_design": {
+    "failure_provenance": "Recursively classify nested typed failures; map output-limit evidence to output_truncation and remove the ModelRoutesExhaustedError transport default.",
+    "durable_transition": "Close a captured 2xx pre-contract final-artifact rejection with a content-free typed receipt that requires provider-protocol capture and explicitly permits absent Contract Runtime input.",
+    "replay": "Validate Anthropic terminal SSE state and re-enter the same adapter projection locally from immutable captured bytes.",
+    "transport_recovery_policy": "EXACT_REPLAY_ONLY"
+  },
+  "allowed_files": [
+    "src/novel_flywheel/completion_supervisor.py",
+    "src/novel_flywheel/contract_runtime.py",
+    "src/novel_flywheel/full_short_execution.py",
+    "src/novel_flywheel/providers/anthropic.py",
+    "src/novel_flywheel/provider_response_capture.py",
+    "src/novel_flywheel/workflows.py",
+    "tests/**",
+    "tools/**",
+    "README.md",
+    "docs/maintenance.md",
+    "docs/superpowers/reports/first-trustworthy-full-short-segment2-transport-exact-replay-v1/**"
+  ],
+  "forbidden_changes": [
+    "provider/model/route/destination changes",
+    "business invariant weakening",
+    "network retry enablement",
+    "fallback enablement beyond separately authorized existing routes",
+    "modification of the consumed authorization, signed approval, nonce, ledger, or captures"
+  ]
+}

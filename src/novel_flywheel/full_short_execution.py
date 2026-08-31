@@ -97,6 +97,13 @@ _LOCAL_REJECTION_RECEIPT_FIELDS = frozenset({
     "failure_kind", "failure_reason_sha256", "response_text_sha256",
     "conversion_audit_sha256", "raw_content_persisted",
 })
+_FINAL_ARTIFACT_REJECTION_RECEIPT_FIELDS = frozenset({
+    "schema", "version", "contract_name", "contract_version",
+    "contract_schema_sha256", "attempt_index", "route", "route_attempt",
+    "failure_kind", "failure_code", "failure_reason_sha256",
+    "provider_output_shape_sha256", "contract_runtime_input_present",
+    "raw_content_persisted",
+})
 
 
 class FullShortExecutionBoundaryError(RuntimeError):
@@ -1688,12 +1695,22 @@ class FullShortDispatchLedgerObserverV1:
         ordinal = self.pending_ordinal
         _require(ordinal is not None, "NO_RESPONSE_TO_REJECT")
         value = dict(rejection)
+        pre_contract_final_artifact = (
+            value.get("schema") == "ProviderFinalArtifactRejectionReceiptV1"
+        )
         _require(
-            set(value) == _LOCAL_REJECTION_RECEIPT_FIELDS,
+            set(value) == (
+                _FINAL_ARTIFACT_REJECTION_RECEIPT_FIELDS
+                if pre_contract_final_artifact
+                else _LOCAL_REJECTION_RECEIPT_FIELDS
+            ),
             "LOCAL_REJECTION_RECEIPT_SHAPE_INVALID",
         )
         _require(
-            value.get("schema") == "ContractLocalRejectionReceiptV1"
+            value.get("schema") in {
+                "ContractLocalRejectionReceiptV1",
+                "ProviderFinalArtifactRejectionReceiptV1",
+            }
             and value.get("version") == 1
             and isinstance(value.get("contract_name"), str)
             and bool(value.get("contract_name"))
@@ -1703,17 +1720,32 @@ class FullShortDispatchLedgerObserverV1:
             and int(value["attempt_index"]) > 0
             and type(value.get("route_attempt")) is int
             and int(value["route_attempt"]) > 0
-            and value.get("failure_kind") in {
-                "artifact_conversion", "business_incomplete",
-                "domain_validation",
-            }
+            and value.get("failure_kind") in (
+                {"final_artifact_unavailable"}
+                if pre_contract_final_artifact
+                else {
+                    "artifact_conversion", "business_incomplete",
+                    "domain_validation",
+                }
+            )
             and type(value.get("raw_content_persisted")) is bool,
             "LOCAL_REJECTION_RECEIPT_INVALID",
         )
-        for field in (
+        if pre_contract_final_artifact:
+            _require(
+                isinstance(value.get("failure_code"), str)
+                and bool(value.get("failure_code"))
+                and value.get("contract_runtime_input_present") is False
+                and value.get("raw_content_persisted") is False,
+                "FINAL_ARTIFACT_REJECTION_RECEIPT_INVALID",
+            )
+        for field in ((
+            "contract_schema_sha256", "failure_reason_sha256",
+            "provider_output_shape_sha256",
+        ) if pre_contract_final_artifact else (
             "contract_schema_sha256", "failure_reason_sha256",
             "response_text_sha256", "conversion_audit_sha256",
-        ):
+        )):
             _require(
                 _HEX64.fullmatch(str(value.get(field))) is not None,
                 "LOCAL_REJECTION_RECEIPT_HASH_INVALID",
@@ -1723,7 +1755,12 @@ class FullShortDispatchLedgerObserverV1:
             "ROLE_BINDING_SHA256_INVALID",
         )
         rejection_receipt_sha256 = domain_sha256(
-            "novel-flywheel-contract-local-rejection-receipt-v1", value,
+            (
+                "novel-flywheel-provider-final-artifact-rejection-receipt-v1"
+                if pre_contract_final_artifact
+                else "novel-flywheel-contract-local-rejection-receipt-v1"
+            ),
+            value,
         )
 
         def mutate(body: dict[str, Any]) -> dict[str, Any]:
@@ -1743,12 +1780,22 @@ class FullShortDispatchLedgerObserverV1:
                     ))) is not None,
                     "PROVIDER_RESPONSE_CAPTURE_REQUIRED",
                 )
-                if current.get("contract_runtime_input_required"):
+                if (
+                    current.get("contract_runtime_input_required")
+                    and not pre_contract_final_artifact
+                ):
                     _require(
                         _HEX64.fullmatch(str(current.get(
                             "contract_runtime_capture_receipt_sha256"
                         ))) is not None,
                         "CONTRACT_RUNTIME_INPUT_CAPTURE_REQUIRED",
+                    )
+                if pre_contract_final_artifact:
+                    _require(
+                        current.get(
+                            "contract_runtime_capture_receipt_sha256"
+                        ) is None,
+                        "FINAL_ARTIFACT_REJECTION_AFTER_CONTRACT_INPUT",
                     )
             _require(current.get("bound_role") == role, "STAGE_ROLE_DRIFT")
             _require(
@@ -1770,6 +1817,7 @@ class FullShortDispatchLedgerObserverV1:
                 "state": "LOCAL_ATTEMPT_REJECTED",
                 "local_rejection_receipt_sha256": rejection_receipt_sha256,
                 "local_rejection_failure_kind": value["failure_kind"],
+                "local_rejection_schema": value["schema"],
                 "local_rejection_failure_reason_sha256": value[
                     "failure_reason_sha256"
                 ],

@@ -1,0 +1,15 @@
+{
+  "consumed_execution_id": "first-trustworthy-full-short-auth-20260831t021451z-001",
+  "credential_lookup_count": 0,
+  "http_post_attempts": 0,
+  "model_calls": 0,
+  "network_calls": 0,
+  "offline_only": true,
+  "old_authority_reusable": false,
+  "paid_calls": 0,
+  "provider_client_creation_count": 0,
+  "route_fingerprint": "04a443a6702fcc95b74906e44b7233c9370cb9b94bbbbadce4bf59c088b68c31",
+  "schema": "RealRunBindingV1",
+  "start_head": "0c975f076ca245dd847c5205b1e040c23ae54f2a",
+  "version": 1
+}

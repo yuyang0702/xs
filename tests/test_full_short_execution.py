@@ -496,6 +496,54 @@ def test_closed_local_rejection_allows_only_same_session_bounded_recovery(
     )
 
 
+def test_pre_contract_final_artifact_rejection_closes_captured_response(
+    tmp_path: Path,
+) -> None:
+    store = _store(tmp_path)
+    _authorize_offline(store, "pre-contract-final-artifact")
+    observer = _observer(store, "pre-contract-final-artifact")
+    observer.before_http_dispatch(
+        method="POST", url="https://unit.test/v1/messages", payload=_payload(),
+    )
+    observer.capture_provider_protocol_input(
+        data=b"event: message_stop\ndata: {\"type\":\"message_stop\"}\n\n",
+        status_code=200,
+        content_type="text/event-stream; charset=utf-8",
+        encoding="utf-8",
+        transport_complete=True,
+    )
+    observer.after_http_response(status_code=200)
+    observer.mark_local_attempt_rejected(
+        stage="planning-semantic-v2", role="planning",
+        role_binding_sha256=observer.bound_route["role_binding_sha256"],
+        rejection={
+            "schema": "ProviderFinalArtifactRejectionReceiptV1",
+            "version": 1,
+            "contract_name": "planning_semantic_v2",
+            "contract_version": 2,
+            "contract_schema_sha256": "a" * 64,
+            "attempt_index": 1,
+            "route": "primary",
+            "route_attempt": 1,
+            "failure_kind": "final_artifact_unavailable",
+            "failure_code": "reasoning_only_final_artifact_unavailable",
+            "failure_reason_sha256": "b" * 64,
+            "provider_output_shape_sha256": "c" * 64,
+            "contract_runtime_input_present": False,
+            "raw_content_persisted": False,
+        },
+    )
+
+    ledger = store.load_ledger("pre-contract-final-artifact")
+    attempt = ledger["attempts"][0]
+    assert ledger["state"] == "READY_FOR_RECOVERY_ATTEMPT"
+    assert attempt["state"] == "LOCAL_ATTEMPT_REJECTED"
+    assert attempt["local_rejection_schema"] == (
+        "ProviderFinalArtifactRejectionReceiptV1"
+    )
+    assert attempt["contract_runtime_capture_receipt_sha256"] is None
+
+
 def test_local_rejection_receipt_rejects_raw_content_and_stays_pending(
     tmp_path: Path,
 ) -> None:

@@ -1,0 +1,68 @@
+{
+  "classifier_after_fix": "output_truncation",
+  "complete_model_message_present": false,
+  "contract_runtime_input_build_attempt": false,
+  "durable_ledger_after_fix": "READY_FOR_RECOVERY_ATTEMPT",
+  "durable_transition_after_fix": "LOCAL_ATTEMPT_REJECTED",
+  "extracted_content_present": false,
+  "final_mapped_failure": "output_truncation",
+  "network_retry_allowed": false,
+  "original_exception": "ReasoningOnlyFinalArtifactUnavailableError",
+  "original_message": "reasoning-only provider output exhausted without a final artifact",
+  "protocol_terminal_complete": true,
+  "provider_output_shape": {
+    "adapter_projection_status": "exact",
+    "content_block_count": 1,
+    "content_block_type_sequence": [
+      "thinking"
+    ],
+    "finish_reason": "max_tokens",
+    "normalized_tool_call_count": 0,
+    "normalized_visible_text_chars": 0,
+    "output_tokens": 3724,
+    "protocol": "anthropic",
+    "provider_family": "anthropic",
+    "provider_visible_text_chars": 0,
+    "raw_headers_omitted": true,
+    "raw_provider_content_omitted": true,
+    "raw_text_omitted": true,
+    "raw_tool_arguments_omitted": true,
+    "reasoning_block_count": 1,
+    "schema": "ProviderOutputShapeV1",
+    "shape_sha256": "4bc9442575aa89eaded53b36a441618ba15948a572937f41082b7d3d5e5b5170",
+    "text_block_count": 0,
+    "tool_call_count": 0,
+    "transport_complete": true,
+    "unknown_block_count": 0,
+    "unknown_block_type_sha256s": [],
+    "version": 1
+  },
+  "schema": "SegmentExactReplayV1",
+  "status": "PASS_TYPED_REJECTION",
+  "transport": {
+    "content_block_type_sequence": [
+      "thinking"
+    ],
+    "delta_type_counts": {
+      "signature_delta": 1,
+      "thinking_delta": 3712
+    },
+    "ends_with_sse_delimiter": true,
+    "event_count": 3719,
+    "event_type_counts": {
+      "content_block_delta": 3713,
+      "content_block_start": 1,
+      "content_block_stop": 1,
+      "message_delta": 1,
+      "message_start": 1,
+      "message_stop": 1,
+      "ping": 1
+    },
+    "last_event": "message_stop",
+    "provider_error_event_present": false,
+    "stop_reason": "max_tokens",
+    "terminal_event": "message_stop"
+  },
+  "version": 1,
+  "wrapped_as": "FinalArtifactCapabilityExhaustedError"
+}

@@ -405,6 +405,7 @@ async def test_same_fingerprint_is_not_retried_and_no_route_fails_typed(
 ) -> None:
     _, gateway, primary, _ = _gateway(tmp_path, _reasoning_only_response())
     observations = []
+    local_rejections = []
     with pytest.raises(FinalArtifactCapabilityExhaustedError) as caught:
         await execute_contract_runtime(
             gateway,
@@ -416,10 +417,17 @@ async def test_same_fingerprint_is_not_retried_and_no_route_fails_typed(
             same_route_attempts=2,
             fallback_attempts=0,
             attempt_observer=observations.append,
+            local_rejection_sink=local_rejections.append,
         )
     assert primary.calls == 1
     assert caught.value.receipt["route_fingerprint"] == "1" * 64
     assert sum(item["model_call_delta"] for item in observations) == 1
+    assert len(local_rejections) == 1
+    assert local_rejections[0]["schema"] == (
+        "ProviderFinalArtifactRejectionReceiptV1"
+    )
+    assert local_rejections[0]["failure_kind"] == "final_artifact_unavailable"
+    assert local_rejections[0]["contract_runtime_input_present"] is False
     incident = classify_production_failure(
         str(caught.value), workflow="short-story", stage="planning",
     )

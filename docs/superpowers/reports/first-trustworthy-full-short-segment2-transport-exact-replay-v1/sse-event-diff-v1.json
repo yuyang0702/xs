@@ -1,0 +1,23 @@
+{
+  "causal_divergence": "segment1 exits reasoning and opens text; segment2 remains in reasoning until max_tokens and never projects a final artifact",
+  "first_protocol_relevant_divergence_ordinal": 1007,
+  "normalized_common_prefix_event_count": 1006,
+  "raw_common_prefix_bytes": 68,
+  "raw_first_difference_kind": "volatile_message_identity",
+  "schema": "SseEventDiffV1",
+  "segment1_signature": [
+    "content_block_delta",
+    0,
+    null,
+    "signature_delta",
+    null
+  ],
+  "segment2_signature": [
+    "content_block_delta",
+    0,
+    null,
+    "thinking_delta",
+    null
+  ],
+  "version": 1
+}

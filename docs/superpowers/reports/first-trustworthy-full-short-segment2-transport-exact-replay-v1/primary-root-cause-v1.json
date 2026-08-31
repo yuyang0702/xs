@@ -1,0 +1,10 @@
+{
+  "local_defects": [
+    "missing pre-contract typed durable rejection transition",
+    "exception provenance lost through wrapper and transport default"
+  ],
+  "primary_root_cause": "TRANSPORT_COMPLETE_REASONING_ONLY_MAX_TOKENS_WITHOUT_FINAL_ARTIFACT; PRE_CONTRACT_DURABLE_REJECTION_TRANSITION_MISSING; MODEL_ROUTES_EXHAUSTED_UNKNOWN_CHILDREN_DEFAULTED_TO_TRANSPORT",
+  "schema": "PrimaryRootCauseV1",
+  "transport_failure": false,
+  "version": 1
+}

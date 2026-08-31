@@ -9,6 +9,7 @@ from typing import Any, Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 from novel_flywheel.db import Database, WORKFLOW_SUPERVISION_CONTRACT_VERSION
+from novel_flywheel.context_policy import classify_model_failure
 from novel_flywheel.models import (
     CapabilityRoutesExhaustedError,
     ModelRoutesExhaustedError,
@@ -103,9 +104,18 @@ def classify_completion_failure(exc: BaseException) -> FailureClass:
     if isinstance(exc, ModelRoutesExhaustedError):
         return _strongest_failure_class(
             [exc.primary_error, exc.fallback_error],
-        ) or FailureClass.TRANSPORT
+        ) or FailureClass.UNKNOWN
     if isinstance(exc, ConnectionError):
         return FailureClass.TRANSPORT
+    model_failure = classify_model_failure(exc)
+    model_failure_classes = {
+        "input_context_overflow": FailureClass.CONTEXT_CAPACITY,
+        "output_limit": FailureClass.OUTPUT_TRUNCATION,
+        "transport_interrupted": FailureClass.TRANSPORT,
+        "provider_rejection": FailureClass.CREDENTIAL,
+    }
+    if model_failure in model_failure_classes:
+        return model_failure_classes[model_failure]
     name = type(exc).__name__.casefold()
     message = str(exc).casefold()
     if any(token in name for token in (
@@ -123,6 +133,9 @@ def _strongest_failure_class(errors: list[BaseException]) -> FailureClass | None
     classes = [classify_completion_failure(item) for item in errors]
     for candidate in (
         FailureClass.CREDENTIAL,
+        FailureClass.CONTEXT_CAPACITY,
+        FailureClass.OUTPUT_TRUNCATION,
+        FailureClass.SYNTAX_PROTOCOL,
         FailureClass.CAPABILITY,
         FailureClass.TRANSPORT,
     ):

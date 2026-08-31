@@ -37,6 +37,7 @@ from novel_flywheel.planning_repair_diagnostics import (
     observe_provider_content_block_shape,
 )
 from novel_flywheel.provider_output import provider_output_shape_from_response
+from novel_flywheel.recovery_engine import FailureClass, ReliabilityFailure
 from novel_flywheel.providers.registry import ProviderRegistry
 from novel_flywheel.providers.http import ToolCapabilityError
 from novel_flywheel.structured_artifacts import (
@@ -107,6 +108,13 @@ class FinalArtifactCapabilityError(RuntimeError):
     def __init__(self, message: str, *, receipt: dict) -> None:
         super().__init__(message)
         self.receipt = dict(receipt)
+        self.reliability_failure = ReliabilityFailure(
+            code=str(getattr(self, "failure_code", self.failure_kind)),
+            failure_class=FailureClass.CAPABILITY,
+            boundary="model_gateway_final_artifact",
+            message=message,
+            retryable=False,
+        )
 
 
 class ReasoningOnlyFinalArtifactUnavailableError(FinalArtifactCapabilityError):
@@ -118,6 +126,13 @@ class ReasoningOnlyFinalArtifactUnavailableError(FinalArtifactCapabilityError):
         super().__init__(
             "reasoning-only provider output exhausted without a final artifact",
             receipt=receipt,
+        )
+        self.reliability_failure = ReliabilityFailure(
+            code=self.failure_code,
+            failure_class=FailureClass.OUTPUT_TRUNCATION,
+            boundary="model_gateway_final_artifact",
+            message=str(self),
+            retryable=False,
         )
 
 

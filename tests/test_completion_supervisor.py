@@ -11,10 +11,16 @@ from novel_flywheel.completion_supervisor import (
     CompletionState,
     CompletionSupervisor,
     RetryBudgets,
+    classify_completion_failure,
 )
 from novel_flywheel.db import Database
 from novel_flywheel.reference_library import ReferenceLibrary
 from novel_flywheel.tasks import RunTaskManager
+from novel_flywheel.models import (
+    ModelRoutesExhaustedError,
+    ReasoningOnlyFinalArtifactUnavailableError,
+)
+from novel_flywheel.recovery_engine import FailureClass
 
 
 def prepared_db(tmp_path) -> Database:
@@ -22,6 +28,50 @@ def prepared_db(tmp_path) -> Database:
     db.migrate()
     db.save_project("book", "Book", "short", tmp_path / "book")
     return db
+
+
+def test_nested_final_artifact_output_limit_is_not_classified_as_transport() -> None:
+    receipt = {
+        "finish_reason": "max_tokens",
+        "provider_output_shape": {
+            "finish_reason": "max_tokens",
+            "transport_complete": True,
+        },
+    }
+    original = ReasoningOnlyFinalArtifactUnavailableError(receipt=receipt)
+    wrapped = ModelRoutesExhaustedError(original, original)
+
+    assert classify_completion_failure(wrapped) == FailureClass.OUTPUT_TRUNCATION
+
+
+def test_unknown_route_wrapper_does_not_default_to_transport() -> None:
+    wrapped = ModelRoutesExhaustedError(
+        ValueError("local adapter invariant"),
+        RuntimeError("local contract invariant"),
+    )
+
+    assert classify_completion_failure(wrapped) == FailureClass.UNKNOWN
+
+
+def test_task_incident_preserves_nested_reasoning_only_provenance() -> None:
+    original = ReasoningOnlyFinalArtifactUnavailableError(receipt={
+        "finish_reason": "max_tokens",
+        "provider_output_shape": {"finish_reason": "max_tokens"},
+    })
+    wrapped = ModelRoutesExhaustedError(
+        original, RuntimeError("local exact-once boundary"),
+    )
+
+    summary, incident = RunTaskManager._safe_failure_record(
+        wrapped, FailureClass.OUTPUT_TRUNCATION.value,
+        workflow="short-story", stage="planning", revision=False,
+    )
+
+    assert "incomplete" in summary
+    assert incident["failure_class"] == "output_truncation"
+    assert incident["incident_family"] == (
+        "provider.reasoning_only_final_artifact_unavailable"
+    )
 
 
 def test_r0_migration_is_idempotent_and_exposes_durable_tables(tmp_path) -> None:

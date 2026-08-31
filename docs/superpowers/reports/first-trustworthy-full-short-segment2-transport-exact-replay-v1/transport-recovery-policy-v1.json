@@ -1,0 +1,43 @@
+{
+  "attempt_identity": "physical dispatch uses the sealed execution nonce/session/ordinal; local replay uses immutable call_id plus capture SHA and creates no nonce",
+  "exact_replay_physical_dispatch_delta": 0,
+  "logical_stage_count": 70,
+  "matrix": [
+    {
+      "family": "A_COMPLETE_VALID_CAPTURE",
+      "local_replay_first": true,
+      "network_retry_allowed": false,
+      "restart_allowed": "read_only_local_replay"
+    },
+    {
+      "family": "B_EXPLICIT_PROVIDER_ERROR",
+      "local_replay_first": true,
+      "network_retry_allowed": false,
+      "restart_allowed": "read_only_classification"
+    },
+    {
+      "family": "C_PROVEN_PRE_RESPONSE_NON_COMPLETION",
+      "local_replay_first": false,
+      "network_retry_allowed": false,
+      "restart_allowed": false
+    },
+    {
+      "family": "D_AMBIGUOUS_EXTERNAL_COMPLETION",
+      "local_replay_first": false,
+      "network_retry_allowed": false,
+      "restart_allowed": "reconciliation_only"
+    }
+  ],
+  "max_network_retry": 0,
+  "network_retry_enabled": false,
+  "physical_dispatch_hard_cap": 71,
+  "policy": "EXACT_REPLAY_ONLY",
+  "restart_rules": {
+    "authority_mutation_from_ambiguous_state": false,
+    "network_redispatch": false,
+    "read_only_reconciliation_and_exact_local_replay": true
+  },
+  "route_switch_requires_separate_authorization": true,
+  "schema": "FullShortTransportRecoveryPolicyV1",
+  "version": 1
+}

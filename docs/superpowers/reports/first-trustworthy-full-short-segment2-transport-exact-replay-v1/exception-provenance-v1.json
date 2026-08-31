@@ -1,0 +1,42 @@
+{
+  "layers": [
+    {
+      "layer": "http_transport",
+      "original_exception": null,
+      "result": "complete captured entity"
+    },
+    {
+      "layer": "sse_decode",
+      "original_exception": null,
+      "result": "3719 valid events"
+    },
+    {
+      "layer": "anthropic_adapter",
+      "original_exception": null,
+      "result": "complete thinking-only ModelResponse"
+    },
+    {
+      "layer": "model_gateway_final_artifact_guard",
+      "message": "reasoning-only provider output exhausted without a final artifact",
+      "original_exception": "ReasoningOnlyFinalArtifactUnavailableError"
+    },
+    {
+      "layer": "contract_runtime",
+      "message": "final-artifact capability was exhausted across permitted routes",
+      "wrapped_as": "FinalArtifactCapabilityExhaustedError"
+    },
+    {
+      "correct": false,
+      "final_failure_family": "transport",
+      "layer": "completion_supervisor_start_head"
+    },
+    {
+      "correct": true,
+      "final_failure_family": "output_truncation",
+      "incident_family": "provider.reasoning_only_final_artifact_unavailable",
+      "layer": "completion_supervisor_post_fix"
+    }
+  ],
+  "schema": "ExceptionProvenanceV1",
+  "version": 1
+}

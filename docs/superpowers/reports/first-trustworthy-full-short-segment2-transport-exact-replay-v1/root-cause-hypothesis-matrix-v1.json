@@ -1,0 +1,69 @@
+{
+  "hypotheses": [
+    {
+      "confidence": "HIGH",
+      "counterevidence": "capture contradicts hypothesis",
+      "evidence": "no error event",
+      "hypothesis": "H1_GENUINE_PROVIDER_ERROR_EVENT",
+      "status": "REJECTED"
+    },
+    {
+      "confidence": "HIGH",
+      "counterevidence": "capture contradicts hypothesis",
+      "evidence": "message_stop is present and parsed",
+      "hypothesis": "H2_VALID_TERMINAL_EVENT_OR_EOF_MISCLASSIFIED",
+      "status": "REJECTED"
+    },
+    {
+      "confidence": "HIGH",
+      "counterevidence": "capture contradicts hypothesis",
+      "evidence": "all 3719 frames parse; topology is reasoning-only",
+      "hypothesis": "H3_SSE_FRAMING_OR_AGGREGATION_DEFECT",
+      "status": "REJECTED"
+    },
+    {
+      "confidence": "HIGH",
+      "counterevidence": "none material",
+      "evidence": "typed final-artifact failure was wrapped then defaulted to transport",
+      "hypothesis": "H4_DOWNSTREAM_ADAPTER_EXCEPTION_MISLABELED_AS_TRANSPORT",
+      "status": "CONFIRMED"
+    },
+    {
+      "confidence": "HIGH",
+      "counterevidence": "capture contradicts hypothesis",
+      "evidence": "473171 bytes captured and replayed exactly",
+      "hypothesis": "H5_RESPONSE_SIZE_OR_BUFFER_LIMIT",
+      "status": "REJECTED"
+    },
+    {
+      "confidence": "HIGH",
+      "counterevidence": "capture contradicts hypothesis",
+      "evidence": "terminal message captured; no timeout evidence",
+      "hypothesis": "H6_TIMEOUT_OR_CANCELLATION_AFTER_BODY_COMPLETION",
+      "status": "REJECTED"
+    },
+    {
+      "confidence": "HIGH",
+      "counterevidence": "capture contradicts hypothesis",
+      "evidence": "protocol is valid; provider produced no artifact",
+      "hypothesis": "H7_PROVIDER_PROTOCOL_COMPATIBILITY_EDGE_CASE",
+      "status": "REJECTED_AS_TRANSPORT_CAUSE"
+    },
+    {
+      "confidence": "HIGH",
+      "counterevidence": "capture contradicts hypothesis",
+      "evidence": "capture replays exact hash and event count",
+      "hypothesis": "H8_CAPTURE_BOUNDARY_CONSUMED_OR_CHANGED_STREAM",
+      "status": "REJECTED"
+    },
+    {
+      "confidence": "HIGH",
+      "counterevidence": "none material",
+      "evidence": "model output-cap final-artifact failure plus ledger/classifier defects",
+      "hypothesis": "H9_MULTI_FACTOR",
+      "status": "CONFIRMED"
+    }
+  ],
+  "schema": "RootCauseHypothesisMatrixV1",
+  "version": 1
+}

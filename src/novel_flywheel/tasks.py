@@ -22,6 +22,30 @@ RunTerminalFinalizer = Callable[[str, object], object | Awaitable[object]]
 RunOperationResolver = Callable[[dict[str, Any], dict[str, Any]], RunOperation | None]
 
 
+def _nested_reliability_failure(exc: BaseException) -> object | None:
+    """Return the first typed descendant without persisting raw exception text."""
+
+    pending: list[BaseException] = [exc]
+    seen: set[int] = set()
+    while pending:
+        current = pending.pop(0)
+        if id(current) in seen:
+            continue
+        seen.add(id(current))
+        reliability = getattr(current, "reliability_failure", None)
+        if reliability is not None:
+            return reliability
+        for nested in (
+            getattr(current, "primary_error", None),
+            getattr(current, "fallback_error", None),
+            current.__cause__,
+            None if current.__suppress_context__ else current.__context__,
+        ):
+            if isinstance(nested, BaseException):
+                pending.append(nested)
+    return None
+
+
 class ProjectRunActiveError(RuntimeError):
     """Raised when a second writer is started for the same project."""
 
@@ -492,7 +516,7 @@ class RunTaskManager:
     ) -> tuple[str, dict[str, str]]:
         """Classify raw evidence in memory and return persistence-safe fields."""
 
-        reliability = getattr(exc, "reliability_failure", None)
+        reliability = _nested_reliability_failure(exc)
         raw_code = str(getattr(reliability, "code", "") or "")
         raw_evidence = f"{type(exc).__name__}:{str(exc)}:{raw_code}"
         failure_sha256 = hashlib.sha256(raw_evidence.encode("utf-8")).hexdigest()

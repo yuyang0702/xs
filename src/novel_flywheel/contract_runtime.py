@@ -36,7 +36,9 @@ from novel_flywheel.planning_repair_diagnostics import (
     observe_output_limit,
 )
 from novel_flywheel.recovery_engine import (
+    FailureClass,
     ProtocolReceiptAttempt,
+    ReliabilityFailure,
     RecoveryAction,
     protocol_receipt_attempts,
 )
@@ -110,6 +112,17 @@ class FinalArtifactCapabilityExhaustedError(RuntimeError):
         )
         self.receipt = dict(receipt)
         self.blocked_route_fingerprints = dict(blocked_route_fingerprints)
+        self.reliability_failure = ReliabilityFailure(
+            code=self.failure_code,
+            failure_class=(
+                FailureClass.OUTPUT_TRUNCATION
+                if output_limited(self.receipt)
+                else FailureClass.CAPABILITY
+            ),
+            boundary="contract_runtime_final_artifact",
+            message=str(self),
+            retryable=False,
+        )
 
 
 @dataclass(frozen=True)
@@ -912,6 +925,51 @@ def _emit_local_rejection(
     })
 
 
+def _emit_final_artifact_rejection(
+    sink: LocalRejectionSink | None,
+    *,
+    error: FinalArtifactCapabilityError,
+    contract: StructuredArtifactContract,
+    attempt: ProtocolReceiptAttempt,
+) -> None:
+    """Close a captured 2xx response rejected before Contract Runtime input.
+
+    The receipt deliberately contains no provider content.  It proves that the
+    provider-protocol capture exists at the execution boundary while recording
+    that an adapter-visible final artifact was unavailable, so the missing
+    Contract Runtime capture is an expected typed state rather than ambiguity.
+    """
+
+    if sink is None:
+        return
+    receipt = getattr(error, "receipt", None)
+    receipt = dict(receipt) if isinstance(receipt, Mapping) else {}
+    output_shape = receipt.get("provider_output_shape")
+    output_shape = dict(output_shape) if isinstance(output_shape, Mapping) else {}
+    sink({
+        "schema": "ProviderFinalArtifactRejectionReceiptV1",
+        "version": 1,
+        "contract_name": contract.name,
+        "contract_version": contract.version,
+        "contract_schema_sha256": contract.schema_sha256(),
+        "attempt_index": attempt.attempt_index,
+        "route": attempt.route,
+        "route_attempt": attempt.route_attempt,
+        "failure_kind": "final_artifact_unavailable",
+        "failure_code": str(
+            getattr(error, "failure_code", "final_artifact_unavailable")
+        ),
+        "failure_reason_sha256": hashlib.sha256(
+            str(error).encode("utf-8"),
+        ).hexdigest(),
+        "provider_output_shape_sha256": str(
+            output_shape.get("shape_sha256") or ""
+        ),
+        "contract_runtime_input_present": False,
+        "raw_content_persisted": False,
+    })
+
+
 async def execute_contract_runtime(
     gateway: Any,
     *,
@@ -1252,6 +1310,12 @@ async def execute_contract_runtime(
             if isinstance(error_receipt, Mapping):
                 last_receipt = dict(error_receipt)
             if final_artifact_failure:
+                _emit_final_artifact_rejection(
+                    local_rejection_sink,
+                    error=exc,
+                    contract=structured_contract,
+                    attempt=attempt,
+                )
                 final_artifact_failure_seen = True
                 fingerprint = str(
                     (error_receipt or {}).get("route_fingerprint")
