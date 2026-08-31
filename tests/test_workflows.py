@@ -8714,6 +8714,63 @@ async def test_planning_protocol_rewrap_uses_real_stage_and_recovers_output_limi
     )
 
 
+@pytest.mark.asyncio
+async def test_planning_protocol_recovery_never_persists_parser_exception_text(
+    tmp_path, monkeypatch,
+) -> None:
+    service, project, _source, _ledger, _state = _short_revision_service(
+        tmp_path, [], source="正式正文保持不变。" * 20, target_words=500,
+    )
+    run_id = "quality-source"
+    run_path = project.path / "runs" / run_id
+    sensitive = (
+        "authorization=planning-secret C:\\private\\parser.json "
+        "RAW_PLANNING_BODY_DO_NOT_PERSIST"
+    )
+    calls = 0
+    prompts: list[str] = []
+
+    def fail_normalize(*_args, **_kwargs):
+        nonlocal calls
+        calls += 1
+        raise GeneratedArtifactShapeError(
+            sensitive,
+            issues=[{
+                "code": "planning_packet_invalid",
+                "message": sensitive,
+                "blocking": True,
+            }],
+        )
+
+    async def fake_stage(*args, **_kwargs):
+        prompts.append(args[5])
+        return "still invalid"
+
+    monkeypatch.setattr(
+        service, "_normalize_runtime_owned_short_plan_payload", fail_normalize,
+    )
+    monkeypatch.setattr(service, "_stage", fake_stage)
+
+    with pytest.raises(GeneratedArtifactShapeError) as captured:
+        await service._normalize_generated_short_plan_segment_with_protocol_retry(
+            run_id, run_path, project, "constraints", "invalid packet",
+            segment=1, event_ids=["EV-00000001"], current="formal plan",
+            artifact="integration protocol packet", suffix="-private",
+        )
+
+    observable = json.dumps({
+        "events": service.db.list_run_events(run_id),
+        "prompts": prompts,
+        "issues": captured.value.issues,
+    }, ensure_ascii=False)
+    assert calls == 2
+    assert "planning-secret" not in observable
+    assert "RAW_PLANNING_BODY_DO_NOT_PERSIST" not in observable
+    assert "C:\\private" not in observable
+    assert "safe-failure-envelope-v1" in observable
+    assert "issue_sha256" in observable
+
+
 def test_short_plan_markdown_packet_reports_exact_missing_field_feedback() -> None:
     fixture = json.loads(
         (Path(__file__).parent / "fixtures" /
@@ -18844,7 +18901,10 @@ async def test_polish_whole_semantic_failure_restores_accepted_complete_draft(
         return polished_candidate
 
     async def fail_candidate_whole(*args, **kwargs):
-        raise RuntimeError("provider transport interrupted during whole polish review")
+        raise RuntimeError(
+            "authorization=polish-secret C:\\private\\polish.json "
+            "RAW_POLISH_BODY_DO_NOT_PERSIST"
+        )
 
     monkeypatch.setattr(service, "_stage", stage)
     monkeypatch.setattr(
@@ -18868,6 +18928,13 @@ async def test_polish_whole_semantic_failure_restores_accepted_complete_draft(
     assert restored["metadata"]["rejected_draft_sha256"] == hashlib.sha256(
         polished_candidate.encode("utf-8"),
     ).hexdigest()
+    persisted = json.dumps(restored, ensure_ascii=False)
+    assert "polish-secret" not in persisted
+    assert "RAW_POLISH_BODY_DO_NOT_PERSIST" not in persisted
+    assert "C:\\private" not in persisted
+    assert restored["metadata"]["failure"]["failure_contract"] == (
+        "safe-failure-envelope-v1"
+    )
 
 
 @pytest.mark.asyncio

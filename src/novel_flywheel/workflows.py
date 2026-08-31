@@ -1403,6 +1403,31 @@ def _safe_workflow_event_metadata(
     ).event_metadata()
 
 
+def _safe_workflow_issue_metadata(
+    issues: list[dict], *, boundary: str,
+) -> list[dict[str, object]]:
+    """Project validator issues without persisting free-form model text."""
+
+    projected: list[dict[str, object]] = []
+    for index, issue in enumerate(issues):
+        code = str(issue.get("code") or "local.validation_failed").casefold()
+        if re.fullmatch(r"[a-z][a-z0-9_.-]{2,127}", code) is None:
+            code = "local.validation_failed"
+        evidence = json.dumps(
+            issue, ensure_ascii=False, sort_keys=True, default=str,
+        )
+        projected.append({
+            "code": code,
+            "blocking": bool(issue.get("blocking", True)),
+            "issue_sha256": hashlib.sha256(
+                f"{boundary}:{index}:{evidence}".encode(
+                    "utf-8", errors="replace",
+                )
+            ).hexdigest(),
+        })
+    return projected
+
+
 # ponytail: one local console process needs serialization, not a lock registry.
 _SHORT_REVISION_LOCK = threading.Lock()
 _SHORT_CHECKPOINT_RESTORE_LOCK = threading.Lock()
@@ -11715,6 +11740,16 @@ class WorkflowService:
             ]
         assert first_error is not None
 
+        safe_first_failure = _safe_workflow_event_metadata(
+            first_error,
+            boundary="planning.packet_protocol.primary",
+            code="planning.packet_protocol_invalid",
+            family="provider.response_invalid",
+        )
+        safe_first_issues = _safe_workflow_issue_metadata(
+            first_issues, boundary="planning.packet_protocol.primary",
+        )
+
         self.db.add_run_event(
             run_id, "warning", "planning_packet_protocol_retry",
             "规划修复内容保持原范围，正在把模型返回重新封装为可校验的标准规划段",
@@ -11722,8 +11757,8 @@ class WorkflowService:
                 "segment": segment,
                 "event_ids": expected,
                 "artifact": artifact,
-                "parser_error": str(first_error)[:500],
-                "issues": first_issues,
+                "parser_failure": safe_first_failure,
+                "issues": safe_first_issues,
             },
         )
         authority = {
@@ -11784,8 +11819,8 @@ class WorkflowService:
             + json.dumps(authority, ensure_ascii=False, indent=2)
             + "\n\nFIRST PARSER FAILURE (DIAGNOSTIC ONLY):\n"
             + json.dumps({
-                "message": str(first_error),
-                "issues": first_issues,
+                "failure": safe_first_failure,
+                "issues": safe_first_issues,
             }, ensure_ascii=False, indent=2)
             + "\n\nRAW GENERATED PACKET TO REWRAP:\n"
             + str(value)
@@ -11848,6 +11883,15 @@ class WorkflowService:
                 dict(item) for item in retry_error.issues
                 if isinstance(item, dict)
             ]
+            safe_retry_failure = _safe_workflow_event_metadata(
+                retry_error,
+                boundary="planning.packet_protocol.retry",
+                code="planning.packet_protocol_invalid",
+                family="provider.response_invalid",
+            )
+            safe_retry_issues = _safe_workflow_issue_metadata(
+                retry_issues, boundary="planning.packet_protocol.retry",
+            )
             issue = {
                 "code": "planning_packet_protocol_exhausted",
                 "message": (
@@ -11856,8 +11900,8 @@ class WorkflowService:
                 ),
                 "segment": segment,
                 "event_ids": expected,
-                "first_error": str(first_error)[:500],
-                "retry_error": str(retry_error)[:500],
+                "first_failure": safe_first_failure,
+                "retry_failure": safe_retry_failure,
                 "blocking": True,
             }
             self.db.add_run_event(
@@ -11865,8 +11909,8 @@ class WorkflowService:
                 "规划修复内容未被改写，但同范围协议重封装仍无法形成唯一可校验规划段",
                 stage="planning", metadata={
                     **issue,
-                    "first_issues": first_issues,
-                    "retry_issues": retry_issues,
+                    "first_issues": safe_first_issues,
+                    "retry_issues": safe_retry_issues,
                 },
             )
             raise GeneratedArtifactShapeError(
@@ -15496,8 +15540,16 @@ class WorkflowService:
                 packet = await split_group(contract, {
                     "trigger": "output_or_protocol",
                     "pressure": "split",
-                    "provider_error": (
-                        str(primary_error)[:500] if primary_error else "protocol_invalid"
+                    "provider_failure": (
+                        _safe_workflow_event_metadata(
+                            primary_error,
+                            boundary="planning.causal_chain.primary",
+                            code="planning.causal_chain_packet_invalid",
+                            family="provider.response_invalid",
+                        )
+                        if primary_error is not None else {
+                            "failure_code": "planning.protocol_invalid",
+                        }
                     ),
                 })
                 save_packet(contract, packet)
@@ -15529,7 +15581,12 @@ class WorkflowService:
                     packet = await split_group(contract, {
                         "trigger": "fallback_failure",
                         "pressure": "split",
-                        "provider_error": str(fallback_error)[:500],
+                        "provider_failure": _safe_workflow_event_metadata(
+                            fallback_error,
+                            boundary="planning.causal_chain.fallback",
+                            code="planning.causal_chain_packet_invalid",
+                            family="provider.response_invalid",
+                        ),
                     })
                 else:
                     primary_route_error = primary_error or GeneratedArtifactShapeError(
@@ -26312,7 +26369,12 @@ class WorkflowService:
                     "Draft local-repair ownership was ambiguous or exceeded its bound.",
                     stage="draft", metadata={
                         "task_id": contract.task_id,
-                        "failure_code": str(exc),
+                        "failure": _safe_workflow_event_metadata(
+                            exc,
+                            boundary="draft.local_repair_scope",
+                            code="draft.local_repair_scope_invalid",
+                            family="runtime.semantic_validation",
+                        ),
                         "repair_scope_kind": "fail_closed",
                     },
                 )
@@ -28128,7 +28190,12 @@ class WorkflowService:
                         "retained_segments": retained_segments,
                         "rejected_segments": rejected_segments,
                         "failure_class": classify_model_failure(whole_error),
-                        "error": str(whole_error)[:500],
+                        "failure": _safe_workflow_event_metadata(
+                            whole_error,
+                            boundary="polish.whole_semantic_recovery",
+                            code="polish.whole_semantic_invalid",
+                            family="runtime.semantic_validation",
+                        ),
                     },
                 )
             segment_integrity = []
