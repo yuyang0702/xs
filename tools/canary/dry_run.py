@@ -9,6 +9,7 @@ import os
 from pathlib import Path
 import sqlite3
 import time
+import traceback
 from types import SimpleNamespace
 from typing import Any, Iterable
 
@@ -90,11 +91,16 @@ class C0AFakeWorkflowService(WorkflowService):
         try:
             return await super()._stage(*args, **kwargs)
         except BaseException as exc:
-            types = [type(exc).__name__]
+            def boundary(value: BaseException) -> str:
+                frames = traceback.extract_tb(value.__traceback__)
+                function = frames[-1].name if frames else "unknown"
+                return f"{type(value).__name__}@{function}"
+
+            types = [boundary(exc)]
             for attribute in ("primary_error", "fallback_error"):
                 nested = getattr(exc, attribute, None)
                 if nested is not None:
-                    types.append(type(nested).__name__)
+                    types.append(boundary(nested))
             self.canary_stage_failure_types.append("/".join(types))
             raise
 
