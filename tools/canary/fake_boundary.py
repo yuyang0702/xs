@@ -355,9 +355,12 @@ class DeterministicShortBoundary:
             }))
         if "IR_FIRST_SHORT_PLANNING_V2" in user:
             catalog = json.loads(user.split("FORMAL EVENT CATALOG:\n", 1)[1])
-            segment_count = int(
-                user.split("Return exactly ", 1)[1].split(" contiguous segments", 1)[0]
+            segment_match = re.search(
+                r"Return exactly (\d+) contiguous segments", user,
             )
+            if segment_match is None:
+                raise AssertionError("planning segment count is missing")
+            segment_count = int(segment_match.group(1))
             ownership = {number: [] for number in range(1, segment_count + 1)}
             for ordinal in range(1, len(catalog) + 1):
                 owner = min(
