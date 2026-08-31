@@ -901,6 +901,21 @@ class ModelGateway:
             response = response.model_copy(update={
                 "text": json.dumps(matching[0].arguments, ensure_ascii=False),
             })
+        capture_contract_input = getattr(
+            resolved.adapter, "capture_contract_runtime_input", None,
+        )
+        if response_schema is not None and callable(capture_contract_input):
+            capture_contract_input(
+                response.text,
+                adapter_id=str(getattr(
+                    resolved.adapter, "DIAGNOSTIC_ADAPTER_ID", "unknown",
+                )),
+                adapter_version=int(getattr(
+                    resolved.adapter, "DIAGNOSTIC_ADAPTER_VERSION", 1,
+                )),
+                finish_reason=normalize_finish_reason(response.finish_reason) or None,
+                transport_complete=bool(receipt["transport_complete"]),
+            )
         self._record_output_observation(receipt, response.text)
         if not receipt["transport_complete"]:
             raise TransportInterruptedError(receipt, response.text)

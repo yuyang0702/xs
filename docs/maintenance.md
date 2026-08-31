@@ -2354,3 +2354,32 @@ workflow retries, output budgets, literary Skills, StoryState, Canon, and READY
 semantics are unchanged. The offline rehearsal replaces only the lowest HTTP
 transport and persists no project prose, prompts, references, credentials, or
 Provider bodies in its hash-only evidence.
+
+Prospective trustworthy Full Short runs additionally bind
+`FullShortProviderResponseCapturePolicyV1` into the canonical authorization
+and live preflight. Each successful HTTP entity is captured byte-for-byte
+before JSON/SSE parsing, and each structured adapter result is captured as the
+exact UTF-8 Contract Runtime input after strict-tool projection. The immutable
+captures live only in the bound worktree-external private control store; Git
+and the public ledger retain hashes, lengths, identities, and typed status
+only. Exclusive publication rejects duplicates, failed conversion retains the
+capture, and replay rechecks run/call/stage/provider/model/route/contract,
+length, and SHA-256 before parsing. Request prompts, request bodies, headers,
+credentials, and tool arguments are never capture metadata. Restart never
+authorizes a network redispatch; captured bytes are the only offline replay
+source.
+
+For Full Short, Reader Review now requires explicit commercial/story/prose
+dimensions, hard-fail and decision controls, issues, and the four closed reader
+signals. Final Review requires the explicit dimensions/control verdict rather
+than a legacy score-only shell. Short StoryState maintenance requires complete
+manuscript-hash coverage plus either a non-empty change delta or an explicit
+no-change reason. Structurally valid sparse objects enter the existing bounded
+typed recovery path and cannot become authority.
+
+The local Skill page is project-aware. It distinguishes the configured global,
+repository, and project roots from the resolver's effective source, displays
+the source kind/fallback status and source/document hashes, and refreshes when
+the active project changes. This is presentation and inspection only: the
+production resolver precedence and model-visible Baseline Skill bytes are not
+changed, and retired Selective/Hybrid augmentation remains inactive.

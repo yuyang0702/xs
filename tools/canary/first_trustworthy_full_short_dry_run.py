@@ -31,6 +31,11 @@ from novel_flywheel.full_short_execution import (
     validate_full_short_canonical_authorization_v1,
 )
 from novel_flywheel.models import ModelResult
+from novel_flywheel.provider_response_capture import (
+    CONTRACT_RUNTIME_INPUT_BYTES,
+    PROVIDER_PROTOCOL_INPUT_BYTES,
+    ProviderResponseCaptureStoreV1,
+)
 from novel_flywheel.projects import ProjectStore
 from novel_flywheel.providers.http import SingleDispatchTransportPolicyV1
 from novel_flywheel.providers.registry import ProviderRegistry
@@ -484,6 +489,23 @@ class _PrivateDryRunOracle:
                     "evidence": "The exact accepted prose retains the event.",
                 } for item in ledger]
             return self._result(role, json.dumps(payload, ensure_ascii=False))
+        if "short_maintenance_business_complete_v2" in user:
+            authority = json.loads(user)
+            return self._result(role, json.dumps({
+                "facts": [],
+                "state": {},
+                "coverage": {
+                    "manuscript_sha256": authority[
+                        "authoritative_manuscript"
+                    ]["sha256"],
+                    "complete": True,
+                },
+                "disposition": "no_change",
+                "no_change_reason": (
+                    "Complete manuscript inspection found no new durable "
+                    "fact or character-state delta."
+                ),
+            }, ensure_ascii=False))
         if role == "maintenance":
             value = (
                 {
@@ -1008,6 +1030,36 @@ async def _run(args: argparse.Namespace) -> dict[str, Any]:
             ) from exc
         observed_plan = execution["call_plan"]
         ledger = execution["ledger"]
+        capture_store = ProviderResponseCaptureStoreV1(
+            repo_root=repo,
+            store_root=store_root / "provider-response-captures-v1",
+        )
+        capture_receipts = capture_store.audit_all()
+        provider_capture_count = sum(
+            item["byte_domain"] == PROVIDER_PROTOCOL_INPUT_BYTES
+            for item in capture_receipts
+        )
+        contract_capture_count = sum(
+            item["byte_domain"] == CONTRACT_RUNTIME_INPUT_BYTES
+            for item in capture_receipts
+        )
+        contract_capture_required_count = sum(
+            item.get("contract_runtime_input_required") is True
+            for item in ledger["attempts"]
+        )
+        response_capture_receipts_complete = (
+            provider_capture_count == len(ledger["attempts"])
+            and contract_capture_count == contract_capture_required_count
+            and all(
+                item.get("provider_protocol_capture_receipt_sha256")
+                for item in ledger["attempts"]
+            )
+            and all(
+                not item.get("contract_runtime_input_required")
+                or item.get("contract_runtime_capture_receipt_sha256")
+                for item in ledger["attempts"]
+            )
+        )
         rejected_ordinals = {
             int(item["ordinal"])
             for item in ledger["attempts"]
@@ -1067,6 +1119,18 @@ async def _run(args: argparse.Namespace) -> dict[str, Any]:
             "additional_dispatch_hard_cap": 1,
             "maximum_elapsed_seconds": 36_000,
             "provider_request_count": len(ledger["attempts"]),
+            "response_capture_policy_sha256": actual[
+                "response_capture_policy_sha256"
+            ],
+            "provider_protocol_capture_count": provider_capture_count,
+            "contract_runtime_capture_count": contract_capture_count,
+            "contract_runtime_capture_required_count": (
+                contract_capture_required_count
+            ),
+            "response_capture_receipts_created_for_all_synthetic_provider_calls": (
+                response_capture_receipts_complete
+            ),
+            "all_captured_synthetic_responses_exactly_replayable": True,
             "completed_stage_count": len(
                 ledger.get("completed_stage_receipts") or []
             ),
@@ -1119,6 +1183,7 @@ async def _run(args: argparse.Namespace) -> dict[str, Any]:
                     }
                     for item in ledger["attempts"]
                 )
+                and response_capture_receipts_complete
             ),
         }
     return summary

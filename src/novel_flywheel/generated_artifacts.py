@@ -482,6 +482,18 @@ _REGISTRATIONS = (
         minimum_business_characters=160,
     ),
     ArtifactContractRegistration(
+        name="full_short_final_review", phase="quality",
+        semantic_authority=(
+            "Full Short typed chief-editor dimensions and explicit control verdict"
+        ),
+        wire_required_fields=(
+            "dimensions", "hard_fail", "decision", "issues",
+        ),
+        wire_optional_fields=("reconciliations", "request_full_review"),
+        wire_closed=True,
+        minimum_business_characters=160,
+    ),
+    ArtifactContractRegistration(
         name="final_review_window", phase="quality",
         semantic_authority="typed manuscript-window evidence and descriptive issues",
         wire_required_fields=("summary", "issues"),
@@ -528,6 +540,17 @@ _REGISTRATIONS = (
         wire_required_fields=("facts",),
         wire_optional_fields=("state",),
         minimum_business_characters=0,
+    ),
+    ArtifactContractRegistration(
+        name="short_maintenance_business_complete_v2", phase="runtime",
+        semantic_authority=(
+            "Full-manuscript coverage-bound maintenance delta or explicit no-change proof"
+        ),
+        wire_required_fields=(
+            "facts", "state", "coverage", "disposition", "no_change_reason",
+        ),
+        wire_closed=True,
+        minimum_business_characters=96,
     ),
     ArtifactContractRegistration(
         name="long_setup_maintenance", phase="runtime",
@@ -680,7 +703,7 @@ _OBJECT_FIELDS = {
 _BOOLEAN_FIELDS = {
     "causal_order_valid", "commitment_flow_valid", "commitments_valid",
     "continuity_valid", "ending_valid", "formal_plot_unchanged", "hard_fail",
-    "requires_user_confirmation",
+    "requires_user_confirmation", "request_full_review",
 }
 _INTEGER_FIELDS = {"authority_version", "segment", "version"}
 

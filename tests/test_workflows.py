@@ -1058,10 +1058,22 @@ class FakeGateway:
                 "段末交接：目标已经完成，代价与后续状态均已明确。"
             ),
             "# Draft\nRough story.",
-            json.dumps({"score": 86, "hard_fail": False, "issues": ["tighten prose"]}),
-            json.dumps({"score": 84, "hard_fail": False, "issues": ["strengthen paid hook"]}),
+            json.dumps({
+                "dimensions": {"commercial": 86, "story": 86, "prose": 86},
+                "hard_fail": False, "decision": "pass",
+                "issues": ["tighten prose"],
+            }),
+            json.dumps({
+                "dimensions": {"commercial": 84, "story": 84, "prose": 84},
+                "hard_fail": False, "decision": "pass",
+                "issues": ["strengthen paid hook"],
+            }),
             "# Final Story\nHuman, polished prose.",
-            json.dumps({"score": 92, "hard_fail": False, "issues": []}),
+            json.dumps({
+                "dimensions": {"commercial": 92, "story": 92, "prose": 92},
+                "hard_fail": False, "decision": "pass",
+                "issues": [],
+            }),
             json.dumps({"facts": ["The hero survived."]}),
         ])
 
@@ -1153,6 +1165,19 @@ class FakeGateway:
                 "covered_event_ids": covered_event_ids,
             }, ensure_ascii=False), {"role": role, "model_name": f"fake-{role}"})
         text = next(self.responses)
+        if "short_maintenance_business_complete_v2" in user:
+            authority = json.loads(user)
+            manuscript_sha256 = authority["authoritative_manuscript"]["sha256"]
+            text = json.dumps({
+                "facts": ["The hero survived."],
+                "state": {},
+                "coverage": {
+                    "manuscript_sha256": manuscript_sha256,
+                    "complete": True,
+                },
+                "disposition": "changes",
+                "no_change_reason": "not_applicable_changes_present",
+            })
         if "TARGET READER SIMULATION" in user:
             payload = json.loads(text)
             payload["reader_signals"] = {

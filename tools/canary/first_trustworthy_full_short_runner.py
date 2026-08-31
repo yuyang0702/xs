@@ -27,6 +27,8 @@ from novel_flywheel.db import Database
 from novel_flywheel.full_short_execution import (
     FullShortDispatchLedgerObserverV1,
     FullShortDurableExecutionStoreV1,
+    RESPONSE_CAPTURE_POLICY_SHA256,
+    RESPONSE_CAPTURE_POLICY_V1,
     build_full_short_completion_receipt_v1,
     validate_full_short_canonical_authorization_v1,
     validate_full_short_preflight_v1,
@@ -474,6 +476,7 @@ def collect_live_bindings(
         "route_manifest_sha256": route_manifest_sha256,
         "destination_manifest_sha256": destination_manifest_sha256,
         "egress_policy_sha256": _domain(egress),
+        "response_capture_policy_sha256": RESPONSE_CAPTURE_POLICY_SHA256,
         "store_root_sha256": hashlib.sha256(
             str(exact_store_root).encode("utf-8"),
         ).hexdigest(),
@@ -503,6 +506,7 @@ def collect_live_bindings(
             "operator_classification": "THIRD_PARTY_ENDPOINT_LOCAL_METADATA_ONLY",
         } for destination in sorted(destinations)],
         "egress_policy": egress,
+        "response_capture_policy": RESPONSE_CAPTURE_POLICY_V1,
         "maximum_configured_output_tokens_per_call": max_per_call,
         "store_root": str(exact_store_root),
         "store_root_sha256": hashlib.sha256(

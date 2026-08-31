@@ -14,6 +14,7 @@ from novel_flywheel.full_short_execution import (
     FullShortDurableExecutionStoreV1,
     FullShortExecutionBoundaryError,
     FullShortExecutionPolicyV1,
+    RESPONSE_CAPTURE_POLICY_V1,
     _expected_provider_payload_v1,
     build_full_short_completion_receipt_v1,
     render_full_short_canonical_authorization_v1,
@@ -806,6 +807,9 @@ def _preflight_actual() -> dict:
         "route_manifest_sha256": policy["route_manifest_sha256"],
         "destination_manifest_sha256": policy["destination_manifest_sha256"],
         "egress_policy_sha256": policy["egress_policy_sha256"],
+        "response_capture_policy_sha256": (
+            policy["response_capture_policy_sha256"]
+        ),
         "store_root_sha256": policy["store_root_sha256"],
         "skill_v3_production_cutover": False,
         "planning_v2_production_cutover": False,
@@ -823,6 +827,7 @@ def test_canonical_authorization_and_disabled_preflight_are_exact() -> None:
         "routes": list(_routes()),
         "destinations": ["https://unit.test:443/v1/messages"],
         "egress_policy": _egress(),
+        "response_capture_policy": RESPONSE_CAPTURE_POLICY_V1,
         "store_root_sha256": "0" * 64,
     }
     raw = render_full_short_canonical_authorization_v1(
@@ -892,6 +897,8 @@ def test_invalid_public_route_identity_never_crosses_credential_boundary(
         ("destination_manifest_sha256", "9" * 64,
          "DESTINATION_MANIFEST_SHA256_DRIFT"),
         ("egress_policy_sha256", "9" * 64, "EGRESS_POLICY_SHA256_DRIFT"),
+        ("response_capture_policy_sha256", "9" * 64,
+         "RESPONSE_CAPTURE_POLICY_SHA256_DRIFT"),
         ("store_root_sha256", "9" * 64, "STORE_ROOT_SHA256_DRIFT"),
         ("skill_v3_production_cutover", True, "SKILL_V3_CUTOVER_DRIFT"),
         ("planning_v2_production_cutover", True, "PLANNING_V2_CUTOVER_DRIFT"),

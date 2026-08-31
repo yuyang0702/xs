@@ -507,6 +507,69 @@ class TargetedGroupError(RuntimeError):
     pass
 
 
+def validate_reader_review_business_complete_v1(
+    payload: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Require the complete model-visible reader verdict, not a sparse shell."""
+
+    value = dict(payload)
+    required = {"dimensions", "hard_fail", "decision", "issues", "reader_signals"}
+    if set(value) - (required | {"reconciliations"}):
+        raise ValueError("reader review contains undeclared fields")
+    if not required.issubset(value):
+        raise ValueError("reader review business fields are incomplete")
+    signals = value.get("reader_signals")
+    required_signals = {
+        "would_continue", "would_pay", "abandonment_point", "payoff_felt",
+    }
+    if not isinstance(signals, Mapping) or set(signals) != required_signals:
+        raise ValueError("reader signals are incomplete")
+    if (
+        type(signals["would_continue"]) is not bool
+        or type(signals["would_pay"]) is not bool
+        or type(signals["payoff_felt"]) is not bool
+        or not isinstance(signals["abandonment_point"], str)
+    ):
+        raise ValueError("reader signals have invalid types")
+    return normalize_review(value)
+
+
+def validate_short_maintenance_business_complete_v2(
+    payload: Mapping[str, Any], *, expected_manuscript_sha256: str,
+) -> dict[str, Any]:
+    """Bind a maintenance delta or explicit no-change proof to full coverage."""
+
+    value = dict(payload)
+    required = {"facts", "state", "coverage", "disposition", "no_change_reason"}
+    if set(value) != required:
+        raise ValueError("maintenance business fields are incomplete")
+    coverage = value.get("coverage")
+    if not isinstance(coverage, Mapping) or set(coverage) != {
+        "manuscript_sha256", "complete",
+    } or (
+        coverage.get("manuscript_sha256") != expected_manuscript_sha256
+        or coverage.get("complete") is not True
+    ):
+        raise ValueError("maintenance coverage is incomplete")
+    facts = value.get("facts")
+    state = value.get("state")
+    if not isinstance(facts, list) or not isinstance(state, Mapping):
+        raise ValueError("maintenance facts/state shape is invalid")
+    disposition = value.get("disposition")
+    reason = value.get("no_change_reason")
+    if not isinstance(reason, str) or not reason.strip():
+        raise ValueError("maintenance disposition reason is invalid")
+    if disposition == "no_change":
+        if facts or state:
+            raise ValueError("maintenance no-change proof contains a delta")
+    elif disposition == "changes":
+        if not facts and not state:
+            raise ValueError("maintenance changes disposition has no delta")
+    else:
+        raise ValueError("maintenance disposition is invalid")
+    return value
+
+
 class ProtocolReceiptRouteExhaustedError(RuntimeError):
     """All explicit routes failed before a receipt reached validation."""
 
@@ -18470,18 +18533,79 @@ class WorkflowService:
     ) -> tuple[dict, list[dict]]:
         """Validate one Runtime-owned incremental maintenance proposal."""
 
-        maintenance_input = polished
         preserved: dict = {"facts": []}
         publish_text = "\n\n".join(self._split_segments(polished))
         source_artifact_hash = hashlib.sha256(
             publish_text.encode("utf-8")
         ).hexdigest()
+        maintenance_input = json.dumps({
+            "contract": {
+                "name": "short_maintenance_business_complete_v2",
+                "required": [
+                    "facts", "state", "coverage", "disposition",
+                    "no_change_reason",
+                ],
+                "rule": (
+                    "coverage.complete must be true and coverage.manuscript_sha256 "
+                    "must equal the supplied authoritative hash. Use disposition "
+                    "changes when facts or state is non-empty. Use no_change only "
+                    "with empty facts/state and a specific non-empty reason."
+                ),
+            },
+            "authoritative_manuscript": {
+                "sha256": source_artifact_hash,
+                "text": publish_text,
+            },
+        }, ensure_ascii=False, sort_keys=True)
         base_authority = self.story_states.get(project.id)
         if base_authority is None:
             raise LookupError("Short maintenance StoryState is unavailable")
         base_authority_revision = base_authority.revision
         base_authority_hash = canonical_json_sha256(base_authority.data)
         normal_inventories: list[MaintenanceProposalInventoryV1] = []
+        maintenance_schema = {
+            "type": "object",
+            "properties": {
+                "facts": {"type": "array", "items": {}},
+                "state": {"type": "object"},
+                "coverage": {
+                    "type": "object",
+                    "properties": {
+                        "manuscript_sha256": {
+                            "type": "string", "const": source_artifact_hash,
+                        },
+                        "complete": {"const": True},
+                    },
+                    "required": ["manuscript_sha256", "complete"],
+                    "additionalProperties": False,
+                },
+                "disposition": {"enum": ["changes", "no_change"]},
+                "no_change_reason": {"type": "string", "minLength": 1},
+            },
+            "required": [
+                "facts", "state", "coverage", "disposition",
+                "no_change_reason",
+            ],
+            "additionalProperties": False,
+        }
+
+        def maintenance_payload_is_complete(value: str) -> bool:
+            payload = self._convert_generated_object(
+                value, run_path,
+                contract_name="short_maintenance_business_complete_v2",
+            )
+            validate_short_maintenance_business_complete_v2(
+                payload, expected_manuscript_sha256=source_artifact_hash,
+            )
+            return True
+
+        maintenance_system_contract = (
+            "Extract durable canonical facts and state deltas from the complete "
+            "authoritative manuscript. Return only the strict JSON object "
+            "short_maintenance_business_complete_v2 with facts, state, coverage, "
+            "disposition, and no_change_reason. Never imply complete coverage "
+            "with an empty legacy facts object."
+        )
         for attempt in range(2):
             stage_suffix = suffix if attempt == 0 else f"{suffix}-authority-repair"
             canon_text = await self._stage_with_role_fallback(
@@ -18495,7 +18619,17 @@ class WorkflowService:
                         state_data, suffix=stage_suffix, details=details,
                     )
                 ),
-                completion_check=lambda value: bool(str(value).strip()),
+                execution_spec=self._structured_stage_spec(
+                    "short_maintenance_business_complete_v2",
+                    completion_check=maintenance_payload_is_complete,
+                    runtime_authority={
+                        "manuscript_sha256": source_artifact_hash,
+                        "base_authority_revision": base_authority_revision,
+                        "base_authority_sha256": base_authority_hash,
+                    },
+                    schema=maintenance_schema,
+                ),
+                protocol_system_contract=maintenance_system_contract,
                 bounded_protocol_output=True,
             )
             runtime_capacity_result = bool(
@@ -18508,7 +18642,7 @@ class WorkflowService:
                 if runtime_capacity_result else
                 self._convert_generated_object(
                     str(canon_text), run_path,
-                    contract_name="short_maintenance_facts",
+                    contract_name="short_maintenance_business_complete_v2",
                 )
             )
             if raw_payload.get("version") == MAINTENANCE_REDUCTION_VERSION:
@@ -19562,16 +19696,18 @@ class WorkflowService:
         index_skeleton = self._stage_story_skeleton(
             project, constraints, run_path, index_only=True,
         )
+        contract_name = (
+            "final_review_window" if recovery_kind == "window" else
+            "final_review_regional" if recovery_kind == "regional" else
+            "final_review_detail" if recovery_kind == "detail" else
+            "full_short_final_review" if project.mode == "short" else
+            "final_review"
+        )
 
         def convert(value: str) -> dict:
             payload = self._convert_generated_object(
                 value, run_path,
-                contract_name=(
-                    "final_review_window" if recovery_kind == "window" else
-                    "final_review_regional" if recovery_kind == "regional" else
-                    "final_review_detail" if recovery_kind == "detail" else
-                    "final_review"
-                ),
+                contract_name=contract_name,
             )
             if recovery_kind == "window":
                 payload = validate_final_review_window_receipt(payload)
@@ -19687,7 +19823,7 @@ class WorkflowService:
         def bind_accepted_stage_artifact(
             raw_stage: str, accepted_suffix: str,
         ) -> str:
-            if recovery_kind != "review":
+            if recovery_kind != "review" or not isinstance(raw_stage, StageText):
                 return raw_stage
             path = run_path / "outputs" / f"final_review{accepted_suffix}.md"
             try:
@@ -19709,12 +19845,6 @@ class WorkflowService:
                 }
             return raw_stage
 
-        contract_name = (
-            "final_review_window" if recovery_kind == "window" else
-            "final_review_regional" if recovery_kind == "regional" else
-            "final_review_detail" if recovery_kind == "detail" else
-            "final_review"
-        )
         review_authority = {
             "recovery_kind": recovery_kind,
             "prompt_sha256": hashlib.sha256(
@@ -20632,16 +20762,54 @@ class WorkflowService:
             f"READER PROFILE:\n{json.dumps(profile, ensure_ascii=False)}\n\n"
             f"LABELED EXCERPTS:\n{reader_sample(text, project.mode, limit=6000)}"
         )
+        reader_schema = {
+            "type": "object",
+            "properties": {
+                "dimensions": {
+                    "type": "object",
+                    "properties": {
+                        name: {"type": "number", "minimum": 0, "maximum": 100}
+                        for name in ("commercial", "story", "prose")
+                    },
+                    "required": ["commercial", "story", "prose"],
+                    "additionalProperties": False,
+                },
+                "hard_fail": {"type": "boolean"},
+                "decision": {"enum": ["pass", "revise", "rewrite"]},
+                "issues": {"type": "array", "items": {}},
+                "reader_signals": {
+                    "type": "object",
+                    "properties": {
+                        "would_continue": {"type": "boolean"},
+                        "would_pay": {"type": "boolean"},
+                        "abandonment_point": {"type": "string"},
+                        "payoff_felt": {"type": "boolean"},
+                    },
+                    "required": [
+                        "would_continue", "would_pay",
+                        "abandonment_point", "payoff_felt",
+                    ],
+                    "additionalProperties": False,
+                },
+            },
+            "required": [
+                "dimensions", "hard_fail", "decision", "issues",
+                "reader_signals",
+            ],
+            "additionalProperties": False,
+        }
+
+        def reader_payload_is_complete(value: str) -> bool:
+            payload = self._convert_generated_object(
+                value, run_path, contract_name="reader_review",
+            )
+            return bool(validate_reader_review_business_complete_v1(payload))
         output = await self._stage(
             run_id, run_path, project, "review", constraints, prompt,
             suffix=f"-reader{suffix}", model_role=model_role or "review", allow_tools=False,
             execution_spec=self._structured_stage_spec(
                 "reader_review",
-                completion_check=lambda value: bool(normalize_review(
-                    self._convert_generated_object(
-                        value, run_path, contract_name="reader_review",
-                    )
-                )),
+                completion_check=reader_payload_is_complete,
                 runtime_authority={
                     "profile_sha256": canonical_sha256(profile),
                     "sample_sha256": hashlib.sha256(
@@ -20650,6 +20818,7 @@ class WorkflowService:
                         ).encode("utf-8"),
                     ).hexdigest(),
                 },
+                schema=reader_schema,
             ),
         )
         runtime_receipt = getattr(output, "receipt", {})
@@ -29684,6 +29853,42 @@ class WorkflowService:
                 else None
             )
 
+            def bind_response_capture_stage() -> None:
+                execution_observer = getattr(
+                    getattr(self.gateway, "registry", None),
+                    "attempt_observer", None,
+                )
+                bind_stage_context = getattr(
+                    execution_observer, "bind_stage_context", None,
+                )
+                if not callable(bind_stage_context):
+                    return
+                if structured_contract is not None:
+                    contract_name = structured_contract.name
+                    contract_version = structured_contract.version
+                    contract_schema_sha256 = structured_contract.schema_sha256()
+                else:
+                    contract_name = f"{node_key}_text"
+                    contract_version = 1
+                    contract_schema_sha256 = hashlib.sha256(json.dumps(
+                        {
+                            "stage": node_key,
+                            "role": gateway_role,
+                            "kind": "text",
+                        },
+                        ensure_ascii=False, sort_keys=True,
+                        separators=(",", ":"),
+                    ).encode("utf-8")).hexdigest()
+                bind_stage_context(
+                    stage_id=node_key,
+                    contract_name=contract_name,
+                    contract_version=contract_version,
+                    contract_schema_sha256=contract_schema_sha256,
+                    contract_runtime_input_required=(
+                        structured_contract is not None
+                    ),
+                )
+
             async def execute_route(
                 route: str, route_system: str, route_user: str,
                 route_budget: int | None,
@@ -29692,6 +29897,7 @@ class WorkflowService:
 
                 if route not in {"primary", "configured_fallback"}:
                     raise RuntimeError(f"unknown model route: {route}")
+                bind_response_capture_stage()
                 return await dispatch_explicit_model_route(
                     self.gateway,
                     route,
@@ -29830,6 +30036,7 @@ class WorkflowService:
                             attempt_index=attempt.attempt_index,
                             attempt_route=attempt.route,
                         )
+                        bind_response_capture_stage()
                         return await dispatch_explicit_model_route(
                             self.gateway, attempt.route,
                             role=attempt_role, system=attempt_system,
@@ -29862,13 +30069,22 @@ class WorkflowService:
                             raise RuntimeError(
                                 "Full Short local rejection has no exact route binding"
                             )
+                        value = dict(rejection)
+                        capture_present = getattr(
+                            execution_observer,
+                            "contract_runtime_capture_present", None,
+                        )
+                        if callable(capture_present):
+                            value["raw_content_persisted"] = bool(
+                                capture_present()
+                            )
                         mark_local_attempt_rejected(
                             stage=f"{stage}{suffix}",
                             role=gateway_role,
                             role_binding_sha256=str(
                                 bound_route.get("role_binding_sha256") or ""
                             ),
-                            rejection=rejection,
+                            rejection=value,
                         )
 
                     contract_runtime = await execute_contract_runtime(

@@ -6,9 +6,11 @@ then create one JIT approval and one durable nonce.  The ledger is written
 before the lowest HTTP transport seam so a restart can never guess that an
 ambiguous provider request is safe to repeat.
 
-Only hashes, route/destination identities, counters and typed states are
-persisted.  Prompts, story prose, provider bodies, credentials and tool
-arguments are deliberately excluded.
+The public ledger persists only hashes, route/destination identities,
+counters, and typed states.  When the prospective response-capture contract
+is enabled, exact Provider response bytes are stored separately in the same
+worktree-external private store; credentials, request headers, request prompts,
+and tool arguments remain excluded from public receipts and Git.
 """
 
 from __future__ import annotations
@@ -31,6 +33,11 @@ from novel_flywheel.runtime_fingerprint_build import (
     CANONICALIZATION_VERSION,
     canonical_json_bytes,
     domain_sha256,
+)
+from novel_flywheel.provider_response_capture import (
+    CONTRACT_RUNTIME_INPUT_BYTES,
+    PROVIDER_PROTOCOL_INPUT_BYTES,
+    ProviderResponseCaptureStoreV1,
 )
 
 
@@ -64,6 +71,23 @@ _FULL_SHORT_EGRESS_FORBIDDEN = (
     "credentials", "unrelated_project_data", "raw_provider_evidence",
     "retired_skill_v3_hybrid_context",
 )
+RESPONSE_CAPTURE_POLICY_V1 = {
+    "schema": "FullShortProviderResponseCapturePolicyV1",
+    "version": 1,
+    "required_byte_domains": [
+        PROVIDER_PROTOCOL_INPUT_BYTES,
+        CONTRACT_RUNTIME_INPUT_BYTES,
+    ],
+    "storage": "WORKTREE_EXTERNAL_EXCLUSIVE_CREATE_CRASH_SAFE",
+    "capture_before_lossy_conversion": True,
+    "failed_conversion_capture_retained": True,
+    "exact_replay_required": True,
+    "credentials_or_request_secrets_persisted": False,
+    "restart_network_redispatch_allowed": False,
+}
+RESPONSE_CAPTURE_POLICY_SHA256 = hashlib.sha256(
+    canonical_json_bytes(RESPONSE_CAPTURE_POLICY_V1),
+).hexdigest()
 _CLOSED_LOCAL_ATTEMPT_STATES = frozenset({
     "LOCAL_STAGE_COMPLETE", "LOCAL_ATTEMPT_REJECTED",
 })
@@ -275,6 +299,7 @@ class FullShortExecutionPolicyV1:
     per_call_output_token_hard_cap: int
     total_output_token_hard_cap: int
     maximum_elapsed_seconds: int
+    response_capture_policy_sha256: str = RESPONSE_CAPTURE_POLICY_SHA256
     monetary_cost_cap_state: str = "UNKNOWN_NOT_SEALED"
 
     def document(self) -> dict[str, Any]:
@@ -295,6 +320,9 @@ class FullShortExecutionPolicyV1:
             "route_manifest_sha256": self.route_manifest_sha256,
             "destination_manifest_sha256": self.destination_manifest_sha256,
             "egress_policy_sha256": self.egress_policy_sha256,
+            "response_capture_policy_sha256": (
+                self.response_capture_policy_sha256
+            ),
             "store_root_sha256": self.store_root_sha256,
             "required_stage_roles": list(self.required_stage_roles),
             "expected_stage_calls": self.expected_stage_calls,
@@ -358,6 +386,11 @@ def render_full_short_canonical_authorization_v1(
         _canonical_sha256(public_bindings.get("egress_policy"))
         == validated["egress_policy_sha256"],
         "AUTHORIZATION_EGRESS_POLICY_MISMATCH",
+    )
+    _require(
+        _canonical_sha256(public_bindings.get("response_capture_policy"))
+        == validated["response_capture_policy_sha256"],
+        "AUTHORIZATION_RESPONSE_CAPTURE_POLICY_MISMATCH",
     )
     body = {
         "schema": AUTHORIZATION_SCHEMA,
@@ -429,6 +462,9 @@ def validate_full_short_preflight_v1(
             "destination_manifest_sha256"
         ],
         "egress_policy_sha256": validated["egress_policy_sha256"],
+        "response_capture_policy_sha256": validated[
+            "response_capture_policy_sha256"
+        ],
         "store_root_sha256": validated["store_root_sha256"],
     }
     for field, expected in required_equal.items():
@@ -481,9 +517,15 @@ def validate_policy_v1(value: Mapping[str, Any]) -> dict[str, Any]:
         "project_id_sha256", "workload_sha256", "runtime_authority_sha256",
         "style_reference_authority_sha256", "route_manifest_sha256",
         "destination_manifest_sha256", "egress_policy_sha256",
+        "response_capture_policy_sha256",
         "store_root_sha256",
     ):
         _require(_HEX64.fullmatch(str(body.get(field))) is not None, f"{field.upper()}_INVALID")
+    _require(
+        body["response_capture_policy_sha256"]
+        == RESPONSE_CAPTURE_POLICY_SHA256,
+        "RESPONSE_CAPTURE_POLICY_NOT_ENFORCED",
+    )
     for field in (
         "expected_stage_calls", "hard_max_provider_requests",
         "hard_max_http_posts", "hard_max_network_attempts",
@@ -1134,6 +1176,11 @@ class FullShortDispatchLedgerObserverV1:
         self.bound_route: dict[str, Any] | None = None
         self.expected_provider_payload: dict[str, Any] | None = None
         self.egress_intent_sha256: str | None = None
+        self.pending_stage_context: dict[str, Any] | None = None
+        self.capture_store = ProviderResponseCaptureStoreV1(
+            repo_root=self.store.repo_root,
+            store_root=self.store.root / "provider-response-captures-v1",
+        )
         self.store.verify_ready_chain(
             execution_id=execution_id, policy=self.policy,
             external_actions_enabled=external_actions_enabled,
@@ -1142,6 +1189,31 @@ class FullShortDispatchLedgerObserverV1:
             execution_id=execution_id, policy=self.policy,
             session_id=self.session_id,
         )
+
+    def bind_stage_context(
+        self, *, stage_id: str, contract_name: str, contract_version: int,
+        contract_schema_sha256: str,
+        contract_runtime_input_required: bool = False,
+    ) -> None:
+        """Bind the exact local stage/contract before any route resolution."""
+
+        _require(self.pending_ordinal is None, "PRIOR_DISPATCH_STILL_PENDING")
+        _require(_ID.fullmatch(stage_id) is not None, "CAPTURE_STAGE_ID_INVALID")
+        _require(bool(contract_name), "CAPTURE_CONTRACT_NAME_INVALID")
+        _require(type(contract_version) is int and contract_version > 0,
+                 "CAPTURE_CONTRACT_VERSION_INVALID")
+        _require(_HEX64.fullmatch(contract_schema_sha256) is not None,
+                 "CAPTURE_CONTRACT_SCHEMA_INVALID")
+        _require(type(contract_runtime_input_required) is bool,
+                 "CAPTURE_CONTRACT_INPUT_POLICY_INVALID")
+        self.pending_stage_context = {
+            "stage_id": stage_id,
+            "contract_name": contract_name,
+            "contract_version": contract_version,
+            "contract_schema_sha256": contract_schema_sha256,
+            "contract_runtime_input_required": contract_runtime_input_required,
+            "capture_enforcement_required": True,
+        }
 
     def bind_route(
         self, *, role: str, lane: str, provider_id: str, model_id: str,
@@ -1194,6 +1266,19 @@ class FullShortDispatchLedgerObserverV1:
             self.expected_provider_payload is None,
             "MODEL_REQUEST_ALREADY_BOUND",
         )
+        if self.pending_stage_context is None:
+            response_schema = request.response_schema or {}
+            schema_value = response_schema.get("schema", response_schema)
+            self.pending_stage_context = {
+                "stage_id": str(route.get("role") or "model"),
+                "contract_name": str(
+                    response_schema.get("name") or "unstructured_text"
+                ),
+                "contract_version": 1,
+                "contract_schema_sha256": _canonical_sha256(schema_value),
+                "contract_runtime_input_required": bool(request.response_schema),
+                "capture_enforcement_required": False,
+            }
         _require(protocol == route.get("protocol"), "EGRESS_PROTOCOL_DRIFT")
         expected = _expected_provider_payload_v1(
             protocol, request, destination=str(route["destination"]),
@@ -1224,6 +1309,10 @@ class FullShortDispatchLedgerObserverV1:
         )
         route = self.bound_route
         _require(route is not None, "ROUTE_NOT_BOUND_BEFORE_CREDENTIAL_OR_HTTP")
+        _require(
+            isinstance(self.pending_stage_context, dict),
+            "CAPTURE_STAGE_CONTEXT_NOT_BOUND",
+        )
         _require(normalized == route.get("destination"), "DESTINATION_DRIFT")
         expected_payload = self.expected_provider_payload
         _require(
@@ -1318,10 +1407,24 @@ class FullShortDispatchLedgerObserverV1:
             "role_binding_sha256": route["role_binding_sha256"],
             "bound_role": route["role"],
             "bound_lane": route["lane"],
+            "stage": self.pending_stage_context["stage_id"],
+            "contract_name": self.pending_stage_context["contract_name"],
+            "contract_version": self.pending_stage_context["contract_version"],
+            "contract_schema_sha256": self.pending_stage_context[
+                "contract_schema_sha256"
+            ],
+            "contract_runtime_input_required": self.pending_stage_context[
+                "contract_runtime_input_required"
+            ],
+            "capture_enforcement_required": self.pending_stage_context[
+                "capture_enforcement_required"
+            ],
             "state": "DISPATCH_ATTEMPTED",
             "attempted_at": _now(),
             "response_status_sha256": None,
             "local_stage_receipt_sha256": None,
+            "provider_protocol_capture_receipt_sha256": None,
+            "contract_runtime_capture_receipt_sha256": None,
         }
         self.store.consume_nonce_and_record_dispatch(
             execution_id=self.execution_id, policy=self.policy,
@@ -1337,6 +1440,114 @@ class FullShortDispatchLedgerObserverV1:
 
     def before_network_request(self) -> None:
         _require(self.pending_ordinal is not None, "DISPATCH_NOT_DURABLY_RECORDED")
+
+    def _capture_metadata(
+        self, *, adapter_id: str, adapter_version: int,
+        content_type: str, encoding: str, transport_complete: bool,
+    ) -> dict[str, Any]:
+        ordinal = self.pending_ordinal
+        route = self.bound_route
+        context = self.pending_stage_context
+        _require(ordinal is not None, "DISPATCH_NOT_DURABLY_RECORDED")
+        _require(isinstance(route, dict), "CAPTURE_ROUTE_NOT_BOUND")
+        _require(isinstance(context, dict), "CAPTURE_STAGE_CONTEXT_NOT_BOUND")
+        return {
+            "execution_id": self.execution_id,
+            "call_id": f"{self.execution_id}:{ordinal}",
+            "stage_id": context["stage_id"],
+            "provider_id_sha256": route["provider_id_sha256"],
+            "model_id_sha256": route["model_id_sha256"],
+            "route_fingerprint": route["route_fingerprint"],
+            "protocol": route["protocol"],
+            "contract_name": context["contract_name"],
+            "contract_version": context["contract_version"],
+            "contract_schema_sha256": context["contract_schema_sha256"],
+            "adapter_id": adapter_id,
+            "adapter_version": adapter_version,
+            "content_type": content_type,
+            "encoding": encoding,
+            "transport_complete": transport_complete,
+        }
+
+    def _record_capture_receipt(
+        self, *, field: str, receipt_sha256: str,
+    ) -> None:
+        ordinal = self.pending_ordinal
+        _require(ordinal is not None, "DISPATCH_NOT_DURABLY_RECORDED")
+
+        def mutate(body: dict[str, Any]) -> dict[str, Any]:
+            attempts = list(body["attempts"])
+            current = dict(attempts[ordinal - 1])
+            _require(
+                current.get("state") in {
+                    "DISPATCH_ATTEMPTED", "RESPONSE_RECEIVED",
+                },
+                "CAPTURE_LEDGER_STATE_INVALID",
+            )
+            _require(current.get(field) is None, "CAPTURE_RECEIPT_DUPLICATE")
+            current[field] = receipt_sha256
+            attempts[ordinal - 1] = current
+            body["attempts"] = attempts
+            return body
+
+        self.store.update_ledger(self.execution_id, mutate)
+
+    def capture_provider_protocol_input(
+        self, *, data: bytes, status_code: int, content_type: str,
+        encoding: str, transport_complete: bool,
+    ) -> None:
+        _require(200 <= status_code < 300, "CAPTURE_HTTP_STATUS_INVALID")
+        route = self.bound_route
+        _require(isinstance(route, dict), "CAPTURE_ROUTE_NOT_BOUND")
+        receipt = self.capture_store.capture(
+            byte_domain=PROVIDER_PROTOCOL_INPUT_BYTES,
+            data=data,
+            metadata=self._capture_metadata(
+                adapter_id=str(route["protocol"]), adapter_version=1,
+                content_type=content_type, encoding=encoding,
+                transport_complete=transport_complete,
+            ),
+        )
+        self._record_capture_receipt(
+            field="provider_protocol_capture_receipt_sha256",
+            receipt_sha256=domain_sha256(
+                "novel-flywheel-provider-response-capture-receipt-v1",
+                receipt.document(),
+            ),
+        )
+
+    def capture_contract_runtime_input(
+        self, *, data: bytes, adapter_id: str, adapter_version: int,
+        finish_reason: str | None, transport_complete: bool,
+    ) -> None:
+        receipt = self.capture_store.capture(
+            byte_domain=CONTRACT_RUNTIME_INPUT_BYTES,
+            data=data,
+            metadata=self._capture_metadata(
+                adapter_id=adapter_id, adapter_version=adapter_version,
+                content_type="text/plain; purpose=contract-runtime-input",
+                encoding="utf-8", transport_complete=transport_complete,
+            ),
+        )
+        self._record_capture_receipt(
+            field="contract_runtime_capture_receipt_sha256",
+            receipt_sha256=domain_sha256(
+                "novel-flywheel-provider-response-capture-receipt-v1",
+                {**receipt.document(), "finish_reason": finish_reason},
+            ),
+        )
+
+    def contract_runtime_capture_present(self) -> bool:
+        if self.pending_ordinal is None:
+            return False
+        ledger = self.store.load_ledger(self.execution_id)
+        attempts = list(ledger.get("attempts") or [])
+        return bool(
+            len(attempts) >= self.pending_ordinal
+            and attempts[self.pending_ordinal - 1].get(
+                "contract_runtime_capture_receipt_sha256"
+            )
+        )
 
     def after_http_response(self, *, status_code: int) -> None:
         ordinal = self.pending_ordinal
@@ -1416,6 +1627,20 @@ class FullShortDispatchLedgerObserverV1:
                 and current.get("state") == "RESPONSE_RECEIVED",
                 "RESPONSE_NOT_RECEIVED",
             )
+            if current.get("capture_enforcement_required"):
+                _require(
+                    _HEX64.fullmatch(str(current.get(
+                        "provider_protocol_capture_receipt_sha256"
+                    ))) is not None,
+                    "PROVIDER_RESPONSE_CAPTURE_REQUIRED",
+                )
+                if current.get("contract_runtime_input_required"):
+                    _require(
+                        _HEX64.fullmatch(str(current.get(
+                            "contract_runtime_capture_receipt_sha256"
+                        ))) is not None,
+                        "CONTRACT_RUNTIME_INPUT_CAPTURE_REQUIRED",
+                    )
             _require(current.get("bound_role") == role, "STAGE_ROLE_DRIFT")
             _require(
                 current.get("role_binding_sha256") == role_binding_sha256,
@@ -1447,6 +1672,7 @@ class FullShortDispatchLedgerObserverV1:
         self.bound_route = None
         self.expected_provider_payload = None
         self.egress_intent_sha256 = None
+        self.pending_stage_context = None
 
     def mark_local_attempt_rejected(
         self, *, stage: str, role: str, role_binding_sha256: str,
@@ -1481,7 +1707,7 @@ class FullShortDispatchLedgerObserverV1:
                 "artifact_conversion", "business_incomplete",
                 "domain_validation",
             }
-            and value.get("raw_content_persisted") is False,
+            and type(value.get("raw_content_persisted")) is bool,
             "LOCAL_REJECTION_RECEIPT_INVALID",
         )
         for field in (
@@ -1510,6 +1736,20 @@ class FullShortDispatchLedgerObserverV1:
                 and current.get("state") == "RESPONSE_RECEIVED",
                 "RESPONSE_NOT_RECEIVED",
             )
+            if current.get("capture_enforcement_required"):
+                _require(
+                    _HEX64.fullmatch(str(current.get(
+                        "provider_protocol_capture_receipt_sha256"
+                    ))) is not None,
+                    "PROVIDER_RESPONSE_CAPTURE_REQUIRED",
+                )
+                if current.get("contract_runtime_input_required"):
+                    _require(
+                        _HEX64.fullmatch(str(current.get(
+                            "contract_runtime_capture_receipt_sha256"
+                        ))) is not None,
+                        "CONTRACT_RUNTIME_INPUT_CAPTURE_REQUIRED",
+                    )
             _require(current.get("bound_role") == role, "STAGE_ROLE_DRIFT")
             _require(
                 current.get("role_binding_sha256") == role_binding_sha256,
@@ -1549,6 +1789,7 @@ class FullShortDispatchLedgerObserverV1:
         self.bound_route = None
         self.expected_provider_payload = None
         self.egress_intent_sha256 = None
+        self.pending_stage_context = None
 
 
 def build_full_short_completion_receipt_v1(

@@ -6,6 +6,11 @@ from typing import Any, Protocol
 
 import httpx
 
+from novel_flywheel.provider_response_capture import (
+    ProviderResponseCaptureError,
+    parse_provider_protocol_input_bytes_v1,
+)
+
 
 class ToolCapabilityError(RuntimeError):
     pass
@@ -161,6 +166,42 @@ class HttpProvider:
         if callable(callback):
             callback(failure_kind=type(exc).__name__)
 
+    def _capture_provider_protocol_input(
+        self, data: bytes, *, status_code: int, content_type: str,
+        encoding: str, transport_complete: bool,
+    ) -> None:
+        if self.attempt_observer is None:
+            return
+        callback = getattr(
+            self.attempt_observer, "capture_provider_protocol_input", None,
+        )
+        if callable(callback):
+            callback(
+                data=data, status_code=status_code,
+                content_type=content_type or "application/octet-stream",
+                encoding=encoding or "utf-8",
+                transport_complete=transport_complete,
+            )
+
+    def capture_contract_runtime_input(
+        self, text: str, *, adapter_id: str, adapter_version: int,
+        finish_reason: str | None, transport_complete: bool,
+    ) -> None:
+        """Persist the exact UTF-8 text passed toward Contract Runtime."""
+
+        if self.attempt_observer is None:
+            return
+        callback = getattr(
+            self.attempt_observer, "capture_contract_runtime_input", None,
+        )
+        if callable(callback):
+            callback(
+                data=text.encode("utf-8"), adapter_id=adapter_id,
+                adapter_version=adapter_version,
+                finish_reason=finish_reason,
+                transport_complete=transport_complete,
+            )
+
     def transport_attempt_snapshot(self) -> dict[str, Any]:
         policy = self.transport_policy
         return {
@@ -204,6 +245,14 @@ class HttpProvider:
                     raise
                 await asyncio.sleep(0.25)
         try:
+            if 200 <= response.status_code < 300:
+                self._capture_provider_protocol_input(
+                    response.content,
+                    status_code=response.status_code,
+                    content_type=response.headers.get("content-type", ""),
+                    encoding=response.encoding or "utf-8",
+                    transport_complete=True,
+                )
             if response.status_code in {400, 404, 422} and "tools" in payload:
                 detail = response.text.lower()
                 if any(term in detail for term in ("tool", "function calling", "function_call")):
@@ -258,40 +307,38 @@ class HttpProvider:
                         response.raise_for_status()
 
                     content_type = response.headers.get("content-type", "")
-                    if "text/event-stream" not in content_type:
-                        await response.aread()
-                        try:
-                            result = response.json()
-                        except ValueError as exc:
-                            raise ProviderResponseError(
-                                f"Provider endpoint returned non-JSON content ({content_type or 'unknown'}) "
-                                f"from {response.url}"
-                            ) from exc
-                        self._after_http_response(response.status_code)
-                        return [], result
-
-                    data_lines: list[str] = []
-                    async for line in response.aiter_lines():
-                        if not line:
-                            if data_lines:
-                                raw = "\n".join(data_lines)
-                                data_lines.clear()
-                                if raw != "[DONE]":
-                                    try:
-                                        events.append(json.loads(raw))
-                                    except ValueError as exc:
-                                        raise ProviderResponseError(
-                                            f"Provider returned invalid SSE JSON from {response.url}"
-                                        ) from exc
-                            continue
-                        if line.startswith("data:"):
-                            data_lines.append(line[5:].lstrip())
-                    if data_lines:
-                        raw = "\n".join(data_lines)
-                        if raw != "[DONE]":
-                            events.append(json.loads(raw))
+                    encoding = response.encoding or "utf-8"
+                    chunks: list[bytes] = []
+                    try:
+                        async for chunk in response.aiter_bytes():
+                            chunks.append(chunk)
+                    except BaseException:
+                        partial = b"".join(chunks)
+                        if partial:
+                            self._capture_provider_protocol_input(
+                                partial, status_code=response.status_code,
+                                content_type=content_type,
+                                encoding=encoding,
+                                transport_complete=False,
+                            )
+                        raise
+                    entity = b"".join(chunks)
+                    self._capture_provider_protocol_input(
+                        entity, status_code=response.status_code,
+                        content_type=content_type, encoding=encoding,
+                        transport_complete=True,
+                    )
+                    try:
+                        events, result = parse_provider_protocol_input_bytes_v1(
+                            entity, content_type=content_type,
+                            encoding=encoding,
+                        )
+                    except ProviderResponseCaptureError as exc:
+                        raise ProviderResponseError(
+                            f"Provider returned invalid response bytes from {response.url}"
+                        ) from exc
                     self._after_http_response(response.status_code)
-                    return events, None
+                    return events, result
             except httpx.TransportError as exc:
                 self._after_http_failure(exc)
                 if (self.transport_policy is not None
