@@ -161,7 +161,9 @@ class _InjectedStream(httpx.AsyncByteStream):
         return None
 
 
-async def _actual_stream_timeout(*, position: str) -> dict[str, Any]:
+async def _actual_stream_timeout(
+    *, position: str, injected_error: BaseException | None = None,
+) -> dict[str, Any]:
     entity = _sse(*_normal_events())
     chunks = {
         "before_first_byte": [],
@@ -170,7 +172,7 @@ async def _actual_stream_timeout(*, position: str) -> dict[str, Any]:
     }[position]
     stream = _InjectedStream(
         chunks,
-        httpx.ReadTimeout("offline injected read timeout"),
+        injected_error or httpx.ReadTimeout("offline injected read timeout"),
     )
     adapter = AnthropicAdapter(
         "https://offline.invalid/v1", "offline-memory-secret",
@@ -189,7 +191,7 @@ async def _actual_stream_timeout(*, position: str) -> dict[str, Any]:
                 model="offline", messages=[Message(role="user", content="offline")],
                 max_output_tokens=32,
             ))
-        except httpx.ReadTimeout as exc:
+        except (httpx.ReadTimeout, asyncio.CancelledError) as exc:
             if position == "after_complete_body":
                 raise AssertionError(
                     "complete terminal body was not recovered locally"
@@ -629,6 +631,12 @@ def _matrix(
                 content_type="text/event-stream",
             )
         ), AnthropicStreamProtocolError),
+        _expect(27, "cancellation after terminal body replays locally", lambda: (
+            asyncio.run(_actual_stream_timeout(
+                position="after_complete_body",
+                injected_error=asyncio.CancelledError(),
+            ))
+        )),
     ])
     return {
         "schema": "TransportSseRecoveryMatrixV1",
