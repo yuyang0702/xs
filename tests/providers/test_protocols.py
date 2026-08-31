@@ -311,13 +311,35 @@ async def test_anthropic_adapter_can_require_a_specific_tool() -> None:
 @pytest.mark.asyncio
 @respx.mock
 async def test_provider_reports_non_json_endpoint_response() -> None:
+    private_body = "<!doctype html><title>Relay website private marker</title>"
     respx.post("https://relay.test/v1/messages").mock(return_value=httpx.Response(
-        200, text="<!doctype html><title>Relay website</title>",
+        200, text=private_body,
         headers={"content-type": "text/html; charset=utf-8"},
     ))
 
-    with pytest.raises(ProviderResponseError, match="text/html"):
+    with pytest.raises(ProviderResponseError, match="text/html") as caught:
         await AnthropicAdapter("https://relay.test", "secret").complete(REQUEST)
+    assert private_body not in str(caught.value)
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_provider_bounds_non_json_content_type_provenance() -> None:
+    oversized_content_type = "text/html; relay=" + ("x" * 512)
+    private_body = "private upstream response body"
+    respx.post("https://relay.test/v1/messages").mock(return_value=httpx.Response(
+        200, text=private_body,
+        headers={"content-type": oversized_content_type},
+    ))
+
+    with pytest.raises(ProviderResponseError) as caught:
+        await AnthropicAdapter("https://relay.test", "secret").complete(REQUEST)
+
+    message = str(caught.value)
+    assert "content-type=text/html; relay=" in message
+    assert private_body not in message
+    assert oversized_content_type not in message
+    assert len(message) < 256
 
 
 @pytest.mark.asyncio
@@ -377,6 +399,7 @@ async def test_anthropic_adapter_aggregates_streamed_tool_call() -> None:
             'data: {"type":"content_block_start","index":0,"content_block":{"type":"tool_use","id":"call-1","name":"probe_tool","input":{}}}\n\n'
             'data: {"type":"content_block_delta","index":0,"delta":{"type":"input_json_delta","partial_json":"{\\"ok\\":"}}\n\n'
             'data: {"type":"content_block_delta","index":0,"delta":{"type":"input_json_delta","partial_json":"true}"}}\n\n'
+            'data: {"type":"content_block_stop","index":0}\n\n'
             'data: {"type":"message_delta","delta":{"stop_reason":"tool_use"},"usage":{"output_tokens":6}}\n\n'
             'data: {"type":"message_stop"}\n\n'
         )),

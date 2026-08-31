@@ -34,6 +34,21 @@ class SingleDispatchTransportGuardError(RuntimeError):
     pass
 
 
+_MAX_CONTENT_TYPE_PROVENANCE_CHARS = 128
+
+
+def _bounded_content_type_provenance(content_type: str) -> str:
+    """Return a bounded, single-line copy of response media-type metadata."""
+
+    sanitized = "".join(
+        character if character.isprintable() and character not in "\r\n" else "?"
+        for character in content_type
+    ) or "unknown"
+    if len(sanitized) <= _MAX_CONTENT_TYPE_PROVENANCE_CHARS:
+        return sanitized
+    return sanitized[:_MAX_CONTENT_TYPE_PROVENANCE_CHARS - 3] + "..."
+
+
 class SingleDispatchAttemptObserver(Protocol):
     """Optional pilot-only observer called at the actual outbound boundary."""
 
@@ -288,9 +303,12 @@ class HttpProvider:
             try:
                 result = response.json()
             except ValueError as exc:
-                content_type = response.headers.get("content-type", "unknown")
+                content_type = _bounded_content_type_provenance(
+                    response.headers.get("content-type", ""),
+                )
                 raise ProviderResponseError(
-                    f"Provider endpoint returned non-JSON content ({content_type}) from {response.url}"
+                    "Provider endpoint returned non-JSON content "
+                    f"(content-type={content_type}) from {response.url}"
                 ) from exc
         except Exception as exc:
             self._after_http_failure(exc)
@@ -376,7 +394,10 @@ class HttpProvider:
                             except ProviderResponseCaptureError as exc:
                                 raise ProviderResponseError(
                                     "Provider returned invalid terminal "
-                                    f"response bytes from {response.url}"
+                                    "response bytes "
+                                    "(content-type="
+                                    f"{_bounded_content_type_provenance(content_type)}) "
+                                    f"from {response.url}"
                                 ) from exc
                             self._after_http_response(response.status_code)
                             return events, result
@@ -397,7 +418,10 @@ class HttpProvider:
                         )
                     except ProviderResponseCaptureError as exc:
                         raise ProviderResponseError(
-                            f"Provider returned invalid response bytes from {response.url}"
+                            "Provider returned invalid response bytes "
+                            "(content-type="
+                            f"{_bounded_content_type_provenance(content_type)}) "
+                            f"from {response.url}"
                         ) from exc
                     self._after_http_response(response.status_code)
                     return events, result
