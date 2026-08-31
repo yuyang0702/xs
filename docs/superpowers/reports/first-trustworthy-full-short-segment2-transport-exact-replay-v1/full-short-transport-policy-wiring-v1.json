@@ -3,6 +3,7 @@
   "all_captures_replayed_through_adapter_contract_and_domain": true,
   "authority_mutation_only_after_validated_stage_receipt": true,
   "injected_provider_protocol_capture_count": 71,
+  "logical_stage_plan_sha256": "781aafb742f5e060a0ec54447f1278c4d5652f96206d9e0b6d84a3e3b26e0c9a",
   "normal_provider_protocol_capture_count": 70,
   "physical_logical_accounting": "PASS",
   "roles": [
@@ -17,6 +18,7 @@
   "schema": "FullShortTransportPolicyWiringV1",
   "status": "PASS",
   "transport_policy": "EXACT_REPLAY_ONLY",
+  "transport_recovery_policy_sha256": "d2967078bb7b0178860ae52bc690504ade15382ceb73ae91fda7c16bc08f2e84",
   "typed_failure_classification_shared_at_completion_supervisor": true,
   "version": 1
 }

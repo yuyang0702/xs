@@ -75,15 +75,14 @@
     "restart exact local replay"
   ],
   "next_authoritative_boundary_tests": [
-    "70/70 final completion receipt",
-    "71 physical/70 logical completion receipt",
-    "exact replay final artifact hash equality"
+    "tests/test_full_short_execution.py",
+    "tests/test_provider_response_capture.py"
   ],
   "operational_definition": "Every captured response is terminal-state validated and replayable; non-transport failures never default to transport; only a validated stage receipt mutates authority.",
   "original_requirement": "Recover exact Segment 2 transport truth offline, correct typed provenance and durable state, and re-close one Full Short authorization.",
   "production_shaped_tests": [
-    "tools/canary/first_trustworthy_full_short_dry_run.py normal",
-    "tools/canary/first_trustworthy_full_short_dry_run.py injected"
+    "tests/test_workflows.py",
+    "tests/canary/test_full_short_runner_hardening.py"
   ],
   "projected_failure_mechanisms": [
     "reasoning consumes output cap before final projection",
@@ -140,7 +139,10 @@
     "timeout before first byte",
     "timeout mid-stream",
     "cancel after complete body",
-    "473171-byte entity"
+    "473171-byte entity",
+    "complete 503 response captured then closed without redispatch",
+    "ambiguous external completion closed without redispatch",
+    "post-capture adapter projection failure replayed locally"
   ],
   "unknown_variant_behavior": "Reject typed; retain exact capture; do not guess or redispatch.",
   "unseen_valid_variants_tested": [

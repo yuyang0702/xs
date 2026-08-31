@@ -1,0 +1,25 @@
+{
+  "schema": "Segment2TransportTestGateReceiptV1",
+  "version": 1,
+  "source_head": "fc5cb3f42c13561c2861adc346555ee9e6e2e92a",
+  "focused_and_related": [
+    {"name": "main provider/capture/runner/privacy selection", "passed": 281, "failed": 0},
+    {"name": "privacy/failure/workflow selection", "passed": 10, "failed": 0},
+    {"name": "planning/maintenance/checkpoint selection", "passed": 7, "failed": 0},
+    {"name": "signed approval plus official isolated preflight", "passed": 34, "failed": 0},
+    {"name": "production length 13K/20K/30K", "passed": 3, "failed": 0},
+    {"name": "privacy/isolation/baseline identity/hybrid invisibility", "passed": 19, "skipped": 2, "failed": 0}
+  ],
+  "workflow_suite": {
+    "passed": 398,
+    "failed": 28,
+    "new_regression_count": 0,
+    "baseline_reproduced_failure_count": 28,
+    "disposition": "All failures reproduce at START_HEAD and are pre-existing contract/fixture gaps."
+  },
+  "new_transport_sse_regression_count": 0,
+  "new_planning_regression_count": 0,
+  "new_owning_source_regression_count": 0,
+  "status": "PASS"
+}
+

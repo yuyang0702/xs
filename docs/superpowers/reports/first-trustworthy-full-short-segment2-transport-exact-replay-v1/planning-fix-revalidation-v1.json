@@ -2,6 +2,9 @@
   "bounded_recovery": "PASS_ONE_LOCAL_REJECTION",
   "business_invariant_weakening": false,
   "injected_71_physical_70_logical": {
+    "adapter_failure_after_exact_capture_injected": false,
+    "adapter_failure_recovered_by_exact_local_replay": false,
+    "adapter_projection_call_count_at_injection": 0,
     "all_captured_synthetic_responses_exactly_replayable": true,
     "all_dispatches_locally_closed": true,
     "all_required_stage_roles_completed": true,
@@ -25,6 +28,7 @@
     "hard_max_network_attempts": 71,
     "hard_max_provider_requests": 71,
     "local_rejected_attempt_count": 1,
+    "logical_stage_plan_sha256": "781aafb742f5e060a0ec54447f1278c4d5652f96206d9e0b6d84a3e3b26e0c9a",
     "maximum_elapsed_seconds": 36000,
     "paid_calls": 0,
     "pass": true,
@@ -49,8 +53,10 @@
     "replay_reentered_real_provider_adapter": true,
     "response_capture_receipts_created_for_all_synthetic_provider_calls": true,
     "schema": "FirstTrustworthyFullShortPrivateDryRunV2",
-    "source_head": "f90828936f07729bb16f49873f923c2083639550",
+    "source_head": "fc5cb3f42c13561c2861adc346555ee9e6e2e92a",
     "total_output_token_hard_cap": 253110,
+    "transport_recovery_policy_identity": "EXACT_REPLAY_ONLY",
+    "transport_recovery_policy_sha256": "d2967078bb7b0178860ae52bc690504ade15382ceb73ae91fda7c16bc08f2e84",
     "version": 2,
     "workflow_status": "completed"
   },
@@ -59,6 +65,9 @@
     "segments"
   ],
   "normal_70_of_70": {
+    "adapter_failure_after_exact_capture_injected": false,
+    "adapter_failure_recovered_by_exact_local_replay": false,
+    "adapter_projection_call_count_at_injection": 0,
     "all_captured_synthetic_responses_exactly_replayable": true,
     "all_dispatches_locally_closed": true,
     "all_required_stage_roles_completed": true,
@@ -82,6 +91,7 @@
     "hard_max_network_attempts": 71,
     "hard_max_provider_requests": 71,
     "local_rejected_attempt_count": 0,
+    "logical_stage_plan_sha256": "781aafb742f5e060a0ec54447f1278c4d5652f96206d9e0b6d84a3e3b26e0c9a",
     "maximum_elapsed_seconds": 36000,
     "paid_calls": 0,
     "pass": true,
@@ -106,8 +116,10 @@
     "replay_reentered_real_provider_adapter": true,
     "response_capture_receipts_created_for_all_synthetic_provider_calls": true,
     "schema": "FirstTrustworthyFullShortPrivateDryRunV2",
-    "source_head": "f90828936f07729bb16f49873f923c2083639550",
+    "source_head": "fc5cb3f42c13561c2861adc346555ee9e6e2e92a",
     "total_output_token_hard_cap": 253110,
+    "transport_recovery_policy_identity": "EXACT_REPLAY_ONLY",
+    "transport_recovery_policy_sha256": "d2967078bb7b0178860ae52bc690504ade15382ceb73ae91fda7c16bc08f2e84",
     "version": 2,
     "workflow_status": "completed"
   },
@@ -115,7 +127,7 @@
     "13000": "PASS",
     "20000": "PASS",
     "30000": "PASS",
-    "junit_sha256": "d1c7a687b98a77f26ba3e97df8b233efa2058a1aa0310fef08860fee56f5f49f",
+    "junit_sha256": "d61e0b756920427a512dce4225d401292c221014f3808286857b8cc2f5c0bd30",
     "task_owned_regression_count": 0
   },
   "restart_fail_closed": true,

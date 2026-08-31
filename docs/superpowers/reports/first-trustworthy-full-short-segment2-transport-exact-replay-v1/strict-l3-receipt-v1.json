@@ -1,0 +1,27 @@
+{
+  "schema": "Segment2TransportStrictL3ReceiptV1",
+  "version": 1,
+  "baseline": "C:/小说/segment2-strict-baseline-v2.json",
+  "baseline_start_head": "0c975f076ca245dd847c5205b1e040c23ae54f2a",
+  "reviewed_source_head": "fc5cb3f42c13561c2861adc346555ee9e6e2e92a",
+  "declared_level": "L3",
+  "automatic_level": "L3",
+  "recommended_level": "L3",
+  "scope_classification": "open_world",
+  "split_review_core_tree_sha256": "9d4ee18993e9a93b183e824dcc1e5f19658232786abd47a04d63fb48288d693c",
+  "core_paths": [
+    "src/novel_flywheel/models.py",
+    "src/novel_flywheel/providers/anthropic.py",
+    "src/novel_flywheel/providers/http.py",
+    "src/novel_flywheel/storage.py",
+    "src/novel_flywheel/tasks.py",
+    "src/novel_flywheel/workflows.py"
+  ],
+  "review_count": 3,
+  "strict_l3": "PASS",
+  "warnings": [],
+  "blockers": [],
+  "returncode": 0,
+  "external_actions": 0
+}
+

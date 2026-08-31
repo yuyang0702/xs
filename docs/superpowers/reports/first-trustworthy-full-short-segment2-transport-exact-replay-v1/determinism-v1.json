@@ -1,0 +1,17 @@
+{
+  "schema": "Segment2TransportDeterminismV1",
+  "version": 1,
+  "source_head": "fc5cb3f42c13561c2861adc346555ee9e6e2e92a",
+  "overall_status": "PASS",
+  "normal_final_artifact_sha256": "0dc997a7770cbd267f7ae97c41da5a311f6e630236323f7266cdd56064d36133",
+  "normal_replay_artifact_sha256": "0dc997a7770cbd267f7ae97c41da5a311f6e630236323f7266cdd56064d36133",
+  "business_incomplete_final_artifact_sha256": "0dc997a7770cbd267f7ae97c41da5a311f6e630236323f7266cdd56064d36133",
+  "business_incomplete_replay_artifact_sha256": "0dc997a7770cbd267f7ae97c41da5a311f6e630236323f7266cdd56064d36133",
+  "adapter_fault_final_artifact_sha256": "0dc997a7770cbd267f7ae97c41da5a311f6e630236323f7266cdd56064d36133",
+  "adapter_fault_replay_artifact_sha256": "0dc997a7770cbd267f7ae97c41da5a311f6e630236323f7266cdd56064d36133",
+  "all_equal": true,
+  "segment1_contract_runtime_input_sha256": "82ec9df51e775b4f65eabf0abc475d57735fe32152e03f620f32191c914ff76a",
+  "transport_recovery_policy_sha256": "d2967078bb7b0178860ae52bc690504ade15382ceb73ae91fda7c16bc08f2e84",
+  "external_actions": 0
+}
+

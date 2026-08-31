@@ -1,0 +1,28 @@
+{
+  "schema": "Segment2TransportPrivacyScanV1",
+  "version": 1,
+  "source_head": "fc5cb3f42c13561c2861adc346555ee9e6e2e92a",
+  "overall_status": "PASS",
+  "capture_store_is_worktree_external": true,
+  "credentials_or_authorization_headers_persisted": false,
+  "signed_approval_or_nonce_persisted": false,
+  "prohibited_field_count": 0,
+  "raw_prompt_persisted": false,
+  "raw_reference_persisted": false,
+  "raw_story_persisted": false,
+  "raw_title_persisted": false,
+  "full_short_failure_safe_local_validation_message_count": 0,
+  "production_baseline_skill_identity": "PASS",
+  "hybrid_model_visible_leak_count": 0,
+  "external_actions": {
+    "credential_lookups": 0,
+    "provider_client_creations": 0,
+    "provider_request_attempts": 0,
+    "http_post_attempts": 0,
+    "network_calls": 0,
+    "model_calls": 0,
+    "paid_calls": 0,
+    "full_short_executions": 0
+  }
+}
+

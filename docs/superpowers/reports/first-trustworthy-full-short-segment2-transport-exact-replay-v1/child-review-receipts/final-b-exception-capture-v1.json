@@ -1,0 +1,20 @@
+{
+  "review_id": "segment2-final-exception-capture",
+  "reviewer": "/root/final_exception_reviewer",
+  "source_head": "fc5cb3f42c13561c2861adc346555ee9e6e2e92a",
+  "status": "PASS",
+  "scope": [
+    "src/novel_flywheel/models.py",
+    "src/novel_flywheel/tasks.py"
+  ],
+  "findings": [],
+  "conclusion": "Nested provenance remains typed, unknown route children do not default to transport, final-artifact quarantine is exact-scope, and durable summaries are bounded code/family/SHA projections.",
+  "related_offline_tests_passed": 228,
+  "residual_notes": [
+    "Ordinary successful model receipts retain request_id and finish-reason fields outside this failure-evidence privacy scope.",
+    "Unbound gateway lifetime quarantine remains outside a formal run diagnostic."
+  ],
+  "external_actions": 0,
+  "version": 1
+}
+
