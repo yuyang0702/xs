@@ -1759,6 +1759,60 @@ def test_mark_local_stage_complete_closes_only_pending_ordinal(tmp_path: Path) -
     assert ledger["attempts"][1]["state"] == "LOCAL_STAGE_COMPLETE"
 
 
+def test_mark_local_stage_complete_cannot_replace_authorized_stage_id(
+    tmp_path: Path,
+) -> None:
+    store = _store(tmp_path)
+    plan = _logical_stage_plan((
+        "draft_node_1", "planning", "unstructured_text", 1,
+        _hash({}), False, 128,
+    ))
+    _authorize_offline(
+        store, "immutable-stage-id", logical_stage_plan=plan,
+    )
+    observer = FullShortDispatchLedgerObserverV1(
+        store=store, execution_id="immutable-stage-id",
+        policy=_policy(store, logical_stage_plan=plan),
+        authorized_routes=_routes(), egress_policy=_egress(),
+    )
+    observer.bind_stage_context(
+        stage_id="draft_node_1", contract_name="unstructured_text",
+        contract_version=1, contract_schema_sha256=_hash({}),
+    )
+    observer.bind_route(
+        role="planning", lane="primary", provider_id="provider",
+        model_id="model-id", route_fingerprint="9" * 64,
+    )
+    observer.bind_model_request(protocol="anthropic", request=_request())
+    observer.before_http_dispatch(
+        method="POST", url="https://unit.test/v1/messages",
+        payload=_payload(),
+    )
+    observer.capture_provider_protocol_input(
+        data=b"{}", status_code=200, content_type="application/json",
+        encoding="utf-8", transport_complete=True,
+    )
+    observer.after_http_response(status_code=200)
+    binding = observer.bound_route["role_binding_sha256"]
+
+    with pytest.raises(FullShortExecutionBoundaryError) as drift:
+        observer.mark_local_stage_complete(
+            stage="Draft Chapter One", role="planning",
+            role_binding_sha256=binding,
+            output_sha256="a" * 64, receipt_sha256="b" * 64,
+        )
+    assert drift.value.reason_code == "STAGE_ID_DRIFT"
+
+    observer.mark_local_stage_complete(
+        stage="draft_node_1", role="planning",
+        role_binding_sha256=binding,
+        output_sha256="a" * 64, receipt_sha256="b" * 64,
+    )
+    ledger = store.load_ledger("immutable-stage-id")
+    assert ledger["attempts"][0]["stage"] == "draft_node_1"
+    assert ledger["completed_stage_receipts"][0]["stage"] == "draft_node_1"
+
+
 def test_local_rejection_must_match_current_logical_attempt_identity(
     tmp_path: Path,
 ) -> None:

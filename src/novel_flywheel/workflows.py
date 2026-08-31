@@ -30143,6 +30143,7 @@ class WorkflowService:
                     )
                     selected_route = contract_runtime.attempt.route
                 else:
+                    bind_response_capture_stage()
                     route_runtime = await execute_model_route_runtime(
                         self.gateway,
                         role=gateway_role,
@@ -30566,7 +30567,7 @@ class WorkflowService:
                         "Full Short stage completed without an exact route binding"
                     )
                 mark_stage_complete(
-                    stage=name,
+                    stage=node_key,
                     role=gateway_role,
                     role_binding_sha256=str(
                         bound_route.get("role_binding_sha256") or ""

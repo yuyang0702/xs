@@ -2246,6 +2246,7 @@ class FullShortDispatchLedgerObserverV1:
                         "CONTRACT_RUNTIME_INPUT_CAPTURE_REQUIRED",
                     )
             _require(current.get("bound_role") == role, "STAGE_ROLE_DRIFT")
+            _require(current.get("stage") == stage, "STAGE_ID_DRIFT")
             _require(
                 current.get("role_binding_sha256") == role_binding_sha256,
                 "ROLE_BINDING_DRIFT",
@@ -2453,7 +2454,7 @@ class FullShortDispatchLedgerObserverV1:
                 "contract_name": value["contract_name"],
                 "contract_version": value["contract_version"],
                 "contract_schema_sha256": value["contract_schema_sha256"],
-                "stage": stage,
+                "local_rejection_stage": stage,
                 "role": role,
             })
             attempts[ordinal - 1] = current
