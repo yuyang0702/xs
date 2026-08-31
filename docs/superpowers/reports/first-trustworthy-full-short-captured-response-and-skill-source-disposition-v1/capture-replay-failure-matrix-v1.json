@@ -1,0 +1,92 @@
+{
+  "branch": "r1-ptr3/planning-repair-finding-propagation-20260817",
+  "cases": [
+    {
+      "case": "valid_response_exact_identity",
+      "status": "pass"
+    },
+    {
+      "case": "business_incomplete_same_failure_family",
+      "status": "pass"
+    },
+    {
+      "case": "malformed_output_capture_survives",
+      "status": "pass"
+    },
+    {
+      "case": "sparse_response",
+      "status": "pass"
+    },
+    {
+      "case": "near_cap_response",
+      "status": "pass"
+    },
+    {
+      "case": "unicode_newline_escaping_identity",
+      "status": "pass"
+    },
+    {
+      "case": "empty_content_fail_closed",
+      "status": "pass"
+    },
+    {
+      "case": "duplicate_capture_no_overwrite",
+      "status": "pass"
+    },
+    {
+      "case": "crash_after_capture_before_conversion",
+      "status": "pass"
+    },
+    {
+      "case": "crash_after_conversion_before_stage_receipt",
+      "status": "pass"
+    },
+    {
+      "case": "tampered_bytes_hash_mismatch",
+      "status": "pass"
+    },
+    {
+      "case": "metadata_mismatch",
+      "status": "pass"
+    },
+    {
+      "case": "wrong_run_call_stage",
+      "status": "pass"
+    },
+    {
+      "case": "secret_header_leakage_zero",
+      "status": "pass"
+    },
+    {
+      "case": "http_4xx_body_capture",
+      "status": "pass"
+    },
+    {
+      "case": "http_5xx_body_capture",
+      "status": "pass"
+    },
+    {
+      "case": "zero_byte_interrupted_stream",
+      "status": "pass"
+    },
+    {
+      "case": "self_consistent_tamper_rejected_by_ledger_anchor",
+      "status": "pass"
+    }
+  ],
+  "external_actions": {
+    "credential_lookups": 0,
+    "full_short_executions": 0,
+    "http_post_attempts": 0,
+    "model_calls": 0,
+    "network_calls": 0,
+    "paid_calls": 0,
+    "provider_client_creations": 0,
+    "provider_request_attempts": 0
+  },
+  "focused_test": "tests/test_provider_response_capture.py",
+  "implementation_head": "d08a125e665bbb536952dcaa82476abbe5d390b0",
+  "overall_status": "pass",
+  "start_head": "2005a80fc7f261d3c479d93b5ed5ad0d38b56812",
+  "version": 1
+}

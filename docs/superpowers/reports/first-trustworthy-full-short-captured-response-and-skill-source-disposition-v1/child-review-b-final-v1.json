@@ -1,0 +1,19 @@
+{
+  "branch": "r1-ptr3/planning-repair-finding-propagation-20260817",
+  "evidence": "Clean-head independent dry runs and 325 related tests verified capture privacy, failure matrix, all-stage contracts, and Full Short re-closure.",
+  "external_actions": {
+    "credential_lookups": 0,
+    "full_short_executions": 0,
+    "http_post_attempts": 0,
+    "model_calls": 0,
+    "network_calls": 0,
+    "paid_calls": 0,
+    "provider_client_creations": 0,
+    "provider_request_attempts": 0
+  },
+  "implementation_head": "d08a125e665bbb536952dcaa82476abbe5d390b0",
+  "reviewer": "Socrates",
+  "start_head": "2005a80fc7f261d3c479d93b5ed5ad0d38b56812",
+  "status": "passed",
+  "version": 1
+}

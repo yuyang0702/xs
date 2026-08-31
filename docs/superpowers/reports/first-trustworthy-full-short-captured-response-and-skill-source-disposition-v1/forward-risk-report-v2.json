@@ -1,0 +1,150 @@
+{
+  "constraint_traceability": [
+    {
+      "evidence": "18-case capture/replay matrix and two production-shaped third-copy replays",
+      "implementation": "provider_response_capture.py plus providers/http.py, models.py, contract_runtime.py and full_short_execution.py",
+      "requirement": "Exact prospective response capture and ledger-bound replay",
+      "test_paths": [
+        "tests/test_provider_response_capture.py",
+        "tests/test_full_short_execution.py"
+      ]
+    },
+    {
+      "evidence": "stage alignment matrix and typed negative fixtures",
+      "implementation": "workflows.py and generated_artifacts.py expose/validate required business fields",
+      "requirement": "All Full Short model stages reject business-incomplete structures",
+      "test_paths": [
+        "tests/test_full_short_business_contract_alignment.py",
+        "tests/test_workflows.py"
+      ]
+    },
+    {
+      "evidence": "project/repo/global/missing/source-refresh matrix; model-visible identity unchanged",
+      "implementation": "api/skills.py and static/app.js expose roots, precedence, hashes, source kind and refresh on every project switch",
+      "requirement": "Skill UI reports actual project-aware resolved source without changing runtime bytes",
+      "test_paths": [
+        "tests/api/test_skills.py"
+      ]
+    }
+  ],
+  "forbidden_narrowing": [
+    "Do not label synthetic bytes as historical bytes.",
+    "Do not capture only successful or JSON-valid responses.",
+    "Do not bypass adapter, PTR9 guard, Contract Runtime, or domain validators during replay.",
+    "Do not weaken business completeness or widen retry/fallback/budgets.",
+    "Do not treat configured global root as proof of effective runtime source."
+  ],
+  "historical_incident_families_checked": [
+    "missing historical raw bytes",
+    "conversion failure without capture",
+    "structured-valid business-incomplete Planning output",
+    "misleading Skill root display",
+    "sticky reasoning-only output-limit guard path",
+    "crash between capture/conversion/receipt"
+  ],
+  "invalid_output_variants_tested": [
+    "malformed JSON/SSE",
+    "empty content",
+    "business-incomplete structured JSON",
+    "metadata-mismatched capture"
+  ],
+  "invariant_test_paths": [
+    "tests/test_provider_response_capture.py",
+    "tests/test_full_short_execution.py",
+    "tests/test_full_short_business_contract_alignment.py",
+    "tests/api/test_skills.py"
+  ],
+  "model_output_boundary_changed": true,
+  "model_output_topology_classes_tested": [
+    "plain text",
+    "SSE content blocks",
+    "structured JSON",
+    "empty/zero-visible",
+    "malformed/unknown",
+    "nested business object"
+  ],
+  "model_output_variants_tested": [
+    "valid JSON text",
+    "Anthropic SSE text",
+    "structured-valid business-incomplete JSON",
+    "malformed structured output",
+    "sparse output",
+    "near-cap output",
+    "Unicode/newline/escaping variant",
+    "empty content",
+    "tool-shaped contract input"
+  ],
+  "next_authoritative_boundary_tests": [
+    "tests/test_provider_response_capture.py",
+    "tests/test_full_short_business_contract_alignment.py",
+    "tests/api/test_skills.py",
+    "tests/test_full_short_execution.py"
+  ],
+  "operational_definition": "Capture every transport response before lossy interpretation, capture exact Contract Runtime input, ledger-anchor both, replay without dispatch through the real adapter/guard/contract/domain path, and enforce stage business completeness plus project-aware effective Skill source display.",
+  "original_requirement": "Future Full Short provider responses must be exact-byte replayable while every model stage rejects structurally valid but business-incomplete output and the Skill page reports current effective source truth.",
+  "production_shaped_tests": [
+    "tests/test_full_short_execution.py",
+    "tests/test_workflows.py",
+    "tests/providers/test_single_dispatch_transport_guard.py"
+  ],
+  "projected_failure_mechanisms": [
+    "HTTP error bodies",
+    "interrupted zero-byte streams",
+    "malformed JSON/SSE",
+    "duplicate capture",
+    "capture metadata tamper",
+    "ledger-anchor substitution",
+    "business-incomplete stage output",
+    "project Skill override after UI switch"
+  ],
+  "remaining_risks": [
+    "The historical failed response remains permanently non-replayable because its exact bytes never existed in durable storage.",
+    "A future real run is still prohibited until a fresh external hash-pinned authorization is activated by the user."
+  ],
+  "resolution_status": "systemically_resolved",
+  "scope_classification": "open_world",
+  "sibling_boundaries": [
+    {
+      "boundary": "provider HTTP response body before status/conversion",
+      "disposition": "fixed_and_tested",
+      "evidence": "success, 4xx, 5xx and interrupted streams captured"
+    },
+    {
+      "boundary": "adapter to Contract Runtime input",
+      "disposition": "fixed_and_tested",
+      "evidence": "exact contract input capture and replay conversion count"
+    },
+    {
+      "boundary": "PTR9 guard decision",
+      "disposition": "fixed_and_tested",
+      "evidence": "production-shaped replay re-enters PTR9 path"
+    },
+    {
+      "boundary": "Full Short business validators",
+      "disposition": "fixed_and_tested",
+      "evidence": "all-stage negative fixtures and fault-injected recovery"
+    },
+    {
+      "boundary": "Skill resolver precedence and UI",
+      "disposition": "fixed_and_tested",
+      "evidence": "project/repo/global/missing and project-switch tests"
+    },
+    {
+      "boundary": "retired Selective/Hybrid path",
+      "disposition": "tested_not_susceptible",
+      "evidence": "API marks inactive and production identity remains Baseline"
+    }
+  ],
+  "transport_capacity_variants_tested": [
+    "HTTP 4xx/5xx body",
+    "zero-byte interrupted stream",
+    "near-cap response"
+  ],
+  "unknown_variant_behavior": "Capture exact transport bytes first; parser/adapter may classify unknown, but replay deterministically reaches the same typed production decision and never overwrites capture.",
+  "unseen_valid_variants_tested": [
+    "Unicode CRLF/escape-preserving valid response",
+    "near-cap sparse valid response"
+  ],
+  "version": 2,
+  "why_previous_tests_missed": "The failed historical run stored hashes and conversion/business receipts but not immutable transport bytes, and the Skill UI exposed configured roots rather than executing the project-aware resolver response."
+}

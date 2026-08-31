@@ -1,0 +1,97 @@
+{
+  "branch": "r1-ptr3/planning-repair-finding-propagation-20260817",
+  "external_actions": {
+    "credential_lookups": 0,
+    "full_short_executions": 0,
+    "http_post_attempts": 0,
+    "model_calls": 0,
+    "network_calls": 0,
+    "paid_calls": 0,
+    "provider_client_creations": 0,
+    "provider_request_attempts": 0
+  },
+  "implementation_head": "d08a125e665bbb536952dcaa82476abbe5d390b0",
+  "overall_status": "pass",
+  "retry_or_fallback_scope_broadened": false,
+  "stages": [
+    {
+      "hidden_local_only_critical_invariants": [],
+      "local_business_completeness_checks": true,
+      "locally_derivable_fields": "only deterministic identities/receipts",
+      "model_visible_required_business_fields": "initial_state, segments",
+      "stage": "Planning",
+      "status": "pass",
+      "structured_schema": "planning_semantic_v2",
+      "structured_valid_business_incomplete_negative_fixture": "pass",
+      "typed_recovery_path": "typed planning findings"
+    },
+    {
+      "hidden_local_only_critical_invariants": [],
+      "local_business_completeness_checks": true,
+      "locally_derivable_fields": "only deterministic identities/receipts",
+      "model_visible_required_business_fields": "event realization and coverage",
+      "stage": "Draft",
+      "status": "pass",
+      "structured_schema": "draft segment wire schema",
+      "structured_valid_business_incomplete_negative_fixture": "pass",
+      "typed_recovery_path": "typed draft findings"
+    },
+    {
+      "hidden_local_only_critical_invariants": [],
+      "local_business_completeness_checks": true,
+      "locally_derivable_fields": "only deterministic identities/receipts",
+      "model_visible_required_business_fields": "findings and disposition",
+      "stage": "Semantic verification/review",
+      "status": "pass",
+      "structured_schema": "review schema",
+      "structured_valid_business_incomplete_negative_fixture": "pass",
+      "typed_recovery_path": "bounded semantic repair"
+    },
+    {
+      "hidden_local_only_critical_invariants": [],
+      "local_business_completeness_checks": true,
+      "locally_derivable_fields": "only deterministic identities/receipts",
+      "model_visible_required_business_fields": "dimensions, decision, reader_signals",
+      "stage": "Reader Review",
+      "status": "pass",
+      "structured_schema": "reader_review_business_complete_v1",
+      "structured_valid_business_incomplete_negative_fixture": "pass",
+      "typed_recovery_path": "configured bounded route recovery"
+    },
+    {
+      "hidden_local_only_critical_invariants": [],
+      "local_business_completeness_checks": true,
+      "locally_derivable_fields": "only deterministic identities/receipts",
+      "model_visible_required_business_fields": "authoritative manuscript preserving repair",
+      "stage": "Polish",
+      "status": "pass",
+      "structured_schema": "polish contract",
+      "structured_valid_business_incomplete_negative_fixture": "pass",
+      "typed_recovery_path": "bounded polish recovery"
+    },
+    {
+      "hidden_local_only_critical_invariants": [],
+      "local_business_completeness_checks": true,
+      "locally_derivable_fields": "only deterministic identities/receipts",
+      "model_visible_required_business_fields": "dimensions, hard_fail, decision, issues",
+      "stage": "Quality/Final Review",
+      "status": "pass",
+      "structured_schema": "full_short_final_review",
+      "structured_valid_business_incomplete_negative_fixture": "pass",
+      "typed_recovery_path": "bounded final-review recovery"
+    },
+    {
+      "hidden_local_only_critical_invariants": [],
+      "local_business_completeness_checks": true,
+      "locally_derivable_fields": "only deterministic identities/receipts",
+      "model_visible_required_business_fields": "facts, state, coverage, disposition",
+      "stage": "Maintenance",
+      "status": "pass",
+      "structured_schema": "short_maintenance_business_complete_v2",
+      "structured_valid_business_incomplete_negative_fixture": "pass",
+      "typed_recovery_path": "bounded maintenance recovery"
+    }
+  ],
+  "start_head": "2005a80fc7f261d3c479d93b5ed5ad0d38b56812",
+  "version": 1
+}

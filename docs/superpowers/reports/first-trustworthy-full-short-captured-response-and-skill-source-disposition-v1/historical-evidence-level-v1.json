@@ -1,0 +1,27 @@
+{
+  "authority_claim": "surviving hashes_and_receipts_only_not_exact_byte_replay",
+  "branch": "r1-ptr3/planning-repair-finding-propagation-20260817",
+  "canonical_payload_sha256": "1db94c55210862bbc13008238654064685b6a6ea0c019571634040ca163776d3",
+  "conversion_audit_sha256": "532b8a0324410c97273703498fa9c85f8d3b488b71e01526d62f9f3318311be5",
+  "conversion_status": "exact_json_zero_transformations",
+  "external_actions": {
+    "credential_lookups": 0,
+    "full_short_executions": 0,
+    "http_post_attempts": 0,
+    "model_calls": 0,
+    "network_calls": 0,
+    "paid_calls": 0,
+    "provider_client_creations": 0,
+    "provider_request_attempts": 0
+  },
+  "finish_reason": "end_turn",
+  "historical_raw_byte_replay_performed": false,
+  "implementation_head": "d08a125e665bbb536952dcaa82476abbe5d390b0",
+  "ledger_sha256": "1ee6b2b1306ed73b6d6a5b7464740ef35462a27547960455035962930052dee0",
+  "output_token_limit": 3724,
+  "output_tokens_observed": 3230,
+  "raw_response_sha256": "e5170a4dcdb184971752448c550a261b24f6ca97e908bcc108390c1730f4aaad",
+  "start_head": "2005a80fc7f261d3c479d93b5ed5ad0d38b56812",
+  "version": 1,
+  "visible_character_count": 5004
+}

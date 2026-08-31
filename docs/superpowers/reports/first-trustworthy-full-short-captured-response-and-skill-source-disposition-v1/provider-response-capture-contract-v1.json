@@ -1,0 +1,46 @@
+{
+  "bindings": [
+    "run_id",
+    "call_id",
+    "stage_id",
+    "provider",
+    "model",
+    "route",
+    "sha256",
+    "byte_length",
+    "encoding",
+    "content_type",
+    "privacy_classification"
+  ],
+  "branch": "r1-ptr3/planning-repair-finding-propagation-20260817",
+  "capture_before_lossy_conversion": true,
+  "capture_domains": [
+    "TRANSPORT_RESPONSE_BODY_BYTES",
+    "CONTRACT_RUNTIME_INPUT_BYTES"
+  ],
+  "external_actions": {
+    "credential_lookups": 0,
+    "full_short_executions": 0,
+    "http_post_attempts": 0,
+    "model_calls": 0,
+    "network_calls": 0,
+    "paid_calls": 0,
+    "provider_client_creations": 0,
+    "provider_request_attempts": 0
+  },
+  "implementation_head": "d08a125e665bbb536952dcaa82476abbe5d390b0",
+  "ledger_receipt_anchor_required": true,
+  "policy_sha256": "378bb649094ea4793bef2b96006dbe2291afd0c88cfc574fb87022b7c66aec8a",
+  "prohibited_persistence": [
+    "credentials",
+    "authorization_headers",
+    "secrets",
+    "request_prompt",
+    "story_source",
+    "reference_corpus"
+  ],
+  "schema": "ProviderResponseCaptureContractV1",
+  "start_head": "2005a80fc7f261d3c479d93b5ed5ad0d38b56812",
+  "storage": "worktree_external_exclusive_create_crash_safe",
+  "version": 1
+}

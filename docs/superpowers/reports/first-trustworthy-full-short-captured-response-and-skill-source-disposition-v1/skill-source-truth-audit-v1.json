@@ -1,0 +1,180 @@
+{
+  "branch": "r1-ptr3/planning-repair-finding-propagation-20260817",
+  "external_actions": {
+    "credential_lookups": 0,
+    "full_short_executions": 0,
+    "http_post_attempts": 0,
+    "model_calls": 0,
+    "network_calls": 0,
+    "paid_calls": 0,
+    "provider_client_creations": 0,
+    "provider_request_attempts": 0
+  },
+  "implementation_head": "d08a125e665bbb536952dcaa82476abbe5d390b0",
+  "production_baseline_path": "CURRENT_BASELINE_SKILL_GATE_PLUS_SKILL_PROMPT_COMPACTOR",
+  "production_model_visible_skill_bytes_changed": false,
+  "representative_skills": [
+    {
+      "effective_resolved_path": "C:\\Users\\yuyan\\.codex\\skills\\story-init",
+      "effective_source_kind": "global_fallback",
+      "global_candidate_path": "C:\\Users\\yuyan\\.codex\\skills\\story-init",
+      "global_exists": true,
+      "primary_document_sha256": "9ace3dec9fd2ca22e9f6a96a9cf54ea4f498ee6d4522301fd775bc87bd2511d6",
+      "production_stages": [
+        "planning"
+      ],
+      "project_candidate_path": "<project>/.agents/skills/story-init",
+      "project_exists_for_dry_run_project": false,
+      "repo_candidate_path": "C:\\小说\\novel-flywheel-console\\.agents\\skills\\story-init",
+      "repo_exists": false,
+      "resolution_precedence": "global_then_repo_then_project_last_wins",
+      "resolved_source_sha256": "77d0a75c0ccdd959218a75f02852cb6654aebf0e645e427dd8ef86514ffbd6a9",
+      "selective_or_hybrid_production_active": false,
+      "skill_id": "story-init",
+      "used_by_current_production": true
+    },
+    {
+      "effective_resolved_path": "C:\\Users\\yuyan\\.codex\\skills\\plot-structure",
+      "effective_source_kind": "global_fallback",
+      "global_candidate_path": "C:\\Users\\yuyan\\.codex\\skills\\plot-structure",
+      "global_exists": true,
+      "primary_document_sha256": "54a38f07a5d0106c66e30058a7e375867f3ca1924aef8208a4428c205d73146c",
+      "production_stages": [
+        "planning"
+      ],
+      "project_candidate_path": "<project>/.agents/skills/plot-structure",
+      "project_exists_for_dry_run_project": false,
+      "repo_candidate_path": "C:\\小说\\novel-flywheel-console\\.agents\\skills\\plot-structure",
+      "repo_exists": false,
+      "resolution_precedence": "global_then_repo_then_project_last_wins",
+      "resolved_source_sha256": "97bd7c6985867076a1b53b461db4549fefff4d1e3c2afad17de2b0a67a1cb9b9",
+      "selective_or_hybrid_production_active": false,
+      "skill_id": "plot-structure",
+      "used_by_current_production": true
+    },
+    {
+      "effective_resolved_path": "C:\\Users\\yuyan\\.codex\\skills\\character-management",
+      "effective_source_kind": "global_fallback",
+      "global_candidate_path": "C:\\Users\\yuyan\\.codex\\skills\\character-management",
+      "global_exists": true,
+      "primary_document_sha256": "bc21410cc846d00b766a8c465c30e48af859083c83d2f731bd7eb415c76c578a",
+      "production_stages": [
+        "planning"
+      ],
+      "project_candidate_path": "<project>/.agents/skills/character-management",
+      "project_exists_for_dry_run_project": false,
+      "repo_candidate_path": "C:\\小说\\novel-flywheel-console\\.agents\\skills\\character-management",
+      "repo_exists": false,
+      "resolution_precedence": "global_then_repo_then_project_last_wins",
+      "resolved_source_sha256": "3debd36a3da4a430f4f71292280d4824bfab0436234a2ace68be939773062be5",
+      "selective_or_hybrid_production_active": false,
+      "skill_id": "character-management",
+      "used_by_current_production": true
+    },
+    {
+      "effective_resolved_path": "C:\\Users\\yuyan\\.codex\\skills\\worldbuilding",
+      "effective_source_kind": "global_fallback",
+      "global_candidate_path": "C:\\Users\\yuyan\\.codex\\skills\\worldbuilding",
+      "global_exists": true,
+      "primary_document_sha256": "6085390c930309c1e9f3182c50c30e9d746d0f054000f2808147a80807b2b279",
+      "production_stages": [
+        "planning"
+      ],
+      "project_candidate_path": "<project>/.agents/skills/worldbuilding",
+      "project_exists_for_dry_run_project": false,
+      "repo_candidate_path": "C:\\小说\\novel-flywheel-console\\.agents\\skills\\worldbuilding",
+      "repo_exists": false,
+      "resolution_precedence": "global_then_repo_then_project_last_wins",
+      "resolved_source_sha256": "434e8f9f37a54b4f15e4f1b6978862eaa40eb1ec37d02e778336bda485950678",
+      "selective_or_hybrid_production_active": false,
+      "skill_id": "worldbuilding",
+      "used_by_current_production": true
+    },
+    {
+      "effective_resolved_path": "C:\\Users\\yuyan\\.codex\\skills\\chapter-writing",
+      "effective_source_kind": "global_fallback",
+      "global_candidate_path": "C:\\Users\\yuyan\\.codex\\skills\\chapter-writing",
+      "global_exists": true,
+      "primary_document_sha256": "f302204d7fd1b61e99db81bdaff19cb45a5859635f6173404ddd2b985a1df346",
+      "production_stages": [
+        "draft"
+      ],
+      "project_candidate_path": "<project>/.agents/skills/chapter-writing",
+      "project_exists_for_dry_run_project": false,
+      "repo_candidate_path": "C:\\小说\\novel-flywheel-console\\.agents\\skills\\chapter-writing",
+      "repo_exists": false,
+      "resolution_precedence": "global_then_repo_then_project_last_wins",
+      "resolved_source_sha256": "63fff73e7c4779d9d84ecad003883a4baed3d88aedebab47ccc11bcc0c92a2b3",
+      "selective_or_hybrid_production_active": false,
+      "skill_id": "chapter-writing",
+      "used_by_current_production": true
+    },
+    {
+      "effective_resolved_path": "C:\\Users\\yuyan\\.codex\\skills\\novel-writing",
+      "effective_source_kind": "global_fallback",
+      "global_candidate_path": "C:\\Users\\yuyan\\.codex\\skills\\novel-writing",
+      "global_exists": true,
+      "primary_document_sha256": "59d2cb7f75731989ea9b24c062fb29194773eb62eb980659c55d377467a3cc0f",
+      "production_stages": [
+        "draft",
+        "polish"
+      ],
+      "project_candidate_path": "<project>/.agents/skills/novel-writing",
+      "project_exists_for_dry_run_project": false,
+      "repo_candidate_path": "C:\\小说\\novel-flywheel-console\\.agents\\skills\\novel-writing",
+      "repo_exists": false,
+      "resolution_precedence": "global_then_repo_then_project_last_wins",
+      "resolved_source_sha256": "44bf94f6fe2d049ff322bc2c8489b8548d7b4f237c41c88229e17969306da0b0",
+      "selective_or_hybrid_production_active": false,
+      "skill_id": "novel-writing",
+      "used_by_current_production": true
+    },
+    {
+      "effective_resolved_path": "C:\\Users\\yuyan\\.codex\\skills\\dialogue",
+      "effective_source_kind": "global_fallback",
+      "global_candidate_path": "C:\\Users\\yuyan\\.codex\\skills\\dialogue",
+      "global_exists": true,
+      "primary_document_sha256": "54c9e2bc11aafd14f40081ee1bbee748dfe0c263ff8b810d6cb193dad6edd9f6",
+      "production_stages": [
+        "draft"
+      ],
+      "project_candidate_path": "<project>/.agents/skills/dialogue",
+      "project_exists_for_dry_run_project": false,
+      "repo_candidate_path": "C:\\小说\\novel-flywheel-console\\.agents\\skills\\dialogue",
+      "repo_exists": false,
+      "resolution_precedence": "global_then_repo_then_project_last_wins",
+      "resolved_source_sha256": "f1548bb75946872952adf1e003e9360053fd9d8d0640ec7a7d3663f87fddffde",
+      "selective_or_hybrid_production_active": false,
+      "skill_id": "dialogue",
+      "used_by_current_production": true
+    },
+    {
+      "effective_resolved_path": "C:\\Users\\yuyan\\.codex\\skills\\better-writing",
+      "effective_source_kind": "global_fallback",
+      "global_candidate_path": "C:\\Users\\yuyan\\.codex\\skills\\better-writing",
+      "global_exists": true,
+      "primary_document_sha256": "a7af6d2ca2c0ec53c237e755a6e5b908a5244210a74cf1a9b75c5e54c97e2d2b",
+      "production_stages": [
+        "draft",
+        "polish"
+      ],
+      "project_candidate_path": "<project>/.agents/skills/better-writing",
+      "project_exists_for_dry_run_project": false,
+      "repo_candidate_path": "C:\\小说\\novel-flywheel-console\\.agents\\skills\\better-writing",
+      "repo_exists": false,
+      "resolution_precedence": "global_then_repo_then_project_last_wins",
+      "resolved_source_sha256": "51cdceea3f688e5ee57bfee01f3ed4e2b6e4521a831eb7707d58282c48c5bfc7",
+      "selective_or_hybrid_production_active": false,
+      "skill_id": "better-writing",
+      "used_by_current_production": true
+    }
+  ],
+  "resolution_precedence": "global_then_repo_then_project_last_wins",
+  "retired_paths": [
+    "Selective",
+    "Hybrid"
+  ],
+  "skill_runtime_effective_source": "GLOBAL_FALLBACK_EXPECTED",
+  "start_head": "2005a80fc7f261d3c479d93b5ed5ad0d38b56812",
+  "version": 1
+}

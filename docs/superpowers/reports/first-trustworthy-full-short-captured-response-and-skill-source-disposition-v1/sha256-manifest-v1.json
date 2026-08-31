@@ -1,0 +1,181 @@
+{
+  "branch": "r1-ptr3/planning-repair-finding-propagation-20260817",
+  "entries": [
+    {
+      "path": "docs/superpowers/reports/first-trustworthy-full-short-captured-response-and-skill-source-disposition-v1/all-stage-business-contract-alignment-v1.json",
+      "sha256": "c402538df2f913107a2ec74468c521c9867366b3842d0ed227981d5547f77e1e",
+      "size_bytes": 4262
+    },
+    {
+      "path": "docs/superpowers/reports/first-trustworthy-full-short-captured-response-and-skill-source-disposition-v1/baseline-binding-v1.json",
+      "sha256": "f06a5c47b28f8bba24e1e43e37f3b7e7ed6aa1e96a1914136298c46217b3c32d",
+      "size_bytes": 712
+    },
+    {
+      "path": "docs/superpowers/reports/first-trustworthy-full-short-captured-response-and-skill-source-disposition-v1/capture-replay-failure-matrix-v1.json",
+      "sha256": "a1448fca477df6f5546b2ffda4855057ffaf86c2ed4e31a0177501da85109114",
+      "size_bytes": 2153
+    },
+    {
+      "path": "docs/superpowers/reports/first-trustworthy-full-short-captured-response-and-skill-source-disposition-v1/change-contract-v1.json",
+      "sha256": "82bc64c9f664647131dc79b4f4877b51cb0b32d537fff10ab73ed93ffcfc8401",
+      "size_bytes": 6596
+    },
+    {
+      "path": "docs/superpowers/reports/first-trustworthy-full-short-captured-response-and-skill-source-disposition-v1/child-review-a-final-v1.json",
+      "sha256": "ce36d890eb79f833661acd329f442611e1dd131b48a4fb7d49d0f53159987897",
+      "size_bytes": 728
+    },
+    {
+      "path": "docs/superpowers/reports/first-trustworthy-full-short-captured-response-and-skill-source-disposition-v1/child-review-a-initial-v1.json",
+      "sha256": "ac6d9de5861cdfa9e58770a19d85d4f80f06ecaaae3fb0a5763675c3df9a65d3",
+      "size_bytes": 828
+    },
+    {
+      "path": "docs/superpowers/reports/first-trustworthy-full-short-captured-response-and-skill-source-disposition-v1/child-review-b-final-v1.json",
+      "sha256": "d3d3e03f1c1d0bc826c758b056f2c3c53a29763ab4f61feb4ee23db55383d74b",
+      "size_bytes": 701
+    },
+    {
+      "path": "docs/superpowers/reports/first-trustworthy-full-short-captured-response-and-skill-source-disposition-v1/child-review-b-initial-v1.json",
+      "sha256": "3431e9c081aba04122265c26d56a0e046d8cddf99d2a9d40345a0ec9a87a19a6",
+      "size_bytes": 770
+    },
+    {
+      "path": "docs/superpowers/reports/first-trustworthy-full-short-captured-response-and-skill-source-disposition-v1/child-review-c-final-v1.json",
+      "sha256": "09a451d01452bcffefe4ee729bb14fc3ddcca88da9ad96df6fd5ac64c96afe73",
+      "size_bytes": 712
+    },
+    {
+      "path": "docs/superpowers/reports/first-trustworthy-full-short-captured-response-and-skill-source-disposition-v1/child-review-c-initial-v1.json",
+      "sha256": "2ab318815936ea87735887ba600832b1d3667a609402d46b9d791e583baad444",
+      "size_bytes": 818
+    },
+    {
+      "path": "docs/superpowers/reports/first-trustworthy-full-short-captured-response-and-skill-source-disposition-v1/determinism-v1.json",
+      "sha256": "872837b453b2acf89313f68986c922ab130a202b249a04f8b55c419a33cc3901",
+      "size_bytes": 972
+    },
+    {
+      "path": "docs/superpowers/reports/first-trustworthy-full-short-captured-response-and-skill-source-disposition-v1/focused-test-receipt-v1.json",
+      "sha256": "38db01d187a35bdb3f59f2b2fa00feb11cddcdb33e080542f9f75c885e4a7146",
+      "size_bytes": 650
+    },
+    {
+      "path": "docs/superpowers/reports/first-trustworthy-full-short-captured-response-and-skill-source-disposition-v1/forward-risk-report-v2.json",
+      "sha256": "b4ab8bb01a99a439b724685d3ecb2eb609e6136985ce8cfa29011661e413c48b",
+      "size_bytes": 6629
+    },
+    {
+      "path": "docs/superpowers/reports/first-trustworthy-full-short-captured-response-and-skill-source-disposition-v1/full-suite-receipt-v1.json",
+      "sha256": "6ca607750bf8438f456be13cba2ea7a79c0db626b7c54b37ff43789bd1398507",
+      "size_bytes": 1223
+    },
+    {
+      "path": "docs/superpowers/reports/first-trustworthy-full-short-captured-response-and-skill-source-disposition-v1/historical-byte-search-v1.json",
+      "sha256": "623375842e1ff5c9f87f5f653b48ddbdef5534ae462d998180811d9f7e3edaeb",
+      "size_bytes": 1009
+    },
+    {
+      "path": "docs/superpowers/reports/first-trustworthy-full-short-captured-response-and-skill-source-disposition-v1/historical-evidence-level-v1.json",
+      "sha256": "11c6514e360900807a33f7aadc6b0a1160f6a8c297e857c20c5dea7a6ea535d3",
+      "size_bytes": 1193
+    },
+    {
+      "path": "docs/superpowers/reports/first-trustworthy-full-short-captured-response-and-skill-source-disposition-v1/historical-replay-requirement-disposition-v1.json",
+      "sha256": "d5746ed90ce33844379e69c247e1565666b3746070754f8f5a9f2bb0ce03f7ae",
+      "size_bytes": 1181
+    },
+    {
+      "path": "docs/superpowers/reports/first-trustworthy-full-short-captured-response-and-skill-source-disposition-v1/planning-fix-revalidation-v1.json",
+      "sha256": "eb107344456a98517d0aa67cc1d259ddfef6666443f87e0bc72d34deec593704",
+      "size_bytes": 1218
+    },
+    {
+      "path": "docs/superpowers/reports/first-trustworthy-full-short-captured-response-and-skill-source-disposition-v1/pre-authorization-final-report-v1.md",
+      "sha256": "0f6e1a381645dabbf8ddba5579042f22b89f6038df63ab641058d4a6825198e4",
+      "size_bytes": 3153
+    },
+    {
+      "path": "docs/superpowers/reports/first-trustworthy-full-short-captured-response-and-skill-source-disposition-v1/privacy-scan-v1.json",
+      "sha256": "ff51850339f1771dadade15ebc14aa4656e1ef60e409a1ceca6ce39cabcd648f",
+      "size_bytes": 761
+    },
+    {
+      "path": "docs/superpowers/reports/first-trustworthy-full-short-captured-response-and-skill-source-disposition-v1/production-isolation-v1.json",
+      "sha256": "217929204455a0b755369d1f6e36ceebdbf3f2c571a271baa619c58a16e319b5",
+      "size_bytes": 745
+    },
+    {
+      "path": "docs/superpowers/reports/first-trustworthy-full-short-captured-response-and-skill-source-disposition-v1/production-shaped-full-short-rerun-v1.json",
+      "sha256": "d31375f4a4c8a50106137e10e61f30acc6dd724153c911ea987b606303ddd3a9",
+      "size_bytes": 9112
+    },
+    {
+      "path": "docs/superpowers/reports/first-trustworthy-full-short-captured-response-and-skill-source-disposition-v1/provider-response-capture-contract-v1.json",
+      "sha256": "2d46c6992d478ee7c5ae4cfcf4f76e9c628a17ac0b96960489b040465f57536c",
+      "size_bytes": 1271
+    },
+    {
+      "path": "docs/superpowers/reports/first-trustworthy-full-short-captured-response-and-skill-source-disposition-v1/provider-response-replay-contract-v1.json",
+      "sha256": "fa6d8db6f82facc30720b48349a11e516fae1b4334c1f7bea854cb0fffc618f0",
+      "size_bytes": 1022
+    },
+    {
+      "path": "docs/superpowers/reports/first-trustworthy-full-short-captured-response-and-skill-source-disposition-v1/readiness-disposition-v1.json",
+      "sha256": "ef4676acf5e41498bb367afcbe6db5595cf5104b522ccdcddb4d201892958261",
+      "size_bytes": 1101
+    },
+    {
+      "path": "docs/superpowers/reports/first-trustworthy-full-short-captured-response-and-skill-source-disposition-v1/README.md",
+      "sha256": "efb29d6fcbb5e67d725eaf9c0b0232a1352467d2c6aea7cf1fb98b7105bb2391",
+      "size_bytes": 352
+    },
+    {
+      "path": "docs/superpowers/reports/first-trustworthy-full-short-captured-response-and-skill-source-disposition-v1/related-test-receipt-v1.json",
+      "sha256": "9040bd1cfc9abd019a2b9c71aa4b7378e291cf4c56362721c42a373fb8d333a6",
+      "size_bytes": 654
+    },
+    {
+      "path": "docs/superpowers/reports/first-trustworthy-full-short-captured-response-and-skill-source-disposition-v1/skill-page-api-ui-disposition-v1.json",
+      "sha256": "db4662e63e05687cbb531737a2c758296810ae02fd54cc12b5668970df49b7f6",
+      "size_bytes": 1065
+    },
+    {
+      "path": "docs/superpowers/reports/first-trustworthy-full-short-captured-response-and-skill-source-disposition-v1/skill-page-effective-source-test-v1.json",
+      "sha256": "f515e41305cd785192048a8680314a28c986cf959450dd82ba85dabc064d8ae5",
+      "size_bytes": 940
+    },
+    {
+      "path": "docs/superpowers/reports/first-trustworthy-full-short-captured-response-and-skill-source-disposition-v1/skill-source-truth-audit-v1.json",
+      "sha256": "91242b88512150004d0d8462b6bbf2a17476bfbd066cc958f7d8ae67152ce56b",
+      "size_bytes": 8837
+    },
+    {
+      "path": "docs/superpowers/reports/first-trustworthy-full-short-captured-response-and-skill-source-disposition-v1/split-review-report-v1.json",
+      "sha256": "6f3e690668e575c655b5f11396d2e4e61397c0dee83be783207d1fc107fdc964",
+      "size_bytes": 1377
+    },
+    {
+      "path": "docs/superpowers/reports/first-trustworthy-full-short-captured-response-and-skill-source-disposition-v1/strict-l3-receipt-v1.json",
+      "sha256": "04cb39fc763dc39d457ba97ad13d66ccb2f81812e6e35feb673cd8300d7dba4d",
+      "size_bytes": 12467
+    }
+  ],
+  "entry_count": 32,
+  "external_actions": {
+    "credential_lookups": 0,
+    "full_short_executions": 0,
+    "http_post_attempts": 0,
+    "model_calls": 0,
+    "network_calls": 0,
+    "paid_calls": 0,
+    "provider_client_creations": 0,
+    "provider_request_attempts": 0
+  },
+  "implementation_head": "d08a125e665bbb536952dcaa82476abbe5d390b0",
+  "overall_status": "exact",
+  "schema": "CapturedResponseSkillSourceEvidenceManifestV1",
+  "start_head": "2005a80fc7f261d3c479d93b5ed5ad0d38b56812",
+  "version": 1
+}

@@ -1,0 +1,45 @@
+{
+  "core_tree_sha256": "854087da3505a783f21d699538f0610eea0a44ac82887f835e4c9178b884b874",
+  "reviews": [
+    {
+      "core_paths": [
+        "src/novel_flywheel/models.py",
+        "src/novel_flywheel/providers/http.py"
+      ],
+      "evidence": "Clean-head exact-byte/ledger-anchor/crash-window assurance PASS.",
+      "review_id": "response-boundary-final",
+      "reviewer": "Ptolemy",
+      "status": "passed",
+      "test_paths": [
+        "tests/test_provider_response_capture.py",
+        "tests/test_full_short_execution.py"
+      ]
+    },
+    {
+      "core_paths": [
+        "src/novel_flywheel/workflows.py"
+      ],
+      "evidence": "Clean-head provider/business contract review and production-shaped reruns PASS.",
+      "review_id": "business-contract-final",
+      "reviewer": "Socrates",
+      "status": "passed",
+      "test_paths": [
+        "tests/test_full_short_business_contract_alignment.py",
+        "tests/test_workflows.py"
+      ]
+    },
+    {
+      "core_paths": [
+        "src/novel_flywheel/api/skills.py"
+      ],
+      "evidence": "Clean-head project-aware precedence/UI refresh and no-leakage review PASS.",
+      "review_id": "skill-source-final",
+      "reviewer": "Ampere",
+      "status": "passed",
+      "test_paths": [
+        "tests/api/test_skills.py"
+      ]
+    }
+  ],
+  "version": 1
+}

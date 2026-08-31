@@ -1,0 +1,34 @@
+{
+  "branch": "r1-ptr3/planning-repair-finding-propagation-20260817",
+  "classification": "historical sealed approval/hash/live-parity/oracle gates",
+  "counts": {
+    "errors": 199,
+    "failures": 226,
+    "skipped": 47,
+    "tests": 4494
+  },
+  "external_actions": {
+    "credential_lookups": 0,
+    "full_short_executions": 0,
+    "http_post_attempts": 0,
+    "model_calls": 0,
+    "network_calls": 0,
+    "paid_calls": 0,
+    "provider_client_creations": 0,
+    "provider_request_attempts": 0
+  },
+  "historical_oracle_live_parity_non_green_count": 425,
+  "implementation_head": "d08a125e665bbb536952dcaa82476abbe5d390b0",
+  "junit_sha256": "6bb4547fe064e7bed0a2a1c5fe0b590bfe8e9b7c582570c35f8cb6df2a164225",
+  "new_business_contract_alignment_regression": 0,
+  "new_capture_replay_regression": 0,
+  "new_owning_source_regression": 0,
+  "new_skill_source_display_regression": 0,
+  "start_head": "2005a80fc7f261d3c479d93b5ed5ad0d38b56812",
+  "summary": "4022 passed, 41 skipped, 6 xfailed, 226 failed, 199 errors",
+  "version": 1,
+  "workflow_baseline_non_green_count": 30,
+  "workflow_current_non_green_count": 30,
+  "workflow_failure_name_symmetric_difference": [],
+  "xfailed": 6
+}

@@ -1,0 +1,28 @@
+{
+  "branch": "r1-ptr3/planning-repair-finding-propagation-20260817",
+  "exact_next_gate": "FINAL_EVIDENCE_SEAL_THEN_EXTERNAL_AUTHORIZATION_MATERIALIZATION",
+  "external_actions": {
+    "credential_lookups": 0,
+    "full_short_executions": 0,
+    "http_post_attempts": 0,
+    "model_calls": 0,
+    "network_calls": 0,
+    "paid_calls": 0,
+    "provider_client_creations": 0,
+    "provider_request_attempts": 0
+  },
+  "final_authorization_ready": false,
+  "final_head_binding_closed": false,
+  "full_short_execution_authorized": false,
+  "full_short_production_shaped_dry_run": "pass",
+  "historical_raw_byte_replay_performed": false,
+  "historical_raw_response_bytes_unavailable_proven": true,
+  "implementation_head": "d08a125e665bbb536952dcaa82476abbe5d390b0",
+  "prospective_response_capture_replay": "enforced",
+  "skill_page_effective_source_display": "pass",
+  "skill_runtime_effective_source": "GLOBAL_FALLBACK_EXPECTED",
+  "start_head": "2005a80fc7f261d3c479d93b5ed5ad0d38b56812",
+  "strict_l3": "pass",
+  "trustworthy_full_short_readiness": true,
+  "version": 1
+}
