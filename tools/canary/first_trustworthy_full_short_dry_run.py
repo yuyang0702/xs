@@ -35,6 +35,7 @@ from novel_flywheel.provider_response_capture import (
     CONTRACT_RUNTIME_INPUT_BYTES,
     PROVIDER_PROTOCOL_INPUT_BYTES,
     ProviderResponseCaptureStoreV1,
+    parse_provider_protocol_input_bytes_v1,
 )
 from novel_flywheel.projects import ProjectStore
 from novel_flywheel.providers.http import SingleDispatchTransportPolicyV1
@@ -56,6 +57,7 @@ from tools.canary.first_trustworthy_full_short_runner import (
 
 EXECUTION_ID = "private-current-project-dry-run"
 DISCOVERY_ID = "private-current-project-call-plan"
+REPLAY_ID = "private-current-project-captured-response-replay"
 
 
 def _sha256(path: Path) -> str:
@@ -630,6 +632,85 @@ class _OfflineHttpTransportFactory:
         return httpx.MockTransport(respond)
 
 
+class _CapturedResponseReplayTransportFactory:
+    """Feed ledger-anchored captured bytes back through real adapters."""
+
+    def __init__(
+        self, *, capture_store: ProviderResponseCaptureStoreV1,
+        ledger: dict[str, Any], source_call_plan: list[dict[str, Any]],
+    ) -> None:
+        self.capture_store = capture_store
+        self.ledger = ledger
+        self.source_call_plan = source_call_plan
+        self.call_plan: list[dict[str, Any]] = []
+        self.failure: dict[str, Any] | None = None
+        audited = capture_store.audit_all()
+        self._captures = {
+            (str(item["call_id"]), str(item["byte_domain"])): item
+            for item in audited
+        }
+
+    def build(
+        self, *, protocol: str, destination: str, bound_role: str | None = None,
+    ) -> httpx.MockTransport:
+        async def respond(request: httpx.Request) -> httpx.Response:
+            ordinal = len(self.call_plan) + 1
+            if ordinal > len(self.ledger["attempts"]):
+                raise RuntimeError("FULL_SHORT_CAPTURE_REPLAY_EXTRA_DISPATCH")
+            attempt = self.ledger["attempts"][ordinal - 1]
+            source = self.source_call_plan[ordinal - 1]
+            payload = json.loads(request.content.decode("utf-8"))
+            system, user = _request_messages(payload)
+            role = bound_role or _request_role(system, user)
+            maximum = int(
+                payload.get("max_tokens")
+                or payload.get("max_output_tokens") or 0
+            )
+            observed = {
+                "ordinal": ordinal,
+                "role": role,
+                "contract_marker": (
+                    "planning_semantic_v2"
+                    if any(marker in user for marker in (
+                        "IR_FIRST_SHORT_PLANNING_PACKET_V2",
+                        "IR_FIRST_SHORT_PLANNING_V2",
+                    )) else None
+                ),
+                "requested_output_tokens": maximum,
+                "destination_sha256": hashlib.sha256(
+                    destination.encode("utf-8"),
+                ).hexdigest(),
+                "request_shape_sha256": _domain({
+                    "protocol": protocol,
+                    "payload_keys": sorted(str(key) for key in payload),
+                    "role": role,
+                    "requested_output_tokens": maximum,
+                }),
+            }
+            if observed != source:
+                raise RuntimeError("FULL_SHORT_CAPTURE_REPLAY_REQUEST_DRIFT")
+            self.call_plan.append(observed)
+            call_id = f"{self.ledger['execution_id']}:{attempt['ordinal']}"
+            capture = self._captures.get(
+                (call_id, PROVIDER_PROTOCOL_INPUT_BYTES),
+            )
+            if capture is None:
+                raise RuntimeError("FULL_SHORT_CAPTURE_REPLAY_RAW_MISSING")
+            data, header = self.capture_store.replay(
+                byte_domain=PROVIDER_PROTOCOL_INPUT_BYTES,
+                expected_metadata=capture["metadata"],
+                expected_receipt_sha256=attempt[
+                    "provider_protocol_capture_receipt_sha256"
+                ],
+            )
+            return httpx.Response(
+                200, content=data, request=request,
+                headers={"content-type": str(header["content_type"])},
+            )
+
+        return httpx.MockTransport(respond)
+
+
 class _DiagnosticObserverProxy:
     """Forward the real observer while retaining only typed failure metadata."""
 
@@ -665,7 +746,7 @@ class _LowestHttpSeamRegistry(ProviderRegistry):
 
     def __init__(
         self, *args: Any,
-        http_transport_factory: _OfflineHttpTransportFactory | None = None,
+        http_transport_factory: Any | None = None,
         **kwargs: Any,
     ) -> None:
         if http_transport_factory is None:
@@ -834,6 +915,178 @@ async def _discover_plan(
     if not registry.call_plan:
         raise RuntimeError("FULL_SHORT_DRY_RUN_PLAN_EMPTY")
     return registry.call_plan
+
+
+def _replayed_adapter_text(
+    *, protocol: str, events: list[dict[str, Any]],
+    body: dict[str, Any] | None,
+) -> str:
+    """Project replayed protocol objects through the production text seam."""
+
+    if protocol == "anthropic":
+        blocks = (
+            list(body.get("content") or []) if body is not None
+            else [event.get("delta") or {} for event in events]
+        )
+        return "".join(
+            str(block.get("text") or "")
+            for block in blocks
+            if isinstance(block, dict)
+        )
+    if protocol == "openai-chat":
+        if body is not None:
+            choices = list(body.get("choices") or [])
+            return "".join(
+                str((choice.get("message") or {}).get("content") or "")
+                for choice in choices if isinstance(choice, dict)
+            )
+        return "".join(
+            str((event.get("choices") or [{}])[0].get("delta", {}).get(
+                "content", ""
+            ))
+            for event in events if isinstance(event, dict)
+            and event.get("choices")
+        )
+    if protocol == "openai-responses":
+        source = list(body.get("output") or []) if body is not None else events
+        texts: list[str] = []
+        for item in source:
+            if not isinstance(item, dict):
+                continue
+            if item.get("type") in {"response.output_text.delta", "output_text"}:
+                texts.append(str(item.get("delta") or item.get("text") or ""))
+            for content in item.get("content") or []:
+                if isinstance(content, dict):
+                    texts.append(str(content.get("text") or ""))
+        return "".join(texts)
+    raise RuntimeError("FULL_SHORT_CAPTURE_REPLAY_PROTOCOL_UNSUPPORTED")
+
+
+def _replay_captured_attempts(
+    *, capture_store: ProviderResponseCaptureStoreV1, ledger: dict[str, Any],
+) -> dict[str, Any]:
+    """Replay every capture against its ledger anchor and conversion contract."""
+
+    audited = capture_store.audit_all()
+    indexed = {
+        (str(item["call_id"]), str(item["byte_domain"])): item
+        for item in audited
+    }
+    if len(indexed) != len(audited):
+        raise RuntimeError("FULL_SHORT_CAPTURE_REPLAY_DUPLICATE_IDENTITY")
+    replayed_domains = 0
+    converted_contracts = 0
+    business_rejections = 0
+    for attempt in ledger["attempts"]:
+        call_id = f"{ledger['execution_id']}:{attempt['ordinal']}"
+        raw_receipt = indexed.get((call_id, PROVIDER_PROTOCOL_INPUT_BYTES))
+        if raw_receipt is None:
+            raise RuntimeError("FULL_SHORT_CAPTURE_REPLAY_RAW_MISSING")
+        if raw_receipt["ledger_receipt_sha256"] != attempt.get(
+            "provider_protocol_capture_receipt_sha256"
+        ):
+            raise RuntimeError("FULL_SHORT_CAPTURE_REPLAY_RAW_LEDGER_DRIFT")
+        raw, raw_header = capture_store.replay(
+            byte_domain=PROVIDER_PROTOCOL_INPUT_BYTES,
+            expected_metadata=raw_receipt["metadata"],
+            expected_receipt_sha256=attempt[
+                "provider_protocol_capture_receipt_sha256"
+            ],
+        )
+        events, body = parse_provider_protocol_input_bytes_v1(
+            raw, content_type=str(raw_header["content_type"]),
+            encoding=str(raw_header["encoding"]),
+        )
+        replayed_domains += 1
+        if not attempt.get("contract_runtime_input_required"):
+            continue
+        contract_receipt = indexed.get((call_id, CONTRACT_RUNTIME_INPUT_BYTES))
+        if contract_receipt is None:
+            raise RuntimeError("FULL_SHORT_CAPTURE_REPLAY_CONTRACT_MISSING")
+        if contract_receipt["ledger_receipt_sha256"] != attempt.get(
+            "contract_runtime_capture_receipt_sha256"
+        ):
+            raise RuntimeError("FULL_SHORT_CAPTURE_REPLAY_CONTRACT_LEDGER_DRIFT")
+        contract_bytes, _contract_header = capture_store.replay(
+            byte_domain=CONTRACT_RUNTIME_INPUT_BYTES,
+            expected_metadata=contract_receipt["metadata"],
+            expected_receipt_sha256=attempt[
+                "contract_runtime_capture_receipt_sha256"
+            ],
+        )
+        try:
+            contract_text = contract_bytes.decode("utf-8")
+        except UnicodeError as exc:
+            raise RuntimeError("FULL_SHORT_CAPTURE_REPLAY_CONTRACT_UTF8_INVALID") from exc
+        replayed_text = _replayed_adapter_text(
+            protocol=str(raw_header["protocol"]), events=events, body=body,
+        )
+        if replayed_text != contract_text:
+            raise RuntimeError("FULL_SHORT_CAPTURE_REPLAY_ADAPTER_PROJECTION_DRIFT")
+        # The exact business outcome is proved below by feeding every raw
+        # capture back through the real adapter, PTR9 guard, Contract Runtime,
+        # schema and domain validators in a fresh isolated workflow.  This
+        # local check binds the post-adapter bytes to the raw projection.
+        if attempt.get("state") == "LOCAL_ATTEMPT_REJECTED":
+            business_rejections += 1
+        converted_contracts += 1
+        replayed_domains += 1
+    if len(indexed) != replayed_domains:
+        raise RuntimeError("FULL_SHORT_CAPTURE_REPLAY_ORPHAN_CAPTURE")
+    return {
+        "capture_ledger_anchors_and_adapter_projection_exact": True,
+        "replayed_capture_domain_count": replayed_domains,
+        "replayed_contract_conversion_count": converted_contracts,
+        "replayed_business_rejection_count": business_rejections,
+    }
+
+
+async def _replay_full_workflow_from_captured_bytes(
+    *, repo: Path, source_project: Path, project_id: str,
+    replay_target: Path, capture_store: ProviderResponseCaptureStoreV1,
+    ledger: dict[str, Any], source_call_plan: list[dict[str, Any]],
+    expected_final_artifact_sha256: str,
+) -> dict[str, Any]:
+    replay_data = _copy_private_data(
+        repo=repo, source_project=source_project, project_id=project_id,
+        target=replay_target,
+    )
+    factory = _CapturedResponseReplayTransportFactory(
+        capture_store=capture_store, ledger=ledger,
+        source_call_plan=source_call_plan,
+    )
+    db = Database(replay_data / "app.db")
+    registry = _LowestHttpSeamRegistry(
+        db, _memory_secrets(replay_data)(),
+        http_transport_factory=factory,
+        transport_policy=SingleDispatchTransportPolicyV1.phase_b(),
+    )
+    try:
+        _db, _project, result = await run_full_short_workflow_path(
+            repo=repo, data_dir=replay_data, project_id=project_id,
+            execution_id=REPLAY_ID, registry=registry,
+        )
+    finally:
+        await registry.close()
+    if result.get("status") != "completed":
+        raise RuntimeError("FULL_SHORT_CAPTURE_REPLAY_WORKFLOW_FAILED")
+    if factory.call_plan != source_call_plan:
+        raise RuntimeError("FULL_SHORT_CAPTURE_REPLAY_CALL_PLAN_DRIFT")
+    replayed_manuscript = (
+        replay_data / "projects" / source_project.name
+        / "manuscript" / "story.md"
+    )
+    replayed_artifact_sha256 = _sha256(replayed_manuscript)
+    if replayed_artifact_sha256 != expected_final_artifact_sha256:
+        raise RuntimeError("FULL_SHORT_CAPTURE_REPLAY_FINAL_ARTIFACT_DRIFT")
+    return {
+        "all_captured_synthetic_responses_exactly_replayable": True,
+        "replay_reentered_real_provider_adapter": True,
+        "replay_reentered_ptr9_guard_path": True,
+        "replay_reentered_contract_runtime_and_domain_validators": True,
+        "replay_call_count": len(factory.call_plan),
+        "replay_final_artifact_sha256": replayed_artifact_sha256,
+    }
 
 
 async def _run(args: argparse.Namespace) -> dict[str, Any]:
@@ -1035,6 +1288,22 @@ async def _run(args: argparse.Namespace) -> dict[str, Any]:
             store_root=store_root / "provider-response-captures-v1",
         )
         capture_receipts = capture_store.audit_all()
+        replay_anchor_proof = _replay_captured_attempts(
+            capture_store=capture_store, ledger=ledger,
+        )
+        source_manuscript = (
+            execution_data / "projects" / source_project.name
+            / "manuscript" / "story.md"
+        )
+        expected_final_artifact_sha256 = _sha256(source_manuscript)
+        replay_workflow_proof = await _replay_full_workflow_from_captured_bytes(
+            repo=repo, source_project=source_project, project_id=project_id,
+            replay_target=private_root / "captured-response-replay",
+            capture_store=capture_store, ledger=ledger,
+            source_call_plan=observed_plan,
+            expected_final_artifact_sha256=expected_final_artifact_sha256,
+        )
+        replay_proof = {**replay_anchor_proof, **replay_workflow_proof}
         provider_capture_count = sum(
             item["byte_domain"] == PROVIDER_PROTOCOL_INPUT_BYTES
             for item in capture_receipts
@@ -1080,10 +1349,6 @@ async def _run(args: argparse.Namespace) -> dict[str, Any]:
         completion = execution["completion"]
         terminal = execution["terminal"]
         result = execution["workflow_result"]
-        manuscript = (
-            execution_data / "projects" / source_project.name
-            / "manuscript" / "story.md"
-        )
         summary = {
             "schema": "FirstTrustworthyFullShortPrivateDryRunV2",
             "version": 2,
@@ -1130,7 +1395,7 @@ async def _run(args: argparse.Namespace) -> dict[str, Any]:
             "response_capture_receipts_created_for_all_synthetic_provider_calls": (
                 response_capture_receipts_complete
             ),
-            "all_captured_synthetic_responses_exactly_replayable": True,
+            **replay_proof,
             "completed_stage_count": len(
                 ledger.get("completed_stage_receipts") or []
             ),
@@ -1152,7 +1417,7 @@ async def _run(args: argparse.Namespace) -> dict[str, Any]:
             "elapsed_seconds_at_completion_recheck": execution[
                 "elapsed_seconds_at_completion_recheck"
             ],
-            "final_artifact_sha256": _sha256(manuscript),
+            "final_artifact_sha256": expected_final_artifact_sha256,
             "dry_run_namespace": "two_isolated_temporary_copies",
             "dry_run_artifacts_cannot_be_mistaken_for_real_output": True,
             "raw_title_persisted": False, "raw_prompt_persisted": False,
@@ -1184,6 +1449,9 @@ async def _run(args: argparse.Namespace) -> dict[str, Any]:
                     for item in ledger["attempts"]
                 )
                 and response_capture_receipts_complete
+                and replay_proof[
+                    "all_captured_synthetic_responses_exactly_replayable"
+                ]
             ),
         }
     return summary

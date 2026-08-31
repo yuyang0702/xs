@@ -310,6 +310,7 @@ async function navigateToView(name, label) {
   if(name==="workbench")await renderActiveProject();
   if(name==="materials")await renderMaterials();
   if(name==="market")await loadMarketDashboard();
+  if(name==="skills")await loadEffectiveSkills();
   return true;
 }
 document.querySelectorAll(".nav-group-toggle").forEach(button=>button.addEventListener("click",()=>{
@@ -1440,6 +1441,7 @@ $("#learning-project").addEventListener("change",async event=>{
   $("#active-project").value=projectId;
   $("#materials-project").value=projectId;
   state.projectLearning=null;state.outlines=null;state.activeOutlineCandidateId=null;state.outlineComparison=null;
+  await loadEffectiveSkills();
   if(await loadProjectLearning())renderLearning();
 });
 $("#learning-mechanism-view").addEventListener("change",reloadMechanisms);
@@ -1530,6 +1532,7 @@ async function continueProject(projectId) {
   state.activeProject = project;
   $("#active-project").value=projectId;
   $("#materials-project").value=projectId;
+  await loadEffectiveSkills();
   await navigateToView("workbench");
   if (project.mode !== "short") return;
   const generation=state.workbenchGeneration;
@@ -2534,6 +2537,7 @@ async function refreshProjectsAfterConfirmation(project){
   state.projects=[...unique.values()];
   state.activeProject=state.projects.find(item=>item.id===project.id)||project;
   renderProjects();
+  await loadEffectiveSkills();
 }
 async function openProjectOutlineGenerator(projectId){
   await navigateToView("learning");
@@ -2547,6 +2551,7 @@ async function openProjectOutlineGenerator(projectId){
   $("#active-project").value=projectId;
   $("#materials-project").value=projectId;
   state.projectLearning=null;state.effectiveRules=null;state.outlines=null;state.activeOutlineCandidateId=null;state.outlineComparison=null;
+  await loadEffectiveSkills();
   if(!await loadProjectLearning())throw new Error("selection_changed");
   renderLearning();
   select.value=projectId;

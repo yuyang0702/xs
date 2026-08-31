@@ -23,7 +23,11 @@ from novel_flywheel.model_diagnostics import (
     domain_sha256, emit_budget_lineage, emit_ptr12_guard_recovery,
     emit_ptr12_output_limit_classification,
 )
-from novel_flywheel.models import FinalArtifactCapabilityError
+from novel_flywheel.models import FinalArtifactCapabilityError, ModelResult
+from novel_flywheel.provider_response_capture import (
+    CONTRACT_RUNTIME_INPUT_BYTES,
+    ProviderResponseCaptureStoreV1,
+)
 from novel_flywheel.planning_repair_diagnostics import (
     PlanningRepairDomainValidationSnapshotV1,
     PlanningRepairRetryFindingContractError,
@@ -1768,3 +1772,62 @@ async def execute_contract_runtime(
             primary_error, fallback_error,
         ) from fallback_error
     raise last_error
+
+
+async def replay_captured_contract_runtime_input_v1(
+    *, capture_store: ProviderResponseCaptureStoreV1,
+    expected_metadata: Mapping[str, Any],
+    expected_receipt_sha256: str,
+    execution_spec: ExecutableContractSpec,
+    role: str = "offline_exact_response_replay",
+    expected_output_characters: int = 0,
+) -> ContractRuntimeResult:
+    """Re-enter the production Contract Runtime from an immutable capture.
+
+    The ledger receipt is an independent anchor: rewriting both an envelope
+    header and its body cannot make the captured attempt authoritative again.
+    One offline executor supplies the exact post-adapter UTF-8 bytes, while
+    ``execute_contract_runtime`` remains the sole conversion, schema/business
+    completeness and domain-validation owner.  No provider route is resolved
+    and no retry/fallback is available during replay.
+    """
+
+    captured, _header = capture_store.replay(
+        byte_domain=CONTRACT_RUNTIME_INPUT_BYTES,
+        expected_metadata=expected_metadata,
+        expected_receipt_sha256=expected_receipt_sha256,
+    )
+    try:
+        captured_text = captured.decode("utf-8")
+    except UnicodeError as exc:
+        raise ValueError("CAPTURED_CONTRACT_RUNTIME_INPUT_UTF8_INVALID") from exc
+    dispatched = False
+
+    async def execute_once(
+        _attempt: ProtocolReceiptAttempt, _role: str, _system: str,
+        _user: str, _maximum: int | None,
+        _contract: StructuredArtifactContract,
+    ) -> ModelResult:
+        nonlocal dispatched
+        if dispatched:
+            raise RuntimeError("CAPTURED_CONTRACT_RUNTIME_REPLAY_REDISPATCH")
+        dispatched = True
+        return ModelResult(captured_text, {
+            "provider_call_executed": False,
+            "replay_mode": "exact_captured_contract_runtime_input_v1",
+            "transport_complete": bool(
+                expected_metadata.get("transport_complete")
+            ),
+            "contract_name": execution_spec.contract_name,
+        })
+
+    result = await execute_contract_runtime(
+        None, role=role, system="", user="",
+        execution_spec=execution_spec,
+        expected_output_characters=expected_output_characters,
+        same_route_attempts=1, fallback_attempts=0,
+        attempt_routes=("primary",), attempt_executor=execute_once,
+    )
+    if not dispatched:  # pragma: no cover - the explicit schedule is non-empty
+        raise RuntimeError("CAPTURED_CONTRACT_RUNTIME_REPLAY_NOT_DISPATCHED")
+    return result

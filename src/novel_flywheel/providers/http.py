@@ -245,14 +245,16 @@ class HttpProvider:
                     raise
                 await asyncio.sleep(0.25)
         try:
-            if 200 <= response.status_code < 300:
-                self._capture_provider_protocol_input(
-                    response.content,
-                    status_code=response.status_code,
-                    content_type=response.headers.get("content-type", ""),
-                    encoding=response.encoding or "utf-8",
-                    transport_complete=True,
-                )
+            # A received HTTP entity is evidence even when its status is not
+            # successful.  Capture before capability/error interpretation so
+            # the exact terminal response remains replayable after restart.
+            self._capture_provider_protocol_input(
+                response.content,
+                status_code=response.status_code,
+                content_type=response.headers.get("content-type", ""),
+                encoding=response.encoding or "utf-8",
+                transport_complete=True,
+            )
             if response.status_code in {400, 404, 422} and "tools" in payload:
                 detail = response.text.lower()
                 if any(term in detail for term in ("tool", "function calling", "function_call")):
@@ -287,6 +289,15 @@ class HttpProvider:
                 async with self.client.stream("POST", url, json=payload, headers=request_headers) as response:
                     if response.status_code >= 400:
                         await response.aread()
+                        self._capture_provider_protocol_input(
+                            response.content,
+                            status_code=response.status_code,
+                            content_type=response.headers.get(
+                                "content-type", "",
+                            ),
+                            encoding=response.encoding or "utf-8",
+                            transport_complete=True,
+                        )
                         detail = response.text.lower()
                         if (self.transport_policy is None
                                 and response.status_code in {400, 404, 422}
@@ -314,13 +325,12 @@ class HttpProvider:
                             chunks.append(chunk)
                     except BaseException:
                         partial = b"".join(chunks)
-                        if partial:
-                            self._capture_provider_protocol_input(
-                                partial, status_code=response.status_code,
-                                content_type=content_type,
-                                encoding=encoding,
-                                transport_complete=False,
-                            )
+                        self._capture_provider_protocol_input(
+                            partial, status_code=response.status_code,
+                            content_type=content_type,
+                            encoding=encoding,
+                            transport_complete=False,
+                        )
                         raise
                     entity = b"".join(chunks)
                     self._capture_provider_protocol_input(

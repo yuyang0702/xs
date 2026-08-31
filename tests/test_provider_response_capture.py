@@ -2,19 +2,32 @@ import hashlib
 import json
 from pathlib import Path
 
+import httpx
 import pytest
 from jsonschema import Draft202012Validator
 
+from novel_flywheel.contract_runtime import (
+    ExecutableContractSpec,
+    replay_captured_contract_runtime_input_v1,
+)
 from novel_flywheel.generated_artifacts import (
+    ARTIFACT_CONTRACT_REGISTRY,
     registered_business_wire_schema,
 )
+from novel_flywheel.model_diagnostics import domain_sha256
 from novel_flywheel.provider_response_capture import (
+    CAPTURE_MAGIC,
     CONTRACT_RUNTIME_INPUT_BYTES,
     PROVIDER_PROTOCOL_INPUT_BYTES,
     ProviderResponseCaptureError,
     ProviderResponseCaptureStoreV1,
     parse_provider_protocol_input_bytes_v1,
 )
+from novel_flywheel.providers.http import (
+    HttpProvider,
+    SingleDispatchTransportPolicyV1,
+)
+from novel_flywheel.structured_artifacts import StructuredArtifactContract
 
 
 def _metadata(**updates):
@@ -45,6 +58,38 @@ def _store(tmp_path: Path) -> ProviderResponseCaptureStoreV1:
     return ProviderResponseCaptureStoreV1(
         repo_root=repo, store_root=tmp_path / "private-captures",
     )
+
+
+class _CaptureObserver:
+    def __init__(self) -> None:
+        self.captures: list[dict] = []
+
+    def before_http_dispatch(self, **_kwargs) -> None:
+        return None
+
+    def before_http_post(self) -> None:
+        return None
+
+    def before_network_request(self) -> None:
+        return None
+
+    def capture_provider_protocol_input(self, **kwargs) -> None:
+        self.captures.append(kwargs)
+
+    def after_http_failure(self, **_kwargs) -> None:
+        return None
+
+    def after_http_response(self, **_kwargs) -> None:
+        return None
+
+
+class _InterruptedEmptyStream(httpx.AsyncByteStream):
+    async def __aiter__(self):
+        raise httpx.ReadError("offline interrupted empty stream")
+        yield b""  # pragma: no cover
+
+    async def aclose(self) -> None:
+        return None
 
 
 @pytest.mark.parametrize(
@@ -128,6 +173,41 @@ def test_tampered_bytes_fail_before_replay(tmp_path: Path) -> None:
         store.replay(
             byte_domain=PROVIDER_PROTOCOL_INPUT_BYTES,
             expected_metadata=metadata,
+        )
+
+
+def test_self_consistent_envelope_rewrite_fails_ledger_anchor(
+    tmp_path: Path,
+) -> None:
+    store = _store(tmp_path)
+    metadata = _metadata()
+    receipt = store.capture(
+        byte_domain=PROVIDER_PROTOCOL_INPUT_BYTES,
+        data=b"original", metadata=metadata,
+    )
+    ledger_anchor = domain_sha256(
+        "novel-flywheel-provider-response-capture-receipt-v1",
+        receipt.document(),
+    )
+    capture = next(store.root.glob("*.capture"))
+    payload = capture.read_bytes()
+    header_bytes, _data = payload[len(CAPTURE_MAGIC):].split(b"\n", 1)
+    header = json.loads(header_bytes.decode("utf-8"))
+    replacement = b"rewritten"
+    header["byte_sha256"] = hashlib.sha256(replacement).hexdigest()
+    header["byte_length"] = len(replacement)
+    rewritten_header = json.dumps(
+        header, ensure_ascii=False, sort_keys=True, separators=(",", ":"),
+    ).encode("utf-8")
+    capture.write_bytes(CAPTURE_MAGIC + rewritten_header + b"\n" + replacement)
+
+    with pytest.raises(
+        ProviderResponseCaptureError, match="LEDGER_RECEIPT_MISMATCH",
+    ):
+        store.replay(
+            byte_domain=PROVIDER_PROTOCOL_INPUT_BYTES,
+            expected_metadata=metadata,
+            expected_receipt_sha256=ledger_anchor,
         )
 
 
@@ -221,6 +301,163 @@ def test_business_incomplete_conversion_replays_same_failure_family(
         expected_metadata=metadata,
     )
     assert failure_code(replayed) == live_code
+
+
+def test_crash_after_capture_before_conversion_restarts_from_ledger_anchor(
+    tmp_path: Path,
+) -> None:
+    store = _store(tmp_path)
+    metadata = _metadata()
+    raw = b'{"content":[{"type":"text","text":"ok"}]}'
+    receipt = store.capture(
+        byte_domain=PROVIDER_PROTOCOL_INPUT_BYTES,
+        data=raw, metadata=metadata,
+    )
+    anchor = domain_sha256(
+        "novel-flywheel-provider-response-capture-receipt-v1",
+        receipt.document(),
+    )
+
+    restarted = ProviderResponseCaptureStoreV1(
+        repo_root=store.repo_root, store_root=store.root,
+    )
+    replayed, header = restarted.replay(
+        byte_domain=PROVIDER_PROTOCOL_INPUT_BYTES,
+        expected_metadata=metadata, expected_receipt_sha256=anchor,
+    )
+    events, body = parse_provider_protocol_input_bytes_v1(
+        replayed, content_type=header["content_type"],
+        encoding=header["encoding"],
+    )
+
+    assert events == []
+    assert body == {"content": [{"type": "text", "text": "ok"}]}
+
+
+@pytest.mark.asyncio
+async def test_crash_after_conversion_before_stage_receipt_reenters_runtime(
+    tmp_path: Path,
+) -> None:
+    store = _store(tmp_path)
+    metadata = _metadata(
+        content_type="text/plain; purpose=contract-runtime-input",
+    )
+    payload = {
+        "facts": [], "state": {},
+        "coverage": {"manuscript_sha256": "a" * 64, "complete": True},
+        "disposition": "no_change",
+        "no_change_reason": "Full manuscript inspected; no durable delta.",
+    }
+    raw = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+    receipt = store.capture(
+        byte_domain=CONTRACT_RUNTIME_INPUT_BYTES,
+        data=raw, metadata=metadata,
+    )
+    anchor = domain_sha256(
+        "novel-flywheel-provider-response-capture-receipt-v1",
+        receipt.document(),
+    )
+    registration = ARTIFACT_CONTRACT_REGISTRY[
+        "short_maintenance_business_complete_v2"
+    ]
+    spec = ExecutableContractSpec(
+        contract_name=registration.name,
+        structured_contract=StructuredArtifactContract(
+            name=registration.name, version=registration.version,
+            schema=registered_business_wire_schema(registration.name, {}),
+        ),
+        semantic_normalizer=lambda value: dict(value),
+        domain_validator=lambda value: value["coverage"]["manuscript_sha256"],
+    )
+
+    restarted = ProviderResponseCaptureStoreV1(
+        repo_root=store.repo_root, store_root=store.root,
+    )
+    result = await replay_captured_contract_runtime_input_v1(
+        capture_store=restarted, expected_metadata=metadata,
+        expected_receipt_sha256=anchor, execution_spec=spec,
+    )
+
+    assert result.payload == payload
+    assert result.domain_value == "a" * 64
+
+
+def test_empty_captured_provider_entity_replay_fails_closed(
+    tmp_path: Path,
+) -> None:
+    store = _store(tmp_path)
+    metadata = _metadata()
+    receipt = store.capture(
+        byte_domain=PROVIDER_PROTOCOL_INPUT_BYTES,
+        data=b"", metadata=metadata,
+    )
+    anchor = domain_sha256(
+        "novel-flywheel-provider-response-capture-receipt-v1",
+        receipt.document(),
+    )
+    replayed, header = store.replay(
+        byte_domain=PROVIDER_PROTOCOL_INPUT_BYTES,
+        expected_metadata=metadata, expected_receipt_sha256=anchor,
+    )
+
+    with pytest.raises(ProviderResponseCaptureError, match="JSON_INVALID"):
+        parse_provider_protocol_input_bytes_v1(
+            replayed, content_type=header["content_type"],
+            encoding=header["encoding"],
+        )
+
+
+@pytest.mark.asyncio
+async def test_http_error_body_is_captured_before_status_failure() -> None:
+    observer = _CaptureObserver()
+    provider = HttpProvider(
+        "https://offline.invalid", "not-a-real-secret",
+        transport_policy=SingleDispatchTransportPolicyV1.phase_b(),
+        attempt_observer=observer,
+    )
+    provider.client = httpx.AsyncClient(transport=httpx.MockTransport(
+        lambda request: httpx.Response(
+            503, content=b'{"error":"offline"}', request=request,
+            headers={"content-type": "application/json"},
+        ),
+    ))
+    try:
+        with pytest.raises(httpx.HTTPStatusError):
+            await provider.post("messages", payload={}, headers={})
+    finally:
+        await provider.client.aclose()
+
+    assert len(observer.captures) == 1
+    assert observer.captures[0]["data"] == b'{"error":"offline"}'
+    assert observer.captures[0]["status_code"] == 503
+    assert observer.captures[0]["transport_complete"] is True
+
+
+@pytest.mark.asyncio
+async def test_zero_byte_interrupted_stream_records_incomplete_capture() -> None:
+    observer = _CaptureObserver()
+    provider = HttpProvider(
+        "https://offline.invalid", "not-a-real-secret",
+        transport_policy=SingleDispatchTransportPolicyV1.phase_b(),
+        attempt_observer=observer,
+    )
+
+    async def respond(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200, stream=_InterruptedEmptyStream(), request=request,
+            headers={"content-type": "text/event-stream"},
+        )
+
+    provider.client = httpx.AsyncClient(transport=httpx.MockTransport(respond))
+    try:
+        with pytest.raises(httpx.ReadError):
+            await provider.post_stream("messages", payload={}, headers={})
+    finally:
+        await provider.client.aclose()
+
+    assert len(observer.captures) == 1
+    assert observer.captures[0]["data"] == b""
+    assert observer.captures[0]["transport_complete"] is False
 
 
 def test_capture_store_refuses_git_worktree_location(tmp_path: Path) -> None:

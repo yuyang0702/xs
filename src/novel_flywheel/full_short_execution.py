@@ -1496,7 +1496,7 @@ class FullShortDispatchLedgerObserverV1:
         self, *, data: bytes, status_code: int, content_type: str,
         encoding: str, transport_complete: bool,
     ) -> None:
-        _require(200 <= status_code < 300, "CAPTURE_HTTP_STATUS_INVALID")
+        _require(100 <= status_code <= 599, "CAPTURE_HTTP_STATUS_INVALID")
         route = self.bound_route
         _require(isinstance(route, dict), "CAPTURE_ROUTE_NOT_BOUND")
         receipt = self.capture_store.capture(
@@ -1533,7 +1533,7 @@ class FullShortDispatchLedgerObserverV1:
             field="contract_runtime_capture_receipt_sha256",
             receipt_sha256=domain_sha256(
                 "novel-flywheel-provider-response-capture-receipt-v1",
-                {**receipt.document(), "finish_reason": finish_reason},
+                receipt.document(),
             ),
         )
 

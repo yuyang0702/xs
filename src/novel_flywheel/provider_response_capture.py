@@ -17,6 +17,8 @@ from pathlib import Path
 import secrets
 from typing import Any, Mapping
 
+from novel_flywheel.runtime_fingerprint_build import domain_sha256
+
 
 CAPTURE_SCHEMA = "ProviderResponseExactCaptureV1"
 CAPTURE_MAGIC = b"NOVEL_FLYWHEEL_PROVIDER_RESPONSE_CAPTURE_V1\n"
@@ -223,6 +225,7 @@ class ProviderResponseCaptureStoreV1:
 
     def replay(
         self, *, byte_domain: str, expected_metadata: Mapping[str, Any],
+        expected_receipt_sha256: str | None = None,
     ) -> tuple[bytes, dict[str, Any]]:
         if byte_domain not in CAPTURE_DOMAINS:
             raise ProviderResponseCaptureError(
@@ -272,6 +275,24 @@ class ProviderResponseCaptureStoreV1:
             raise ProviderResponseCaptureError(
                 "PROVIDER_RESPONSE_REPLAY_SHA256_MISMATCH"
             )
+        receipt = ProviderResponseCaptureReceiptV1(
+            byte_domain=byte_domain,
+            byte_sha256=str(header["byte_sha256"]),
+            byte_length=int(header["byte_length"]),
+            metadata_sha256=_sha256(header_bytes),
+            capture_path_sha256=_sha256(str(path).encode("utf-8")),
+        )
+        ledger_receipt_sha256 = domain_sha256(
+            "novel-flywheel-provider-response-capture-receipt-v1",
+            receipt.document(),
+        )
+        if expected_receipt_sha256 is not None and (
+            expected_receipt_sha256 != ledger_receipt_sha256
+        ):
+            raise ProviderResponseCaptureError(
+                "PROVIDER_RESPONSE_REPLAY_LEDGER_RECEIPT_MISMATCH"
+            )
+        header["ledger_receipt_sha256"] = ledger_receipt_sha256
         return data, header
 
     def audit_all(self) -> list[dict[str, Any]]:
@@ -333,6 +354,19 @@ class ProviderResponseCaptureStoreV1:
                 "call_id": metadata["call_id"],
                 "stage_id": metadata["stage_id"],
                 "transport_complete": metadata["transport_complete"],
+                "metadata": metadata,
+                "ledger_receipt_sha256": domain_sha256(
+                    "novel-flywheel-provider-response-capture-receipt-v1",
+                    ProviderResponseCaptureReceiptV1(
+                        byte_domain=domain,
+                        byte_sha256=str(header["byte_sha256"]),
+                        byte_length=int(header["byte_length"]),
+                        metadata_sha256=_sha256(header_bytes),
+                        capture_path_sha256=_sha256(
+                            str(path).encode("utf-8")
+                        ),
+                    ).document(),
+                ),
             })
         return receipts
 

@@ -160,3 +160,26 @@ def test_skill_page_labels_configured_roots_and_effective_source() -> None:
         assert label in script
     assert "loadEffectiveSkills" in script
     assert "selective_or_hybrid_production_active" not in script
+
+
+def test_every_project_switch_refreshes_effective_skill_source_truth() -> None:
+    script = (
+        __import__("pathlib").Path(__file__).parents[2]
+        / "src" / "novel_flywheel" / "static" / "app.js"
+    ).read_text(encoding="utf-8")
+
+    assert 'if(name==="skills")await loadEffectiveSkills();' in script
+    for function_name in (
+        "continueProject", "refreshProjectsAfterConfirmation",
+        "openProjectOutlineGenerator",
+    ):
+        body = script.split(f"async function {function_name}(", 1)[1]
+        body = body.split("\n}", 1)[0]
+        assert "state.activeProject" in body
+        assert "await loadEffectiveSkills();" in body
+
+    learning_switch = script.split(
+        '$("#learning-project").addEventListener("change",async event=>{', 1,
+    )[1].split("});", 1)[0]
+    assert "state.activeProject=project" in learning_switch
+    assert "await loadEffectiveSkills();" in learning_switch
