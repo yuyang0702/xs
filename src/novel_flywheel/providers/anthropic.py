@@ -3,6 +3,7 @@ import json
 from novel_flywheel.domain.models import ModelRequest, ModelResponse, ToolCall
 from novel_flywheel.provider_response_capture import (
     FullShortTransportEvidenceStateV1,
+    ProviderResponseCaptureError,
     decide_full_short_transport_recovery_v1,
     parse_provider_protocol_input_bytes_v1,
 )
@@ -115,15 +116,8 @@ class AnthropicAdapter(HttpProvider):
             try:
                 body = self._aggregate_stream(events)
             except Exception as exc:
-                replayed = self._replay_last_protocol_input_v1()
+                replayed = self._replay_complete_valid_capture(exc)
                 if replayed is not None:
-                    decision = decide_full_short_transport_recovery_v1(
-                        FullShortTransportEvidenceStateV1.COMPLETE_VALID_CAPTURE,
-                    )
-                    if not decision.exact_local_replay_allowed:
-                        raise AnthropicStreamProtocolError(
-                            "ANTHROPIC_EXACT_LOCAL_REPLAY_NOT_AUTHORIZED"
-                        )
                     replay_events, replay_body = replayed
                     try:
                         body = (
@@ -241,29 +235,23 @@ class AnthropicAdapter(HttpProvider):
         try:
             return project_response(body)
         except Exception as exc:
-            replayed = self._replay_last_protocol_input_v1()
+            replayed = self._replay_complete_valid_capture(exc)
             if replayed is not None:
-                decision = decide_full_short_transport_recovery_v1(
-                    FullShortTransportEvidenceStateV1.COMPLETE_VALID_CAPTURE,
-                )
-                if decision.exact_local_replay_allowed:
-                    replay_events, replay_body = replayed
-                    try:
-                        if replay_body is None:
-                            replay_body = self._aggregate_stream(replay_events)
-                        return project_response(replay_body)
-                    except Exception as replay_exc:
-                        if snapshot is not None:
-                            attach_exception_snapshot(
-                                replay_exc, provider_snapshot_with_status(
-                                    snapshot, "adapter_exception_with_snapshot",
-                                ),
-                            )
-                        if content_snapshot is not None:
-                            attach_provider_content_snapshot(
-                                replay_exc, content_snapshot,
-                            )
-                        raise
+                _replay_events, replay_body = replayed
+                try:
+                    return project_response(replay_body)
+                except Exception as replay_exc:
+                    if snapshot is not None:
+                        attach_exception_snapshot(
+                            replay_exc, provider_snapshot_with_status(
+                                snapshot, "adapter_exception_with_snapshot",
+                            ),
+                        )
+                    if content_snapshot is not None:
+                        attach_provider_content_snapshot(
+                            replay_exc, content_snapshot,
+                        )
+                    raise
             if snapshot is not None:
                 attach_exception_snapshot(
                     exc, provider_snapshot_with_status(
@@ -280,6 +268,7 @@ class AnthropicAdapter(HttpProvider):
     ) -> ModelResponse:
         """Shared live/replay projection after protocol validation."""
 
+        AnthropicAdapter._validate_json_body(body)
         usage = body.get("usage", {})
         content = body.get("content", [])
         return ModelResponse(
@@ -322,6 +311,98 @@ class AnthropicAdapter(HttpProvider):
         response = cls._model_response_from_body(body)
         shape = provider_output_shape_from_response(cls, response)
         return response.model_copy(update={"output_shape": shape})
+
+    @staticmethod
+    def _validate_json_body(body: dict) -> None:
+        """Validate the non-streaming Anthropic completion envelope."""
+
+        if not isinstance(body, dict):
+            raise AnthropicStreamProtocolError(
+                "ANTHROPIC_JSON_RESPONSE_OBJECT_REQUIRED"
+            )
+        if "error" in body:
+            error = body.get("error")
+            error_type = error.get("type") if isinstance(error, dict) else ""
+            raise AnthropicProviderTerminalError(str(error_type or ""))
+        if not isinstance(body.get("content"), list):
+            raise AnthropicStreamProtocolError(
+                "ANTHROPIC_JSON_CONTENT_INVALID"
+            )
+        stop_reason = body.get("stop_reason")
+        if not isinstance(stop_reason, str) or not stop_reason:
+            raise AnthropicStreamProtocolError(
+                "ANTHROPIC_JSON_STOP_REASON_MISSING"
+            )
+        usage = body.get("usage", {})
+        if not isinstance(usage, dict):
+            raise AnthropicStreamProtocolError(
+                "ANTHROPIC_JSON_USAGE_INVALID"
+            )
+        for block in body["content"]:
+            if not isinstance(block, dict):
+                raise AnthropicStreamProtocolError(
+                    "ANTHROPIC_JSON_CONTENT_BLOCK_INVALID"
+                )
+            block_type = block.get("type")
+            if block_type == "tool_use":
+                if (
+                    not isinstance(block.get("id"), str)
+                    or not block["id"]
+                    or not isinstance(block.get("name"), str)
+                    or not block["name"]
+                ):
+                    raise AnthropicStreamProtocolError(
+                        "ANTHROPIC_SSE_TOOL_USE_FIELDS_INVALID"
+                    )
+                if "input" in block and not isinstance(block["input"], dict):
+                    raise AnthropicStreamProtocolError(
+                        "ANTHROPIC_SSE_TOOL_ARGUMENTS_INVALID"
+                    )
+            elif block_type == "text" and not isinstance(
+                block.get("text", ""), str
+            ):
+                raise AnthropicStreamProtocolError(
+                    "ANTHROPIC_JSON_TEXT_BLOCK_INVALID"
+                )
+
+    def _replay_complete_valid_capture(
+        self, original_error: BaseException,
+    ) -> tuple[list[dict], dict] | None:
+        """Reparse only a capture independently proven complete and valid."""
+
+        if isinstance(
+            original_error,
+            (
+                AnthropicStreamProtocolError,
+                AnthropicStreamIncompleteError,
+                AnthropicProviderTerminalError,
+            ),
+        ):
+            return None
+        try:
+            replayed = self._replay_last_protocol_input_v1()
+        except ProviderResponseCaptureError:
+            return None
+        if replayed is None:
+            return None
+        replay_events, replay_body = replayed
+        try:
+            if replay_body is None:
+                replay_body = self._aggregate_stream(replay_events)
+            else:
+                self._validate_json_body(replay_body)
+        except (
+            AnthropicStreamProtocolError,
+            AnthropicStreamIncompleteError,
+            AnthropicProviderTerminalError,
+        ):
+            return None
+        decision = decide_full_short_transport_recovery_v1(
+            FullShortTransportEvidenceStateV1.COMPLETE_VALID_CAPTURE,
+        )
+        if not decision.exact_local_replay_allowed:
+            return None
+        return replay_events, replay_body
 
     def _stream_exception_snapshot(self, events: list[dict]):
         blocks: dict[int, dict] = {}
@@ -428,12 +509,26 @@ class AnthropicAdapter(HttpProvider):
                     raise AnthropicStreamProtocolError(
                         "ANTHROPIC_SSE_CONTENT_BLOCK_START_BEFORE_STOP"
                     )
-                block = dict(event.get("content_block") or {})
+                raw_block = event.get("content_block")
+                if not isinstance(raw_block, dict):
+                    raise AnthropicStreamProtocolError(
+                        "ANTHROPIC_SSE_CONTENT_BLOCK_INVALID"
+                    )
+                block = dict(raw_block)
                 if block.get("type") not in {
                     "text", "tool_use", "thinking", "redacted_thinking",
                 }:
                     raise AnthropicStreamProtocolError(
                         "ANTHROPIC_SSE_CONTENT_BLOCK_TYPE_UNSUPPORTED"
+                    )
+                if block.get("type") == "tool_use" and (
+                    not isinstance(block.get("id"), str)
+                    or not block["id"]
+                    or not isinstance(block.get("name"), str)
+                    or not block["name"]
+                ):
+                    raise AnthropicStreamProtocolError(
+                        "ANTHROPIC_SSE_TOOL_USE_FIELDS_INVALID"
                     )
                 blocks[index] = block
                 open_blocks.add(index)
@@ -449,7 +544,11 @@ class AnthropicAdapter(HttpProvider):
                     raise AnthropicStreamProtocolError(
                         "ANTHROPIC_SSE_DELTA_OUTSIDE_CONTENT_BLOCK"
                     )
-                delta = event.get("delta") or {}
+                delta = event.get("delta")
+                if not isinstance(delta, dict):
+                    raise AnthropicStreamProtocolError(
+                        "ANTHROPIC_SSE_CONTENT_DELTA_INVALID"
+                    )
                 block_type = blocks[index].get("type")
                 delta_type = delta.get("type")
                 allowed_deltas = {
@@ -468,7 +567,12 @@ class AnthropicAdapter(HttpProvider):
                         + str(delta.get("text") or "")
                     )
                 elif delta_type == "input_json_delta":
-                    tool_json.setdefault(index, []).append(delta.get("partial_json", ""))
+                    partial_json = delta.get("partial_json")
+                    if not isinstance(partial_json, str):
+                        raise AnthropicStreamProtocolError(
+                            "ANTHROPIC_SSE_TOOL_ARGUMENT_DELTA_INVALID"
+                        )
+                    tool_json.setdefault(index, []).append(partial_json)
             elif kind == "content_block_stop":
                 index = event.get("index")
                 if type(index) is not int or index < 0:

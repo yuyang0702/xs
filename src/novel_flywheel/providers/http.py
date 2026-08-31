@@ -366,7 +366,9 @@ class HttpProvider:
                     try:
                         async for chunk in response.aiter_bytes():
                             chunks.append(chunk)
-                    except BaseException:
+                    except (
+                        asyncio.CancelledError, httpx.TransportError,
+                    ) as exc:
                         partial = b"".join(chunks)
                         terminal_bytes_received = (
                             provider_protocol_input_has_terminal_bytes_v1(
@@ -380,7 +382,13 @@ class HttpProvider:
                             encoding=encoding,
                             transport_complete=terminal_bytes_received,
                         )
-                        if terminal_bytes_received:
+                        if (
+                            terminal_bytes_received
+                            and (
+                                isinstance(exc, httpx.TimeoutException)
+                                or isinstance(exc, asyncio.CancelledError)
+                            )
+                        ):
                             self._last_protocol_input_v1 = (
                                 partial, content_type, encoding,
                             )
@@ -431,6 +439,9 @@ class HttpProvider:
                         or isinstance(exc, httpx.TimeoutException) or events or attempt):
                     raise
                 await asyncio.sleep(0.25)
+            except asyncio.CancelledError as exc:
+                self._after_http_failure(exc)
+                raise
             except Exception as exc:
                 self._after_http_failure(exc)
                 raise

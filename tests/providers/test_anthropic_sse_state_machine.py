@@ -287,6 +287,65 @@ def test_unknown_block_type_is_typed_protocol_error() -> None:
     )
 
 
+@pytest.mark.parametrize("missing", ["id", "name"])
+def test_tool_use_missing_required_fields_is_typed_protocol_error(missing: str) -> None:
+    events = _complete_events()
+    block = {"type": "tool_use", "id": "call", "name": "done"}
+    block.pop(missing)
+    events[1]["content_block"] = block
+    events[2]["delta"] = {
+        "type": "input_json_delta", "partial_json": "{}",
+    }
+
+    with pytest.raises(AnthropicStreamProtocolError) as caught:
+        AnthropicAdapter.replay_protocol_input_bytes_v1(
+            _sse(*events), content_type="text/event-stream",
+        )
+
+    assert caught.value.reason_code == "ANTHROPIC_SSE_TOOL_USE_FIELDS_INVALID"
+
+
+def test_tool_use_non_string_partial_json_is_typed_protocol_error() -> None:
+    events = _complete_events()
+    events[1]["content_block"] = {
+        "type": "tool_use", "id": "call", "name": "done",
+    }
+    events[2]["delta"] = {
+        "type": "input_json_delta", "partial_json": None,
+    }
+
+    with pytest.raises(AnthropicStreamProtocolError) as caught:
+        AnthropicAdapter.replay_protocol_input_bytes_v1(
+            _sse(*events), content_type="text/event-stream",
+        )
+
+    assert caught.value.reason_code == (
+        "ANTHROPIC_SSE_TOOL_ARGUMENT_DELTA_INVALID"
+    )
+
+
+@pytest.mark.parametrize(
+    "body,expected",
+    [
+        (
+            {"error": {"type": "overloaded_error"}},
+            AnthropicProviderTerminalError,
+        ),
+        (
+            {"content": [{"type": "text", "text": "missing terminal"}]},
+            AnthropicStreamProtocolError,
+        ),
+    ],
+)
+def test_json_body_error_and_missing_terminal_are_typed(
+    body: dict, expected: type[BaseException],
+) -> None:
+    with pytest.raises(expected):
+        AnthropicAdapter.replay_protocol_input_bytes_v1(
+            json.dumps(body).encode(), content_type="application/json",
+        )
+
+
 @pytest.mark.asyncio
 async def test_transient_local_aggregation_failure_replays_without_dispatch() -> None:
     class FailOnceAdapter(AnthropicAdapter):
@@ -423,6 +482,84 @@ async def test_terminal_bytes_recover_iterator_failure_by_exact_local_replay(
         exclude={"output_shape"},
     )
     assert replayed.text == "终态后仍可本地重放"
+    assert adapter.transport_attempt_snapshot()["http_post_attempts"] == 1
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "failure", [KeyboardInterrupt("do not swallow"), SystemExit("do not swallow")],
+    ids=["keyboard-interrupt", "system-exit"],
+)
+async def test_unexpected_base_exception_after_terminal_is_not_recovered(
+    failure: BaseException,
+) -> None:
+    raw = _sse(*_complete_events("unexpected exception"))
+    adapter = AnthropicAdapter(
+        "https://offline.invalid/v1", "offline-memory-secret",
+        transport_policy=SingleDispatchTransportPolicyV1.phase_b(),
+    )
+    await adapter.client.aclose()
+
+    async def respond(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            stream=_InjectedStream([raw], failure),
+            request=request,
+            headers={"content-type": "text/event-stream"},
+        )
+
+    adapter.client = httpx.AsyncClient(transport=httpx.MockTransport(respond))
+    try:
+        with pytest.raises(type(failure), match="do not swallow"):
+            await adapter.complete(ModelRequest(
+                model="offline",
+                messages=[Message(role="user", content="offline")],
+                max_output_tokens=32,
+            ))
+    finally:
+        await adapter.client.aclose()
+
+    assert adapter.transport_attempt_snapshot()["http_post_attempts"] == 1
+
+
+@pytest.mark.asyncio
+async def test_provider_error_does_not_enter_complete_valid_replay() -> None:
+    raw = _sse({
+        "type": "error", "error": {"type": "overloaded_error"},
+    })
+
+    class CountingAdapter(AnthropicAdapter):
+        aggregate_calls = 0
+
+        @staticmethod
+        def _aggregate_stream(events):
+            CountingAdapter.aggregate_calls += 1
+            return AnthropicAdapter._aggregate_stream(events)
+
+    adapter = CountingAdapter(
+        "https://offline.invalid/v1", "offline-memory-secret",
+        transport_policy=SingleDispatchTransportPolicyV1.phase_b(),
+    )
+    await adapter.client.aclose()
+
+    async def respond(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200, content=raw, request=request,
+            headers={"content-type": "text/event-stream"},
+        )
+
+    adapter.client = httpx.AsyncClient(transport=httpx.MockTransport(respond))
+    try:
+        with pytest.raises(AnthropicProviderTerminalError):
+            await adapter.complete(ModelRequest(
+                model="offline",
+                messages=[Message(role="user", content="offline")],
+                max_output_tokens=32,
+            ))
+    finally:
+        await adapter.client.aclose()
+
+    assert CountingAdapter.aggregate_calls == 1
     assert adapter.transport_attempt_snapshot()["http_post_attempts"] == 1
 
 
