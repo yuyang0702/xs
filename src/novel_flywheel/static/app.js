@@ -342,8 +342,16 @@ async function loadReferences() {
 }
 
 async function loadAll() {
-  [state.projects, state.trash, state.providers, state.skills, state.wizards, state.references, state.mechanisms, state.styleCandidates, state.localNlp, state.marketBaselines] = await Promise.all([api("/api/projects"), api("/api/projects/trash"), api("/api/providers"), api("/api/skills"), api("/api/wizards"), loadReferences(), api("/api/learning/mechanisms?view=all"), api("/api/learning/style-candidates?view=all"), api("/api/settings/local-nlp"), api("/api/market/baselines")]);
-  renderProjects(); renderTrash(); renderProviders(); renderSkills(); renderBindings(); renderWizardDrafts(); renderReferences(); renderLearning(); renderNlpStatus();
+  [state.projects, state.trash, state.providers, state.wizards, state.references, state.mechanisms, state.styleCandidates, state.localNlp, state.marketBaselines] = await Promise.all([api("/api/projects"), api("/api/projects/trash"), api("/api/providers"), api("/api/wizards"), loadReferences(), api("/api/learning/mechanisms?view=all"), api("/api/learning/style-candidates?view=all"), api("/api/settings/local-nlp"), api("/api/market/baselines")]);
+  renderProjects();
+  await loadEffectiveSkills();
+  renderTrash(); renderProviders(); renderBindings(); renderWizardDrafts(); renderReferences(); renderLearning(); renderNlpStatus();
+}
+
+async function loadEffectiveSkills() {
+  const projectId=state.activeProject?.id;
+  state.skills=await api(projectId?`/api/skills?project_id=${encodeURIComponent(projectId)}`:"/api/skills");
+  renderSkills();
 }
 
 function renderReferenceSelectionBar() {
@@ -2334,8 +2342,8 @@ async function renderActiveProject() {
     $("#run-state").className="run-state error"; $("#run-state").textContent=hasFormalOutline?"作品尚未初始化，请点击“继续初始化”":"请先选择候选大纲并设为正式大纲";
   }
 }
-$("#active-project").addEventListener("change", event => { stopRunMonitor();resetRevisionWorkspace();state.activeProject = state.projects.find(p => p.id === event.target.value); state.activeCharacter=null; renderProjects(); });
-$("#materials-project").addEventListener("change", async event => { stopRunMonitor();resetRevisionWorkspace(); state.activeProject = state.projects.find(p => p.id === event.target.value); state.activeCharacter=null; state.activeMaterialPath=null; $("#active-project").value=event.target.value; await renderMaterials(); });
+$("#active-project").addEventListener("change", async event => { stopRunMonitor();resetRevisionWorkspace();state.activeProject = state.projects.find(p => p.id === event.target.value); state.activeCharacter=null; renderProjects(); await loadEffectiveSkills(); });
+$("#materials-project").addEventListener("change", async event => { stopRunMonitor();resetRevisionWorkspace(); state.activeProject = state.projects.find(p => p.id === event.target.value); state.activeCharacter=null; state.activeMaterialPath=null; $("#active-project").value=event.target.value; await Promise.all([renderMaterials(),loadEffectiveSkills()]); });
 $("#edit-project-learning").addEventListener("click", async () => {
   if(!state.activeProject)return toast("请先选择作品");
   await navigateToView("learning"); $("#learning-project").value=state.activeProject.id; state.projectLearning=null;
@@ -3021,8 +3029,9 @@ function renderBindings() {
   })).catch(error => toast(error.message));
 }
 function renderSkills() {
-  $("#skill-list").innerHTML = state.skills.length ? state.skills.map(s => `<div class="data-row"><div><strong>${escapeHtml(s.name)}</strong><div class="skill-meta">${escapeHtml(s.path)}<br>${s.content_hash.slice(0,16)}</div>${s.conflicts?.length ? `<div class="skill-conflicts">${s.conflicts.map(item => `<p><strong>${escapeHtml(item.code)}</strong>${escapeHtml(item.message)}</p>`).join("")}</div>` : ""}</div><div>${s.executable ? '<span class="badge">执行型</span>' : s.has_scripts ? '<span class="badge">提示词 · 含辅助脚本</span>' : '<span class="badge">提示词</span>'} ${s.conflicts?.length ? `<span class="badge conflict">冲突 ${s.conflicts.length}</span>` : ""} ${s.approved ? '<span class="status">已启用</span>' : `<button class="secondary" data-approve="${escapeHtml(s.name)}" data-hash="${s.content_hash}">授权</button>`}</div></div>`).join("") : '<p class="skill-meta">未发现写作能力</p>';
-  document.querySelectorAll("[data-approve]").forEach(button => button.addEventListener("click", async () => { try { await api(`/api/skills/${encodeURIComponent(button.dataset.approve)}/approve`, {method:"POST", body:JSON.stringify({content_hash:button.dataset.hash})}); await loadAll(); toast("当前写作能力版本已授权"); } catch(error) { toast(error.message); } }));
+  const sourceLabels={project_override:"项目覆盖",repo:"仓库来源",global_fallback:"全局回退",configured_root:"配置来源"};
+  $("#skill-list").innerHTML = state.skills.length ? state.skills.map(s => `<div class="data-row"><div><strong>${escapeHtml(s.name)}</strong><div class="skill-meta"><b>当前实际来源：</b>${escapeHtml(s.effective_resolved_path)}<br><b>来源类型：</b>${escapeHtml(sourceLabels[s.effective_source_kind]||s.effective_source_kind)} · <b>是否使用回退：</b>${s.fallback_used?"是":"否"}<br><b>全局 Skill 根目录：</b>${escapeHtml(s.global_skill_root||"未配置")}<br><b>仓库 Skill 根目录：</b>${escapeHtml(s.repo_skill_root||"未配置")}<br><b>项目 Skill 根目录：</b>${escapeHtml(s.project_skill_root||"未选择项目")}<br><b>Resolved source SHA-256：</b>${escapeHtml(s.resolved_source_sha256)}<br><b>Primary document SHA-256：</b>${escapeHtml(s.primary_document_sha256)}</div>${s.conflicts?.length ? `<div class="skill-conflicts">${s.conflicts.map(item => `<p><strong>${escapeHtml(item.code)}</strong>${escapeHtml(item.message)}</p>`).join("")}</div>` : ""}</div><div>${s.used_by_current_production?'<span class="badge">当前 Baseline 路径</span>':""} ${s.executable ? '<span class="badge">执行型</span>' : s.has_scripts ? '<span class="badge">提示词 · 含辅助脚本</span>' : '<span class="badge">提示词</span>'} ${s.conflicts?.length ? `<span class="badge conflict">冲突 ${s.conflicts.length}</span>` : ""} ${s.approved ? '<span class="status">已启用</span>' : `<button class="secondary" data-approve="${escapeHtml(s.name)}" data-hash="${s.content_hash}">授权</button>`}</div></div>`).join("") : '<p class="skill-meta">当前配置根目录与所选项目中均未发现写作能力</p>';
+  document.querySelectorAll("[data-approve]").forEach(button => button.addEventListener("click", async () => { try { await api(`/api/skills/${encodeURIComponent(button.dataset.approve)}/approve`, {method:"POST", body:JSON.stringify({content_hash:button.dataset.hash,project_id:state.activeProject?.id||null})}); await loadEffectiveSkills(); toast("当前实际来源的写作能力版本已授权"); } catch(error) { toast(error.message); } }));
 }
 $("#refresh").addEventListener("click", () => loadAll().then(() => toast("已刷新")));
 loadAll().catch(error => toast(error.message));
