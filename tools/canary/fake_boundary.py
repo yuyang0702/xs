@@ -455,19 +455,39 @@ class DeterministicShortBoundary:
             }))
         if role == "final_review" and "FULL MANUSCRIPT WINDOW SUMMARY" in user:
             return self._result(role, json.dumps({
-                "summary": "The window preserves approved events and continuity.",
+                "summary": (
+                    "The complete window preserves every approved event in formal order, "
+                    "keeps character knowledge and relationship changes causally supported, "
+                    "and carries the opening promise toward the unchanged ending."
+                ),
                 "issues": [],
             }))
         if role == "final_review" and "终审详细事件和伏笔单独分析" in user:
             return self._result(role, json.dumps({
-                "events": ["Approved events complete in formal order."],
-                "promises": ["The approved ending promise is fulfilled."],
-                "character_states": ["Knowledge and relationships advance causally."],
-                "timeline": ["All segments retain the formal chronology."],
+                "events": [
+                    "Each approved event is executed by its responsible character, meets "
+                    "a concrete response, and leaves a verifiable result in formal order."
+                ],
+                "promises": [
+                    "The opening investigation promise remains visible through the middle "
+                    "and is explicitly fulfilled by the approved ending."
+                ],
+                "character_states": [
+                    "Knowledge, agency, and relationship changes advance only through "
+                    "the actions and evidence owned by the current event."
+                ],
+                "timeline": [
+                    "All segments retain the formal chronology and every adjacent handoff "
+                    "inherits the exact accepted predecessor state."
+                ],
             }))
         if role == "final_review" and "REGIONAL EVIDENCE REDUCTION" in user:
             return self._result(role, json.dumps({
-                "summary": "Regional evidence preserves continuity and promises.",
+                "summary": (
+                    "The regional evidence preserves causal order, exact adjacent handoffs, "
+                    "character knowledge, relationship progression, open promises, and the "
+                    "unchanged terminal outcome without introducing a new issue."
+                ),
                 "issues": [],
             }))
         if role == "final_review" and "FULL MANUSCRIPT FINAL ADJUDICATION" in user:
@@ -489,14 +509,16 @@ class DeterministicShortBoundary:
                 "facts": [], "state_deltas": [], "state_transitions": [],
                 "world_rules": [], "timeline": [],
             }))
-        text = next(self.responses)
         if "TARGET READER SIMULATION" in user:
-            payload = json.loads(text)
-            payload["reader_signals"] = {
-                "would_continue": True, "would_pay": True,
-                "abandonment_point": "none", "payoff_felt": True,
-            }
-            text = json.dumps(payload)
+            return self._result(role, json.dumps({
+                "dimensions": {"commercial": 90, "story": 91, "prose": 90},
+                "hard_fail": False, "decision": "pass", "issues": [],
+                "reader_signals": {
+                    "would_continue": True, "would_pay": True,
+                    "abandonment_point": "none", "payoff_felt": True,
+                },
+            }))
+        text = next(self.responses)
         if role == "final_review" and "AUTHORITATIVE REVIEW ISSUE LEDGER:" in user:
             payload = json.loads(text)
             ledger_text = user.split(
