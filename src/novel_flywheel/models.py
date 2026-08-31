@@ -179,6 +179,13 @@ class ModelGateway:
     def __init__(self, db: Database, registry: ProviderRegistry) -> None:
         self.db = db
         self.registry = registry
+        # Negative final-artifact evidence blocks an exact fingerprint only
+        # inside this gateway/recovery lifetime.  The durable qualification is
+        # diagnostic evidence, not authority to poison a fresh, separately
+        # authorized execution forever.
+        self._final_artifact_route_blocks: set[
+            tuple[str, str, str, str, str]
+        ] = set()
 
     def _resolve_bound_route(
         self, provider_id: str, model_id: str, *, role: str, lane: str,
@@ -600,20 +607,14 @@ class ModelGateway:
                 if capability == StructuredOutputCapability.JSON_OBJECT
                 else "plain"
             )
-            final_artifact_qualification = (
-                self.db.get_structured_route_qualification(
-                    provider_id=resolved.provider_id,
-                    model_id=resolved.model_id,
-                    route_fingerprint=route_fingerprint,
-                    execution_mode="final_artifact",
-                    contract_name=contract_name,
-                    schema_sha256=schema_sha256,
-                )
+            final_artifact_key = (
+                resolved.provider_id,
+                resolved.model_id,
+                route_fingerprint,
+                contract_name,
+                schema_sha256,
             )
-            if (
-                final_artifact_qualification
-                and final_artifact_qualification.get("status") == "quarantined"
-            ):
+            if final_artifact_key in self._final_artifact_route_blocks:
                 raise FinalArtifactRouteQuarantinedError(receipt={
                     "role": role,
                     "provider_id": resolved.provider_id,
@@ -624,10 +625,7 @@ class ModelGateway:
                     "contract_name": contract_name,
                     "schema_sha256": schema_sha256,
                     "failure_code": "final_artifact_route_quarantined",
-                    "failure_reason": str(
-                        final_artifact_qualification.get("last_failure_reason")
-                        or "negative_final_artifact_capability"
-                    ),
+                    "failure_reason": "negative_final_artifact_capability",
                     "provider_call_executed": False,
                 })
             qualification = self.db.get_structured_route_qualification(
@@ -815,6 +813,13 @@ class ModelGateway:
             if response_schema is not None else None
         )
         if guarded_shape is not None:
+            self._final_artifact_route_blocks.add((
+                resolved.provider_id,
+                resolved.model_id,
+                route_fingerprint,
+                contract_name,
+                schema_sha256,
+            ))
             safe_receipt = {
                 key: value for key, value in receipt.items()
                 if key not in {"request_id", "raw_finish_reason"}
