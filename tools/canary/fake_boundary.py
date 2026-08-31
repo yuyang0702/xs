@@ -503,11 +503,26 @@ class DeterministicShortBoundary:
                     "evidence": "The final manuscript preserves approved evidence.",
                 } for item in ledger],
             }))
-        if role == "maintenance" and "maintenance-window-request-v1" in user:
+        if "maintenance-window-request-v1" in user:
             return self._result(role, json.dumps({
                 "version": "maintenance-window-receipt-v1",
                 "facts": [], "state_deltas": [], "state_transitions": [],
                 "world_rules": [], "timeline": [],
+            }))
+        if "short_maintenance_business_complete_v2" in user:
+            authority = json.loads(user)
+            manuscript_sha256 = authority["authoritative_manuscript"]["sha256"]
+            return self._result(role, json.dumps({
+                "facts": [],
+                "state": {},
+                "coverage": {
+                    "manuscript_sha256": manuscript_sha256,
+                    "complete": True,
+                },
+                "disposition": "no_change",
+                "no_change_reason": (
+                    "The deterministic canary proposes no durable state change."
+                ),
             }))
         if "TARGET READER SIMULATION" in user:
             return self._result(role, json.dumps({
