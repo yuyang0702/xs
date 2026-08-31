@@ -9,6 +9,33 @@ from pathlib import Path
 from typing import Callable, Iterator
 
 
+def _windows_extended_path(path: Path) -> Path:
+    """Return an absolute Win32 extended path for length-safe replacements."""
+
+    if os.name != "nt":
+        return path
+    raw = str(path.resolve(strict=False))
+    if raw.startswith("\\\\?\\"):
+        return Path(raw)
+    if raw.startswith("\\\\"):
+        return Path("\\\\?\\UNC\\" + raw[2:])
+    return Path("\\\\?\\" + raw)
+
+
+def _atomic_replace(
+    source: Path,
+    destination: Path,
+    replace: Callable[[Path, Path], None],
+) -> None:
+    if os.name == "nt" and replace is os.replace:
+        replace(
+            _windows_extended_path(source),
+            _windows_extended_path(destination),
+        )
+        return
+    replace(source, destination)
+
+
 def atomic_write(path: Path, content: str,
                  replace: Callable[[Path, Path], None] = os.replace, *,
                  preserve_newlines: bool = False) -> None:
@@ -23,7 +50,7 @@ def atomic_write(path: Path, content: str,
             handle.flush()
             os.fsync(handle.fileno())
             temporary = Path(handle.name)
-        replace(temporary, path)
+        _atomic_replace(temporary, path, replace)
         temporary = None
     finally:
         if temporary is not None:
@@ -47,7 +74,7 @@ def atomic_write_bytes(
             handle.flush()
             os.fsync(handle.fileno())
             temporary = Path(handle.name)
-        replace(temporary, path)
+        _atomic_replace(temporary, path, replace)
         temporary = None
     finally:
         if temporary is not None:

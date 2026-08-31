@@ -1,9 +1,11 @@
 import hashlib
+import os
 
 import pytest
 
 from novel_flywheel.storage import (
     ProjectSnapshot,
+    _windows_extended_path,
     atomic_write,
     atomic_write_bytes,
     project_snapshot_transaction,
@@ -43,6 +45,24 @@ def test_atomic_write_bytes_preserves_exact_newlines_and_rolls_back_replace_fail
         atomic_write_bytes(target, b"uncommitted", replace=fail_replace)
     assert target.read_bytes() == b"new\nbytes\x00"
     assert list(tmp_path.glob("*.tmp")) == []
+
+
+@pytest.mark.skipif(os.name != "nt", reason="Windows extended-path regression")
+def test_atomic_write_replaces_destination_beyond_legacy_windows_path_limit(
+    tmp_path,
+) -> None:
+    parent = tmp_path
+    while len(str(parent)) < 205:
+        parent /= "nested-path-component"
+        parent.mkdir()
+    target = parent / ("conversion-audit-" + ("a" * 70) + ".json")
+    assert len(str(target.resolve(strict=False))) > 260
+
+    atomic_write(target, "long-path-safe")
+
+    assert _windows_extended_path(target).read_text(
+        encoding="utf-8",
+    ) == "long-path-safe"
 
 
 def test_snapshot_restores_changed_and_deleted_files(tmp_path) -> None:
