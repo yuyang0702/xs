@@ -35,6 +35,13 @@ from novel_flywheel.full_short_execution import (
     validate_full_short_preflight_v1,
     validate_policy_v1,
 )
+from novel_flywheel.full_short_runtime_kernel import (
+    DEFAULT_FAILURE_BOUNDARY_REGISTRY_V1,
+    DurableExecutionJournalV1,
+    ExecutionState as KernelExecutionState,
+    FullShortExecutionKernel,
+    activate_full_short_kernel_v1,
+)
 from novel_flywheel.contract_runtime import (
     ExecutableContractSpec,
     execute_contract_runtime,
@@ -663,6 +670,128 @@ def _dispatch_reasoning_recovery_and_close(
         output_sha256="a" * 64, receipt_sha256="b" * 64,
     )
     return observer
+
+
+def _approved_runtime_kernel(
+    tmp_path: Path,
+    execution_id: str,
+) -> FullShortExecutionKernel:
+    journal = DurableExecutionJournalV1.create(
+        tmp_path / f"{execution_id}-runtime-journal.json",
+        execution_id=execution_id,
+        initial_state=KernelExecutionState.TEMPLATE_READY,
+    )
+    journal.transition(
+        KernelExecutionState.AUTHORIZED,
+        transition_id="test-authorized",
+        boundary_id="FS.CONTROL.PREFLIGHT",
+    )
+    journal.transition(
+        KernelExecutionState.APPROVED,
+        transition_id="test-approved",
+        boundary_id="FS.CONTROL.PREFLIGHT",
+    )
+    return FullShortExecutionKernel(
+        registry=DEFAULT_FAILURE_BOUNDARY_REGISTRY_V1,
+        journal=journal,
+    )
+
+
+def test_active_runtime_kernel_tracks_lowest_http_attempt_through_acceptance(
+    tmp_path: Path,
+) -> None:
+    execution_id = "active-runtime-kernel-accepted"
+    store = _store(tmp_path / "store")
+    _authorize_predispatch_offline(store, execution_id)
+    observer = _observer(store, execution_id)
+    kernel = _approved_runtime_kernel(tmp_path, execution_id)
+
+    with activate_full_short_kernel_v1(kernel):
+        observer.before_http_dispatch(
+            method="POST",
+            url="https://unit.test/v1/messages",
+            payload=_payload(),
+        )
+        assert kernel.journal.state == KernelExecutionState.DISPATCHING
+        assert len(kernel.journal.dispatch_token_receipts) == 1
+        assert kernel.journal.dispatch_token_receipts[0].physical_attempt == 1
+
+        observer.capture_provider_protocol_input(
+            data=b'{"complete":true}', status_code=200,
+            content_type="application/json", encoding="utf-8",
+            transport_complete=True,
+        )
+        assert kernel.journal.state == KernelExecutionState.RESPONSE_CAPTURED
+        observer.after_http_response(status_code=200)
+        observer.mark_local_stage_complete(
+            stage="planning", role="planning",
+            role_binding_sha256=observer.bound_route["role_binding_sha256"],
+            output_sha256="a" * 64, receipt_sha256="b" * 64,
+        )
+
+    reopened = DurableExecutionJournalV1.open(kernel.journal.path)
+    assert reopened.state == KernelExecutionState.STAGE_ACCEPTED
+    assert [item.to_state for item in reopened.transitions[-6:]] == [
+        KernelExecutionState.PREDISPATCH_READY,
+        KernelExecutionState.DISPATCH_TOKEN_RESERVED,
+        KernelExecutionState.DISPATCHING,
+        KernelExecutionState.RESPONSE_CAPTURED,
+        KernelExecutionState.VALIDATING,
+        KernelExecutionState.STAGE_ACCEPTED,
+    ]
+
+
+def test_active_runtime_kernel_second_attempt_uses_shared_slot_once(
+    tmp_path: Path,
+) -> None:
+    execution_id = "active-runtime-kernel-recovery"
+    store = _store(tmp_path / "store")
+    _authorize_predispatch_offline(store, execution_id)
+    observer = _observer(store, execution_id)
+    kernel = _approved_runtime_kernel(tmp_path, execution_id)
+
+    with activate_full_short_kernel_v1(kernel):
+        observer.before_http_dispatch(
+            method="POST", url="https://unit.test/v1/messages",
+            payload=_payload(),
+        )
+        observer.capture_provider_protocol_input(
+            data=b'{"incomplete":true}', status_code=200,
+            content_type="application/json", encoding="utf-8",
+            transport_complete=True,
+        )
+        observer.after_http_response(status_code=200)
+        observer.mark_local_attempt_rejected(
+            stage="planning", role="planning",
+            role_binding_sha256=observer.bound_route["role_binding_sha256"],
+            rejection=_local_rejection(),
+        )
+        assert kernel.journal.state == (
+            KernelExecutionState.STAGE_REJECTED_RECOVERABLE
+        )
+
+        observer.bind_stage_context(
+            stage_id="planning", contract_name="unstructured_text",
+            contract_version=1, contract_schema_sha256=_hash({}),
+        )
+        observer.bind_route(
+            role="planning", lane="primary", provider_id="provider",
+            model_id="model-id", route_fingerprint="9" * 64,
+        )
+        observer.bind_model_request(protocol="anthropic", request=_request())
+        observer.before_http_dispatch(
+            method="POST", url="https://unit.test/v1/messages",
+            payload=_payload(),
+        )
+
+    reopened = DurableExecutionJournalV1.open(kernel.journal.path)
+    assert reopened.state == KernelExecutionState.DISPATCHING
+    assert [
+        item.physical_attempt for item in reopened.dispatch_token_receipts
+    ] == [1, 2]
+    assert len({
+        item.dispatch_token_sha256 for item in reopened.dispatch_token_receipts
+    }) == 2
 
 
 def test_live_authority_drift_fails_before_credential_lookup_or_nonce_consumption(

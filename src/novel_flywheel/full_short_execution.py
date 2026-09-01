@@ -49,7 +49,12 @@ from novel_flywheel.execution_failure_architecture import (
     PREDISPATCH_STATE_MACHINE_V1,
     RestartBehavior,
 )
-from novel_flywheel.full_short_runtime_kernel import full_short_boundary_entry
+from novel_flywheel.full_short_runtime_kernel import (
+    ExecutionState as KernelExecutionState,
+    PredispatchReadinessV1,
+    active_full_short_kernel_v1,
+    full_short_boundary_entry,
+)
 from novel_flywheel.provider_payloads import anthropic_payload_v1
 from novel_flywheel.runtime_fingerprint_build import (
     CANONICALIZATION_VERSION,
@@ -2848,6 +2853,37 @@ class FullShortDispatchLedgerObserverV1:
                 "ordinal": ordinal,
             },
         )[:32]
+        runtime_kernel = active_full_short_kernel_v1()
+        if runtime_kernel is not None:
+            runtime_kernel.mark_predispatch_ready(PredispatchReadinessV1(
+                route_configured=True,
+                provider_configured=True,
+                model_configured=True,
+                endpoint_configured=True,
+                capability_sealed=True,
+                credential_source_configured=True,
+                authorized_credential_readiness=True,
+                network_free_request_constructable=True,
+                reasoning_policy_projected=True,
+                request_bytes_sha256=request_shape[
+                    "provider_payload_sha256"
+                ],
+                route_policy_sha256=domain_sha256(
+                    "novel-flywheel-full-short-route-policy-v1",
+                    {
+                        "route_fingerprint": route["route_fingerprint"],
+                        "role_binding_sha256": route[
+                            "role_binding_sha256"
+                        ],
+                        "egress_policy_sha256": self.egress_policy_sha256,
+                        "egress_intent_sha256": self.egress_intent_sha256,
+                    },
+                ),
+            ))
+            runtime_kernel.reserve_dispatch_token(
+                logical_stage_id=logical_stage_id,
+                physical_attempt=len(prior_logical_attempts) + 1,
+            )
         attempt = {
             "ordinal": ordinal,
             "session_id": self.session_id,
@@ -2987,6 +3023,12 @@ class FullShortDispatchLedgerObserverV1:
             session_id=self.session_id, attempt=attempt,
         )
         self.pending_ordinal = ordinal
+        if runtime_kernel is not None:
+            runtime_kernel.journal.transition(
+                KernelExecutionState.DISPATCHING,
+                transition_id="provider-dispatching:" + physical_attempt_id,
+                boundary_id="FS.DISPATCH.MODEL",
+            )
 
     def before_http_post(self) -> None:
         # Backward-compatible observer hook; the exact dispatch is already
@@ -3091,6 +3133,20 @@ class FullShortDispatchLedgerObserverV1:
             http_success=200 <= status_code < 300,
             status_code=status_code,
         )
+        runtime_kernel = active_full_short_kernel_v1()
+        if (
+            runtime_kernel is not None
+            and runtime_kernel.journal.state
+            == KernelExecutionState.DISPATCHING
+        ):
+            runtime_kernel.journal.transition(
+                KernelExecutionState.RESPONSE_CAPTURED,
+                transition_id="provider-response-captured:" + domain_sha256(
+                    "novel-flywheel-provider-response-capture-receipt-v1",
+                    receipt.document(),
+                ),
+                boundary_id="FS.DISPATCH.MODEL",
+            )
 
     def capture_contract_runtime_input(
         self, *, data: bytes, adapter_id: str, adapter_version: int,
@@ -3447,7 +3503,25 @@ class FullShortDispatchLedgerObserverV1:
             body["state"] = "READY_FOR_NEXT_STAGE"
             return body
 
+        runtime_kernel = active_full_short_kernel_v1()
+        if runtime_kernel is not None:
+            _require(
+                runtime_kernel.journal.state
+                == KernelExecutionState.RESPONSE_CAPTURED,
+                "RUNTIME_KERNEL_RESPONSE_CAPTURE_REQUIRED",
+            )
+            runtime_kernel.journal.transition(
+                KernelExecutionState.VALIDATING,
+                transition_id="contract-validating:" + receipt_sha256,
+                boundary_id="FS.CONTRACT.VALIDATE",
+            )
         self.store.update_ledger(self.execution_id, mutate)
+        if runtime_kernel is not None:
+            runtime_kernel.journal.transition(
+                KernelExecutionState.STAGE_ACCEPTED,
+                transition_id="stage-accepted:" + receipt_sha256,
+                boundary_id="FS.CONTRACT.VALIDATE",
+            )
         self.pending_ordinal = None
         self.bound_route = None
         self.expected_provider_payload = None
@@ -3468,6 +3542,20 @@ class FullShortDispatchLedgerObserverV1:
         ordinal = self.pending_ordinal
         _require(ordinal is not None, "NO_RESPONSE_TO_REJECT")
         value = dict(rejection)
+        runtime_kernel = active_full_short_kernel_v1()
+        if runtime_kernel is not None:
+            _require(
+                runtime_kernel.journal.state
+                == KernelExecutionState.RESPONSE_CAPTURED,
+                "RUNTIME_KERNEL_RESPONSE_CAPTURE_REQUIRED",
+            )
+            runtime_kernel.journal.transition(
+                KernelExecutionState.VALIDATING,
+                transition_id="contract-validating-rejection:" + hashlib.sha256(
+                    canonical_json_bytes(value)
+                ).hexdigest(),
+                boundary_id="FS.CONTRACT.VALIDATE",
+            )
         pre_contract_final_artifact = (
             value.get("schema") == "ProviderFinalArtifactRejectionReceiptV1"
         )
@@ -3636,6 +3724,14 @@ class FullShortDispatchLedgerObserverV1:
             return body
 
         self.store.update_ledger(self.execution_id, mutate)
+        if runtime_kernel is not None:
+            runtime_kernel.journal.transition(
+                KernelExecutionState.STAGE_REJECTED_RECOVERABLE,
+                transition_id="stage-rejected:" + hashlib.sha256(
+                    canonical_json_bytes(value)
+                ).hexdigest(),
+                boundary_id="FS.CONTRACT.VALIDATE",
+            )
         self.pending_ordinal = None
         self.bound_route = None
         self.expected_provider_payload = None
