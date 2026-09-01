@@ -24,6 +24,7 @@ from novel_flywheel.provider_output import (
     capture_provider_raw_shape_v1,
     provider_output_shape_from_response,
 )
+from novel_flywheel.provider_payloads import anthropic_payload_v1
 
 
 class AnthropicStreamProtocolError(RuntimeError):
@@ -77,33 +78,10 @@ class AnthropicAdapter(HttpProvider):
 
     async def complete(self, request: ModelRequest) -> ModelResponse:
         self._bind_model_request("anthropic", request)
-        system = "\n\n".join(message.content for message in request.messages if message.role == "system")
-        payload = {
-            "model": request.model,
-            "messages": [message.model_dump() for message in request.messages if message.role != "system"],
-            "max_tokens": request.max_output_tokens or 8192,
-        }
-        if system:
-            payload["system"] = system
-        if request.temperature is not None:
-            payload["temperature"] = request.temperature
-        if request.response_schema is not None:
-            schema = request.response_schema.get(
-                "schema", request.response_schema,
-            )
-            payload["output_config"] = {
-                "format": {"type": "json_schema", "schema": schema},
-            }
-        if request.tools:
-            payload["tools"] = [{
-                "name": tool.name, "description": tool.description, "input_schema": tool.input_schema,
-            } for tool in request.tools]
-        if request.required_tool:
-            payload["tool_choice"] = {"type": "tool", "name": request.required_tool}
+        payload = anthropic_payload_v1(request)
         auth_headers = ({"Authorization": f"Bearer {self.api_key}"}
                         if self.auth_type == "bearer" else {"x-api-key": self.api_key})
         path = "messages" if self.base_url.endswith("/v1") else "v1/messages"
-        payload["stream"] = True
         events, body = await self.post_stream(path, payload=payload, headers={
             **auth_headers, "anthropic-version": "2023-06-01",
         })

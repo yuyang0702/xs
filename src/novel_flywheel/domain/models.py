@@ -29,6 +29,10 @@ class ModelRequest(BaseModel):
     response_format: str | None = None
     tools: list[ToolDefinition] = Field(default_factory=list)
     required_tool: str | None = None
+    reasoning_directive: Literal[
+        "current_provider_default", "disable_reasoning"
+    ] = "current_provider_default"
+    stage_role: str = "NORMAL"
 
 
 class ProviderOutputShapeV1(BaseModel):

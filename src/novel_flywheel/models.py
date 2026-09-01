@@ -37,6 +37,10 @@ from novel_flywheel.planning_repair_diagnostics import (
     observe_provider_content_block_shape,
 )
 from novel_flywheel.provider_output import provider_output_shape_from_response
+from novel_flywheel.provider_reasoning_policy import (
+    ReasoningPolicy,
+    resolve_provider_reasoning_directive_v1,
+)
 from novel_flywheel.recovery_engine import FailureClass, ReliabilityFailure
 from novel_flywheel.providers.registry import ProviderRegistry
 from novel_flywheel.providers.http import ToolCapabilityError
@@ -184,7 +188,7 @@ class ModelGateway:
         # scoped, so gateway lifetime is not a safe proxy for authorization
         # or recovery-schedule lifetime.
         self._final_artifact_route_blocks: set[
-            tuple[str, str, str, str, str, str]
+            tuple[str, str, str, str, str, str, str, str]
         ] = set()
 
     def _resolve_bound_route(
@@ -464,6 +468,11 @@ class ModelGateway:
             StructuredOutputRequirement.PLAIN_TEXT
         ),
         diagnostic_context: ModelDiagnosticContextV1 | None = None,
+        reasoning_policy: ReasoningPolicy = ReasoningPolicy.CURRENT_PROVIDER_DEFAULT,
+        stage_role: str = "NORMAL",
+        stage: str | None = None,
+        contract_name: str = "",
+        contract_version: int = 0,
     ) -> ModelResult:
         binding = self.db.get_role_binding(role)
         if binding is None:
@@ -478,6 +487,11 @@ class ModelGateway:
             response_schema=response_schema,
             structured_requirement=structured_requirement,
             diagnostic_context=diagnostic_context,
+            reasoning_policy=reasoning_policy,
+            stage_role=stage_role,
+            stage=stage,
+            contract_name=contract_name,
+            contract_version=contract_version,
         )
 
     async def complete_configured_fallback(
@@ -488,6 +502,11 @@ class ModelGateway:
             StructuredOutputRequirement.PLAIN_TEXT
         ),
         diagnostic_context: ModelDiagnosticContextV1 | None = None,
+        reasoning_policy: ReasoningPolicy = ReasoningPolicy.CURRENT_PROVIDER_DEFAULT,
+        stage_role: str = "NORMAL",
+        stage: str | None = None,
+        contract_name: str = "",
+        contract_version: int = 0,
     ) -> ModelResult:
         binding = self.db.get_role_binding(role)
         if binding is None:
@@ -501,6 +520,11 @@ class ModelGateway:
             response_schema=response_schema,
             structured_requirement=structured_requirement,
             diagnostic_context=diagnostic_context,
+            reasoning_policy=reasoning_policy,
+            stage_role=stage_role,
+            stage=stage,
+            contract_name=contract_name,
+            contract_version=contract_version,
         )
         return ModelResult(result.text, {
             **result.receipt, "configured_fallback_direct": True,
@@ -519,6 +543,9 @@ class ModelGateway:
             StructuredOutputRequirement.PLAIN_TEXT
         ),
         diagnostic_context: ModelDiagnosticContextV1 | None = None,
+        reasoning_policy: ReasoningPolicy = ReasoningPolicy.CURRENT_PROVIDER_DEFAULT,
+        stage_role: str = "NORMAL",
+        stage: str | None = None,
     ) -> ModelResult:
         """Execute exactly one Runtime-selected route, with no hidden fallback."""
 
@@ -532,6 +559,11 @@ class ModelGateway:
                 response_schema=response_schema,
                 structured_requirement=structured_requirement,
                 diagnostic_context=diagnostic_context,
+                reasoning_policy=reasoning_policy,
+                stage_role=stage_role,
+                stage=stage,
+                contract_name=(contract.name if contract is not None else ""),
+                contract_version=(contract.version if contract is not None else 0),
             )
         if route == "configured_fallback":
             return await self.complete_configured_fallback(
@@ -542,6 +574,11 @@ class ModelGateway:
                 response_schema=response_schema,
                 structured_requirement=structured_requirement,
                 diagnostic_context=diagnostic_context,
+                reasoning_policy=reasoning_policy,
+                stage_role=stage_role,
+                stage=stage,
+                contract_name=(contract.name if contract is not None else ""),
+                contract_version=(contract.version if contract is not None else 0),
             )
         raise ValueError(f"unknown explicit model route: {route}")
 
@@ -564,6 +601,11 @@ class ModelGateway:
             StructuredOutputRequirement.PLAIN_TEXT
         ),
         diagnostic_context: ModelDiagnosticContextV1 | None = None,
+        reasoning_policy: ReasoningPolicy = ReasoningPolicy.CURRENT_PROVIDER_DEFAULT,
+        stage_role: str = "NORMAL",
+        stage: str | None = None,
+        contract_name: str = "",
+        contract_version: int = 0,
     ) -> ModelResult:
         capability = configured_structured_output_capability(
             resolved.capabilities,
@@ -576,6 +618,23 @@ class ModelGateway:
                 requirement=structured_requirement,
             )
 
+        route_fingerprint = self._route_fingerprint(resolved, "plain")
+        reasoning_directive = resolve_provider_reasoning_directive_v1(
+            reasoning_policy,
+            provider_id=resolved.provider_id,
+            operator=str(getattr(resolved, "provider_operator", "")),
+            destination=str(getattr(resolved, "destination", "")),
+            protocol=str(getattr(resolved, "protocol", "")),
+            model_id=resolved.model_id,
+            model=resolved.model_name,
+            route_fingerprint=route_fingerprint,
+            lane=str(getattr(resolved, "route_lane", "")),
+            stage=str(stage or role),
+            contract_name=contract_name,
+            contract_version=contract_version,
+            model_role=role,
+            stage_role=stage_role,
+        )
         request = ModelRequest(
             model=resolved.model_name,
             messages=[
@@ -583,6 +642,8 @@ class ModelGateway:
                 Message(role="user", content=user),
             ],
             max_output_tokens=max_output_tokens,
+            reasoning_directive=reasoning_directive.value,
+            stage_role=stage_role,
         )
         execution_mode = "plain"
         structured_mode_degraded = False
@@ -618,6 +679,8 @@ class ModelGateway:
                 route_fingerprint,
                 contract_name,
                 schema_sha256,
+                reasoning_policy.value,
+                stage_role,
             )
             if final_artifact_key in self._final_artifact_route_blocks:
                 raise FinalArtifactRouteQuarantinedError(receipt={
@@ -812,6 +875,9 @@ class ModelGateway:
             "structured_mode_degraded": structured_mode_degraded,
             "contract_name": contract_name or None,
             "schema_sha256": schema_sha256 or None,
+            "reasoning_policy": reasoning_policy.value,
+            "reasoning_directive": reasoning_directive.value,
+            "stage_role": stage_role,
         }
         guarded_shape = (
             _reasoning_only_final_artifact_unavailable(response)
@@ -825,6 +891,8 @@ class ModelGateway:
                 route_fingerprint,
                 contract_name,
                 schema_sha256,
+                reasoning_policy.value,
+                stage_role,
             ))
             safe_receipt = {
                 key: value for key, value in receipt.items()

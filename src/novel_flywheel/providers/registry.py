@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 import hashlib
 import json
 from typing import Callable
+from urllib.parse import urlsplit
 from uuid import uuid4
 
 from novel_flywheel.db import Database
@@ -32,6 +33,10 @@ class ResolvedModel:
     adapter: ProviderAdapter
     capabilities: dict = field(default_factory=dict)
     route_fingerprint: str = ""
+    provider_operator: str = ""
+    protocol: str = ""
+    destination: str = ""
+    route_lane: str = ""
 
 
 class ProviderRegistry:
@@ -180,9 +185,33 @@ class ProviderRegistry:
         capabilities = self._effective_capabilities(
             model.get("capabilities") or {}, fingerprint,
         )
+        base_url = str(provider["base_url"]).rstrip("/")
+        if provider["protocol"] == "anthropic":
+            path = "messages" if base_url.endswith("/v1") else "v1/messages"
+        elif provider["protocol"] == "openai-responses":
+            path = "responses"
+        else:
+            path = "chat/completions"
+        target = urlsplit(f"{base_url}/{path}")
+        destination = (
+            f"{target.scheme}://{target.hostname}:{target.port or 443}{target.path}"
+        )
+        official_deepseek = all((
+            provider_id == "0e6a5627-5882-40df-bca5-7d98b97fdd0b",
+            str(provider["name"]).strip().casefold() == "deepseek",
+            destination == "https://api.deepseek.com:443/anthropic/v1/messages",
+            str(provider["protocol"]) == "anthropic",
+        ))
         return ResolvedModel(
             provider_id, model_id, model["model_name"], adapter,
             capabilities, fingerprint,
+            provider_operator=(
+                "DEEPSEEK_OFFICIAL" if official_deepseek
+                else "THIRD_PARTY_ENDPOINT_LOCAL_METADATA_ONLY"
+            ),
+            protocol=str(provider["protocol"]),
+            destination=destination,
+            route_lane=str(lane or ""),
         )
 
     @staticmethod
