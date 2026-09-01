@@ -23,6 +23,7 @@ from novel_flywheel.full_short_reason_catalog import (
     FULL_SHORT_LITERAL_REASON_CATEGORY_V1,
 )
 from novel_flywheel.recovery_engine import FailureClass, ReliabilityFailure
+from novel_flywheel.full_short_runtime_kernel import full_short_boundary_entry
 
 
 FAILURE_ARCHITECTURE_IDENTITY = "full-short-failure-architecture-v2"
@@ -924,6 +925,7 @@ class FullShortExactRecoveryControllerV1:
             raise ExactRecoveryViolation("initial_attempt_already_recorded")
         self._attempts[logical_stage_id] = 1
 
+    @full_short_boundary_entry("FS.RECOVERY.DECIDE")
     def authorize_shared_second_slot(
         self, logical_stage_id: str, *, typed_rejection_code: str,
         recovery_kind: Literal["reasoning_finalization", "business_recovery"],

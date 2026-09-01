@@ -49,6 +49,7 @@ from novel_flywheel.execution_failure_architecture import (
     PREDISPATCH_STATE_MACHINE_V1,
     RestartBehavior,
 )
+from novel_flywheel.full_short_runtime_kernel import full_short_boundary_entry
 from novel_flywheel.provider_payloads import anthropic_payload_v1
 from novel_flywheel.runtime_fingerprint_build import (
     CANONICALIZATION_VERSION,
@@ -1576,6 +1577,7 @@ class FullShortDurableExecutionStoreV1:
             self._exclusive_write(self._path(execution_id, "ledger"), ledger)
         return value
 
+    @full_short_boundary_entry("FS.CHECKPOINT.TRANSITION")
     def prepare_predispatch_ledger(
         self, *, execution_id: str, policy: Mapping[str, Any],
         permission: Mapping[str, Any], approval: Mapping[str, Any],
@@ -1732,6 +1734,7 @@ class FullShortDurableExecutionStoreV1:
     def load_nonce(self, execution_id: str) -> dict[str, Any]:
         return self._read(execution_id, "nonce")
 
+    @full_short_boundary_entry("FS.DISPATCH.MODEL")
     def reserve_nonce_from_dispatch_readiness(
         self, *, execution_id: str, policy: Mapping[str, Any],
         external_actions_enabled: bool, session_id: str,
@@ -2260,6 +2263,7 @@ class FullShortDurableExecutionStoreV1:
             execution_id, mutator,
         )
 
+    @full_short_boundary_entry("FS.TERMINAL.VERIFY_COMMIT")
     def commit_completion(
         self, *, execution_id: str, policy: Mapping[str, Any],
         receipt: Mapping[str, Any],
@@ -2655,6 +2659,7 @@ class FullShortDispatchLedgerObserverV1:
             },
         )
 
+    @full_short_boundary_entry("FS.CONTROL.PREFLIGHT")
     def before_http_dispatch(
         self, *, method: str, url: str, payload: Mapping[str, Any],
     ) -> None:

@@ -59,6 +59,13 @@ from novel_flywheel.full_short_execution import (
     validate_full_short_canonical_authorization_v1,
     validate_full_short_preflight_v1,
 )
+from novel_flywheel.full_short_runtime_kernel import (
+    DEFAULT_FAILURE_BOUNDARY_REGISTRY_V1,
+    DurableExecutionJournalV1,
+    ExecutionState,
+    FullShortExecutionKernel,
+    activate_full_short_kernel_v1,
+)
 from novel_flywheel.models import ModelGateway
 from novel_flywheel.nlp_backend import LocalNLPManager
 from novel_flywheel.projects import ProjectStore
@@ -1106,6 +1113,28 @@ async def _execute_full_short_control_plane_with_capability(
         "full_short.prelaunch.approval",
     )
     prelaunch_state["approval_created"] = True
+    runtime_journal = prelaunch(
+        lambda: DurableExecutionJournalV1.create(
+            args.store_root / f"{execution_id}.runtime-journal-v1.json",
+            execution_id=execution_id,
+            initial_state=ExecutionState.TEMPLATE_READY,
+        ),
+        "full_short.prelaunch.runtime_journal",
+    )
+    runtime_journal.transition(
+        ExecutionState.AUTHORIZED,
+        transition_id="canonical-authorization-activated",
+        boundary_id="FS.CONTROL.PREFLIGHT",
+    )
+    runtime_journal.transition(
+        ExecutionState.APPROVED,
+        transition_id="jit-approval-created",
+        boundary_id="FS.CONTROL.PREFLIGHT",
+    )
+    runtime_kernel = FullShortExecutionKernel(
+        registry=DEFAULT_FAILURE_BOUNDARY_REGISTRY_V1,
+        journal=runtime_journal,
+    )
     prelaunch(
         lambda: store.prepare_predispatch_ledger(
             execution_id=execution_id, policy=policy,
@@ -1170,33 +1199,36 @@ async def _execute_full_short_control_plane_with_capability(
             )
         run_root = Path(str(live_authority["run_root"]))
         project_root = Path(str(live_authority["project_root"]))
-        terminal = verify_short_completion_v1(
-            project_root=project_root, run_root=run_root,
-            run_identity=execution_id,
-            workload_sha256=policy["workload_sha256"],
-            workflow_final_status="completed",
-            live_parity_status="exact",
-            live_story_state_revision=int(
-                live_authority["story_state_revision"]
+        terminal = runtime_kernel.execute_boundary_sync(
+            "FS.TERMINAL.VERIFY_COMMIT",
+            lambda: verify_short_completion_v1(
+                project_root=project_root, run_root=run_root,
+                run_identity=execution_id,
+                workload_sha256=policy["workload_sha256"],
+                workflow_final_status="completed",
+                live_parity_status="exact",
+                live_story_state_revision=int(
+                    live_authority["story_state_revision"]
+                ),
+                live_story_state_sha256=str(
+                    live_authority["story_state_sha256"]
+                ),
+                live_story_state_data=dict(
+                    live_authority["story_state_data"]
+                ),
+                expected_base_story_state_revision=int(
+                    bindings["runtime_authority"]["story_state_revision"]
+                ),
+                expected_base_story_state_sha256=str(
+                    bindings["runtime_authority"]["story_state_sha256"]
+                ),
+                expected_maintenance_source_state_sha256=str(
+                    bindings["runtime_authority"]
+                    ["maintenance_source_state_sha256"]
+                ),
+                short_canonical_v2_enabled=True,
+                workflow_service=service, project=project,
             ),
-            live_story_state_sha256=str(
-                live_authority["story_state_sha256"]
-            ),
-            live_story_state_data=dict(
-                live_authority["story_state_data"]
-            ),
-            expected_base_story_state_revision=int(
-                bindings["runtime_authority"]["story_state_revision"]
-            ),
-            expected_base_story_state_sha256=str(
-                bindings["runtime_authority"]["story_state_sha256"]
-            ),
-            expected_maintenance_source_state_sha256=str(
-                bindings["runtime_authority"]
-                ["maintenance_source_state_sha256"]
-            ),
-            short_canonical_v2_enabled=True,
-            workflow_service=service, project=project,
         )
         closure_state["terminal"] = terminal
         if terminal.get("completion_goal_outcome") != COMPLETION_GOAL:
@@ -1248,8 +1280,13 @@ async def _execute_full_short_control_plane_with_capability(
 
         def commit_after_saga_cleanup() -> dict[str, Any]:
             try:
-                completion = store.commit_completion(
-                    execution_id=execution_id, policy=policy, receipt=receipt,
+                completion = runtime_kernel.execute_boundary_sync(
+                    "FS.TERMINAL.VERIFY_COMMIT",
+                    lambda: store.commit_completion(
+                        execution_id=execution_id,
+                        policy=policy,
+                        receipt=receipt,
+                    ),
                 )
             except Exception as exc:
                 closure_state["terminal_failure"] = _safe_failure_metadata(
@@ -1270,9 +1307,10 @@ async def _execute_full_short_control_plane_with_capability(
 
     async def supervised_operation(actual_run_id: str) -> object:
         try:
-            return await service.run_short(
-                project.id, run_id=actual_run_id, use_crewai=True,
-            )
+            with activate_full_short_kernel_v1(runtime_kernel):
+                return await service.run_short(
+                    project.id, run_id=actual_run_id, use_crewai=True,
+                )
         except Exception as exc:
             # The task supervisor persists only safe failure evidence and
             # deliberately absorbs workflow exceptions into terminal state.

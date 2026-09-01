@@ -88,6 +88,7 @@ from novel_flywheel.context_policy import (
     stage_output_budget,
 )
 from novel_flywheel.execution_failure_architecture import ObserverGuard
+from novel_flywheel.full_short_runtime_kernel import full_short_boundary_entry
 from novel_flywheel.contract_runtime import (
     ContractOutputLimitExhaustedError,
     ExecutableContractSpec,
@@ -411,6 +412,7 @@ from novel_flywheel.project_transactions import (
     record_project_mutation_gate_result,
     recover_project_mutations,
     stage_project_mutation_targets,
+    write_full_short_formal_artifacts_v1,
     write_project_mutation_journal,
 )
 from novel_flywheel.legacy_short_promotion import (
@@ -4836,6 +4838,7 @@ class WorkflowService:
             stage="quality", metadata=drift,
         )
 
+    @full_short_boundary_entry("FS.WORKFLOW.SHORT")
     async def _short_pipeline(self, project: Project, run_id: str | None = None) -> dict:
         run_id, run_path = self._begin_run(project, "short-story", run_id)
         try:
@@ -5253,7 +5256,7 @@ class WorkflowService:
                         draft=draft,
                         checkpoint_context=checkpoint_context,
                     )
-                    review = self._review(review_text)
+                    review = await self._accept_short_initial_review(review_text)
                 except (ValueError, json.JSONDecodeError):
                     review = None
                 else:
@@ -5343,7 +5346,7 @@ class WorkflowService:
                         },
                     ),
                 )
-                review = self._review(review_text)
+                review = await self._accept_short_initial_review(review_text)
                 self._save_short_review_binding(
                     run_path / "outputs",
                     review_text=str(review_text),
@@ -5718,9 +5721,7 @@ class WorkflowService:
                 promotion_journal_path, promotion_journal,
             )
             formal_mutation_started = True
-            atomic_write(formal[0], polished)
-            atomic_write(formal[1], chapter_text)
-            atomic_write(formal[2], canon_json)
+            write_full_short_formal_artifacts_v1(tuple(promotion_files))
             self._post_write_maintenance(run_id, project)
             artifacts = stage_project_mutation_targets(
                 project.path, snapshot, formal,
@@ -6313,6 +6314,7 @@ class WorkflowService:
         )
         return merged.model_dump_json()
 
+    @full_short_boundary_entry("FS.STAGE.PLANNING")
     async def _plan_short_ir_first(
         self, run_id: str, run_path: Path, project: Project, constraints: str,
         brief: str, state: dict, formal_events: list[dict],
@@ -18690,6 +18692,7 @@ class WorkflowService:
             ensure_ascii=False, sort_keys=True,
         )
 
+    @full_short_boundary_entry("FS.STAGE.MAINTENANCE")
     async def _close_short_maintenance_authority(
         self, run_id: str, run_path: Path, project: Project, constraints: str,
         polished: str, state_data: Mapping[str, object], *, suffix: str = "",
@@ -19180,6 +19183,7 @@ class WorkflowService:
             }, ensure_ascii=False, sort_keys=True)
         raise ValueError("maintenance authority repair did not converge")
 
+    @full_short_boundary_entry("FS.STAGE.POLISH")
     async def _quality_polish(self, run_id: str, run_path: Path, project: Project,
                               constraints: str, draft: str, review: dict,
                               chapter_number: int | None = None,
@@ -20663,6 +20667,7 @@ class WorkflowService:
             current = reduced
         raise ValueError("Hierarchical final review exceeded the safe reduction depth")
 
+    @full_short_boundary_entry("FS.STAGE.FINAL_REVIEW")
     async def _full_manuscript_review(
         self, run_id: str, run_path: Path, project: Project, constraints: str,
         manuscript: str, initial_review: dict, suffix: str = "",
@@ -20960,6 +20965,7 @@ class WorkflowService:
             "- Verify the ending answers surface goal, inner goal, and ending cost.\n\n"
         )
 
+    @full_short_boundary_entry("FS.STAGE.READER_REVIEW")
     async def _reader_review(self, run_id: str, run_path: Path, project: Project,
                              constraints: str, text: str, suffix: str = "",
                              model_role: str | None = None) -> dict:
@@ -25847,6 +25853,7 @@ class WorkflowService:
         )
         return json.dumps(validated, ensure_ascii=False)
 
+    @full_short_boundary_entry("FS.STAGE.DRAFT")
     async def _draft_short_in_segments(
         self, run_id: str, run_path: Path, project: Project,
         constraints: str, plan: str, *,
@@ -29093,6 +29100,7 @@ class WorkflowService:
             # may drop this context, but must never replace Provider execution.
             return None
 
+    @full_short_boundary_entry("FS.CONTRACT.VALIDATE")
     async def _stage(self, run_id: str, run_path: Path, project: Project, stage: str,
                      constraints: str, user: str, suffix: str = "",
                      model_role: str | None = None, allow_tools: bool = True,
@@ -31571,6 +31579,12 @@ class WorkflowService:
             text, contract_name="final_review",
         ).payload
         return normalize_review(payload)
+
+    @full_short_boundary_entry("FS.STAGE.REVIEW")
+    async def _accept_short_initial_review(self, text: str) -> dict:
+        """Accept the initial Short review through its dedicated boundary."""
+
+        return self._review(text)
 
     @classmethod
     def _review_for_project(

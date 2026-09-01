@@ -5,8 +5,11 @@ import inspect
 import json
 import os
 import uuid
+from contextlib import contextmanager
+from contextvars import ContextVar
 from dataclasses import asdict, dataclass, field, is_dataclass
 from enum import StrEnum
+from functools import wraps
 from pathlib import Path
 from typing import Any, Awaitable, Callable, TypeVar
 
@@ -378,77 +381,77 @@ _FAILURES = (
 
 _BOUNDARIES = (
     _boundary(
-        "FS.CONTROL.PREFLIGHT", "control", "FullShortExecutionKernel.preflight",
+        "FS.CONTROL.PREFLIGHT", "control", "novel_flywheel.full_short_execution:FullShortDispatchLedgerObserverV1.before_http_dispatch",
         "PREDISPATCH_READY", "control.binding_mismatch",
         "provider.configuration_invalid", "provider.credential_unavailable",
     ),
     _boundary(
-        "FS.WORKFLOW.SHORT", "workflow", "WorkflowService._short_pipeline",
+        "FS.WORKFLOW.SHORT", "workflow", "novel_flywheel.workflows:WorkflowService._short_pipeline",
         "COMPLETED", "workflow.invariant_rejected", "stage.artifact_rejected",
     ),
     _boundary(
-        "FS.STAGE.PLANNING", "stage", "WorkflowService._plan_short_ir_first",
+        "FS.STAGE.PLANNING", "stage", "novel_flywheel.workflows:WorkflowService._plan_short_ir_first",
         "STAGE_ACCEPTED", "planning.business_incomplete",
         "planning.reasoning_only_no_final", "contract.validation_rejected",
         "recovery.budget_exhausted",
     ),
     _boundary(
-        "FS.STAGE.DRAFT", "stage", "WorkflowService._draft_short_in_segments",
+        "FS.STAGE.DRAFT", "stage", "novel_flywheel.workflows:WorkflowService._draft_short_in_segments",
         "STAGE_ACCEPTED", "stage.semantic_repair_required",
         "stage.artifact_rejected", "contract.validation_rejected",
     ),
     _boundary(
-        "FS.STAGE.REVIEW", "stage", "WorkflowService._full_manuscript_review",
+        "FS.STAGE.REVIEW", "stage", "novel_flywheel.workflows:WorkflowService._accept_short_initial_review",
         "STAGE_ACCEPTED", "stage.semantic_repair_required",
         "stage.artifact_rejected", "contract.validation_rejected",
     ),
     _boundary(
-        "FS.STAGE.READER_REVIEW", "stage", "WorkflowService._reader_review",
+        "FS.STAGE.READER_REVIEW", "stage", "novel_flywheel.workflows:WorkflowService._reader_review",
         "STAGE_ACCEPTED", "stage.semantic_repair_required",
         "stage.artifact_rejected", "contract.validation_rejected",
     ),
     _boundary(
-        "FS.STAGE.POLISH", "stage", "WorkflowService._quality_polish",
+        "FS.STAGE.POLISH", "stage", "novel_flywheel.workflows:WorkflowService._quality_polish",
         "STAGE_ACCEPTED", "stage.semantic_repair_required",
         "stage.artifact_rejected", "contract.validation_rejected",
     ),
     _boundary(
-        "FS.STAGE.FINAL_REVIEW", "stage", "WorkflowService._full_manuscript_review",
+        "FS.STAGE.FINAL_REVIEW", "stage", "novel_flywheel.workflows:WorkflowService._full_manuscript_review",
         "STAGE_ACCEPTED", "stage.artifact_rejected",
         "contract.validation_rejected",
     ),
     _boundary(
         "FS.STAGE.MAINTENANCE", "stage",
-        "WorkflowService._close_short_maintenance_authority", "STAGE_ACCEPTED",
+        "novel_flywheel.workflows:WorkflowService._close_short_maintenance_authority", "STAGE_ACCEPTED",
         "stage.artifact_rejected", "checkpoint.persistence_failed",
     ),
     _boundary(
-        "FS.DISPATCH.MODEL", "dispatch", "ModelGateway.complete",
+        "FS.DISPATCH.MODEL", "dispatch", "novel_flywheel.contract_runtime:dispatch_explicit_model_route",
         "RESPONSE_CAPTURED", "provider.configuration_invalid",
         "provider.credential_unavailable", "provider.transport_pre_dispatch",
         "provider.transport_ambiguous", "provider.capture_replay_available",
     ),
     _boundary(
-        "FS.CONTRACT.VALIDATE", "contract", "WorkflowService._stage",
+        "FS.CONTRACT.VALIDATE", "contract", "novel_flywheel.workflows:WorkflowService._stage",
         "STAGE_ACCEPTED", "contract.validation_rejected",
         "stage.artifact_rejected",
     ),
     _boundary(
-        "FS.RECOVERY.DECIDE", "recovery", "RecoveryDecisionEngineV1.decide",
+        "FS.RECOVERY.DECIDE", "recovery", "novel_flywheel.execution_failure_architecture:FullShortExactRecoveryControllerV1.authorize_shared_second_slot",
         "RECOVERY_DECIDED", "recovery.budget_exhausted",
         "provider.transport_ambiguous",
     ),
     _boundary(
-        "FS.CHECKPOINT.TRANSITION", "checkpoint", "RunCheckpointStore.save",
+        "FS.CHECKPOINT.TRANSITION", "checkpoint", "novel_flywheel.full_short_execution:FullShortDurableExecutionStoreV1.prepare_predispatch_ledger",
         "CHECKPOINT_COMMITTED", "checkpoint.persistence_failed",
     ),
     _boundary(
-        "FS.AUTHORITY.PROMOTE", "authority", "AuthorityGateV1.promote",
+        "FS.AUTHORITY.PROMOTE", "authority", "novel_flywheel.project_transactions:commit_project_mutation_authority",
         "AUTHORITY_COMMITTED", "authority.stale", "authority.promotion_rejected",
         "checkpoint.persistence_failed",
     ),
     _boundary(
-        "FS.TERMINAL.VERIFY_COMMIT", "completion", "CompletionFinalizer.finalize",
+        "FS.TERMINAL.VERIFY_COMMIT", "completion", "novel_flywheel.full_short_execution:FullShortDurableExecutionStoreV1.commit_completion",
         "COMPLETED", "checkpoint.persistence_failed", "authority.stale",
     ),
 )
@@ -1161,6 +1164,142 @@ class FullShortExecutionKernel:
         )
         return token
 
+    def _injected_exception(self, boundary_id: str) -> BaseException | None:
+        injected = self.fault_injector.exception_for(boundary_id)
+        if injected is not None:
+            self.journal.append_audit(
+                receipt_kind="fault_injection_triggered",
+                boundary_id=boundary_id,
+                payload={
+                    "boundary_id": boundary_id,
+                    "source_exception_class": _safe_exception_class(injected),
+                },
+            )
+        return injected
+
+    def _record_success(
+        self,
+        boundary: BoundarySpecV1,
+        *,
+        logical_stage_id: str | None,
+        physical_attempt: int,
+    ) -> None:
+        self.journal.append_audit(
+            receipt_kind="boundary_success",
+            boundary_id=boundary.boundary_id,
+            payload={
+                "logical_stage_id": logical_stage_id,
+                "physical_attempt": physical_attempt,
+                "allowed_success_outcome": boundary.allowed_success_outcome,
+            },
+        )
+
+    def _raise_failure(
+        self,
+        boundary: BoundarySpecV1,
+        exc: BaseException,
+        *,
+        logical_stage_id: str | None,
+        physical_attempt: int,
+        capture_reference_sha256: str | None,
+    ) -> None:
+        boundary_id = boundary.boundary_id
+        is_registered = (
+            isinstance(exc, RegisteredBoundaryFailureV1)
+            and exc.boundary_id == boundary_id
+            and exc.failure_id in boundary.allowed_typed_failures
+        )
+        if is_registered:
+            spec = self.registry.failure(exc.failure_id)
+            classification = FailureClassification.KNOWN
+            failure_code = spec.failure_code
+            failure_family = spec.failure_family
+            recovery_decision = spec.recovery_decision
+            restart_policy_id = spec.restart_policy_id
+            authority_effect = spec.authority_effect
+        else:
+            classification = FailureClassification.UNEXPECTED
+            failure_code = _UNEXPECTED_FAILURE_ID
+            failure_family = "internal.unexpected"
+            recovery_decision = RecoveryDecisionKind.FAIL_CLOSED
+            restart_policy_id = "restart.forbidden.v1"
+            authority_effect = "preserve_last_accepted"
+        causes = _cause_chain(exc)
+        next_state = {
+            RecoveryDecisionKind.PAUSE_RECONCILIATION:
+                ExecutionState.PAUSED_RECONCILIATION,
+            RecoveryDecisionKind.LOCAL_REPLAY:
+                ExecutionState.STAGE_REJECTED_RECOVERABLE,
+            RecoveryDecisionKind.ONE_TYPED_REATTEMPT:
+                ExecutionState.STAGE_REJECTED_RECOVERABLE,
+            RecoveryDecisionKind.LOCAL_REPAIR:
+                ExecutionState.STAGE_REJECTED_RECOVERABLE,
+            RecoveryDecisionKind.FAIL_CLOSED:
+                ExecutionState.TERMINAL_FAILED,
+        }[recovery_decision]
+        envelope_without_sha = {
+            "boundary_id": boundary_id,
+            "classification": classification,
+            "failure_code": failure_code,
+            "failure_family": failure_family,
+            "source_exception_class": _safe_exception_class(exc),
+            "ordered_causes": causes,
+            "recovery_decision": recovery_decision,
+            "restart_policy_id": restart_policy_id,
+            "authority_effect": authority_effect,
+            "logical_stage_id": logical_stage_id,
+            "physical_attempt": physical_attempt,
+            "capture_reference_sha256": capture_reference_sha256,
+            "current_state": self.journal.state,
+            "allowed_next_states": (next_state,),
+            "raw_content_persisted": False,
+        }
+        envelope = FailureEnvelopeV1(
+            **envelope_without_sha,
+            failure_envelope_sha256=_sha256(envelope_without_sha),
+        )
+        self.journal.append_failure(envelope)
+        self.journal.transition(
+            next_state,
+            transition_id=f"failure:{envelope.failure_envelope_sha256}",
+            boundary_id=boundary_id,
+        )
+        raise FullShortBoundaryFailureV1(envelope) from None
+
+    def execute_boundary_sync(
+        self,
+        boundary_id: str,
+        operation: Callable[[], _T],
+        *,
+        logical_stage_id: str | None = None,
+        physical_attempt: int = 1,
+        capture_reference_sha256: str | None = None,
+    ) -> _T:
+        boundary = self.registry.boundary(boundary_id)
+        try:
+            injected = self._injected_exception(boundary_id)
+            if injected is not None:
+                raise injected
+            result = operation()
+            if inspect.isawaitable(result):
+                raise TypeError("sync_boundary_returned_awaitable")
+            self._record_success(
+                boundary,
+                logical_stage_id=logical_stage_id,
+                physical_attempt=physical_attempt,
+            )
+            return result
+        except FullShortBoundaryFailureV1:
+            raise
+        except BaseException as exc:
+            self._raise_failure(
+                boundary,
+                exc,
+                logical_stage_id=logical_stage_id,
+                physical_attempt=physical_attempt,
+                capture_reference_sha256=capture_reference_sha256,
+            )
+
     async def execute_boundary(
         self,
         boundary_id: str,
@@ -1172,94 +1311,84 @@ class FullShortExecutionKernel:
     ) -> _T:
         boundary = self.registry.boundary(boundary_id)
         try:
-            injected = self.fault_injector.exception_for(boundary_id)
+            injected = self._injected_exception(boundary_id)
             if injected is not None:
-                self.journal.append_audit(
-                    receipt_kind="fault_injection_triggered",
-                    boundary_id=boundary_id,
-                    payload={
-                        "boundary_id": boundary_id,
-                        "source_exception_class": _safe_exception_class(injected),
-                    },
-                )
                 raise injected
             result = operation()
             if inspect.isawaitable(result):
                 result = await result
-            self.journal.append_audit(
-                receipt_kind="boundary_success",
-                boundary_id=boundary_id,
-                payload={
-                    "logical_stage_id": logical_stage_id,
-                    "physical_attempt": physical_attempt,
-                    "allowed_success_outcome": boundary.allowed_success_outcome,
-                },
+            self._record_success(
+                boundary,
+                logical_stage_id=logical_stage_id,
+                physical_attempt=physical_attempt,
             )
             return result
         except FullShortBoundaryFailureV1:
             raise
         except BaseException as exc:
-            is_registered = (
-                isinstance(exc, RegisteredBoundaryFailureV1)
-                and exc.boundary_id == boundary_id
-                and exc.failure_id in boundary.allowed_typed_failures
+            self._raise_failure(
+                boundary,
+                exc,
+                logical_stage_id=logical_stage_id,
+                physical_attempt=physical_attempt,
+                capture_reference_sha256=capture_reference_sha256,
             )
-            if is_registered:
-                spec = self.registry.failure(exc.failure_id)
-                classification = FailureClassification.KNOWN
-                failure_code = spec.failure_code
-                failure_family = spec.failure_family
-                recovery_decision = spec.recovery_decision
-                restart_policy_id = spec.restart_policy_id
-                authority_effect = spec.authority_effect
-            else:
-                classification = FailureClassification.UNEXPECTED
-                failure_code = _UNEXPECTED_FAILURE_ID
-                failure_family = "internal.unexpected"
-                recovery_decision = RecoveryDecisionKind.FAIL_CLOSED
-                restart_policy_id = "restart.forbidden.v1"
-                authority_effect = "preserve_last_accepted"
-            causes = _cause_chain(exc)
-            next_state = {
-                RecoveryDecisionKind.PAUSE_RECONCILIATION:
-                    ExecutionState.PAUSED_RECONCILIATION,
-                RecoveryDecisionKind.LOCAL_REPLAY:
-                    ExecutionState.STAGE_REJECTED_RECOVERABLE,
-                RecoveryDecisionKind.ONE_TYPED_REATTEMPT:
-                    ExecutionState.STAGE_REJECTED_RECOVERABLE,
-                RecoveryDecisionKind.LOCAL_REPAIR:
-                    ExecutionState.STAGE_REJECTED_RECOVERABLE,
-                RecoveryDecisionKind.FAIL_CLOSED:
-                    ExecutionState.TERMINAL_FAILED,
-            }[recovery_decision]
-            envelope_without_sha = {
-                "boundary_id": boundary_id,
-                "classification": classification,
-                "failure_code": failure_code,
-                "failure_family": failure_family,
-                "source_exception_class": _safe_exception_class(exc),
-                "ordered_causes": causes,
-                "recovery_decision": recovery_decision,
-                "restart_policy_id": restart_policy_id,
-                "authority_effect": authority_effect,
-                "logical_stage_id": logical_stage_id,
-                "physical_attempt": physical_attempt,
-                "capture_reference_sha256": capture_reference_sha256,
-                "current_state": self.journal.state,
-                "allowed_next_states": (next_state,),
-                "raw_content_persisted": False,
-            }
-            envelope = FailureEnvelopeV1(
-                **envelope_without_sha,
-                failure_envelope_sha256=_sha256(envelope_without_sha),
+
+
+_ACTIVE_FULL_SHORT_KERNEL_V1: ContextVar[
+    FullShortExecutionKernel | None
+] = ContextVar("active_full_short_kernel_v1", default=None)
+
+
+def active_full_short_kernel_v1() -> FullShortExecutionKernel | None:
+    return _ACTIVE_FULL_SHORT_KERNEL_V1.get()
+
+
+@contextmanager
+def activate_full_short_kernel_v1(kernel: FullShortExecutionKernel):
+    token = _ACTIVE_FULL_SHORT_KERNEL_V1.set(kernel)
+    try:
+        yield kernel
+    finally:
+        _ACTIVE_FULL_SHORT_KERNEL_V1.reset(token)
+
+
+def full_short_boundary_entry(boundary_id: str):
+    """Declare the only production wrapper allowed to enter a boundary."""
+
+    DEFAULT_FAILURE_BOUNDARY_REGISTRY_V1.boundary(boundary_id)
+
+    def decorate(function):
+        if inspect.iscoroutinefunction(function):
+            @wraps(function)
+            async def async_wrapper(*args, **kwargs):
+                kernel = active_full_short_kernel_v1()
+                if kernel is None:
+                    return await function(*args, **kwargs)
+                return await kernel.execute_boundary(
+                    boundary_id,
+                    lambda: function(*args, **kwargs),
+                    logical_stage_id=str(kwargs.get("logical_stage_id") or "") or None,
+                )
+
+            async_wrapper.__full_short_boundary_id__ = boundary_id
+            return async_wrapper
+
+        @wraps(function)
+        def sync_wrapper(*args, **kwargs):
+            kernel = active_full_short_kernel_v1()
+            if kernel is None:
+                return function(*args, **kwargs)
+            return kernel.execute_boundary_sync(
+                boundary_id,
+                lambda: function(*args, **kwargs),
+                logical_stage_id=str(kwargs.get("logical_stage_id") or "") or None,
             )
-            self.journal.append_failure(envelope)
-            self.journal.transition(
-                next_state,
-                transition_id=f"failure:{envelope.failure_envelope_sha256}",
-                boundary_id=boundary_id,
-            )
-            raise FullShortBoundaryFailureV1(envelope) from None
+
+        sync_wrapper.__full_short_boundary_id__ = boundary_id
+        return sync_wrapper
+
+    return decorate
 
 
 __all__ = [
@@ -1285,5 +1414,8 @@ __all__ = [
     "RegisteredBoundaryFailureV1",
     "RestartDecisionKind",
     "RestartPolicyRegistryV1",
+    "activate_full_short_kernel_v1",
+    "active_full_short_kernel_v1",
     "fault_case_keys_v1",
+    "full_short_boundary_entry",
 ]

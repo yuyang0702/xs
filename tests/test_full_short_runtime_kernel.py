@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import importlib
 from pathlib import Path
 
 import pytest
@@ -54,6 +55,17 @@ def test_registry_is_closed_and_fault_coverage_is_mechanical() -> None:
         f"{boundary_id}|{failure_id}"
         for boundary_id, failure_id in expected
     }
+
+
+def test_every_registry_entry_resolves_to_matching_production_wrapper() -> None:
+    for boundary in DEFAULT_FAILURE_BOUNDARY_REGISTRY_V1.boundaries:
+        module_name, qualname = boundary.entry_function.split(":", 1)
+        value = importlib.import_module(module_name)
+        for part in qualname.split("."):
+            value = getattr(value, part)
+        assert getattr(value, "__full_short_boundary_id__", None) == (
+            boundary.boundary_id
+        ), boundary.entry_function
 
 
 @pytest.mark.asyncio

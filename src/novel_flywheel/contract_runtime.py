@@ -13,6 +13,7 @@ from novel_flywheel.generated_artifacts import (
     GeneratedArtifactGateway,
     SemanticNormalizer,
 )
+from novel_flywheel.full_short_runtime_kernel import full_short_boundary_entry
 from novel_flywheel.context_policy import (
     classify_model_failure,
     expanded_output_budget,
@@ -489,6 +490,7 @@ def model_route_attempts(
     )
 
 
+@full_short_boundary_entry("FS.DISPATCH.MODEL")
 async def dispatch_explicit_model_route(
     gateway: Any,
     route: ModelRoute,

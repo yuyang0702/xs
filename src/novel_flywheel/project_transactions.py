@@ -17,6 +17,7 @@ from novel_flywheel.learning_artifacts import (
     apply_learning_artifact_invalidations,
 )
 from novel_flywheel.story_state import StoryStateStore
+from novel_flywheel.full_short_runtime_kernel import full_short_boundary_entry
 from novel_flywheel.reliability_trace import emit_observation, safe_canonical_hash
 from novel_flywheel.canonical_shadow import (
     ProjectionProvenanceV1,
@@ -25,6 +26,18 @@ from novel_flywheel.canonical_shadow import (
 
 
 PROJECT_MUTATION_JOURNAL = "project-mutation-journal.json"
+
+
+@full_short_boundary_entry("FS.AUTHORITY.PROMOTE")
+def write_full_short_formal_artifacts_v1(
+    artifacts: tuple[tuple[Path, str], ...],
+) -> None:
+    """Write the already-validated formal artifact set under AuthorityGate."""
+
+    if not artifacts:
+        raise ValueError("full_short_formal_artifact_set_empty")
+    for path, content in artifacts:
+        atomic_write(path, content)
 
 
 def canonical_json_sha256(value: Any) -> str:
@@ -678,6 +691,7 @@ def _advance_project_mutation(
     return journal
 
 
+@full_short_boundary_entry("FS.AUTHORITY.PROMOTE")
 def commit_project_mutation_authority(
     store: _ProjectStore,
     run_id: str,
@@ -691,6 +705,7 @@ def commit_project_mutation_authority(
     return journal
 
 
+@full_short_boundary_entry("FS.AUTHORITY.PROMOTE")
 def finalize_project_mutation(
     store: _ProjectStore,
     run_id: str, *,
@@ -755,6 +770,7 @@ def record_project_mutation_gate_result(
     return journal
 
 
+@full_short_boundary_entry("FS.AUTHORITY.PROMOTE")
 def complete_project_mutation(
     store: _ProjectStore,
     run_id: str,
