@@ -2463,6 +2463,24 @@ class FullShortDispatchLedgerObserverV1:
                  "LOGICAL_STAGE_PLAN_EXHAUSTED")
         return deepcopy(plan[len(completed)])
 
+    def sealed_route_for_next_logical_stage(
+        self, *, stage_id: str, role: str,
+    ) -> str:
+        """Project the authorized lane before route or credential resolution."""
+
+        expected = self._next_logical_stage_plan_entry()
+        _require(
+            stage_id == expected["stage_id"]
+            and role == expected["role"],
+            "LOGICAL_STAGE_PLAN_CONTEXT_DRIFT",
+        )
+        lane = str(expected["route_lane"])
+        _require(
+            lane in {"primary", "configured_fallback"},
+            "LOGICAL_STAGE_PLAN_ROUTE_LANE_INVALID",
+        )
+        return lane
+
     def _validate_pending_logical_stage_plan(self) -> dict[str, Any]:
         pending = self.pending_stage_context
         _require(isinstance(pending, dict),

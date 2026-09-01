@@ -1843,6 +1843,10 @@ def test_exact_full_short_accepts_only_presealed_configured_fallback_lane(
         egress_policy=_egress(),
     )
 
+    assert observer.sealed_route_for_next_logical_stage(
+        stage_id=logical_plan[0]["stage_id"],
+        role="planning",
+    ) == "configured_fallback"
     observer.bind_route(
         role="planning",
         lane="fallback",
@@ -1854,6 +1858,13 @@ def test_exact_full_short_accepts_only_presealed_configured_fallback_lane(
     assert observer.bound_route is not None
     assert observer.bound_route["lane"] == "fallback"
     assert store.load_ledger("presealed-fallback")["attempts"] == []
+
+    with pytest.raises(FullShortExecutionBoundaryError) as drift:
+        observer.sealed_route_for_next_logical_stage(
+            stage_id=logical_plan[0]["stage_id"],
+            role="draft",
+        )
+    assert drift.value.reason_code == "LOGICAL_STAGE_PLAN_CONTEXT_DRIFT"
 
 
 def test_restart_before_dispatch_is_also_fail_closed(tmp_path: Path) -> None:

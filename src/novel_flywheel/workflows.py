@@ -30094,6 +30094,28 @@ class WorkflowService:
                 else ("primary",) if primary_only
                 else None
             )
+            execution_observer = getattr(
+                getattr(self.gateway, "registry", None),
+                "attempt_observer", None,
+            )
+            sealed_route_selector = getattr(
+                execution_observer,
+                "sealed_route_for_next_logical_stage",
+                None,
+            )
+            if callable(sealed_route_selector):
+                sealed_route = sealed_route_selector(
+                    stage_id=node_key,
+                    role=gateway_role,
+                )
+                if (
+                    requested_routes is not None
+                    and sealed_route not in requested_routes
+                ):
+                    raise RuntimeError(
+                        "sealed Full Short route conflicts with stage route policy"
+                    )
+                requested_routes = (sealed_route,)
             selected_route = (
                 requested_routes[0] if requested_routes else "primary"
             )
