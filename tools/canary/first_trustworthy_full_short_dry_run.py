@@ -1280,8 +1280,8 @@ async def _replay_full_workflow_from_captured_bytes(
             "planning",
             "0e6a5627-5882-40df-bca5-7d98b97fdd0b",
             "e4b6f0b8-3c5e-412e-8d4e-8453c840a032",
-            "0e6a5627-5882-40df-bca5-7d98b97fdd0b",
-            "e4b6f0b8-3c5e-412e-8d4e-8453c840a032",
+            None,
+            None,
         )
     factory = _CapturedResponseReplayTransportFactory(
         capture_store=capture_store, ledger=ledger,
@@ -1362,8 +1362,8 @@ async def _run(args: argparse.Namespace) -> dict[str, Any]:
                 "planning",
                 "0e6a5627-5882-40df-bca5-7d98b97fdd0b",
                 "e4b6f0b8-3c5e-412e-8d4e-8453c840a032",
-                "0e6a5627-5882-40df-bca5-7d98b97fdd0b",
-                "e4b6f0b8-3c5e-412e-8d4e-8453c840a032",
+                None,
+                None,
             )
         call_plan, logical_stage_plan = await _discover_plan(
             repo=repo, data_dir=discovery_data, project_id=project_id,
@@ -1378,8 +1378,8 @@ async def _run(args: argparse.Namespace) -> dict[str, Any]:
                 "planning",
                 "0e6a5627-5882-40df-bca5-7d98b97fdd0b",
                 "e4b6f0b8-3c5e-412e-8d4e-8453c840a032",
-                "0e6a5627-5882-40df-bca5-7d98b97fdd0b",
-                "e4b6f0b8-3c5e-412e-8d4e-8453c840a032",
+                None,
+                None,
             )
         store_root = private_root / "control-store"
         actual, public = collect_live_bindings(
