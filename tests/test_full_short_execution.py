@@ -1116,7 +1116,10 @@ def test_reasoning_only_rejection_requires_exact_recovery_stage_role(
     assert len(store.load_ledger("typed-recovery-stage-role")["attempts"]) == 1
 
 
-@pytest.mark.parametrize("tamper", ["accepted_id", "rejected_provenance"])
+@pytest.mark.parametrize(
+    "tamper",
+    ["accepted_id", "rejected_provenance", "typed_code_erasure"],
+)
 def test_completion_recomputes_recovery_acceptance_provenance(
     tmp_path: Path, tamper: str,
 ) -> None:
@@ -1129,8 +1132,11 @@ def test_completion_recomputes_recovery_acceptance_provenance(
         receipt = body["completed_stage_receipts"][0]
         if tamper == "accepted_id":
             receipt["accepted_physical_attempt_id"] = "physical-forged"
-        else:
+        elif tamper == "rejected_provenance":
             receipt["rejected_attempt_provenance"] = []
+        else:
+            body["attempts"][0]["local_rejection_failure_code"] = None
+            receipt["rejected_attempt_provenance"][0]["failure_code"] = None
         return body
 
     store.update_ledger(execution_id, mutate)
@@ -1155,7 +1161,9 @@ def test_completion_recomputes_recovery_acceptance_provenance(
             terminal_verification=terminal,
         )
     assert rejected.value.reason_code == (
-        "STAGE_ACCEPTANCE_PROVENANCE_MISMATCH"
+        "COMPLETION_TYPED_RECOVERY_TRANSITION_INVALID"
+        if tamper == "typed_code_erasure"
+        else "STAGE_ACCEPTANCE_PROVENANCE_MISMATCH"
     )
 
 

@@ -2931,6 +2931,27 @@ def build_full_short_completion_receipt_v1(
             == expected_rejected_provenance,
             "STAGE_ACCEPTANCE_PROVENANCE_MISMATCH",
         )
+        exact_reasoning_rejections = [
+            item for item in rejected_attempts
+            if item.get("local_rejection_schema")
+            == "ProviderFinalArtifactRejectionReceiptV1"
+            and item.get("local_rejection_failure_kind")
+            == "final_artifact_unavailable"
+            and item.get("local_rejection_failure_code")
+            == "reasoning_only_final_artifact_unavailable"
+        ]
+        recovery_accepted = (
+            attempt.get("stage_role")
+            == "PLANNING_FINAL_ARTIFACT_RECOVERY"
+        )
+        _require(
+            recovery_accepted
+            == (
+                len(rejected_attempts) == 1
+                and len(exact_reasoning_rejections) == 1
+            ),
+            "COMPLETION_TYPED_RECOVERY_TRANSITION_INVALID",
+        )
         if any(
             item.get("local_rejection_failure_code")
             == "reasoning_only_final_artifact_unavailable"
