@@ -535,6 +535,8 @@ class _PrivateDryRunOracle:
 class _OfflineHttpTransportFactory:
     """The only response stub: one in-memory ``httpx`` transport factory."""
 
+    offline_only = True
+
     def __init__(
         self, *, inject_planning_business_incomplete_once: bool = False,
         inject_adapter_failure_after_exact_capture_once: bool = False,
@@ -704,6 +706,8 @@ class _OfflineHttpTransportFactory:
 
 class _CapturedResponseReplayTransportFactory:
     """Feed ledger-anchored captured bytes back through real adapters."""
+
+    offline_only = True
 
     def __init__(
         self, *, capture_store: ProviderResponseCaptureStoreV1,
@@ -1008,6 +1012,9 @@ def _registry_factory(*args: Any, **kwargs: Any) -> _LowestHttpSeamRegistry:
     return _LowestHttpSeamRegistry(*args, **kwargs)
 
 
+_registry_factory.offline_only = True
+
+
 def _copy_private_data(
     *, repo: Path, source_project: Path, project_id: str, target: Path,
 ) -> Path:
@@ -1070,6 +1077,7 @@ def _memory_secrets(data_dir: Path) -> Callable[[], MemorySecretStore]:
             store.set(provider_id, "offline-memory-only-secret")
         return store
 
+    create.offline_only = True
     return create
 
 

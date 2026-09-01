@@ -54,6 +54,15 @@ def test_unknown_route_wrapper_does_not_default_to_transport() -> None:
     assert classify_completion_failure(wrapped) == FailureClass.UNKNOWN
 
 
+def test_mixed_unknown_and_transport_route_children_fail_closed() -> None:
+    wrapped = ModelRoutesExhaustedError(
+        ConnectionError("typed transport fixture"),
+        RuntimeError("untyped local adapter fixture"),
+    )
+
+    assert classify_completion_failure(wrapped) == FailureClass.UNKNOWN
+
+
 def test_untyped_transport_like_message_does_not_authorize_retry() -> None:
     assert (
         classify_completion_failure(

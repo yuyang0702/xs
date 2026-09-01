@@ -66,6 +66,39 @@ class _RecordingBoundaryObserver:
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("streaming", [False, True])
+async def test_request_materialization_failure_precedes_dispatch_authority(
+    streaming: bool,
+) -> None:
+    observer = _RecordingBoundaryObserver()
+    provider = HttpProvider(
+        "https://provider.example.invalid", "test-only-secret",
+        transport_policy=SingleDispatchTransportPolicyV1.phase_b(),
+        attempt_observer=observer,
+    )
+
+    def fail_build(*_args, **_kwargs):
+        raise ValueError("injected local request build failure")
+
+    provider.client.build_request = fail_build
+    try:
+        with pytest.raises(ValueError, match="local request build failure"):
+            if streaming:
+                await provider.post_stream(
+                    "messages", payload={"stream": True}, headers={},
+                )
+            else:
+                await provider.post(
+                    "messages", payload={"max_tokens": 10}, headers={},
+                )
+    finally:
+        await provider.client.aclose()
+
+    assert observer.events == []
+    assert provider.transport_attempt_snapshot()["http_post_attempts"] == 0
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize(
     "response,terminal",
     [

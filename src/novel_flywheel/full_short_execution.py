@@ -30,17 +30,23 @@ from urllib.parse import urlsplit
 
 from novel_flywheel.domain.models import ModelRequest
 from novel_flywheel.execution_failure_architecture import (
+    AuthorityEffect,
+    DispatchState,
     DURABLE_FAILURE_EVIDENCE_POLICY_SHA256,
     DURABLE_FAILURE_EVIDENCE_POLICY_V1,
+    ExactRecoveryViolation,
     FAILURE_ARCHITECTURE_IDENTITY,
+    FailureLayer,
     FULL_SHORT_EXACT_RECOVERY_REGISTRY_SHA256,
     FULL_SHORT_EXACT_RECOVERY_REGISTRY_V1,
+    FullShortExactRecoveryControllerV1,
     NONCE_RESERVATION_POLICY_SHA256,
     NONCE_RESERVATION_POLICY_V1,
     OBSERVER_ISOLATION_POLICY_SHA256,
     OBSERVER_ISOLATION_POLICY_V1,
     PREDISPATCH_STATE_MACHINE_SHA256,
     PREDISPATCH_STATE_MACHINE_V1,
+    RestartBehavior,
 )
 from novel_flywheel.provider_payloads import anthropic_payload_v1
 from novel_flywheel.runtime_fingerprint_build import (
@@ -53,6 +59,7 @@ from novel_flywheel.provider_response_capture import (
     PROVIDER_PROTOCOL_INPUT_BYTES,
     ProviderResponseCaptureStoreV1,
 )
+from novel_flywheel.recovery_engine import FailureClass, ReliabilityFailure
 
 
 POLICY_SCHEMA = "FullShortExecutionPolicyV1"
@@ -225,6 +232,59 @@ _FINAL_ARTIFACT_REJECTION_RECEIPT_FIELDS = frozenset({
 class FullShortExecutionBoundaryError(RuntimeError):
     def __init__(self, reason_code: str) -> None:
         self.reason_code = reason_code
+        normalized = re.sub(r"[^A-Z0-9]+", "_", reason_code.upper()).strip("_")
+        authorization_tokens = (
+            "AUTH", "APPROVAL", "PERMISSION", "HEAD", "WORKTREE",
+            "RUNTIME", "POLICY", "BINDING", "ROUTE", "DESTINATION",
+            "EGRESS", "PROJECT", "WORKLOAD", "SKILL",
+        )
+        capture_tokens = ("CAPTURE", "REPLAY", "ARTIFACT")
+        dispatch_tokens = ("NONCE", "DISPATCH", "NETWORK", "HTTP")
+        if any(token in normalized for token in capture_tokens):
+            layer = FailureLayer.ARTIFACT
+            family = "artifact.execution_boundary"
+        elif any(token in normalized for token in dispatch_tokens):
+            layer = FailureLayer.AUTHORITY
+            family = "authority.dispatch_boundary"
+        elif any(token in normalized for token in authorization_tokens):
+            layer = FailureLayer.EXECUTION_RUNTIME_BINDING
+            family = "execution.runtime_binding"
+        else:
+            layer = FailureLayer.WORKFLOW_RECOVERY
+            family = "workflow.execution_boundary"
+        failure_class = (
+            FailureClass.CREDENTIAL
+            if "CREDENTIAL" in normalized
+            else FailureClass.STALE_AUTHORITY
+            if layer in {
+                FailureLayer.AUTHORITY,
+                FailureLayer.EXECUTION_RUNTIME_BINDING,
+            }
+            else FailureClass.SEMANTIC_INVARIANT
+        )
+        self.failure_layer = layer
+        self.failure_family = family
+        self.dispatch_state = (
+            DispatchState.NETWORK_AMBIGUOUS
+            if "AMBIGUOUS" in normalized
+            else DispatchState.COMMITTED_PRE_NETWORK
+            if any(token in normalized for token in dispatch_tokens)
+            else DispatchState.NOT_REACHED
+        )
+        self.authority_effect = AuthorityEffect.BLOCKS_ACCEPTANCE
+        self.restart_behavior = (
+            RestartBehavior.FRESH_AUTHORIZATION_REQUIRED
+            if layer in {
+                FailureLayer.AUTHORITY,
+                FailureLayer.EXECUTION_RUNTIME_BINDING,
+            }
+            else RestartBehavior.NO_REDISPATCH
+        )
+        self.recovery_action = "fail_closed_at_typed_execution_boundary"
+        self.reliability_failure = ReliabilityFailure(
+            code=normalized.casefold(), failure_class=failure_class,
+            boundary=f"full_short.{layer.value}", retryable=False,
+        )
         super().__init__(reason_code)
 
 
@@ -237,6 +297,125 @@ def _now() -> str:
     return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace(
         "+00:00", "Z",
     )
+
+
+_LEDGER_STATE_TRANSITIONS_V1: dict[str, frozenset[str]] = {
+    "DISPATCH_IN_FLIGHT": frozenset({
+        "DISPATCH_IN_FLIGHT",
+        "RESPONSE_RECEIVED_AWAITING_LOCAL_RECEIPT",
+        "RECONCILIATION_REQUIRED_NO_REDISPATCH",
+    }),
+    "RESPONSE_RECEIVED_AWAITING_LOCAL_RECEIPT": frozenset({
+        "RESPONSE_RECEIVED_AWAITING_LOCAL_RECEIPT",
+        "READY_FOR_NEXT_STAGE", "READY_FOR_RECOVERY_ATTEMPT",
+        "RECONCILIATION_REQUIRED_NO_REDISPATCH",
+    }),
+    "RECONCILIATION_REQUIRED_NO_REDISPATCH": frozenset({
+        "RECONCILIATION_REQUIRED_NO_REDISPATCH",
+    }),
+    "READY_FOR_NEXT_STAGE": frozenset({"READY_FOR_NEXT_STAGE"}),
+    "READY_FOR_RECOVERY_ATTEMPT": frozenset({"READY_FOR_RECOVERY_ATTEMPT"}),
+}
+_ATTEMPT_STATE_TRANSITIONS_V1: dict[str, frozenset[str]] = {
+    "DISPATCH_ATTEMPTED": frozenset({
+        "DISPATCH_ATTEMPTED", "RESPONSE_RECEIVED",
+        "HTTP_RESPONSE_FAILED_CLOSED", "OUTCOME_UNKNOWN_FAIL_CLOSED",
+        "POST_CAPTURE_TERMINAL_FAILED_CLOSED",
+    }),
+    "RESPONSE_RECEIVED": frozenset({
+        "RESPONSE_RECEIVED", "LOCAL_STAGE_COMPLETE",
+        "LOCAL_ATTEMPT_REJECTED", "POST_CAPTURE_TERMINAL_FAILED_CLOSED",
+    }),
+    "HTTP_RESPONSE_FAILED_CLOSED": frozenset({"HTTP_RESPONSE_FAILED_CLOSED"}),
+    "OUTCOME_UNKNOWN_FAIL_CLOSED": frozenset({"OUTCOME_UNKNOWN_FAIL_CLOSED"}),
+    "POST_CAPTURE_TERMINAL_FAILED_CLOSED": frozenset({
+        "POST_CAPTURE_TERMINAL_FAILED_CLOSED",
+    }),
+    "LOCAL_STAGE_COMPLETE": frozenset({"LOCAL_STAGE_COMPLETE"}),
+    "LOCAL_ATTEMPT_REJECTED": frozenset({"LOCAL_ATTEMPT_REJECTED"}),
+}
+_MUTABLE_ATTEMPT_FIELDS_V1 = frozenset({
+    "state", "response_status_sha256", "response_received_at",
+    "provider_protocol_capture_receipt_sha256",
+    "provider_protocol_capture_transport_complete",
+    "provider_protocol_capture_http_success",
+    "contract_runtime_capture_receipt_sha256",
+    "contract_runtime_capture_transport_complete",
+    "failure_kind_sha256", "failure_class",
+    "terminal_contract_attempt_index", "terminal_contract_route",
+    "terminal_contract_route_attempt", "terminal_closed_at",
+    "local_rejection_receipt_sha256", "local_rejection_failure_kind",
+    "local_rejection_failure_code", "local_rejection_schema",
+    "local_rejection_physical_ordinal", "local_rejection_logical_stage_id",
+    "local_rejection_failure_reason_sha256", "local_rejection_stage",
+    "local_stage_receipt_sha256", "output_sha256", "role",
+    "contract_name", "contract_version", "contract_schema_sha256",
+})
+
+
+def _validate_ledger_mutation_v1(
+    before: Mapping[str, Any], after: Mapping[str, Any],
+) -> None:
+    """Reject every unregistered durable transition before resealing."""
+
+    before_root = {
+        key: value for key, value in before.items()
+        if key not in {"state", "attempts", "completed_stage_receipts", "updated_at"}
+    }
+    after_root = {
+        key: value for key, value in after.items()
+        if key not in {"state", "attempts", "completed_stage_receipts", "updated_at"}
+    }
+    _require(before_root == after_root, "LEDGER_AUTHORITY_FIELDS_IMMUTABLE")
+    before_state = str(before.get("state") or "")
+    after_state = str(after.get("state") or "")
+    _require(
+        after_state in _LEDGER_STATE_TRANSITIONS_V1.get(before_state, frozenset()),
+        "ILLEGAL_LEDGER_STATE_TRANSITION",
+    )
+    before_attempts = list(before.get("attempts") or [])
+    after_attempts = list(after.get("attempts") or [])
+    _require(
+        len(before_attempts) == len(after_attempts),
+        "LEDGER_ATTEMPT_CARDINALITY_IMMUTABLE",
+    )
+    for previous, current in zip(before_attempts, after_attempts, strict=True):
+        previous_identity = {
+            key: value for key, value in dict(previous).items()
+            if key not in _MUTABLE_ATTEMPT_FIELDS_V1
+        }
+        current_identity = {
+            key: value for key, value in dict(current).items()
+            if key not in _MUTABLE_ATTEMPT_FIELDS_V1
+        }
+        _require(
+            previous_identity == current_identity,
+            "LEDGER_ATTEMPT_IDENTITY_IMMUTABLE",
+        )
+        previous_state = str(previous.get("state") or "")
+        current_state = str(current.get("state") or "")
+        _require(
+            current_state in _ATTEMPT_STATE_TRANSITIONS_V1.get(
+                previous_state, frozenset(),
+            ),
+            "ILLEGAL_ATTEMPT_STATE_TRANSITION",
+        )
+    before_receipts = list(before.get("completed_stage_receipts") or [])
+    after_receipts = list(after.get("completed_stage_receipts") or [])
+    _require(
+        after_receipts[:len(before_receipts)] == before_receipts
+        and len(after_receipts) - len(before_receipts) in {0, 1},
+        "LEDGER_STAGE_RECEIPT_APPEND_ONLY",
+    )
+    if len(after_receipts) == len(before_receipts) + 1:
+        _require(
+            any(
+                old.get("state") == "RESPONSE_RECEIVED"
+                and new.get("state") == "LOCAL_STAGE_COMPLETE"
+                for old, new in zip(before_attempts, after_attempts, strict=True)
+            ),
+            "LEDGER_STAGE_RECEIPT_WITHOUT_ACCEPTANCE_TRANSITION",
+        )
 
 
 def _expected_provider_payload_v1(
@@ -1791,6 +1970,7 @@ class FullShortDurableExecutionStoreV1:
             )
             changed = mutator(deepcopy(body))
             _require(isinstance(changed, dict), "LEDGER_MUTATION_INVALID")
+            _validate_ledger_mutation_v1(body, changed)
             changed["updated_at"] = _now()
             value = _seal(
                 "novel-flywheel-full-short-dispatch-ledger-v1", changed,
@@ -2321,6 +2501,30 @@ class FullShortDispatchLedgerObserverV1:
             prior_failure_code = prior_logical_attempts[-1].get(
                 "local_rejection_failure_code"
             )
+            recovery_kind = (
+                "reasoning_finalization"
+                if stage_role == "PLANNING_FINAL_ARTIFACT_RECOVERY"
+                else "business_recovery"
+            )
+            controller = FullShortExactRecoveryControllerV1()
+            controller.record_initial_attempt(logical_stage_id)
+            try:
+                controller.authorize_shared_second_slot(
+                    logical_stage_id,
+                    typed_rejection_code=str(
+                        prior_failure_code
+                        or prior_logical_attempts[-1].get(
+                            "local_rejection_failure_kind"
+                        )
+                        or ""
+                    ),
+                    recovery_kind=recovery_kind,
+                    route_switch=False,
+                )
+            except ExactRecoveryViolation as exc:
+                raise FullShortExecutionBoundaryError(
+                    "RECOVERY_REGISTRY_REJECTED_SECOND_SLOT"
+                ) from exc
             if prior_failure_code == (
                 "reasoning_only_final_artifact_unavailable"
             ):

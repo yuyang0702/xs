@@ -1,4 +1,5 @@
 import asyncio
+from contextlib import aclosing
 from dataclasses import asdict, dataclass
 import hashlib
 import json
@@ -154,9 +155,11 @@ class HttpProvider:
             )
         return isinstance(value, str) and forbidden in value
 
-    def _before_http_post_attempt(
-        self, *, url: str, payload: dict[str, Any],
-    ) -> None:
+    def _build_http_post_request(
+        self, *, url: str, payload: dict[str, Any], headers: dict[str, str],
+    ) -> httpx.Request:
+        """Materialize deterministic wire bytes before dispatch authority."""
+
         self._last_protocol_input_v1 = None
         policy = self.transport_policy
         if policy is not None and self._http_post_attempts >= policy.max_http_post_attempts:
@@ -167,6 +170,13 @@ class HttpProvider:
             raise SingleDispatchTransportGuardError(
                 "credential_reflection_rejected",
             )
+        return self.client.build_request(
+            "POST", url, json=payload, headers={**headers, **self.headers},
+        )
+
+    def _before_http_post_attempt(
+        self, *, url: str, payload: dict[str, Any],
+    ) -> None:
         if self.attempt_observer is not None:
             before_dispatch = getattr(
                 self.attempt_observer, "before_http_dispatch", None,
@@ -271,12 +281,11 @@ class HttpProvider:
         max_attempts = 1 if self.transport_policy is not None else 2
         for attempt in range(max_attempts):
             try:
-                self._before_http_post_attempt(url=url, payload=payload)
-                response = await self.client.post(
-                    url,
-                    json=payload,
-                    headers={**headers, **self.headers},
+                request = self._build_http_post_request(
+                    url=url, payload=payload, headers=headers,
                 )
+                self._before_http_post_attempt(url=url, payload=payload)
+                response = await self.client.send(request)
                 break
             except httpx.TransportError as exc:
                 self._after_http_failure(exc)
@@ -327,9 +336,14 @@ class HttpProvider:
         max_attempts = 1 if self.transport_policy is not None else 2
         for attempt in range(max_attempts):
             events: list[dict[str, Any]] = []
+            request = self._build_http_post_request(
+                url=url, payload=payload, headers=request_headers,
+            )
             try:
                 self._before_http_post_attempt(url=url, payload=payload)
-                async with self.client.stream("POST", url, json=payload, headers=request_headers) as response:
+                async with aclosing(
+                    await self.client.send(request, stream=True)
+                ) as response:
                     if response.status_code >= 400:
                         await response.aread()
                         self._capture_provider_protocol_input(

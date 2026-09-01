@@ -12,6 +12,7 @@ from collections.abc import Callable, Mapping
 from enum import StrEnum
 import hashlib
 import json
+import re
 from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -87,6 +88,13 @@ class SafeFailureNodeV1(BaseModel):
     authority_effect: AuthorityEffect
     restart_behavior: RestartBehavior
     recovery_action: str = Field(min_length=1, max_length=200)
+    route_ordinal: int | None = Field(default=None, ge=1)
+    provider_id_sha256: str | None = Field(
+        default=None, pattern=r"^[0-9a-f]{64}$",
+    )
+    model_id_sha256: str | None = Field(
+        default=None, pattern=r"^[0-9a-f]{64}$",
+    )
     children: tuple["SafeFailureNodeV1", ...] = ()
 
 
@@ -195,16 +203,41 @@ def _safe_name(value: object, *, fallback: str) -> str:
     allowed = "abcdefghijklmnopqrstuvwxyz0123456789_.-"
     normalized = "".join(character if character in allowed else "_" for character in text)
     normalized = normalized.strip("_.-")
-    return (normalized or fallback)[:160]
+    normalized = normalized[:160]
+    sensitive = (
+        normalized.startswith(("sk-", "sk_", "bearer_", "bearer-"))
+        or "private_credential" in normalized
+        or "secret_value" in normalized
+        or "api_key_value" in normalized
+        or "password_value" in normalized
+    )
+    return fallback if not normalized or sensitive else normalized
 
 
 def _safe_failure_code(value: object) -> str:
     """Reject opaque long tokens; failure codes must be visibly structured."""
 
     normalized = _safe_name(value, fallback="unclassified_failure")
-    if len(normalized) > 32 and not any(mark in normalized for mark in "._-"):
+    if not re.fullmatch(
+        r"[a-z][a-z0-9]{1,31}(?:[._][a-z0-9][a-z0-9]{0,31}){0,9}",
+        normalized,
+    ):
         return "unclassified_failure"
     return normalized
+
+
+def _safe_exception_class(exc: BaseException) -> str:
+    name = type(exc).__name__
+    folded = name.casefold()
+    if (
+        len(name) <= 80
+        and re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", name)
+        and not folded.startswith(("sk_", "bearer_"))
+        and "privatecredential" not in folded
+        and "secretvalue" not in folded
+    ):
+        return name
+    return "RedactedExceptionClass"
 
 
 def _enum_value(enum_type: type[StrEnum], value: object, default: StrEnum) -> StrEnum:
@@ -214,30 +247,55 @@ def _enum_value(enum_type: type[StrEnum], value: object, default: StrEnum) -> St
         return default
 
 
-def _ordered_children(exc: BaseException) -> tuple[BaseException, ...]:
-    children: list[BaseException] = []
+def _identity_sha256(value: object) -> str | None:
+    text = str(value or "")
+    return hashlib.sha256(text.encode("utf-8")).hexdigest() if text else None
+
+
+def _ordered_children(
+    exc: BaseException,
+) -> tuple[tuple[BaseException, int, str | None, str | None], ...]:
+    children: list[tuple[BaseException, int, str | None, str | None]] = []
     route_errors = getattr(exc, "route_errors", None)
     if isinstance(route_errors, (list, tuple)):
-        for item in route_errors:
+        for ordinal, item in enumerate(route_errors, 1):
             candidate: object = item
+            provider_id: object = None
+            model_id: object = None
             if isinstance(item, RouteFailureAttemptV1):
                 candidate = item.error
+                provider_sha = item.provider_id_sha256
+                model_sha = item.model_id_sha256
             elif isinstance(item, Mapping):
                 candidate = item.get("error")
+                provider_sha = _identity_sha256(item.get("provider_id"))
+                model_sha = _identity_sha256(item.get("model_id"))
             elif isinstance(item, (list, tuple)) and item:
                 candidate = item[-1]
+                provider_id = item[0] if len(item) >= 2 else None
+                model_id = item[1] if len(item) >= 3 else None
+                provider_sha = _identity_sha256(provider_id)
+                model_sha = _identity_sha256(model_id)
+            else:
+                provider_sha = None
+                model_sha = None
             if isinstance(candidate, BaseException):
-                children.append(candidate)
+                children.append((candidate, ordinal, provider_sha, model_sha))
     if not children:
-        for attribute in ("primary_error", "fallback_error"):
+        for ordinal, attribute in enumerate(
+            ("primary_error", "fallback_error"), 1,
+        ):
             candidate = getattr(exc, attribute, None)
             if isinstance(candidate, BaseException):
-                children.append(candidate)
+                children.append((candidate, ordinal, None, None))
     for candidate in (
         exc.__cause__, None if exc.__suppress_context__ else exc.__context__,
     ):
-        if isinstance(candidate, BaseException) and candidate not in children:
-            children.append(candidate)
+        if (
+            isinstance(candidate, BaseException)
+            and all(candidate is not item[0] for item in children)
+        ):
+            children.append((candidate, len(children) + 1, None, None))
     return tuple(children)
 
 
@@ -264,20 +322,26 @@ def _layer_for_boundary(boundary: str) -> FailureLayer:
 
 
 def _node(
-    exc: BaseException, *, boundary: str, seen: set[int], is_child: bool,
+    exc: BaseException, *, boundary: str, ancestors: frozenset[int],
+    is_child: bool, route_ordinal: int | None = None,
+    provider_id_sha256: str | None = None,
+    model_id_sha256: str | None = None,
 ) -> SafeFailureNodeV1:
-    if id(exc) in seen:
+    if id(exc) in ancestors:
         return SafeFailureNodeV1(
             code="failure_graph_cycle", family="failure_graph",
             layer=FailureLayer.UNKNOWN, boundary=boundary,
-            source_exception_class=type(exc).__name__,
+            source_exception_class=_safe_exception_class(exc),
             failure_class=FailureClass.UNKNOWN, retryable=False,
             dispatch_state=DispatchState.NOT_REACHED,
             authority_effect=AuthorityEffect.PRESERVES_LAST_ACCEPTED,
             restart_behavior=RestartBehavior.NO_REDISPATCH,
             recovery_action="inspect_typed_failure",
+            route_ordinal=route_ordinal,
+            provider_id_sha256=provider_id_sha256,
+            model_id_sha256=model_id_sha256,
         )
-    seen.add(id(exc))
+    child_ancestors = ancestors | {id(exc)}
     reliability = getattr(exc, "reliability_failure", None)
     raw_failure_class = getattr(reliability, "failure_class", FailureClass.UNKNOWN)
     failure_class = _enum_value(
@@ -317,15 +381,23 @@ def _node(
         getattr(exc, "recovery_action", ""), fallback="inspect_typed_failure",
     )
     children = tuple(
-        _node(child, boundary=node_boundary, seen=seen, is_child=True)
-        for child in _ordered_children(exc)
+        _node(
+            child, boundary=node_boundary, ancestors=child_ancestors,
+            is_child=True, route_ordinal=ordinal,
+            provider_id_sha256=provider_sha,
+            model_id_sha256=model_sha,
+        )
+        for child, ordinal, provider_sha, model_sha in _ordered_children(exc)
     )
     return SafeFailureNodeV1(
         code=code, family=family, layer=layer, boundary=node_boundary or "unknown",
-        source_exception_class=type(exc).__name__, failure_class=failure_class,
+        source_exception_class=_safe_exception_class(exc), failure_class=failure_class,
         retryable=bool(getattr(reliability, "retryable", False)),
         dispatch_state=dispatch_state, authority_effect=authority_effect,
         restart_behavior=restart_behavior, recovery_action=recovery_action,
+        route_ordinal=route_ordinal,
+        provider_id_sha256=provider_id_sha256,
+        model_id_sha256=model_id_sha256,
         children=children,
     )
 
@@ -333,7 +405,9 @@ def _node(
 def build_durable_failure_evidence(
     exc: BaseException, *, boundary: str,
 ) -> DurableFailureEvidenceV1:
-    root = _node(exc, boundary=boundary, seen=set(), is_child=False)
+    root = _node(
+        exc, boundary=boundary, ancestors=frozenset(), is_child=False,
+    )
     canonical = json.dumps(
         root.model_dump(mode="json"), ensure_ascii=False, sort_keys=True,
         separators=(",", ":"),
@@ -371,6 +445,26 @@ FULL_SHORT_EXACT_RECOVERY_REGISTRY_V1: dict[str, Any] = {
     "provider_retry_allowed": False,
     "transport_recovery": "complete_capture_local_exact_replay_only",
     "unknown_failure_disposition": "terminal",
+    "layer_default_policies": {
+        "execution.authorization": "terminal_fresh_authorization",
+        "execution.runtime_binding": "terminal_fresh_authorization",
+        "provider.route": "terminal_before_credential",
+        "provider.credential": "terminal_before_nonce",
+        "provider.client": "terminal_before_nonce",
+        "provider.request_build": "terminal_before_nonce",
+        "provider.transport": "terminal_no_redispatch",
+        "provider.protocol": "terminal_no_redispatch",
+        "provider.response_adapter": "terminal_or_exact_local_replay",
+        "provider.final_artifact": "typed_shared_second_slot_or_terminal",
+        "contract": "typed_shared_second_slot_or_terminal",
+        "business.completeness": "typed_shared_second_slot_or_terminal",
+        "workflow.recovery": "terminal_at_shared_ceiling",
+        "authority": "terminal_preserve_last_accepted",
+        "artifact": "terminal_preserve_last_accepted",
+        "observer": "continue_original_business_outcome",
+        "external": "terminal_no_redispatch",
+        "unknown": "terminal_no_redispatch",
+    },
     "failure_policies": {
         "business_incomplete": {
             "recovery": "shared_second_slot_same_route",
@@ -480,6 +574,19 @@ class FullShortExactRecoveryControllerV1:
             "reasoning_only_final_artifact_unavailable"
         ):
             raise ExactRecoveryViolation("reasoning_recovery_without_exact_rejection")
+        policy_key = (
+            "reasoning_only_final_artifact_unavailable"
+            if recovery_kind == "reasoning_finalization"
+            else "business_incomplete"
+        )
+        policy = FULL_SHORT_EXACT_RECOVERY_REGISTRY_V1[
+            "failure_policies"
+        ][policy_key]
+        if (
+            policy["max_network_redispatches"] != 1
+            or not str(policy["recovery"]).startswith("shared_second_slot")
+        ):
+            raise ExactRecoveryViolation("registry_disallows_second_slot")
         self._attempts[logical_stage_id] = 2
         return 2
 

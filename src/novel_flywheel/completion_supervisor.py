@@ -142,10 +142,16 @@ def _strongest_failure_class(errors: list[BaseException]) -> FailureClass | None
         FailureClass.OUTPUT_TRUNCATION,
         FailureClass.SYNTAX_PROTOCOL,
         FailureClass.CAPABILITY,
-        FailureClass.TRANSPORT,
     ):
         if candidate in classes:
             return candidate
+    # Transport is the only class that grants automatic checkpoint-resume
+    # authority.  A mixed aggregate with any unknown child is ambiguous and
+    # must fail closed rather than laundering UNKNOWN_CHILD into a retry.
+    if classes and all(item == FailureClass.TRANSPORT for item in classes):
+        return FailureClass.TRANSPORT
+    if FailureClass.UNKNOWN in classes:
+        return FailureClass.UNKNOWN
     return next((item for item in classes if item != FailureClass.UNKNOWN), None)
 
 

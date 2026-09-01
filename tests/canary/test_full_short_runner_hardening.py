@@ -16,6 +16,27 @@ from novel_flywheel.story_state import StoryStateStore
 from tools.canary import first_trustworthy_full_short_runner as runner
 
 
+@pytest.mark.asyncio
+async def test_disabled_actions_reject_non_offline_factories_before_secret_lookup() -> None:
+    called = False
+
+    def secret_factory():
+        nonlocal called
+        called = True
+        raise AssertionError("secret factory must not be called")
+
+    with pytest.raises(
+        ValueError,
+        match="DISABLED_EXTERNAL_ACTIONS_REQUIRE_EXPLICIT_OFFLINE_SEAMS",
+    ):
+        await runner.execute_full_short_control_plane(
+            object(), {}, external_actions_enabled=False,
+            secret_store_factory=secret_factory,
+        )
+
+    assert called is False
+
+
 def _logical_plan() -> list[dict]:
     return [{
         "ordinal": 1,

@@ -1283,13 +1283,14 @@ def test_reasoning_only_rejection_requires_exact_recovery_stage_role(
     "tamper",
     ["accepted_id", "rejected_provenance", "typed_code_erasure"],
 )
-def test_completion_recomputes_recovery_acceptance_provenance(
+def test_durable_store_rejects_recovery_acceptance_provenance_tamper(
     tmp_path: Path, tamper: str,
 ) -> None:
     store = _store(tmp_path)
     execution_id = f"completion-provenance-{tamper}"
-    permission, approval, nonce = _authorize_offline(store, execution_id)
+    _authorize_offline(store, execution_id)
     _dispatch_reasoning_recovery_and_close(store, execution_id)
+    before = store.load_ledger(execution_id)
 
     def mutate(body):
         receipt = body["completed_stage_receipts"][0]
@@ -1302,32 +1303,10 @@ def test_completion_recomputes_recovery_acceptance_provenance(
             receipt["rejected_attempt_provenance"][0]["failure_code"] = None
         return body
 
-    store.update_ledger(execution_id, mutate)
-    ledger = store.load_ledger(execution_id)
-    terminal = _terminal()
     with pytest.raises(FullShortExecutionBoundaryError) as rejected:
-        build_full_short_completion_receipt_v1(
-            execution_id=execution_id, policy=_policy(store),
-            permission_sha256=permission["permission_sha256"],
-            signed_approval_sha256=approval["signed_approval_sha256"],
-            nonce_sha256=nonce["nonce_sha256"], ledger=ledger,
-            final_bindings={
-                "manuscript_sha256": "4" * 64,
-                "chapter_sha256": "5" * 64,
-                "canon_sha256": "6" * 64,
-                "story_state_sha256": "7" * 64,
-                "quality_checkpoint_sha256": "8" * 64,
-                "terminal_verification_sha256": terminal[
-                    "verification_receipt_sha256"
-                ],
-            },
-            terminal_verification=terminal,
-        )
-    assert rejected.value.reason_code == (
-        "COMPLETION_TYPED_RECOVERY_TRANSITION_INVALID"
-        if tamper == "typed_code_erasure"
-        else "STAGE_ACCEPTANCE_PROVENANCE_MISMATCH"
-    )
+        store.update_ledger(execution_id, mutate)
+    assert rejected.value.reason_code == "LEDGER_STAGE_RECEIPT_APPEND_ONLY"
+    assert store.load_ledger(execution_id) == before
 
 
 def test_local_rejection_receipt_rejects_raw_content_and_stays_pending(
@@ -2116,7 +2095,7 @@ def test_completion_rejects_terminal_false_positive_and_binding_key_drift(
     assert keys.value.reason_code == "COMPLETION_BINDING_KEYS_MISMATCH"
 
 
-def test_mark_local_stage_complete_closes_only_pending_ordinal(tmp_path: Path) -> None:
+def test_durable_ledger_rejects_reopening_closed_attempt(tmp_path: Path) -> None:
     store = _store(tmp_path)
     _authorize_offline(store, "pending-only")
     observer = _observer(store, "pending-only")
@@ -2146,13 +2125,15 @@ def test_mark_local_stage_complete_closes_only_pending_ordinal(tmp_path: Path) -
         body["attempts"][0]["state"] = "RESPONSE_RECEIVED"
         return body
 
-    store.update_ledger("pending-only", reopen_first)
+    with pytest.raises(FullShortExecutionBoundaryError) as rejected:
+        store.update_ledger("pending-only", reopen_first)
+    assert rejected.value.reason_code == "ILLEGAL_ATTEMPT_STATE_TRANSITION"
     observer.mark_local_stage_complete(
         stage="planning", role="planning", role_binding_sha256=binding,
         output_sha256="c" * 64, receipt_sha256="d" * 64,
     )
     ledger = store.load_ledger("pending-only")
-    assert ledger["attempts"][0]["state"] == "RESPONSE_RECEIVED"
+    assert ledger["attempts"][0]["state"] == "LOCAL_ATTEMPT_REJECTED"
     assert ledger["attempts"][1]["state"] == "LOCAL_STAGE_COMPLETE"
 
 

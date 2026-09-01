@@ -15,9 +15,10 @@ from novel_flywheel.execution_failure_architecture import (
 from novel_flywheel.recovery_engine import FailureClass
 
 
-# The numbered names are the canonical Phase-9 campaign inventory.  Behavioral
-# seams are exercised by the owning test modules; this matrix proves that every
-# injected exit has a typed, durable, privacy-safe terminal policy.
+# The numbered names are the canonical Phase-9 inventory.  This file proves
+# taxonomy closure for every receipt.  The production-boundary campaign also
+# executes the owning suites below (runner/store, registry/gateway, HTTP/SSE,
+# capture/replay, workflow/contracts, authority, observer, and budgets).
 CASES = (
     (1, "auth_sha_mismatch", FailureLayer.EXECUTION_AUTHORIZATION),
     (2, "head_drift", FailureLayer.EXECUTION_AUTHORIZATION),
@@ -91,6 +92,19 @@ CASES = (
     (70, "recovery_shared_slot_exhaustion", FailureLayer.WORKFLOW_RECOVERY),
 )
 
+REAL_BOUNDARY_CAMPAIGN_SUITES = (
+    "tests/test_full_short_execution.py",
+    "tests/canary/test_full_short_runner_hardening.py",
+    "tests/test_models.py",
+    "tests/test_tasks.py",
+    "tests/providers/test_single_dispatch_transport_guard.py",
+    "tests/providers/test_anthropic_sse_state_machine.py",
+    "tests/test_provider_response_capture.py",
+    "tests/test_contract_runtime.py",
+    "tests/test_workflows.py",
+    "tests/test_recovery_engine.py",
+)
+
 
 def _failure_class(layer: FailureLayer) -> FailureClass:
     if layer == FailureLayer.PROVIDER_CREDENTIAL:
@@ -109,7 +123,7 @@ def _failure_class(layer: FailureLayer) -> FailureClass:
 
 
 @pytest.mark.parametrize("number,name,layer", CASES, ids=[item[1] for item in CASES])
-def test_every_phase9_injection_has_closed_typed_durable_policy(
+def test_every_phase9_inventory_entry_has_closed_typed_durable_policy(
     number: int, name: str, layer: FailureLayer,
 ) -> None:
     dispatch_state = (
@@ -151,3 +165,11 @@ def test_every_phase9_injection_has_closed_typed_durable_policy(
 def test_campaign_inventory_is_exactly_numbered_one_through_seventy() -> None:
     assert [item[0] for item in CASES] == list(range(1, 71))
     assert len({item[1] for item in CASES}) == 70
+
+
+def test_real_boundary_campaign_owns_every_execution_layer() -> None:
+    assert {item[2] for item in CASES} == set(FailureLayer) - {
+        FailureLayer.EXTERNAL, FailureLayer.UNKNOWN,
+    }
+    assert all(__import__("pathlib").Path(path).is_file()
+               for path in REAL_BOUNDARY_CAMPAIGN_SUITES)

@@ -103,6 +103,14 @@ class CapabilityRoutesExhaustedError(RuntimeError):
             "all structured-output routes were exhausted"
             if self.route_errors else "no structured-output route is configured"
         )
+        self.failure_family = "provider.capability_routes_exhausted"
+        self.recovery_action = "repair_capability_route_then_fresh_authorization"
+        self.reliability_failure = ReliabilityFailure(
+            code="capability_routes_exhausted",
+            failure_class=FailureClass.CAPABILITY,
+            boundary="model_gateway.capability_routes_exhausted",
+            retryable=False,
+        )
 
 
 class TransportInterruptedError(RuntimeError):

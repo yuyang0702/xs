@@ -209,6 +209,24 @@ async def _materialize(args: argparse.Namespace) -> dict:
         "logical_stage_recovery_policy_identity": policy[
             "logical_stage_recovery_policy_identity"
         ],
+        "failure_architecture_identity": policy[
+            "failure_architecture_identity"
+        ],
+        "recovery_policy_registry_sha256": policy[
+            "recovery_policy_registry_sha256"
+        ],
+        "predispatch_state_machine_sha256": policy[
+            "predispatch_state_machine_sha256"
+        ],
+        "nonce_reservation_policy_sha256": policy[
+            "nonce_reservation_policy_sha256"
+        ],
+        "observer_isolation_policy_sha256": policy[
+            "observer_isolation_policy_sha256"
+        ],
+        "durable_failure_evidence_policy_sha256": policy[
+            "durable_failure_evidence_policy_sha256"
+        ],
         "normal_planning_reasoning_policy": "CURRENT_PROVIDER_DEFAULT",
         "planning_finalization_recovery_reasoning_policy": (
             "DEEPSEEK_OFFICIAL_ANTHROPIC_REASONING_EFFORT_NONE"

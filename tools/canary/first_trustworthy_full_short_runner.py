@@ -25,9 +25,13 @@ from urllib.parse import urlsplit
 from novel_flywheel.config import Settings, configure_runtime_environment
 from novel_flywheel.db import Database
 from novel_flywheel.execution_failure_architecture import (
+    AuthorityEffect,
     DURABLE_FAILURE_EVIDENCE_POLICY_SHA256,
     DURABLE_FAILURE_EVIDENCE_POLICY_V1,
+    DispatchState,
+    ExecutionBoundaryFailure,
     FAILURE_ARCHITECTURE_IDENTITY,
+    FailureLayer,
     FULL_SHORT_EXACT_RECOVERY_REGISTRY_SHA256,
     FULL_SHORT_EXACT_RECOVERY_REGISTRY_V1,
     NONCE_RESERVATION_POLICY_SHA256,
@@ -36,6 +40,8 @@ from novel_flywheel.execution_failure_architecture import (
     OBSERVER_ISOLATION_POLICY_V1,
     PREDISPATCH_STATE_MACHINE_SHA256,
     PREDISPATCH_STATE_MACHINE_V1,
+    RestartBehavior,
+    build_durable_failure_evidence,
 )
 from novel_flywheel.full_short_execution import (
     FullShortDispatchLedgerObserverV1,
@@ -60,6 +66,7 @@ from novel_flywheel.providers.registry import ProviderRegistry
 from novel_flywheel.prompts import OPTIONAL_PROMPT_SKILLS, REQUIRED_SKILLS
 from novel_flywheel.quality_profiles import profile_for_project
 from novel_flywheel.reference_library import ReferenceLibrary
+from novel_flywheel.recovery_engine import FailureClass
 from novel_flywheel.runtime_fingerprint import collect_runtime_fingerprint_v2
 from novel_flywheel.secrets import KeyringSecretStore
 from novel_flywheel.short_canonical_promotion import (
@@ -96,6 +103,75 @@ def _domain(value: object) -> str:
     return hashlib.sha256(json.dumps(
         value, ensure_ascii=False, sort_keys=True, separators=(",", ":"),
     ).encode("utf-8")).hexdigest()
+
+
+def _safe_failure_metadata(exc: BaseException, *, boundary: str) -> dict[str, Any]:
+    candidate = exc
+    if getattr(candidate, "reliability_failure", None) is None:
+        preflight = "preflight" in boundary
+        wrapped = ExecutionBoundaryFailure(
+            (
+                "preflight_validation_failed"
+                if preflight else "typed_local_boundary_failure"
+            ),
+            layer=(
+                FailureLayer.EXECUTION_AUTHORIZATION
+                if preflight else FailureLayer.WORKFLOW_RECOVERY
+            ),
+            boundary=boundary,
+            failure_class=(
+                FailureClass.STALE_AUTHORITY
+                if preflight else FailureClass.SEMANTIC_INVARIANT
+            ),
+            dispatch_state=DispatchState.NOT_REACHED,
+            authority_effect=AuthorityEffect.BLOCKS_ACCEPTANCE,
+            restart_behavior=(
+                RestartBehavior.FRESH_AUTHORIZATION_REQUIRED
+                if preflight else RestartBehavior.NO_REDISPATCH
+            ),
+            recovery_action=(
+                "correct_binding_then_materialize_fresh_authorization"
+                if preflight else "inspect_typed_local_failure"
+            ),
+        )
+        wrapped.__cause__ = candidate
+        candidate = wrapped
+    return build_durable_failure_evidence(
+        candidate, boundary=boundary,
+    ).event_metadata()
+
+
+def _persist_preflight_failure(
+    args: argparse.Namespace, exc: BaseException,
+) -> dict[str, Any]:
+    """Persist a secret-free failure graph without approval/nonce creation."""
+
+    metadata = _safe_failure_metadata(
+        exc, boundary="full_short.preflight",
+    )
+    receipt = {
+        "schema": "FullShortPreflightFailureReceiptV1", "version": 1,
+        **metadata,
+        "approval_created": False, "nonce_created": False,
+        "credential_lookup_count": 0, "network_calls": 0,
+    }
+    root = Path(args.store_root).resolve(strict=False)
+    root.mkdir(parents=True, exist_ok=True)
+    path = root / (
+        "preflight-failure-" + metadata["failure_graph_sha256"] + ".json"
+    )
+    raw = json.dumps(
+        receipt, ensure_ascii=False, sort_keys=True, separators=(",", ":"),
+    ).encode("utf-8") + b"\n"
+    try:
+        with path.open("xb") as handle:
+            handle.write(raw)
+            handle.flush()
+            os.fsync(handle.fileno())
+    except FileExistsError:
+        if path.read_bytes() != raw:
+            raise RuntimeError("PREFLIGHT_FAILURE_RECEIPT_COLLISION")
+    return {**receipt, "path": str(path)}
 
 
 def _canonical_store_root(
@@ -780,6 +856,21 @@ async def execute_full_short_control_plane(
     store and the registry's lowest HTTP transport.
     """
 
+    if not external_actions_enabled:
+        offline_seams = (
+            secret_store_factory, registry_factory, http_transport_factory,
+        )
+        if (
+            any(item is None for item in offline_seams)
+            or not all(
+                getattr(item, "offline_only", False) is True
+                for item in offline_seams
+            )
+        ):
+            raise ValueError(
+                "DISABLED_EXTERNAL_ACTIONS_REQUIRE_EXPLICIT_OFFLINE_SEAMS"
+            )
+
     raw = _authorization_raw(args)
     raw_sha256 = hashlib.sha256(raw).hexdigest()
     if raw_sha256 != args.activated_sha256:
@@ -978,10 +1069,9 @@ async def execute_full_short_control_plane(
                 terminal_verification=terminal,
             )
         except Exception as exc:
-            closure_state["terminal_failure"] = {
-                "exception_type": type(exc).__name__,
-                "safe_code": str(exc)[:240],
-            }
+            closure_state["terminal_failure"] = _safe_failure_metadata(
+                exc, boundary="full_short.terminal_receipt",
+            )
             raise
         closure_state.update({
             "terminal": terminal, "ledger": ledger,
@@ -996,10 +1086,9 @@ async def execute_full_short_control_plane(
                     execution_id=execution_id, policy=policy, receipt=receipt,
                 )
             except Exception as exc:
-                closure_state["terminal_failure"] = {
-                    "exception_type": type(exc).__name__,
-                    "safe_code": str(exc)[:240],
-                }
+                closure_state["terminal_failure"] = _safe_failure_metadata(
+                    exc, boundary="full_short.completion_commit",
+                )
                 raise
             closure_state["completion"] = completion
             return completion
@@ -1116,17 +1205,21 @@ def main() -> int:
     parser.add_argument("--execute", action="store_true")
     args = parser.parse_args()
     args.repo = args.repo.resolve(strict=True)
-    raw = args.authorization.read_bytes()
-    actual_sha256 = hashlib.sha256(raw).hexdigest()
-    if actual_sha256 != args.activated_sha256:
-        raise SystemExit("ACTIVATED_AUTHORIZATION_SHA256_MISMATCH")
     try:
+        raw = args.authorization.read_bytes()
+        actual_sha256 = hashlib.sha256(raw).hexdigest()
+        if actual_sha256 != args.activated_sha256:
+            raise ValueError("ACTIVATED_AUTHORIZATION_SHA256_MISMATCH")
         authorization, preflight = preflight_full_short_control_plane(
             args, raw,
             external_actions_enabled=args.execute,
         )
     except Exception as exc:
-        raise SystemExit(f"FULL_SHORT_PREFLIGHT_FAILED:{exc}") from exc
+        receipt = _persist_preflight_failure(args, exc)
+        raise SystemExit(
+            "FULL_SHORT_PREFLIGHT_FAILED:"
+            + receipt["failure_graph_sha256"]
+        ) from exc
     if not args.execute:
         print(json.dumps({
             "status": "exact", "preflight_receipt_sha256": preflight[

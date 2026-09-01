@@ -69,6 +69,8 @@ def _file_sha256(path: Path) -> str | None:
 
 
 class _FailureInjectionTransportFactory:
+    offline_only = True
+
     def __init__(self, scenario: str) -> None:
         self.scenario = scenario
         self.call_plan: list[dict[str, Any]] = []

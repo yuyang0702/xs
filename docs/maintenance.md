@@ -2466,3 +2466,22 @@ and registry resource-close reporting are best effort and cannot replace a
 successful business result or mask the primary failure. Reader Review fallback
 must execute the complete reader contract on the fallback role; an editorial
 verdict is never synthesized into target-reader evidence.
+
+HTTP JSON/header/URL materialization now completes before the dispatch
+observer may seal readiness, reserve a nonce, or record a physical attempt.
+A local `httpx` request-build failure therefore leaves the nonce absent and
+all request/network counters at zero. Disabled-actions control-plane calls are
+also a capability boundary: they require explicitly marked in-memory secret,
+registry, and lowest-HTTP seam factories and reject production factories
+before invoking a secret-store callback.
+
+The durable ledger validates every mutation against a closed top-level and
+per-attempt transition table before resealing. Authority-chain fields and
+physical-attempt identities are immutable, accepted stage receipts are
+append-only, and a closed attempt cannot be reopened. The production dispatch
+path queries the canonical shared-slot recovery controller; mixed route
+aggregates containing an unknown child cannot acquire transport retry
+authority. Capability exhaustion and Full Short boundary errors carry typed
+owner/restart metadata, while route children retain ordered ordinals and only
+hashed provider/model identities. Public preflight and terminal diagnostics
+persist the same redacted failure graph and never include raw exception text.
