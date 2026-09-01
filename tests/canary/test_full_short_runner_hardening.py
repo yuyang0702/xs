@@ -56,6 +56,25 @@ def test_runner_machine_code_reaches_exact_failure_taxonomy() -> None:
     assert metadata["failure_graph"]["dispatch_state"] == "not_reached"
 
 
+def test_supervised_summary_retains_original_workflow_exception_as_child() -> None:
+    root = NameError("offline_missing_name")
+    failure = runner._supervised_run_not_completed_failure(
+        {"status": "failed", "workflow_failure": {"safe": True}}, root,
+    )
+
+    assert failure.reason_code == "FULL_SHORT_SUPERVISED_RUN_NOT_COMPLETED"
+    assert failure.__cause__ is root
+    assert failure.safe_diagnostic == {
+        "status": "failed", "workflow_failure": {"safe": True},
+    }
+    metadata = runner._safe_failure_metadata(
+        failure, boundary="full_short.postrun",
+    )
+    assert metadata["failure_graph"]["children"][0][
+        "source_exception_class"
+    ] == "NameError"
+
+
 @pytest.mark.asyncio
 async def test_spoofed_offline_markers_cannot_enter_direct_execution() -> None:
     called = False

@@ -142,6 +142,21 @@ def _safe_failure_metadata(exc: BaseException, *, boundary: str) -> dict[str, An
     ).event_metadata()
 
 
+def _supervised_run_not_completed_failure(
+    diagnostic: dict[str, Any],
+    workflow_exception: BaseException | None,
+) -> FullShortExecutionBoundaryError:
+    """Retain the in-memory child cause while exposing only safe diagnostics."""
+
+    failure = FullShortExecutionBoundaryError(
+        "FULL_SHORT_SUPERVISED_RUN_NOT_COMPLETED"
+    )
+    failure.safe_diagnostic = diagnostic
+    if workflow_exception is not None:
+        failure.__cause__ = workflow_exception
+    return failure
+
+
 def _persist_preflight_failure(
     args: argparse.Namespace, exc: BaseException, *,
     boundary: str = "full_short.preflight",
@@ -1252,12 +1267,27 @@ async def _execute_full_short_control_plane_with_capability(
         ),
         "full_short.prelaunch.terminal_finalizer",
     )
+
+    async def supervised_operation(actual_run_id: str) -> object:
+        try:
+            return await service.run_short(
+                project.id, run_id=actual_run_id, use_crewai=True,
+            )
+        except Exception as exc:
+            # The task supervisor persists only safe failure evidence and
+            # deliberately absorbs workflow exceptions into terminal state.
+            # Retain the live object in memory so the exact runner's summary
+            # cannot destroy its child provenance.
+            closure_state["workflow_exception"] = exc
+            closure_state["workflow_failure"] = _safe_failure_metadata(
+                exc, boundary="full_short.workflow_operation",
+            )
+            raise
+
     try:
         await _launch_exact_short(
             manager, execution_id=execution_id, project_id=project.id,
-            operation=lambda run_id: service.run_short(
-                project.id, run_id=run_id, use_crewai=True,
-            ),
+            operation=supervised_operation,
             terminal_finalizer=terminal_finalizer,
             already_reserved=True,
         )
@@ -1315,11 +1345,12 @@ async def _execute_full_short_control_plane_with_capability(
                 if isinstance(terminal, dict) else None
             ),
             "terminal_failure": closure_state.get("terminal_failure"),
+            "workflow_failure": closure_state.get("workflow_failure"),
         }
-        failure = FullShortExecutionBoundaryError(
-            "FULL_SHORT_SUPERVISED_RUN_NOT_COMPLETED"
+        failure = _supervised_run_not_completed_failure(
+            diagnostic,
+            closure_state.get("workflow_exception"),
         )
-        failure.safe_diagnostic = diagnostic
         raise failure
     completion = closure_state.get("completion")
     if not isinstance(completion, dict):

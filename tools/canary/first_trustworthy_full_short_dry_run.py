@@ -1034,6 +1034,7 @@ class _LowestHttpSeamRegistry(ProviderRegistry):
                 ).hexdigest(),
             }
             raise
+        self.transport_factory.failure = None
         self._install_optional_adapter_failure_hook(resolved.adapter)
         self.open_clients.append(resolved.adapter.client)
         return resolved
