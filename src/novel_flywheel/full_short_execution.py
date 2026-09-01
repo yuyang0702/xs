@@ -2352,6 +2352,8 @@ class FullShortDurableExecutionStoreV1:
 class FullShortDispatchLedgerObserverV1:
     """Durable observer attached to the production ``HttpProvider`` seam."""
 
+    exact_full_short_execution = True
+
     def __init__(
         self, *, store: FullShortDurableExecutionStoreV1,
         execution_id: str, policy: Mapping[str, Any],

@@ -31051,7 +31051,7 @@ class WorkflowService:
         )
         return bool(
             observer is not None
-            and type(observer).__name__ == "FullShortDispatchLedgerObserverV1"
+            and getattr(observer, "exact_full_short_execution", False) is True
             and getattr(observer, "policy", None)
         )
 

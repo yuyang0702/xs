@@ -1814,6 +1814,20 @@ class ProductionSizedShortGateway:
         )
 
 
+def test_exact_full_short_detection_survives_observer_proxy() -> None:
+    observer = SimpleNamespace(
+        exact_full_short_execution=True,
+        policy={"identity": "sealed"},
+    )
+    service = SimpleNamespace(
+        gateway=SimpleNamespace(
+            registry=SimpleNamespace(attempt_observer=observer),
+        ),
+    )
+
+    assert WorkflowService._exact_full_short_execution(service) is True
+
+
 def _offline_request_messages(payload: dict) -> tuple[str, str]:
     messages = payload.get("messages") or payload.get("input") or []
     system_parts = []
