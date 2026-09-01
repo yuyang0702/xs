@@ -1,0 +1,911 @@
+from __future__ import annotations
+
+import hashlib
+import inspect
+import json
+import os
+from dataclasses import asdict, dataclass, field, is_dataclass
+from enum import StrEnum
+from pathlib import Path
+from typing import Any, Awaitable, Callable, TypeVar
+
+
+_T = TypeVar("_T")
+_UNEXPECTED_FAILURE_ID = "internal.unexpected_at_boundary"
+
+
+def _canonical_json_bytes(value: object) -> bytes:
+    def default(item: object) -> object:
+        if is_dataclass(item) and not isinstance(item, type):
+            return asdict(item)
+        if isinstance(item, Path):
+            return str(item)
+        raise TypeError(f"not_canonical_json_serializable:{type(item).__name__}")
+
+    return json.dumps(
+        value,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+        default=default,
+    ).encode("utf-8")
+
+
+def _sha256(value: object) -> str:
+    return hashlib.sha256(_canonical_json_bytes(value)).hexdigest()
+
+
+class ExecutionState(StrEnum):
+    TEMPLATE_READY = "TEMPLATE_READY"
+    AUTHORIZED = "AUTHORIZED"
+    APPROVED = "APPROVED"
+    PREDISPATCH_READY = "PREDISPATCH_READY"
+    DISPATCH_TOKEN_RESERVED = "DISPATCH_TOKEN_RESERVED"
+    DISPATCHING = "DISPATCHING"
+    RESPONSE_CAPTURED = "RESPONSE_CAPTURED"
+    VALIDATING = "VALIDATING"
+    STAGE_REJECTED_RECOVERABLE = "STAGE_REJECTED_RECOVERABLE"
+    STAGE_ACCEPTED = "STAGE_ACCEPTED"
+    PAUSED_RECONCILIATION = "PAUSED_RECONCILIATION"
+    TERMINAL_FAILED = "TERMINAL_FAILED"
+    COMPLETED = "COMPLETED"
+
+
+class FailureClassification(StrEnum):
+    KNOWN = "KNOWN"
+    UNEXPECTED = "UNEXPECTED"
+
+
+class RecoveryDecisionKind(StrEnum):
+    LOCAL_REPLAY = "LOCAL_REPLAY"
+    ONE_TYPED_REATTEMPT = "ONE_TYPED_REATTEMPT"
+    LOCAL_REPAIR = "LOCAL_REPAIR"
+    FAIL_CLOSED = "FAIL_CLOSED"
+    PAUSE_RECONCILIATION = "PAUSE_RECONCILIATION"
+
+
+@dataclass(frozen=True)
+class FailureSpecV1:
+    failure_id: str
+    failure_code: str
+    failure_family: str
+    recovery_decision: RecoveryDecisionKind
+    restart_policy_id: str
+    authority_effect: str = "preserve_last_accepted"
+
+
+@dataclass(frozen=True)
+class BoundarySpecV1:
+    boundary_id: str
+    owner_layer: str
+    entry_function: str
+    allowed_success_outcome: str
+    allowed_typed_failures: tuple[str, ...]
+    unexpected_exception_policy: str = _UNEXPECTED_FAILURE_ID
+    durable_receipt_type: str = "FailureEnvelopeV1"
+    recovery_policy_id: str = "central.recovery.v1"
+    restart_policy_id: str = "journal.reconcile.v1"
+    authority_effect: str = "none_until_accepted_receipt"
+    fault_injection_ids: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
+class FailureBoundaryRegistryV1:
+    boundaries: tuple[BoundarySpecV1, ...]
+    failures: tuple[FailureSpecV1, ...]
+    schema_version: str = "FailureBoundaryRegistryV1"
+    _boundary_by_id: dict[str, BoundarySpecV1] = field(init=False, repr=False)
+    _failure_by_id: dict[str, FailureSpecV1] = field(init=False, repr=False)
+
+    def __post_init__(self) -> None:
+        boundary_by_id = {item.boundary_id: item for item in self.boundaries}
+        failure_by_id = {item.failure_id: item for item in self.failures}
+        if len(boundary_by_id) != len(self.boundaries):
+            raise ValueError("duplicate_boundary_id")
+        if len(failure_by_id) != len(self.failures):
+            raise ValueError("duplicate_failure_id")
+        if _UNEXPECTED_FAILURE_ID in failure_by_id:
+            raise ValueError("unexpected_failure_must_not_be_registered_as_known")
+        for boundary in self.boundaries:
+            if boundary.unexpected_exception_policy != _UNEXPECTED_FAILURE_ID:
+                raise ValueError("boundary_without_unexpected_handler")
+            if not boundary.fault_injection_ids:
+                raise ValueError("boundary_without_fault_injection")
+            if len(set(boundary.fault_injection_ids)) != len(
+                boundary.fault_injection_ids
+            ):
+                raise ValueError("duplicate_fault_injection_id")
+            unknown = set(boundary.allowed_typed_failures) - set(failure_by_id)
+            if unknown:
+                raise ValueError("boundary_references_unknown_failure")
+            expected_injections = {
+                f"{boundary.boundary_id}:{failure_id}"
+                for failure_id in boundary.allowed_typed_failures
+            } | {f"{boundary.boundary_id}:__unexpected__"}
+            if set(boundary.fault_injection_ids) != expected_injections:
+                raise ValueError("fault_injection_registry_not_mechanical")
+        object.__setattr__(self, "_boundary_by_id", boundary_by_id)
+        object.__setattr__(self, "_failure_by_id", failure_by_id)
+
+    def boundary(self, boundary_id: str) -> BoundarySpecV1:
+        try:
+            return self._boundary_by_id[boundary_id]
+        except KeyError as exc:
+            raise ValueError("unregistered_boundary") from exc
+
+    def failure(self, failure_id: str) -> FailureSpecV1:
+        try:
+            return self._failure_by_id[failure_id]
+        except KeyError as exc:
+            raise ValueError("unregistered_failure") from exc
+
+    @property
+    def boundary_without_unexpected_handler_count(self) -> int:
+        return sum(
+            item.unexpected_exception_policy != _UNEXPECTED_FAILURE_ID
+            for item in self.boundaries
+        )
+
+    @property
+    def registered_failure_without_executable_test_count(self) -> int:
+        covered = {
+            failure_id
+            for boundary in self.boundaries
+            for failure_id in boundary.allowed_typed_failures
+            if f"{boundary.boundary_id}:{failure_id}"
+            in boundary.fault_injection_ids
+        }
+        return len(set(self._failure_by_id) - covered)
+
+    @property
+    def boundary_without_unexpected_exception_test_count(self) -> int:
+        return sum(
+            f"{item.boundary_id}:__unexpected__" not in item.fault_injection_ids
+            for item in self.boundaries
+        )
+
+    @property
+    def identity_sha256(self) -> str:
+        return _sha256({
+            "schema_version": self.schema_version,
+            "boundaries": [asdict(item) for item in self.boundaries],
+            "failures": [asdict(item) for item in self.failures],
+        })
+
+
+def _fault_ids(boundary_id: str, failures: tuple[str, ...]) -> tuple[str, ...]:
+    return tuple(
+        [f"{boundary_id}:{failure_id}" for failure_id in failures]
+        + [f"{boundary_id}:__unexpected__"]
+    )
+
+
+def _boundary(
+    boundary_id: str,
+    owner_layer: str,
+    entry_function: str,
+    success: str,
+    *failures: str,
+) -> BoundarySpecV1:
+    failure_tuple = tuple(failures)
+    return BoundarySpecV1(
+        boundary_id=boundary_id,
+        owner_layer=owner_layer,
+        entry_function=entry_function,
+        allowed_success_outcome=success,
+        allowed_typed_failures=failure_tuple,
+        fault_injection_ids=_fault_ids(boundary_id, failure_tuple),
+    )
+
+
+_FAILURES = (
+    FailureSpecV1(
+        "control.binding_mismatch", "control.binding_mismatch", "control.binding",
+        RecoveryDecisionKind.FAIL_CLOSED, "restart.forbidden.v1",
+    ),
+    FailureSpecV1(
+        "workflow.invariant_rejected", "workflow.invariant_rejected",
+        "workflow.invariant", RecoveryDecisionKind.FAIL_CLOSED,
+        "restart.from_last_accepted.v1",
+    ),
+    FailureSpecV1(
+        "planning.business_incomplete", "planning.business_incomplete",
+        "business.incomplete", RecoveryDecisionKind.ONE_TYPED_REATTEMPT,
+        "restart.same_logical_stage.v1",
+    ),
+    FailureSpecV1(
+        "planning.reasoning_only_no_final",
+        "planning.reasoning_only_no_final", "reasoning.finalization",
+        RecoveryDecisionKind.ONE_TYPED_REATTEMPT,
+        "restart.same_logical_stage.v1",
+    ),
+    FailureSpecV1(
+        "stage.semantic_repair_required", "stage.semantic_repair_required",
+        "business.semantic", RecoveryDecisionKind.LOCAL_REPAIR,
+        "restart.same_logical_stage.v1",
+    ),
+    FailureSpecV1(
+        "stage.artifact_rejected", "stage.artifact_rejected", "business.artifact",
+        RecoveryDecisionKind.FAIL_CLOSED, "restart.from_last_accepted.v1",
+    ),
+    FailureSpecV1(
+        "provider.configuration_invalid", "provider.configuration_invalid",
+        "provider.configuration", RecoveryDecisionKind.FAIL_CLOSED,
+        "restart.after_configuration_change.v1",
+    ),
+    FailureSpecV1(
+        "provider.credential_unavailable", "provider.credential_unavailable",
+        "provider.credential", RecoveryDecisionKind.FAIL_CLOSED,
+        "restart.after_credential_readiness.v1",
+    ),
+    FailureSpecV1(
+        "provider.transport_pre_dispatch", "provider.transport_pre_dispatch",
+        "provider.transport", RecoveryDecisionKind.FAIL_CLOSED,
+        "restart.new_dispatch_token.v1",
+    ),
+    FailureSpecV1(
+        "provider.transport_ambiguous", "provider.transport_ambiguous",
+        "provider.transport", RecoveryDecisionKind.PAUSE_RECONCILIATION,
+        "restart.reconcile_dispatch.v1",
+    ),
+    FailureSpecV1(
+        "provider.capture_replay_available", "provider.capture_replay_available",
+        "provider.capture", RecoveryDecisionKind.LOCAL_REPLAY,
+        "restart.local_replay.v1",
+    ),
+    FailureSpecV1(
+        "contract.validation_rejected", "contract.validation_rejected",
+        "contract.validation", RecoveryDecisionKind.LOCAL_REPAIR,
+        "restart.same_logical_stage.v1",
+    ),
+    FailureSpecV1(
+        "checkpoint.persistence_failed", "checkpoint.persistence_failed",
+        "checkpoint.persistence", RecoveryDecisionKind.PAUSE_RECONCILIATION,
+        "restart.reconcile_checkpoint.v1",
+    ),
+    FailureSpecV1(
+        "authority.stale", "authority.stale", "authority.conflict",
+        RecoveryDecisionKind.PAUSE_RECONCILIATION,
+        "restart.reconcile_authority.v1",
+    ),
+    FailureSpecV1(
+        "authority.promotion_rejected", "authority.promotion_rejected",
+        "authority.validation", RecoveryDecisionKind.FAIL_CLOSED,
+        "restart.from_last_accepted.v1",
+    ),
+    FailureSpecV1(
+        "recovery.budget_exhausted", "recovery.budget_exhausted",
+        "recovery.budget", RecoveryDecisionKind.FAIL_CLOSED,
+        "restart.forbidden.v1",
+    ),
+)
+
+
+_BOUNDARIES = (
+    _boundary(
+        "FS.CONTROL.PREFLIGHT", "control", "FullShortExecutionKernel.preflight",
+        "PREDISPATCH_READY", "control.binding_mismatch",
+        "provider.configuration_invalid", "provider.credential_unavailable",
+    ),
+    _boundary(
+        "FS.WORKFLOW.SHORT", "workflow", "WorkflowService._short_pipeline",
+        "COMPLETED", "workflow.invariant_rejected", "stage.artifact_rejected",
+    ),
+    _boundary(
+        "FS.STAGE.PLANNING", "stage", "WorkflowService._plan_short_ir_first",
+        "STAGE_ACCEPTED", "planning.business_incomplete",
+        "planning.reasoning_only_no_final", "contract.validation_rejected",
+        "recovery.budget_exhausted",
+    ),
+    _boundary(
+        "FS.STAGE.DRAFT", "stage", "WorkflowService._draft_short_in_segments",
+        "STAGE_ACCEPTED", "stage.semantic_repair_required",
+        "stage.artifact_rejected", "contract.validation_rejected",
+    ),
+    _boundary(
+        "FS.STAGE.REVIEW", "stage", "WorkflowService._full_manuscript_review",
+        "STAGE_ACCEPTED", "stage.semantic_repair_required",
+        "stage.artifact_rejected", "contract.validation_rejected",
+    ),
+    _boundary(
+        "FS.STAGE.READER_REVIEW", "stage", "WorkflowService._reader_review",
+        "STAGE_ACCEPTED", "stage.semantic_repair_required",
+        "stage.artifact_rejected", "contract.validation_rejected",
+    ),
+    _boundary(
+        "FS.STAGE.POLISH", "stage", "WorkflowService._quality_polish",
+        "STAGE_ACCEPTED", "stage.semantic_repair_required",
+        "stage.artifact_rejected", "contract.validation_rejected",
+    ),
+    _boundary(
+        "FS.STAGE.FINAL_REVIEW", "stage", "WorkflowService._full_manuscript_review",
+        "STAGE_ACCEPTED", "stage.artifact_rejected",
+        "contract.validation_rejected",
+    ),
+    _boundary(
+        "FS.STAGE.MAINTENANCE", "stage",
+        "WorkflowService._close_short_maintenance_authority", "STAGE_ACCEPTED",
+        "stage.artifact_rejected", "checkpoint.persistence_failed",
+    ),
+    _boundary(
+        "FS.DISPATCH.MODEL", "dispatch", "ModelGateway.complete",
+        "RESPONSE_CAPTURED", "provider.configuration_invalid",
+        "provider.credential_unavailable", "provider.transport_pre_dispatch",
+        "provider.transport_ambiguous", "provider.capture_replay_available",
+    ),
+    _boundary(
+        "FS.CONTRACT.VALIDATE", "contract", "WorkflowService._stage",
+        "STAGE_ACCEPTED", "contract.validation_rejected",
+        "stage.artifact_rejected",
+    ),
+    _boundary(
+        "FS.RECOVERY.DECIDE", "recovery", "RecoveryDecisionEngineV1.decide",
+        "RECOVERY_DECIDED", "recovery.budget_exhausted",
+        "provider.transport_ambiguous",
+    ),
+    _boundary(
+        "FS.CHECKPOINT.TRANSITION", "checkpoint", "RunCheckpointStore.save",
+        "CHECKPOINT_COMMITTED", "checkpoint.persistence_failed",
+    ),
+    _boundary(
+        "FS.AUTHORITY.PROMOTE", "authority", "AuthorityGateV1.promote",
+        "AUTHORITY_COMMITTED", "authority.stale", "authority.promotion_rejected",
+        "checkpoint.persistence_failed",
+    ),
+    _boundary(
+        "FS.TERMINAL.VERIFY_COMMIT", "completion", "CompletionFinalizer.finalize",
+        "COMPLETED", "checkpoint.persistence_failed", "authority.stale",
+    ),
+)
+
+
+DEFAULT_FAILURE_BOUNDARY_REGISTRY_V1 = FailureBoundaryRegistryV1(
+    boundaries=_BOUNDARIES,
+    failures=_FAILURES,
+)
+
+
+def fault_case_keys_v1(
+    registry: FailureBoundaryRegistryV1,
+) -> tuple[tuple[str, str], ...]:
+    return tuple(sorted(
+        [
+            (boundary.boundary_id, failure_id)
+            for boundary in registry.boundaries
+            for failure_id in boundary.allowed_typed_failures
+        ]
+        + [
+            (boundary.boundary_id, "__unexpected__")
+            for boundary in registry.boundaries
+        ]
+    ))
+
+
+@dataclass(frozen=True)
+class FailureCauseV1:
+    ordinal: int
+    relation: str
+    source_exception_class: str
+    safe_class_id: str
+    parent_ordinal: int | None
+    cause_sha256: str
+
+
+def _safe_exception_class(exc: BaseException) -> str:
+    cls = type(exc)
+    if cls.__module__ in {"builtins", __name__}:
+        return cls.__name__
+    return "ExternalException"
+
+
+def _cause_chain(exc: BaseException) -> tuple[FailureCauseV1, ...]:
+    chain: list[FailureCauseV1] = []
+    seen: set[int] = set()
+    current: BaseException | None = exc
+    relation = "root"
+    parent: int | None = None
+    while current is not None and id(current) not in seen and len(chain) < 16:
+        seen.add(id(current))
+        ordinal = len(chain)
+        source_class = _safe_exception_class(current)
+        safe_class_id = (
+            source_class
+            if source_class != "ExternalException"
+            else "external:" + hashlib.sha256(
+                type(current).__name__.encode("utf-8", errors="replace")
+            ).hexdigest()
+        )
+        node_without_sha = {
+            "ordinal": ordinal,
+            "relation": relation,
+            "source_exception_class": source_class,
+            "safe_class_id": safe_class_id,
+            "parent_ordinal": parent,
+        }
+        chain.append(FailureCauseV1(
+            **node_without_sha,
+            cause_sha256=_sha256(node_without_sha),
+        ))
+        child = current.__cause__
+        if child is not None:
+            relation = "cause"
+        else:
+            child = current.__context__
+            relation = "context"
+        parent = ordinal
+        current = child
+    return tuple(chain)
+
+
+@dataclass(frozen=True)
+class FailureEnvelopeV1:
+    boundary_id: str
+    classification: FailureClassification
+    failure_code: str
+    failure_family: str
+    source_exception_class: str
+    ordered_causes: tuple[FailureCauseV1, ...]
+    recovery_decision: RecoveryDecisionKind
+    restart_policy_id: str
+    authority_effect: str
+    logical_stage_id: str | None
+    physical_attempt: int
+    capture_reference_sha256: str | None
+    current_state: ExecutionState
+    allowed_next_states: tuple[ExecutionState, ...]
+    raw_content_persisted: bool
+    failure_envelope_sha256: str
+
+
+class RegisteredBoundaryFailureV1(Exception):
+    def __init__(self, *, boundary_id: str, failure_id: str) -> None:
+        super().__init__(failure_id)
+        self.boundary_id = boundary_id
+        self.failure_id = failure_id
+
+
+class FullShortBoundaryFailureV1(Exception):
+    def __init__(self, envelope: FailureEnvelopeV1) -> None:
+        super().__init__(
+            f"full_short_boundary_failure:{envelope.boundary_id}:"
+            f"{envelope.failure_code}"
+        )
+        self.envelope = envelope
+
+
+@dataclass(frozen=True)
+class ExecutionTransitionV1:
+    sequence: int
+    transition_id: str
+    boundary_id: str
+    from_state: ExecutionState
+    to_state: ExecutionState
+    previous_record_sha256: str
+    record_sha256: str
+
+
+@dataclass(frozen=True)
+class DurableFailureReceiptV1:
+    sequence: int
+    boundary_id: str
+    failure_code: str
+    failure_envelope_sha256: str
+    previous_record_sha256: str
+    record_sha256: str
+
+
+_NORMAL_TRANSITIONS: dict[ExecutionState, frozenset[ExecutionState]] = {
+    ExecutionState.TEMPLATE_READY: frozenset({ExecutionState.AUTHORIZED}),
+    ExecutionState.AUTHORIZED: frozenset({ExecutionState.APPROVED}),
+    ExecutionState.APPROVED: frozenset({ExecutionState.PREDISPATCH_READY}),
+    ExecutionState.PREDISPATCH_READY: frozenset({
+        ExecutionState.DISPATCH_TOKEN_RESERVED,
+    }),
+    ExecutionState.DISPATCH_TOKEN_RESERVED: frozenset({ExecutionState.DISPATCHING}),
+    ExecutionState.DISPATCHING: frozenset({ExecutionState.RESPONSE_CAPTURED}),
+    ExecutionState.RESPONSE_CAPTURED: frozenset({ExecutionState.VALIDATING}),
+    ExecutionState.VALIDATING: frozenset({
+        ExecutionState.STAGE_REJECTED_RECOVERABLE,
+        ExecutionState.STAGE_ACCEPTED,
+    }),
+    ExecutionState.STAGE_REJECTED_RECOVERABLE: frozenset({
+        ExecutionState.PREDISPATCH_READY,
+        ExecutionState.VALIDATING,
+    }),
+    ExecutionState.STAGE_ACCEPTED: frozenset({
+        ExecutionState.PREDISPATCH_READY,
+        ExecutionState.COMPLETED,
+    }),
+    ExecutionState.PAUSED_RECONCILIATION: frozenset(),
+    ExecutionState.TERMINAL_FAILED: frozenset(),
+    ExecutionState.COMPLETED: frozenset(),
+}
+
+
+class DurableExecutionJournalV1:
+    schema_version = "DurableExecutionJournalV1"
+
+    def __init__(
+        self,
+        path: Path,
+        *,
+        execution_id: str,
+        initial_state: ExecutionState,
+        state: ExecutionState,
+        transitions: list[ExecutionTransitionV1],
+        failure_receipts: list[DurableFailureReceiptV1],
+    ) -> None:
+        self.path = path
+        self.execution_id = execution_id
+        self.initial_state = initial_state
+        self.state = state
+        self.transitions = transitions
+        self.failure_receipts = failure_receipts
+
+    @classmethod
+    def create(
+        cls,
+        path: Path,
+        *,
+        execution_id: str,
+        initial_state: ExecutionState,
+    ) -> DurableExecutionJournalV1:
+        if path.exists():
+            raise FileExistsError("execution_journal_already_exists")
+        journal = cls(
+            path,
+            execution_id=execution_id,
+            initial_state=initial_state,
+            state=initial_state,
+            transitions=[],
+            failure_receipts=[],
+        )
+        journal._persist()
+        return journal
+
+    @classmethod
+    def open(cls, path: Path) -> DurableExecutionJournalV1:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        if payload.get("schema_version") != cls.schema_version:
+            raise ValueError("journal_schema_invalid")
+        journal = cls(
+            path,
+            execution_id=str(payload["execution_id"]),
+            initial_state=ExecutionState(payload["initial_state"]),
+            state=ExecutionState(payload["state"]),
+            transitions=[
+                ExecutionTransitionV1(
+                    sequence=int(item["sequence"]),
+                    transition_id=str(item["transition_id"]),
+                    boundary_id=str(item["boundary_id"]),
+                    from_state=ExecutionState(item["from_state"]),
+                    to_state=ExecutionState(item["to_state"]),
+                    previous_record_sha256=str(item["previous_record_sha256"]),
+                    record_sha256=str(item["record_sha256"]),
+                )
+                for item in payload.get("transitions", [])
+            ],
+            failure_receipts=[
+                DurableFailureReceiptV1(
+                    sequence=int(item["sequence"]),
+                    boundary_id=str(item["boundary_id"]),
+                    failure_code=str(item["failure_code"]),
+                    failure_envelope_sha256=str(item["failure_envelope_sha256"]),
+                    previous_record_sha256=str(item["previous_record_sha256"]),
+                    record_sha256=str(item["record_sha256"]),
+                )
+                for item in payload.get("failure_receipts", [])
+            ],
+        )
+        journal._verify()
+        return journal
+
+    def _genesis_hash(self) -> str:
+        return _sha256({
+            "schema_version": self.schema_version,
+            "execution_id": self.execution_id,
+            "initial_state": self.initial_state,
+        })
+
+    def _records(self) -> list[ExecutionTransitionV1 | DurableFailureReceiptV1]:
+        return sorted(
+            [*self.transitions, *self.failure_receipts],
+            key=lambda item: item.sequence,
+        )
+
+    def _last_hash(self) -> str:
+        records = self._records()
+        return records[-1].record_sha256 if records else self._genesis_hash()
+
+    def _next_sequence(self) -> int:
+        return len(self.transitions) + len(self.failure_receipts) + 1
+
+    def _verify(self) -> None:
+        previous = self._genesis_hash()
+        expected_sequence = 1
+        derived_state = self.initial_state
+        for record in self._records():
+            if record.sequence != expected_sequence:
+                raise ValueError("journal_hash_chain_invalid")
+            data = asdict(record)
+            actual_hash = data.pop("record_sha256")
+            if data["previous_record_sha256"] != previous:
+                raise ValueError("journal_hash_chain_invalid")
+            if _sha256(data) != actual_hash:
+                raise ValueError("journal_hash_chain_invalid")
+            if isinstance(record, ExecutionTransitionV1):
+                if record.from_state != derived_state:
+                    raise ValueError("journal_state_projection_invalid")
+                if not self._transition_allowed(record.from_state, record.to_state):
+                    raise ValueError("journal_state_projection_invalid")
+                derived_state = record.to_state
+            previous = actual_hash
+            expected_sequence += 1
+        if derived_state != self.state:
+            raise ValueError("journal_state_projection_invalid")
+
+    @staticmethod
+    def _transition_allowed(
+        from_state: ExecutionState,
+        to_state: ExecutionState,
+    ) -> bool:
+        if to_state in {
+            ExecutionState.TERMINAL_FAILED,
+            ExecutionState.PAUSED_RECONCILIATION,
+            ExecutionState.STAGE_REJECTED_RECOVERABLE,
+        } and from_state not in {
+            ExecutionState.TERMINAL_FAILED,
+            ExecutionState.COMPLETED,
+        }:
+            return True
+        return to_state in _NORMAL_TRANSITIONS[from_state]
+
+    def _persist(self) -> None:
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        payload = {
+            "schema_version": self.schema_version,
+            "execution_id": self.execution_id,
+            "initial_state": self.initial_state,
+            "state": self.state,
+            "transitions": [asdict(item) for item in self.transitions],
+            "failure_receipts": [asdict(item) for item in self.failure_receipts],
+        }
+        temp_path = self.path.with_name(self.path.name + ".tmp")
+        with temp_path.open("wb") as handle:
+            handle.write(_canonical_json_bytes(payload))
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(temp_path, self.path)
+
+    def transition(
+        self,
+        to_state: ExecutionState,
+        *,
+        transition_id: str,
+        boundary_id: str,
+    ) -> ExecutionTransitionV1:
+        if not self._transition_allowed(self.state, to_state):
+            raise ValueError("illegal_execution_transition")
+        data: dict[str, Any] = {
+            "sequence": self._next_sequence(),
+            "transition_id": transition_id,
+            "boundary_id": boundary_id,
+            "from_state": self.state,
+            "to_state": to_state,
+            "previous_record_sha256": self._last_hash(),
+        }
+        transition = ExecutionTransitionV1(
+            **data,
+            record_sha256=_sha256(data),
+        )
+        self.transitions.append(transition)
+        self.state = to_state
+        self._persist()
+        return transition
+
+    def append_failure(
+        self,
+        envelope: FailureEnvelopeV1,
+    ) -> DurableFailureReceiptV1:
+        data = {
+            "sequence": self._next_sequence(),
+            "boundary_id": envelope.boundary_id,
+            "failure_code": envelope.failure_code,
+            "failure_envelope_sha256": envelope.failure_envelope_sha256,
+            "previous_record_sha256": self._last_hash(),
+        }
+        receipt = DurableFailureReceiptV1(
+            **data,
+            record_sha256=_sha256(data),
+        )
+        self.failure_receipts.append(receipt)
+        self._persist()
+        return receipt
+
+
+@dataclass(frozen=True)
+class RecoveryDecisionInputV1:
+    boundary_id: str
+    failure_id: str
+    logical_stage_id: str
+    physical_attempts_consumed: int
+    slot_2_owner: str | None
+    capture_state: str
+    exact_replay_consumed: bool
+    authority_matches: bool
+
+
+@dataclass(frozen=True)
+class RecoveryDecisionV1:
+    decision: RecoveryDecisionKind
+    physical_attempt_delta: int
+    slot_2_owner: str | None
+    policy_id: str
+
+
+class RecoveryDecisionEngineV1:
+    def __init__(self, registry: FailureBoundaryRegistryV1) -> None:
+        self.registry = registry
+
+    def decide(self, value: RecoveryDecisionInputV1) -> RecoveryDecisionV1:
+        boundary = self.registry.boundary(value.boundary_id)
+        if not value.authority_matches:
+            return RecoveryDecisionV1(
+                RecoveryDecisionKind.PAUSE_RECONCILIATION, 0,
+                value.slot_2_owner, "authority.reconcile.v1",
+            )
+        if value.capture_state == "ambiguous":
+            return RecoveryDecisionV1(
+                RecoveryDecisionKind.PAUSE_RECONCILIATION, 0,
+                value.slot_2_owner, "capture.reconcile.v1",
+            )
+        if value.failure_id == _UNEXPECTED_FAILURE_ID:
+            return RecoveryDecisionV1(
+                RecoveryDecisionKind.FAIL_CLOSED, 0,
+                value.slot_2_owner, "unexpected.fail_closed.v1",
+            )
+        if value.failure_id not in boundary.allowed_typed_failures:
+            return RecoveryDecisionV1(
+                RecoveryDecisionKind.FAIL_CLOSED, 0,
+                value.slot_2_owner, "unregistered.fail_closed.v1",
+            )
+        spec = self.registry.failure(value.failure_id)
+        if spec.recovery_decision == RecoveryDecisionKind.LOCAL_REPLAY:
+            if value.capture_state != "complete_valid" or value.exact_replay_consumed:
+                return RecoveryDecisionV1(
+                    RecoveryDecisionKind.FAIL_CLOSED, 0,
+                    value.slot_2_owner, "local_replay.exhausted.v1",
+                )
+            return RecoveryDecisionV1(
+                RecoveryDecisionKind.LOCAL_REPLAY, 0,
+                value.slot_2_owner, "exact_local_replay.v1",
+            )
+        if spec.recovery_decision == RecoveryDecisionKind.ONE_TYPED_REATTEMPT:
+            if value.physical_attempts_consumed != 1 or value.slot_2_owner is not None:
+                return RecoveryDecisionV1(
+                    RecoveryDecisionKind.FAIL_CLOSED, 0,
+                    value.slot_2_owner, "physical_attempt_budget_exhausted.v1",
+                )
+            return RecoveryDecisionV1(
+                RecoveryDecisionKind.ONE_TYPED_REATTEMPT, 1,
+                value.failure_id, "shared_slot_2.v1",
+            )
+        if spec.recovery_decision == RecoveryDecisionKind.LOCAL_REPAIR:
+            return RecoveryDecisionV1(
+                RecoveryDecisionKind.LOCAL_REPAIR, 0,
+                value.slot_2_owner, "local_repair.v1",
+            )
+        return RecoveryDecisionV1(
+            spec.recovery_decision, 0, value.slot_2_owner,
+            "registry." + spec.recovery_decision.value.lower() + ".v1",
+        )
+
+
+class FullShortExecutionKernel:
+    def __init__(
+        self,
+        *,
+        registry: FailureBoundaryRegistryV1,
+        journal: DurableExecutionJournalV1,
+    ) -> None:
+        self.registry = registry
+        self.journal = journal
+
+    async def execute_boundary(
+        self,
+        boundary_id: str,
+        operation: Callable[[], Awaitable[_T] | _T],
+        *,
+        logical_stage_id: str | None = None,
+        physical_attempt: int = 1,
+        capture_reference_sha256: str | None = None,
+    ) -> _T:
+        boundary = self.registry.boundary(boundary_id)
+        try:
+            result = operation()
+            if inspect.isawaitable(result):
+                result = await result
+            return result
+        except FullShortBoundaryFailureV1:
+            raise
+        except BaseException as exc:
+            is_registered = (
+                isinstance(exc, RegisteredBoundaryFailureV1)
+                and exc.boundary_id == boundary_id
+                and exc.failure_id in boundary.allowed_typed_failures
+            )
+            if is_registered:
+                spec = self.registry.failure(exc.failure_id)
+                classification = FailureClassification.KNOWN
+                failure_code = spec.failure_code
+                failure_family = spec.failure_family
+                recovery_decision = spec.recovery_decision
+                restart_policy_id = spec.restart_policy_id
+                authority_effect = spec.authority_effect
+            else:
+                classification = FailureClassification.UNEXPECTED
+                failure_code = _UNEXPECTED_FAILURE_ID
+                failure_family = "internal.unexpected"
+                recovery_decision = RecoveryDecisionKind.FAIL_CLOSED
+                restart_policy_id = "restart.forbidden.v1"
+                authority_effect = "preserve_last_accepted"
+            causes = _cause_chain(exc)
+            next_state = {
+                RecoveryDecisionKind.PAUSE_RECONCILIATION:
+                    ExecutionState.PAUSED_RECONCILIATION,
+                RecoveryDecisionKind.LOCAL_REPLAY:
+                    ExecutionState.STAGE_REJECTED_RECOVERABLE,
+                RecoveryDecisionKind.ONE_TYPED_REATTEMPT:
+                    ExecutionState.STAGE_REJECTED_RECOVERABLE,
+                RecoveryDecisionKind.LOCAL_REPAIR:
+                    ExecutionState.STAGE_REJECTED_RECOVERABLE,
+                RecoveryDecisionKind.FAIL_CLOSED:
+                    ExecutionState.TERMINAL_FAILED,
+            }[recovery_decision]
+            envelope_without_sha = {
+                "boundary_id": boundary_id,
+                "classification": classification,
+                "failure_code": failure_code,
+                "failure_family": failure_family,
+                "source_exception_class": _safe_exception_class(exc),
+                "ordered_causes": causes,
+                "recovery_decision": recovery_decision,
+                "restart_policy_id": restart_policy_id,
+                "authority_effect": authority_effect,
+                "logical_stage_id": logical_stage_id,
+                "physical_attempt": physical_attempt,
+                "capture_reference_sha256": capture_reference_sha256,
+                "current_state": self.journal.state,
+                "allowed_next_states": (next_state,),
+                "raw_content_persisted": False,
+            }
+            envelope = FailureEnvelopeV1(
+                **envelope_without_sha,
+                failure_envelope_sha256=_sha256(envelope_without_sha),
+            )
+            self.journal.append_failure(envelope)
+            self.journal.transition(
+                next_state,
+                transition_id=f"failure:{envelope.failure_envelope_sha256}",
+                boundary_id=boundary_id,
+            )
+            raise FullShortBoundaryFailureV1(envelope) from None
+
+
+__all__ = [
+    "DEFAULT_FAILURE_BOUNDARY_REGISTRY_V1",
+    "BoundarySpecV1",
+    "DurableExecutionJournalV1",
+    "ExecutionState",
+    "FailureBoundaryRegistryV1",
+    "FailureClassification",
+    "FailureEnvelopeV1",
+    "FullShortBoundaryFailureV1",
+    "FullShortExecutionKernel",
+    "RecoveryDecisionEngineV1",
+    "RecoveryDecisionInputV1",
+    "RecoveryDecisionKind",
+    "RecoveryDecisionV1",
+    "RegisteredBoundaryFailureV1",
+    "fault_case_keys_v1",
+]
