@@ -29,6 +29,7 @@ from typing import Any, Callable, Iterator, Mapping
 from urllib.parse import urlsplit
 
 from novel_flywheel.domain.models import ModelRequest
+from novel_flywheel.provider_payloads import anthropic_payload_v1
 from novel_flywheel.runtime_fingerprint_build import (
     CANONICALIZATION_VERSION,
     canonical_json_bytes,
@@ -49,7 +50,7 @@ LEDGER_SCHEMA = "FullShortDispatchLedgerV1"
 COMPLETION_SCHEMA = "FullShortCompletionReceiptV1"
 AUTHORIZATION_SCHEMA = "FullShortCanonicalAuthorizationV1"
 PREFLIGHT_SCHEMA = "FullShortAuthorizationPreflightReceiptV1"
-POLICY_VERSION = "full-short-trustworthy-execution-v2"
+POLICY_VERSION = "full-short-trustworthy-execution-v3"
 SHORT_COMPLETION_GOAL = "SHORT_WORKFLOW_COMPLETED_AND_FINAL_REVIEW_ACCEPTED"
 REQUIRED_FINAL_BINDING_KEYS = frozenset({
     "manuscript_sha256",
@@ -148,6 +149,36 @@ TRANSPORT_RECOVERY_POLICY_V1 = {
 TRANSPORT_RECOVERY_POLICY_SHA256 = hashlib.sha256(
     canonical_json_bytes(TRANSPORT_RECOVERY_POLICY_V1),
 ).hexdigest()
+LOGICAL_STAGE_RECOVERY_POLICY_V1 = {
+    "schema": "FullShortLogicalStageRecoveryPolicyV1",
+    "version": 1,
+    "identity": "TWO_SLOT_MUTUALLY_EXCLUSIVE_TYPED_RECOVERY",
+    "normal_planning_reasoning_policy": "CURRENT_PROVIDER_DEFAULT",
+    "planning_finalization_recovery_stage_role": (
+        "PLANNING_FINAL_ARTIFACT_RECOVERY"
+    ),
+    "planning_finalization_recovery_reasoning_policy": (
+        "DEEPSEEK_OFFICIAL_ANTHROPIC_REASONING_EFFORT_NONE"
+    ),
+    "reasoning_only_failure_code": (
+        "reasoning_only_final_artifact_unavailable"
+    ),
+    "max_physical_attempts_per_logical_stage": 2,
+    "max_reasoning_only_recovery_dispatches_per_logical_stage": 1,
+    "recovery_output_tokens": 3724,
+    "slot_2_family_selection": "FIRST_TYPED_REJECTION_OWNS_SLOT",
+    "recovery_family_composition_allowed": False,
+    "same_route_required": True,
+    "route_switch_allowed": False,
+    "fallback_allowed": False,
+    "same_frozen_authority_required": True,
+    "same_validation_gates_required": True,
+    "attempt_2_failure_action": "TERMINAL_FAIL_CLOSED",
+    "restart_network_redispatch_allowed": False,
+}
+LOGICAL_STAGE_RECOVERY_POLICY_SHA256 = hashlib.sha256(
+    canonical_json_bytes(LOGICAL_STAGE_RECOVERY_POLICY_V1),
+).hexdigest()
 _LOGICAL_STAGE_PLAN_KEYS = frozenset({
     "ordinal", "stage_id", "logical_stage_base_id", "logical_stage_id",
     "role", "contract_name", "contract_version", "contract_schema_sha256",
@@ -201,41 +232,7 @@ def _expected_provider_payload_v1(
     """Project one typed model request into the exact adapter wire payload."""
 
     if protocol == "anthropic":
-        system = "\n\n".join(
-            message.content for message in request.messages
-            if message.role == "system"
-        )
-        payload: dict[str, Any] = {
-            "model": request.model,
-            "messages": [
-                message.model_dump() for message in request.messages
-                if message.role != "system"
-            ],
-            "max_tokens": request.max_output_tokens or 8192,
-        }
-        if system:
-            payload["system"] = system
-        if request.temperature is not None:
-            payload["temperature"] = request.temperature
-        if request.response_schema is not None:
-            schema = request.response_schema.get(
-                "schema", request.response_schema,
-            )
-            payload["output_config"] = {
-                "format": {"type": "json_schema", "schema": schema},
-            }
-        if request.tools:
-            payload["tools"] = [{
-                "name": tool.name,
-                "description": tool.description,
-                "input_schema": tool.input_schema,
-            } for tool in request.tools]
-        if request.required_tool:
-            payload["tool_choice"] = {
-                "type": "tool", "name": request.required_tool,
-            }
-        payload["stream"] = True
-        return payload
+        return anthropic_payload_v1(request)
     if protocol == "openai-chat":
         payload = {
             "model": request.model,
@@ -447,6 +444,9 @@ class FullShortExecutionPolicyV1:
     maximum_elapsed_seconds: int
     response_capture_policy_sha256: str = RESPONSE_CAPTURE_POLICY_SHA256
     monetary_cost_cap_state: str = "UNKNOWN_NOT_SEALED"
+    logical_stage_recovery_policy_sha256: str = (
+        LOGICAL_STAGE_RECOVERY_POLICY_SHA256
+    )
 
     def document(self) -> dict[str, Any]:
         logical_stage_plan = validate_full_short_logical_stage_plan_v1(
@@ -485,6 +485,17 @@ class FullShortExecutionPolicyV1:
                 TRANSPORT_RECOVERY_POLICY_SHA256
             ),
             "transport_recovery_policy_identity": "EXACT_REPLAY_ONLY",
+            "logical_stage_recovery_policy": deepcopy(
+                LOGICAL_STAGE_RECOVERY_POLICY_V1,
+            ),
+            "logical_stage_recovery_policy_sha256": (
+                self.logical_stage_recovery_policy_sha256
+            ),
+            "logical_stage_recovery_policy_identity": (
+                "TWO_SLOT_MUTUALLY_EXCLUSIVE_TYPED_RECOVERY"
+            ),
+            "max_physical_attempts_per_logical_stage": 2,
+            "max_reasoning_only_recovery_dispatches_per_logical_stage": 1,
             "expected_stage_calls": self.expected_stage_calls,
             "hard_max_provider_requests": self.hard_max_provider_requests,
             "hard_max_http_posts": self.hard_max_http_posts,
@@ -568,6 +579,15 @@ def render_full_short_canonical_authorization_v1(
         == "EXACT_REPLAY_ONLY",
         "AUTHORIZATION_TRANSPORT_RECOVERY_POLICY_MISMATCH",
     )
+    _require(
+        public_bindings.get("logical_stage_recovery_policy")
+        == validated["logical_stage_recovery_policy"]
+        and public_bindings.get("logical_stage_recovery_policy_sha256")
+        == validated["logical_stage_recovery_policy_sha256"]
+        and public_bindings.get("logical_stage_recovery_policy_identity")
+        == "TWO_SLOT_MUTUALLY_EXCLUSIVE_TYPED_RECOVERY",
+        "AUTHORIZATION_LOGICAL_STAGE_RECOVERY_POLICY_MISMATCH",
+    )
     body = {
         "schema": AUTHORIZATION_SCHEMA,
         "version": 1,
@@ -646,6 +666,12 @@ def validate_full_short_preflight_v1(
             "transport_recovery_policy_sha256"
         ],
         "transport_recovery_policy_identity": "EXACT_REPLAY_ONLY",
+        "logical_stage_recovery_policy_sha256": validated[
+            "logical_stage_recovery_policy_sha256"
+        ],
+        "logical_stage_recovery_policy_identity": (
+            "TWO_SLOT_MUTUALLY_EXCLUSIVE_TYPED_RECOVERY"
+        ),
         "store_root_sha256": validated["store_root_sha256"],
     }
     for field, expected in required_equal.items():
@@ -674,6 +700,12 @@ def validate_full_short_preflight_v1(
             "transport_recovery_policy_sha256"
         ],
         "transport_recovery_policy_identity": "EXACT_REPLAY_ONLY",
+        "logical_stage_recovery_policy_sha256": validated[
+            "logical_stage_recovery_policy_sha256"
+        ],
+        "logical_stage_recovery_policy_identity": (
+            "TWO_SLOT_MUTUALLY_EXCLUSIVE_TYPED_RECOVERY"
+        ),
         "authorization_text_sha256": authorization_text_sha256,
         "binding_status": "exact",
         "external_actions_enabled": bool(external_actions_enabled),
@@ -705,6 +737,7 @@ def validate_policy_v1(value: Mapping[str, Any]) -> dict[str, Any]:
         "destination_manifest_sha256", "egress_policy_sha256",
         "response_capture_policy_sha256",
         "logical_stage_plan_sha256", "transport_recovery_policy_sha256",
+        "logical_stage_recovery_policy_sha256",
         "store_root_sha256",
     ):
         _require(_HEX64.fullmatch(str(body.get(field))) is not None, f"{field.upper()}_INVALID")
@@ -730,11 +763,22 @@ def validate_policy_v1(value: Mapping[str, Any]) -> dict[str, Any]:
         == "EXACT_REPLAY_ONLY",
         "TRANSPORT_RECOVERY_POLICY_NOT_EXACT_REPLAY_ONLY",
     )
+    _require(
+        body.get("logical_stage_recovery_policy")
+        == LOGICAL_STAGE_RECOVERY_POLICY_V1
+        and body["logical_stage_recovery_policy_sha256"]
+        == LOGICAL_STAGE_RECOVERY_POLICY_SHA256
+        and body.get("logical_stage_recovery_policy_identity")
+        == "TWO_SLOT_MUTUALLY_EXCLUSIVE_TYPED_RECOVERY",
+        "LOGICAL_STAGE_RECOVERY_POLICY_INVALID",
+    )
     for field in (
         "expected_stage_calls", "hard_max_provider_requests",
         "hard_max_http_posts", "hard_max_network_attempts",
         "per_call_output_token_hard_cap",
         "total_output_token_hard_cap", "maximum_elapsed_seconds",
+        "max_physical_attempts_per_logical_stage",
+        "max_reasoning_only_recovery_dispatches_per_logical_stage",
     ):
         _require(type(body.get(field)) is int and int(body[field]) > 0, "CAPS_INVALID")
     _require(
@@ -743,12 +787,25 @@ def validate_policy_v1(value: Mapping[str, Any]) -> dict[str, Any]:
         "CAPS_INVALID",
     )
     _require(
+        body["max_physical_attempts_per_logical_stage"] == 2
+        and body[
+            "max_reasoning_only_recovery_dispatches_per_logical_stage"
+        ] == 1,
+        "LOGICAL_STAGE_RECOVERY_CAP_INVALID",
+    )
+    _require(
         body["expected_stage_calls"] == len(logical_stage_plan)
         and max(item["requested_output_tokens"] for item in logical_stage_plan)
         <= body["per_call_output_token_hard_cap"]
         and sum(item["requested_output_tokens"] for item in logical_stage_plan)
+        + int(LOGICAL_STAGE_RECOVERY_POLICY_V1["recovery_output_tokens"])
         <= body["total_output_token_hard_cap"],
         "LOGICAL_STAGE_PLAN_CAPS_MISMATCH",
+    )
+    _require(
+        body["hard_max_provider_requests"]
+        >= body["expected_stage_calls"] + 1,
+        "LOGICAL_STAGE_RECOVERY_PHYSICAL_RESERVE_MISSING",
     )
     _require(body.get("single_use") is True, "POLICY_NOT_SINGLE_USE")
     _require(body.get("transport_retry_allowed") is False, "TRANSPORT_RETRY_ENABLED")
@@ -869,6 +926,9 @@ class FullShortDurableExecutionStoreV1:
                 "transport_recovery_policy_sha256"
             ],
             "transport_recovery_policy_identity": "EXACT_REPLAY_ONLY",
+            "logical_stage_recovery_policy_sha256": validated[
+                "logical_stage_recovery_policy_sha256"
+            ],
             "execution_head": validated["execution_head"],
             "store_root_sha256": self.store_root_sha256,
             "external_actions_enabled": external_actions_enabled,
@@ -905,6 +965,9 @@ class FullShortDurableExecutionStoreV1:
                 "transport_recovery_policy_sha256"
             ],
             "transport_recovery_policy_identity": "EXACT_REPLAY_ONLY",
+            "logical_stage_recovery_policy_sha256": validated[
+                "logical_stage_recovery_policy_sha256"
+            ],
             "execution_head": validated["execution_head"],
             "store_root_sha256": self.store_root_sha256,
             "external_actions_enabled": external_actions_enabled,
@@ -942,6 +1005,9 @@ class FullShortDurableExecutionStoreV1:
                 "transport_recovery_policy_sha256"
             ],
             "transport_recovery_policy_identity": "EXACT_REPLAY_ONLY",
+            "logical_stage_recovery_policy_sha256": validated[
+                "logical_stage_recovery_policy_sha256"
+            ],
             "execution_head": validated["execution_head"],
             "store_root_sha256": self.store_root_sha256,
             "external_actions_enabled": external_actions_enabled,
@@ -975,6 +1041,9 @@ class FullShortDurableExecutionStoreV1:
                 "transport_recovery_policy_sha256"
             ],
             "transport_recovery_policy_identity": "EXACT_REPLAY_ONLY",
+            "logical_stage_recovery_policy_sha256": validated[
+                "logical_stage_recovery_policy_sha256"
+            ],
             "store_root_sha256": self.store_root_sha256,
             "state": "READY", "attempts": [], "completed_stage_receipts": [],
             "created_at": _now(), "updated_at": _now(),
@@ -1072,6 +1141,11 @@ class FullShortDurableExecutionStoreV1:
                 == "EXACT_REPLAY_ONLY",
                 "EXECUTION_CHAIN_TRANSPORT_RECOVERY_POLICY_MISMATCH",
             )
+            _require(
+                value.get("logical_stage_recovery_policy_sha256")
+                == validated["logical_stage_recovery_policy_sha256"],
+                "EXECUTION_CHAIN_LOGICAL_RECOVERY_POLICY_MISMATCH",
+            )
         _require(
             approval.get("permission_sha256") == permission["permission_sha256"],
             "APPROVAL_PERMISSION_MISMATCH",
@@ -1122,6 +1196,11 @@ class FullShortDurableExecutionStoreV1:
                 and nonce.get("transport_recovery_policy_identity")
                 == "EXACT_REPLAY_ONLY",
                 "EXECUTION_CHAIN_PLAN_OR_RECOVERY_POLICY_MISMATCH",
+            )
+            _require(
+                nonce.get("logical_stage_recovery_policy_sha256")
+                == validated["logical_stage_recovery_policy_sha256"],
+                "EXECUTION_CHAIN_LOGICAL_RECOVERY_POLICY_MISMATCH",
             )
             _require(
                 nonce.get("observer_session_sha256") is None,
@@ -1191,6 +1270,11 @@ class FullShortDurableExecutionStoreV1:
                     == "EXACT_REPLAY_ONLY",
                     "EXECUTION_CHAIN_MISMATCH",
                 )
+                _require(
+                    value.get("logical_stage_recovery_policy_sha256")
+                    == validated["logical_stage_recovery_policy_sha256"],
+                    "EXECUTION_CHAIN_LOGICAL_RECOVERY_POLICY_MISMATCH",
+                )
             _require(
                 permission.get("state") == "ACTIVE"
                 and approval.get("state") == "SIGNED"
@@ -1215,6 +1299,39 @@ class FullShortDurableExecutionStoreV1:
                 len(attempts) < validated["hard_max_provider_requests"],
                 "PROVIDER_REQUEST_CAP_EXHAUSTED",
             )
+            logical_stage_id = str(attempt.get("logical_stage_id") or "")
+            prior_logical_attempts = [
+                item for item in attempts
+                if item.get("logical_stage_id", item.get("stage"))
+                == logical_stage_id
+            ]
+            _require(
+                len(prior_logical_attempts)
+                < validated["max_physical_attempts_per_logical_stage"],
+                "LOGICAL_STAGE_PHYSICAL_ATTEMPT_CAP_EXHAUSTED",
+            )
+            _require(
+                str(attempt.get("physical_attempt_id") or "")
+                not in {
+                    str(item.get("physical_attempt_id") or "")
+                    for item in attempts
+                },
+                "DUPLICATE_PHYSICAL_ATTEMPT_ID",
+            )
+            if attempt.get("stage_role") == (
+                "PLANNING_FINAL_ARTIFACT_RECOVERY"
+            ):
+                _require(
+                    sum(
+                        1 for item in prior_logical_attempts
+                        if item.get("stage_role")
+                        == "PLANNING_FINAL_ARTIFACT_RECOVERY"
+                    )
+                    < validated[
+                        "max_reasoning_only_recovery_dispatches_per_logical_stage"
+                    ],
+                    "REASONING_ONLY_RECOVERY_CAP_EXHAUSTED",
+                )
             if attempts:
                 _require(
                     attempts[-1].get("state") in _CLOSED_LOCAL_ATTEMPT_STATES
@@ -1372,6 +1489,11 @@ class FullShortDurableExecutionStoreV1:
                     == "EXACT_REPLAY_ONLY",
                     "EXECUTION_CHAIN_MISMATCH",
                 )
+                _require(
+                    chain_value.get("logical_stage_recovery_policy_sha256")
+                    == validated["logical_stage_recovery_policy_sha256"],
+                    "EXECUTION_CHAIN_LOGICAL_RECOVERY_POLICY_MISMATCH",
+                )
             _require(
                 approval.get("permission_sha256") == permission.get("permission_sha256")
                 and nonce.get("signed_approval_sha256")
@@ -1508,6 +1630,7 @@ class FullShortDispatchLedgerObserverV1:
         contract_attempt_index: int | None = None,
         contract_route: str | None = None,
         contract_route_attempt: int | None = None,
+        stage_role: str = "NORMAL",
     ) -> None:
         """Bind the exact local stage/contract before any route resolution."""
 
@@ -1520,6 +1643,7 @@ class FullShortDispatchLedgerObserverV1:
                  "CAPTURE_CONTRACT_SCHEMA_INVALID")
         _require(type(contract_runtime_input_required) is bool,
                  "CAPTURE_CONTRACT_INPUT_POLICY_INVALID")
+        _require(_ID.fullmatch(stage_role) is not None, "STAGE_ROLE_INVALID")
         contract_identity = (
             contract_attempt_index, contract_route, contract_route_attempt,
         )
@@ -1548,6 +1672,7 @@ class FullShortDispatchLedgerObserverV1:
             "contract_route": contract_route,
             "contract_route_attempt": contract_route_attempt,
             "capture_enforcement_required": True,
+            "stage_role": stage_role,
         }
         self._validate_pending_logical_stage_plan()
 
@@ -1655,6 +1780,11 @@ class FullShortDispatchLedgerObserverV1:
             int(request.max_output_tokens or 8192)
             == expected_stage["requested_output_tokens"],
             "LOGICAL_STAGE_PLAN_OUTPUT_CAP_DRIFT",
+        )
+        _require(
+            request.stage_role
+            == self.pending_stage_context.get("stage_role", "NORMAL"),
+            "MODEL_REQUEST_STAGE_ROLE_DRIFT",
         )
         _require(protocol == route.get("protocol"), "EGRESS_PROTOCOL_DRIFT")
         expected = _expected_provider_payload_v1(
@@ -1784,6 +1914,9 @@ class FullShortDispatchLedgerObserverV1:
             )
         else:
             _require(
+                len(prior_logical_attempts)
+                < self.policy["max_physical_attempts_per_logical_stage"]
+                and
                 prior_logical_attempts[-1].get("state")
                 == "LOCAL_ATTEMPT_REJECTED"
                 and not any(
@@ -1792,6 +1925,28 @@ class FullShortDispatchLedgerObserverV1:
                 ),
                 "LOGICAL_STAGE_REDISPATCH_NOT_AUTHORIZED",
             )
+            _require(
+                sum(
+                    1 for item in prior_logical_attempts
+                    if item.get("stage_role")
+                    == "PLANNING_FINAL_ARTIFACT_RECOVERY"
+                )
+                < self.policy[
+                    "max_reasoning_only_recovery_dispatches_per_logical_stage"
+                ],
+                "REASONING_ONLY_RECOVERY_CAP_EXHAUSTED",
+            )
+        stage_role = str(
+            self.pending_stage_context.get("stage_role") or "NORMAL"
+        )
+        physical_attempt_id = "physical-" + domain_sha256(
+            "novel-flywheel-full-short-physical-attempt-id-v1",
+            {
+                "execution_id": self.execution_id,
+                "logical_stage_id": logical_stage_id,
+                "ordinal": ordinal,
+            },
+        )[:32]
         attempt = {
             "ordinal": ordinal,
             "session_id": self.session_id,
@@ -1819,6 +1974,15 @@ class FullShortDispatchLedgerObserverV1:
                 "logical_stage_base_id"
             ],
             "logical_stage_id": logical_stage_id,
+            "physical_attempt_id": physical_attempt_id,
+            "stage_role": stage_role,
+            "recovery_family": (
+                "REASONING_ONLY_FINALIZATION"
+                if stage_role == "PLANNING_FINAL_ARTIFACT_RECOVERY"
+                else "BUSINESS_OR_PROTOCOL"
+                if prior_logical_attempts
+                else "NORMAL"
+            ),
             "logical_stage_ordinal": self.pending_stage_context[
                 "logical_stage_ordinal"
             ],
@@ -2251,6 +2415,39 @@ class FullShortDispatchLedgerObserverV1:
                 current.get("role_binding_sha256") == role_binding_sha256,
                 "ROLE_BINDING_DRIFT",
             )
+            logical_stage_id = str(current["logical_stage_id"])
+            _require(
+                not any(
+                    item.get("logical_stage_id") == logical_stage_id
+                    for item in receipts
+                )
+                and not any(
+                    item.get("logical_stage_id") == logical_stage_id
+                    and item.get("state") == "LOCAL_STAGE_COMPLETE"
+                    for item in attempts
+                ),
+                "DUPLICATE_LOGICAL_STAGE_ACCEPTANCE",
+            )
+            rejected_attempts = [
+                item for item in attempts[: ordinal - 1]
+                if item.get("logical_stage_id") == logical_stage_id
+                and item.get("state") == "LOCAL_ATTEMPT_REJECTED"
+            ]
+            _require(
+                len(rejected_attempts) <= 1,
+                "LOGICAL_STAGE_REJECTION_PROVENANCE_INVALID",
+            )
+            rejected_provenance = [
+                {
+                    "physical_attempt_id": item["physical_attempt_id"],
+                    "ordinal": item["ordinal"],
+                    "local_rejection_receipt_sha256": item[
+                        "local_rejection_receipt_sha256"
+                    ],
+                    "failure_kind": item["local_rejection_failure_kind"],
+                }
+                for item in rejected_attempts
+            ]
             current.update({
                 "state": "LOCAL_STAGE_COMPLETE",
                 "local_stage_receipt_sha256": receipt_sha256,
@@ -2269,6 +2466,12 @@ class FullShortDispatchLedgerObserverV1:
                 "role_binding_sha256": role_binding_sha256,
                 "output_sha256": output_sha256,
                 "receipt_sha256": receipt_sha256,
+                "accepted_physical_attempt_id": current[
+                    "physical_attempt_id"
+                ],
+                "accepted_stage_role": current.get("stage_role", "NORMAL"),
+                "rejected_attempt_provenance": rejected_provenance,
+                "accepted_artifact_count": 1,
             })
             body["attempts"] = attempts
             body["completed_stage_receipts"] = receipts
@@ -2535,8 +2738,35 @@ def build_full_short_completion_receipt_v1(
         == list(range(1, len(attempts) + 1)),
         "LEDGER_ORDINALS_INVALID",
     )
+    logical_stage_ids = {
+        str(item.get("logical_stage_id") or "") for item in attempts
+    }
+    _require(
+        all(
+            sum(
+                1 for item in attempts
+                if item.get("logical_stage_id") == logical_stage_id
+            )
+            <= validated["max_physical_attempts_per_logical_stage"]
+            for logical_stage_id in logical_stage_ids
+        ),
+        "COMPLETION_LOGICAL_STAGE_ATTEMPT_CAP_EXCEEDED",
+    )
     completed_stage_receipts = list(
         sealed_ledger.get("completed_stage_receipts") or []
+    )
+    _require(
+        len({
+            item.get("logical_stage_id") for item in completed_stage_receipts
+        }) == len(completed_stage_receipts)
+        and all(
+            item.get("accepted_artifact_count") == 1
+            and _ID.fullmatch(str(
+                item.get("accepted_physical_attempt_id") or ""
+            )) is not None
+            for item in completed_stage_receipts
+        ),
+        "COMPLETION_ACCEPTED_ARTIFACT_PROVENANCE_INVALID",
     )
     _require(
         sealed_ledger.get("logical_stage_plan_sha256")
@@ -2546,6 +2776,11 @@ def build_full_short_completion_receipt_v1(
         and sealed_ledger.get("transport_recovery_policy_identity")
         == "EXACT_REPLAY_ONLY",
         "COMPLETION_PLAN_OR_RECOVERY_POLICY_MISMATCH",
+    )
+    _require(
+        sealed_ledger.get("logical_stage_recovery_policy_sha256")
+        == validated["logical_stage_recovery_policy_sha256"],
+        "COMPLETION_LOGICAL_RECOVERY_POLICY_MISMATCH",
     )
     validate_full_short_dispatch_accounting_v1(
         logical_stage_count=len(completed_stage_receipts),

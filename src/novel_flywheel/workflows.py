@@ -90,6 +90,7 @@ from novel_flywheel.context_policy import (
 from novel_flywheel.contract_runtime import (
     ContractOutputLimitExhaustedError,
     ExecutableContractSpec,
+    ReasoningOnlyFinalizationRecoveryPolicyV1,
     dispatch_explicit_model_route,
     execute_contract_runtime,
     execute_model_route_runtime,
@@ -114,6 +115,7 @@ from novel_flywheel.failure_boundary import (
     safe_local_validation_message,
     safe_persistence_error,
 )
+from novel_flywheel.provider_reasoning_policy import ReasoningPolicy
 from novel_flywheel.workflow_coordination import WorkflowCoordinator
 from novel_flywheel.models import (
     ModelGateway,
@@ -30074,6 +30076,7 @@ class WorkflowService:
                 *, contract_attempt_index: int | None = None,
                 contract_route: str | None = None,
                 contract_route_attempt: int | None = None,
+                stage_role: str = "NORMAL",
             ) -> None:
                 execution_observer = getattr(
                     getattr(self.gateway, "registry", None),
@@ -30111,6 +30114,7 @@ class WorkflowService:
                     contract_attempt_index=contract_attempt_index,
                     contract_route=contract_route,
                     contract_route_attempt=contract_route_attempt,
+                    stage_role=stage_role,
                 )
 
             async def execute_route(
@@ -30146,6 +30150,7 @@ class WorkflowService:
                     async def contract_attempt_executor(
                         attempt, attempt_role, attempt_system, attempt_user,
                         _attempt_budget, attempt_contract,
+                        *, reasoning_policy=None, stage_role="NORMAL",
                     ):
                         nonlocal contract_output_expanded
                         route_baseline = (
@@ -30264,6 +30269,7 @@ class WorkflowService:
                             contract_attempt_index=attempt.attempt_index,
                             contract_route=attempt.route,
                             contract_route_attempt=attempt.route_attempt,
+                            stage_role=stage_role,
                         )
                         return await dispatch_explicit_model_route(
                             self.gateway, attempt.route,
@@ -30273,6 +30279,13 @@ class WorkflowService:
                             structured_contract=attempt_contract,
                             allow_implicit_primary=not primary_only,
                             diagnostic_context=attempt_diagnostic_context,
+                            reasoning_policy=(
+                                reasoning_policy
+                                if reasoning_policy is not None
+                                else ReasoningPolicy.CURRENT_PROVIDER_DEFAULT
+                            ),
+                            stage_role=stage_role,
+                            stage=stage,
                         )
 
                     execution_observer = getattr(
@@ -30332,6 +30345,14 @@ class WorkflowService:
                         attempt_observer=attempt_observations.append,
                         local_rejection_sink=close_local_rejection,
                         diagnostic_context=diagnostic_context,
+                        stage=stage,
+                        finalization_recovery_policy=(
+                            ReasoningOnlyFinalizationRecoveryPolicyV1()
+                            if stage == "planning"
+                            and execution_spec.contract_name
+                            == "planning_semantic_v2"
+                            else None
+                        ),
                     )
                     result = contract_runtime.model_response
                     result.receipt.setdefault(

@@ -105,14 +105,24 @@ one or more reasoning/thinking blocks but no text block, tool call, visible text
 unknown block, and the adapter projection is exact, Runtime raises
 `reasoning_only_final_artifact_unavailable` before parsing or schema validation. It
 stores `reasoning_only_output_limit` as an immediate negative `final_artifact`
-qualification bound to the exact provider, model, route fingerprint, contract, and
-schema. The remaining attempts for that route are skipped without another Provider
-call or output-budget expansion. Recovery may use only a distinct route already in
-the configured schedule; otherwise Runtime raises the typed
-`final_artifact_capability_exhausted` terminal error while preserving upstream
-authority. Reasoning-plus-text, reasoning-plus-tool, empty content, adapter projection
-loss, and unknown block shapes do not match this guard and retain their existing
-validation or failure paths.
+qualification bound to the exact provider, model, route fingerprint, contract,
+schema, abstract reasoning policy, and stage role. Ordinary routes retain the
+existing negative-capability behavior. Planning semantic V2 alone owns a two-slot
+logical-stage policy: after the first response has been captured and durably rejected,
+one same-session, same-route, same-authority physical attempt may run as
+`PLANNING_FINAL_ARTIFACT_RECOVERY`. Only the exact locally bound DeepSeek Official
+Anthropic route translates that abstract finalization policy to
+`reasoning.effort=none`; normal Planning and every unrelated stage/route preserve the
+provider default and emit no `reasoning` field. The recovery keeps the stage-specific
+3724-token cap and re-enters the same schema, business, semantic, closure, and
+authority gates. Business recovery and reasoning recovery share slot 2, so any
+second-attempt failure is terminal and no third dispatch is possible. The durable
+Full Short ledger enforces this ceiling again under its dispatch lock, gives each
+physical attempt a unique ID, and binds any accepted receipt to its rejected-attempt
+provenance. Restart never authorizes a network redispatch; exact captured bytes may
+only be replayed locally under the existing transport policy. Reasoning-plus-text,
+reasoning-plus-tool, empty content, adapter projection loss, and unknown block shapes
+do not match this guard and retain their existing validation or failure paths.
 
 The model/API status distinguishes a protocol-only observation from a
 business-qualified route. Diagnose repeated failures from the stored contract/mode

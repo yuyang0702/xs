@@ -27,6 +27,8 @@ from novel_flywheel.db import Database
 from novel_flywheel.full_short_execution import (
     FullShortDispatchLedgerObserverV1,
     FullShortDurableExecutionStoreV1,
+    LOGICAL_STAGE_RECOVERY_POLICY_SHA256,
+    LOGICAL_STAGE_RECOVERY_POLICY_V1,
     RESPONSE_CAPTURE_POLICY_SHA256,
     RESPONSE_CAPTURE_POLICY_V1,
     TRANSPORT_RECOVERY_POLICY_SHA256,
@@ -247,6 +249,15 @@ def collect_live_bindings(
                     str(provider_id).encode("utf-8"),
                 ).hexdigest(),
                 "provider_name": str(provider.get("name") or ""),
+                "provider_operator": (
+                    "DEEPSEEK_OFFICIAL"
+                    if str(provider_id)
+                    == "0e6a5627-5882-40df-bca5-7d98b97fdd0b"
+                    and destination
+                    == "https://api.deepseek.com:443/anthropic/v1/messages"
+                    and str(provider.get("protocol")) == "anthropic"
+                    else "THIRD_PARTY_ENDPOINT_LOCAL_METADATA_ONLY"
+                ),
                 "model_id_sha256": hashlib.sha256(
                     str(model_id).encode("utf-8"),
                 ).hexdigest(),
@@ -492,6 +503,12 @@ def collect_live_bindings(
             TRANSPORT_RECOVERY_POLICY_SHA256
         ),
         "transport_recovery_policy_identity": "EXACT_REPLAY_ONLY",
+        "logical_stage_recovery_policy_sha256": (
+            LOGICAL_STAGE_RECOVERY_POLICY_SHA256
+        ),
+        "logical_stage_recovery_policy_identity": (
+            "TWO_SLOT_MUTUALLY_EXCLUSIVE_TYPED_RECOVERY"
+        ),
         "store_root_sha256": hashlib.sha256(
             str(exact_store_root).encode("utf-8"),
         ).hexdigest(),
@@ -518,7 +535,12 @@ def collect_live_bindings(
         "destinations": sorted(destinations),
         "destination_operators": [{
             "destination": destination,
-            "operator_classification": "THIRD_PARTY_ENDPOINT_LOCAL_METADATA_ONLY",
+            "operator_classification": (
+                "DEEPSEEK_OFFICIAL"
+                if destination
+                == "https://api.deepseek.com:443/anthropic/v1/messages"
+                else "THIRD_PARTY_ENDPOINT_LOCAL_METADATA_ONLY"
+            ),
         } for destination in sorted(destinations)],
         "egress_policy": egress,
         "response_capture_policy": RESPONSE_CAPTURE_POLICY_V1,
@@ -529,6 +551,13 @@ def collect_live_bindings(
             TRANSPORT_RECOVERY_POLICY_SHA256
         ),
         "transport_recovery_policy_identity": "EXACT_REPLAY_ONLY",
+        "logical_stage_recovery_policy": LOGICAL_STAGE_RECOVERY_POLICY_V1,
+        "logical_stage_recovery_policy_sha256": (
+            LOGICAL_STAGE_RECOVERY_POLICY_SHA256
+        ),
+        "logical_stage_recovery_policy_identity": (
+            "TWO_SLOT_MUTUALLY_EXCLUSIVE_TYPED_RECOVERY"
+        ),
         "maximum_configured_output_tokens_per_call": max_per_call,
         "store_root": str(exact_store_root),
         "store_root_sha256": hashlib.sha256(

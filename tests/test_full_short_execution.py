@@ -16,6 +16,8 @@ from novel_flywheel.full_short_execution import (
     FullShortExecutionBoundaryError,
     FullShortExecutionPolicyV1,
     RESPONSE_CAPTURE_POLICY_V1,
+    LOGICAL_STAGE_RECOVERY_POLICY_SHA256,
+    LOGICAL_STAGE_RECOVERY_POLICY_V1,
     TRANSPORT_RECOVERY_POLICY_SHA256,
     TRANSPORT_RECOVERY_POLICY_V1,
     _expected_provider_payload_v1,
@@ -900,6 +902,57 @@ def test_closed_local_rejection_allows_only_same_session_bounded_recovery(
     )
 
 
+def test_two_rejections_exhaust_shared_logical_stage_physical_ceiling(
+    tmp_path: Path,
+) -> None:
+    store = _store(tmp_path)
+    _authorize_offline(store, "two-slot-recovery-ceiling")
+    observer = _observer(
+        store, "two-slot-recovery-ceiling", session_id="one-session",
+    )
+
+    for route_attempt in (1, 2):
+        observer.before_http_dispatch(
+            method="POST", url="https://unit.test/v1/messages",
+            payload=_payload(),
+        )
+        observer.after_http_response(status_code=200)
+        observer.mark_local_attempt_rejected(
+            stage="planning-semantic-v2", role="planning",
+            role_binding_sha256=observer.bound_route[
+                "role_binding_sha256"
+            ],
+            rejection=_local_rejection(route_attempt=route_attempt),
+        )
+        if route_attempt == 1:
+            observer.bind_route(
+                role="planning", lane="primary", provider_id="provider",
+                model_id="model-id", route_fingerprint="9" * 64,
+            )
+            observer.bind_model_request(
+                protocol="anthropic", request=_request(),
+            )
+
+    observer.bind_route(
+        role="planning", lane="primary", provider_id="provider",
+        model_id="model-id", route_fingerprint="9" * 64,
+    )
+    observer.bind_model_request(protocol="anthropic", request=_request())
+    with pytest.raises(FullShortExecutionBoundaryError) as rejected:
+        observer.before_http_dispatch(
+            method="POST", url="https://unit.test/v1/messages",
+            payload=_payload(),
+        )
+    assert rejected.value.reason_code == (
+        "LOGICAL_STAGE_REDISPATCH_NOT_AUTHORIZED"
+    )
+    ledger = store.load_ledger("two-slot-recovery-ceiling")
+    assert len(ledger["attempts"]) == 2
+    assert len({
+        item["physical_attempt_id"] for item in ledger["attempts"]
+    }) == 2
+
+
 def test_pre_contract_final_artifact_rejection_closes_captured_response(
     tmp_path: Path,
 ) -> None:
@@ -1267,6 +1320,12 @@ def _preflight_actual() -> dict:
             "transport_recovery_policy_sha256"
         ],
         "transport_recovery_policy_identity": "EXACT_REPLAY_ONLY",
+        "logical_stage_recovery_policy_sha256": policy[
+            "logical_stage_recovery_policy_sha256"
+        ],
+        "logical_stage_recovery_policy_identity": (
+            "TWO_SLOT_MUTUALLY_EXCLUSIVE_TYPED_RECOVERY"
+        ),
         "store_root_sha256": policy["store_root_sha256"],
         "skill_v3_production_cutover": False,
         "planning_v2_production_cutover": False,
@@ -1293,6 +1352,13 @@ def test_canonical_authorization_and_disabled_preflight_are_exact() -> None:
             TRANSPORT_RECOVERY_POLICY_SHA256
         ),
         "transport_recovery_policy_identity": "EXACT_REPLAY_ONLY",
+        "logical_stage_recovery_policy": LOGICAL_STAGE_RECOVERY_POLICY_V1,
+        "logical_stage_recovery_policy_sha256": (
+            LOGICAL_STAGE_RECOVERY_POLICY_SHA256
+        ),
+        "logical_stage_recovery_policy_identity": (
+            "TWO_SLOT_MUTUALLY_EXCLUSIVE_TYPED_RECOVERY"
+        ),
         "store_root_sha256": "0" * 64,
     }
     raw = render_full_short_canonical_authorization_v1(
@@ -1390,6 +1456,13 @@ def test_authorization_candidate_rejects_same_count_role_plan_reordering() -> No
         "transport_recovery_policy": TRANSPORT_RECOVERY_POLICY_V1,
         "transport_recovery_policy_sha256": TRANSPORT_RECOVERY_POLICY_SHA256,
         "transport_recovery_policy_identity": "EXACT_REPLAY_ONLY",
+        "logical_stage_recovery_policy": LOGICAL_STAGE_RECOVERY_POLICY_V1,
+        "logical_stage_recovery_policy_sha256": (
+            LOGICAL_STAGE_RECOVERY_POLICY_SHA256
+        ),
+        "logical_stage_recovery_policy_identity": (
+            "TWO_SLOT_MUTUALLY_EXCLUSIVE_TYPED_RECOVERY"
+        ),
         "store_root_sha256": "0" * 64,
     }
     with pytest.raises(FullShortExecutionBoundaryError) as rejected:

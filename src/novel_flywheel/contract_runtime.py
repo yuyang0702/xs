@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, replace
 import hashlib
+import inspect
 from typing import Any, Awaitable, Callable, Literal, Mapping, Sequence
 
 from novel_flywheel.generated_artifacts import (
@@ -23,7 +24,16 @@ from novel_flywheel.model_diagnostics import (
     domain_sha256, emit_budget_lineage, emit_ptr12_guard_recovery,
     emit_ptr12_output_limit_classification,
 )
-from novel_flywheel.models import FinalArtifactCapabilityError, ModelResult
+from novel_flywheel.models import (
+    FinalArtifactCapabilityError,
+    ModelResult,
+    ReasoningOnlyFinalArtifactUnavailableError,
+)
+from novel_flywheel.provider_reasoning_policy import (
+    PLANNING_FINAL_ARTIFACT_RECOVERY,
+    ReasoningPolicy,
+    ReasoningPolicyCapabilityError,
+)
 from novel_flywheel.provider_response_capture import (
     CONTRACT_RUNTIME_INPUT_BYTES,
     ProviderResponseCaptureStoreV1,
@@ -194,6 +204,22 @@ class ContractRecoveryPolicy:
     protocol_retry: bool
     model_fallback: bool
     minimal_regeneration: bool
+
+
+@dataclass(frozen=True)
+class ReasoningOnlyFinalizationRecoveryPolicyV1:
+    """One two-slot logical-stage policy for Planning final-artifact recovery."""
+
+    stage: Literal["planning"] = "planning"
+    stage_role: Literal[
+        "PLANNING_FINAL_ARTIFACT_RECOVERY"
+    ] = PLANNING_FINAL_ARTIFACT_RECOVERY
+    max_physical_attempts_per_logical_stage: Literal[2] = 2
+    recovery_output_tokens: int = 3724
+
+    def __post_init__(self) -> None:
+        if self.recovery_output_tokens < 1:
+            raise ValueError("finalization recovery output budget must be positive")
 
 
 @dataclass(frozen=True)
@@ -449,6 +475,9 @@ async def dispatch_explicit_model_route(
     fallback_context: Callable[[], str] | None = None,
     run_id: str | None = None,
     diagnostic_context: ModelDiagnosticContextV1 | None = None,
+    reasoning_policy: ReasoningPolicy = ReasoningPolicy.CURRENT_PROVIDER_DEFAULT,
+    stage_role: str = "NORMAL",
+    stage: str | None = None,
 ) -> Any:
     """Execute exactly one selected route without a hidden route fallback."""
 
@@ -491,6 +520,21 @@ async def dispatch_explicit_model_route(
         }
         if diagnostic_context is not None:
             route_kwargs["diagnostic_context"] = diagnostic_context
+        parameters = inspect.signature(route_executor).parameters
+        if "reasoning_policy" in parameters:
+            route_kwargs["reasoning_policy"] = reasoning_policy
+        elif reasoning_policy is not ReasoningPolicy.CURRENT_PROVIDER_DEFAULT:
+            raise ReasoningPolicyCapabilityError(
+                "exact route interface cannot bind finalization reasoning policy"
+            )
+        if "stage_role" in parameters:
+            route_kwargs["stage_role"] = stage_role
+        elif stage_role != "NORMAL":
+            raise ReasoningPolicyCapabilityError(
+                "exact route interface cannot bind finalization stage role"
+            )
+        if "stage" in parameters:
+            route_kwargs["stage"] = stage
         return await route_executor(
             route,
             role,
@@ -666,6 +710,9 @@ async def _dispatch_explicit_route(
     max_output_tokens: int | None,
     structured_contract: StructuredArtifactContract,
     diagnostic_context: ModelDiagnosticContextV1 | None = None,
+    reasoning_policy: ReasoningPolicy = ReasoningPolicy.CURRENT_PROVIDER_DEFAULT,
+    stage_role: str = "NORMAL",
+    stage: str | None = None,
 ) -> Any:
     return await dispatch_explicit_model_route(
         gateway,
@@ -676,6 +723,9 @@ async def _dispatch_explicit_route(
         max_output_tokens=max_output_tokens,
         structured_contract=structured_contract,
         diagnostic_context=diagnostic_context,
+        reasoning_policy=reasoning_policy,
+        stage_role=stage_role,
+        stage=stage,
     )
 
 
@@ -1024,6 +1074,10 @@ async def execute_contract_runtime(
     attempt_observer: AttemptObserver | None = None,
     local_rejection_sink: LocalRejectionSink | None = None,
     diagnostic_context: ModelDiagnosticContextV1 | None = None,
+    stage: str | None = None,
+    finalization_recovery_policy: (
+        ReasoningOnlyFinalizationRecoveryPolicyV1 | None
+    ) = None,
 ) -> ContractRuntimeResult:
     """Run one shared syntax/adapter/schema recovery ladder on explicit routes.
 
@@ -1173,14 +1227,27 @@ async def execute_contract_runtime(
             cap_sources=(),
         )
 
-    attempts = _contract_attempts(
+    attempts = list(_contract_attempts(
         gateway,
         role=role,
         policy=policy,
         same_route_attempts=same_route_attempts,
         fallback_attempts=fallback_attempts,
         attempt_routes=attempt_routes,
-    )
+    ))
+    if finalization_recovery_policy is not None:
+        if (
+            str(stage or (
+                diagnostic_context.stage if diagnostic_context is not None else ""
+            )) != finalization_recovery_policy.stage
+        ):
+            raise ValueError(
+                "Planning finalization recovery requires an exact stage context"
+            )
+        attempts = attempts[:
+            finalization_recovery_policy.max_physical_attempts_per_logical_stage
+        ]
+    recovery_attempt_index: int | None = None
 
     def next_route_action(current: ProtocolReceiptAttempt) -> str:
         if current.attempt_index >= len(attempts):
@@ -1204,7 +1271,13 @@ async def execute_contract_runtime(
             )
             if diagnostic_context is not None else None
         )
-        if attempt.route in blocked_route_fingerprints:
+        is_finalization_recovery = (
+            recovery_attempt_index == attempt.attempt_index
+        )
+        if (
+            attempt.route in blocked_route_fingerprints
+            and not is_finalization_recovery
+        ):
             _observe_attempt(
                 attempt_observer,
                 attempt_id=str(attempt.attempt_index),
@@ -1254,6 +1327,18 @@ async def execute_contract_runtime(
         )
         route_system = system
         route_user = user
+        attempt_reasoning_policy = ReasoningPolicy.CURRENT_PROVIDER_DEFAULT
+        attempt_stage_role = "NORMAL"
+        if is_finalization_recovery:
+            attempt_reasoning_policy = ReasoningPolicy.FINALIZATION_FIRST
+            attempt_stage_role = PLANNING_FINAL_ARTIFACT_RECOVERY
+            route_system = route_system + (
+                "\n\nThis is final-artifact completion for the same frozen "
+                "Planning logical stage. Produce the complete required "
+                "structured artifact directly. Do not expose reasoning, "
+                "expand authority, replan the task, change scope, or omit any "
+                "schema or business-required field."
+            )
         if isinstance(
             last_error,
             (ArtifactConversionError, ContractBusinessOutputIncompleteError),
@@ -1289,23 +1374,59 @@ async def execute_contract_runtime(
         )
         try:
             clear_ptr12_guard_decision_capture()
-            response = (
-                await attempt_executor(
+            if attempt_executor is not None:
+                executor_parameters = inspect.signature(
+                    attempt_executor
+                ).parameters
+                executor_kwargs: dict[str, Any] = {}
+                if "reasoning_policy" in executor_parameters:
+                    executor_kwargs["reasoning_policy"] = (
+                        attempt_reasoning_policy
+                    )
+                elif is_finalization_recovery:
+                    raise ReasoningPolicyCapabilityError(
+                        "contract attempt executor cannot bind recovery policy"
+                    )
+                if "stage_role" in executor_parameters:
+                    executor_kwargs["stage_role"] = attempt_stage_role
+                elif is_finalization_recovery:
+                    raise ReasoningPolicyCapabilityError(
+                        "contract attempt executor cannot bind recovery role"
+                    )
+                response = await attempt_executor(
                     attempt, role, route_system, route_user,
-                    attempt_output_tokens, structured_contract,
+                    (
+                        finalization_recovery_policy.recovery_output_tokens
+                        if is_finalization_recovery
+                        and finalization_recovery_policy is not None
+                        else attempt_output_tokens
+                    ),
+                    structured_contract,
+                    **executor_kwargs,
                 )
-                if attempt_executor is not None
-                else await _dispatch_explicit_route(
+            else:
+                response = await _dispatch_explicit_route(
                     gateway,
                     attempt,
                     role=role,
                     system=route_system,
                     user=route_user,
-                    max_output_tokens=attempt_output_tokens,
+                    max_output_tokens=(
+                        finalization_recovery_policy.recovery_output_tokens
+                        if is_finalization_recovery
+                        and finalization_recovery_policy is not None
+                        else attempt_output_tokens
+                    ),
                     structured_contract=structured_contract,
                     diagnostic_context=attempt_context,
+                    reasoning_policy=attempt_reasoning_policy,
+                    stage_role=attempt_stage_role,
+                    stage=(
+                        finalization_recovery_policy.stage
+                        if finalization_recovery_policy is not None
+                        else None
+                    ),
                 )
-            )
             receipt = getattr(response, "receipt", None)
             if isinstance(receipt, Mapping):
                 last_receipt = dict(receipt)
@@ -1322,9 +1443,13 @@ async def execute_contract_runtime(
                 "final_artifact_unavailable"
                 if final_artifact_failure else classify_model_failure(exc)
             )
-            post_capture_terminal = _close_durable_post_capture_exception(
-                gateway, error=exc, failure_class=failure_class,
-                attempt=attempt,
+            post_capture_terminal = (
+                False
+                if final_artifact_failure
+                else _close_durable_post_capture_exception(
+                    gateway, error=exc, failure_class=failure_class,
+                    attempt=attempt,
+                )
             )
             error_receipt = getattr(exc, "receipt", None)
             provider_call_executed = not (
@@ -1378,6 +1503,26 @@ async def execute_contract_runtime(
                     ptr12_triggered_context = (
                         attempt_context, attempt_ptr12_decision,
                     )
+                exact_reasoning_only = isinstance(
+                    exc, ReasoningOnlyFinalArtifactUnavailableError,
+                )
+                if (
+                    exact_reasoning_only
+                    and finalization_recovery_policy is not None
+                    and recovery_attempt_index is None
+                    and attempt.attempt_index == 1
+                ):
+                    recovery_attempt_index = 2
+                    attempts[:] = [
+                        attempt,
+                        ProtocolReceiptAttempt(
+                            attempt_index=2,
+                            route_attempt=attempt.route_attempt + 1,
+                            route=attempt.route,
+                            action=RecoveryAction.RECEIPT_ONLY_RETRY,
+                            is_last=True,
+                        ),
+                    ]
             else:
                 non_final_failure_seen = True
             if attempt.route == "configured_fallback":
@@ -1397,6 +1542,7 @@ async def execute_contract_runtime(
                 owns_ending=execution_spec.owns_ending,
             )
         except ArtifactConversionError as exc:
+            non_final_failure_seen = True
             _observe_attempt(
                 attempt_observer, attempt_id=str(attempt.attempt_index),
                 parent_attempt_id=(str(attempt.attempt_index - 1) if attempt.attempt_index > 1 else None),
@@ -1526,6 +1672,7 @@ async def execute_contract_runtime(
             and execution_spec.domain_retry_renderer is not None
         )
         if incomplete_reason is not None and not authoritative_domain_diagnostics:
+            non_final_failure_seen = True
             _observe_attempt(
                 attempt_observer, attempt_id=str(attempt.attempt_index),
                 parent_attempt_id=(str(attempt.attempt_index - 1) if attempt.attempt_index > 1 else None),
@@ -1618,6 +1765,7 @@ async def execute_contract_runtime(
         try:
             domain_value = execution_spec.domain_validator(conversion.payload)
         except (TypeError, ValueError) as exc:
+            non_final_failure_seen = True
             _emit_local_rejection(
                 local_rejection_sink,
                 response=response,
@@ -1755,6 +1903,7 @@ async def execute_contract_runtime(
                 attempt_output_tokens = target_budget
             continue
         if incomplete_reason is not None:
+            non_final_failure_seen = True
             # An authoritative domain validator is expected to reject a
             # required-field omission.  Keep the generic gate as a fail-closed
             # backstop if a future diagnostic validator is accidentally weak.

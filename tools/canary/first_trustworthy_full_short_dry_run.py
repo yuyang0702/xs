@@ -538,6 +538,7 @@ class _OfflineHttpTransportFactory:
     def __init__(
         self, *, inject_planning_business_incomplete_once: bool = False,
         inject_adapter_failure_after_exact_capture_once: bool = False,
+        inject_planning_reasoning_only_once: bool = False,
     ) -> None:
         self.oracle = _PrivateDryRunOracle(
             inject_planning_business_incomplete_once=(
@@ -551,6 +552,10 @@ class _OfflineHttpTransportFactory:
         )
         self.adapter_failure_after_exact_capture_injected = False
         self.adapter_projection_call_count = 0
+        self.inject_planning_reasoning_only_once = (
+            inject_planning_reasoning_only_once
+        )
+        self.planning_reasoning_only_injected = False
 
     def install_adapter_failure_after_exact_capture_once(
         self, adapter: Any,
@@ -613,7 +618,34 @@ class _OfflineHttpTransportFactory:
                     "role": role,
                     "requested_output_tokens": maximum,
                 }),
+                "reasoning_field_present": "reasoning" in payload,
+                "reasoning_effort": (
+                    (payload.get("reasoning") or {}).get("effort")
+                    if isinstance(payload.get("reasoning"), dict) else None
+                ),
             })
+            if (
+                self.inject_planning_reasoning_only_once
+                and not self.planning_reasoning_only_injected
+                and contract_marker == "planning_semantic_v2"
+                and destination
+                == "https://api.deepseek.com:443/anthropic/v1/messages"
+                and "reasoning" not in payload
+            ):
+                self.planning_reasoning_only_injected = True
+                return OfflineHttpResponseV1(200, json_body={
+                    "id": "offline-reasoning-only",
+                    "content": [{
+                        "type": "thinking",
+                        "thinking": "offline deterministic hidden-work fixture",
+                        "signature": "offline-signature",
+                    }],
+                    "stop_reason": "max_tokens",
+                    "usage": {
+                        "input_tokens": 2400,
+                        "output_tokens": maximum,
+                    },
+                })
             try:
                 result = await self.oracle.complete(
                     role, system, user, max_output_tokens=maximum,
@@ -725,6 +757,11 @@ class _CapturedResponseReplayTransportFactory:
                     "role": role,
                     "requested_output_tokens": maximum,
                 }),
+                "reasoning_field_present": "reasoning" in payload,
+                "reasoning_effort": (
+                    (payload.get("reasoning") or {}).get("effort")
+                    if isinstance(payload.get("reasoning"), dict) else None
+                ),
             }
             if observed != source:
                 self.failure = {
@@ -1216,11 +1253,21 @@ async def _replay_full_workflow_from_captured_bytes(
     replay_target: Path, capture_store: ProviderResponseCaptureStoreV1,
     ledger: dict[str, Any], source_call_plan: list[dict[str, Any]],
     expected_final_artifact_sha256: str,
+    offline_planning_deepseek_official_fixture: bool = False,
 ) -> dict[str, Any]:
     replay_data = _copy_private_data(
         repo=repo, source_project=source_project, project_id=project_id,
         target=replay_target,
     )
+    if offline_planning_deepseek_official_fixture:
+        replay_db = Database(replay_data / "app.db")
+        replay_db.save_role_binding(
+            "planning",
+            "0e6a5627-5882-40df-bca5-7d98b97fdd0b",
+            "e4b6f0b8-3c5e-412e-8d4e-8453c840a032",
+            None,
+            None,
+        )
     factory = _CapturedResponseReplayTransportFactory(
         capture_store=capture_store, ledger=ledger,
         source_call_plan=source_call_plan,
@@ -1294,6 +1341,15 @@ async def _run(args: argparse.Namespace) -> dict[str, Any]:
             repo=repo, source_project=source_project, project_id=project_id,
             target=private_root / "discovery",
         )
+        if args.offline_planning_deepseek_official_fixture:
+            discovery_db = Database(discovery_data / "app.db")
+            discovery_db.save_role_binding(
+                "planning",
+                "0e6a5627-5882-40df-bca5-7d98b97fdd0b",
+                "e4b6f0b8-3c5e-412e-8d4e-8453c840a032",
+                None,
+                None,
+            )
         call_plan, logical_stage_plan = await _discover_plan(
             repo=repo, data_dir=discovery_data, project_id=project_id,
         )
@@ -1301,6 +1357,15 @@ async def _run(args: argparse.Namespace) -> dict[str, Any]:
             repo=repo, source_project=source_project, project_id=project_id,
             target=private_root / "execution",
         )
+        if args.offline_planning_deepseek_official_fixture:
+            execution_db = Database(execution_data / "app.db")
+            execution_db.save_role_binding(
+                "planning",
+                "0e6a5627-5882-40df-bca5-7d98b97fdd0b",
+                "e4b6f0b8-3c5e-412e-8d4e-8453c840a032",
+                None,
+                None,
+            )
         store_root = private_root / "control-store"
         actual, public = collect_live_bindings(
             repo=repo, data_dir=execution_data, project_id=project_id,
@@ -1380,6 +1445,9 @@ async def _run(args: argparse.Namespace) -> dict[str, Any]:
             ),
             inject_adapter_failure_after_exact_capture_once=(
                 args.inject_adapter_failure_after_exact_capture_once
+            ),
+            inject_planning_reasoning_only_once=(
+                args.inject_planning_reasoning_only_once
             ),
         )
         try:
@@ -1490,6 +1558,9 @@ async def _run(args: argparse.Namespace) -> dict[str, Any]:
             capture_store=capture_store, ledger=ledger,
             source_call_plan=observed_plan,
             expected_final_artifact_sha256=expected_final_artifact_sha256,
+            offline_planning_deepseek_official_fixture=(
+                args.offline_planning_deepseek_official_fixture
+            ),
         )
         replay_proof = {**replay_anchor_proof, **replay_workflow_proof}
         provider_capture_count = sum(
@@ -1532,7 +1603,34 @@ async def _run(args: argparse.Namespace) -> dict[str, Any]:
                 1,
             )
         ]
-        if successful_observed_plan != call_plan:
+        policy_neutral_keys = (
+            "ordinal", "role", "contract_marker",
+            "requested_output_tokens", "destination_sha256",
+        )
+        policy_neutral_observed_plan = [
+            {key: item.get(key) for key in policy_neutral_keys}
+            for item in successful_observed_plan
+        ]
+        policy_neutral_discovered_plan = [
+            {key: item.get(key) for key in policy_neutral_keys}
+            for item in call_plan
+        ]
+        exact_call_plan_match = successful_observed_plan == call_plan
+        isolated_reasoning_recovery_match = (
+            args.inject_planning_reasoning_only_once
+            and policy_neutral_observed_plan == policy_neutral_discovered_plan
+            and sum(
+                1 for item in successful_observed_plan
+                if item.get("contract_marker") == "planning_semantic_v2"
+                and item.get("reasoning_field_present") is True
+                and item.get("reasoning_effort") == "none"
+            ) == 1
+            and all(
+                item.get("reasoning_field_present") is False
+                for item in call_plan
+            )
+        )
+        if not (exact_call_plan_match or isolated_reasoning_recovery_match):
             raise RuntimeError("FULL_SHORT_DRY_RUN_CALL_PLAN_DRIFT")
         completion = execution["completion"]
         terminal = execution["terminal"]
@@ -1567,6 +1665,13 @@ async def _run(args: argparse.Namespace) -> dict[str, Any]:
             "transport_recovery_policy_identity": policy[
                 "transport_recovery_policy_identity"
             ],
+            "logical_stage_recovery_policy_sha256": policy[
+                "logical_stage_recovery_policy_sha256"
+            ],
+            "logical_stage_recovery_policy_identity": policy[
+                "logical_stage_recovery_policy_identity"
+            ],
+            "max_physical_attempts_per_logical_stage": 2,
             "executed_call_plan_sha256": _domain(observed_plan),
             "expected_stage_calls": expected_calls,
             "hard_max_provider_requests": hard_max_dispatches,
@@ -1599,6 +1704,17 @@ async def _run(args: argparse.Namespace) -> dict[str, Any]:
             "local_rejected_attempt_count": len(rejected_ordinals),
             "planning_business_incomplete_injected": (
                 transport.oracle.planning_business_incomplete_injected
+            ),
+            "planning_reasoning_only_injected": (
+                transport.planning_reasoning_only_injected
+            ),
+            "planning_finalization_reasoning_none_request_count": sum(
+                1 for item in transport.call_plan
+                if item.get("contract_marker") == "planning_semantic_v2"
+                and item.get("reasoning_effort") == "none"
+            ),
+            "offline_planning_deepseek_official_fixture": (
+                args.offline_planning_deepseek_official_fixture
             ),
             "adapter_failure_after_exact_capture_injected": (
                 transport.adapter_failure_after_exact_capture_injected
@@ -1642,10 +1758,21 @@ async def _run(args: argparse.Namespace) -> dict[str, Any]:
                 and len(ledger["attempts"])
                 == expected_calls + int(
                     args.inject_planning_business_incomplete_once
-                )
-                and successful_observed_plan == call_plan
+                ) + int(args.inject_planning_reasoning_only_once)
+                and (exact_call_plan_match or isolated_reasoning_recovery_match)
                 and transport.oracle.planning_business_incomplete_injected
                 is args.inject_planning_business_incomplete_once
+                and transport.planning_reasoning_only_injected
+                is args.inject_planning_reasoning_only_once
+                and (
+                    not args.inject_planning_reasoning_only_once
+                    or sum(
+                        1 for item in transport.call_plan
+                        if item.get("contract_marker")
+                        == "planning_semantic_v2"
+                        and item.get("reasoning_effort") == "none"
+                    ) == 1
+                )
                 and transport.adapter_failure_after_exact_capture_injected
                 is args.inject_adapter_failure_after_exact_capture_once
                 and (
@@ -1681,6 +1808,14 @@ def main() -> int:
     )
     parser.add_argument(
         "--inject-adapter-failure-after-exact-capture-once",
+        action="store_true",
+    )
+    parser.add_argument(
+        "--inject-planning-reasoning-only-once",
+        action="store_true",
+    )
+    parser.add_argument(
+        "--offline-planning-deepseek-official-fixture",
         action="store_true",
     )
     args = parser.parse_args()

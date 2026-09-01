@@ -224,7 +224,7 @@ INCIDENT_DEFINITIONS = (
     IncidentDefinition(
         "provider.reasoning_only_final_artifact_unavailable",
         "Provider reasoning exhausted the shared output cap before a final artifact",
-        "Preserve the last accepted authority-bound checkpoint. Record the exact provider, model, route fingerprint, contract and schema as a negative final-artifact capability; never repeat that fingerprint in the same recovery schedule or expand its output budget. Continue only through an already-configured distinct eligible route and re-enter canonical conversion plus the unchanged domain validator. If no route remains, fail closed with the typed final-artifact capability error; do not change Prompt, model, route, retry budget, StoryState, Canon or READY authority.",
+        "Preserve the last accepted authority-bound checkpoint. Record the exact provider, model, route fingerprint, contract, schema, reasoning policy, and stage role as negative final-artifact evidence. Ordinary schedules do not repeat that capability. For Planning semantic V2 only, after durable typed rejection, allow one same-route and same-authority final-artifact recovery under the verified DeepSeek Official Anthropic reasoning-disabled policy and the unchanged 3724-token cap. Re-enter canonical conversion and every unchanged business/domain/authority validator. Business and reasoning recovery share slot 2; any second-attempt failure is terminal. Never create attempt 3, change route/model/StoryState/Canon/READY authority, or redispatch after restart.",
         (
             r"reasoning-only provider output exhausted without a final artifact",
             r"final-artifact capability was exhausted across permitted routes",

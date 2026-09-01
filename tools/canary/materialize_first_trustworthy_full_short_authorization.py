@@ -203,6 +203,17 @@ async def _materialize(args: argparse.Namespace) -> dict:
         "transport_recovery_policy_identity": policy[
             "transport_recovery_policy_identity"
         ],
+        "logical_stage_recovery_policy_sha256": policy[
+            "logical_stage_recovery_policy_sha256"
+        ],
+        "logical_stage_recovery_policy_identity": policy[
+            "logical_stage_recovery_policy_identity"
+        ],
+        "normal_planning_reasoning_policy": "CURRENT_PROVIDER_DEFAULT",
+        "planning_finalization_recovery_reasoning_policy": (
+            "DEEPSEEK_OFFICIAL_ANTHROPIC_REASONING_EFFORT_NONE"
+        ),
+        "max_physical_attempts_per_logical_stage": 2,
         "expected_stage_calls": len(call_plan),
         "hard_max_provider_requests": hard_max,
         "hard_max_http_posts": hard_max,
