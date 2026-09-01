@@ -9,7 +9,7 @@ this capability.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from enum import StrEnum
 
 
@@ -68,6 +68,12 @@ DEEPSEEK_OFFICIAL_ANTHROPIC_PLANNING_FINALIZATION_V1 = (
         stage_role=PLANNING_FINAL_ARTIFACT_RECOVERY,
     )
 )
+DEEPSEEK_OFFICIAL_ANTHROPIC_PLANNING_FINALIZATION_PRIMARY_V1 = (
+    replace(
+        DEEPSEEK_OFFICIAL_ANTHROPIC_PLANNING_FINALIZATION_V1,
+        lane="primary",
+    )
+)
 
 
 def resolve_provider_reasoning_directive_v1(
@@ -108,7 +114,10 @@ def resolve_provider_reasoning_directive_v1(
     )
     if (
         policy is ReasoningPolicy.FINALIZATION_FIRST
-        and actual == DEEPSEEK_OFFICIAL_ANTHROPIC_PLANNING_FINALIZATION_V1
+        and actual in {
+            DEEPSEEK_OFFICIAL_ANTHROPIC_PLANNING_FINALIZATION_V1,
+            DEEPSEEK_OFFICIAL_ANTHROPIC_PLANNING_FINALIZATION_PRIMARY_V1,
+        }
     ):
         return ProviderReasoningDirective.DISABLE_REASONING
     raise ReasoningPolicyCapabilityError(

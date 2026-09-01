@@ -174,6 +174,10 @@ def test_exact_official_deepseek_capability_resolves_and_every_key_is_closed() -
     assert resolve_provider_reasoning_directive_v1(
         ReasoningPolicy.FINALIZATION_FIRST, **_capability_args()
     ) is ProviderReasoningDirective.DISABLE_REASONING
+    assert resolve_provider_reasoning_directive_v1(
+        ReasoningPolicy.FINALIZATION_FIRST,
+        **_capability_args(lane="primary"),
+    ) is ProviderReasoningDirective.DISABLE_REASONING
     mutations = {
         "provider_id": "other",
         "operator": "THIRD_PARTY_ENDPOINT_LOCAL_METADATA_ONLY",
@@ -182,7 +186,7 @@ def test_exact_official_deepseek_capability_resolves_and_every_key_is_closed() -
         "model_id": "other",
         "model": "deepseek-v4-pro-third-party",
         "route_fingerprint": "f" * 64,
-        "lane": "primary",
+        "lane": "unverified_lane",
         "stage": "review",
         "contract_name": "other",
         "contract_version": 1,
