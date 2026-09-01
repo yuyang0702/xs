@@ -811,12 +811,25 @@ class _DiagnosticObserverProxy:
             try:
                 return attribute(*args, **kwargs)
             except Exception as exc:
+                envelope = getattr(exc, "envelope", None)
                 self._factory.failure = {
                     "boundary": f"attempt_observer.{name}",
                     **_safe_failure_projection(
                         exc, boundary=f"attempt_observer.{name}",
                     ),
                     "reason_code": getattr(exc, "reason_code", None),
+                    "runtime_boundary_id": getattr(
+                        envelope, "boundary_id", None,
+                    ),
+                    "runtime_failure_code": getattr(
+                        envelope, "failure_code", None,
+                    ),
+                    "runtime_source_exception_class": getattr(
+                        envelope, "source_exception_class", None,
+                    ),
+                    "runtime_state": str(getattr(
+                        envelope, "current_state", "",
+                    )) or None,
                 }
                 raise
 
