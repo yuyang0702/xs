@@ -628,8 +628,7 @@ class _OfflineHttpTransportFactory:
                 self.inject_planning_reasoning_only_once
                 and not self.planning_reasoning_only_injected
                 and contract_marker == "planning_semantic_v2"
-                and destination
-                == "https://api.deepseek.com:443/anthropic/v1/messages"
+                and destination == "https://api.deepseek.com/anthropic"
                 and "reasoning" not in payload
             ):
                 self.planning_reasoning_only_injected = True
@@ -1261,12 +1260,13 @@ async def _replay_full_workflow_from_captured_bytes(
     )
     if offline_planning_deepseek_official_fixture:
         replay_db = Database(replay_data / "app.db")
+        replay_binding = replay_db.get_role_binding("planning") or {}
         replay_db.save_role_binding(
             "planning",
+            str(replay_binding.get("primary_provider_id") or ""),
+            str(replay_binding.get("primary_model_id") or ""),
             "0e6a5627-5882-40df-bca5-7d98b97fdd0b",
             "e4b6f0b8-3c5e-412e-8d4e-8453c840a032",
-            None,
-            None,
         )
     factory = _CapturedResponseReplayTransportFactory(
         capture_store=capture_store, ledger=ledger,
@@ -1343,12 +1343,15 @@ async def _run(args: argparse.Namespace) -> dict[str, Any]:
         )
         if args.offline_planning_deepseek_official_fixture:
             discovery_db = Database(discovery_data / "app.db")
+            discovery_binding = (
+                discovery_db.get_role_binding("planning") or {}
+            )
             discovery_db.save_role_binding(
                 "planning",
+                str(discovery_binding.get("primary_provider_id") or ""),
+                str(discovery_binding.get("primary_model_id") or ""),
                 "0e6a5627-5882-40df-bca5-7d98b97fdd0b",
                 "e4b6f0b8-3c5e-412e-8d4e-8453c840a032",
-                None,
-                None,
             )
         call_plan, logical_stage_plan = await _discover_plan(
             repo=repo, data_dir=discovery_data, project_id=project_id,
@@ -1359,12 +1362,13 @@ async def _run(args: argparse.Namespace) -> dict[str, Any]:
         )
         if args.offline_planning_deepseek_official_fixture:
             execution_db = Database(execution_data / "app.db")
+            execution_binding = execution_db.get_role_binding("planning") or {}
             execution_db.save_role_binding(
                 "planning",
+                str(execution_binding.get("primary_provider_id") or ""),
+                str(execution_binding.get("primary_model_id") or ""),
                 "0e6a5627-5882-40df-bca5-7d98b97fdd0b",
                 "e4b6f0b8-3c5e-412e-8d4e-8453c840a032",
-                None,
-                None,
             )
         store_root = private_root / "control-store"
         actual, public = collect_live_bindings(
