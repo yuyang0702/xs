@@ -827,6 +827,9 @@ class _DiagnosticObserverProxy:
                     "runtime_source_exception_class": getattr(
                         envelope, "source_exception_class", None,
                     ),
+                    "runtime_source_reason_code": getattr(
+                        envelope, "source_reason_code", None,
+                    ),
                     "runtime_state": str(getattr(
                         envelope, "current_state", "",
                     )) or None,

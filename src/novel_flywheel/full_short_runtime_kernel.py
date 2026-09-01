@@ -4,6 +4,7 @@ import hashlib
 import inspect
 import json
 import os
+import re
 import uuid
 from contextlib import contextmanager
 from contextvars import ContextVar
@@ -626,6 +627,7 @@ class FailureEnvelopeV1:
     failure_code: str
     failure_family: str
     source_exception_class: str
+    source_reason_code: str | None
     ordered_causes: tuple[FailureCauseV1, ...]
     recovery_decision: RecoveryDecisionKind
     restart_policy_id: str
@@ -1481,6 +1483,13 @@ class FullShortExecutionKernel:
             restart_policy_id = "restart.forbidden.v1"
             authority_effect = "preserve_last_accepted"
         causes = _cause_chain(exc)
+        candidate_reason_code = getattr(exc, "reason_code", None)
+        source_reason_code = (
+            str(candidate_reason_code)
+            if isinstance(candidate_reason_code, str)
+            and re.fullmatch(r"[A-Za-z0-9_.:-]{1,160}", candidate_reason_code)
+            else None
+        )
         next_state = {
             RecoveryDecisionKind.PAUSE_RECONCILIATION:
                 ExecutionState.PAUSED_RECONCILIATION,
@@ -1499,6 +1508,7 @@ class FullShortExecutionKernel:
             "failure_code": failure_code,
             "failure_family": failure_family,
             "source_exception_class": _safe_exception_class(exc),
+            "source_reason_code": source_reason_code,
             "ordered_causes": causes,
             "recovery_decision": recovery_decision,
             "restart_policy_id": restart_policy_id,
