@@ -631,6 +631,11 @@ class _OfflineHttpTransportFactory:
                 and contract_marker == "planning_semantic_v2"
                 and destination == "https://api.deepseek.com/anthropic"
                 and "reasoning" not in payload
+                and "ACTIONABLE_PLANNING_SEMANTIC_FINDINGS" not in user
+                and (
+                    not self.oracle.inject_planning_business_incomplete_once
+                    or self.oracle.planning_business_incomplete_injected
+                )
             ):
                 self.planning_reasoning_only_injected = True
                 return OfflineHttpResponseV1(200, json_body={
@@ -1477,16 +1482,31 @@ async def _run(args: argparse.Namespace) -> dict[str, Any]:
             raise RuntimeError(
                 "FULL_SHORT_DRY_RUN_PLAN_MISSING_PLANNING_REPAIR_BOUNDARY"
             )
+        additional_dispatch_hard_cap = sum((
+            int(args.inject_planning_business_incomplete_once),
+            int(args.inject_planning_reasoning_only_once),
+        ))
+        if len(planning_retry_caps) < additional_dispatch_hard_cap:
+            raise RuntimeError(
+                "FULL_SHORT_DRY_RUN_PLAN_MISSING_DISTINCT_RECOVERY_STAGES"
+            )
         planning_retry_cap = planning_retry_caps[0]
+        planning_recovery_output_token_hard_cap = sum(
+            planning_retry_caps[:additional_dispatch_hard_cap]
+        )
         discovered_plan_total_cap = sum(
             int(item["requested_output_tokens"]) for item in call_plan
         )
-        # This incident authorizes/proves at most one already-existing typed
-        # Planning regeneration, not the entire four-attempt topology at every
-        # model stage. The normal run therefore leaves one narrow unused slot;
-        # the injected run consumes exactly that one slot.
-        hard_max_dispatches = expected_calls + 1
-        total_cap = discovered_plan_total_cap + planning_retry_cap
+        # Each requested injected recovery owns the second physical slot of a
+        # different already-sealed Planning logical stage.  No stage receives
+        # a third attempt and no unused global retry topology is authorized.
+        hard_max_dispatches = (
+            expected_calls + additional_dispatch_hard_cap
+        )
+        total_cap = (
+            discovered_plan_total_cap
+            + planning_recovery_output_token_hard_cap
+        )
         policy = FullShortExecutionPolicyV1(
             execution_head=actual["head"], branch=actual["branch"],
             run_id=EXECUTION_ID,
@@ -1809,7 +1829,10 @@ async def _run(args: argparse.Namespace) -> dict[str, Any]:
                 discovered_plan_total_cap
             ),
             "planning_single_repair_output_token_hard_cap": planning_retry_cap,
-            "additional_dispatch_hard_cap": 1,
+            "planning_recovery_output_token_hard_cap": (
+                planning_recovery_output_token_hard_cap
+            ),
+            "additional_dispatch_hard_cap": additional_dispatch_hard_cap,
             "maximum_elapsed_seconds": 36_000,
             "provider_request_count": len(ledger["attempts"]),
             "response_capture_policy_sha256": actual[

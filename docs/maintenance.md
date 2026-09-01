@@ -2512,3 +2512,33 @@ capture-anchor operation, which may fill exactly one previously absent capture
 receipt plus its `transport_complete=true` bit after independently replaying and
 verifying one exact published envelope. It cannot change attempt state, failure
 classification, other evidence, stage receipts, counters, or authority fields.
+
+## Full Short closed-world execution kernel
+
+The Trustworthy Full Short production path is wrapped by the versioned
+`FullShortExecutionKernel`. Its registered stage, dispatch, capture, contract,
+recovery, authority, and terminal boundaries are the proof domain: every
+exception crossing one of those entries becomes a typed, hash-only durable
+envelope, while an unregistered exception is classified only as
+`internal.unexpected_at_boundary` and fails closed. A mechanical AST inventory
+starts from the real Short runner/workflow roots, binds reachable source exits
+to the exact production wrappers, and fails when a new reachable exit, dynamic
+edge contract, or direct dispatch/recovery/authority bypass appears.
+
+Exact execution projects the next logical stage's sealed route before provider
+or credential resolution. A presealed configured fallback is therefore an
+initial authorized lane, not an implicit runtime fallback; a primary probe or
+later route switch is rejected. Each logical stage has one immutable lane and
+at most two physical attempts. Contract business recovery and Planning
+reasoning-only finalization use the same second slot, so two injected failures
+can coexist in one Full Short only when they belong to distinct logical stages.
+
+The offline production-shaped runner replaces only the lowest HTTP transport,
+uses in-memory synthetic secrets, exact-captures every synthetic provider
+response, and replays those bytes through the real adapter and Contract Runtime
+in a second isolated project copy. The combined recovery campaign seals a hard
+cap equal to the discovered logical call count plus exactly the number of
+distinct injected recovery stages. It never grants a third per-stage attempt.
+Observer failures—including Windows GBK emoji encoding, CrewAI event handlers,
+logging sinks, and telemetry serialization—are best effort and cannot change a
+successful business object or replace the original business failure.

@@ -164,6 +164,54 @@ _CRITICAL_CALL_NAMES = {
 }
 
 
+DIRECT_PATH_METRIC_NAMES_V1 = (
+    "DIRECT_PROVIDER_DISPATCH_OUTSIDE_KERNEL_COUNT",
+    "DIRECT_NONCE_RESERVATION_OUTSIDE_KERNEL_COUNT",
+    "DIRECT_RECOVERY_REDISPATCH_OUTSIDE_KERNEL_COUNT",
+    "DIRECT_AUTHORITY_PROMOTION_OUTSIDE_AUTHORITY_GATE_COUNT",
+    "DIRECT_STAGE_TERMINAL_FAILURE_OUTSIDE_KERNEL_COUNT",
+    "HIDDEN_RETRY_PATH_COUNT",
+    "UNREGISTERED_RECOVERY_DECISION_COUNT",
+    "NONCE_PREMATURE_RESERVATION_PATH_COUNT",
+)
+
+_PROVIDER_DISPATCH_CALL_NAMES = frozenset({
+    "complete",
+    "complete_primary",
+    "complete_configured_fallback",
+    "complete_route",
+    "complete_with_tools",
+    "complete_with_tools_route",
+    "post",
+    "post_stream",
+    "send",
+})
+_NONCE_RESERVATION_CALL_NAMES = frozenset({
+    "reserve_dispatch_token",
+    "reserve_nonce_from_dispatch_readiness",
+})
+_AUTHORITY_PROMOTION_CALL_NAMES = frozenset({
+    "write_full_short_formal_artifacts_v1",
+    "commit_project_mutation_authority",
+    "complete_project_mutation",
+    "finalize_project_mutation",
+})
+_STAGE_TERMINAL_FAILURE_CALL_NAMES = frozenset({
+    "_raise_failure",
+    "mark_post_capture_terminal_failure",
+})
+_RECOVERY_DECISION_CALL_NAMES = frozenset({
+    "authorize_shared_second_slot",
+})
+_RETRY_GOVERNOR_CALL_NAMES = frozenset({
+    "_exact_single_dispatch_active",
+    "_protocol_receipt_attempt_plan",
+    "_runtime_attempts",
+    "authorize_shared_second_slot",
+    "model_route_attempts",
+})
+
+
 @dataclass(frozen=True)
 class _Function:
     function_id: str
@@ -247,7 +295,9 @@ class _BodyVisitor(ast.NodeVisitor):
     def __init__(self, root: ast.AST) -> None:
         self.root = root
         self.calls: list[ast.Call] = []
+        self.call_contexts: dict[int, tuple[str, ...]] = {}
         self.exits: list[tuple[str, ast.AST]] = []
+        self._contexts: list[str] = []
 
     def visit_FunctionDef(self, node: ast.FunctionDef) -> None:
         if node is self.root:
@@ -266,10 +316,28 @@ class _BodyVisitor(ast.NodeVisitor):
 
     def visit_ExceptHandler(self, node: ast.ExceptHandler) -> None:
         self.exits.append(("except_handler", node))
+        self._contexts.append("except_handler")
         self.generic_visit(node)
+        self._contexts.pop()
+
+    def visit_For(self, node: ast.For) -> None:
+        self._contexts.append("loop")
+        self.generic_visit(node)
+        self._contexts.pop()
+
+    def visit_AsyncFor(self, node: ast.AsyncFor) -> None:
+        self._contexts.append("loop")
+        self.generic_visit(node)
+        self._contexts.pop()
+
+    def visit_While(self, node: ast.While) -> None:
+        self._contexts.append("loop")
+        self.generic_visit(node)
+        self._contexts.pop()
 
     def visit_Call(self, node: ast.Call) -> None:
         self.calls.append(node)
+        self.call_contexts[id(node)] = tuple(self._contexts)
         name = _call_name(node)
         if name in {"_require", "require"}:
             self.exits.append(("guard_call", node))
@@ -291,6 +359,269 @@ def _call_name(node: ast.Call) -> str:
     if isinstance(node.func, ast.Attribute):
         return node.func.attr
     return "<dynamic>"
+
+
+def _function_binding_rows(
+    *,
+    graph: Mapping[str, set[str]],
+    roots: Mapping[str, str | None],
+    boundary_entries: Mapping[str, str],
+    functions: Mapping[str, _Function],
+) -> dict[str, dict[str, object]]:
+    markers = {key: {"fn:" + key} for key in functions}
+    by_marker = bind_exit_states_v1(
+        graph=graph,
+        roots=roots,
+        boundary_entries=boundary_entries,
+        exits_by_function=markers,
+    )
+    return {
+        str(value["function_id"]): value
+        for value in by_marker.values()
+    }
+
+
+def _binding_is_exact_boundary(
+    binding: Mapping[str, object] | None,
+    boundary_id: str,
+) -> bool:
+    if binding is None or int(binding["unprotected_path_count"]):
+        return False
+    return set(binding["boundary_ids"]) == {boundary_id}
+
+
+def _binding_is_kernel_owned(
+    binding: Mapping[str, object] | None,
+) -> bool:
+    return bool(
+        binding is not None
+        and not int(binding["unprotected_path_count"])
+        and binding["boundary_ids"]
+    )
+
+
+def _target_has_boundary(
+    targets: Iterable[str],
+    boundary_entries: Mapping[str, str],
+    boundary_id: str,
+) -> bool:
+    target_tuple = tuple(targets)
+    return bool(target_tuple) and all(
+        boundary_entries.get(target) == boundary_id for target in target_tuple
+    )
+
+
+def _target_calls_name(
+    targets: Iterable[str],
+    functions: Mapping[str, _Function],
+    call_name: str,
+) -> bool:
+    target_tuple = tuple(targets)
+    return bool(target_tuple) and all(
+        target in functions and any(
+            isinstance(node, ast.Call) and _call_name(node) == call_name
+            for node in ast.walk(functions[target].node)
+        )
+        for target in target_tuple
+    )
+
+
+def _looks_like_provider_dispatch(
+    function: _Function,
+    call_name: str,
+    targets: Iterable[str],
+) -> bool:
+    if call_name not in _PROVIDER_DISPATCH_CALL_NAMES:
+        return False
+    provider_modules = (
+        "novel_flywheel.models:",
+        "novel_flywheel.providers.",
+    )
+    target_tuple = tuple(targets)
+    return (
+        any(target.startswith(provider_modules) for target in target_tuple)
+        or function.module == "novel_flywheel.contract_runtime"
+        or function.module == "novel_flywheel.models"
+        or function.module.startswith("novel_flywheel.providers.")
+    )
+
+
+def _has_retry_governor(function: _Function) -> bool:
+    calls = {
+        _call_name(node) for node in ast.walk(function.node)
+        if isinstance(node, ast.Call)
+    }
+    if calls & _RETRY_GOVERNOR_CALL_NAMES:
+        return True
+    return any(
+        isinstance(node, ast.Attribute) and node.attr == "transport_policy"
+        for node in ast.walk(function.node)
+    )
+
+
+def _direct_path_metric_violations_v1(
+    *,
+    repo_root: Path,
+    functions: Mapping[str, _Function],
+    reachable_functions: set[str],
+    function_bindings: Mapping[str, Mapping[str, object]],
+    boundary_entries: Mapping[str, str],
+    resolved_calls: Mapping[tuple[str, int], tuple[str, ...]],
+) -> dict[str, list[dict[str, object]]]:
+    violations = {name: [] for name in DIRECT_PATH_METRIC_NAMES_V1}
+
+    def add(
+        metric: str,
+        function: _Function,
+        call: ast.Call,
+        *,
+        reason: str,
+        contexts: tuple[str, ...],
+    ) -> None:
+        violations[metric].append({
+            "function_id": function.function_id,
+            "relative_path": function.path.relative_to(repo_root).as_posix(),
+            "line": getattr(call, "lineno", None),
+            "column": getattr(call, "col_offset", None),
+            "call_name": _call_name(call),
+            "contexts": list(contexts),
+            "reason": reason,
+            "ast_sha256": hashlib.sha256(
+                ast.dump(call, include_attributes=False).encode("utf-8")
+            ).hexdigest(),
+        })
+
+    for function_id in sorted(reachable_functions):
+        function = functions[function_id]
+        binding = function_bindings.get(function_id)
+        visitor = _BodyVisitor(function.node)
+        visitor.visit(function.node)
+        earlier_names: list[str] = []
+        for call in sorted(
+            visitor.calls,
+            key=lambda item: (
+                int(getattr(item, "lineno", 0)),
+                int(getattr(item, "col_offset", 0)),
+            ),
+        ):
+            call_name = _call_name(call)
+            contexts = visitor.call_contexts.get(id(call), ())
+            targets = resolved_calls.get((function_id, id(call)), ())
+            provider_dispatch = _looks_like_provider_dispatch(
+                function, call_name, targets,
+            )
+            if provider_dispatch and not _binding_is_exact_boundary(
+                binding, "FS.DISPATCH.MODEL",
+            ):
+                add(
+                    "DIRECT_PROVIDER_DISPATCH_OUTSIDE_KERNEL_COUNT",
+                    function, call,
+                    reason="provider_dispatch_not_owned_by_dispatch_boundary",
+                    contexts=contexts,
+                )
+
+            retry_context = bool(
+                set(contexts) & {"loop", "except_handler"}
+                or call_name == function.node.name
+                or any(
+                    token in function.node.name.lower()
+                    for token in ("retry", "redispatch", "recovery")
+                )
+            )
+            if provider_dispatch and retry_context:
+                if not _binding_is_exact_boundary(
+                    binding, "FS.DISPATCH.MODEL",
+                ):
+                    add(
+                        "DIRECT_RECOVERY_REDISPATCH_OUTSIDE_KERNEL_COUNT",
+                        function, call,
+                        reason="retry_dispatch_not_owned_by_dispatch_boundary",
+                        contexts=contexts,
+                    )
+                if not _has_retry_governor(function):
+                    add(
+                        "HIDDEN_RETRY_PATH_COUNT",
+                        function, call,
+                        reason="retry_dispatch_without_explicit_governor",
+                        contexts=contexts,
+                    )
+
+            if call_name in _NONCE_RESERVATION_CALL_NAMES:
+                kernel_owned_nonce = (
+                    function.module == "novel_flywheel.full_short_runtime_kernel"
+                    or _binding_is_kernel_owned(binding)
+                )
+                if not kernel_owned_nonce:
+                    add(
+                        "DIRECT_NONCE_RESERVATION_OUTSIDE_KERNEL_COUNT",
+                        function, call,
+                        reason="nonce_reservation_not_kernel_owned",
+                        contexts=contexts,
+                    )
+                if (
+                    call_name == "reserve_nonce_from_dispatch_readiness"
+                    and not {
+                        "mark_predispatch_ready", "reserve_dispatch_token",
+                    }.issubset(earlier_names)
+                ):
+                    add(
+                        "NONCE_PREMATURE_RESERVATION_PATH_COUNT",
+                        function, call,
+                        reason="nonce_reservation_not_dominated_by_readiness_and_token",
+                        contexts=contexts,
+                    )
+
+            if call_name in _AUTHORITY_PROMOTION_CALL_NAMES and not (
+                _binding_is_exact_boundary(binding, "FS.AUTHORITY.PROMOTE")
+                or _target_has_boundary(
+                    targets, boundary_entries, "FS.AUTHORITY.PROMOTE",
+                )
+                or _target_calls_name(
+                    targets, functions, "enforce_current_run_authority_gate",
+                )
+            ):
+                add(
+                    "DIRECT_AUTHORITY_PROMOTION_OUTSIDE_AUTHORITY_GATE_COUNT",
+                    function, call,
+                    reason="authority_promotion_not_owned_by_authority_gate",
+                    contexts=contexts,
+                )
+
+            if (
+                call_name in _STAGE_TERMINAL_FAILURE_CALL_NAMES
+                and function.module != "novel_flywheel.full_short_runtime_kernel"
+                and not _binding_is_kernel_owned(binding)
+            ):
+                add(
+                    "DIRECT_STAGE_TERMINAL_FAILURE_OUTSIDE_KERNEL_COUNT",
+                    function, call,
+                    reason="terminal_failure_transition_not_kernel_owned",
+                    contexts=contexts,
+                )
+
+            if (
+                call_name in _RECOVERY_DECISION_CALL_NAMES
+                and not (
+                    _binding_is_exact_boundary(binding, "FS.RECOVERY.DECIDE")
+                    or _target_has_boundary(
+                        targets, boundary_entries, "FS.RECOVERY.DECIDE",
+                    )
+                )
+            ):
+                add(
+                    "UNREGISTERED_RECOVERY_DECISION_COUNT",
+                    function, call,
+                    reason="recovery_decision_not_owned_by_registered_boundary",
+                    contexts=contexts,
+                )
+            earlier_names.append(call_name)
+
+    for rows in violations.values():
+        rows.sort(key=lambda item: (
+            str(item["function_id"]), int(item["line"] or 0),
+            int(item["column"] or 0), str(item["ast_sha256"]),
+        ))
+    return violations
 
 
 def _decorated_boundary(function: _Function) -> str | None:
@@ -474,6 +805,7 @@ def build_source_exit_inventory_v1(repo_root: Path) -> dict[str, object]:
     exits_by_function: dict[str, set[str]] = {}
     exit_rows: dict[str, dict[str, object]] = {}
     unresolved_by_function: dict[str, list[dict[str, object]]] = {}
+    resolved_calls: dict[tuple[str, int], tuple[str, ...]] = {}
     observed_dynamic_contracts: set[tuple[str, str]] = set()
     for function_id, function in functions.items():
         visitor = _BodyVisitor(function.node)
@@ -508,6 +840,7 @@ def build_source_exit_inventory_v1(repo_root: Path) -> dict[str, object]:
             ):
                 observed_dynamic_contracts.add(contract_key)
             targets, unresolved = _resolve_call(function, call, functions)
+            resolved_calls[(function_id, id(call))] = targets
             graph[function_id].update(targets)
             if unresolved:
                 unresolved_by_function.setdefault(function_id, []).append({
@@ -531,17 +864,28 @@ def build_source_exit_inventory_v1(repo_root: Path) -> dict[str, object]:
     }
     # Functions without an exit still matter for boundary reachability and
     # unresolved critical calls, so repeat the same propagation with markers.
-    function_markers = {key: {"fn:" + key} for key in functions}
-    function_states = bind_exit_states_v1(
+    function_bindings = _function_binding_rows(
         graph=graph,
         roots={key: value for key, value in roots.items() if key in functions},
         boundary_entries=boundary_entries,
-        exits_by_function=function_markers,
+        functions=functions,
     )
     reachable_functions.update(
-        str(value["function_id"]) for value in function_states.values()
+        function_id for function_id, value in function_bindings.items()
         if value["protected_path_count"] or value["unprotected_path_count"]
     )
+    direct_path_violations = _direct_path_metric_violations_v1(
+        repo_root=repo_root,
+        functions=functions,
+        reachable_functions=reachable_functions,
+        function_bindings=function_bindings,
+        boundary_entries=boundary_entries,
+        resolved_calls=resolved_calls,
+    )
+    direct_path_metrics = {
+        name: len(direct_path_violations[name])
+        for name in DIRECT_PATH_METRIC_NAMES_V1
+    }
     reachable_boundary_ids = {
         boundary_entries[function_id]
         for function_id in reachable_functions
@@ -589,10 +933,16 @@ def build_source_exit_inventory_v1(repo_root: Path) -> dict[str, object]:
             {"function_id": item[0], "call_name": item[1]}
             for item in stale_dynamic_contracts[:20]
         ],
+        "direct_path_metric_violations": {
+            name: rows[:20]
+            for name, rows in direct_path_violations.items()
+            if rows
+        },
     }
     passed = not any((
         missing_roots, bad_registry_wrappers, unreachable_boundaries,
         unbound, unresolved, stale_dynamic_contracts,
+        *direct_path_metrics.values(),
     ))
     identity = {
         "proof_domain": FULL_SHORT_RUNTIME_PROOF_DOMAIN_V1,
@@ -601,6 +951,8 @@ def build_source_exit_inventory_v1(repo_root: Path) -> dict[str, object]:
         ),
         "exits": exits,
         "unresolved_critical_edges": unresolved,
+        "direct_path_metrics": direct_path_metrics,
+        "direct_path_metric_violations": direct_path_violations,
     }
     return {
         "schema": "FullShortSourceFailureExitInventoryV1",
@@ -615,6 +967,8 @@ def build_source_exit_inventory_v1(repo_root: Path) -> dict[str, object]:
         "registry_entry_without_exact_wrapper_count": len(bad_registry_wrappers),
         "reachable_function_count": len(reachable_functions),
         "registered_boundary_count": len(registered_boundary_ids),
+        **direct_path_metrics,
+        "direct_path_metrics": direct_path_metrics,
         "failure_summary": failure_summary,
         "exits": exits,
         "unresolved_critical_edges": unresolved,

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import importlib
+import inspect
 from pathlib import Path
 
 import pytest
@@ -93,16 +94,24 @@ async def test_registry_generated_fault_campaign_executes_kernel_path(
         journal=journal,
         fault_injector=injector,
     )
-    operation_called = False
-
-    async def must_not_run() -> None:
-        nonlocal operation_called
-        operation_called = True
+    boundary = DEFAULT_FAILURE_BOUNDARY_REGISTRY_V1.boundary(
+        fault_case.boundary_id
+    )
+    module_name, qualname = boundary.entry_function.split(":", 1)
+    production_entry = importlib.import_module(module_name)
+    for part in qualname.split("."):
+        production_entry = getattr(production_entry, part)
+    assert getattr(production_entry, "__full_short_boundary_id__", None) == (
+        fault_case.boundary_id
+    )
 
     with pytest.raises(FullShortBoundaryFailureV1) as caught:
-        await kernel.execute_boundary(fault_case.boundary_id, must_not_run)
+        with activate_full_short_kernel_v1(kernel):
+            if inspect.iscoroutinefunction(production_entry):
+                await production_entry()
+            else:
+                production_entry()
 
-    assert operation_called is False
     assert injector.trigger_count == 1
     expected_code = (
         "internal.unexpected_at_boundary"
@@ -531,11 +540,23 @@ def test_restart_reconciler_executes_policy_for_every_durable_state(
         execution_id=f"restart-{state.value}",
         initial_state=state,
     )
+    before = DurableExecutionJournalV1.open(journal.path)
     result = FullShortRestartReconcilerV1().reconcile(journal.path)
+    reopened = DurableExecutionJournalV1.open(journal.path)
 
     assert result.state_before == state
     assert len(result.journal_head_sha256) == 64
     assert result.authority_mutation_allowed is False
+    assert reopened.dispatch_token_receipts == before.dispatch_token_receipts
+    assert reopened.audit_receipts == before.audit_receipts
+    assert sum(
+        item.to_state == ExecutionState.STAGE_ACCEPTED
+        for item in reopened.transitions
+    ) == 0
+    assert sum(
+        item.boundary_id == "FS.AUTHORITY.PROMOTE"
+        for item in reopened.audit_receipts
+    ) == 0
     if state in {
         ExecutionState.DISPATCH_TOKEN_RESERVED,
         ExecutionState.DISPATCHING,
@@ -547,6 +568,12 @@ def test_restart_reconciler_executes_policy_for_every_durable_state(
     assert result.provider_redispatch_allowed is (
         state == ExecutionState.PREDISPATCH_READY
     )
+
+    stable_head = reopened.head_sha256
+    repeated = FullShortRestartReconcilerV1().reconcile(journal.path)
+    assert repeated.state_after == reopened.state
+    assert repeated.journal_head_sha256 == stable_head
+    assert DurableExecutionJournalV1.open(journal.path).head_sha256 == stable_head
 
 
 def test_paused_reconciliation_requires_typed_resolution_without_dispatch(

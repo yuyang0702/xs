@@ -419,7 +419,11 @@ def test_dry_run_has_no_test_owned_oracle_or_fixed_call_count() -> None:
     assert "_execute_full_short_control_plane_offline(" in source
     assert "run_full_short_workflow_path(" in source
     assert "expected_calls * 4" not in source
-    assert "discovered_plan_total_cap + planning_retry_cap" in source
+    assert (
+        "discovered_plan_total_cap\n"
+        "            + planning_recovery_output_token_hard_cap"
+        in source
+    )
 
 
 def test_dry_run_failure_projection_is_hash_only() -> None:
@@ -516,6 +520,59 @@ def test_dry_run_adapter_fault_is_one_local_projection_only() -> None:
     }
     assert factory.adapter_failure_after_exact_capture_injected is True
     assert factory.adapter_projection_call_count == 2
+
+
+@pytest.mark.asyncio
+async def test_combined_planning_injections_own_distinct_logical_stages() -> None:
+    from novel_flywheel.offline_http_transport import (
+        build_offline_http_client_v1,
+    )
+    from tools.canary.first_trustworthy_full_short_dry_run import (
+        _OfflineHttpTransportFactory,
+    )
+
+    factory = _OfflineHttpTransportFactory(
+        inject_planning_business_incomplete_once=True,
+        inject_planning_reasoning_only_once=True,
+    )
+    client = build_offline_http_client_v1(factory.build(
+        protocol="anthropic",
+        destination="https://api.deepseek.com/anthropic",
+        bound_role="planning",
+    ))
+
+    async def send(user: str) -> dict:
+        response = await client.post(
+            "https://api.deepseek.com/anthropic/v1/messages",
+            json={
+                "model": "offline-planning",
+                "system": "Return the planning contract only.",
+                "messages": [{"role": "user", "content": user}],
+                "max_tokens": 512,
+            },
+        )
+        return response.json()
+
+    try:
+        packet = (
+            "IR_FIRST_SHORT_PLANNING_PACKET_V2\n"
+            "PACKET CONTRACT:\n"
+            '{"global_event_ordinals":[1]}\n\n'
+        )
+        first = await send(packet)
+        assert first["content"][0]["type"] == "text"
+        assert factory.oracle.planning_business_incomplete_injected is True
+        assert factory.planning_reasoning_only_injected is False
+
+        second = await send(packet + "ACTIONABLE_PLANNING_SEMANTIC_FINDINGS")
+        assert second["content"][0]["type"] == "text"
+        assert factory.planning_reasoning_only_injected is False
+
+        third = await send(packet)
+        assert third["content"][0]["type"] == "thinking"
+        assert factory.planning_reasoning_only_injected is True
+    finally:
+        await client.aclose()
 
 
 def test_lowest_http_seam_adapter_fault_hook_is_optional() -> None:
