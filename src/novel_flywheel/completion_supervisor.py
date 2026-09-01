@@ -3,13 +3,15 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from enum import StrEnum
-import hashlib
 from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
 from novel_flywheel.db import Database, WORKFLOW_SUPERVISION_CONTRACT_VERSION
 from novel_flywheel.context_policy import classify_model_failure
+from novel_flywheel.execution_failure_architecture import (
+    build_durable_failure_evidence,
+)
 from novel_flywheel.models import (
     CapabilityRoutesExhaustedError,
     ModelRoutesExhaustedError,
@@ -102,8 +104,13 @@ def classify_completion_failure(exc: BaseException) -> FailureClass:
         children = [item[2] for item in exc.route_errors]
         return _strongest_failure_class(children) or FailureClass.CAPABILITY
     if isinstance(exc, ModelRoutesExhaustedError):
+        children = [
+            item[-1] for item in exc.route_errors
+            if isinstance(item, (tuple, list)) and item
+            and isinstance(item[-1], BaseException)
+        ]
         return _strongest_failure_class(
-            [exc.primary_error, exc.fallback_error],
+            children or [exc.primary_error, exc.fallback_error],
         ) or FailureClass.UNKNOWN
     if isinstance(exc, ConnectionError):
         return FailureClass.TRANSPORT
@@ -210,8 +217,10 @@ class CompletionSupervisor:
 
         current = self.load(run_id)
         failure_class = classify_completion_failure(exc)
-        raw_evidence = f"{type(exc).__name__}:{str(exc)}"
-        failure_sha = hashlib.sha256(raw_evidence.encode("utf-8")).hexdigest()
+        evidence = build_durable_failure_evidence(
+            exc, boundary="completion_supervisor.plan_failure",
+        )
+        failure_sha = evidence.failure_graph_sha256
         used = dict(current.used_budgets)
 
         if failure_class == FailureClass.TRANSPORT:
@@ -235,6 +244,7 @@ class CompletionSupervisor:
                     ),
                     attempt_action="schedule_checkpoint_resume",
                     attempt_metadata={
+                        **evidence.event_metadata(),
                         "retry_index": count,
                         "retry_after_seconds": delay,
                     },
@@ -253,7 +263,7 @@ class CompletionSupervisor:
             failure_sha256=failure_sha,
             last_error_summary=f"{type(exc).__name__}: {failure_class.value}",
             attempt_action="automatic_recovery_exhausted",
-            attempt_metadata={},
+            attempt_metadata=evidence.event_metadata(),
         )
 
     def handle_failure(self, run_id: str, exc: BaseException) -> FailureDisposition:

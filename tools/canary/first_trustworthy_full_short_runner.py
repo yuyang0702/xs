@@ -819,12 +819,13 @@ async def execute_full_short_control_plane(
         ),
         "FULL_SHORT_APPROVAL_FAILED_BEFORE_LAUNCH",
     )
-    nonce = prelaunch(
-        lambda: store.reserve_nonce(
-            execution_id=execution_id, policy=policy, approval=approval,
+    prelaunch(
+        lambda: store.prepare_predispatch_ledger(
+            execution_id=execution_id, policy=policy,
+            permission=permission, approval=approval,
             external_actions_enabled=external_actions_enabled,
         ),
-        "FULL_SHORT_NONCE_FAILED_BEFORE_LAUNCH",
+        "FULL_SHORT_PREDISPATCH_LEDGER_FAILED_BEFORE_LAUNCH",
     )
     observer = prelaunch(
         lambda: FullShortDispatchLedgerObserverV1(
@@ -909,6 +910,7 @@ async def execute_full_short_control_plane(
             raise RuntimeError("FULL_SHORT_TERMINAL_VERIFICATION_NOT_EXACT")
         try:
             elapsed_seconds = _completion_elapsed_recheck(policy, ledger)
+            nonce = store.load_nonce(execution_id)
             receipt = build_full_short_completion_receipt_v1(
                 execution_id=execution_id, policy=policy,
                 permission_sha256=permission["permission_sha256"],
@@ -995,9 +997,20 @@ async def execute_full_short_control_plane(
     finally:
         close = getattr(registry, "close", None)
         if callable(close):
-            closed = close()
-            if inspect.isawaitable(closed):
-                await closed
+            try:
+                closed = close()
+                if inspect.isawaitable(closed):
+                    await closed
+            except Exception as close_error:
+                # Resource-close diagnostics are secondary evidence.  They
+                # must never replace the workflow/terminal outcome selected
+                # above or trigger a new provider attempt.
+                closure_state["registry_close_failure"] = {
+                    "exception_type": type(close_error).__name__,
+                    "failure_sha256": hashlib.sha256(
+                        type(close_error).__name__.encode("utf-8")
+                    ).hexdigest(),
+                }
     result = db.get_run(execution_id) or {}
     if result.get("status") != "completed":
         terminal = closure_state.get("terminal")

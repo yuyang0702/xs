@@ -1057,6 +1057,255 @@ class FullShortDurableExecutionStoreV1:
             self._exclusive_write(self._path(execution_id, "ledger"), ledger)
         return value
 
+    def prepare_predispatch_ledger(
+        self, *, execution_id: str, policy: Mapping[str, Any],
+        permission: Mapping[str, Any], approval: Mapping[str, Any],
+        external_actions_enabled: bool,
+    ) -> dict[str, Any]:
+        """Create the durable local-readiness ledger without creating a nonce."""
+
+        validated = self._verify_store_binding(policy)
+        _require(permission.get("state") == "ACTIVE", "PERMISSION_NOT_ACTIVE")
+        _require(approval.get("state") == "SIGNED", "APPROVAL_NOT_SIGNED")
+        _require(
+            approval.get("permission_sha256") == permission.get("permission_sha256"),
+            "APPROVAL_PERMISSION_MISMATCH",
+        )
+        for value in (permission, approval):
+            _require(
+                value.get("execution_id") == execution_id
+                and value.get("policy_sha256") == validated["policy_sha256"]
+                and value.get("store_root_sha256") == self.store_root_sha256
+                and value.get("external_actions_enabled")
+                is external_actions_enabled,
+                "PREDISPATCH_AUTHORITY_CHAIN_MISMATCH",
+            )
+        body = {
+            "schema": LEDGER_SCHEMA, "version": 1,
+            "execution_id": execution_id,
+            "nonce_sha256": None,
+            "policy_sha256": validated["policy_sha256"],
+            "logical_stage_plan_sha256": validated[
+                "logical_stage_plan_sha256"
+            ],
+            "transport_recovery_policy_sha256": validated[
+                "transport_recovery_policy_sha256"
+            ],
+            "transport_recovery_policy_identity": "EXACT_REPLAY_ONLY",
+            "logical_stage_recovery_policy_sha256": validated[
+                "logical_stage_recovery_policy_sha256"
+            ],
+            "store_root_sha256": self.store_root_sha256,
+            "permission_sha256": permission["permission_sha256"],
+            "signed_approval_sha256": approval["signed_approval_sha256"],
+            "observer_session_sha256": None,
+            "dispatch_readiness_receipt_sha256": None,
+            "nonce_disposition": "ABSENT_LOCAL_READINESS",
+            "state": "PREDISPATCH_LOCAL_READINESS",
+            "attempts": [], "completed_stage_receipts": [],
+            "created_at": _now(), "updated_at": _now(),
+        }
+        value = _seal(
+            "novel-flywheel-full-short-dispatch-ledger-v1", body,
+            "ledger_sha256",
+        )
+        with self._locked():
+            _require(
+                not self._path(execution_id, "nonce").exists(),
+                "PREMATURE_NONCE_ALREADY_EXISTS",
+            )
+            self._exclusive_write(self._path(execution_id, "ledger"), value)
+        return value
+
+    def verify_predispatch_chain(
+        self, *, execution_id: str, policy: Mapping[str, Any],
+        external_actions_enabled: bool,
+    ) -> dict[str, dict[str, Any]]:
+        validated = self._verify_store_binding(policy)
+        permission = self._verify_seal(
+            self._read(execution_id, "permission"),
+            domain="novel-flywheel-full-short-permission-v1",
+            field="permission_sha256", reason="PERMISSION_SHA256_MISMATCH",
+        )
+        approval = self._verify_seal(
+            self._read(execution_id, "approval"),
+            domain="novel-flywheel-full-short-jit-approval-v1",
+            field="signed_approval_sha256", reason="APPROVAL_SHA256_MISMATCH",
+        )
+        ledger = self._verify_seal(
+            self._read(execution_id, "ledger"),
+            domain="novel-flywheel-full-short-dispatch-ledger-v1",
+            field="ledger_sha256", reason="LEDGER_SHA256_MISMATCH",
+        )
+        _require(permission.get("state") == "ACTIVE", "PERMISSION_NOT_ACTIVE")
+        _require(approval.get("state") == "SIGNED", "APPROVAL_NOT_SIGNED")
+        _require(
+            ledger.get("state") == "PREDISPATCH_LOCAL_READINESS"
+            and ledger.get("nonce_sha256") is None
+            and ledger.get("nonce_disposition") == "ABSENT_LOCAL_READINESS",
+            "PREDISPATCH_LEDGER_STATE_INVALID",
+        )
+        for value in (permission, approval, ledger):
+            _require(
+                value.get("execution_id") == execution_id
+                and value.get("policy_sha256") == validated["policy_sha256"]
+                and value.get("store_root_sha256") == self.store_root_sha256
+                and value.get("logical_stage_plan_sha256")
+                == validated["logical_stage_plan_sha256"]
+                and value.get("transport_recovery_policy_sha256")
+                == validated["transport_recovery_policy_sha256"]
+                and value.get("transport_recovery_policy_identity")
+                == "EXACT_REPLAY_ONLY"
+                and value.get("logical_stage_recovery_policy_sha256")
+                == validated["logical_stage_recovery_policy_sha256"],
+                "PREDISPATCH_CHAIN_MISMATCH",
+            )
+        _require(
+            approval.get("permission_sha256") == permission.get("permission_sha256")
+            and ledger.get("permission_sha256") == permission.get("permission_sha256")
+            and ledger.get("signed_approval_sha256")
+            == approval.get("signed_approval_sha256"),
+            "PREDISPATCH_CHAIN_LINK_MISMATCH",
+        )
+        for value in (permission, approval):
+            _require(
+                value.get("external_actions_enabled")
+                is external_actions_enabled,
+                "EXTERNAL_ACTION_AUTHORITY_MISMATCH",
+            )
+        return {"permission": permission, "approval": approval, "ledger": ledger}
+
+    def claim_predispatch_observer_session(
+        self, *, execution_id: str, policy: Mapping[str, Any], session_id: str,
+        external_actions_enabled: bool,
+    ) -> None:
+        self.verify_predispatch_chain(
+            execution_id=execution_id, policy=policy,
+            external_actions_enabled=external_actions_enabled,
+        )
+        session_sha256 = hashlib.sha256(session_id.encode("utf-8")).hexdigest()
+        with self._locked():
+            ledger = self._verify_seal(
+                self._read(execution_id, "ledger"),
+                domain="novel-flywheel-full-short-dispatch-ledger-v1",
+                field="ledger_sha256", reason="LEDGER_SHA256_MISMATCH",
+            )
+            _require(
+                ledger.get("state") == "PREDISPATCH_LOCAL_READINESS"
+                and ledger.get("observer_session_sha256") is None,
+                "OBSERVER_ALREADY_CLAIMED_NO_RESTART",
+            )
+            body = dict(ledger)
+            body.pop("ledger_sha256", None)
+            body["observer_session_sha256"] = session_sha256
+            body["updated_at"] = _now()
+            self._replace(
+                self._path(execution_id, "ledger"),
+                _seal(
+                    "novel-flywheel-full-short-dispatch-ledger-v1", body,
+                    "ledger_sha256",
+                ),
+            )
+
+    def nonce_exists(self, execution_id: str) -> bool:
+        return self._path(execution_id, "nonce").exists()
+
+    def load_nonce(self, execution_id: str) -> dict[str, Any]:
+        return self._read(execution_id, "nonce")
+
+    def reserve_nonce_from_dispatch_readiness(
+        self, *, execution_id: str, policy: Mapping[str, Any],
+        external_actions_enabled: bool, session_id: str,
+        readiness: Mapping[str, Any],
+    ) -> dict[str, Any]:
+        """Create the nonce only after every knowable request check has passed.
+
+        The first write is an explicit non-restartable pending state.  A crash
+        between nonce and ledger replacement therefore cannot redispatch.
+        """
+
+        chain = self.verify_predispatch_chain(
+            execution_id=execution_id, policy=policy,
+            external_actions_enabled=external_actions_enabled,
+        )
+        validated = self._verify_store_binding(policy)
+        session_sha256 = hashlib.sha256(session_id.encode("utf-8")).hexdigest()
+        readiness_body = deepcopy(dict(readiness))
+        readiness_sha256 = domain_sha256(
+            "novel-flywheel-full-short-dispatch-readiness-v1", readiness_body,
+        )
+        with self._locked():
+            _require(
+                not self._path(execution_id, "nonce").exists(),
+                "NONCE_ALREADY_EXISTS_NO_RESTART",
+            )
+            ledger = self._verify_seal(
+                self._read(execution_id, "ledger"),
+                domain="novel-flywheel-full-short-dispatch-ledger-v1",
+                field="ledger_sha256", reason="LEDGER_SHA256_MISMATCH",
+            )
+            _require(
+                ledger.get("state") == "PREDISPATCH_LOCAL_READINESS"
+                and ledger.get("observer_session_sha256") == session_sha256
+                and not ledger.get("attempts"),
+                "PREDISPATCH_SESSION_OR_STATE_DRIFT",
+            )
+            approval = chain["approval"]
+            reservation_body = {
+                "schema": NONCE_SCHEMA, "version": 1,
+                "nonce_id": f"fsn-{secrets.token_hex(16)}",
+                "execution_id": execution_id,
+                "signed_approval_sha256": approval["signed_approval_sha256"],
+                "policy_sha256": validated["policy_sha256"],
+                "logical_stage_plan_sha256": validated["logical_stage_plan_sha256"],
+                "transport_recovery_policy_sha256": validated[
+                    "transport_recovery_policy_sha256"
+                ],
+                "transport_recovery_policy_identity": "EXACT_REPLAY_ONLY",
+                "logical_stage_recovery_policy_sha256": validated[
+                    "logical_stage_recovery_policy_sha256"
+                ],
+                "execution_head": validated["execution_head"],
+                "store_root_sha256": self.store_root_sha256,
+                "external_actions_enabled": external_actions_enabled,
+                "created_at": _now(), "single_use": True,
+            }
+            reservation = _seal(
+                "novel-flywheel-full-short-nonce-v1", reservation_body,
+                "nonce_sha256",
+            )
+            nonce = _seal(
+                "novel-flywheel-full-short-nonce-record-v1",
+                {
+                    **reservation,
+                    "state": "CONSUMED_DISPATCH_COMMIT_PENDING",
+                    "dispatch_attempt_count": 0,
+                    "consumed_at": None,
+                    "consumed_session_sha256": session_sha256,
+                    "observer_session_sha256": session_sha256,
+                    "dispatch_readiness_receipt_sha256": readiness_sha256,
+                },
+                "nonce_record_sha256",
+            )
+            self._exclusive_write(self._path(execution_id, "nonce"), nonce)
+            ledger_body = dict(ledger)
+            ledger_body.pop("ledger_sha256", None)
+            ledger_body.update({
+                "nonce_sha256": reservation["nonce_sha256"],
+                "dispatch_readiness_receipt_sha256": readiness_sha256,
+                "nonce_disposition": "CONSUMED_DISPATCH_COMMIT_PENDING",
+                "state": "DISPATCH_COMMIT_PENDING",
+                "updated_at": _now(),
+            })
+            self._replace(
+                self._path(execution_id, "ledger"),
+                _seal(
+                    "novel-flywheel-full-short-dispatch-ledger-v1", ledger_body,
+                    "ledger_sha256",
+                ),
+            )
+        return nonce
+
     def load_ledger(self, execution_id: str) -> dict[str, Any]:
         return self._read(execution_id, "ledger")
 
@@ -1351,7 +1600,12 @@ class FullShortDurableExecutionStoreV1:
                 "TOTAL_OUTPUT_TOKEN_CAP_EXHAUSTED",
             )
             if not attempts:
-                _require(nonce.get("state") == "RESERVED", "NONCE_NOT_RESERVED")
+                _require(
+                    nonce.get("state") in {
+                        "RESERVED", "CONSUMED_DISPATCH_COMMIT_PENDING",
+                    },
+                    "NONCE_NOT_DISPATCH_READY",
+                )
                 _require(
                     nonce.get("observer_session_sha256") == session_sha256,
                     "OBSERVER_SESSION_MISMATCH",
@@ -1399,6 +1653,7 @@ class FullShortDurableExecutionStoreV1:
                 int(item["requested_output_tokens"]) for item in attempts
             )
             ledger_body["state"] = "DISPATCH_IN_FLIGHT"
+            ledger_body["nonce_disposition"] = "CONSUMED"
             ledger_body["updated_at"] = _now()
             sealed = _seal(
                 "novel-flywheel-full-short-dispatch-ledger-v1",
@@ -1585,14 +1840,27 @@ class FullShortDispatchLedgerObserverV1:
             repo_root=self.store.repo_root,
             store_root=self.store.root / "provider-response-captures-v1",
         )
-        self.store.verify_ready_chain(
-            execution_id=execution_id, policy=self.policy,
-            external_actions_enabled=external_actions_enabled,
-        )
-        self.store.claim_observer_session(
-            execution_id=execution_id, policy=self.policy,
-            session_id=self.session_id,
-        )
+        if self.store.nonce_exists(execution_id):
+            # Compatibility for already-materialized offline fixtures.  The
+            # production runner uses the nonce-absent branch below.
+            self.store.verify_ready_chain(
+                execution_id=execution_id, policy=self.policy,
+                external_actions_enabled=external_actions_enabled,
+            )
+            self.store.claim_observer_session(
+                execution_id=execution_id, policy=self.policy,
+                session_id=self.session_id,
+            )
+        else:
+            self.store.verify_predispatch_chain(
+                execution_id=execution_id, policy=self.policy,
+                external_actions_enabled=external_actions_enabled,
+            )
+            self.store.claim_predispatch_observer_session(
+                execution_id=execution_id, policy=self.policy,
+                session_id=self.session_id,
+                external_actions_enabled=external_actions_enabled,
+            )
 
     def _next_logical_stage_plan_entry(self) -> dict[str, Any]:
         ledger = self.store.load_ledger(self.execution_id)
@@ -2029,6 +2297,36 @@ class FullShortDispatchLedgerObserverV1:
             "contract_runtime_capture_receipt_sha256": None,
             "contract_runtime_capture_transport_complete": None,
         }
+        if not self.store.nonce_exists(self.execution_id):
+            self.store.reserve_nonce_from_dispatch_readiness(
+                execution_id=self.execution_id, policy=self.policy,
+                external_actions_enabled=self.external_actions_enabled,
+                session_id=self.session_id,
+                readiness={
+                    "execution_id": self.execution_id,
+                    "policy_sha256": self.policy["policy_sha256"],
+                    "logical_stage_id": logical_stage_id,
+                    "physical_attempt_id": physical_attempt_id,
+                    "role_binding_sha256": route["role_binding_sha256"],
+                    "route_fingerprint": route["route_fingerprint"],
+                    "destination_sha256": attempt["destination_sha256"],
+                    "request_shape_sha256": request_shape_sha256,
+                    "provider_payload_sha256": attempt[
+                        "provider_payload_sha256"
+                    ],
+                    "egress_intent_sha256": self.egress_intent_sha256,
+                    "requested_output_tokens": requested_tokens,
+                    "total_requested_output_tokens": total_requested,
+                    "hard_max_provider_requests": self.policy[
+                        "hard_max_provider_requests"
+                    ],
+                    "max_physical_attempts_per_logical_stage": self.policy[
+                        "max_physical_attempts_per_logical_stage"
+                    ],
+                    "network_request_count_before_commit": 0,
+                    "provider_response_count_before_commit": 0,
+                },
+            )
         self.store.consume_nonce_and_record_dispatch(
             execution_id=self.execution_id, policy=self.policy,
             external_actions_enabled=self.external_actions_enabled,

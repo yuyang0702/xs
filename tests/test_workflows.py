@@ -696,6 +696,35 @@ async def test_crewai_cleanup_error_does_not_mask_primary_workflow_error(
 
 
 @pytest.mark.asyncio
+async def test_crewai_cleanup_error_does_not_replace_successful_pipeline_result(
+    tmp_path, monkeypatch,
+) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    service = WorkflowService(
+        db, store, FakeGateway(), SkillGate(db, SkillScanner([])),
+    )
+    from novel_flywheel.config import configure_runtime_environment
+
+    configure_runtime_environment(db.path.parent, service.crewai_data_dir)
+    from crewai.flow.flow import Flow
+
+    async def cleanup_fails_after_success(self):
+        await self.execute()
+        raise OSError(22, "diagnostic cleanup failed")
+
+    async def pipeline():
+        return {"accepted": True, "artifact_sha256": "a" * 64}
+
+    monkeypatch.setattr(Flow, "kickoff_async", cleanup_fails_after_success)
+
+    assert await service._run_in_crewai(pipeline) == {
+        "accepted": True, "artifact_sha256": "a" * 64,
+    }
+
+
+@pytest.mark.asyncio
 async def test_incremental_review_uses_fewer_than_all_windows_for_middle_prose_change(tmp_path) -> None:
     db = Database(tmp_path / "app.db")
     db.migrate()

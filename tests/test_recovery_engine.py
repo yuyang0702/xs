@@ -1,9 +1,12 @@
+import pytest
+
 from novel_flywheel.recovery_engine import (
     FailureClass,
     ProtocolRouteCircuitBreaker,
     RecoveryAction,
     RecoveryCandidate,
     RecoveryController,
+    RecoveryLadderExhaustedError,
     RecoveryIssue,
     ReliabilityFailure,
     ValidationStage,
@@ -191,6 +194,16 @@ def test_p4_ladders_reach_minimal_regeneration_and_checkpoint_resume() -> None:
         RecoveryAction.MINIMAL_REGENERATE,
         RecoveryAction.RESUME_CHECKPOINT,
     ]
+
+
+def test_recovery_ladder_exhaustion_is_terminal_not_an_infinite_last_action() -> None:
+    controller = RecoveryController()
+    failure = ReliabilityFailure(
+        "unknown", FailureClass.UNKNOWN, "unit", unit_id="bounded",
+    )
+    assert controller.next_action(failure) == RecoveryAction.RESTORE_BEST
+    with pytest.raises(RecoveryLadderExhaustedError):
+        controller.next_action(failure)
 
 
 def test_earlier_stage_progress_may_reveal_later_existing_issues() -> None:

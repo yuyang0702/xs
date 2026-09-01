@@ -211,6 +211,121 @@ def _authorize_offline(
     return permission, approval, nonce
 
 
+def _authorize_predispatch_offline(
+    store: FullShortDurableExecutionStoreV1, execution_id: str,
+) -> tuple[dict, dict]:
+    policy = _policy(store)
+    permission = store.create_permission(
+        execution_id=execution_id, authorization_text_sha256="3" * 64,
+        policy=policy, external_actions_enabled=False,
+    )
+    approval = store.create_jit_approval(
+        execution_id=execution_id, policy=policy, permission=permission,
+        external_actions_enabled=False,
+    )
+    store.prepare_predispatch_ledger(
+        execution_id=execution_id, policy=policy, permission=permission,
+        approval=approval, external_actions_enabled=False,
+    )
+    return permission, approval
+
+
+def _predispatch_observer(
+    store: FullShortDurableExecutionStoreV1, execution_id: str,
+) -> FullShortDispatchLedgerObserverV1:
+    observer = FullShortDispatchLedgerObserverV1(
+        store=store, execution_id=execution_id, policy=_policy(store),
+        authorized_routes=_routes(), egress_policy=_egress(),
+    )
+    observer.bind_route(
+        role="planning", lane="primary", provider_id="provider",
+        model_id="model-id", route_fingerprint="9" * 64,
+    )
+    return observer
+
+
+def test_predispatch_local_failure_leaves_nonce_absent(tmp_path: Path) -> None:
+    store = _store(tmp_path / "lazy-nonce-local-failure")
+    execution_id = "lazy-nonce-local-failure"
+    _authorize_predispatch_offline(store, execution_id)
+    observer = _predispatch_observer(store, execution_id)
+    observer.bind_model_request(protocol="anthropic", request=_request())
+
+    with pytest.raises(FullShortExecutionBoundaryError) as rejected:
+        observer.before_http_dispatch(
+            method="POST", url="https://unit.test/v1/messages",
+            payload={**_payload(), "unexpected": True},
+        )
+
+    assert rejected.value.reason_code == "EGRESS_PAYLOAD_SCHEMA_OR_CONTENT_DRIFT"
+    assert store.nonce_exists(execution_id) is False
+    ledger = store.load_ledger(execution_id)
+    assert ledger["state"] == "PREDISPATCH_LOCAL_READINESS"
+    assert ledger["nonce_disposition"] == "ABSENT_LOCAL_READINESS"
+    assert ledger["attempts"] == []
+
+
+def test_predispatch_credential_failure_leaves_nonce_absent(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    store = _store(tmp_path / "lazy-nonce-credential-failure")
+    execution_id = "lazy-nonce-credential-failure"
+    _authorize_predispatch_offline(store, execution_id)
+    observer = FullShortDispatchLedgerObserverV1(
+        store=store, execution_id=execution_id, policy=_policy(store),
+        authorized_routes=_routes(), egress_policy=_egress(),
+    )
+    db = Database(tmp_path / "lazy-nonce-credential-failure" / "app.db")
+    db.migrate()
+    db.save_provider(
+        provider_id="provider", name="Provider", protocol="anthropic",
+        base_url="https://unit.test/v1", auth_type="x-api-key",
+        timeout_seconds=30, extra_headers={},
+    )
+    db.save_model(
+        model_id="model-id", provider_id="provider", display_name="Model",
+        model_name="offline", context_window=None, max_output_tokens=4096,
+    )
+
+    class MissingSecrets:
+        def get(self, _provider_id: str) -> None:
+            return None
+
+    registry = ProviderRegistry(db, MissingSecrets(), attempt_observer=observer)
+    monkeypatch.setattr(
+        registry, "route_fingerprint", lambda _provider, _model: "9" * 64,
+    )
+    with pytest.raises(ValueError, match="missing_api_key"):
+        registry.resolve("provider", "model-id", role="planning", lane="primary")
+
+    assert store.nonce_exists(execution_id) is False
+    assert store.load_ledger(execution_id)["attempts"] == []
+
+
+def test_dispatch_ready_receipt_precedes_lazy_nonce_consumption(
+    tmp_path: Path,
+) -> None:
+    store = _store(tmp_path / "lazy-nonce-dispatch")
+    execution_id = "lazy-nonce-dispatch"
+    _authorize_predispatch_offline(store, execution_id)
+    observer = _predispatch_observer(store, execution_id)
+    observer.bind_model_request(protocol="anthropic", request=_request())
+
+    observer.before_http_dispatch(
+        method="POST", url="https://unit.test/v1/messages", payload=_payload(),
+    )
+
+    nonce = store.load_nonce(execution_id)
+    ledger = store.load_ledger(execution_id)
+    assert nonce["state"] == "CONSUMED"
+    assert nonce["dispatch_readiness_receipt_sha256"] == ledger[
+        "dispatch_readiness_receipt_sha256"
+    ]
+    assert ledger["nonce_disposition"] == "CONSUMED"
+    assert ledger["state"] == "DISPATCH_IN_FLIGHT"
+    assert len(ledger["attempts"]) == 1
+
+
 def _observer(
     store: FullShortDurableExecutionStoreV1, execution_id: str, *,
     session_id: str | None = None, max_tokens: int = 128,

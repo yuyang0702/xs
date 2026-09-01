@@ -427,7 +427,11 @@ class RecoveryController:
         key = (failure.unit_id, failure.failure_class)
         attempt = self.attempts.get(key, 0)
         ladder = self.ladders.get(failure.failure_class, DEFAULT_LADDERS[FailureClass.UNKNOWN])
-        action = ladder[min(attempt, len(ladder) - 1)]
+        if attempt >= len(ladder):
+            raise RecoveryLadderExhaustedError(
+                failure.unit_id, failure.failure_class,
+            )
+        action = ladder[attempt]
         self.attempts[key] = attempt + 1
         if action == RecoveryAction.FALLBACK_CAPABLE_ROUTE and not capable_fallback:
             return RecoveryAction.RESTORE_BEST
@@ -438,3 +442,12 @@ class RecoveryController:
         for key in list(self.attempts):
             if key[0] == unit_id:
                 del self.attempts[key]
+
+
+class RecoveryLadderExhaustedError(RuntimeError):
+    """A bounded recovery ladder was consumed; callers must stop looping."""
+
+    def __init__(self, unit_id: str, failure_class: FailureClass) -> None:
+        super().__init__("typed recovery ladder exhausted")
+        self.unit_id = unit_id
+        self.failure_class = failure_class

@@ -87,6 +87,7 @@ from novel_flywheel.context_policy import (
     scoped_creative_output_budget,
     stage_output_budget,
 )
+from novel_flywheel.execution_failure_architecture import ObserverGuard
 from novel_flywheel.contract_runtime import (
     ContractOutputLimitExhaustedError,
     ExecutableContractSpec,
@@ -19216,10 +19217,14 @@ class WorkflowService:
                         ),
                     },
                 )
-                reader_review = {
-                    **review,
-                    "reader_signals": {"unavailable": True, "fallback": "editorial_review"},
-                }
+                # A prior editorial verdict is not reader evidence.  Execute
+                # the same complete reader contract on the configured review
+                # role; if that call also fails, propagate the typed failure
+                # instead of manufacturing a target-reader verdict.
+                reader_review = await self._reader_review(
+                    run_id, run_path, project, constraints, draft,
+                    model_role="review",
+                )
             report["reader_review"] = reader_review
             self._quality_assessed_event(run_id, "target_reader", reader_review)
             self._write_quality_report(run_path, report)
@@ -30707,14 +30712,43 @@ class WorkflowService:
                     "finish_reason": result.receipt.get("finish_reason"),
                 },
             )
+            output_sha256 = hashlib.sha256(
+                result.text.encode("utf-8")
+            ).hexdigest()
+            execution_observer = getattr(
+                getattr(self.gateway, "registry", None),
+                "attempt_observer", None,
+            )
+            mark_stage_complete = getattr(
+                execution_observer, "mark_local_stage_complete", None,
+            )
+            if callable(mark_stage_complete):
+                bound_route = getattr(execution_observer, "bound_route", None)
+                if not isinstance(bound_route, Mapping):
+                    raise RuntimeError(
+                        "Full Short stage completed without an exact route binding"
+                    )
+                # This is control evidence, not telemetry.  Commit it before
+                # any event sink or diagnostic observer can run.
+                mark_stage_complete(
+                    stage=node_key,
+                    role=gateway_role,
+                    role_binding_sha256=str(
+                        bound_route.get("role_binding_sha256") or ""
+                    ),
+                    output_sha256=output_sha256,
+                    receipt_sha256=hashlib.sha256(
+                        stage_receipt_path.read_bytes(),
+                    ).hexdigest(),
+                )
             stage_completed_message = (
                 "模型已返回，正在校验终审格式"
                 if stage == "final_review" else
                 f"{stage} 模型已返回，正在进行本阶段校验"
             )
-            self.db.add_run_event(
-                run_id, "success", "stage_completed", stage_completed_message, stage=stage,
-                metadata={
+            ObserverGuard().emit(lambda: self.db.add_run_event(
+                run_id, "success", "stage_completed", stage_completed_message,
+                stage=stage, metadata={
                     "provider_id": result.receipt.get("provider_id"),
                     "model_name": result.receipt.get("model_name"),
                     "input_tokens": result.receipt.get("input_tokens", 0),
@@ -30722,10 +30756,7 @@ class WorkflowService:
                     "execution_mode": result.receipt.get("execution_mode"),
                     "skills": skills,
                 },
-            )
-            output_sha256 = hashlib.sha256(
-                result.text.encode("utf-8")
-            ).hexdigest()
+            ))
             business_input_sha256 = hashlib.sha256(
                 user.encode("utf-8")
             ).hexdigest()
@@ -30752,7 +30783,7 @@ class WorkflowService:
                 validator_set.extend([
                     "contract_adapter", "domain_validator",
                 ])
-            emit_observation(
+            ObserverGuard().emit(lambda: emit_observation(
                 project.path,
                 event_type="resume_binding",
                 source_component="workflows.WorkflowService._stage",
@@ -30790,31 +30821,7 @@ class WorkflowService:
                 ),
                 object_old_hash=business_input_sha256,
                 object_new_hash=output_sha256,
-            )
-            execution_observer = getattr(
-                getattr(self.gateway, "registry", None),
-                "attempt_observer", None,
-            )
-            mark_stage_complete = getattr(
-                execution_observer, "mark_local_stage_complete", None,
-            )
-            if callable(mark_stage_complete):
-                bound_route = getattr(execution_observer, "bound_route", None)
-                if not isinstance(bound_route, Mapping):
-                    raise RuntimeError(
-                        "Full Short stage completed without an exact route binding"
-                    )
-                mark_stage_complete(
-                    stage=node_key,
-                    role=gateway_role,
-                    role_binding_sha256=str(
-                        bound_route.get("role_binding_sha256") or ""
-                    ),
-                    output_sha256=output_sha256,
-                    receipt_sha256=hashlib.sha256(
-                        stage_receipt_path.read_bytes(),
-                    ).hexdigest(),
-                )
+            ))
             return StageText(result.text, result.receipt)
         except asyncio.CancelledError:
             self.db.add_run_event(run_id, "warning", "stage_cancelled", f"{stage} 已终止", stage=stage)
@@ -30901,7 +30908,7 @@ class WorkflowService:
             # The model result/error and all business persistence above are
             # already decided. Fail-open telemetry cannot participate in a DB
             # lock, Saga, retry, fallback, or exception selection.
-            emit_observation(
+            ObserverGuard().emit(lambda: emit_observation(
                 project.path,
                 event_type="authority_read",
                 source_component="workflows.WorkflowService._stage",
@@ -30930,9 +30937,9 @@ class WorkflowService:
                     reliability_hash(current_state.data, root=project.path)
                     if current_state is not None else None
                 ),
-            )
+            ))
             for observation in attempt_observations:
-                emit_observation(
+                ObserverGuard().emit(lambda observation=observation: emit_observation(
                     project.path,
                     event_type="recovery_attempt",
                     source_component="contract_runtime",
@@ -30946,7 +30953,7 @@ class WorkflowService:
                     run_id=run_id,
                     stage_id=node_key,
                     semantic_domain="unknown",
-                )
+                ))
 
     async def _stage_with_role_fallback(
         self, run_id: str, run_path: Path, project: Project, stage: str,
@@ -31440,13 +31447,18 @@ class WorkflowService:
 
         primary_error: BaseException | None = None
         primary_traceback = None
+        primary_completed = False
+        primary_result = None
 
         class RuntimeFlow(Flow):
             @start()
             async def execute(self):
                 nonlocal primary_error, primary_traceback
+                nonlocal primary_completed, primary_result
                 try:
-                    return await pipeline()
+                    primary_result = await pipeline()
+                    primary_completed = True
+                    return primary_result
                 except BaseException as exc:
                     primary_error = exc
                     primary_traceback = exc.__traceback__
@@ -31456,6 +31468,10 @@ class WorkflowService:
         try:
             return await runtime.kickoff_async()
         except BaseException as wrapper_error:
+            if primary_completed:
+                # Post-success CrewAI event/trace/memory cleanup is diagnostic
+                # and cannot turn an accepted workflow result into failure.
+                return primary_result
             if primary_error is not None and wrapper_error is not primary_error:
                 # CrewAI performs event, trace and memory cleanup after the
                 # pipeline exits. A cleanup failure must not replace the

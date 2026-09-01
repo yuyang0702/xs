@@ -14,6 +14,9 @@ from novel_flywheel.completion_supervisor import (
     RetryBudgets,
 )
 from novel_flywheel.db import Database, WORKFLOW_SUPERVISION_CONTRACT_VERSION
+from novel_flywheel.execution_failure_architecture import (
+    build_durable_failure_evidence,
+)
 from novel_flywheel.production_incidents import classify_production_failure
 
 
@@ -39,6 +42,10 @@ def _nested_reliability_failure(
         if reliability is not None:
             candidates.append(reliability)
         for nested in (
+            *(
+                item[-1] for item in (getattr(current, "route_errors", None) or ())
+                if isinstance(item, (tuple, list)) and item
+            ),
             getattr(current, "primary_error", None),
             getattr(current, "fallback_error", None),
             current.__cause__,
@@ -521,15 +528,16 @@ class RunTaskManager:
     def _safe_failure_record(
         exc: BaseException, failure_class: str, *, workflow: str,
         stage: str, revision: bool,
-    ) -> tuple[str, dict[str, str]]:
+    ) -> tuple[str, dict[str, Any]]:
         """Classify raw evidence in memory and return persistence-safe fields."""
 
         reliability = _nested_reliability_failure(
             exc, preferred_class=failure_class,
         )
-        raw_code = str(getattr(reliability, "code", "") or "")
-        raw_evidence = f"{type(exc).__name__}:{str(exc)}:{raw_code}"
-        failure_sha256 = hashlib.sha256(raw_evidence.encode("utf-8")).hexdigest()
+        evidence = build_durable_failure_evidence(
+            exc, boundary="completion_supervisor.plan_failure",
+        )
+        failure_sha256 = evidence.failure_graph_sha256
         classified = classify_production_failure(
             str(exc), workflow=workflow, stage=stage, failure=reliability,
         )
@@ -562,6 +570,7 @@ class RunTaskManager:
             "failure_class": failure_class,
             "failure_sha256": failure_sha256,
             "error_summary": summary,
+            **evidence.event_metadata(),
         })
         return summary, incident
 

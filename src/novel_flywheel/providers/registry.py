@@ -7,6 +7,11 @@ from urllib.parse import urlsplit
 from uuid import uuid4
 
 from novel_flywheel.db import Database
+from novel_flywheel.execution_failure_architecture import (
+    ProviderClientConstructionFailure,
+    ProviderCredentialFailure,
+    ProviderRouteFailure,
+)
 from novel_flywheel.providers.anthropic import AnthropicAdapter
 from novel_flywheel.providers.base import ProviderAdapter
 from novel_flywheel.providers.openai_chat import OpenAIChatAdapter
@@ -37,6 +42,18 @@ class ResolvedModel:
     protocol: str = ""
     destination: str = ""
     route_lane: str = ""
+
+
+@dataclass(frozen=True)
+class PublicRouteReadinessV1:
+    """Secret-free route facts safe to validate before credential access."""
+
+    provider: dict
+    model: dict
+    route_fingerprint: str
+    protocol: str
+    destination: str
+    provider_operator: str
 
 
 class ProviderRegistry:
@@ -154,18 +171,15 @@ class ProviderRegistry:
         self, provider_id: str, model_id: str, *,
         role: str | None = None, lane: str | None = None,
     ) -> ResolvedModel:
-        provider = self.db.get_provider(provider_id)
-        model = self.db.get_model(model_id)
-        if provider is None or not provider["enabled"]:
-            raise ValueError("provider_not_found")
-        if model is None or model["provider_id"] != provider_id:
-            raise ValueError("model_not_found")
+        public = self.inspect_public_route(provider_id, model_id)
+        provider = public.provider
+        model = public.model
         # Validate all public route identity before crossing the credential
         # boundary.  The dedicated Full Short launcher performs its complete
         # immutable preflight before calling ``resolve``; this local ordering
         # additionally guarantees that an invalid provider/model identifier
         # cannot cause even a needless secret lookup.
-        fingerprint = self.route_fingerprint(provider, model)
+        fingerprint = public.route_fingerprint
         if self.attempt_observer is not None:
             bind_route = getattr(self.attempt_observer, "bind_route", None)
             if callable(bind_route):
@@ -174,21 +188,61 @@ class ProviderRegistry:
                     provider_id=provider_id, model_id=model_id,
                     route_fingerprint=fingerprint,
                 )
-        secret = self.secrets.get(provider_id)
+        try:
+            secret = self.secrets.get(provider_id)
+        except Exception as exc:
+            raise ProviderCredentialFailure(
+                "credential_lookup_failed",
+            ) from exc
         if not secret:
-            raise ValueError("missing_api_key")
-        adapter = ADAPTERS[provider["protocol"]](provider["base_url"], secret,
-                                                  provider["extra_headers"], provider["timeout_seconds"],
-                                                  auth_type=provider["auth_type"],
-                                                  transport_policy=self.transport_policy,
-                                                  attempt_observer=self.attempt_observer)
+            raise ProviderCredentialFailure("missing_api_key")
+        try:
+            adapter = ADAPTERS[provider["protocol"]](
+                provider["base_url"], secret, provider["extra_headers"],
+                provider["timeout_seconds"], auth_type=provider["auth_type"],
+                transport_policy=self.transport_policy,
+                attempt_observer=self.attempt_observer,
+            )
+        except Exception as exc:
+            raise ProviderClientConstructionFailure() from exc
         capabilities = self._effective_capabilities(
             model.get("capabilities") or {}, fingerprint,
         )
-        base_url = str(provider["base_url"]).rstrip("/")
-        if provider["protocol"] == "anthropic":
+        return ResolvedModel(
+            provider_id, model_id, model["model_name"], adapter,
+            capabilities, fingerprint,
+            provider_operator=public.provider_operator,
+            protocol=public.protocol,
+            destination=public.destination,
+            route_lane=str(lane or ""),
+        )
+
+    def inspect_public_route(
+        self, provider_id: str, model_id: str,
+    ) -> PublicRouteReadinessV1:
+        """Validate public route/client configuration without reading secrets."""
+
+        provider = self.db.get_provider(provider_id)
+        model = self.db.get_model(model_id)
+        if provider is None or not provider["enabled"]:
+            raise ProviderRouteFailure("provider_not_found")
+        if model is None or model["provider_id"] != provider_id:
+            raise ProviderRouteFailure("model_not_found")
+        protocol = str(provider.get("protocol") or "")
+        if protocol not in ADAPTERS:
+            raise ProviderRouteFailure("unsupported_protocol")
+        base_url = str(provider.get("base_url") or "").rstrip("/")
+        target_base = urlsplit(base_url)
+        if (
+            target_base.scheme not in {"http", "https"}
+            or target_base.hostname is None
+            or target_base.username is not None
+            or target_base.password is not None
+        ):
+            raise ProviderRouteFailure("invalid_provider_destination")
+        if protocol == "anthropic":
             path = "messages" if base_url.endswith("/v1") else "v1/messages"
-        elif provider["protocol"] == "openai-responses":
+        elif protocol == "openai-responses":
             path = "responses"
         else:
             path = "chat/completions"
@@ -200,18 +254,16 @@ class ProviderRegistry:
             provider_id == "0e6a5627-5882-40df-bca5-7d98b97fdd0b",
             str(provider["name"]).strip().casefold() == "deepseek",
             destination == "https://api.deepseek.com:443/anthropic/v1/messages",
-            str(provider["protocol"]) == "anthropic",
+            protocol == "anthropic",
         ))
-        return ResolvedModel(
-            provider_id, model_id, model["model_name"], adapter,
-            capabilities, fingerprint,
+        return PublicRouteReadinessV1(
+            provider=dict(provider), model=dict(model),
+            route_fingerprint=self.route_fingerprint(provider, model),
+            protocol=protocol, destination=destination,
             provider_operator=(
                 "DEEPSEEK_OFFICIAL" if official_deepseek
                 else "THIRD_PARTY_ENDPOINT_LOCAL_METADATA_ONLY"
             ),
-            protocol=str(provider["protocol"]),
-            destination=destination,
-            route_lane=str(lane or ""),
         )
 
     @staticmethod

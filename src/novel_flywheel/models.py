@@ -71,10 +71,20 @@ class ModelResult:
 
 
 class ModelRoutesExhaustedError(RuntimeError):
-    def __init__(self, primary_error: Exception, fallback_error: Exception) -> None:
+    """All attempted routes, in dispatch order, without provenance loss."""
+
+    def __init__(
+        self, primary_error: Exception, fallback_error: Exception,
+        *, route_errors: list[tuple[str, str, Exception]] | None = None,
+    ) -> None:
         super().__init__("primary and fallback model routes were exhausted")
         self.primary_error = primary_error
         self.fallback_error = fallback_error
+        self.route_errors = list(route_errors or [
+            ("primary", "primary", primary_error),
+            ("configured_fallback", "configured_fallback", fallback_error),
+        ])
+        self.failure_family = "provider.routes_exhausted"
 
 
 class CapabilityRoutesExhaustedError(RuntimeError):
