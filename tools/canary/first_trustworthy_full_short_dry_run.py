@@ -1024,6 +1024,14 @@ class _LowestHttpSeamRegistry(ProviderRegistry):
                     exc, boundary="provider_registry.resolve",
                 ),
                 "reason_code": getattr(exc, "reason_code", None),
+                "attempted_role": str(role or ""),
+                "attempted_lane": str(lane or ""),
+                "attempted_provider_id_sha256": hashlib.sha256(
+                    provider_id.encode("utf-8")
+                ).hexdigest(),
+                "attempted_model_id_sha256": hashlib.sha256(
+                    model_id.encode("utf-8")
+                ).hexdigest(),
             }
             raise
         self._install_optional_adapter_failure_hook(resolved.adapter)
@@ -1579,6 +1587,18 @@ async def _run(args: argparse.Namespace) -> dict[str, Any]:
                     "mock_transport_failure": transport.failure,
                     "observed_call_count": len(transport.call_plan),
                     "observed_call_tail": transport.call_plan[-5:],
+                    "expected_logical_stage_plan_tail": [
+                        {
+                            "ordinal": item.get("ordinal"),
+                            "stage_id": item.get("stage_id"),
+                            "role": item.get("role"),
+                            "route_lane": item.get("route_lane"),
+                        }
+                        for item in logical_stage_plan[
+                            max(0, len(transport.call_plan) - 2):
+                            len(transport.call_plan) + 3
+                        ]
+                    ],
                     "ledger": ledger_state,
                     "run_state": {
                         "status": run_row.get("status"),
