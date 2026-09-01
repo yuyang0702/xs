@@ -383,6 +383,14 @@ def test_best_effort_observer_cannot_mask_primary_outcome() -> None:
     assert failures == ["RuntimeError"]
 
 
+def test_exact_recovery_registry_is_canonical_json_native() -> None:
+    assert FULL_SHORT_EXACT_RECOVERY_REGISTRY_V1 == json.loads(json.dumps(
+        FULL_SHORT_EXACT_RECOVERY_REGISTRY_V1,
+        ensure_ascii=False,
+        sort_keys=True,
+    ))
+
+
 def test_gbk_console_emoji_failure_is_contained_as_diagnostic_only() -> None:
     guard = ObserverGuard()
 

@@ -787,7 +787,7 @@ class ObserverGuard:
 FULL_SHORT_EXACT_RECOVERY_REGISTRY_V1: dict[str, Any] = {
     "identity": RECOVERY_REGISTRY_IDENTITY,
     "max_physical_attempts_per_logical_stage": 2,
-    "shared_second_slot": ("reasoning_finalization", "business_recovery"),
+    "shared_second_slot": ["reasoning_finalization", "business_recovery"],
     "maximum_accepted_final_artifacts": 1,
     "route_switch_allowed": False,
     "provider_retry_allowed": False,
