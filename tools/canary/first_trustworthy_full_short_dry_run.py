@@ -1539,11 +1539,29 @@ async def _run(args: argparse.Namespace) -> dict[str, Any]:
                             "ordinal": item.get("ordinal"),
                             "state": item.get("state"),
                             "role": item.get("bound_role"),
+                            "lane": item.get("bound_lane"),
+                            "stage": item.get("stage"),
+                            "logical_stage_id": item.get("logical_stage_id"),
+                            "logical_stage_ordinal": item.get(
+                                "logical_stage_ordinal"
+                            ),
                             "local_rejection_failure_kind": item.get(
                                 "local_rejection_failure_kind"
                             ),
                         }
-                        for item in (ledger.get("attempts") or [])[-5:]
+                        for item in (ledger.get("attempts") or [])
+                    ],
+                    "completed_stage_receipts": [
+                        {
+                            "ordinal": item.get("ordinal"),
+                            "logical_stage_id": item.get("logical_stage_id"),
+                            "logical_stage_ordinal": item.get(
+                                "logical_stage_ordinal"
+                            ),
+                        }
+                        for item in (
+                            ledger.get("completed_stage_receipts") or []
+                        )
                     ],
                 }
             failure_db = Database(execution_data / "app.db")
@@ -1609,6 +1627,20 @@ async def _run(args: argparse.Namespace) -> dict[str, Any]:
                         ),
                     },
                     "run_event_tail": event_tail,
+                    "terminal_failure_projection": {
+                        key: value
+                        for key, value in (
+                            (failure_db.list_run_events(EXECUTION_ID)[-1].get(
+                                "metadata"
+                            ) or {})
+                        ).items()
+                        if key in {
+                            "error_type", "failure_class", "failure_code",
+                            "failure_family", "recovery_action",
+                            "failure_contract", "failure_graph",
+                            "failure_graph_sha256", "failure_sha256",
+                        }
+                    } if failure_db.list_run_events(EXECUTION_ID) else None,
                 }, ensure_ascii=True, sort_keys=True)
             ) from exc
         observed_plan = execution["call_plan"]
