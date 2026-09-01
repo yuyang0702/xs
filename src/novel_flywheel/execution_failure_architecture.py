@@ -21,6 +21,10 @@ from novel_flywheel.recovery_engine import FailureClass, ReliabilityFailure
 
 FAILURE_ARCHITECTURE_IDENTITY = "full-short-failure-architecture-v2"
 RECOVERY_REGISTRY_IDENTITY = "full-short-exact-recovery-registry-v1"
+PREDISPATCH_STATE_MACHINE_IDENTITY = "full-short-predispatch-state-machine-v1"
+NONCE_RESERVATION_POLICY_IDENTITY = "dispatch-ready-lazy-nonce-v1"
+OBSERVER_ISOLATION_POLICY_IDENTITY = "control-vs-best-effort-observer-v1"
+DURABLE_FAILURE_EVIDENCE_POLICY_IDENTITY = "safe-ordered-failure-graph-v1"
 
 
 class FailureLayer(StrEnum):
@@ -237,8 +241,30 @@ def _ordered_children(exc: BaseException) -> tuple[BaseException, ...]:
     return tuple(children)
 
 
+def _layer_for_boundary(boundary: str) -> FailureLayer:
+    value = boundary.casefold()
+    for prefix, layer in (
+        ("provider_registry.resolve", FailureLayer.PROVIDER_ROUTE),
+        ("provider.route", FailureLayer.PROVIDER_ROUTE),
+        ("credential", FailureLayer.PROVIDER_CREDENTIAL),
+        ("provider_response", FailureLayer.PROVIDER_RESPONSE_ADAPTER),
+        ("provider_transport", FailureLayer.PROVIDER_TRANSPORT),
+        ("contract", FailureLayer.CONTRACT),
+        ("business", FailureLayer.BUSINESS_COMPLETENESS),
+        ("authority", FailureLayer.AUTHORITY),
+        ("artifact", FailureLayer.ARTIFACT),
+        ("observer", FailureLayer.OBSERVER),
+        ("completion_supervisor", FailureLayer.WORKFLOW_RECOVERY),
+        ("workflow", FailureLayer.WORKFLOW_RECOVERY),
+        ("model_gateway", FailureLayer.WORKFLOW_RECOVERY),
+    ):
+        if value.startswith(prefix):
+            return layer
+    return FailureLayer.EXTERNAL
+
+
 def _node(
-    exc: BaseException, *, boundary: str, seen: set[int],
+    exc: BaseException, *, boundary: str, seen: set[int], is_child: bool,
 ) -> SafeFailureNodeV1:
     if id(exc) in seen:
         return SafeFailureNodeV1(
@@ -262,13 +288,16 @@ def _node(
         fallback="unknown_boundary",
     )
     code = _safe_failure_code(getattr(reliability, "code", ""))
+    if code == "unclassified_failure":
+        code = "unknown_child" if is_child else "external_unknown_after_boundary"
     family = _safe_name(
         getattr(exc, "failure_family", "") or f"{failure_class.value}.failure",
         fallback="unknown.failure",
     )
     layer = _enum_value(
-        FailureLayer, getattr(exc, "failure_layer", FailureLayer.UNKNOWN),
-        FailureLayer.UNKNOWN,
+        FailureLayer,
+        getattr(exc, "failure_layer", _layer_for_boundary(node_boundary)),
+        _layer_for_boundary(node_boundary),
     )
     dispatch_state = _enum_value(
         DispatchState, getattr(exc, "dispatch_state", DispatchState.NOT_REACHED),
@@ -288,7 +317,7 @@ def _node(
         getattr(exc, "recovery_action", ""), fallback="inspect_typed_failure",
     )
     children = tuple(
-        _node(child, boundary=node_boundary, seen=seen)
+        _node(child, boundary=node_boundary, seen=seen, is_child=True)
         for child in _ordered_children(exc)
     )
     return SafeFailureNodeV1(
@@ -304,7 +333,7 @@ def _node(
 def build_durable_failure_evidence(
     exc: BaseException, *, boundary: str,
 ) -> DurableFailureEvidenceV1:
-    root = _node(exc, boundary=boundary, seen=set())
+    root = _node(exc, boundary=boundary, seen=set(), is_child=False)
     canonical = json.dumps(
         root.model_dump(mode="json"), ensure_ascii=False, sort_keys=True,
         separators=(",", ":"),
@@ -342,6 +371,73 @@ FULL_SHORT_EXACT_RECOVERY_REGISTRY_V1: dict[str, Any] = {
     "provider_retry_allowed": False,
     "transport_recovery": "complete_capture_local_exact_replay_only",
     "unknown_failure_disposition": "terminal",
+    "failure_policies": {
+        "business_incomplete": {
+            "recovery": "shared_second_slot_same_route",
+            "max_network_redispatches": 1,
+            "restart": "no_redispatch",
+        },
+        "reasoning_only_final_artifact_unavailable": {
+            "recovery": "shared_second_slot_reasoning_effort_none",
+            "max_network_redispatches": 1,
+            "restart": "no_redispatch",
+        },
+        "complete_valid_capture": {
+            "recovery": "local_exact_replay",
+            "max_network_redispatches": 0,
+            "restart": "exact_replay_only",
+        },
+        "explicit_provider_error": {
+            "recovery": "terminal",
+            "max_network_redispatches": 0,
+            "restart": "fresh_authorization_required",
+        },
+        "transport_ambiguous": {
+            "recovery": "terminal",
+            "max_network_redispatches": 0,
+            "restart": "no_redispatch",
+        },
+        "structured_parse_or_schema": {
+            "recovery": "shared_second_slot_same_route",
+            "max_network_redispatches": 1,
+            "restart": "no_redispatch",
+        },
+        "semantic_failure": {
+            "recovery": "shared_second_slot_same_route",
+            "max_network_redispatches": 1,
+            "restart": "no_redispatch",
+        },
+        "draft_local_repair": {
+            "recovery": "local_owned_scope_only",
+            "max_network_redispatches": 0,
+            "restart": "checkpoint_resume_allowed",
+        },
+        "review_repair": {
+            "recovery": "shared_second_slot_same_route",
+            "max_network_redispatches": 1,
+            "restart": "no_redispatch",
+        },
+        "credential_unavailable": {
+            "recovery": "terminal_before_nonce",
+            "max_network_redispatches": 0,
+            "restart": "fresh_authorization_required",
+        },
+        "route_unavailable": {
+            "recovery": "terminal_before_credential",
+            "max_network_redispatches": 0,
+            "restart": "fresh_authorization_required",
+        },
+        "client_or_request_build_failure": {
+            "recovery": "terminal_before_nonce",
+            "max_network_redispatches": 0,
+            "restart": "fresh_authorization_required",
+        },
+        "unknown_child": {
+            "recovery": "terminal",
+            "max_network_redispatches": 0,
+            "restart": "no_redispatch",
+        },
+    },
 }
 
 
@@ -396,3 +492,65 @@ class FullShortExactRecoveryControllerV1:
 
     def attempt_count(self, logical_stage_id: str) -> int:
         return self._attempts.get(logical_stage_id, 0)
+
+
+PREDISPATCH_STATE_MACHINE_V1 = {
+    "identity": PREDISPATCH_STATE_MACHINE_IDENTITY,
+    "ordering": [
+        "authorization_exact", "public_route_readiness", "capability_readiness",
+        "jit_approval", "credential_readiness", "client_config_readiness",
+        "request_and_reasoning_projection", "wire_and_egress_exact",
+        "dispatch_ready_receipt", "durable_nonce", "dispatch_commit", "network",
+    ],
+    "knowable_local_failure_nonce_disposition": "ABSENT_LOCAL_READINESS",
+    "post_nonce_pre_network_crash_disposition": (
+        "CONSUMED_DISPATCH_COMMIT_PENDING_NO_REDISPATCH"
+    ),
+}
+
+NONCE_RESERVATION_POLICY_V1 = {
+    "identity": NONCE_RESERVATION_POLICY_IDENTITY,
+    "reservation_point": "AFTER_DISPATCH_READY_RECEIPT",
+    "single_use": True,
+    "restart_after_reservation": "FAIL_CLOSED_NO_REDISPATCH",
+}
+
+OBSERVER_ISOLATION_POLICY_V1 = {
+    "identity": OBSERVER_ISOLATION_POLICY_IDENTITY,
+    "control_evidence": [
+        "nonce", "dispatch_ledger", "exact_capture", "local_stage_receipt",
+    ],
+    "best_effort": [
+        "console", "run_event", "telemetry", "crewai_cleanup", "resource_close",
+    ],
+    "business_outcome_mutation_allowed": False,
+}
+
+DURABLE_FAILURE_EVIDENCE_POLICY_V1 = {
+    "identity": DURABLE_FAILURE_EVIDENCE_POLICY_IDENTITY,
+    "architecture_identity": FAILURE_ARCHITECTURE_IDENTITY,
+    "ordered_children_required": True,
+    "raw_exception_message_persisted": False,
+    "raw_prompt_story_or_credential_persisted": False,
+    "unknown_child_disposition": "UNKNOWN_CHILD_TERMINAL",
+}
+
+
+def _definition_sha256(value: Mapping[str, Any]) -> str:
+    return hashlib.sha256(json.dumps(
+        value, ensure_ascii=False, sort_keys=True, separators=(",", ":"),
+    ).encode("utf-8")).hexdigest()
+
+
+PREDISPATCH_STATE_MACHINE_SHA256 = _definition_sha256(
+    PREDISPATCH_STATE_MACHINE_V1
+)
+NONCE_RESERVATION_POLICY_SHA256 = _definition_sha256(
+    NONCE_RESERVATION_POLICY_V1
+)
+OBSERVER_ISOLATION_POLICY_SHA256 = _definition_sha256(
+    OBSERVER_ISOLATION_POLICY_V1
+)
+DURABLE_FAILURE_EVIDENCE_POLICY_SHA256 = _definition_sha256(
+    DURABLE_FAILURE_EVIDENCE_POLICY_V1
+)

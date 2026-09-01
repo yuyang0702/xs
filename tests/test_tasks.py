@@ -5,7 +5,8 @@ from types import SimpleNamespace
 import pytest
 
 from novel_flywheel.db import Database
-from novel_flywheel.recovery_engine import FailureClass
+from novel_flywheel.models import ModelRoutesExhaustedError
+from novel_flywheel.recovery_engine import FailureClass, ReliabilityFailure
 from novel_flywheel.tasks import ProjectRunActiveError, RunTaskManager
 
 
@@ -651,6 +652,47 @@ async def test_task_failure_persists_only_typed_hash_and_safe_summary(tmp_path) 
     assert failure["metadata"]["failure_code"].startswith("task.")
     assert len(failure["metadata"]["failure_sha256"]) == 64
     assert failure["metadata"]["error_summary"] == failure["message"]
+
+
+@pytest.mark.asyncio
+async def test_task_terminal_evidence_persists_all_ordered_route_children(
+    tmp_path,
+) -> None:
+    db, manager = make_manager(tmp_path)
+
+    def child(code: str, failure_class: FailureClass) -> RuntimeError:
+        error = RuntimeError("PRIVATE provider payload")
+        error.reliability_failure = ReliabilityFailure(
+            code=code, failure_class=failure_class,
+            boundary="provider.route", retryable=False,
+        )
+        return error
+
+    first = child("credential_missing", FailureClass.CREDENTIAL)
+    second = child("protocol_invalid", FailureClass.SYNTAX_PROTOCOL)
+    third = child("transport_interrupted", FailureClass.TRANSPORT)
+
+    async def operation(_run_id):
+        raise ModelRoutesExhaustedError(
+            first, third,
+            route_errors=[
+                ("primary", "one", first),
+                ("primary_retry", "two", second),
+                ("fallback", "three", third),
+            ],
+        )
+
+    run = manager.start("book", "short-story", operation)
+    await manager.wait(run["id"])
+
+    failure = db.list_run_events(run["id"])[-1]
+    graph = failure["metadata"]["failure_graph"]
+    assert [item["code"] for item in graph["children"]] == [
+        "credential_missing", "protocol_invalid", "transport_interrupted",
+    ]
+    assert "PRIVATE provider payload" not in json.dumps(
+        failure, ensure_ascii=False,
+    )
 
 
 @pytest.mark.asyncio

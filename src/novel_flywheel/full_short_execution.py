@@ -29,6 +29,19 @@ from typing import Any, Callable, Iterator, Mapping
 from urllib.parse import urlsplit
 
 from novel_flywheel.domain.models import ModelRequest
+from novel_flywheel.execution_failure_architecture import (
+    DURABLE_FAILURE_EVIDENCE_POLICY_SHA256,
+    DURABLE_FAILURE_EVIDENCE_POLICY_V1,
+    FAILURE_ARCHITECTURE_IDENTITY,
+    FULL_SHORT_EXACT_RECOVERY_REGISTRY_SHA256,
+    FULL_SHORT_EXACT_RECOVERY_REGISTRY_V1,
+    NONCE_RESERVATION_POLICY_SHA256,
+    NONCE_RESERVATION_POLICY_V1,
+    OBSERVER_ISOLATION_POLICY_SHA256,
+    OBSERVER_ISOLATION_POLICY_V1,
+    PREDISPATCH_STATE_MACHINE_SHA256,
+    PREDISPATCH_STATE_MACHINE_V1,
+)
 from novel_flywheel.provider_payloads import anthropic_payload_v1
 from novel_flywheel.runtime_fingerprint_build import (
     CANONICALIZATION_VERSION,
@@ -447,6 +460,7 @@ class FullShortExecutionPolicyV1:
     logical_stage_recovery_policy_sha256: str = (
         LOGICAL_STAGE_RECOVERY_POLICY_SHA256
     )
+    failure_architecture_identity: str = FAILURE_ARCHITECTURE_IDENTITY
 
     def document(self) -> dict[str, Any]:
         logical_stage_plan = validate_full_short_logical_stage_plan_v1(
@@ -493,6 +507,25 @@ class FullShortExecutionPolicyV1:
             ),
             "logical_stage_recovery_policy_identity": (
                 "TWO_SLOT_MUTUALLY_EXCLUSIVE_TYPED_RECOVERY"
+            ),
+            "failure_architecture_identity": self.failure_architecture_identity,
+            "recovery_policy_registry": deepcopy(
+                FULL_SHORT_EXACT_RECOVERY_REGISTRY_V1
+            ),
+            "recovery_policy_registry_sha256": (
+                FULL_SHORT_EXACT_RECOVERY_REGISTRY_SHA256
+            ),
+            "predispatch_state_machine": deepcopy(PREDISPATCH_STATE_MACHINE_V1),
+            "predispatch_state_machine_sha256": PREDISPATCH_STATE_MACHINE_SHA256,
+            "nonce_reservation_policy": deepcopy(NONCE_RESERVATION_POLICY_V1),
+            "nonce_reservation_policy_sha256": NONCE_RESERVATION_POLICY_SHA256,
+            "observer_isolation_policy": deepcopy(OBSERVER_ISOLATION_POLICY_V1),
+            "observer_isolation_policy_sha256": OBSERVER_ISOLATION_POLICY_SHA256,
+            "durable_failure_evidence_policy": deepcopy(
+                DURABLE_FAILURE_EVIDENCE_POLICY_V1
+            ),
+            "durable_failure_evidence_policy_sha256": (
+                DURABLE_FAILURE_EVIDENCE_POLICY_SHA256
             ),
             "max_physical_attempts_per_logical_stage": 2,
             "max_reasoning_only_recovery_dispatches_per_logical_stage": 1,
@@ -588,6 +621,19 @@ def render_full_short_canonical_authorization_v1(
         == "TWO_SLOT_MUTUALLY_EXCLUSIVE_TYPED_RECOVERY",
         "AUTHORIZATION_LOGICAL_STAGE_RECOVERY_POLICY_MISMATCH",
     )
+    for field in (
+        "failure_architecture_identity", "recovery_policy_registry",
+        "recovery_policy_registry_sha256", "predispatch_state_machine",
+        "predispatch_state_machine_sha256", "nonce_reservation_policy",
+        "nonce_reservation_policy_sha256", "observer_isolation_policy",
+        "observer_isolation_policy_sha256",
+        "durable_failure_evidence_policy",
+        "durable_failure_evidence_policy_sha256",
+    ):
+        _require(
+            public_bindings.get(field) == validated.get(field),
+            "AUTHORIZATION_FAILURE_ARCHITECTURE_BINDING_MISMATCH",
+        )
     body = {
         "schema": AUTHORIZATION_SCHEMA,
         "version": 1,
@@ -673,6 +719,16 @@ def validate_full_short_preflight_v1(
             "TWO_SLOT_MUTUALLY_EXCLUSIVE_TYPED_RECOVERY"
         ),
         "store_root_sha256": validated["store_root_sha256"],
+        "failure_architecture_identity": FAILURE_ARCHITECTURE_IDENTITY,
+        "recovery_policy_registry_sha256": (
+            FULL_SHORT_EXACT_RECOVERY_REGISTRY_SHA256
+        ),
+        "predispatch_state_machine_sha256": PREDISPATCH_STATE_MACHINE_SHA256,
+        "nonce_reservation_policy_sha256": NONCE_RESERVATION_POLICY_SHA256,
+        "observer_isolation_policy_sha256": OBSERVER_ISOLATION_POLICY_SHA256,
+        "durable_failure_evidence_policy_sha256": (
+            DURABLE_FAILURE_EVIDENCE_POLICY_SHA256
+        ),
     }
     for field, expected in required_equal.items():
         _require(actual.get(field) == expected, f"{field.upper()}_DRIFT")
@@ -706,6 +762,16 @@ def validate_full_short_preflight_v1(
         "logical_stage_recovery_policy_identity": (
             "TWO_SLOT_MUTUALLY_EXCLUSIVE_TYPED_RECOVERY"
         ),
+        "failure_architecture_identity": FAILURE_ARCHITECTURE_IDENTITY,
+        "recovery_policy_registry_sha256": (
+            FULL_SHORT_EXACT_RECOVERY_REGISTRY_SHA256
+        ),
+        "predispatch_state_machine_sha256": PREDISPATCH_STATE_MACHINE_SHA256,
+        "nonce_reservation_policy_sha256": NONCE_RESERVATION_POLICY_SHA256,
+        "observer_isolation_policy_sha256": OBSERVER_ISOLATION_POLICY_SHA256,
+        "durable_failure_evidence_policy_sha256": (
+            DURABLE_FAILURE_EVIDENCE_POLICY_SHA256
+        ),
         "authorization_text_sha256": authorization_text_sha256,
         "binding_status": "exact",
         "external_actions_enabled": bool(external_actions_enabled),
@@ -738,6 +804,11 @@ def validate_policy_v1(value: Mapping[str, Any]) -> dict[str, Any]:
         "response_capture_policy_sha256",
         "logical_stage_plan_sha256", "transport_recovery_policy_sha256",
         "logical_stage_recovery_policy_sha256",
+        "recovery_policy_registry_sha256",
+        "predispatch_state_machine_sha256",
+        "nonce_reservation_policy_sha256",
+        "observer_isolation_policy_sha256",
+        "durable_failure_evidence_policy_sha256",
         "store_root_sha256",
     ):
         _require(_HEX64.fullmatch(str(body.get(field))) is not None, f"{field.upper()}_INVALID")
@@ -772,6 +843,44 @@ def validate_policy_v1(value: Mapping[str, Any]) -> dict[str, Any]:
         == "TWO_SLOT_MUTUALLY_EXCLUSIVE_TYPED_RECOVERY",
         "LOGICAL_STAGE_RECOVERY_POLICY_INVALID",
     )
+    _require(
+        body.get("failure_architecture_identity")
+        == FAILURE_ARCHITECTURE_IDENTITY,
+        "FAILURE_ARCHITECTURE_IDENTITY_INVALID",
+    )
+    for field, definition, expected_digest, reason in (
+        (
+            "recovery_policy_registry", FULL_SHORT_EXACT_RECOVERY_REGISTRY_V1,
+            FULL_SHORT_EXACT_RECOVERY_REGISTRY_SHA256,
+            "RECOVERY_POLICY_REGISTRY_INVALID",
+        ),
+        (
+            "predispatch_state_machine", PREDISPATCH_STATE_MACHINE_V1,
+            PREDISPATCH_STATE_MACHINE_SHA256,
+            "PREDISPATCH_STATE_MACHINE_INVALID",
+        ),
+        (
+            "nonce_reservation_policy", NONCE_RESERVATION_POLICY_V1,
+            NONCE_RESERVATION_POLICY_SHA256,
+            "NONCE_RESERVATION_POLICY_INVALID",
+        ),
+        (
+            "observer_isolation_policy", OBSERVER_ISOLATION_POLICY_V1,
+            OBSERVER_ISOLATION_POLICY_SHA256,
+            "OBSERVER_ISOLATION_POLICY_INVALID",
+        ),
+        (
+            "durable_failure_evidence_policy",
+            DURABLE_FAILURE_EVIDENCE_POLICY_V1,
+            DURABLE_FAILURE_EVIDENCE_POLICY_SHA256,
+            "DURABLE_FAILURE_EVIDENCE_POLICY_INVALID",
+        ),
+    ):
+        _require(
+            body.get(field) == definition
+            and body.get(f"{field}_sha256") == expected_digest,
+            reason,
+        )
     for field in (
         "expected_stage_calls", "hard_max_provider_requests",
         "hard_max_http_posts", "hard_max_network_attempts",
@@ -1348,6 +1457,7 @@ class FullShortDurableExecutionStoreV1:
             {key: value for key, value in nonce.items() if key not in {
                 "state", "dispatch_attempt_count", "consumed_at",
                 "consumed_session_sha256", "observer_session_sha256",
+                "dispatch_readiness_receipt_sha256",
                 "nonce_record_sha256",
             }},
             domain="novel-flywheel-full-short-nonce-v1",
@@ -1975,6 +2085,7 @@ class FullShortDispatchLedgerObserverV1:
 
         if self.live_authority_recheck is not None:
             self.live_authority_recheck()
+        _require(lane == "primary", "ROUTE_SWITCH_OR_FALLBACK_FORBIDDEN")
         _require(self.pending_ordinal is None, "PRIOR_DISPATCH_STILL_PENDING")
         provider_hash = hashlib.sha256(provider_id.encode("utf-8")).hexdigest()
         model_hash = hashlib.sha256(model_id.encode("utf-8")).hexdigest()

@@ -85,6 +85,13 @@ class ModelRoutesExhaustedError(RuntimeError):
             ("configured_fallback", "configured_fallback", fallback_error),
         ])
         self.failure_family = "provider.routes_exhausted"
+        self.recovery_action = "stop_after_ordered_route_exhaustion"
+        self.reliability_failure = ReliabilityFailure(
+            code="model_routes_exhausted",
+            failure_class=FailureClass.UNKNOWN,
+            boundary="model_gateway.routes_exhausted",
+            retryable=False,
+        )
 
 
 class CapabilityRoutesExhaustedError(RuntimeError):
@@ -214,6 +221,15 @@ class ModelGateway:
             )
         return self.registry.resolve(provider_id, model_id)
 
+    def _exact_single_dispatch_active(self) -> bool:
+        policy = getattr(self.registry, "transport_policy", None)
+        return bool(
+            policy is not None
+            and getattr(policy, "mode", None) == "single_dispatch"
+            and getattr(policy, "application_second_dispatch_allowed", True)
+            is False
+        )
+
     def has_configured_fallback(self, role: str) -> bool:
         binding = self.db.get_role_binding(role) or {}
         return bool(
@@ -253,6 +269,11 @@ class ModelGateway:
         except asyncio.CancelledError:
             raise
         except Exception as exc:
+            if self._exact_single_dispatch_active():
+                # Exact Full Short owns recovery in its durable two-slot
+                # controller.  Generic gateway retry/fallback paths are not
+                # permitted to spend an unrecorded physical attempt.
+                raise
             if resolved is not None and self._is_transient_connect_error(exc):
                 await asyncio.sleep(self.CONNECT_RETRY_DELAY)
                 try:
@@ -1062,6 +1083,8 @@ class ModelGateway:
         except asyncio.CancelledError:
             raise
         except Exception as exc:
+            if self._exact_single_dispatch_active():
+                raise
             recovered = self._recover_toolbox_proposals(role, resolved, toolbox, exc)
             if recovered is not None:
                 return recovered

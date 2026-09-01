@@ -24,6 +24,19 @@ from urllib.parse import urlsplit
 
 from novel_flywheel.config import Settings, configure_runtime_environment
 from novel_flywheel.db import Database
+from novel_flywheel.execution_failure_architecture import (
+    DURABLE_FAILURE_EVIDENCE_POLICY_SHA256,
+    DURABLE_FAILURE_EVIDENCE_POLICY_V1,
+    FAILURE_ARCHITECTURE_IDENTITY,
+    FULL_SHORT_EXACT_RECOVERY_REGISTRY_SHA256,
+    FULL_SHORT_EXACT_RECOVERY_REGISTRY_V1,
+    NONCE_RESERVATION_POLICY_SHA256,
+    NONCE_RESERVATION_POLICY_V1,
+    OBSERVER_ISOLATION_POLICY_SHA256,
+    OBSERVER_ISOLATION_POLICY_V1,
+    PREDISPATCH_STATE_MACHINE_SHA256,
+    PREDISPATCH_STATE_MACHINE_V1,
+)
 from novel_flywheel.full_short_execution import (
     FullShortDispatchLedgerObserverV1,
     FullShortDurableExecutionStoreV1,
@@ -509,6 +522,16 @@ def collect_live_bindings(
         "logical_stage_recovery_policy_identity": (
             "TWO_SLOT_MUTUALLY_EXCLUSIVE_TYPED_RECOVERY"
         ),
+        "failure_architecture_identity": FAILURE_ARCHITECTURE_IDENTITY,
+        "recovery_policy_registry_sha256": (
+            FULL_SHORT_EXACT_RECOVERY_REGISTRY_SHA256
+        ),
+        "predispatch_state_machine_sha256": PREDISPATCH_STATE_MACHINE_SHA256,
+        "nonce_reservation_policy_sha256": NONCE_RESERVATION_POLICY_SHA256,
+        "observer_isolation_policy_sha256": OBSERVER_ISOLATION_POLICY_SHA256,
+        "durable_failure_evidence_policy_sha256": (
+            DURABLE_FAILURE_EVIDENCE_POLICY_SHA256
+        ),
         "store_root_sha256": hashlib.sha256(
             str(exact_store_root).encode("utf-8"),
         ).hexdigest(),
@@ -557,6 +580,21 @@ def collect_live_bindings(
         ),
         "logical_stage_recovery_policy_identity": (
             "TWO_SLOT_MUTUALLY_EXCLUSIVE_TYPED_RECOVERY"
+        ),
+        "failure_architecture_identity": FAILURE_ARCHITECTURE_IDENTITY,
+        "recovery_policy_registry": FULL_SHORT_EXACT_RECOVERY_REGISTRY_V1,
+        "recovery_policy_registry_sha256": (
+            FULL_SHORT_EXACT_RECOVERY_REGISTRY_SHA256
+        ),
+        "predispatch_state_machine": PREDISPATCH_STATE_MACHINE_V1,
+        "predispatch_state_machine_sha256": PREDISPATCH_STATE_MACHINE_SHA256,
+        "nonce_reservation_policy": NONCE_RESERVATION_POLICY_V1,
+        "nonce_reservation_policy_sha256": NONCE_RESERVATION_POLICY_SHA256,
+        "observer_isolation_policy": OBSERVER_ISOLATION_POLICY_V1,
+        "observer_isolation_policy_sha256": OBSERVER_ISOLATION_POLICY_SHA256,
+        "durable_failure_evidence_policy": DURABLE_FAILURE_EVIDENCE_POLICY_V1,
+        "durable_failure_evidence_policy_sha256": (
+            DURABLE_FAILURE_EVIDENCE_POLICY_SHA256
         ),
         "maximum_configured_output_tokens_per_call": max_per_call,
         "store_root": str(exact_store_root),

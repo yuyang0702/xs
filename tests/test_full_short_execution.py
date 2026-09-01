@@ -172,6 +172,19 @@ def _policy(
     ).document()
 
 
+def _architecture_bindings(policy: dict) -> dict:
+    fields = (
+        "failure_architecture_identity", "recovery_policy_registry",
+        "recovery_policy_registry_sha256", "predispatch_state_machine",
+        "predispatch_state_machine_sha256", "nonce_reservation_policy",
+        "nonce_reservation_policy_sha256", "observer_isolation_policy",
+        "observer_isolation_policy_sha256",
+        "durable_failure_evidence_policy",
+        "durable_failure_evidence_policy_sha256",
+    )
+    return {field: policy[field] for field in fields}
+
+
 def _store(tmp_path: Path) -> FullShortDurableExecutionStoreV1:
     repo = tmp_path / "repo"
     repo.mkdir(parents=True)
@@ -324,6 +337,41 @@ def test_dispatch_ready_receipt_precedes_lazy_nonce_consumption(
     assert ledger["nonce_disposition"] == "CONSUMED"
     assert ledger["state"] == "DISPATCH_IN_FLIGHT"
     assert len(ledger["attempts"]) == 1
+
+
+def test_crash_between_lazy_nonce_and_ledger_commit_is_terminal_no_redispatch(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    store = _store(tmp_path / "lazy-nonce-crash-window")
+    execution_id = "lazy-nonce-crash-window"
+    _authorize_predispatch_offline(store, execution_id)
+    observer = _predispatch_observer(store, execution_id)
+    observer.bind_model_request(protocol="anthropic", request=_request())
+    original_replace = store._replace
+
+    def crash_before_ledger_replace(path: Path, value: dict) -> None:
+        if path == store._path(execution_id, "ledger"):
+            raise OSError("fault-injected durable ledger replacement failure")
+        original_replace(path, value)
+
+    monkeypatch.setattr(store, "_replace", crash_before_ledger_replace)
+    with pytest.raises(OSError, match="fault-injected"):
+        observer.before_http_dispatch(
+            method="POST", url="https://unit.test/v1/messages",
+            payload=_payload(),
+        )
+
+    nonce = store.load_nonce(execution_id)
+    assert nonce["state"] == "CONSUMED_DISPATCH_COMMIT_PENDING"
+    assert nonce["dispatch_attempt_count"] == 0
+    monkeypatch.setattr(store, "_replace", original_replace)
+    with pytest.raises(FullShortExecutionBoundaryError) as restarted:
+        FullShortDispatchLedgerObserverV1(
+            store=store, execution_id=execution_id, policy=_policy(store),
+            authorized_routes=_routes(), egress_policy=_egress(),
+            session_id="second-process",
+        )
+    assert restarted.value.reason_code == "NONCE_NOT_RESERVED"
 
 
 def _observer(
@@ -590,7 +638,7 @@ def test_exact_pre_dispatch_route_rebind_is_idempotent_but_drift_fails(
             provider_id="provider", model_id="model-id",
             route_fingerprint="9" * 64,
         )
-    assert drift.value.reason_code == "ROUTE_BINDING_DRIFT"
+    assert drift.value.reason_code == "ROUTE_SWITCH_OR_FALLBACK_FORBIDDEN"
 
 
 @pytest.mark.asyncio
@@ -1310,7 +1358,7 @@ def test_local_rejection_receipt_rejects_raw_content_and_stays_pending(
     assert "raw_provider_content" not in json.dumps(ledger)
 
 
-def test_local_rejection_normalizes_only_configured_fallback_lane(
+def test_exact_full_short_rejects_configured_fallback_lane_before_dispatch(
     tmp_path: Path,
 ) -> None:
     store = _store(tmp_path)
@@ -1340,33 +1388,13 @@ def test_local_rejection_normalizes_only_configured_fallback_lane(
         store=store, execution_id="fallback-local-rejection", policy=policy,
         authorized_routes=routes, egress_policy=_egress(),
     )
-    observer.bind_route(
-        role="planning", lane="fallback", provider_id="fallback-provider",
-        model_id="fallback-model-id", route_fingerprint="8" * 64,
-    )
-    request = ModelRequest(
-        model="offline-fallback", messages=[], max_output_tokens=128,
-    )
-    payload = {
-        "model": "offline-fallback", "messages": [], "max_tokens": 128,
-        "stream": True,
-    }
-    observer.bind_model_request(protocol="anthropic", request=request)
-    observer.before_http_dispatch(
-        method="POST", url="https://unit.test/v1/messages", payload=payload,
-    )
-    observer.after_http_response(status_code=200)
-    observer.mark_local_attempt_rejected(
-        stage="planning", role="planning",
-        role_binding_sha256=observer.bound_route["role_binding_sha256"],
-        rejection={
-            **_local_rejection(),
-            "route": "configured_fallback",
-        },
-    )
-    assert store.load_ledger("fallback-local-rejection")["attempts"][0][
-        "state"
-    ] == "LOCAL_ATTEMPT_REJECTED"
+    with pytest.raises(FullShortExecutionBoundaryError) as rejected:
+        observer.bind_route(
+            role="planning", lane="fallback", provider_id="fallback-provider",
+            model_id="fallback-model-id", route_fingerprint="8" * 64,
+        )
+    assert rejected.value.reason_code == "ROUTE_SWITCH_OR_FALLBACK_FORBIDDEN"
+    assert store.load_ledger("fallback-local-rejection")["attempts"] == []
 
 
 def test_restart_before_dispatch_is_also_fail_closed(tmp_path: Path) -> None:
@@ -1607,6 +1635,7 @@ def _preflight_actual() -> dict:
         "logical_stage_recovery_policy_identity": (
             "TWO_SLOT_MUTUALLY_EXCLUSIVE_TYPED_RECOVERY"
         ),
+        **_architecture_bindings(policy),
         "store_root_sha256": policy["store_root_sha256"],
         "skill_v3_production_cutover": False,
         "planning_v2_production_cutover": False,
@@ -1640,6 +1669,7 @@ def test_canonical_authorization_and_disabled_preflight_are_exact() -> None:
         "logical_stage_recovery_policy_identity": (
             "TWO_SLOT_MUTUALLY_EXCLUSIVE_TYPED_RECOVERY"
         ),
+        **_architecture_bindings(policy),
         "store_root_sha256": "0" * 64,
     }
     raw = render_full_short_canonical_authorization_v1(
@@ -1744,6 +1774,7 @@ def test_authorization_candidate_rejects_same_count_role_plan_reordering() -> No
         "logical_stage_recovery_policy_identity": (
             "TWO_SLOT_MUTUALLY_EXCLUSIVE_TYPED_RECOVERY"
         ),
+        **_architecture_bindings(policy),
         "store_root_sha256": "0" * 64,
     }
     with pytest.raises(FullShortExecutionBoundaryError) as rejected:
@@ -1846,6 +1877,18 @@ def test_invalid_public_route_identity_never_crosses_credential_boundary(
          "TRANSPORT_RECOVERY_POLICY_SHA256_DRIFT"),
         ("transport_recovery_policy_identity", "NETWORK_RETRY",
          "TRANSPORT_RECOVERY_POLICY_IDENTITY_DRIFT"),
+        ("failure_architecture_identity", "legacy",
+         "FAILURE_ARCHITECTURE_IDENTITY_DRIFT"),
+        ("recovery_policy_registry_sha256", "9" * 64,
+         "RECOVERY_POLICY_REGISTRY_SHA256_DRIFT"),
+        ("predispatch_state_machine_sha256", "9" * 64,
+         "PREDISPATCH_STATE_MACHINE_SHA256_DRIFT"),
+        ("nonce_reservation_policy_sha256", "9" * 64,
+         "NONCE_RESERVATION_POLICY_SHA256_DRIFT"),
+        ("observer_isolation_policy_sha256", "9" * 64,
+         "OBSERVER_ISOLATION_POLICY_SHA256_DRIFT"),
+        ("durable_failure_evidence_policy_sha256", "9" * 64,
+         "DURABLE_FAILURE_EVIDENCE_POLICY_SHA256_DRIFT"),
         ("store_root_sha256", "9" * 64, "STORE_ROOT_SHA256_DRIFT"),
         ("skill_v3_production_cutover", True, "SKILL_V3_CUTOVER_DRIFT"),
         ("planning_v2_production_cutover", True, "PLANNING_V2_CUTOVER_DRIFT"),

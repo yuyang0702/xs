@@ -3907,7 +3907,7 @@ async def test_full_short_real_http_seam(
     manuscript = project.path / "manuscript" / "story.md"
     assert result["status"] == "completed"
     assert effective_han_characters(manuscript.read_text(encoding="utf-8")) >= 13_000
-    assert {"planning", "draft", "review", "polish", "final_review", "maintenance"} <= set(
+    assert {"planning", "draft", "review", "polish", "final_review"} <= set(
         oracle.roles
     )
     assert (run_path / "outputs" / "project-mutation-journal.json").is_file()
@@ -3929,6 +3929,7 @@ async def test_full_short_real_http_seam(
         workflow_service=service, project=project,
     )
     assert terminal["completion_goal_outcome"] == COMPLETION_GOAL, terminal
+    assert terminal["maintenance"]["closure_status"] == "exact"
 
 
 def test_new_short_project_uses_stable_project_brief_event_authority(tmp_path) -> None:

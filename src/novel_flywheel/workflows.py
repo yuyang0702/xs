@@ -30464,7 +30464,8 @@ class WorkflowService:
             if provider_capacity_split is not None:
                 return await complete_capacity_split(provider_capacity_split)
             result.receipt.setdefault("requested_max_output_tokens", output_budget)
-            if (execution_spec is None
+            if (not self._exact_full_short_execution()
+                    and execution_spec is None
                     and stage == "review" and gateway_role == "review" and not allow_tools
                     and not result.text.strip()
                     and result.receipt.get("finish_reason") == "max_tokens"):
@@ -30514,7 +30515,8 @@ class WorkflowService:
                     result.receipt.setdefault(
                         "requested_max_output_tokens", min(8192, fallback_ceiling or 8192),
                     )
-            if (retry_polish_output_limit and stage == "polish"
+            if (not self._exact_full_short_execution()
+                    and retry_polish_output_limit and stage == "polish"
                     and gateway_role == "polish" and not allow_tools
                     and not result.text.strip()
                     and result.receipt.get("finish_reason") in {"tool_use", "tool_calls"}):
@@ -30580,7 +30582,8 @@ class WorkflowService:
                         context_window=actual_model.get("context_window"),
                         declared_output_ceiling=actual_model.get("max_output_tokens"),
                     )
-                    if (not output_limit_expanded_once
+                    if (not self._exact_full_short_execution()
+                            and not output_limit_expanded_once
                             and retry_budget and retry_budget > previous_budget):
                         self.db.add_run_event(
                             run_id, "warning", (
@@ -30968,6 +30971,8 @@ class WorkflowService:
         except asyncio.CancelledError:
             raise
         except Exception as exc:
+            if self._exact_full_short_execution():
+                raise
             short_revision = (self.db.get_run(run_id) or {}).get(
                 "workflow"
             ) == "short-revision"
@@ -30995,11 +31000,28 @@ class WorkflowService:
     ) -> tuple[ProtocolReceiptAttempt, ...]:
         """Resolve one bounded route schedule for any immutable receipt."""
 
+        if self._exact_full_short_execution():
+            return protocol_receipt_attempts(
+                same_route_attempts=min(same_route_attempts, 2),
+                configured_fallback_available=False,
+                fallback_attempts=0,
+            )
         return model_route_attempts(
             self.gateway,
             role=role,
             same_route_attempts=same_route_attempts,
             fallback_attempts=2,
+        )
+
+    def _exact_full_short_execution(self) -> bool:
+        observer = getattr(
+            getattr(self.gateway, "registry", None),
+            "attempt_observer", None,
+        )
+        return bool(
+            observer is not None
+            and type(observer).__name__ == "FullShortDispatchLedgerObserverV1"
+            and getattr(observer, "policy", None)
         )
 
     async def _execute_protocol_receipt_attempt(

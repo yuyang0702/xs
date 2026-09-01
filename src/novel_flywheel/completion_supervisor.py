@@ -89,17 +89,6 @@ class FailureTransitionPlan:
 def classify_completion_failure(exc: BaseException) -> FailureClass:
     """Classify a terminal workflow exception without provider-name branches."""
 
-    reliability = getattr(exc, "reliability_failure", None)
-    raw_class = getattr(reliability, "failure_class", None)
-    if raw_class:
-        try:
-            return FailureClass(raw_class)
-        except ValueError:
-            pass
-    if isinstance(exc, TransportInterruptedError):
-        return FailureClass.TRANSPORT
-    if isinstance(exc, StructuredOutputCapabilityError):
-        return FailureClass.CAPABILITY
     if isinstance(exc, CapabilityRoutesExhaustedError):
         children = [item[2] for item in exc.route_errors]
         return _strongest_failure_class(children) or FailureClass.CAPABILITY
@@ -112,6 +101,17 @@ def classify_completion_failure(exc: BaseException) -> FailureClass:
         return _strongest_failure_class(
             children or [exc.primary_error, exc.fallback_error],
         ) or FailureClass.UNKNOWN
+    reliability = getattr(exc, "reliability_failure", None)
+    raw_class = getattr(reliability, "failure_class", None)
+    if raw_class:
+        try:
+            return FailureClass(raw_class)
+        except ValueError:
+            pass
+    if isinstance(exc, TransportInterruptedError):
+        return FailureClass.TRANSPORT
+    if isinstance(exc, StructuredOutputCapabilityError):
+        return FailureClass.CAPABILITY
     if isinstance(exc, ConnectionError):
         return FailureClass.TRANSPORT
     model_failure = classify_model_failure(exc)

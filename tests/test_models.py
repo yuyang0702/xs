@@ -4,7 +4,10 @@ from novel_flywheel.db import Database
 from novel_flywheel.domain.models import ModelResponse, ToolCall
 from novel_flywheel.models import ModelGateway, ModelRoutesExhaustedError
 from novel_flywheel.providers.registry import ResolvedModel
-from novel_flywheel.providers.http import ToolCapabilityError
+from novel_flywheel.providers.http import (
+    SingleDispatchTransportPolicyV1,
+    ToolCapabilityError,
+)
 from novel_flywheel.structured_artifacts import (
     StructuredArtifactContract,
     StructuredOutputCapabilityError,
@@ -117,6 +120,40 @@ class CountingFailAdapter:
     async def complete(self, request):
         self.calls += 1
         raise RuntimeError(self.message)
+
+
+@pytest.mark.asyncio
+async def test_exact_single_dispatch_mode_has_no_hidden_retry_or_fallback(
+    tmp_path,
+) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    db.save_role_binding(
+        "planning", "primary-provider", "primary-model",
+        "fallback-provider", "fallback-model",
+    )
+    primary = CountingFailAdapter("All connection attempts failed")
+    fallback = SuccessfulFallbackAdapter()
+
+    class ExactRegistry:
+        transport_policy = SingleDispatchTransportPolicyV1.phase_b()
+
+        def __init__(self):
+            self.resolutions: list[str] = []
+
+        def resolve(self, provider_id, model_id, *, role=None, lane=None):
+            self.resolutions.append(str(lane))
+            adapter = primary if lane == "primary" else fallback
+            return ResolvedModel(provider_id, model_id, model_id, adapter)
+
+    registry = ExactRegistry()
+    with pytest.raises(RuntimeError, match="All connection attempts failed"):
+        await ModelGateway(db, registry).complete(
+            "planning", "rules", "execute",
+        )
+
+    assert primary.calls == 1
+    assert registry.resolutions == ["primary"]
 
 
 class ConfiguredFallbackRegistry:

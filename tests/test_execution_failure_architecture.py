@@ -59,8 +59,22 @@ def test_opaque_reliability_token_is_not_persisted_as_a_failure_code() -> None:
 
     evidence = build_durable_failure_evidence(error, boundary="task")
 
-    assert evidence.root.code == "unclassified_failure"
+    assert evidence.root.code == "external_unknown_after_boundary"
     assert secretlike not in json.dumps(evidence.model_dump(mode="json"))
+
+
+def test_untyped_nested_failure_is_explicit_unknown_child_not_transport() -> None:
+    child = RuntimeError("opaque provider wrapper")
+    wrapped = ModelRoutesExhaustedError(
+        child, child, route_errors=[("primary", "one", child)],
+    )
+
+    evidence = build_durable_failure_evidence(
+        wrapped, boundary="workflow.recovery",
+    )
+
+    assert evidence.root.children[0].code == "unknown_child"
+    assert evidence.root.children[0].failure_class == FailureClass.UNKNOWN
 
 
 def test_exact_recovery_second_slot_is_shared_and_terminal() -> None:
@@ -101,3 +115,12 @@ def test_best_effort_observer_cannot_mask_primary_outcome() -> None:
 
     assert guard.emit(lambda: (_ for _ in ()).throw(RuntimeError("diagnostic"))) is False
     assert failures == ["RuntimeError"]
+
+
+def test_gbk_console_emoji_failure_is_contained_as_diagnostic_only() -> None:
+    guard = ObserverGuard()
+
+    def gbk_console_sink() -> None:
+        "🌊".encode("gbk")
+
+    assert guard.emit(gbk_console_sink) is False

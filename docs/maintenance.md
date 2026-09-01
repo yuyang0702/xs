@@ -2428,3 +2428,41 @@ the source kind/fallback status and source/document hashes, and refreshes when
 the active project changes. This is presentation and inspection only: the
 production resolver precedence and model-visible Baseline Skill bytes are not
 changed, and retired Selective/Hybrid augmentation remains inactive.
+
+## Full Short failure-surface and dispatch readiness
+
+Trustworthy Full Short failures cross durable boundaries only through
+`full-short-failure-architecture-v2`. The envelope retains every ordered route
+child and its typed owner layer, boundary, failure class, dispatch state,
+authority effect, restart behavior, and recovery action. It never stores or
+hashes raw exception messages. Opaque token-like error codes, request content,
+credentials, and local paths are not durable metadata. The graph SHA-256 is
+derived from the canonical safe projection, so terminal run events and workflow
+attempts can be reconciled without re-reading private provider evidence.
+
+The production Full Short runner creates permission and JIT approval, then a
+nonce-absent `PREDISPATCH_LOCAL_READINESS` ledger. Provider/model/destination
+metadata, credential presence, client construction, model request construction,
+reasoning directive, exact wire payload, egress policy, elapsed time, request
+count, and token caps must all pass before the dispatch seam creates a nonce.
+That seam seals a dispatch-readiness receipt and writes an explicit
+`CONSUMED_DISPATCH_COMMIT_PENDING` state before linking the ledger. Any crash in
+that window is terminal and non-resumable; it cannot be interpreted as an
+unused nonce. Network access remains impossible until the ledger is linked and
+the nonce is durably `CONSUMED`.
+
+Exact execution disables generic ModelGateway connection retries, configured
+fallback resolution, role fallback, token-headroom redispatch, and polish/review
+ad-hoc redispatch. Recovery is owned by the two-slot Full Short policy: one
+normal physical attempt plus at most one typed same-route recovery attempt.
+Reasoning-only finalization and business/protocol recovery share that second
+slot; the first typed rejection owns it. A complete capture may be replayed
+locally without spending a physical attempt. Unknown failures, route switching,
+a third call, and a second accepted final artifact are terminal.
+
+Control evidence (nonce, dispatch ledger, exact captures, local stage receipt)
+remains fail-closed. Diagnostic event sinks, telemetry, CrewAI post-run cleanup,
+and registry resource-close reporting are best effort and cannot replace a
+successful business result or mask the primary failure. Reader Review fallback
+must execute the complete reader contract on the fallback role; an editorial
+verdict is never synthesized into target-reader evidence.
