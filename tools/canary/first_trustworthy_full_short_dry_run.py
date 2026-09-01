@@ -1104,6 +1104,22 @@ async def _discover_plan(
         failure["output_file_names"] = sorted(
             item.name for item in outputs.glob("*") if item.is_file()
         )[-40:]
+        failure["run_event_tail"] = [
+            {
+                "severity": item.get("severity"),
+                "event_type": item.get("event_type"),
+                "stage": item.get("stage"),
+                "message_sha256": _optional_text_sha256(item.get("message")),
+                "metadata_keys": sorted(
+                    str(key) for key in (item.get("metadata") or {})
+                ),
+                "error_type": (item.get("metadata") or {}).get("error_type"),
+                "failure_code": (item.get("metadata") or {}).get(
+                    "failure_code"
+                ),
+            }
+            for item in db.list_run_events(DISCOVERY_ID)[-12:]
+        ]
         raise RuntimeError(
             "FULL_SHORT_DRY_RUN_PLAN_DID_NOT_COMPLETE:"
             + json.dumps(failure, ensure_ascii=True, sort_keys=True)
