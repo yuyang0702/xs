@@ -1,0 +1,61 @@
+{
+  "schema": "NovelDevCouncilChangeContractV1",
+  "version": 1,
+  "task_class": "open_world_authority_critical",
+  "start_head": "28d656a03bedb581409891413817981cab86c744",
+  "branch": "r1-ptr3/planning-repair-finding-propagation-20260817",
+  "external_baseline_path": "C:\\小说\\deepseek-reasoning-finalization-baseline-v1.json",
+  "problem_statement": "A transport-complete official DeepSeek Anthropic response can consume max_tokens entirely in reasoning and expose no final Planning artifact. Preserve the normal Planning request exactly and permit only one same-route, same-authority, final-artifact recovery request whose verified provider policy disables reasoning.",
+  "in_scope": [
+    "abstract reasoning/finalization request policy",
+    "exact official DeepSeek Anthropic capability binding",
+    "one-shot typed Planning final-artifact recovery",
+    "shared per-logical-stage physical attempt ceiling",
+    "durable rejection and accepted-artifact provenance",
+    "offline payload/isolation/restart/budget/full-short evidence",
+    "new post-commit external authorization"
+  ],
+  "out_of_scope": [
+    "credential lookup",
+    "provider client creation",
+    "provider capability probe",
+    "network or paid model calls",
+    "real Full Short execution",
+    "route/model/fallback changes",
+    "global Anthropic or DeepSeek reasoning defaults",
+    "formal manuscript, Canon, StoryState, outline, style, or reference mutation"
+  ],
+  "authority_map": {
+    "formal_manuscript_and_story_authority": "read_only_unchanged",
+    "confirmed_outline_and_story_state": "frozen_inputs_unchanged",
+    "provider_model_role_bindings": "unchanged",
+    "normal_model_visible_planning_bytes": "unchanged",
+    "recovery_model_visible_bytes": "new_same_scope_finalization_instruction_only",
+    "structured_schema_business_semantic_gates": "unchanged",
+    "runtime_recovery_and_durable_ledger": "changed",
+    "credentials_private_state": "untouched"
+  },
+  "required_invariants": [
+    "normal Planning keeps current provider-default reasoning behavior",
+    "only exact typed REASONING_ONLY_MAX_TOKENS_NO_FINAL_ARTIFACT can schedule recovery",
+    "recovery uses the same logical stage, route, model, frozen authority, schema, and validators",
+    "recovery receives a fresh physical identity and at most one external dispatch",
+    "only the exact verified official DeepSeek Anthropic route may receive reasoning.effort=none",
+    "unverified or unrelated routes fail closed or remain byte-identical",
+    "at most one accepted artifact exists per logical stage",
+    "no third physical attempt or recovery-family composition beyond the shared ceiling"
+  ],
+  "rollback": {
+    "method": "revert_bounded_task_commits",
+    "preserve_external_authorizations_and_historical_captures": true,
+    "baseline_verifier": ".agents/skills/novel-dev-council/scripts/inspect_change_gate.py"
+  },
+  "external_action_counts_required": {
+    "credential_lookups": 0,
+    "provider_requests": 0,
+    "network_calls": 0,
+    "model_calls": 0,
+    "paid_calls": 0,
+    "real_full_short_executions": 0
+  }
+}
