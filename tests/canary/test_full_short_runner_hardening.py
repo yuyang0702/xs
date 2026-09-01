@@ -279,6 +279,7 @@ def _logical_plan() -> list[dict]:
         "logical_stage_base_id": "planning",
         "logical_stage_id": "planning",
         "role": "planning",
+        "route_lane": "primary",
         "contract_name": "unstructured_text",
         "contract_version": 1,
         "contract_schema_sha256": hashlib.sha256(b"{}").hexdigest(),
@@ -467,6 +468,7 @@ def test_discovery_mirrors_unstructured_runtime_stage_fallback() -> None:
         "contract_runtime_input_required": False,
         "requested_output_tokens": 321,
         "role": "planning",
+        "route_lane": "primary",
     }]
 
 

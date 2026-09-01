@@ -904,6 +904,11 @@ class _LogicalStagePlanDiscoveryObserver:
             "ordinal": len(self.logical_stage_plan) + 1,
             **self.pending,
             "role": self.bound_route["role"],
+            "route_lane": (
+                "configured_fallback"
+                if self.bound_route["lane"] == "fallback"
+                else self.bound_route["lane"]
+            ),
         })
 
     def before_http_post(self) -> None:

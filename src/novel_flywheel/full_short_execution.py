@@ -203,7 +203,8 @@ LOGICAL_STAGE_RECOVERY_POLICY_SHA256 = hashlib.sha256(
 ).hexdigest()
 _LOGICAL_STAGE_PLAN_KEYS = frozenset({
     "ordinal", "stage_id", "logical_stage_base_id", "logical_stage_id",
-    "role", "contract_name", "contract_version", "contract_schema_sha256",
+    "role", "route_lane", "contract_name", "contract_version",
+    "contract_schema_sha256",
     "contract_runtime_input_required", "requested_output_tokens",
 })
 _CLOSED_LOCAL_ATTEMPT_STATES = frozenset({
@@ -761,6 +762,10 @@ def validate_full_short_logical_stage_plan_v1(value: Any) -> list[dict[str, Any]
         )
         _require(_ID.fullmatch(str(item.get("role") or "")) is not None,
                  "LOGICAL_STAGE_PLAN_ROLE_INVALID")
+        _require(
+            item.get("route_lane") in {"primary", "configured_fallback"},
+            "LOGICAL_STAGE_PLAN_ROUTE_LANE_INVALID",
+        )
         _require(isinstance(item.get("contract_name"), str)
                  and bool(item["contract_name"]),
                  "LOGICAL_STAGE_PLAN_CONTRACT_INVALID")
@@ -2547,8 +2552,17 @@ class FullShortDispatchLedgerObserverV1:
 
         if self.live_authority_recheck is not None:
             self.live_authority_recheck()
-        _require(lane == "primary", "ROUTE_SWITCH_OR_FALLBACK_FORBIDDEN")
         _require(self.pending_ordinal is None, "PRIOR_DISPATCH_STILL_PENDING")
+        expected_stage = self._next_logical_stage_plan_entry()
+        _require(role == expected_stage["role"],
+                 "LOGICAL_STAGE_PLAN_ROLE_DRIFT")
+        expected_manifest_lane = (
+            "fallback"
+            if expected_stage["route_lane"] == "configured_fallback"
+            else expected_stage["route_lane"]
+        )
+        _require(lane == expected_manifest_lane,
+                 "ROUTE_SWITCH_OR_FALLBACK_FORBIDDEN")
         provider_hash = hashlib.sha256(provider_id.encode("utf-8")).hexdigest()
         model_hash = hashlib.sha256(model_id.encode("utf-8")).hexdigest()
         matches = [item for item in self.authorized_routes if (
@@ -3798,6 +3812,11 @@ def build_full_short_completion_receipt_v1(
             "logical_stage_base_id": attempt.get("logical_stage_base_id"),
             "logical_stage_id": attempt.get("logical_stage_id"),
             "role": attempt.get("bound_role"),
+            "route_lane": (
+                "configured_fallback"
+                if attempt.get("bound_lane") == "fallback"
+                else attempt.get("bound_lane")
+            ),
             "contract_name": attempt.get("contract_name"),
             "contract_version": attempt.get("contract_version"),
             "contract_schema_sha256": attempt.get("contract_schema_sha256"),

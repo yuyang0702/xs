@@ -130,6 +130,7 @@ def _logical_stage_plan(
             "logical_stage_base_id": stage_id,
             "logical_stage_id": logical_stage_id,
             "role": role,
+            "route_lane": "primary",
             "contract_name": contract_name,
             "contract_version": contract_version,
             "contract_schema_sha256": contract_schema_sha256,
@@ -837,12 +838,11 @@ async def test_lowest_transport_seam_is_durable_and_completable(tmp_path: Path) 
         execution_id="offline-full-short", policy=_policy(store),
         receipt=completion,
     )
-    observer.bind_route(
-        role="planning", lane="primary", provider_id="provider",
-        model_id="model-id", route_fingerprint="9" * 64,
-    )
     with pytest.raises(FullShortExecutionBoundaryError) as replay:
-        observer.bind_model_request(protocol="anthropic", request=_request())
+        observer.bind_route(
+            role="planning", lane="primary", provider_id="provider",
+            model_id="model-id", route_fingerprint="9" * 64,
+        )
     assert replay.value.reason_code == "LOGICAL_STAGE_PLAN_EXHAUSTED"
     await provider.client.aclose()
 
@@ -1524,6 +1524,64 @@ def test_exact_full_short_rejects_configured_fallback_lane_before_dispatch(
         )
     assert rejected.value.reason_code == "ROUTE_SWITCH_OR_FALLBACK_FORBIDDEN"
     assert store.load_ledger("fallback-local-rejection")["attempts"] == []
+
+
+def test_exact_full_short_accepts_only_presealed_configured_fallback_lane(
+    tmp_path: Path,
+) -> None:
+    store = _store(tmp_path)
+    fallback_route = {
+        **_routes()[0],
+        "lane": "fallback",
+        "provider_id_sha256": hashlib.sha256(b"fallback-provider").hexdigest(),
+        "model_id_sha256": hashlib.sha256(b"fallback-model-id").hexdigest(),
+        "model_name": "offline-fallback",
+        "route_fingerprint": "8" * 64,
+    }
+    logical_plan = [dict(item) for item in _logical_stage_plan()]
+    logical_plan[0]["route_lane"] = "configured_fallback"
+    policy = _policy(
+        store,
+        routes=(fallback_route,),
+        logical_stage_plan=tuple(logical_plan),
+    )
+    permission = store.create_permission(
+        execution_id="presealed-fallback",
+        authorization_text_sha256="3" * 64,
+        policy=policy,
+        external_actions_enabled=False,
+    )
+    approval = store.create_jit_approval(
+        execution_id="presealed-fallback",
+        policy=policy,
+        permission=permission,
+        external_actions_enabled=False,
+    )
+    store.reserve_nonce(
+        execution_id="presealed-fallback",
+        policy=policy,
+        approval=approval,
+        external_actions_enabled=False,
+    )
+    observer = FullShortDispatchLedgerObserverV1(
+        store=store,
+        execution_id="presealed-fallback",
+        policy=policy,
+        authorized_routes=(fallback_route,),
+        egress_policy=_egress(),
+    )
+
+    observer.bind_route(
+        role="planning",
+        lane="fallback",
+        provider_id="fallback-provider",
+        model_id="fallback-model-id",
+        route_fingerprint="8" * 64,
+    )
+
+    assert observer.bound_route is not None
+    assert observer.bound_route["lane"] == "fallback"
+    assert store.load_ledger("presealed-fallback")["attempts"] == []
 
 
 def test_restart_before_dispatch_is_also_fail_closed(tmp_path: Path) -> None:
