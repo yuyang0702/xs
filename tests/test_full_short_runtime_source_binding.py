@@ -130,6 +130,31 @@ def wrong_terminal():
         wrong_boundary_root, exact_mode,
     )
 
+    nested_lambda_tree = ast.parse("""
+def nested_lambda_terminal():
+    return runtime_kernel.execute_boundary_sync(
+        "FS.TEST", lambda: (lambda: store.commit_completion())
+    )
+""")
+    unreachable_tree = ast.parse("""
+def unreachable_terminal():
+    if False:
+        return runtime_kernel.execute_boundary_sync(
+            "FS.TEST", lambda: store.commit_completion()
+        )
+    return None
+""")
+    nested_lambda_root = nested_lambda_tree.body[0]
+    unreachable_root = unreachable_tree.body[0]
+    assert isinstance(nested_lambda_root, ast.FunctionDef)
+    assert isinstance(unreachable_root, ast.FunctionDef)
+    assert not _kernel_activation_evidence_v1(
+        nested_lambda_root, exact_mode,
+    )
+    assert not _kernel_activation_evidence_v1(
+        unreachable_root, exact_mode,
+    )
+
 
 def test_source_exit_inventory_is_deterministic() -> None:
     first = build_source_exit_inventory_v1(Path.cwd())
@@ -231,6 +256,30 @@ def reassigned_kernel_readiness():
         runtime_kernel.mark_predispatch_ready(readiness)
         runtime_kernel.reserve_dispatch_token()
     store.reserve_nonce_from_dispatch_readiness()
+
+def destructured_kernel_readiness():
+    runtime_kernel = active_full_short_kernel_v1()
+    (runtime_kernel,) = (None,)
+    if runtime_kernel is not None:
+        runtime_kernel.mark_predispatch_ready(readiness)
+        runtime_kernel.reserve_dispatch_token()
+    store.reserve_nonce_from_dispatch_readiness()
+
+def loop_target_kernel_readiness():
+    runtime_kernel = active_full_short_kernel_v1()
+    for runtime_kernel in [None]:
+        pass
+    if runtime_kernel is not None:
+        runtime_kernel.mark_predispatch_ready(readiness)
+        runtime_kernel.reserve_dispatch_token()
+    store.reserve_nonce_from_dispatch_readiness()
+
+async def non_exhaustive_match_retry():
+    match value:
+        case "known":
+            controller.authorize_shared_second_slot()
+    for item in items:
+        await gateway.complete_primary()
 """
     fixture_path = Path.cwd() / "fixture_cfg_dominance.py"
     tree = ast.parse(source, filename=str(fixture_path))
@@ -255,5 +304,5 @@ def reassigned_kernel_readiness():
         boundary_entries={},
         resolved_calls={},
     )
-    assert len(violations["HIDDEN_RETRY_PATH_COUNT"]) == 2
-    assert len(violations["NONCE_PREMATURE_RESERVATION_PATH_COUNT"]) == 3
+    assert len(violations["HIDDEN_RETRY_PATH_COUNT"]) == 3
+    assert len(violations["NONCE_PREMATURE_RESERVATION_PATH_COUNT"]) == 5

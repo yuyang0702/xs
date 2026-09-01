@@ -136,6 +136,42 @@ def _kernel_activation_evidence_v1(
                 calls.append(candidate)
                 self.generic_visit(candidate)
 
+            def visit_If(self, candidate: ast.If) -> None:
+                if (
+                    isinstance(candidate.test, ast.Constant)
+                    and isinstance(candidate.test.value, bool)
+                ):
+                    selected = (
+                        candidate.body if candidate.test.value
+                        else candidate.orelse
+                    )
+                    for statement in selected:
+                        self.visit(statement)
+                    return
+                self.generic_visit(candidate)
+
+            def visit_While(self, candidate: ast.While) -> None:
+                if isinstance(candidate.test, ast.Constant):
+                    selected = (
+                        candidate.body if bool(candidate.test.value)
+                        else candidate.orelse
+                    )
+                    for statement in selected:
+                        self.visit(statement)
+                    return
+                self.generic_visit(candidate)
+
+            def visit_For(self, candidate: ast.For) -> None:
+                if isinstance(candidate.iter, (ast.Tuple, ast.List)) and not (
+                    candidate.iter.elts
+                ):
+                    for statement in candidate.orelse:
+                        self.visit(statement)
+                    return
+                self.generic_visit(candidate)
+
+            visit_AsyncFor = visit_For
+
         SameScopeCallVisitor().visit(node)
         protected_calls = [
             candidate for candidate in calls
@@ -164,11 +200,46 @@ def _kernel_activation_evidence_v1(
             )
             if operation is None:
                 continue
-            protected_inside.update(
-                id(child) for child in ast.walk(operation)
-                if isinstance(child, ast.Call)
-                and _call_name(child) == required_operation
-            )
+            class DirectOperationVisitor(ast.NodeVisitor):
+                def __init__(self) -> None:
+                    self.matches: set[int] = set()
+                    self.lambda_depth = 0
+
+                def visit_Lambda(self, child: ast.Lambda) -> None:
+                    if self.lambda_depth:
+                        return
+                    self.lambda_depth += 1
+                    self.visit(child.body)
+                    self.lambda_depth -= 1
+
+                def visit_IfExp(self, child: ast.IfExp) -> None:
+                    self.visit(child.test)
+                    if isinstance(child.test, ast.Constant):
+                        self.visit(
+                            child.body if bool(child.test.value)
+                            else child.orelse
+                        )
+                        return
+                    self.visit(child.body)
+                    self.visit(child.orelse)
+
+                def visit_BoolOp(self, child: ast.BoolOp) -> None:
+                    for value in child.values:
+                        self.visit(value)
+                        if isinstance(value, ast.Constant):
+                            if isinstance(child.op, ast.And) and not value.value:
+                                break
+                            if isinstance(child.op, ast.Or) and value.value:
+                                break
+
+                def visit_Call(self, child: ast.Call) -> None:
+                    if _call_name(child) == required_operation:
+                        self.matches.add(id(child))
+                    self.generic_visit(child)
+
+            operation_visitor = DirectOperationVisitor()
+            operation_visitor.visit(operation)
+            protected_inside.update(operation_visitor.matches)
         return bool(protected_calls) and {
             id(candidate) for candidate in protected_calls
         } == protected_inside
@@ -598,6 +669,47 @@ def _dominating_call_facts_v1(
 
     observed: dict[int, frozenset[str]] = {}
 
+    def assigned_names(node: ast.AST | None) -> set[str]:
+        if node is None:
+            return set()
+        if isinstance(node, ast.Name):
+            return {node.id}
+        if isinstance(node, (ast.Tuple, ast.List)):
+            return {
+                name for item in node.elts for name in assigned_names(item)
+            }
+        if isinstance(node, ast.Starred):
+            return assigned_names(node.value)
+        if isinstance(node, ast.MatchAs):
+            return ({node.name} if node.name else set()) | assigned_names(
+                node.pattern
+            )
+        if isinstance(node, ast.MatchStar):
+            return {node.name} if node.name else set()
+        if isinstance(node, ast.MatchMapping):
+            return (
+                ({node.rest} if node.rest else set())
+                | {
+                    name
+                    for pattern in node.patterns
+                    for name in assigned_names(pattern)
+                }
+            )
+        if isinstance(node, (ast.MatchSequence, ast.MatchClass, ast.MatchOr)):
+            patterns = list(getattr(node, "patterns", ())) + list(
+                getattr(node, "kwd_patterns", ())
+            )
+            return {
+                name for pattern in patterns for name in assigned_names(pattern)
+            }
+        return set()
+
+    def kill_assignments(facts: set[str], target: ast.AST | None) -> set[str]:
+        current = set(facts)
+        for name in assigned_names(target):
+            current.discard(f"active_kernel:{name}")
+        return current
+
     def expression(node: ast.AST | None, facts: set[str]) -> set[str]:
         current = set(facts)
         if node is None:
@@ -614,6 +726,17 @@ def _dominating_call_facts_v1(
         if isinstance(node, ast.IfExp):
             tested = expression(node.test, current)
             return expression(node.body, tested) & expression(node.orelse, tested)
+        if isinstance(node, ast.NamedExpr):
+            current = expression(node.value, current)
+            current = kill_assignments(current, node.target)
+            if (
+                assume_active_kernel
+                and isinstance(node.target, ast.Name)
+                and isinstance(node.value, ast.Call)
+                and _call_name(node.value) == "active_full_short_kernel_v1"
+            ):
+                current.add(f"active_kernel:{node.target.id}")
+            return current
         if isinstance(node, ast.Call):
             current = expression(node.func, current)
             for argument in node.args:
@@ -655,10 +778,10 @@ def _dominating_call_facts_v1(
             return body_facts & else_facts
         if isinstance(statement, (ast.For, ast.AsyncFor)):
             tested = expression(statement.iter, facts)
-            expression(statement.target, tested)
-            block(statement.body, tested)
+            loop_facts = kill_assignments(tested, statement.target)
+            block(statement.body, loop_facts)
             block(statement.orelse, tested)
-            return tested
+            return kill_assignments(tested, statement.target)
         if isinstance(statement, ast.While):
             tested = expression(statement.test, facts)
             block(statement.body, tested)
@@ -669,21 +792,38 @@ def _dominating_call_facts_v1(
             normal_facts = block(statement.orelse, body_facts)
             paths = [normal_facts]
             for handler in statement.handlers:
-                paths.append(block(handler.body, set(facts)))
+                handler_facts = set(facts)
+                if handler.name:
+                    handler_facts.discard(f"active_kernel:{handler.name}")
+                paths.append(block(handler.body, handler_facts))
             merged = intersect(paths, facts)
             return block(statement.finalbody, merged)
         if isinstance(statement, (ast.With, ast.AsyncWith)):
             current = set(facts)
             for item in statement.items:
                 current = expression(item.context_expr, current)
-                current = expression(item.optional_vars, current)
+                current = kill_assignments(current, item.optional_vars)
             return block(statement.body, current)
         if isinstance(statement, ast.Match):
             subject_facts = expression(statement.subject, facts)
             paths = [
-                block(case.body, expression(case.guard, subject_facts))
+                block(
+                    case.body,
+                    expression(
+                        case.guard,
+                        kill_assignments(subject_facts, case.pattern),
+                    ),
+                )
                 for case in statement.cases
             ]
+            exhaustive = any(
+                isinstance(case.pattern, ast.MatchAs)
+                and case.pattern.pattern is None
+                and case.guard is None
+                for case in statement.cases
+            )
+            if not exhaustive:
+                paths.append(subject_facts)
             return intersect(paths, subject_facts)
         if isinstance(statement, (ast.FunctionDef, ast.AsyncFunctionDef)):
             return set(facts)
@@ -696,8 +836,8 @@ def _dominating_call_facts_v1(
                 else [statement.target]
             )
             for target in targets:
+                current = kill_assignments(current, target)
                 if isinstance(target, ast.Name):
-                    current.discard(f"active_kernel:{target.id}")
                     if (
                         assume_active_kernel
                         and isinstance(value, ast.Call)
@@ -711,8 +851,13 @@ def _dominating_call_facts_v1(
                 statement, ast.AugAssign,
             ) else list(statement.targets)
             for target in targets:
-                if isinstance(target, ast.Name):
-                    current.discard(f"active_kernel:{target.id}")
+                current = kill_assignments(current, target)
+            return current
+        if isinstance(statement, (ast.Import, ast.ImportFrom)):
+            current = set(facts)
+            for alias in statement.names:
+                name = alias.asname or alias.name.split(".", 1)[0]
+                current.discard(f"active_kernel:{name}")
             return current
         return expression(statement, facts)
 
