@@ -155,6 +155,36 @@ def unreachable_terminal():
         unreachable_root, exact_mode,
     )
 
+    outer_lambda_tree = ast.parse("""
+def outer_lambda_terminal():
+    dormant = lambda: runtime_kernel.execute_boundary_sync(
+        "FS.TEST", lambda: store.commit_completion()
+    )
+    return dormant
+""")
+    numeric_false_tree = ast.parse("""
+def numeric_false_terminal():
+    if 0:
+        return runtime_kernel.execute_boundary_sync(
+            "FS.TEST", lambda: store.commit_completion()
+        )
+    return None
+""")
+    generator_tree = ast.parse("""
+def generator_terminal():
+    dormant = (
+        runtime_kernel.execute_boundary_sync(
+            "FS.TEST", lambda: store.commit_completion()
+        )
+        for _ in [1]
+    )
+    return dormant
+""")
+    for tree in (outer_lambda_tree, numeric_false_tree, generator_tree):
+        candidate = tree.body[0]
+        assert isinstance(candidate, ast.FunctionDef)
+        assert not _kernel_activation_evidence_v1(candidate, exact_mode)
+
 
 def test_source_exit_inventory_is_deterministic() -> None:
     first = build_source_exit_inventory_v1(Path.cwd())
@@ -280,6 +310,23 @@ async def non_exhaustive_match_retry():
             controller.authorize_shared_second_slot()
     for item in items:
         await gateway.complete_primary()
+
+def walrus_kernel_readiness():
+    runtime_kernel = active_full_short_kernel_v1()
+    (runtime_kernel := None) and side_effect()
+    if runtime_kernel is not None:
+        runtime_kernel.mark_predispatch_ready(readiness)
+        runtime_kernel.reserve_dispatch_token()
+    store.reserve_nonce_from_dispatch_readiness()
+
+def function_binding_kernel_readiness():
+    runtime_kernel = active_full_short_kernel_v1()
+    def runtime_kernel():
+        return None
+    if runtime_kernel is not None:
+        runtime_kernel.mark_predispatch_ready(readiness)
+        runtime_kernel.reserve_dispatch_token()
+    store.reserve_nonce_from_dispatch_readiness()
 """
     fixture_path = Path.cwd() / "fixture_cfg_dominance.py"
     tree = ast.parse(source, filename=str(fixture_path))
@@ -305,4 +352,4 @@ async def non_exhaustive_match_retry():
         resolved_calls={},
     )
     assert len(violations["HIDDEN_RETRY_PATH_COUNT"]) == 3
-    assert len(violations["NONCE_PREMATURE_RESERVATION_PATH_COUNT"]) == 5
+    assert len(violations["NONCE_PREMATURE_RESERVATION_PATH_COUNT"]) == 7

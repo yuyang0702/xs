@@ -136,11 +136,23 @@ def _kernel_activation_evidence_v1(
                 calls.append(candidate)
                 self.generic_visit(candidate)
 
+            def visit_Lambda(self, candidate: ast.Lambda) -> None:
+                return
+
+            def visit_GeneratorExp(self, candidate: ast.GeneratorExp) -> None:
+                return
+
+            def visit_ListComp(self, candidate: ast.ListComp) -> None:
+                return
+
+            def visit_SetComp(self, candidate: ast.SetComp) -> None:
+                return
+
+            def visit_DictComp(self, candidate: ast.DictComp) -> None:
+                return
+
             def visit_If(self, candidate: ast.If) -> None:
-                if (
-                    isinstance(candidate.test, ast.Constant)
-                    and isinstance(candidate.test.value, bool)
-                ):
+                if isinstance(candidate.test, ast.Constant):
                     selected = (
                         candidate.body if candidate.test.value
                         else candidate.orelse
@@ -173,7 +185,7 @@ def _kernel_activation_evidence_v1(
             visit_AsyncFor = visit_For
 
         SameScopeCallVisitor().visit(node)
-        protected_calls = [
+        eager_unprotected_calls = [
             candidate for candidate in calls
             if _call_name(candidate) == required_operation
         ]
@@ -240,9 +252,7 @@ def _kernel_activation_evidence_v1(
             operation_visitor = DirectOperationVisitor()
             operation_visitor.visit(operation)
             protected_inside.update(operation_visitor.matches)
-        return bool(protected_calls) and {
-            id(candidate) for candidate in protected_calls
-        } == protected_inside
+        return bool(protected_inside) and not eager_unprotected_calls
     raise ValueError("unknown_kernel_activation_requirement")
 
 
@@ -717,12 +727,16 @@ def _dominating_call_facts_v1(
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.Lambda)):
             return current
         if isinstance(node, ast.BoolOp):
-            path = set(current)
-            for value in node.values:
+            if not node.values:
+                return current
+            path = expression(node.values[0], current)
+            exits: list[set[str]] = []
+            for value in node.values[1:]:
+                # The expression may short circuit before this operand.
+                exits.append(set(path))
                 path = expression(value, path)
-            # Every operand after the first is conditional, so no new fact
-            # established by the expression dominates its continuation.
-            return current
+            exits.append(path)
+            return intersect(exits, current)
         if isinstance(node, ast.IfExp):
             tested = expression(node.test, current)
             return expression(node.body, tested) & expression(node.orelse, tested)
@@ -825,8 +839,10 @@ def _dominating_call_facts_v1(
             if not exhaustive:
                 paths.append(subject_facts)
             return intersect(paths, subject_facts)
-        if isinstance(statement, (ast.FunctionDef, ast.AsyncFunctionDef)):
-            return set(facts)
+        if isinstance(statement, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+            current = set(facts)
+            current.discard(f"active_kernel:{statement.name}")
+            return current
         if isinstance(statement, (ast.Assign, ast.AnnAssign)):
             value = statement.value
             current = expression(value, facts)
