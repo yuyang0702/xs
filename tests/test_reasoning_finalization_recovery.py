@@ -343,6 +343,42 @@ async def test_normal_success_does_not_dispatch_recovery(tmp_path) -> None:
 
 
 @pytest.mark.asyncio
+async def test_non_reasoning_runtime_schedule_preserves_configured_fallback(
+    tmp_path,
+) -> None:
+    calls = []
+
+    async def execute(
+        attempt, role, system, user, budget, contract,
+        *, reasoning_policy, stage_role,
+    ):
+        calls.append((attempt.attempt_index, attempt.route, stage_role))
+        if attempt.attempt_index < 3:
+            return ModelResult(
+                '{}', {"finish_reason": "stop", "transport_complete": True},
+            )
+        return ModelResult(
+            '{"message":"普通业务恢复仍可到达既有 configured fallback 路由"}',
+            {"finish_reason": "stop", "transport_complete": True},
+        )
+
+    result = await execute_contract_runtime(
+        _Gateway(),
+        role="planning", system="SYSTEM", user="USER",
+        execution_spec=_spec(), max_output_tokens=3724,
+        attempt_executor=execute,
+        diagnostic_context=_context(tmp_path),
+        finalization_recovery_policy=ReasoningOnlyFinalizationRecoveryPolicyV1(),
+    )
+    assert calls == [
+        (1, "primary", "NORMAL"),
+        (2, "primary", "NORMAL"),
+        (3, "configured_fallback", "NORMAL"),
+    ]
+    assert result.attempt.route == "configured_fallback"
+
+
+@pytest.mark.asyncio
 async def test_reasoning_only_recovery_is_same_route_fresh_attempt_and_validated(
     tmp_path,
 ) -> None:

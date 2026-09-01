@@ -1244,9 +1244,6 @@ async def execute_contract_runtime(
             raise ValueError(
                 "Planning finalization recovery requires an exact stage context"
             )
-        attempts = attempts[:
-            finalization_recovery_policy.max_physical_attempts_per_logical_stage
-        ]
     recovery_attempt_index: int | None = None
 
     def next_route_action(current: ProtocolReceiptAttempt) -> str:

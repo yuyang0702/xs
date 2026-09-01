@@ -38,6 +38,7 @@ from novel_flywheel.planning_repair_diagnostics import (
 )
 from novel_flywheel.provider_output import provider_output_shape_from_response
 from novel_flywheel.provider_reasoning_policy import (
+    PLANNING_FINAL_ARTIFACT_RECOVERY,
     ReasoningPolicy,
     resolve_provider_reasoning_directive_v1,
 )
@@ -883,6 +884,23 @@ class ModelGateway:
             _reasoning_only_final_artifact_unavailable(response)
             if response_schema is not None else None
         )
+        if (
+            response_schema is not None
+            and
+            guarded_shape is None
+            and reasoning_policy is ReasoningPolicy.FINALIZATION_FIRST
+            and stage_role == PLANNING_FINAL_ARTIFACT_RECOVERY
+        ):
+            self._final_artifact_route_blocks.discard((
+                final_artifact_recovery_scope,
+                resolved.provider_id,
+                resolved.model_id,
+                route_fingerprint,
+                contract_name,
+                schema_sha256,
+                ReasoningPolicy.CURRENT_PROVIDER_DEFAULT.value,
+                "NORMAL",
+            ))
         if guarded_shape is not None:
             self._final_artifact_route_blocks.add((
                 final_artifact_recovery_scope,

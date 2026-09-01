@@ -285,6 +285,77 @@ def _local_rejection(*, route_attempt: int = 1) -> dict:
     }
 
 
+def _final_artifact_rejection() -> dict:
+    return {
+        "schema": "ProviderFinalArtifactRejectionReceiptV1",
+        "version": 1,
+        "contract_name": "planning_semantic_v2",
+        "contract_version": 2,
+        "contract_schema_sha256": "a" * 64,
+        "attempt_index": 1,
+        "route": "primary",
+        "route_attempt": 1,
+        "failure_kind": "final_artifact_unavailable",
+        "failure_code": "reasoning_only_final_artifact_unavailable",
+        "failure_reason_sha256": "b" * 64,
+        "provider_output_shape_sha256": "c" * 64,
+        "contract_runtime_input_present": False,
+        "raw_content_persisted": False,
+    }
+
+
+def _dispatch_reasoning_recovery_and_close(
+    store: FullShortDurableExecutionStoreV1, execution_id: str,
+) -> FullShortDispatchLedgerObserverV1:
+    observer = _observer(store, execution_id)
+    observer.before_http_dispatch(
+        method="POST", url="https://unit.test/v1/messages", payload=_payload(),
+    )
+    observer.capture_provider_protocol_input(
+        data=b"reasoning-only", status_code=200,
+        content_type="application/json", encoding="utf-8",
+        transport_complete=True,
+    )
+    observer.after_http_response(status_code=200)
+    observer.mark_local_attempt_rejected(
+        stage="planning", role="planning",
+        role_binding_sha256=observer.bound_route["role_binding_sha256"],
+        rejection=_final_artifact_rejection(),
+    )
+    observer.bind_stage_context(
+        stage_id="planning", contract_name="unstructured_text",
+        contract_version=1, contract_schema_sha256=_hash({}),
+        stage_role="PLANNING_FINAL_ARTIFACT_RECOVERY",
+    )
+    observer.bind_route(
+        role="planning", lane="primary", provider_id="provider",
+        model_id="model-id", route_fingerprint="9" * 64,
+    )
+    recovery_request = _request().model_copy(update={
+        "reasoning_directive": "disable_reasoning",
+        "stage_role": "PLANNING_FINAL_ARTIFACT_RECOVERY",
+    })
+    observer.bind_model_request(
+        protocol="anthropic", request=recovery_request,
+    )
+    observer.before_http_dispatch(
+        method="POST", url="https://unit.test/v1/messages",
+        payload={**_payload(), "reasoning": {"effort": "none"}},
+    )
+    observer.capture_provider_protocol_input(
+        data=b'{"complete":true}', status_code=200,
+        content_type="application/json", encoding="utf-8",
+        transport_complete=True,
+    )
+    observer.after_http_response(status_code=200)
+    observer.mark_local_stage_complete(
+        stage="planning", role="planning",
+        role_binding_sha256=observer.bound_route["role_binding_sha256"],
+        output_sha256="a" * 64, receipt_sha256="b" * 64,
+    )
+    return observer
+
+
 def test_live_authority_drift_fails_before_credential_lookup_or_nonce_consumption(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -998,7 +1069,94 @@ def test_pre_contract_final_artifact_rejection_closes_captured_response(
     assert attempt["local_rejection_schema"] == (
         "ProviderFinalArtifactRejectionReceiptV1"
     )
+    assert attempt["local_rejection_failure_code"] == (
+        "reasoning_only_final_artifact_unavailable"
+    )
     assert attempt["contract_runtime_capture_receipt_sha256"] is None
+
+
+def test_reasoning_only_rejection_requires_exact_recovery_stage_role(
+    tmp_path: Path,
+) -> None:
+    store = _store(tmp_path)
+    _authorize_offline(store, "typed-recovery-stage-role")
+    observer = _observer(store, "typed-recovery-stage-role")
+    observer.before_http_dispatch(
+        method="POST", url="https://unit.test/v1/messages", payload=_payload(),
+    )
+    observer.capture_provider_protocol_input(
+        data=b"reasoning-only", status_code=200,
+        content_type="application/json", encoding="utf-8",
+        transport_complete=True,
+    )
+    observer.after_http_response(status_code=200)
+    observer.mark_local_attempt_rejected(
+        stage="planning", role="planning",
+        role_binding_sha256=observer.bound_route["role_binding_sha256"],
+        rejection=_final_artifact_rejection(),
+    )
+    observer.bind_stage_context(
+        stage_id="planning", contract_name="unstructured_text",
+        contract_version=1, contract_schema_sha256=_hash({}),
+        stage_role="NORMAL",
+    )
+    observer.bind_route(
+        role="planning", lane="primary", provider_id="provider",
+        model_id="model-id", route_fingerprint="9" * 64,
+    )
+    observer.bind_model_request(protocol="anthropic", request=_request())
+    with pytest.raises(FullShortExecutionBoundaryError) as rejected:
+        observer.before_http_dispatch(
+            method="POST", url="https://unit.test/v1/messages",
+            payload=_payload(),
+        )
+    assert rejected.value.reason_code == (
+        "REASONING_ONLY_RECOVERY_STAGE_ROLE_REQUIRED"
+    )
+    assert len(store.load_ledger("typed-recovery-stage-role")["attempts"]) == 1
+
+
+@pytest.mark.parametrize("tamper", ["accepted_id", "rejected_provenance"])
+def test_completion_recomputes_recovery_acceptance_provenance(
+    tmp_path: Path, tamper: str,
+) -> None:
+    store = _store(tmp_path)
+    execution_id = f"completion-provenance-{tamper}"
+    permission, approval, nonce = _authorize_offline(store, execution_id)
+    _dispatch_reasoning_recovery_and_close(store, execution_id)
+
+    def mutate(body):
+        receipt = body["completed_stage_receipts"][0]
+        if tamper == "accepted_id":
+            receipt["accepted_physical_attempt_id"] = "physical-forged"
+        else:
+            receipt["rejected_attempt_provenance"] = []
+        return body
+
+    store.update_ledger(execution_id, mutate)
+    ledger = store.load_ledger(execution_id)
+    terminal = _terminal()
+    with pytest.raises(FullShortExecutionBoundaryError) as rejected:
+        build_full_short_completion_receipt_v1(
+            execution_id=execution_id, policy=_policy(store),
+            permission_sha256=permission["permission_sha256"],
+            signed_approval_sha256=approval["signed_approval_sha256"],
+            nonce_sha256=nonce["nonce_sha256"], ledger=ledger,
+            final_bindings={
+                "manuscript_sha256": "4" * 64,
+                "chapter_sha256": "5" * 64,
+                "canon_sha256": "6" * 64,
+                "story_state_sha256": "7" * 64,
+                "quality_checkpoint_sha256": "8" * 64,
+                "terminal_verification_sha256": terminal[
+                    "verification_receipt_sha256"
+                ],
+            },
+            terminal_verification=terminal,
+        )
+    assert rejected.value.reason_code == (
+        "STAGE_ACCEPTANCE_PROVENANCE_MISMATCH"
+    )
 
 
 def test_local_rejection_receipt_rejects_raw_content_and_stays_pending(

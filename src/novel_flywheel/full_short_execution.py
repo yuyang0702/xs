@@ -1906,6 +1906,9 @@ class FullShortDispatchLedgerObserverV1:
             str(item.get("logical_stage_id", item.get("stage")) or "")
             for item in attempts
         }
+        stage_role = str(
+            self.pending_stage_context.get("stage_role") or "NORMAL"
+        )
         if not prior_logical_attempts:
             _require(
                 len(distinct_logical_stage_ids)
@@ -1936,9 +1939,21 @@ class FullShortDispatchLedgerObserverV1:
                 ],
                 "REASONING_ONLY_RECOVERY_CAP_EXHAUSTED",
             )
-        stage_role = str(
-            self.pending_stage_context.get("stage_role") or "NORMAL"
-        )
+            prior_failure_code = prior_logical_attempts[-1].get(
+                "local_rejection_failure_code"
+            )
+            if prior_failure_code == (
+                "reasoning_only_final_artifact_unavailable"
+            ):
+                _require(
+                    stage_role == "PLANNING_FINAL_ARTIFACT_RECOVERY",
+                    "REASONING_ONLY_RECOVERY_STAGE_ROLE_REQUIRED",
+                )
+            else:
+                _require(
+                    stage_role != "PLANNING_FINAL_ARTIFACT_RECOVERY",
+                    "FINALIZATION_RECOVERY_WITHOUT_TYPED_REJECTION",
+                )
         physical_attempt_id = "physical-" + domain_sha256(
             "novel-flywheel-full-short-physical-attempt-id-v1",
             {
@@ -2445,6 +2460,9 @@ class FullShortDispatchLedgerObserverV1:
                         "local_rejection_receipt_sha256"
                     ],
                     "failure_kind": item["local_rejection_failure_kind"],
+                    "failure_code": item.get(
+                        "local_rejection_failure_code"
+                    ),
                 }
                 for item in rejected_attempts
             ]
@@ -2646,6 +2664,7 @@ class FullShortDispatchLedgerObserverV1:
                 "state": "LOCAL_ATTEMPT_REJECTED",
                 "local_rejection_receipt_sha256": rejection_receipt_sha256,
                 "local_rejection_failure_kind": value["failure_kind"],
+                "local_rejection_failure_code": value.get("failure_code"),
                 "local_rejection_schema": value["schema"],
                 "local_rejection_physical_ordinal": ordinal,
                 "local_rejection_logical_stage_id": str(
@@ -2875,6 +2894,24 @@ def build_full_short_completion_receipt_v1(
     )
     for stage_receipt in receipts:
         attempt = attempts[stage_receipt["ordinal"] - 1]
+        rejected_attempts = [
+            item for item in attempts[: stage_receipt["ordinal"] - 1]
+            if item.get("logical_stage_id")
+            == attempt.get("logical_stage_id")
+            and item.get("state") == "LOCAL_ATTEMPT_REJECTED"
+        ]
+        expected_rejected_provenance = [
+            {
+                "physical_attempt_id": item.get("physical_attempt_id"),
+                "ordinal": item.get("ordinal"),
+                "local_rejection_receipt_sha256": item.get(
+                    "local_rejection_receipt_sha256"
+                ),
+                "failure_kind": item.get("local_rejection_failure_kind"),
+                "failure_code": item.get("local_rejection_failure_code"),
+            }
+            for item in rejected_attempts
+        ]
         _require(
             attempt.get("stage") == stage_receipt.get("stage")
             and attempt.get("role") == stage_receipt.get("role")
@@ -2885,6 +2922,25 @@ def build_full_short_completion_receipt_v1(
             == stage_receipt.get("receipt_sha256"),
             "STAGE_MATRIX_BINDING_MISMATCH",
         )
+        _require(
+            stage_receipt.get("accepted_physical_attempt_id")
+            == attempt.get("physical_attempt_id")
+            and stage_receipt.get("accepted_stage_role")
+            == attempt.get("stage_role", "NORMAL")
+            and stage_receipt.get("rejected_attempt_provenance")
+            == expected_rejected_provenance,
+            "STAGE_ACCEPTANCE_PROVENANCE_MISMATCH",
+        )
+        if any(
+            item.get("local_rejection_failure_code")
+            == "reasoning_only_final_artifact_unavailable"
+            for item in rejected_attempts
+        ):
+            _require(
+                attempt.get("stage_role")
+                == "PLANNING_FINAL_ARTIFACT_RECOVERY",
+                "COMPLETION_REASONING_RECOVERY_STAGE_ROLE_INVALID",
+            )
     _require(
         set(final_bindings) == REQUIRED_FINAL_BINDING_KEYS,
         "COMPLETION_BINDING_KEYS_MISMATCH",
