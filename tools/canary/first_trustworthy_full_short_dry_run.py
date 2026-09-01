@@ -1184,6 +1184,17 @@ def _replayed_adapter_text(
     raise RuntimeError("FULL_SHORT_CAPTURE_REPLAY_PROTOCOL_UNSUPPORTED")
 
 
+def _attempt_requires_contract_runtime_capture_v1(
+    attempt: dict[str, Any],
+) -> bool:
+    """Mirror the durable pre-contract final-artifact rejection boundary."""
+
+    return bool(attempt.get("contract_runtime_input_required")) and (
+        attempt.get("local_rejection_schema")
+        != "ProviderFinalArtifactRejectionReceiptV1"
+    )
+
+
 def _replay_captured_attempts(
     *, capture_store: ProviderResponseCaptureStoreV1, ledger: dict[str, Any],
 ) -> dict[str, Any]:
@@ -1220,7 +1231,7 @@ def _replay_captured_attempts(
             encoding=str(raw_header["encoding"]),
         )
         replayed_domains += 1
-        if not attempt.get("contract_runtime_input_required"):
+        if not _attempt_requires_contract_runtime_capture_v1(attempt):
             continue
         contract_receipt = indexed.get((call_id, CONTRACT_RUNTIME_INPUT_BYTES))
         if contract_receipt is None:
@@ -1587,7 +1598,7 @@ async def _run(args: argparse.Namespace) -> dict[str, Any]:
             for item in capture_receipts
         )
         contract_capture_required_count = sum(
-            item.get("contract_runtime_input_required") is True
+            _attempt_requires_contract_runtime_capture_v1(item)
             for item in ledger["attempts"]
         )
         response_capture_receipts_complete = (
@@ -1598,7 +1609,7 @@ async def _run(args: argparse.Namespace) -> dict[str, Any]:
                 for item in ledger["attempts"]
             )
             and all(
-                not item.get("contract_runtime_input_required")
+                not _attempt_requires_contract_runtime_capture_v1(item)
                 or item.get("contract_runtime_capture_receipt_sha256")
                 for item in ledger["attempts"]
             )

@@ -162,6 +162,26 @@ def test_dry_run_failure_projection_is_hash_only() -> None:
     assert "safe_message" not in projection
 
 
+def test_pre_contract_final_artifact_rejection_needs_no_contract_capture() -> None:
+    from tools.canary.first_trustworthy_full_short_dry_run import (
+        _attempt_requires_contract_runtime_capture_v1,
+    )
+
+    common = {"contract_runtime_input_required": True}
+    assert _attempt_requires_contract_runtime_capture_v1(common) is True
+    assert _attempt_requires_contract_runtime_capture_v1({
+        **common,
+        "local_rejection_schema": "ContractLocalRejectionReceiptV1",
+    }) is True
+    assert _attempt_requires_contract_runtime_capture_v1({
+        **common,
+        "local_rejection_schema": "ProviderFinalArtifactRejectionReceiptV1",
+    }) is False
+    assert _attempt_requires_contract_runtime_capture_v1({
+        "contract_runtime_input_required": False,
+    }) is False
+
+
 def test_discovery_mirrors_unstructured_runtime_stage_fallback() -> None:
     from types import SimpleNamespace
 
