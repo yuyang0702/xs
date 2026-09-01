@@ -10,6 +10,7 @@ from novel_flywheel.full_short_runtime_kernel import (
     DEFAULT_FAILURE_BOUNDARY_REGISTRY_V1,
     DeterministicFaultInjectorV1,
     DurableExecutionJournalV1,
+    PredispatchReadinessV1,
     ExecutionState,
     FailureClassification,
     FullShortBoundaryFailureV1,
@@ -17,6 +18,8 @@ from novel_flywheel.full_short_runtime_kernel import (
     RecoveryDecisionInputV1,
     RecoveryDecisionKind,
     RecoveryDecisionEngineV1,
+    RestartDecisionKind,
+    RestartPolicyRegistryV1,
     RegisteredBoundaryFailureV1,
     fault_case_keys_v1,
 )
@@ -275,3 +278,86 @@ def test_recovery_engine_never_guesses_unknown_or_ambiguous_completion() -> None
     ))
     assert ambiguous.decision == RecoveryDecisionKind.PAUSE_RECONCILIATION
     assert ambiguous.physical_attempt_delta == 0
+
+
+def test_predispatch_readiness_precedes_unique_attempt_token(tmp_path: Path) -> None:
+    journal = _journal(tmp_path)
+    journal.transition(
+        ExecutionState.AUTHORIZED,
+        transition_id="authorized",
+        boundary_id="FS.CONTROL.PREFLIGHT",
+    )
+    journal.transition(
+        ExecutionState.APPROVED,
+        transition_id="approved",
+        boundary_id="FS.CONTROL.PREFLIGHT",
+    )
+    readiness = PredispatchReadinessV1(
+        route_configured=True,
+        provider_configured=True,
+        model_configured=True,
+        endpoint_configured=True,
+        capability_sealed=True,
+        credential_source_configured=True,
+        authorized_credential_readiness=True,
+        network_free_request_constructable=True,
+        reasoning_policy_projected=True,
+        request_bytes_sha256="a" * 64,
+        route_policy_sha256="b" * 64,
+    )
+    kernel = FullShortExecutionKernel(
+        registry=DEFAULT_FAILURE_BOUNDARY_REGISTRY_V1,
+        journal=journal,
+    )
+
+    kernel.mark_predispatch_ready(readiness)
+    token = kernel.reserve_dispatch_token(
+        logical_stage_id="planning:1",
+        physical_attempt=1,
+    )
+
+    assert journal.state == ExecutionState.DISPATCH_TOKEN_RESERVED
+    assert len(token.token_sha256) == 64
+    assert token.raw_token_persisted is False
+    reopened = DurableExecutionJournalV1.open(journal.path)
+    assert len(reopened.dispatch_token_receipts) == 1
+    assert reopened.dispatch_token_receipts[0].dispatch_token_sha256 == (
+        token.token_sha256
+    )
+    with pytest.raises(ValueError, match="dispatch_token_attempt_already_reserved"):
+        # Durable receipt, not process memory, owns uniqueness.
+        FullShortExecutionKernel(
+            registry=DEFAULT_FAILURE_BOUNDARY_REGISTRY_V1,
+            journal=reopened,
+        ).reserve_dispatch_token(
+            logical_stage_id="planning:1",
+            physical_attempt=1,
+        )
+
+
+def test_nonce_cannot_be_reserved_before_predispatch_ready(tmp_path: Path) -> None:
+    kernel = FullShortExecutionKernel(
+        registry=DEFAULT_FAILURE_BOUNDARY_REGISTRY_V1,
+        journal=_journal(tmp_path),
+    )
+    with pytest.raises(ValueError, match="predispatch_readiness_required"):
+        kernel.reserve_dispatch_token(
+            logical_stage_id="planning:1",
+            physical_attempt=1,
+        )
+    assert kernel.journal.dispatch_token_receipts == []
+
+
+def test_restart_policy_is_explicit_for_every_durable_state() -> None:
+    registry = RestartPolicyRegistryV1.default()
+    assert set(registry.policies) == set(ExecutionState)
+    assert registry.state_without_explicit_policy_count == 0
+    assert registry.policies[ExecutionState.DISPATCHING].decision == (
+        RestartDecisionKind.PAUSE_RECONCILIATION
+    )
+    assert registry.policies[ExecutionState.RESPONSE_CAPTURED].decision == (
+        RestartDecisionKind.LOCAL_REPLAY_ONLY
+    )
+    assert registry.policies[ExecutionState.COMPLETED].decision == (
+        RestartDecisionKind.RETURN_COMPLETED
+    )

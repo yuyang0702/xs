@@ -4,6 +4,7 @@ import hashlib
 import inspect
 import json
 import os
+import uuid
 from dataclasses import asdict, dataclass, field, is_dataclass
 from enum import StrEnum
 from pathlib import Path
@@ -62,6 +63,100 @@ class RecoveryDecisionKind(StrEnum):
     LOCAL_REPAIR = "LOCAL_REPAIR"
     FAIL_CLOSED = "FAIL_CLOSED"
     PAUSE_RECONCILIATION = "PAUSE_RECONCILIATION"
+
+
+class RestartDecisionKind(StrEnum):
+    START_FROM_TEMPLATE = "START_FROM_TEMPLATE"
+    REVALIDATE_AUTHORIZATION = "REVALIDATE_AUTHORIZATION"
+    REVALIDATE_APPROVAL = "REVALIDATE_APPROVAL"
+    RESUME_PREDISPATCH = "RESUME_PREDISPATCH"
+    PAUSE_RECONCILIATION = "PAUSE_RECONCILIATION"
+    LOCAL_REPLAY_ONLY = "LOCAL_REPLAY_ONLY"
+    RESUME_VALIDATION = "RESUME_VALIDATION"
+    APPLY_CENTRAL_RECOVERY = "APPLY_CENTRAL_RECOVERY"
+    RESUME_NEXT_STAGE = "RESUME_NEXT_STAGE"
+    RETURN_TERMINAL_FAILURE = "RETURN_TERMINAL_FAILURE"
+    RETURN_COMPLETED = "RETURN_COMPLETED"
+
+
+@dataclass(frozen=True)
+class PredispatchReadinessV1:
+    route_configured: bool
+    provider_configured: bool
+    model_configured: bool
+    endpoint_configured: bool
+    capability_sealed: bool
+    credential_source_configured: bool
+    authorized_credential_readiness: bool
+    network_free_request_constructable: bool
+    reasoning_policy_projected: bool
+    request_bytes_sha256: str
+    route_policy_sha256: str
+
+    def validate(self) -> None:
+        checks = (
+            self.route_configured,
+            self.provider_configured,
+            self.model_configured,
+            self.endpoint_configured,
+            self.capability_sealed,
+            self.credential_source_configured,
+            self.authorized_credential_readiness,
+            self.network_free_request_constructable,
+            self.reasoning_policy_projected,
+        )
+        if not all(checks):
+            raise ValueError("predispatch_readiness_incomplete")
+        if any(
+            len(value) != 64 or any(char not in "0123456789abcdef" for char in value)
+            for value in (self.request_bytes_sha256, self.route_policy_sha256)
+        ):
+            raise ValueError("predispatch_identity_invalid")
+
+
+@dataclass(frozen=True)
+class RestartPolicyV1:
+    state: ExecutionState
+    decision: RestartDecisionKind
+    provider_redispatch_allowed: bool
+
+
+@dataclass(frozen=True)
+class RestartPolicyRegistryV1:
+    policies: dict[ExecutionState, RestartPolicyV1]
+
+    @classmethod
+    def default(cls) -> RestartPolicyRegistryV1:
+        decisions = {
+            ExecutionState.TEMPLATE_READY: RestartDecisionKind.START_FROM_TEMPLATE,
+            ExecutionState.AUTHORIZED: RestartDecisionKind.REVALIDATE_AUTHORIZATION,
+            ExecutionState.APPROVED: RestartDecisionKind.REVALIDATE_APPROVAL,
+            ExecutionState.PREDISPATCH_READY: RestartDecisionKind.RESUME_PREDISPATCH,
+            ExecutionState.DISPATCH_TOKEN_RESERVED: RestartDecisionKind.PAUSE_RECONCILIATION,
+            ExecutionState.DISPATCHING: RestartDecisionKind.PAUSE_RECONCILIATION,
+            ExecutionState.RESPONSE_CAPTURED: RestartDecisionKind.LOCAL_REPLAY_ONLY,
+            ExecutionState.VALIDATING: RestartDecisionKind.RESUME_VALIDATION,
+            ExecutionState.STAGE_REJECTED_RECOVERABLE: RestartDecisionKind.APPLY_CENTRAL_RECOVERY,
+            ExecutionState.STAGE_ACCEPTED: RestartDecisionKind.RESUME_NEXT_STAGE,
+            ExecutionState.PAUSED_RECONCILIATION: RestartDecisionKind.PAUSE_RECONCILIATION,
+            ExecutionState.TERMINAL_FAILED: RestartDecisionKind.RETURN_TERMINAL_FAILURE,
+            ExecutionState.COMPLETED: RestartDecisionKind.RETURN_COMPLETED,
+        }
+        policies = {
+            state: RestartPolicyV1(
+                state=state,
+                decision=decision,
+                provider_redispatch_allowed=(
+                    state == ExecutionState.PREDISPATCH_READY
+                ),
+            )
+            for state, decision in decisions.items()
+        }
+        return cls(policies)
+
+    @property
+    def state_without_explicit_policy_count(self) -> int:
+        return len(set(ExecutionState) - set(self.policies))
 
 
 @dataclass(frozen=True)
@@ -504,6 +599,25 @@ class DurableAuditReceiptV1:
     record_sha256: str
 
 
+@dataclass(frozen=True)
+class DispatchTokenReceiptV1:
+    sequence: int
+    logical_stage_id_sha256: str
+    physical_attempt: int
+    dispatch_token_sha256: str
+    previous_record_sha256: str
+    record_sha256: str
+
+
+@dataclass(frozen=True)
+class DispatchTokenV1:
+    token: str
+    token_sha256: str
+    logical_stage_id_sha256: str
+    physical_attempt: int
+    raw_token_persisted: bool = False
+
+
 _NORMAL_TRANSITIONS: dict[ExecutionState, frozenset[ExecutionState]] = {
     ExecutionState.TEMPLATE_READY: frozenset({ExecutionState.AUTHORIZED}),
     ExecutionState.AUTHORIZED: frozenset({ExecutionState.APPROVED}),
@@ -545,6 +659,7 @@ class DurableExecutionJournalV1:
         transitions: list[ExecutionTransitionV1],
         failure_receipts: list[DurableFailureReceiptV1],
         audit_receipts: list[DurableAuditReceiptV1],
+        dispatch_token_receipts: list[DispatchTokenReceiptV1],
     ) -> None:
         self.path = path
         self.execution_id = execution_id
@@ -553,6 +668,7 @@ class DurableExecutionJournalV1:
         self.transitions = transitions
         self.failure_receipts = failure_receipts
         self.audit_receipts = audit_receipts
+        self.dispatch_token_receipts = dispatch_token_receipts
 
     @classmethod
     def create(
@@ -572,6 +688,7 @@ class DurableExecutionJournalV1:
             transitions=[],
             failure_receipts=[],
             audit_receipts=[],
+            dispatch_token_receipts=[],
         )
         journal._persist()
         return journal
@@ -620,6 +737,19 @@ class DurableExecutionJournalV1:
                 )
                 for item in payload.get("audit_receipts", [])
             ],
+            dispatch_token_receipts=[
+                DispatchTokenReceiptV1(
+                    sequence=int(item["sequence"]),
+                    logical_stage_id_sha256=str(
+                        item["logical_stage_id_sha256"]
+                    ),
+                    physical_attempt=int(item["physical_attempt"]),
+                    dispatch_token_sha256=str(item["dispatch_token_sha256"]),
+                    previous_record_sha256=str(item["previous_record_sha256"]),
+                    record_sha256=str(item["record_sha256"]),
+                )
+                for item in payload.get("dispatch_token_receipts", [])
+            ],
         )
         journal._verify()
         return journal
@@ -635,9 +765,15 @@ class DurableExecutionJournalV1:
         self,
     ) -> list[
         ExecutionTransitionV1 | DurableFailureReceiptV1 | DurableAuditReceiptV1
+        | DispatchTokenReceiptV1
     ]:
         return sorted(
-            [*self.transitions, *self.failure_receipts, *self.audit_receipts],
+            [
+                *self.transitions,
+                *self.failure_receipts,
+                *self.audit_receipts,
+                *self.dispatch_token_receipts,
+            ],
             key=lambda item: item.sequence,
         )
 
@@ -648,7 +784,7 @@ class DurableExecutionJournalV1:
     def _next_sequence(self) -> int:
         return (
             len(self.transitions) + len(self.failure_receipts)
-            + len(self.audit_receipts) + 1
+            + len(self.audit_receipts) + len(self.dispatch_token_receipts) + 1
         )
 
     def _verify(self) -> None:
@@ -701,6 +837,9 @@ class DurableExecutionJournalV1:
             "transitions": [asdict(item) for item in self.transitions],
             "failure_receipts": [asdict(item) for item in self.failure_receipts],
             "audit_receipts": [asdict(item) for item in self.audit_receipts],
+            "dispatch_token_receipts": [
+                asdict(item) for item in self.dispatch_token_receipts
+            ],
         }
         temp_path = self.path.with_name(self.path.name + ".tmp")
         with temp_path.open("wb") as handle:
@@ -775,6 +914,53 @@ class DurableExecutionJournalV1:
         self.audit_receipts.append(receipt)
         self._persist()
         return receipt
+
+    def reserve_dispatch_token(
+        self,
+        *,
+        logical_stage_id: str,
+        physical_attempt: int,
+    ) -> DispatchTokenV1:
+        if physical_attempt not in {1, 2}:
+            raise ValueError("physical_attempt_out_of_bounds")
+        logical_stage_id_sha256 = hashlib.sha256(
+            logical_stage_id.encode("utf-8", errors="replace")
+        ).hexdigest()
+        if any(
+            item.logical_stage_id_sha256 == logical_stage_id_sha256
+            and item.physical_attempt == physical_attempt
+            for item in self.dispatch_token_receipts
+        ):
+            raise ValueError("dispatch_token_attempt_already_reserved")
+        if self.state != ExecutionState.PREDISPATCH_READY:
+            raise ValueError("predispatch_readiness_required")
+        token = hashlib.sha256(_canonical_json_bytes({
+            "execution_id": self.execution_id,
+            "logical_stage_id_sha256": logical_stage_id_sha256,
+            "physical_attempt": physical_attempt,
+            "previous_record_sha256": self._last_hash(),
+            "unique_material": uuid.uuid4().hex,
+        })).hexdigest()
+        token_sha256 = hashlib.sha256(token.encode("ascii")).hexdigest()
+        data = {
+            "sequence": self._next_sequence(),
+            "logical_stage_id_sha256": logical_stage_id_sha256,
+            "physical_attempt": physical_attempt,
+            "dispatch_token_sha256": token_sha256,
+            "previous_record_sha256": self._last_hash(),
+        }
+        receipt = DispatchTokenReceiptV1(
+            **data,
+            record_sha256=_sha256(data),
+        )
+        self.dispatch_token_receipts.append(receipt)
+        self._persist()
+        return DispatchTokenV1(
+            token=token,
+            token_sha256=token_sha256,
+            logical_stage_id_sha256=logical_stage_id_sha256,
+            physical_attempt=physical_attempt,
+        )
 
 
 @dataclass(frozen=True)
@@ -942,6 +1128,39 @@ class FullShortExecutionKernel:
         self.journal = journal
         self.fault_injector = fault_injector or DeterministicFaultInjectorV1()
 
+    def mark_predispatch_ready(
+        self,
+        readiness: PredispatchReadinessV1,
+    ) -> ExecutionTransitionV1:
+        readiness.validate()
+        self.journal.append_audit(
+            receipt_kind="predispatch_readiness",
+            boundary_id="FS.CONTROL.PREFLIGHT",
+            payload=asdict(readiness),
+        )
+        return self.journal.transition(
+            ExecutionState.PREDISPATCH_READY,
+            transition_id="predispatch-ready:" + _sha256(asdict(readiness)),
+            boundary_id="FS.CONTROL.PREFLIGHT",
+        )
+
+    def reserve_dispatch_token(
+        self,
+        *,
+        logical_stage_id: str,
+        physical_attempt: int,
+    ) -> DispatchTokenV1:
+        token = self.journal.reserve_dispatch_token(
+            logical_stage_id=logical_stage_id,
+            physical_attempt=physical_attempt,
+        )
+        self.journal.transition(
+            ExecutionState.DISPATCH_TOKEN_RESERVED,
+            transition_id="dispatch-token-reserved:" + token.token_sha256,
+            boundary_id="FS.DISPATCH.MODEL",
+        )
+        return token
+
     async def execute_boundary(
         self,
         boundary_id: str,
@@ -1048,6 +1267,7 @@ __all__ = [
     "DEFAULT_FAULT_INJECTION_REGISTRY_V1",
     "BoundarySpecV1",
     "DurableExecutionJournalV1",
+    "DispatchTokenV1",
     "ExecutionState",
     "FaultInjectionCaseV1",
     "FaultInjectionRegistryV1",
@@ -1056,11 +1276,14 @@ __all__ = [
     "FailureEnvelopeV1",
     "FullShortBoundaryFailureV1",
     "FullShortExecutionKernel",
+    "PredispatchReadinessV1",
     "DeterministicFaultInjectorV1",
     "RecoveryDecisionEngineV1",
     "RecoveryDecisionInputV1",
     "RecoveryDecisionKind",
     "RecoveryDecisionV1",
     "RegisteredBoundaryFailureV1",
+    "RestartDecisionKind",
+    "RestartPolicyRegistryV1",
     "fault_case_keys_v1",
 ]
