@@ -2377,6 +2377,16 @@ semantics are unchanged. The offline rehearsal replaces only the lowest HTTP
 transport and persists no project prose, prompts, references, credentials, or
 Provider bodies in its hash-only evidence.
 
+Disabled-actions rehearsal enters through a repository-private offline wrapper
+that supplies an identity-checked capability to the shared control-plane core.
+Setting an `offline_only` attribute on caller-owned factories cannot authorize
+the public execution entry. The direct execution entry also persists SHA,
+authorization-object, and live-preflight drift as deterministic, secret-free
+failure-graph receipts before approval, nonce, credential, client, or network
+work. After an exact-once reservation exists, every prelaunch fail-closed reason
+is bound to that persisted safe failure-graph SHA instead of a step-only generic
+reason code.
+
 Prospective trustworthy Full Short runs additionally bind
 `FullShortProviderResponseCapturePolicyV1` into the canonical authorization
 and live preflight. Each successful HTTP entity is captured byte-for-byte
@@ -2451,6 +2461,15 @@ that window is terminal and non-resumable; it cannot be interpreted as an
 unused nonce. Network access remains impossible until the ledger is linked and
 the nonce is durably `CONSUMED`.
 
+`FullShortDispatchReadinessReceiptV1` is a closed schema. It binds the current
+policy and logical-stage-plan hashes, permission and signed approval, exact
+predispatch ledger hash, observer-session hash, first physical-attempt identity,
+request/route/egress hashes, every dispatch cap, and all zero-before-commit
+counters. Empty, partial, extra-field, wrong-type, stale, or inconsistent
+receipts fail before the nonce file is created. The sealed readiness body is
+also matched to the first durable attempt before the nonce can become
+`CONSUMED`; a mismatch leaves the pending nonce terminal and non-resumable.
+
 Exact execution disables generic ModelGateway connection retries, configured
 fallback resolution, role fallback, token-headroom redispatch, and polish/review
 ad-hoc redispatch. Recovery is owned by the two-slot Full Short policy: one
@@ -2485,3 +2504,11 @@ authority. Capability exhaustion and Full Short boundary errors carry typed
 owner/restart metadata, while route children retain ordered ordinals and only
 hashed provider/model identities. Public preflight and terminal diagnostics
 persist the same redacted failure graph and never include raw exception text.
+Once an attempt reaches any self-only terminal state, an ordinary same-state
+ledger mutation must be byte-identical: failure codes, failure hashes, response
+status evidence, rejection receipts, and terminal metadata cannot be refined or
+replaced later. The sole reconciliation exception is the explicit offline
+capture-anchor operation, which may fill exactly one previously absent capture
+receipt plus its `transport_complete=true` bit after independently replaying and
+verifying one exact published envelope. It cannot change attempt state, failure
+classification, other evidence, stage receipts, counters, or authority fields.

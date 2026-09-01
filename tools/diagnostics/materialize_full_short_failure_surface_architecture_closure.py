@@ -4,8 +4,10 @@ import argparse
 import hashlib
 import json
 from pathlib import Path
+import re
 import subprocess
 from typing import Any
+import xml.etree.ElementTree as ET
 
 from novel_flywheel.execution_failure_architecture import (
     DURABLE_FAILURE_EVIDENCE_POLICY_SHA256,
@@ -21,6 +23,7 @@ from novel_flywheel.execution_failure_architecture import (
     PREDISPATCH_STATE_MACHINE_V1,
 )
 from tools.diagnostics.audit_full_short_failure_surface_architecture import audit
+from tests.test_full_short_failure_surface_campaign import PHASE9_FAULT_CASES
 
 
 START_HEAD = "dd70fba229925b3483cec2c99fa9425fa850ab61"
@@ -64,6 +67,8 @@ FAULT_NAMES = [
     "recovery_shared_slot_exhaustion",
 ]
 
+_SHA256 = re.compile(r"^[0-9a-f]{64}$")
+
 
 def _git(repo: Path, *args: str) -> str:
     return subprocess.check_output(
@@ -77,6 +82,69 @@ def _write_json(root: Path, name: str, value: Any) -> None:
     path.write_text(json.dumps(
         value, ensure_ascii=False, sort_keys=True, indent=2,
     ) + "\n", encoding="utf-8")
+
+
+def _verified_json_receipt(
+    path: Path, *, repo: Path, head: str, schema: str,
+) -> dict[str, Any]:
+    value = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(value, dict) or value.get("schema") != schema:
+        raise ValueError(f"unexpected receipt schema for {path.name}")
+    if value.get("source_head") != head or value.get("status") != "PASS":
+        raise ValueError(f"receipt is not a PASS bound to current HEAD: {path.name}")
+    commit_timestamp = int(_git(repo, "show", "-s", "--format=%ct", head))
+    if path.stat().st_mtime < commit_timestamp:
+        raise ValueError(f"receipt predates bound HEAD: {path.name}")
+    return {
+        **value,
+        "receipt_sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+    }
+
+
+def _verified_junit_receipt(
+    path: Path, *, repo: Path, head: str, classification: str,
+) -> dict[str, Any]:
+    root = ET.fromstring(path.read_bytes())
+    suites = [root] if root.tag == "testsuite" else list(root.findall("testsuite"))
+    if not suites:
+        raise ValueError(f"JUnit receipt contains no suites: {path.name}")
+    totals = {key: 0 for key in ("tests", "failures", "errors", "skipped")}
+    testcase_names: list[str] = []
+    for suite in suites:
+        for key in totals:
+            try:
+                value = int(suite.attrib.get(key, 0))
+            except (TypeError, ValueError) as exc:
+                raise ValueError(f"invalid JUnit counter: {path.name}") from exc
+            if value < 0:
+                raise ValueError(f"negative JUnit counter: {path.name}")
+            totals[key] += value
+        testcase_names.extend(
+            str(item.attrib.get("name") or "")
+            for item in suite.iter("testcase")
+        )
+    if totals["tests"] <= 0 or any(totals[key] for key in (
+        "failures", "errors", "skipped",
+    )):
+        raise ValueError(f"JUnit receipt is not an exact nonempty PASS: {path.name}")
+    commit_timestamp = int(_git(repo, "show", "-s", "--format=%ct", head))
+    if path.stat().st_mtime < commit_timestamp:
+        raise ValueError(f"JUnit receipt predates bound HEAD: {path.name}")
+    return {
+        "schema": "OfflinePytestReceiptV1", "version": 1,
+        "classification": classification, "status": "PASS",
+        "source_head": head, **totals,
+        "testcase_count": len(testcase_names),
+        "testcase_name_set_sha256": hashlib.sha256(json.dumps(
+            sorted(testcase_names), ensure_ascii=False, separators=(",", ":"),
+        ).encode("utf-8")).hexdigest(),
+        "junit_sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+        "_testcase_names": testcase_names,
+    }
+
+
+def _public_receipt(value: dict[str, Any]) -> dict[str, Any]:
+    return {key: item for key, item in value.items() if not key.startswith("_")}
 
 
 def _child(agent: str, focus: str, findings: list[str]) -> dict[str, Any]:
@@ -117,12 +185,13 @@ def _call_graph() -> list[dict[str, Any]]:
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--repo", type=Path, required=True)
-    parser.add_argument("--focused", required=True)
-    parser.add_argument("--related", required=True)
-    parser.add_argument("--full-suite", required=True)
-    parser.add_argument("--strict-l3", required=True)
-    parser.add_argument("--production-shaped", required=True)
-    parser.add_argument("--length-matrix", required=True)
+    parser.add_argument("--focused-junit", type=Path, required=True)
+    parser.add_argument("--related-junit", type=Path, required=True)
+    parser.add_argument("--full-suite-junit", type=Path, required=True)
+    parser.add_argument("--fault-campaign-junit", type=Path, required=True)
+    parser.add_argument("--strict-l3-receipt", type=Path, required=True)
+    parser.add_argument("--production-shaped-receipt", type=Path, required=True)
+    parser.add_argument("--length-matrix-receipt", type=Path, required=True)
     args = parser.parse_args()
     repo = args.repo.resolve(strict=True)
     root = repo / ROOT
@@ -130,6 +199,78 @@ def main() -> int:
     head = _git(repo, "rev-parse", "HEAD")
     branch = _git(repo, "branch", "--show-current")
     static_audit = audit()
+    if static_audit["status"] != "PASS":
+        raise ValueError(
+            "static failure-surface audit is not PASS: "
+            + ",".join(static_audit["failed_checks"])
+        )
+    focused = _verified_junit_receipt(
+        args.focused_junit, repo=repo, head=head, classification="FOCUSED",
+    )
+    related = _verified_junit_receipt(
+        args.related_junit, repo=repo, head=head, classification="RELATED",
+    )
+    full_suite = _verified_junit_receipt(
+        args.full_suite_junit, repo=repo, head=head, classification="FULL_SUITE",
+    )
+    fault_campaign = _verified_junit_receipt(
+        args.fault_campaign_junit, repo=repo, head=head,
+        classification="PHASE9_FAULT_CAMPAIGN",
+    )
+    missing_fault_cases = [
+        name for name in FAULT_NAMES
+        if not any(
+            testcase.startswith("test_phase9_real_boundary_case")
+            and name in testcase
+            for testcase in fault_campaign["_testcase_names"]
+        )
+    ]
+    if missing_fault_cases:
+        raise ValueError(
+            "fault campaign JUnit is missing real boundary cases: "
+            + ",".join(missing_fault_cases)
+        )
+    strict_l3 = _verified_json_receipt(
+        args.strict_l3_receipt, repo=repo, head=head,
+        schema="NovelDevCouncilStrictGateReceiptV1",
+    )
+    production_shaped = _verified_json_receipt(
+        args.production_shaped_receipt, repo=repo, head=head,
+        schema="FirstTrustworthyFullShortPrivateDryRunV2",
+    )
+    length_matrix = _verified_json_receipt(
+        args.length_matrix_receipt, repo=repo, head=head,
+        schema="FullShortLengthMatrixReceiptV1",
+    )
+    for receipt in (production_shaped, length_matrix):
+        for key in (
+            "real_credential_lookup_count", "real_provider_request_attempts",
+            "real_network_calls", "real_model_calls", "paid_calls",
+        ):
+            if receipt.get(key) != 0:
+                raise ValueError(f"external action count is nonzero in {key}")
+    catalog = [dict(item) for item in PHASE9_FAULT_CASES]
+    if [item["name"] for item in catalog] != FAULT_NAMES:
+        raise ValueError("Phase-9 catalog does not match the canonical Master order")
+    required_surface_fields = {
+        "failure_id", "layer", "source", "detection_point",
+        "local_knowable", "secret_required", "network_required",
+        "typed_code", "child_provenance", "durable_receipt", "replayable",
+        "recoverable", "max_recovery", "restart_behavior",
+        "authority_effect", "behavioral_test", "status",
+    }
+    incomplete_surface = [
+        str(item.get("failure_id")) for item in catalog
+        if not required_surface_fields.issubset(item)
+        or item.get("status") != "MAPPED"
+        or not (repo / str(item.get("source"))).is_file()
+        or not (repo / str(item.get("behavioral_test")).split("::", 1)[0]).is_file()
+    ]
+    if incomplete_surface:
+        raise ValueError(
+            "canonical failure surface is incomplete: "
+            + ",".join(incomplete_surface)
+        )
 
     baseline = {
         "schema": "FullShortFailureSurfaceBaselineBindingV1", "version": 1,
@@ -187,20 +328,25 @@ def main() -> int:
 
     _write_json(root, "real-execution-call-graph-v1.json", {
         "schema": "FullShortRealExecutionCallGraphV1", "version": 1,
-        "steps": _call_graph(), "unmapped_edges": 0,
+        "steps": _call_graph(),
+        "failure_detection_nodes": [{
+            "failure_id": item["failure_id"], "source": item["source"],
+            "detection_point": item["detection_point"],
+            "behavioral_test": item["behavioral_test"],
+        } for item in catalog],
+        "unmapped_edges": len(incomplete_surface),
     })
-    surface = [{
-        "failure_id": f"FI-{index:02d}", "name": name,
-        "typed": True, "child_provenance": "ordered",
-        "durable_receipt": True, "restart_behavior": "explicit",
-        "authority_effect": "preserve_last_accepted", "status": "MAPPED",
-    } for index, name in enumerate(FAULT_NAMES, 1)]
+    surface = [{**item, "test_fixture": item["behavioral_test"]} for item in catalog]
     _write_json(root, "canonical-failure-surface-v1.json", {
         "schema": "CanonicalFullShortFailureSurfaceV1", "version": 1,
         "inventory_count": len(surface), "failures": surface,
-        "unmapped_failure_exit_count": 0,
-        "generic_unknown_failure_exit_count": 0,
-        "unowned_failure_exit_count": 0,
+        "unmapped_failure_exit_count": len(incomplete_surface),
+        "generic_unknown_failure_exit_count": sum(
+            item["layer"] == "unknown" for item in surface
+        ),
+        "unowned_failure_exit_count": sum(
+            not item["detection_point"] for item in surface
+        ),
     })
     _write_json(root, "error-taxonomy-v1.json", {
         "schema": "FullShortErrorTaxonomyV1", "version": 1,
@@ -292,14 +438,25 @@ def main() -> int:
     receipt_root = root / "fault-injection-receipts"
     receipts = []
     for index, name in enumerate(FAULT_NAMES, 1):
+        testcase = next(
+            item for item in fault_campaign["_testcase_names"]
+            if item.startswith("test_phase9_real_boundary_case") and name in item
+        )
         receipt = {
             "schema": "FullShortFaultInjectionReceiptV1", "version": 1,
             "case": index, "name": name, "status": "PASS",
-            "typed_classification": True, "root_cause_preserved": True,
-            "durable_receipt": True, "secret_leak": False,
-            "unauthorized_next_stage": False, "duplicate_dispatch": False,
-            "authority_corruption": False, "restart_behavior_explicit": True,
-            "recovery_within_policy": True,
+            "assertion_contract": [
+                "typed_classification", "root_cause_preserved",
+                "durable_receipt", "secret_leak_no",
+                "unauthorized_next_stage_no", "duplicate_dispatch_no",
+                "authority_corruption_no", "restart_behavior_explicit",
+                "recovery_within_policy",
+            ],
+            "testcase_name_sha256": hashlib.sha256(
+                testcase.encode("utf-8")
+            ).hexdigest(),
+            "fault_campaign_junit_sha256": fault_campaign["junit_sha256"],
+            "source_head": head,
             "test": "tests/test_full_short_failure_surface_campaign.py",
         }
         _write_json(receipt_root, f"case-{index:02d}-{name}-v1.json", receipt)
@@ -308,6 +465,10 @@ def main() -> int:
         "schema": "FullShortFaultInjectionCampaignV1", "version": 1,
         "case_count": 70, "passed": 70, "failed": 0,
         "unclassified_injection_count": 0, "status": "PASS",
+        "junit_receipt": {
+            key: value for key, value in fault_campaign.items()
+            if not key.startswith("_")
+        },
         "behavioral_boundary_tests": [
             "tests/test_full_short_execution.py",
             "tests/test_models.py", "tests/test_tasks.py",
@@ -320,13 +481,13 @@ def main() -> int:
     })
     _write_json(root, "production-shaped-full-short-rerun-v1.json", {
         "schema": "ProductionShapedFullShortRerunV1", "version": 1,
-        "status": args.production_shaped, "external_seam": "httpx.MockTransport",
+        "status": production_shaped["status"], "external_seam": "httpx.MockTransport",
         "real_workflow": True, "stages": [
             "Planning", "Draft", "Review", "Reader Review", "Polish",
             "Final Review", "Maintenance", "StoryState", "Canon", "READY",
             "final artifact", "checkpoint", "completion verification",
         ],
-        "length_matrix": args.length_matrix,
+        "length_matrix_receipt_sha256": length_matrix["receipt_sha256"],
         "bounded_planning_recovery": "PASS",
         "exact_local_replay_without_network": "PASS",
         "all_provider_responses_exactly_captured_boundary": "PASS",
@@ -334,18 +495,16 @@ def main() -> int:
         "model_calls": 0, "paid_calls": 0,
     })
     _write_json(root, "focused-test-receipt-v1.json", {
-        "schema": "FocusedTestReceiptV1", "status": "PASS", "result": args.focused,
+        **_public_receipt(focused),
     })
     _write_json(root, "related-test-receipt-v1.json", {
-        "schema": "RelatedTestReceiptV1", "status": "PASS", "result": args.related,
+        **_public_receipt(related),
     })
     _write_json(root, "full-suite-receipt-v1.json", {
-        "schema": "FullSuiteReceiptV1", "status": "PASS", "result": args.full_suite,
+        **_public_receipt(full_suite),
     })
     _write_json(root, "strict-l3-receipt-v1.json", {
-        "schema": "StrictL3ReceiptV1", "version": 1,
-        "declared_level": "L3", "status": args.strict_l3,
-        "warnings": 0, "blockers": 0,
+        **strict_l3,
     })
     _write_json(root, "privacy-scan-v1.json", {
         "schema": "FullShortArchitecturePrivacyScanV1", "status": "PASS",
@@ -383,9 +542,9 @@ real credential lookup, provider request, network, model, and paid-call counts a
 
 - Canonical failure inventory: 70/70 mapped.
 - Fault injection: 70/70 PASS.
-- Production-shaped Full Short: {args.production_shaped}.
-- 13K/20K/30K: {args.length_matrix}.
-- Strict L3: {args.strict_l3}.
+- Production-shaped Full Short: {production_shaped['status']}.
+- 13K/20K/30K receipt: {length_matrix['receipt_sha256']}.
+- Strict L3: {strict_l3['status']}.
 - Stop-Loss: ACTIVE.
 
 The final execution HEAD is intentionally bound by the worktree-external canonical
@@ -407,8 +566,8 @@ OBSERVER_BUSINESS_COUPLING_COUNT=0
 AUTHORITY_MUTATION_BEFORE_ACCEPTED_RECEIPT_COUNT=0
 
 FULL_SHORT_FAULT_INJECTION_CAMPAIGN=PASS
-FULL_SHORT_PRODUCTION_SHAPED_DRY_RUN={args.production_shaped}
-STRICT_L3={args.strict_l3}
+FULL_SHORT_PRODUCTION_SHAPED_DRY_RUN={production_shaped['status']}
+STRICT_L3={strict_l3['status']}
 STOP_LOSS_POLICY=ACTIVE
 
 TRUSTWORTHY_FULL_SHORT_READINESS=YES

@@ -46,6 +46,7 @@ from novel_flywheel.execution_failure_architecture import (
 from novel_flywheel.full_short_execution import (
     FullShortDispatchLedgerObserverV1,
     FullShortDurableExecutionStoreV1,
+    FullShortExecutionBoundaryError,
     LOGICAL_STAGE_RECOVERY_POLICY_SHA256,
     LOGICAL_STAGE_RECOVERY_POLICY_V1,
     RESPONSE_CAPTURE_POLICY_SHA256,
@@ -68,7 +69,7 @@ from novel_flywheel.quality_profiles import profile_for_project
 from novel_flywheel.reference_library import ReferenceLibrary
 from novel_flywheel.recovery_engine import FailureClass
 from novel_flywheel.runtime_fingerprint import collect_runtime_fingerprint_v2
-from novel_flywheel.secrets import KeyringSecretStore
+from novel_flywheel.secrets import KeyringSecretStore, MemorySecretStore
 from novel_flywheel.short_canonical_promotion import (
     short_canonical_feature_snapshot,
 )
@@ -142,17 +143,21 @@ def _safe_failure_metadata(exc: BaseException, *, boundary: str) -> dict[str, An
 
 
 def _persist_preflight_failure(
-    args: argparse.Namespace, exc: BaseException,
+    args: argparse.Namespace, exc: BaseException, *,
+    boundary: str = "full_short.preflight",
+    approval_created: bool = False,
+    nonce_created: bool = False,
 ) -> dict[str, Any]:
     """Persist a secret-free failure graph without approval/nonce creation."""
 
     metadata = _safe_failure_metadata(
-        exc, boundary="full_short.preflight",
+        exc, boundary=boundary,
     )
     receipt = {
         "schema": "FullShortPreflightFailureReceiptV1", "version": 1,
         **metadata,
-        "approval_created": False, "nonce_created": False,
+        "approval_created": approval_created,
+        "nonce_created": nonce_created,
         "credential_lookup_count": 0, "network_calls": 0,
     }
     root = Path(args.store_root).resolve(strict=False)
@@ -170,8 +175,47 @@ def _persist_preflight_failure(
             os.fsync(handle.fileno())
     except FileExistsError:
         if path.read_bytes() != raw:
-            raise RuntimeError("PREFLIGHT_FAILURE_RECEIPT_COLLISION")
+            raise FullShortExecutionBoundaryError(
+                "PREFLIGHT_FAILURE_RECEIPT_COLLISION"
+            )
     return {**receipt, "path": str(path)}
+
+
+def _terminalize_prelaunch_failure(
+    args: argparse.Namespace,
+    exc: Exception,
+    *,
+    boundary: str,
+    manager: RunTaskManager,
+    execution_id: str,
+    approval_created: bool,
+) -> None:
+    """Terminalize exact-once state even when receipt media is unavailable."""
+
+    persistence_error: Exception | None = None
+    try:
+        failure = _persist_preflight_failure(
+            args, exc, boundary=boundary,
+            approval_created=approval_created,
+        )
+    except Exception as receipt_exc:
+        persistence_error = receipt_exc
+        failure = _safe_failure_metadata(exc, boundary=boundary)
+    reason_code = (
+        "FULL_SHORT_PRELAUNCH_FAILURE_GRAPH_"
+        + failure["failure_graph_sha256"]
+    )
+    if not manager.fail_closed_exact_once_reservation(
+        execution_id, reason_code=reason_code,
+    ):
+        raise FullShortExecutionBoundaryError(
+            "FULL_SHORT_PRELAUNCH_RESERVATION_CLEANUP_FAILED"
+        )
+    if persistence_error is not None:
+        exc.add_note(
+            "preflight failure receipt persistence also failed: "
+            + type(persistence_error).__name__
+        )
 
 
 def _canonical_store_root(
@@ -693,7 +737,9 @@ def preflight_full_short_control_plane(
         raw, policy=policy, public_bindings=bindings,
     )
     if policy.get("monetary_cost_cap_state") != "UNKNOWN_NOT_SEALED":
-        raise ValueError("FULL_SHORT_MONETARY_COST_STATE_NOT_EXACT")
+        raise FullShortExecutionBoundaryError(
+            "FULL_SHORT_MONETARY_COST_STATE_NOT_EXACT"
+        )
     actual, live_public = collect_live_bindings(
         repo=args.repo, data_dir=args.data_dir,
         project_id=str(bindings["project_id"]),
@@ -702,7 +748,7 @@ def preflight_full_short_control_plane(
         store_root=args.store_root,
     )
     if live_public != bindings:
-        raise ValueError("PUBLIC_BINDINGS_DRIFT")
+        raise FullShortExecutionBoundaryError("PUBLIC_BINDINGS_DRIFT")
     preflight = validate_full_short_preflight_v1(
         policy=policy, actual=actual,
         authorization_text_sha256=authorization["authorization_text_sha256"],
@@ -726,13 +772,17 @@ def _completion_elapsed_recheck(policy: dict, ledger: dict) -> int:
             str(ledger["created_at"]).replace("Z", "+00:00"),
         )
     except (KeyError, ValueError) as exc:
-        raise RuntimeError("FULL_SHORT_LEDGER_CREATED_AT_INVALID") from exc
+        raise FullShortExecutionBoundaryError(
+            "FULL_SHORT_LEDGER_CREATED_AT_INVALID"
+        ) from exc
     elapsed = max(
         0,
         int((datetime.now(timezone.utc) - created_at).total_seconds()),
     )
     if elapsed > int(policy["maximum_elapsed_seconds"]):
-        raise RuntimeError("FULL_SHORT_MAXIMUM_ELAPSED_EXPIRED_AT_COMPLETION")
+        raise FullShortExecutionBoundaryError(
+            "FULL_SHORT_MAXIMUM_ELAPSED_EXPIRED_AT_COMPLETION"
+        )
     return elapsed
 
 
@@ -753,15 +803,28 @@ def _registry_from_factory(
             )
         return ProviderRegistry(db, secret_store, **kwargs)
     signature = inspect.signature(factory)
-    if (
+    accepts_http_transport = (
         "http_transport_factory" in signature.parameters
         or any(
             item.kind is inspect.Parameter.VAR_KEYWORD
             for item in signature.parameters.values()
         )
-    ):
+    )
+    if http_transport_factory is not None and not accepts_http_transport:
+        raise FullShortExecutionBoundaryError(
+            "OFFLINE_REGISTRY_CANNOT_BIND_HTTP_TRANSPORT"
+        )
+    if accepts_http_transport:
         kwargs["http_transport_factory"] = http_transport_factory
-    return factory(db, secret_store, **kwargs)
+    registry = factory(db, secret_store, **kwargs)
+    if http_transport_factory is not None and (
+        getattr(registry, "transport_factory", None)
+        is not http_transport_factory
+    ):
+        raise FullShortExecutionBoundaryError(
+            "OFFLINE_REGISTRY_TRANSPORT_BINDING_NOT_EXACT"
+        )
+    return registry
 
 
 async def _launch_exact_short(
@@ -781,14 +844,18 @@ async def _launch_exact_short(
         )
     else:
         if already_reserved:
-            raise RuntimeError("FULL_SHORT_EXACT_RESERVATION_API_UNAVAILABLE")
+            raise FullShortExecutionBoundaryError(
+                "FULL_SHORT_EXACT_RESERVATION_API_UNAVAILABLE"
+            )
         manager.start_exact_once(
             execution_id, project_id, "short-story", operation,
             terminal_finalizer=terminal_finalizer,
         )
     task = manager.tasks.get(execution_id)
     if task is None:
-        raise RuntimeError("FULL_SHORT_RESERVED_TASK_NOT_LAUNCHED")
+        raise FullShortExecutionBoundaryError(
+            "FULL_SHORT_RESERVED_TASK_NOT_LAUNCHED"
+        )
     await task
 
 
@@ -839,6 +906,15 @@ async def run_full_short_workflow_path(
     return db, project, db.get_run(execution_id) or {}
 
 
+class _OfflineExecutionCapabilityV1:
+    """Unforgeable-by-marker authority used only by repository dry runs."""
+
+    __slots__ = ()
+
+
+_OFFLINE_EXECUTION_CAPABILITY_V1 = _OfflineExecutionCapabilityV1()
+
+
 async def execute_full_short_control_plane(
     args: argparse.Namespace,
     authorization: dict[str, Any],
@@ -849,6 +925,64 @@ async def execute_full_short_control_plane(
     http_transport_factory: Callable[..., Any] | None = None,
     required_stage_roles: tuple[str, ...] = (),
 ) -> dict[str, Any]:
+    """Enter the production boundary; disabled actions are not executable here."""
+
+    if not external_actions_enabled:
+        raise FullShortExecutionBoundaryError(
+            "DISABLED_EXTERNAL_ACTIONS_REQUIRE_EXPLICIT_OFFLINE_SEAMS"
+        )
+    return await _execute_full_short_control_plane_with_capability(
+        args, authorization, external_actions_enabled=True,
+        secret_store_factory=secret_store_factory,
+        registry_factory=registry_factory,
+        http_transport_factory=http_transport_factory,
+        required_stage_roles=required_stage_roles,
+        offline_capability=None,
+    )
+
+
+async def _execute_full_short_control_plane_offline(
+    args: argparse.Namespace,
+    authorization: dict[str, Any],
+    *,
+    secret_store: MemorySecretStore,
+    http_transport_factory: Callable[..., Any],
+    required_stage_roles: tuple[str, ...] = (),
+) -> dict[str, Any]:
+    """Narrow private entry for deterministic, lowest-seam offline rehearsals."""
+
+    if type(secret_store) is not MemorySecretStore or http_transport_factory is None:
+        raise FullShortExecutionBoundaryError(
+            "DISABLED_EXTERNAL_ACTIONS_REQUIRE_EXPLICIT_OFFLINE_SEAMS"
+        )
+    # The only offline registry is repository-owned and replaces every real
+    # adapter client at the lowest HTTP seam.  Callers cannot substitute an
+    # arbitrary factory that performs credential or network work in its
+    # constructor.
+    from tools.canary.first_trustworthy_full_short_dry_run import (
+        _LowestHttpSeamRegistry,
+    )
+    return await _execute_full_short_control_plane_with_capability(
+        args, authorization, external_actions_enabled=False,
+        secret_store_factory=lambda: secret_store,
+        registry_factory=_LowestHttpSeamRegistry,
+        http_transport_factory=http_transport_factory,
+        required_stage_roles=required_stage_roles,
+        offline_capability=_OFFLINE_EXECUTION_CAPABILITY_V1,
+    )
+
+
+async def _execute_full_short_control_plane_with_capability(
+    args: argparse.Namespace,
+    authorization: dict[str, Any],
+    *,
+    external_actions_enabled: bool,
+    secret_store_factory: Callable[[], Any],
+    registry_factory: Callable[..., ProviderRegistry] | None = None,
+    http_transport_factory: Callable[..., Any] | None = None,
+    required_stage_roles: tuple[str, ...] = (),
+    offline_capability: _OfflineExecutionCapabilityV1 | None,
+) -> dict[str, Any]:
     """Execute the real control-plane, task manager, and WorkflowService path.
 
     Production supplies no factories and therefore uses the keyring plus the
@@ -856,30 +990,35 @@ async def execute_full_short_control_plane(
     store and the registry's lowest HTTP transport.
     """
 
-    if not external_actions_enabled:
-        offline_seams = (
-            secret_store_factory, registry_factory, http_transport_factory,
+    if external_actions_enabled:
+        if offline_capability is not None:
+            raise FullShortExecutionBoundaryError(
+                "OFFLINE_CAPABILITY_FOR_LIVE_EXECUTION_FORBIDDEN"
+            )
+    elif offline_capability is not _OFFLINE_EXECUTION_CAPABILITY_V1:
+        raise FullShortExecutionBoundaryError(
+            "DISABLED_EXTERNAL_ACTIONS_REQUIRE_EXPLICIT_OFFLINE_SEAMS"
         )
-        if (
-            any(item is None for item in offline_seams)
-            or not all(
-                getattr(item, "offline_only", False) is True
-                for item in offline_seams
-            )
-        ):
-            raise ValueError(
-                "DISABLED_EXTERNAL_ACTIONS_REQUIRE_EXPLICIT_OFFLINE_SEAMS"
-            )
 
-    raw = _authorization_raw(args)
-    raw_sha256 = hashlib.sha256(raw).hexdigest()
-    if raw_sha256 != args.activated_sha256:
-        raise ValueError("ACTIVATED_AUTHORIZATION_SHA256_MISMATCH")
-    live_authorization, _preflight = preflight_full_short_control_plane(
-        args, raw, external_actions_enabled=external_actions_enabled,
-    )
-    if live_authorization != authorization:
-        raise ValueError("FULL_SHORT_AUTHORIZATION_OBJECT_DRIFT")
+    try:
+        raw = _authorization_raw(args)
+        raw_sha256 = hashlib.sha256(raw).hexdigest()
+        if raw_sha256 != args.activated_sha256:
+            raise FullShortExecutionBoundaryError(
+                "ACTIVATED_AUTHORIZATION_SHA256_MISMATCH"
+            )
+        live_authorization, _preflight = preflight_full_short_control_plane(
+            args, raw, external_actions_enabled=external_actions_enabled,
+        )
+        if live_authorization != authorization:
+            raise FullShortExecutionBoundaryError(
+                "FULL_SHORT_AUTHORIZATION_OBJECT_DRIFT"
+            )
+    except Exception as exc:
+        _persist_preflight_failure(
+            args, exc, boundary="full_short.execution_preflight",
+        )
+        raise
     policy = authorization["policy"]
     bindings = authorization["public_bindings"]
 
@@ -890,7 +1029,9 @@ async def execute_full_short_control_plane(
             args, raw, external_actions_enabled=external_actions_enabled,
         )
         if current != authorization:
-            raise ValueError("FULL_SHORT_AUTHORIZATION_OBJECT_DRIFT")
+            raise FullShortExecutionBoundaryError(
+                "FULL_SHORT_AUTHORIZATION_OBJECT_DRIFT"
+            )
 
     settings = Settings(args.data_dir.resolve(strict=True))
     configure_runtime_environment(settings.data_dir)
@@ -903,35 +1044,36 @@ async def execute_full_short_control_plane(
             execution_id,
             reason_code="ORPHANED_EXACT_ONCE_RESERVATION_NO_RESUME",
         ):
-            raise RuntimeError(
-                "FULL_SHORT_ORPHANED_RESERVATION_FAILED_CLOSED:"
-                "NEW_SINGLE_USE_AUTHORIZATION_REQUIRED"
+            failure = FullShortExecutionBoundaryError(
+                "FULL_SHORT_ORPHANED_RESERVATION_FAILED_CLOSED"
             )
+            failure.add_note("NEW_SINGLE_USE_AUTHORIZATION_REQUIRED")
+            raise failure
     manager.reserve_exact_once(
         execution_id, str(bindings["project_id"]), "short-story",
     )
+    prelaunch_state = {"approval_created": False}
 
-    def prelaunch(step: Callable[[], Any], reason_code: str) -> Any:
+    def prelaunch(step: Callable[[], Any], boundary: str) -> Any:
         try:
             return step()
-        except Exception:
-            if not manager.fail_closed_exact_once_reservation(
-                execution_id, reason_code=reason_code,
-            ):
-                raise RuntimeError(
-                    "FULL_SHORT_PRELAUNCH_RESERVATION_CLEANUP_FAILED"
-                )
+        except Exception as exc:
+            _terminalize_prelaunch_failure(
+                args, exc, boundary=boundary, manager=manager,
+                execution_id=execution_id,
+                approval_created=prelaunch_state["approval_created"],
+            )
             raise
 
     prelaunch(
         recheck_live_authority,
-        "FULL_SHORT_LIVE_AUTHORITY_DRIFT_BEFORE_JIT_APPROVAL",
+        "full_short.prelaunch.live_authority_recheck",
     )
     store = prelaunch(
         lambda: FullShortDurableExecutionStoreV1(
             repo_root=args.repo, store_root=args.store_root,
         ),
-        "FULL_SHORT_STORE_BINDING_FAILED_BEFORE_LAUNCH",
+        "full_short.prelaunch.store_binding",
     )
     permission = prelaunch(
         lambda: store.create_permission(
@@ -939,22 +1081,23 @@ async def execute_full_short_control_plane(
             authorization_text_sha256=args.activated_sha256,
             policy=policy, external_actions_enabled=external_actions_enabled,
         ),
-        "FULL_SHORT_PERMISSION_FAILED_BEFORE_LAUNCH",
+        "full_short.prelaunch.permission",
     )
     approval = prelaunch(
         lambda: store.create_jit_approval(
             execution_id=execution_id, policy=policy, permission=permission,
             external_actions_enabled=external_actions_enabled,
         ),
-        "FULL_SHORT_APPROVAL_FAILED_BEFORE_LAUNCH",
+        "full_short.prelaunch.approval",
     )
+    prelaunch_state["approval_created"] = True
     prelaunch(
         lambda: store.prepare_predispatch_ledger(
             execution_id=execution_id, policy=policy,
             permission=permission, approval=approval,
             external_actions_enabled=external_actions_enabled,
         ),
-        "FULL_SHORT_PREDISPATCH_LEDGER_FAILED_BEFORE_LAUNCH",
+        "full_short.prelaunch.predispatch_ledger",
     )
     observer = prelaunch(
         lambda: FullShortDispatchLedgerObserverV1(
@@ -964,14 +1107,14 @@ async def execute_full_short_control_plane(
             external_actions_enabled=external_actions_enabled,
             live_authority_recheck=recheck_live_authority,
         ),
-        "FULL_SHORT_OBSERVER_FAILED_BEFORE_LAUNCH",
+        "full_short.prelaunch.observer",
     )
     registry = prelaunch(
         lambda: _registry_from_factory(
             registry_factory, db=db, secret_store=secret_store_factory(),
             observer=observer, http_transport_factory=http_transport_factory,
         ),
-        "FULL_SHORT_REGISTRY_FAILED_BEFORE_LAUNCH",
+        "full_short.prelaunch.registry",
     )
     db, project, service, manager = prelaunch(
         lambda: _full_short_runtime_components(
@@ -979,7 +1122,7 @@ async def execute_full_short_control_plane(
             project_id=str(bindings["project_id"]), execution_id=execution_id,
             registry=registry, manager=manager,
         ),
-        "FULL_SHORT_RUNTIME_COMPONENTS_FAILED_BEFORE_LAUNCH",
+        "full_short.prelaunch.runtime_components",
     )
     closure_state: dict[str, Any] = {}
 
@@ -988,11 +1131,15 @@ async def execute_full_short_control_plane(
         live_authority: dict[str, object],
     ) -> Callable[[], dict[str, Any]]:
         if actual_run_id != execution_id:
-            raise RuntimeError("FULL_SHORT_TERMINAL_RUN_ID_DRIFT")
+            raise FullShortExecutionBoundaryError(
+                "FULL_SHORT_TERMINAL_RUN_ID_DRIFT"
+            )
         ledger = store.load_ledger(execution_id)
         completed_stage_receipts = ledger.get("completed_stage_receipts")
         if not isinstance(completed_stage_receipts, list):
-            raise RuntimeError("FULL_SHORT_STAGE_RECEIPTS_NOT_AVAILABLE")
+            raise FullShortExecutionBoundaryError(
+                "FULL_SHORT_STAGE_RECEIPTS_NOT_AVAILABLE"
+            )
         observed_roles = tuple(
             str(item.get("role") or "")
             for item in completed_stage_receipts
@@ -1003,7 +1150,9 @@ async def execute_full_short_control_plane(
         )
         closure_state["observed_roles"] = list(observed_roles)
         if sorted(set(required_roles) - set(observed_roles)):
-            raise RuntimeError("FULL_SHORT_REQUIRED_STAGE_ROLE_NOT_EXECUTED")
+            raise FullShortExecutionBoundaryError(
+                "FULL_SHORT_REQUIRED_STAGE_ROLE_NOT_EXECUTED"
+            )
         run_root = Path(str(live_authority["run_root"]))
         project_root = Path(str(live_authority["project_root"]))
         terminal = verify_short_completion_v1(
@@ -1036,7 +1185,9 @@ async def execute_full_short_control_plane(
         )
         closure_state["terminal"] = terminal
         if terminal.get("completion_goal_outcome") != COMPLETION_GOAL:
-            raise RuntimeError("FULL_SHORT_TERMINAL_VERIFICATION_NOT_EXACT")
+            raise FullShortExecutionBoundaryError(
+                "FULL_SHORT_TERMINAL_VERIFICATION_NOT_EXACT"
+            )
         try:
             elapsed_seconds = _completion_elapsed_recheck(policy, ledger)
             nonce = store.load_nonce(execution_id)
@@ -1099,7 +1250,7 @@ async def execute_full_short_control_plane(
         lambda: service.bind_full_short_terminal_finalizer(
             execution_id, project.id, terminal_closure,
         ),
-        "FULL_SHORT_TERMINAL_FINALIZER_FAILED_BEFORE_LAUNCH",
+        "full_short.prelaunch.terminal_finalizer",
     )
     try:
         await _launch_exact_short(
@@ -1117,7 +1268,7 @@ async def execute_full_short_control_plane(
                 execution_id,
                 reason_code="FULL_SHORT_LAUNCH_FAILED_BEFORE_RUNNING",
             ):
-                raise RuntimeError(
+                raise FullShortExecutionBoundaryError(
                     "FULL_SHORT_PRELAUNCH_RESERVATION_CLEANUP_FAILED"
                 )
         raise
@@ -1165,13 +1316,16 @@ async def execute_full_short_control_plane(
             ),
             "terminal_failure": closure_state.get("terminal_failure"),
         }
-        raise RuntimeError(
-            "FULL_SHORT_SUPERVISED_RUN_NOT_COMPLETED:"
-            + json.dumps(diagnostic, ensure_ascii=True, sort_keys=True)
+        failure = FullShortExecutionBoundaryError(
+            "FULL_SHORT_SUPERVISED_RUN_NOT_COMPLETED"
         )
+        failure.safe_diagnostic = diagnostic
+        raise failure
     completion = closure_state.get("completion")
     if not isinstance(completion, dict):
-        raise RuntimeError("FULL_SHORT_COMPLETION_NOT_COMMITTED_AFTER_SAGA_CLEANUP")
+        raise FullShortExecutionBoundaryError(
+            "FULL_SHORT_COMPLETION_NOT_COMMITTED_AFTER_SAGA_CLEANUP"
+        )
     return {
         "completion": completion,
         "terminal": closure_state["terminal"],
@@ -1209,7 +1363,9 @@ def main() -> int:
         raw = args.authorization.read_bytes()
         actual_sha256 = hashlib.sha256(raw).hexdigest()
         if actual_sha256 != args.activated_sha256:
-            raise ValueError("ACTIVATED_AUTHORIZATION_SHA256_MISMATCH")
+            raise FullShortExecutionBoundaryError(
+                "ACTIVATED_AUTHORIZATION_SHA256_MISMATCH"
+            )
         authorization, preflight = preflight_full_short_control_plane(
             args, raw,
             external_actions_enabled=args.execute,

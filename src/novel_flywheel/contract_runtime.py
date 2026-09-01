@@ -403,6 +403,34 @@ def _configured_fallback_available(gateway: Any, role: str) -> bool:
     return callable(getattr(gateway, "complete_configured_fallback", None))
 
 
+def _freeze_route_identities(
+    gateway: Any, *, role: str,
+) -> dict[ModelRoute, tuple[str, str]]:
+    """Freeze safe route identities before any attempt can mutate bindings."""
+
+    binding: Mapping[str, Any] = {}
+    try:
+        db = getattr(gateway, "db", None)
+        get_role_binding = getattr(db, "get_role_binding", None)
+        if callable(get_role_binding):
+            configured = get_role_binding(role)
+            if isinstance(configured, Mapping):
+                binding = dict(configured)
+    except Exception:
+        # Provenance construction must never replace the provider failure.
+        binding = {}
+    return {
+        "primary": (
+            str(binding.get("primary_provider_id") or "unresolved_primary_provider"),
+            str(binding.get("primary_model_id") or "unresolved_primary_model"),
+        ),
+        "configured_fallback": (
+            str(binding.get("fallback_provider_id") or "unresolved_fallback_provider"),
+            str(binding.get("fallback_model_id") or "unresolved_fallback_model"),
+        ),
+    }
+
+
 def _runtime_attempts(
     gateway: Any,
     *,
@@ -604,6 +632,8 @@ async def execute_model_route_runtime(
     last_error: Exception | None = None
     primary_error: Exception | None = None
     fallback_error: Exception | None = None
+    route_identities = _freeze_route_identities(gateway, role=role)
+    route_errors: list[tuple[str, str, Exception]] = []
     for attempt in attempts:
         route_user = user
         if (
@@ -639,6 +669,8 @@ async def execute_model_route_runtime(
                 run_id=run_id,
             )
         except Exception as exc:
+            provider_id, model_id = route_identities[attempt.route]
+            route_errors.append((provider_id, model_id, exc))
             _observe_attempt(
                 attempt_observer,
                 attempt_id=str(attempt.attempt_index),
@@ -696,6 +728,7 @@ async def execute_model_route_runtime(
         from novel_flywheel.models import ModelRoutesExhaustedError
         raise ModelRoutesExhaustedError(
             primary_error, fallback_error,
+            route_errors=route_errors,
         ) from fallback_error
     raise last_error
 
@@ -1103,6 +1136,8 @@ async def execute_contract_runtime(
     last_error: Exception | None = None
     primary_error: Exception | None = None
     fallback_error: Exception | None = None
+    route_identities = _freeze_route_identities(gateway, role=role)
+    route_errors: list[tuple[str, str, Exception]] = []
     last_receipt: Mapping[str, Any] = {}
     output_limit_seen = False
     last_business_incomplete_reason: str | None = None
@@ -1432,6 +1467,8 @@ async def execute_contract_runtime(
                 )
             attempt_ptr12_decision = current_ptr12_guard_decision()
         except Exception as exc:
+            provider_id, model_id = route_identities[attempt.route]
+            route_errors.append((provider_id, model_id, exc))
             attempt_ptr12_decision = current_ptr12_guard_decision()
             final_artifact_failure = isinstance(
                 exc, FinalArtifactCapabilityError,
@@ -2028,6 +2065,7 @@ async def execute_contract_runtime(
         from novel_flywheel.models import ModelRoutesExhaustedError
         raise ModelRoutesExhaustedError(
             primary_error, fallback_error,
+            route_errors=route_errors,
         ) from fallback_error
     raise last_error
 

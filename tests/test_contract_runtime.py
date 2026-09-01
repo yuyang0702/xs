@@ -17,6 +17,7 @@ from novel_flywheel.generated_artifacts import (
     ARTIFACT_CONTRACT_REGISTRY,
     ArtifactContractRegistration,
 )
+from novel_flywheel.models import ModelRoutesExhaustedError
 from novel_flywheel.structured_artifacts import StructuredArtifactContract
 
 
@@ -232,6 +233,79 @@ async def test_model_route_runtime_owns_exact_tool_fallback_and_route_budgets() 
     assert result.attempt.route == "configured_fallback"
     assert result.model_response.receipt["runtime_selected_route"] == (
         "configured_fallback"
+    )
+
+
+@pytest.mark.asyncio
+async def test_model_route_runtime_preserves_all_four_ordered_failures() -> None:
+    class Db:
+        @staticmethod
+        def get_role_binding(_role):
+            return {
+                "primary_provider_id": "primary-provider",
+                "primary_model_id": "primary-model",
+                "fallback_provider_id": "fallback-provider",
+                "fallback_model_id": "fallback-model",
+            }
+
+    class Gateway:
+        db = Db()
+
+        @staticmethod
+        def has_configured_fallback(_role):
+            return True
+
+        async def complete_primary(self, *_args, **_kwargs):
+            raise ConnectionError("primary failed")
+
+        async def complete_configured_fallback(self, *_args, **_kwargs):
+            raise TimeoutError("fallback failed")
+
+    with pytest.raises(ModelRoutesExhaustedError) as caught:
+        await execute_model_route_runtime(
+            Gateway(), role="planning", system="system", user="user",
+            same_route_attempts=2, fallback_attempts=2,
+        )
+
+    assert [(provider, model) for provider, model, _error in caught.value.route_errors] == [
+        ("primary-provider", "primary-model"),
+        ("primary-provider", "primary-model"),
+        ("fallback-provider", "fallback-model"),
+        ("fallback-provider", "fallback-model"),
+    ]
+
+
+@pytest.mark.asyncio
+async def test_route_provenance_freeze_failure_never_masks_provider_errors() -> None:
+    class Db:
+        @staticmethod
+        def get_role_binding(_role):
+            raise RuntimeError("binding read failed")
+
+    class Gateway:
+        db = Db()
+
+        @staticmethod
+        def has_configured_fallback(_role):
+            return True
+
+        async def complete_primary(self, *_args, **_kwargs):
+            raise ConnectionError("primary failed")
+
+        async def complete_configured_fallback(self, *_args, **_kwargs):
+            raise TimeoutError("fallback failed")
+
+    with pytest.raises(ModelRoutesExhaustedError) as caught:
+        await execute_model_route_runtime(
+            Gateway(), role="planning", system="system", user="user",
+            same_route_attempts=1, fallback_attempts=1,
+        )
+
+    assert [type(error) for _provider, _model, error in caught.value.route_errors] == [
+        ConnectionError, TimeoutError,
+    ]
+    assert caught.value.route_errors[0][:2] == (
+        "unresolved_primary_provider", "unresolved_primary_model",
     )
 
 

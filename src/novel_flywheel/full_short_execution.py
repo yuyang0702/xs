@@ -40,6 +40,7 @@ from novel_flywheel.execution_failure_architecture import (
     FULL_SHORT_EXACT_RECOVERY_REGISTRY_SHA256,
     FULL_SHORT_EXACT_RECOVERY_REGISTRY_V1,
     FullShortExactRecoveryControllerV1,
+    full_short_boundary_taxonomy_v1,
     NONCE_RESERVATION_POLICY_SHA256,
     NONCE_RESERVATION_POLICY_V1,
     OBSERVER_ISOLATION_POLICY_SHA256,
@@ -68,6 +69,7 @@ APPROVAL_SCHEMA = "FullShortJitSignedApprovalV1"
 NONCE_SCHEMA = "FullShortDurableNonceV1"
 LEDGER_SCHEMA = "FullShortDispatchLedgerV1"
 COMPLETION_SCHEMA = "FullShortCompletionReceiptV1"
+DISPATCH_READINESS_SCHEMA = "FullShortDispatchReadinessReceiptV1"
 AUTHORIZATION_SCHEMA = "FullShortCanonicalAuthorizationV1"
 PREFLIGHT_SCHEMA = "FullShortAuthorizationPreflightReceiptV1"
 POLICY_VERSION = "full-short-trustworthy-execution-v3"
@@ -227,63 +229,91 @@ _FINAL_ARTIFACT_REJECTION_RECEIPT_FIELDS = frozenset({
     "provider_output_shape_sha256", "contract_runtime_input_present",
     "raw_content_persisted",
 })
+_DISPATCH_READINESS_FIELDS_V1 = frozenset({
+    "schema", "version", "execution_id", "policy_sha256",
+    "logical_stage_plan_sha256", "permission_sha256",
+    "signed_approval_sha256", "predispatch_ledger_sha256",
+    "observer_session_sha256", "logical_stage_id", "physical_attempt_id",
+    "role_binding_sha256", "route_fingerprint", "destination_sha256",
+    "request_shape_sha256", "provider_payload_sha256",
+    "egress_intent_sha256", "requested_output_tokens",
+    "total_requested_output_tokens", "expected_stage_calls",
+    "hard_max_provider_requests", "hard_max_http_posts",
+    "hard_max_network_attempts", "max_physical_attempts_per_logical_stage",
+    "per_call_output_token_hard_cap", "total_output_token_hard_cap",
+    "maximum_elapsed_seconds", "provider_request_count_before_commit",
+    "http_post_count_before_commit", "network_request_count_before_commit",
+    "provider_response_count_before_commit",
+    "completed_stage_count_before_commit",
+})
+_DISPATCH_READINESS_HASH_FIELDS_V1 = frozenset({
+    "policy_sha256", "logical_stage_plan_sha256", "permission_sha256",
+    "signed_approval_sha256", "predispatch_ledger_sha256",
+    "observer_session_sha256", "role_binding_sha256", "route_fingerprint",
+    "destination_sha256", "request_shape_sha256", "provider_payload_sha256",
+    "egress_intent_sha256",
+})
+_DISPATCH_READINESS_CAP_FIELDS_V1 = frozenset({
+    "expected_stage_calls", "hard_max_provider_requests",
+    "hard_max_http_posts", "hard_max_network_attempts",
+    "max_physical_attempts_per_logical_stage",
+    "per_call_output_token_hard_cap", "total_output_token_hard_cap",
+    "maximum_elapsed_seconds",
+})
+_DISPATCH_READINESS_COUNTER_FIELDS_V1 = frozenset({
+    "provider_request_count_before_commit", "http_post_count_before_commit",
+    "network_request_count_before_commit",
+    "provider_response_count_before_commit",
+    "completed_stage_count_before_commit",
+})
 
 
 class FullShortExecutionBoundaryError(RuntimeError):
     def __init__(self, reason_code: str) -> None:
         self.reason_code = reason_code
         normalized = re.sub(r"[^A-Z0-9]+", "_", reason_code.upper()).strip("_")
-        authorization_tokens = (
-            "AUTH", "APPROVAL", "PERMISSION", "HEAD", "WORKTREE",
-            "RUNTIME", "POLICY", "BINDING", "ROUTE", "DESTINATION",
-            "EGRESS", "PROJECT", "WORKLOAD", "SKILL",
+        taxonomy = full_short_boundary_taxonomy_v1(normalized)
+        layer = (
+            taxonomy["layer"] if taxonomy is not None
+            else FailureLayer.EXECUTION_RUNTIME_BINDING
         )
-        capture_tokens = ("CAPTURE", "REPLAY", "ARTIFACT")
-        dispatch_tokens = ("NONCE", "DISPATCH", "NETWORK", "HTTP")
-        if any(token in normalized for token in capture_tokens):
-            layer = FailureLayer.ARTIFACT
-            family = "artifact.execution_boundary"
-        elif any(token in normalized for token in dispatch_tokens):
-            layer = FailureLayer.AUTHORITY
-            family = "authority.dispatch_boundary"
-        elif any(token in normalized for token in authorization_tokens):
-            layer = FailureLayer.EXECUTION_RUNTIME_BINDING
-            family = "execution.runtime_binding"
-        else:
-            layer = FailureLayer.WORKFLOW_RECOVERY
-            family = "workflow.execution_boundary"
+        family = (
+            str(taxonomy["family"]) if taxonomy is not None
+            else "execution.unmapped_local_boundary"
+        )
         failure_class = (
-            FailureClass.CREDENTIAL
-            if "CREDENTIAL" in normalized
+            taxonomy["failure_class"] if taxonomy is not None
             else FailureClass.STALE_AUTHORITY
-            if layer in {
-                FailureLayer.AUTHORITY,
-                FailureLayer.EXECUTION_RUNTIME_BINDING,
-            }
-            else FailureClass.SEMANTIC_INVARIANT
         )
         self.failure_layer = layer
         self.failure_family = family
         self.dispatch_state = (
-            DispatchState.NETWORK_AMBIGUOUS
-            if "AMBIGUOUS" in normalized
-            else DispatchState.COMMITTED_PRE_NETWORK
-            if any(token in normalized for token in dispatch_tokens)
+            taxonomy["dispatch_state"] if taxonomy is not None
             else DispatchState.NOT_REACHED
         )
-        self.authority_effect = AuthorityEffect.BLOCKS_ACCEPTANCE
-        self.restart_behavior = (
-            RestartBehavior.FRESH_AUTHORIZATION_REQUIRED
-            if layer in {
-                FailureLayer.AUTHORITY,
-                FailureLayer.EXECUTION_RUNTIME_BINDING,
-            }
-            else RestartBehavior.NO_REDISPATCH
+        self.authority_effect = (
+            taxonomy["authority_effect"] if taxonomy is not None
+            else AuthorityEffect.BLOCKS_ACCEPTANCE
         )
-        self.recovery_action = "fail_closed_at_typed_execution_boundary"
+        self.restart_behavior = (
+            taxonomy["restart_behavior"] if taxonomy is not None
+            else RestartBehavior.FRESH_AUTHORIZATION_REQUIRED
+        )
+        self.recovery_action = (
+            str(taxonomy["recovery_action"]) if taxonomy is not None
+            else "register_local_boundary_before_authorization"
+        )
         self.reliability_failure = ReliabilityFailure(
-            code=normalized.casefold(), failure_class=failure_class,
-            boundary=f"full_short.{layer.value}", retryable=False,
+            code=(
+                str(taxonomy["code"]) if taxonomy is not None
+                else f"unmapped_{normalized.casefold()}"
+            ),
+            failure_class=failure_class,
+            boundary=(
+                str(taxonomy["boundary"]) if taxonomy is not None
+                else "full_short.execution.runtime_binding"
+            ),
+            retryable=False,
         )
         super().__init__(reason_code)
 
@@ -297,6 +327,129 @@ def _now() -> str:
     return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace(
         "+00:00", "Z",
     )
+
+
+def _validate_dispatch_readiness_v1(
+    readiness: Mapping[str, Any], *, execution_id: str,
+    policy: Mapping[str, Any], session_sha256: str,
+    ledger: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Validate one closed, non-secret readiness receipt before nonce write."""
+
+    _require(isinstance(readiness, Mapping), "DISPATCH_READINESS_SCHEMA_INVALID")
+    body = deepcopy(dict(readiness))
+    _require(
+        set(body) == _DISPATCH_READINESS_FIELDS_V1,
+        "DISPATCH_READINESS_SCHEMA_INVALID",
+    )
+    _require(
+        body.get("schema") == DISPATCH_READINESS_SCHEMA
+        and type(body.get("version")) is int
+        and body["version"] == 1,
+        "DISPATCH_READINESS_SCHEMA_INVALID",
+    )
+    _require(
+        all(
+            isinstance(body.get(field), str)
+            and _HEX64.fullmatch(body[field]) is not None
+            for field in _DISPATCH_READINESS_HASH_FIELDS_V1
+        ),
+        "DISPATCH_READINESS_HASH_TYPE_INVALID",
+    )
+    _require(
+        isinstance(body.get("execution_id"), str)
+        and _ID.fullmatch(body["execution_id"]) is not None
+        and isinstance(body.get("logical_stage_id"), str)
+        and _ID.fullmatch(body["logical_stage_id"]) is not None
+        and isinstance(body.get("physical_attempt_id"), str)
+        and _ID.fullmatch(body["physical_attempt_id"]) is not None,
+        "DISPATCH_READINESS_ID_TYPE_INVALID",
+    )
+    integer_fields = (
+        _DISPATCH_READINESS_CAP_FIELDS_V1
+        | _DISPATCH_READINESS_COUNTER_FIELDS_V1
+        | {"requested_output_tokens", "total_requested_output_tokens"}
+    )
+    _require(
+        all(type(body.get(field)) is int for field in integer_fields),
+        "DISPATCH_READINESS_COUNTER_TYPE_INVALID",
+    )
+    _require(
+        body["execution_id"] == execution_id,
+        "DISPATCH_READINESS_EXECUTION_MISMATCH",
+    )
+    _require(
+        body["policy_sha256"] == policy.get("policy_sha256")
+        and body["logical_stage_plan_sha256"]
+        == policy.get("logical_stage_plan_sha256"),
+        "DISPATCH_READINESS_POLICY_MISMATCH",
+    )
+    _require(
+        body["observer_session_sha256"] == session_sha256
+        and ledger.get("observer_session_sha256") == session_sha256,
+        "DISPATCH_READINESS_SESSION_MISMATCH",
+    )
+    _require(
+        body["predispatch_ledger_sha256"] == ledger.get("ledger_sha256")
+        and body["permission_sha256"] == ledger.get("permission_sha256")
+        and body["signed_approval_sha256"]
+        == ledger.get("signed_approval_sha256"),
+        "DISPATCH_READINESS_LEDGER_MISMATCH",
+    )
+    expected_caps = {
+        field: policy.get(field) for field in _DISPATCH_READINESS_CAP_FIELDS_V1
+    }
+    _require(
+        all(body[field] == expected_caps[field]
+            for field in _DISPATCH_READINESS_CAP_FIELDS_V1),
+        "DISPATCH_READINESS_CAP_MISMATCH",
+    )
+    attempts = list(ledger.get("attempts") or [])
+    receipts = list(ledger.get("completed_stage_receipts") or [])
+    expected_counters = {
+        "provider_request_count_before_commit": len(attempts),
+        "http_post_count_before_commit": len(attempts),
+        "network_request_count_before_commit": len(attempts),
+        "provider_response_count_before_commit": sum(
+            1 for item in attempts
+            if item.get("response_status_sha256") is not None
+        ),
+        "completed_stage_count_before_commit": len(receipts),
+    }
+    _require(
+        all(body[field] == expected_counters[field]
+            for field in _DISPATCH_READINESS_COUNTER_FIELDS_V1),
+        "DISPATCH_READINESS_COUNTER_MISMATCH",
+    )
+    _require(not attempts and not receipts, "DISPATCH_READINESS_COUNTER_MISMATCH")
+    logical_stage_plan = list(policy.get("logical_stage_plan") or [])
+    _require(bool(logical_stage_plan), "DISPATCH_READINESS_POLICY_MISMATCH")
+    expected_stage = logical_stage_plan[0]
+    expected_physical_attempt_id = "physical-" + domain_sha256(
+        "novel-flywheel-full-short-physical-attempt-id-v1",
+        {
+            "execution_id": execution_id,
+            "logical_stage_id": expected_stage.get("logical_stage_id"),
+            "ordinal": 1,
+        },
+    )[:32]
+    _require(
+        body["logical_stage_id"] == expected_stage.get("logical_stage_id")
+        and body["physical_attempt_id"] == expected_physical_attempt_id,
+        "DISPATCH_READINESS_STAGE_MISMATCH",
+    )
+    _require(
+        body["requested_output_tokens"]
+        == expected_stage.get("requested_output_tokens")
+        and body["total_requested_output_tokens"]
+        == body["requested_output_tokens"]
+        and 0 < body["requested_output_tokens"]
+        <= body["per_call_output_token_hard_cap"]
+        and body["total_requested_output_tokens"]
+        <= body["total_output_token_hard_cap"],
+        "DISPATCH_READINESS_TOKEN_BUDGET_MISMATCH",
+    )
+    return body
 
 
 _LEDGER_STATE_TRANSITIONS_V1: dict[str, frozenset[str]] = {
@@ -320,6 +473,7 @@ _ATTEMPT_STATE_TRANSITIONS_V1: dict[str, frozenset[str]] = {
     "DISPATCH_ATTEMPTED": frozenset({
         "DISPATCH_ATTEMPTED", "RESPONSE_RECEIVED",
         "HTTP_RESPONSE_FAILED_CLOSED", "OUTCOME_UNKNOWN_FAIL_CLOSED",
+        "POST_CAPTURE_TERMINAL_CLASSIFICATION_PENDING",
         "POST_CAPTURE_TERMINAL_FAILED_CLOSED",
     }),
     "RESPONSE_RECEIVED": frozenset({
@@ -331,9 +485,27 @@ _ATTEMPT_STATE_TRANSITIONS_V1: dict[str, frozenset[str]] = {
     "POST_CAPTURE_TERMINAL_FAILED_CLOSED": frozenset({
         "POST_CAPTURE_TERMINAL_FAILED_CLOSED",
     }),
+    "POST_CAPTURE_TERMINAL_CLASSIFICATION_PENDING": frozenset({
+        "POST_CAPTURE_TERMINAL_CLASSIFICATION_PENDING",
+        "POST_CAPTURE_TERMINAL_FAILED_CLOSED",
+    }),
     "LOCAL_STAGE_COMPLETE": frozenset({"LOCAL_STAGE_COMPLETE"}),
     "LOCAL_ATTEMPT_REJECTED": frozenset({"LOCAL_ATTEMPT_REJECTED"}),
 }
+_CLOSED_ATTEMPT_STATES_V1 = frozenset({
+    state for state, next_states in _ATTEMPT_STATE_TRANSITIONS_V1.items()
+    if next_states == frozenset({state})
+})
+_CAPTURE_RECONCILIATION_FIELD_PAIRS_V1 = (
+    (
+        "provider_protocol_capture_receipt_sha256",
+        "provider_protocol_capture_transport_complete",
+    ),
+    (
+        "contract_runtime_capture_receipt_sha256",
+        "contract_runtime_capture_transport_complete",
+    ),
+)
 _MUTABLE_ATTEMPT_FIELDS_V1 = frozenset({
     "state", "response_status_sha256", "response_received_at",
     "provider_protocol_capture_receipt_sha256",
@@ -341,7 +513,7 @@ _MUTABLE_ATTEMPT_FIELDS_V1 = frozenset({
     "provider_protocol_capture_http_success",
     "contract_runtime_capture_receipt_sha256",
     "contract_runtime_capture_transport_complete",
-    "failure_kind_sha256", "failure_class",
+    "failure_kind_sha256", "adapter_failure_kind_sha256", "failure_class",
     "terminal_contract_attempt_index", "terminal_contract_route",
     "terminal_contract_route_attempt", "terminal_closed_at",
     "local_rejection_receipt_sha256", "local_rejection_failure_kind",
@@ -354,9 +526,15 @@ _MUTABLE_ATTEMPT_FIELDS_V1 = frozenset({
 
 
 def _validate_ledger_mutation_v1(
-    before: Mapping[str, Any], after: Mapping[str, Any],
+    before: Mapping[str, Any], after: Mapping[str, Any], *,
+    mutation_kind: str = "ORDINARY",
 ) -> None:
     """Reject every unregistered durable transition before resealing."""
+
+    _require(
+        mutation_kind in {"ORDINARY", "CAPTURE_RECEIPT_RECONCILIATION"},
+        "LEDGER_MUTATION_KIND_INVALID",
+    )
 
     before_root = {
         key: value for key, value in before.items()
@@ -379,6 +557,8 @@ def _validate_ledger_mutation_v1(
         len(before_attempts) == len(after_attempts),
         "LEDGER_ATTEMPT_CARDINALITY_IMMUTABLE",
     )
+    changed_attempts: list[tuple[Mapping[str, Any], Mapping[str, Any]]] = []
+    closed_attempt_rewritten = False
     for previous, current in zip(before_attempts, after_attempts, strict=True):
         previous_identity = {
             key: value for key, value in dict(previous).items()
@@ -400,6 +580,17 @@ def _validate_ledger_mutation_v1(
             ),
             "ILLEGAL_ATTEMPT_STATE_TRANSITION",
         )
+        if dict(previous) != dict(current):
+            changed_attempts.append((previous, current))
+        if (
+            mutation_kind == "ORDINARY"
+            and previous_state in _CLOSED_ATTEMPT_STATES_V1
+            and current_state == previous_state
+        ):
+            closed_attempt_rewritten = (
+                closed_attempt_rewritten
+                or dict(previous) != dict(current)
+            )
     before_receipts = list(before.get("completed_stage_receipts") or [])
     after_receipts = list(after.get("completed_stage_receipts") or [])
     _require(
@@ -416,6 +607,37 @@ def _validate_ledger_mutation_v1(
             ),
             "LEDGER_STAGE_RECEIPT_WITHOUT_ACCEPTANCE_TRANSITION",
         )
+    if mutation_kind == "ORDINARY":
+        _require(
+            not closed_attempt_rewritten,
+            "CLOSED_ATTEMPT_IMMUTABLE",
+        )
+    if mutation_kind == "CAPTURE_RECEIPT_RECONCILIATION":
+        _require(
+            before_state == after_state
+            and before_receipts == after_receipts
+            and len(changed_attempts) == 1,
+            "CAPTURE_RECONCILIATION_NOT_NARROW",
+        )
+        previous, current = changed_attempts[0]
+        changed_fields = {
+            key for key in set(previous) | set(current)
+            if previous.get(key) != current.get(key)
+        }
+        allowed = False
+        for receipt_field, complete_field in (
+            _CAPTURE_RECONCILIATION_FIELD_PAIRS_V1
+        ):
+            if changed_fields != {receipt_field, complete_field}:
+                continue
+            allowed = bool(
+                previous.get(receipt_field) is None
+                and previous.get(complete_field) is None
+                and isinstance(current.get(receipt_field), str)
+                and _HEX64.fullmatch(current[receipt_field]) is not None
+                and current.get(complete_field) is True
+            )
+        _require(allowed, "CAPTURE_RECONCILIATION_NOT_NARROW")
 
 
 def _expected_provider_payload_v1(
@@ -1274,6 +1496,10 @@ class FullShortDurableExecutionStoreV1:
         self, *, execution_id: str, policy: Mapping[str, Any],
         approval: Mapping[str, Any], external_actions_enabled: bool,
     ) -> dict[str, Any]:
+        _require(
+            external_actions_enabled is False,
+            "LEGACY_NONCE_RESERVATION_LIVE_FORBIDDEN",
+        )
         validated = self._verify_store_binding(policy)
         _require(approval.get("state") == "SIGNED", "APPROVAL_NOT_SIGNED")
         _require(
@@ -1518,10 +1744,6 @@ class FullShortDurableExecutionStoreV1:
         )
         validated = self._verify_store_binding(policy)
         session_sha256 = hashlib.sha256(session_id.encode("utf-8")).hexdigest()
-        readiness_body = deepcopy(dict(readiness))
-        readiness_sha256 = domain_sha256(
-            "novel-flywheel-full-short-dispatch-readiness-v1", readiness_body,
-        )
         with self._locked():
             _require(
                 not self._path(execution_id, "nonce").exists(),
@@ -1537,6 +1759,14 @@ class FullShortDurableExecutionStoreV1:
                 and ledger.get("observer_session_sha256") == session_sha256
                 and not ledger.get("attempts"),
                 "PREDISPATCH_SESSION_OR_STATE_DRIFT",
+            )
+            readiness_body = _validate_dispatch_readiness_v1(
+                readiness, execution_id=execution_id, policy=validated,
+                session_sha256=session_sha256, ledger=ledger,
+            )
+            readiness_sha256 = domain_sha256(
+                "novel-flywheel-full-short-dispatch-readiness-v1",
+                readiness_body,
             )
             approval = chain["approval"]
             reservation_body = {
@@ -1572,6 +1802,7 @@ class FullShortDurableExecutionStoreV1:
                     "consumed_session_sha256": session_sha256,
                     "observer_session_sha256": session_sha256,
                     "dispatch_readiness_receipt_sha256": readiness_sha256,
+                    "dispatch_readiness": readiness_body,
                 },
                 "nonce_record_sha256",
             )
@@ -1637,6 +1868,7 @@ class FullShortDurableExecutionStoreV1:
                 "state", "dispatch_attempt_count", "consumed_at",
                 "consumed_session_sha256", "observer_session_sha256",
                 "dispatch_readiness_receipt_sha256",
+                "dispatch_readiness",
                 "nonce_record_sha256",
             }},
             domain="novel-flywheel-full-short-nonce-v1",
@@ -1899,6 +2131,36 @@ class FullShortDurableExecutionStoreV1:
                     nonce.get("observer_session_sha256") == session_sha256,
                     "OBSERVER_SESSION_MISMATCH",
                 )
+                if nonce.get("state") == "CONSUMED_DISPATCH_COMMIT_PENDING":
+                    readiness = nonce.get("dispatch_readiness")
+                    _require(
+                        isinstance(readiness, Mapping)
+                        and domain_sha256(
+                            "novel-flywheel-full-short-dispatch-readiness-v1",
+                            readiness,
+                        ) == nonce.get("dispatch_readiness_receipt_sha256")
+                        == ledger.get("dispatch_readiness_receipt_sha256"),
+                        "DISPATCH_READINESS_RECEIPT_MISMATCH",
+                    )
+                    readiness_attempt_fields = {
+                        "logical_stage_id", "physical_attempt_id",
+                        "role_binding_sha256", "route_fingerprint",
+                        "destination_sha256", "request_shape_sha256",
+                        "provider_payload_sha256", "egress_intent_sha256",
+                        "requested_output_tokens",
+                    }
+                    _require(
+                        all(
+                            readiness.get(field) == attempt.get(field)
+                            for field in readiness_attempt_fields
+                        )
+                        and readiness.get("observer_session_sha256")
+                        == session_sha256
+                        and readiness.get(
+                            "provider_request_count_before_commit"
+                        ) == 0,
+                        "DISPATCH_ATTEMPT_READINESS_MISMATCH",
+                    )
                 consumed_body = dict(nonce)
                 consumed_body.pop("nonce_record_sha256", None)
                 consumed_body.update({
@@ -1951,7 +2213,7 @@ class FullShortDurableExecutionStoreV1:
             self._replace(self._path(execution_id, "ledger"), sealed)
             return sealed
 
-    def update_ledger(
+    def _update_ledger(
         self, execution_id: str, mutator: Any,
     ) -> dict[str, Any]:
         with self._locked():
@@ -1970,7 +2232,12 @@ class FullShortDurableExecutionStoreV1:
             )
             changed = mutator(deepcopy(body))
             _require(isinstance(changed, dict), "LEDGER_MUTATION_INVALID")
-            _validate_ledger_mutation_v1(body, changed)
+            if changed == body:
+                body["ledger_sha256"] = digest
+                return body
+            _validate_ledger_mutation_v1(
+                body, changed, mutation_kind="ORDINARY",
+            )
             changed["updated_at"] = _now()
             value = _seal(
                 "novel-flywheel-full-short-dispatch-ledger-v1", changed,
@@ -1978,6 +2245,15 @@ class FullShortDurableExecutionStoreV1:
             )
             self._replace(self._path(execution_id, "ledger"), value)
             return value
+
+    def update_ledger(
+        self, execution_id: str, mutator: Any,
+    ) -> dict[str, Any]:
+        """Apply an ordinary ledger transition; reconciliation is not public."""
+
+        return self._update_ledger(
+            execution_id, mutator,
+        )
 
     def commit_completion(
         self, *, execution_id: str, policy: Mapping[str, Any],
@@ -2133,6 +2409,10 @@ class FullShortDispatchLedgerObserverV1:
         if self.store.nonce_exists(execution_id):
             # Compatibility for already-materialized offline fixtures.  The
             # production runner uses the nonce-absent branch below.
+            _require(
+                external_actions_enabled is False,
+                "READINESS_LESS_NONCE_LIVE_DISPATCH_FORBIDDEN",
+            )
             self.store.verify_ready_chain(
                 execution_id=execution_id, policy=self.policy,
                 external_actions_enabled=external_actions_enabled,
@@ -2163,7 +2443,7 @@ class FullShortDispatchLedgerObserverV1:
     def _validate_pending_logical_stage_plan(self) -> dict[str, Any]:
         pending = self.pending_stage_context
         _require(isinstance(pending, dict),
-                 "CAPTURE_STAGE_CONTEXT_NOT_BOUND")
+                 "PREDISPATCH_STAGE_CONTEXT_NOT_BOUND")
         expected = self._next_logical_stage_plan_entry()
         _require(
             pending.get("stage_id") == expected["stage_id"]
@@ -2377,7 +2657,7 @@ class FullShortDispatchLedgerObserverV1:
         _require(route is not None, "ROUTE_NOT_BOUND_BEFORE_CREDENTIAL_OR_HTTP")
         _require(
             isinstance(self.pending_stage_context, dict),
-            "CAPTURE_STAGE_CONTEXT_NOT_BOUND",
+            "PREDISPATCH_STAGE_CONTEXT_NOT_BOUND",
         )
         _require(normalized == route.get("destination"), "DESTINATION_DRIFT")
         expected_payload = self.expected_provider_payload
@@ -2420,11 +2700,13 @@ class FullShortDispatchLedgerObserverV1:
                 str(ledger["created_at"]).replace("Z", "+00:00"),
             )
         except (KeyError, ValueError) as exc:
-            raise FullShortExecutionBoundaryError("LEDGER_CREATED_AT_INVALID") from exc
+            raise FullShortExecutionBoundaryError(
+                "PREDISPATCH_LEDGER_CREATED_AT_INVALID"
+            ) from exc
         _require(
             (datetime.now(timezone.utc) - created_at).total_seconds()
             <= self.policy["maximum_elapsed_seconds"],
-            "MAXIMUM_ELAPSED_EXPIRED",
+            "PREDISPATCH_MAXIMUM_ELAPSED_EXPIRED",
         )
         _require(
             len(attempts) < self.policy["hard_max_provider_requests"],
@@ -2618,8 +2900,21 @@ class FullShortDispatchLedgerObserverV1:
                 external_actions_enabled=self.external_actions_enabled,
                 session_id=self.session_id,
                 readiness={
+                    "schema": DISPATCH_READINESS_SCHEMA,
+                    "version": 1,
                     "execution_id": self.execution_id,
                     "policy_sha256": self.policy["policy_sha256"],
+                    "logical_stage_plan_sha256": self.policy[
+                        "logical_stage_plan_sha256"
+                    ],
+                    "permission_sha256": ledger["permission_sha256"],
+                    "signed_approval_sha256": ledger[
+                        "signed_approval_sha256"
+                    ],
+                    "predispatch_ledger_sha256": ledger["ledger_sha256"],
+                    "observer_session_sha256": hashlib.sha256(
+                        self.session_id.encode("utf-8"),
+                    ).hexdigest(),
                     "logical_stage_id": logical_stage_id,
                     "physical_attempt_id": physical_attempt_id,
                     "role_binding_sha256": route["role_binding_sha256"],
@@ -2635,11 +2930,34 @@ class FullShortDispatchLedgerObserverV1:
                     "hard_max_provider_requests": self.policy[
                         "hard_max_provider_requests"
                     ],
+                    "hard_max_http_posts": self.policy[
+                        "hard_max_http_posts"
+                    ],
+                    "hard_max_network_attempts": self.policy[
+                        "hard_max_network_attempts"
+                    ],
                     "max_physical_attempts_per_logical_stage": self.policy[
                         "max_physical_attempts_per_logical_stage"
                     ],
+                    "expected_stage_calls": self.policy[
+                        "expected_stage_calls"
+                    ],
+                    "per_call_output_token_hard_cap": self.policy[
+                        "per_call_output_token_hard_cap"
+                    ],
+                    "total_output_token_hard_cap": self.policy[
+                        "total_output_token_hard_cap"
+                    ],
+                    "maximum_elapsed_seconds": self.policy[
+                        "maximum_elapsed_seconds"
+                    ],
+                    "provider_request_count_before_commit": len(attempts),
+                    "http_post_count_before_commit": len(attempts),
                     "network_request_count_before_commit": 0,
                     "provider_response_count_before_commit": 0,
+                    "completed_stage_count_before_commit": len(
+                        ledger.get("completed_stage_receipts") or []
+                    ),
                 },
             )
         self.store.consume_nonce_and_record_dispatch(
@@ -2819,14 +3137,9 @@ class FullShortDispatchLedgerObserverV1:
             ).hexdigest()
             if current.get("state") == "HTTP_RESPONSE_FAILED_CLOSED":
                 _require(
-                    current.get("response_status_sha256") in {
-                        None, status_sha256,
-                    },
+                    current.get("response_status_sha256") == status_sha256,
                     "HTTP_RESPONSE_STATUS_DRIFT",
                 )
-                current["response_status_sha256"] = status_sha256
-                attempts[ordinal - 1] = current
-                body["attempts"] = attempts
                 return body
             _require(current.get("state") == "DISPATCH_ATTEMPTED", "DISPATCH_STATE_INVALID")
             if not 200 <= status_code < 300:
@@ -2879,19 +3192,24 @@ class FullShortDispatchLedgerObserverV1:
                 ) is True
             )
             if complete_capture:
+                http_failed = current.get(
+                    "provider_protocol_capture_http_success"
+                ) is False
                 current["state"] = (
                     "HTTP_RESPONSE_FAILED_CLOSED"
-                    if current.get(
-                        "provider_protocol_capture_http_success"
-                    ) is False
-                    else "POST_CAPTURE_TERMINAL_FAILED_CLOSED"
+                    if http_failed
+                    else "POST_CAPTURE_TERMINAL_CLASSIFICATION_PENDING"
                 )
-                current["failure_kind_sha256"] = hashlib.sha256(
+                current[
+                    "failure_kind_sha256"
+                    if http_failed else "adapter_failure_kind_sha256"
+                ] = hashlib.sha256(
                     failure_kind.encode("utf-8"),
                 ).hexdigest()
-                current["failure_class"] = (
-                    failure_class or "provider_protocol_terminal"
-                )
+                if http_failed:
+                    current["failure_class"] = (
+                        failure_class or "http_response_terminal"
+                    )
                 attempts[ordinal - 1] = current
                 body["attempts"] = attempts
                 body["state"] = "RECONCILIATION_REQUIRED_NO_REDISPATCH"
@@ -2937,6 +3255,7 @@ class FullShortDispatchLedgerObserverV1:
                 current.get("state") in {
                     "DISPATCH_ATTEMPTED", "RESPONSE_RECEIVED",
                     "HTTP_RESPONSE_FAILED_CLOSED",
+                    "POST_CAPTURE_TERMINAL_CLASSIFICATION_PENDING",
                     "POST_CAPTURE_TERMINAL_FAILED_CLOSED",
                 },
                 "POST_CAPTURE_TERMINAL_STATE_INVALID",
@@ -2968,20 +3287,18 @@ class FullShortDispatchLedgerObserverV1:
             ).hexdigest()
             if current.get("state") == "POST_CAPTURE_TERMINAL_FAILED_CLOSED":
                 _require(
-                    current.get("failure_kind_sha256") == failure_kind_sha256
-                    and current.get("failure_class") in {
-                        failure_class, "provider_protocol_terminal",
-                    },
+                    current.get("failure_kind_sha256") == failure_kind_sha256,
                     "POST_CAPTURE_TERMINAL_FAILURE_DRIFT",
                 )
-                current.update({
-                    "failure_class": failure_class,
-                    "terminal_contract_attempt_index": contract_attempt_index,
-                    "terminal_contract_route": contract_route,
-                    "terminal_contract_route_attempt": contract_route_attempt,
-                })
-                attempts[ordinal - 1] = current
-                body["attempts"] = attempts
+                _require(
+                    current.get("failure_class") == failure_class
+                    and int(current.get("terminal_contract_attempt_index") or 0)
+                    == contract_attempt_index
+                    and current.get("terminal_contract_route") == contract_route
+                    and int(current.get("terminal_contract_route_attempt") or 0)
+                    == contract_route_attempt,
+                    "POST_CAPTURE_TERMINAL_CLASSIFICATION_DRIFT",
+                )
                 return body
             current.update({
                 "state": "POST_CAPTURE_TERMINAL_FAILED_CLOSED",
@@ -3443,11 +3760,13 @@ def build_full_short_completion_receipt_v1(
             str(sealed_ledger["created_at"]).replace("Z", "+00:00"),
         )
     except (KeyError, ValueError) as exc:
-        raise FullShortExecutionBoundaryError("LEDGER_CREATED_AT_INVALID") from exc
+        raise FullShortExecutionBoundaryError(
+            "COMPLETION_LEDGER_CREATED_AT_INVALID"
+        ) from exc
     _require(
         (datetime.now(timezone.utc) - created_at).total_seconds()
         <= validated["maximum_elapsed_seconds"],
-        "MAXIMUM_ELAPSED_EXPIRED",
+        "COMPLETION_MAXIMUM_ELAPSED_EXPIRED",
     )
     receipts = completed_stage_receipts
     _require(
@@ -3764,11 +4083,7 @@ def reconcile_full_short_capture_anchor_v1(
             )
             return body
         _require(
-            current.get("state") in {
-                "DISPATCH_ATTEMPTED", "RESPONSE_RECEIVED",
-                "HTTP_RESPONSE_FAILED_CLOSED",
-                "POST_CAPTURE_TERMINAL_FAILED_CLOSED",
-            },
+            current.get("state") in _ATTEMPT_STATE_TRANSITIONS_V1,
             "CAPTURE_RECONCILIATION_LEDGER_STATE_INVALID",
         )
         current[field] = receipt_sha256
@@ -3777,7 +4092,31 @@ def reconcile_full_short_capture_anchor_v1(
         body["attempts"] = current_attempts
         return body
 
-    return store.update_ledger(execution_id, mutate)
+    # The special mutation is performed only inside the audit/replay owner.
+    # The generic store update API has no reconciliation mode to request.
+    with store._locked():
+        before = store._verify_seal(
+            store._read(execution_id, "ledger"),
+            domain="novel-flywheel-full-short-dispatch-ledger-v1",
+            field="ledger_sha256", reason="LEDGER_SHA256_MISMATCH",
+        )
+        body = dict(before)
+        body.pop("ledger_sha256", None)
+        changed = mutate(deepcopy(body))
+        _require(isinstance(changed, dict), "LEDGER_MUTATION_INVALID")
+        if changed == body:
+            return before
+        _validate_ledger_mutation_v1(
+            body, changed,
+            mutation_kind="CAPTURE_RECEIPT_RECONCILIATION",
+        )
+        changed["updated_at"] = _now()
+        value = _seal(
+            "novel-flywheel-full-short-dispatch-ledger-v1",
+            changed, "ledger_sha256",
+        )
+        store._replace(store._path(execution_id, "ledger"), value)
+        return value
 
 
 def replay_full_short_provider_attempt_v1(

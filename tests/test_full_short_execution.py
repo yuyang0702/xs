@@ -10,6 +10,11 @@ import pytest
 
 from novel_flywheel.db import Database
 from novel_flywheel.domain.models import Message, ModelRequest
+from novel_flywheel.execution_failure_architecture import (
+    DispatchState,
+    FailureLayer,
+    RestartBehavior,
+)
 from novel_flywheel.full_short_execution import (
     FullShortDispatchLedgerObserverV1,
     FullShortDurableExecutionStoreV1,
@@ -20,6 +25,7 @@ from novel_flywheel.full_short_execution import (
     LOGICAL_STAGE_RECOVERY_POLICY_V1,
     TRANSPORT_RECOVERY_POLICY_SHA256,
     TRANSPORT_RECOVERY_POLICY_V1,
+    _validate_dispatch_readiness_v1,
     _expected_provider_payload_v1,
     build_full_short_completion_receipt_v1,
     reconcile_full_short_capture_anchor_v1,
@@ -46,6 +52,7 @@ from novel_flywheel.projects import ProjectCreate, ProjectStore
 from novel_flywheel.story_state import StoryStateStore
 from novel_flywheel.structured_artifacts import StructuredArtifactContract
 from novel_flywheel.runtime_fingerprint_build import domain_sha256
+from novel_flywheel.recovery_engine import FailureClass
 from tools.canary import first_trustworthy_full_short_runner as real_runner
 
 
@@ -337,6 +344,144 @@ def test_dispatch_ready_receipt_precedes_lazy_nonce_consumption(
     assert ledger["nonce_disposition"] == "CONSUMED"
     assert ledger["state"] == "DISPATCH_IN_FLIGHT"
     assert len(ledger["attempts"]) == 1
+
+
+@pytest.mark.parametrize(
+    ("corruption", "reason_code"),
+    [
+        ("empty", "DISPATCH_READINESS_SCHEMA_INVALID"),
+        ("top_level_type", "DISPATCH_READINESS_SCHEMA_INVALID"),
+        ("missing", "DISPATCH_READINESS_SCHEMA_INVALID"),
+        ("wrong_type", "DISPATCH_READINESS_COUNTER_TYPE_INVALID"),
+        ("policy_mismatch", "DISPATCH_READINESS_POLICY_MISMATCH"),
+        ("session_mismatch", "DISPATCH_READINESS_SESSION_MISMATCH"),
+        ("ledger_mismatch", "DISPATCH_READINESS_LEDGER_MISMATCH"),
+        ("counter_mismatch", "DISPATCH_READINESS_COUNTER_MISMATCH"),
+        ("cap_mismatch", "DISPATCH_READINESS_CAP_MISMATCH"),
+    ],
+)
+def test_nonce_reservation_rejects_unbound_dispatch_readiness_before_write(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+    corruption: str, reason_code: str,
+) -> None:
+    store = _store(tmp_path / corruption)
+    execution_id = f"readiness-{corruption}"
+    _authorize_predispatch_offline(store, execution_id)
+    observer = _predispatch_observer(store, execution_id)
+    observer.bind_model_request(protocol="anthropic", request=_request())
+    original = store.reserve_nonce_from_dispatch_readiness
+
+    def reserve_with_invalid_readiness(**kwargs):
+        readiness = dict(kwargs["readiness"])
+        if corruption == "empty":
+            readiness = {}
+        elif corruption == "top_level_type":
+            readiness = []
+        elif corruption == "missing":
+            readiness.pop("predispatch_ledger_sha256")
+        elif corruption == "wrong_type":
+            readiness["network_request_count_before_commit"] = "0"
+        elif corruption == "policy_mismatch":
+            readiness["policy_sha256"] = "f" * 64
+        elif corruption == "session_mismatch":
+            readiness["observer_session_sha256"] = "f" * 64
+        elif corruption == "ledger_mismatch":
+            readiness["predispatch_ledger_sha256"] = "f" * 64
+        elif corruption == "counter_mismatch":
+            readiness["provider_request_count_before_commit"] = 1
+        elif corruption == "cap_mismatch":
+            readiness["hard_max_http_posts"] += 1
+        kwargs["readiness"] = readiness
+        return original(**kwargs)
+
+    monkeypatch.setattr(
+        store, "reserve_nonce_from_dispatch_readiness",
+        reserve_with_invalid_readiness,
+    )
+    with pytest.raises(FullShortExecutionBoundaryError) as rejected:
+        observer.before_http_dispatch(
+            method="POST", url="https://unit.test/v1/messages",
+            payload=_payload(),
+        )
+
+    assert rejected.value.reason_code == reason_code
+    assert store.nonce_exists(execution_id) is False
+    ledger = store.load_ledger(execution_id)
+    assert ledger["state"] == "PREDISPATCH_LOCAL_READINESS"
+    assert ledger["attempts"] == []
+
+
+def test_dispatch_readiness_validation_is_idempotent_and_dispatch_bound(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    store = _store(tmp_path)
+    execution_id = "readiness-idempotent"
+    _authorize_predispatch_offline(store, execution_id)
+    observer = _predispatch_observer(store, execution_id)
+    observer.bind_model_request(protocol="anthropic", request=_request())
+    original_reserve = store.reserve_nonce_from_dispatch_readiness
+
+    def reserve_after_idempotent_validation(**kwargs):
+        ledger = store.load_ledger(execution_id)
+        session_sha256 = hashlib.sha256(
+            observer.session_id.encode("utf-8"),
+        ).hexdigest()
+        first = _validate_dispatch_readiness_v1(
+            kwargs["readiness"], execution_id=execution_id,
+            policy=observer.policy, session_sha256=session_sha256,
+            ledger=ledger,
+        )
+        second = _validate_dispatch_readiness_v1(
+            first, execution_id=execution_id, policy=observer.policy,
+            session_sha256=session_sha256, ledger=ledger,
+        )
+        assert second == first == kwargs["readiness"]
+        return original_reserve(**kwargs)
+
+    monkeypatch.setattr(
+        store, "reserve_nonce_from_dispatch_readiness",
+        reserve_after_idempotent_validation,
+    )
+    observer.before_http_dispatch(
+        method="POST", url="https://unit.test/v1/messages",
+        payload=_payload(),
+    )
+    nonce = store.load_nonce(execution_id)
+    assert nonce["dispatch_readiness"]["physical_attempt_id"] == (
+        store.load_ledger(execution_id)["attempts"][0]["physical_attempt_id"]
+    )
+
+
+def test_dispatch_attempt_must_match_sealed_readiness(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    store = _store(tmp_path)
+    execution_id = "readiness-attempt-mismatch"
+    _authorize_predispatch_offline(store, execution_id)
+    observer = _predispatch_observer(store, execution_id)
+    observer.bind_model_request(protocol="anthropic", request=_request())
+    original_consume = store.consume_nonce_and_record_dispatch
+
+    def consume_mismatched_attempt(**kwargs):
+        attempt = dict(kwargs["attempt"])
+        attempt["request_shape_sha256"] = "f" * 64
+        kwargs["attempt"] = attempt
+        return original_consume(**kwargs)
+
+    monkeypatch.setattr(
+        store, "consume_nonce_and_record_dispatch",
+        consume_mismatched_attempt,
+    )
+    with pytest.raises(FullShortExecutionBoundaryError) as rejected:
+        observer.before_http_dispatch(
+            method="POST", url="https://unit.test/v1/messages",
+            payload=_payload(),
+        )
+    assert rejected.value.reason_code == "DISPATCH_ATTEMPT_READINESS_MISMATCH"
+    assert store.load_nonce(execution_id)["state"] == (
+        "CONSUMED_DISPATCH_COMMIT_PENDING"
+    )
+    assert store.load_ledger(execution_id)["attempts"] == []
 
 
 def test_crash_between_lazy_nonce_and_ledger_commit_is_terminal_no_redispatch(
@@ -956,7 +1101,12 @@ async def test_contract_runtime_terminal_exception_after_complete_capture_never_
             content_type="application/json", encoding="utf-8",
             transport_complete=True,
         )
-        observer.after_http_response(status_code=200)
+        observer.after_http_failure(failure_kind="RuntimeError")
+        pending = store.load_ledger(execution_id)["attempts"][0]
+        assert pending["state"] == (
+            "POST_CAPTURE_TERMINAL_CLASSIFICATION_PENDING"
+        )
+        assert "failure_class" not in pending
         raise RuntimeError("adapter terminal protocol exception")
 
     observations: list[dict] = []
@@ -1384,6 +1534,33 @@ def test_restart_before_dispatch_is_also_fail_closed(tmp_path: Path) -> None:
         _observer(store, "restart-before-dispatch", session_id="new-process")
     assert restarted.value.reason_code == "OBSERVER_ALREADY_CLAIMED_NO_RESTART"
     assert store._read("restart-before-dispatch", "nonce")["state"] == "RESERVED"
+
+
+def test_legacy_nonce_can_never_authorize_live_dispatch(tmp_path: Path) -> None:
+    store = _store(tmp_path)
+    execution_id = "legacy-nonce-live-rejected"
+    policy = _policy(store)
+    permission = store.create_permission(
+        execution_id=execution_id,
+        authorization_text_sha256="3" * 64,
+        policy=policy,
+        external_actions_enabled=True,
+    )
+    approval = store.create_jit_approval(
+        execution_id=execution_id,
+        policy=policy,
+        permission=permission,
+        external_actions_enabled=True,
+    )
+    with pytest.raises(FullShortExecutionBoundaryError) as rejected:
+        store.reserve_nonce(
+            execution_id=execution_id,
+            policy=policy,
+            approval=approval,
+            external_actions_enabled=True,
+        )
+    assert rejected.value.reason_code == "LEGACY_NONCE_RESERVATION_LIVE_FORBIDDEN"
+    assert not store.nonce_exists(execution_id)
 
 
 def test_nonce_and_approval_are_exclusive_and_destination_is_exact(tmp_path: Path) -> None:
@@ -1934,7 +2111,9 @@ def test_durable_chain_tamper_and_external_authority_mismatch_fail_closed(
             authorized_routes=_routes(), egress_policy=_egress(),
             external_actions_enabled=True,
         )
-    assert mismatch.value.reason_code == "EXTERNAL_ACTION_AUTHORITY_MISMATCH"
+    assert mismatch.value.reason_code == (
+        "READINESS_LESS_NONCE_LIVE_DISPATCH_FORBIDDEN"
+    )
 
     approval_path = store._path("chain-exact", "approval")
     approval_path.write_bytes(approval_path.read_bytes().replace(
@@ -2135,6 +2314,99 @@ def test_durable_ledger_rejects_reopening_closed_attempt(tmp_path: Path) -> None
     ledger = store.load_ledger("pending-only")
     assert ledger["attempts"][0]["state"] == "LOCAL_ATTEMPT_REJECTED"
     assert ledger["attempts"][1]["state"] == "LOCAL_STAGE_COMPLETE"
+
+
+@pytest.mark.parametrize(
+    ("field", "replacement"),
+    [
+        ("local_rejection_failure_code", "replacement_failure"),
+        ("local_rejection_receipt_sha256", "e" * 64),
+        ("local_rejection_failure_reason_sha256", "f" * 64),
+    ],
+)
+def test_closed_attempt_same_state_cannot_rewrite_failure_or_evidence(
+    tmp_path: Path, field: str, replacement: str,
+) -> None:
+    store = _store(tmp_path / field)
+    execution_id = f"closed-{field.replace('_', '-')}"
+    _authorize_offline(store, execution_id)
+    observer = _observer(store, execution_id)
+    observer.before_http_dispatch(
+        method="POST", url="https://unit.test/v1/messages",
+        payload=_payload(),
+    )
+    observer.after_http_response(status_code=200)
+    observer.mark_local_attempt_rejected(
+        stage="planning-semantic-v2", role="planning",
+        role_binding_sha256=observer.bound_route["role_binding_sha256"],
+        rejection=_local_rejection(),
+    )
+    before = store.load_ledger(execution_id)
+
+    def rewrite_closed_attempt(body: dict) -> dict:
+        body["attempts"][0][field] = replacement
+        return body
+
+    with pytest.raises(FullShortExecutionBoundaryError) as rejected:
+        store.update_ledger(execution_id, rewrite_closed_attempt)
+    assert rejected.value.reason_code == "CLOSED_ATTEMPT_IMMUTABLE"
+    assert store.load_ledger(execution_id) == before
+
+
+def test_closed_attempt_reconciliation_only_fills_exact_capture_receipt(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    store = _store(tmp_path)
+    execution_id = "closed-capture-reconciliation"
+    _authorize_offline(store, execution_id)
+    observer = _observer(store, execution_id)
+    observer.before_http_dispatch(
+        method="POST", url="https://unit.test/v1/messages",
+        payload=_payload(),
+    )
+    original_update = store.update_ledger
+    with monkeypatch.context() as crash:
+        crash.setattr(
+            store, "update_ledger",
+            lambda *_args, **_kwargs: (_ for _ in ()).throw(
+                RuntimeError("capture ledger publication crash")
+            ),
+        )
+        with pytest.raises(RuntimeError, match="publication crash"):
+            observer.capture_provider_protocol_input(
+                data=b'{"ok":true}', status_code=200,
+                content_type="application/json", encoding="utf-8",
+                transport_complete=True,
+            )
+    observer.after_http_failure(failure_kind="ReadTimeout")
+    before = store.load_ledger(execution_id)["attempts"][0]
+
+    reconciled = reconcile_full_short_capture_anchor_v1(
+        store=store, execution_id=execution_id, ordinal=1,
+    )
+    after = reconciled["attempts"][0]
+    assert after["state"] == before["state"] == "OUTCOME_UNKNOWN_FAIL_CLOSED"
+    assert after["failure_kind_sha256"] == before["failure_kind_sha256"]
+    assert after["provider_protocol_capture_transport_complete"] is True
+    assert len(after["provider_protocol_capture_receipt_sha256"]) == 64
+    assert {
+        key for key in set(before) | set(after)
+        if before.get(key) != after.get(key)
+    } == {
+        "provider_protocol_capture_receipt_sha256",
+        "provider_protocol_capture_transport_complete",
+    }
+
+    def smuggle_failure_rewrite(body: dict) -> dict:
+        body["attempts"][0]["failure_kind_sha256"] = "f" * 64
+        return body
+
+    with pytest.raises(TypeError, match="mutation_kind"):
+        original_update(
+            execution_id, smuggle_failure_rewrite,
+            mutation_kind="CAPTURE_RECEIPT_RECONCILIATION",
+        )
+    assert store.load_ledger(execution_id)["attempts"][0] == after
 
 
 def test_mark_local_stage_complete_cannot_replace_authorized_stage_id(
@@ -2403,3 +2675,31 @@ def test_real_runner_collects_live_bindings_without_secret_lookup(
         "provider_request": 0, "http_post": 0, "network": 0,
         "model": 0, "paid": 0,
     }
+
+
+@pytest.mark.parametrize(
+    "reason,layer,failure_class",
+    [
+        ("CREDENTIAL_ABSENT", FailureLayer.PROVIDER_CREDENTIAL, FailureClass.CREDENTIAL),
+        ("PROVIDER_ROUTE_CONFIG_MISSING", FailureLayer.PROVIDER_ROUTE, FailureClass.CAPABILITY),
+        ("REQUEST_BUILD_FAILED", FailureLayer.PROVIDER_REQUEST_BUILD, FailureClass.SYNTAX_PROTOCOL),
+    ],
+)
+def test_execution_boundary_error_uses_closed_taxonomy_not_token_guessing(
+    reason: str, layer: FailureLayer, failure_class: FailureClass,
+) -> None:
+    error = FullShortExecutionBoundaryError(reason)
+
+    assert error.failure_layer == layer
+    assert error.reliability_failure.failure_class == failure_class
+    assert error.dispatch_state == DispatchState.NOT_REACHED
+    assert error.restart_behavior == RestartBehavior.FRESH_AUTHORIZATION_REQUIRED
+
+
+def test_unregistered_execution_boundary_is_explicitly_unmapped_fail_closed() -> None:
+    error = FullShortExecutionBoundaryError("CAPTURE_FAKE_TOKEN_GUESS")
+
+    assert error.failure_layer == FailureLayer.EXECUTION_RUNTIME_BINDING
+    assert error.failure_family == "execution.unmapped_local_boundary"
+    assert error.reliability_failure.code == "unmapped_capture_fake_token_guess"
+    assert error.dispatch_state == DispatchState.NOT_REACHED

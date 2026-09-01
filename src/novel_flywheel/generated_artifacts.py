@@ -549,6 +549,7 @@ _REGISTRATIONS = (
         wire_required_fields=(
             "facts", "state", "coverage", "disposition", "no_change_reason",
         ),
+        wire_optional_fields=("state_transitions",),
         wire_closed=True,
         minimum_business_characters=96,
     ),

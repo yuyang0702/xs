@@ -544,7 +544,8 @@ def validate_short_maintenance_business_complete_v2(
 
     value = dict(payload)
     required = {"facts", "state", "coverage", "disposition", "no_change_reason"}
-    if set(value) != required:
+    allowed = required | {"state_transitions"}
+    if not required <= set(value) or not set(value) <= allowed:
         raise ValueError("maintenance business fields are incomplete")
     coverage = value.get("coverage")
     if not isinstance(coverage, Mapping) or set(coverage) != {
@@ -558,6 +559,19 @@ def validate_short_maintenance_business_complete_v2(
     state = value.get("state")
     if not isinstance(facts, list) or not isinstance(state, Mapping):
         raise ValueError("maintenance facts/state shape is invalid")
+    transitions = value.get("state_transitions", [])
+    if not isinstance(transitions, list) or any(
+        not isinstance(item, Mapping)
+        or set(item) != {"character", "field", "from", "to", "evidence"}
+        or not isinstance(item.get("character"), str)
+        or not item.get("character", "").strip()
+        or not isinstance(item.get("field"), str)
+        or not item.get("field", "").strip()
+        or not isinstance(item.get("evidence"), str)
+        or not item.get("evidence", "").strip()
+        for item in transitions
+    ):
+        raise ValueError("maintenance state transitions are invalid")
     disposition = value.get("disposition")
     reason = value.get("no_change_reason")
     if not isinstance(reason, str) or not reason.strip():
@@ -18716,6 +18730,22 @@ class WorkflowService:
             "properties": {
                 "facts": {"type": "array", "items": {}},
                 "state": {"type": "object"},
+                "state_transitions": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "character": {"type": "string", "minLength": 1},
+                            "field": {"type": "string", "minLength": 1},
+                            "from": {}, "to": {},
+                            "evidence": {"type": "string", "minLength": 1},
+                        },
+                        "required": [
+                            "character", "field", "from", "to", "evidence",
+                        ],
+                        "additionalProperties": False,
+                    },
+                },
                 "coverage": {
                     "type": "object",
                     "properties": {
@@ -18751,7 +18781,8 @@ class WorkflowService:
             "Extract durable canonical facts and state deltas from the complete "
             "authoritative manuscript. Return only the strict JSON object "
             "short_maintenance_business_complete_v2 with facts, state, coverage, "
-            "disposition, and no_change_reason. Never imply complete coverage "
+            "disposition, no_change_reason, and typed state_transitions when an "
+            "existing state value changes. Never imply complete coverage "
             "with an empty legacy facts object."
         )
         for attempt in range(2):

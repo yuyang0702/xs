@@ -5,12 +5,14 @@ import hashlib
 import os
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from types import SimpleNamespace
 
 import httpx
 import pytest
 
 from novel_flywheel.db import Database
 from novel_flywheel.projects import ProjectCreate, ProjectStore
+from novel_flywheel.secrets import MemorySecretStore
 from novel_flywheel.skills import SkillScanner
 from novel_flywheel.story_state import StoryStateStore
 from tools.canary import first_trustworthy_full_short_runner as runner
@@ -26,7 +28,7 @@ async def test_disabled_actions_reject_non_offline_factories_before_secret_looku
         raise AssertionError("secret factory must not be called")
 
     with pytest.raises(
-        ValueError,
+        runner.FullShortExecutionBoundaryError,
         match="DISABLED_EXTERNAL_ACTIONS_REQUIRE_EXPLICIT_OFFLINE_SEAMS",
     ):
         await runner.execute_full_short_control_plane(
@@ -35,6 +37,239 @@ async def test_disabled_actions_reject_non_offline_factories_before_secret_looku
         )
 
     assert called is False
+
+
+def test_runner_machine_code_reaches_exact_failure_taxonomy() -> None:
+    metadata = runner._safe_failure_metadata(
+        runner.FullShortExecutionBoundaryError(
+            "FULL_SHORT_LEDGER_CREATED_AT_INVALID"
+        ),
+        boundary="full_short.postrun",
+    )
+
+    assert metadata["failure_graph"]["code"] == (
+        "full_short_ledger_created_at_invalid"
+    )
+    assert metadata["failure_graph"]["family"] == (
+        "authority.postrun_invariant"
+    )
+    assert metadata["failure_graph"]["dispatch_state"] == "not_reached"
+
+
+@pytest.mark.asyncio
+async def test_spoofed_offline_markers_cannot_enter_direct_execution() -> None:
+    called = False
+
+    def seam(*_args, **_kwargs):
+        nonlocal called
+        called = True
+        raise AssertionError("spoofed seam must not be called")
+
+    seam.offline_only = True
+    with pytest.raises(
+        runner.FullShortExecutionBoundaryError,
+        match="DISABLED_EXTERNAL_ACTIONS_REQUIRE_EXPLICIT_OFFLINE_SEAMS",
+    ):
+        await runner.execute_full_short_control_plane(
+            object(), {}, external_actions_enabled=False,
+            secret_store_factory=seam,
+            registry_factory=seam,
+            http_transport_factory=seam,
+        )
+    assert called is False
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("failure", "expected_code", "expected_boundary"),
+    [
+        ("sha", "activated_authorization_sha256_mismatch", "full_short.execution.authorization"),
+        ("object", "full_short_authorization_object_drift", "full_short.execution.authorization"),
+        ("preflight", "head_drift", "full_short.execution.runtime_binding"),
+    ],
+)
+async def test_direct_execution_preflight_failure_persists_typed_receipt(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+    failure: str, expected_code: str, expected_boundary: str,
+) -> None:
+    raw = b"{}"
+    args = SimpleNamespace(
+        authorization_raw=raw,
+        activated_sha256=(
+            "0" * 64 if failure == "sha" else hashlib.sha256(raw).hexdigest()
+        ),
+        store_root=tmp_path / "control-store",
+    )
+    authorization = {"expected": True}
+    if failure == "object":
+        monkeypatch.setattr(
+            runner, "preflight_full_short_control_plane",
+            lambda *_args, **_kwargs: ({"different": True}, {}),
+        )
+    elif failure == "preflight":
+        def reject(*_args, **_kwargs):
+            raise runner.FullShortExecutionBoundaryError("HEAD_DRIFT")
+
+        monkeypatch.setattr(
+            runner, "preflight_full_short_control_plane", reject,
+        )
+
+    with pytest.raises(runner.FullShortExecutionBoundaryError):
+        await runner.execute_full_short_control_plane(
+            args, authorization, external_actions_enabled=True,
+            secret_store_factory=lambda: None,
+        )
+
+    paths = list(args.store_root.glob("preflight-failure-*.json"))
+    assert len(paths) == 1
+    first_raw = paths[0].read_bytes()
+    receipt = json.loads(first_raw.decode("utf-8"))
+    graph = receipt["failure_graph"]
+    assert graph["boundary"] == expected_boundary
+    assert graph["code"] == expected_code
+    assert graph["source_exception_class"] == (
+        "FullShortExecutionBoundaryError"
+    )
+    assert receipt["approval_created"] is False
+    assert receipt["nonce_created"] is False
+    assert receipt["credential_lookup_count"] == 0
+    assert receipt["network_calls"] == 0
+    assert len(receipt["failure_graph_sha256"]) == 64
+    assert paths[0].name == (
+        "preflight-failure-"
+        + receipt["failure_graph_sha256"]
+        + ".json"
+    )
+
+    with pytest.raises(runner.FullShortExecutionBoundaryError):
+        await runner.execute_full_short_control_plane(
+            args, authorization, external_actions_enabled=True,
+            secret_store_factory=lambda: None,
+        )
+    assert paths[0].read_bytes() == first_raw
+
+
+@pytest.mark.asyncio
+async def test_explicit_offline_wrapper_uses_private_capability(
+    tmp_path: Path,
+) -> None:
+    raw = b"{}"
+    args = SimpleNamespace(
+        authorization_raw=raw,
+        activated_sha256="0" * 64,
+        store_root=tmp_path / "control-store",
+    )
+
+    with pytest.raises(
+        runner.FullShortExecutionBoundaryError,
+        match="ACTIVATED_AUTHORIZATION_SHA256_MISMATCH",
+    ):
+        await runner._execute_full_short_control_plane_offline(
+            args, {}, secret_store=MemorySecretStore(),
+            http_transport_factory=lambda *_args, **_kwargs: None,
+        )
+    assert len(list(args.store_root.glob("preflight-failure-*.json"))) == 1
+
+
+@pytest.mark.asyncio
+async def test_offline_wrapper_rejects_non_memory_secret_before_preflight() -> None:
+    with pytest.raises(
+        runner.FullShortExecutionBoundaryError,
+        match="DISABLED_EXTERNAL_ACTIONS_REQUIRE_EXPLICIT_OFFLINE_SEAMS",
+    ):
+        await runner._execute_full_short_control_plane_offline(
+            object(), {}, secret_store=object(),
+            http_transport_factory=lambda *_args, **_kwargs: None,
+        )
+
+
+def test_receipt_sink_failure_cannot_prevent_exact_once_terminalization(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls: list[tuple[str, str]] = []
+
+    class Manager:
+        @staticmethod
+        def fail_closed_exact_once_reservation(execution_id, *, reason_code):
+            calls.append((execution_id, reason_code))
+            return True
+
+    monkeypatch.setattr(
+        runner, "_persist_preflight_failure",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(
+            OSError("receipt media unavailable")
+        ),
+    )
+    original = runner.FullShortExecutionBoundaryError("HEAD_DRIFT")
+    runner._terminalize_prelaunch_failure(
+        SimpleNamespace(), original,
+        boundary="full_short.prelaunch.live_authority_recheck",
+        manager=Manager(), execution_id="exact-once-id",
+        approval_created=False,
+    )
+
+    assert calls[0][0] == "exact-once-id"
+    assert calls[0][1].startswith("FULL_SHORT_PRELAUNCH_FAILURE_GRAPH_")
+    assert any("OSError" in note for note in original.__notes__)
+
+
+def test_offline_registry_must_accept_and_attest_exact_transport() -> None:
+    supplied_transport = object()
+    called = False
+
+    def ignores_transport(_db, _secrets, *, transport_policy, attempt_observer):
+        nonlocal called
+        called = True
+        return object()
+
+    with pytest.raises(
+        runner.FullShortExecutionBoundaryError,
+        match="OFFLINE_REGISTRY_CANNOT_BIND_HTTP_TRANSPORT",
+    ):
+        runner._registry_from_factory(
+            ignores_transport, db=object(), secret_store=object(),
+            observer=object(), http_transport_factory=supplied_transport,
+        )
+    assert called is False
+
+    def lies_about_transport(_db, _secrets, **_kwargs):
+        return SimpleNamespace(transport_factory=object())
+
+    with pytest.raises(
+        runner.FullShortExecutionBoundaryError,
+        match="OFFLINE_REGISTRY_TRANSPORT_BINDING_NOT_EXACT",
+    ):
+        runner._registry_from_factory(
+            lies_about_transport, db=object(), secret_store=object(),
+            observer=object(), http_transport_factory=supplied_transport,
+        )
+
+
+def test_lowest_offline_registry_rejects_network_capable_transport(
+    tmp_path: Path,
+) -> None:
+    from novel_flywheel.providers.http import SingleDispatchTransportPolicyV1
+    from tools.canary.first_trustworthy_full_short_dry_run import (
+        _LowestHttpSeamRegistry,
+    )
+
+    _repo, data, _project_id, db = _bound_project(tmp_path)
+    secrets = MemorySecretStore()
+    secrets.set("provider", "offline-memory-only")
+
+    class UnsafeFactory:
+        @staticmethod
+        def build(**_kwargs):
+            return httpx.AsyncHTTPTransport(retries=0)
+
+    registry = _LowestHttpSeamRegistry(
+        db, secrets, http_transport_factory=UnsafeFactory(),
+        transport_policy=SingleDispatchTransportPolicyV1.phase_b(),
+    )
+    with pytest.raises(ValueError, match="OFFLINE_HTTP_TRANSPORT_NOT_CLOSED"):
+        registry.resolve(
+            "provider", "model", role="planning", lane="primary",
+        )
 
 
 def _logical_plan() -> list[dict]:
@@ -161,7 +396,7 @@ def test_dry_run_has_no_test_owned_oracle_or_fixed_call_count() -> None:
     )
     assert "tests.test_" not in source
     assert "expected_stage_calls=1" not in source
-    assert "execute_full_short_control_plane(" in source
+    assert "_execute_full_short_control_plane_offline(" in source
     assert "run_full_short_workflow_path(" in source
     assert "expected_calls * 4" not in source
     assert "discovered_plan_total_cap + planning_retry_cap" in source
@@ -490,3 +725,6 @@ def test_real_runner_fail_closes_orphaned_and_prelaunch_reservations() -> None:
     assert "ORPHANED_EXACT_ONCE_RESERVATION_NO_RESUME" in source
     assert "NEW_SINGLE_USE_AUTHORIZATION_REQUIRED" in source
     assert "FULL_SHORT_PRELAUNCH_RESERVATION_CLEANUP_FAILED" in source
+    assert "FULL_SHORT_PRELAUNCH_FAILURE_GRAPH_" in source
+    assert "FULL_SHORT_STORE_BINDING_FAILED_BEFORE_LAUNCH" not in source
+    assert "FULL_SHORT_PERMISSION_FAILED_BEFORE_LAUNCH" not in source

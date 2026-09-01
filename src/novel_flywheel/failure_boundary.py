@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import math
 import re
 import unicodedata
 from typing import Literal
@@ -11,10 +12,108 @@ from pydantic import BaseModel, ConfigDict, Field
 _FAILURE_CODE = re.compile(r"^[a-z][a-z0-9_.-]{2,127}$")
 _WINDOWS_PATH = re.compile(r"(?i)\b[a-z]:[\\/][^\s\]\[(){}<>\"']+")
 _POSIX_PATH = re.compile(r"(?<![A-Za-z0-9])/(?:[^\s/]+/)+[^\s\]\[(){}<>\"']+")
-_SECRET_VALUE = re.compile(
-    r"(?i)\b(api[_ -]?key|authorization|bearer|access[_ -]?token|secret)"
-    r"\s*[:=]\s*[^\s,;]+"
+_SECRET_ASSIGNMENT = re.compile(
+    r"(?i)\b(api[_ -]?key|authorization|access[_ -]?token|refresh[_ -]?token|"
+    r"client[_ -]?secret|private[_ -]?key|password|passwd|pwd|token|secret)"
+    r"\s*[:=]\s*(?:\"[^\"]*\"|'[^']*'|[^\s,;]+)"
 )
+_BEARER_VALUE = re.compile(r"(?i)\bbearer\s+[A-Za-z0-9._~+/=-]{8,}")
+_AWS_ACCESS_KEY = re.compile(
+    r"(?<![A-Za-z0-9])(?:AKIA|ASIA|AIDA|AROA)[A-Z0-9]{16}(?![A-Za-z0-9])",
+    re.IGNORECASE,
+)
+_GITHUB_TOKEN = re.compile(
+    r"(?<![A-Za-z0-9])(?:gh[pousr]_[A-Za-z0-9]{20,}|"
+    r"github_pat_[A-Za-z0-9_]{20,})(?![A-Za-z0-9])",
+    re.IGNORECASE,
+)
+_JWT = re.compile(
+    r"(?<![A-Za-z0-9_-])eyJ[A-Za-z0-9_-]{6,}\."
+    r"[A-Za-z0-9_-]{6,}\.[A-Za-z0-9_-]{6,}(?![A-Za-z0-9_-])"
+)
+_PRIVATE_KEY_MARKER = re.compile(
+    r"-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----", re.IGNORECASE,
+)
+_HIGH_ENTROPY_CANDIDATE = re.compile(
+    r"(?<![A-Za-z0-9])(?:[A-Fa-f0-9]{32,}|[A-Za-z0-9+/=_-]{32,})"
+    r"(?![A-Za-z0-9])"
+)
+_HIGH_ENTROPY_NONSPACE = re.compile(r"\S{32,}")
+
+
+def _is_high_entropy_candidate(value: str) -> bool:
+    candidate = value.strip("=+-_/.,;:!?()[]{}<>\"'")
+    if len(candidate) < 32:
+        return False
+    if re.fullmatch(r"[A-Fa-f0-9]{32,}", candidate):
+        return True
+    counts = {character: candidate.count(character) for character in set(candidate)}
+    entropy = -sum(
+        (count / len(candidate)) * math.log2(count / len(candidate))
+        for count in counts.values()
+    )
+    has_digit = any(character.isdigit() for character in candidate)
+    mixed_case = any(character.islower() for character in candidate) and any(
+        character.isupper() for character in candidate
+    )
+    return entropy >= 4.0 and (has_digit or mixed_case)
+
+
+def contains_potential_secret(value: object) -> bool:
+    """Fail closed for values unsafe to copy into durable/public metadata."""
+
+    # Compatibility normalization is detection-only: full-width labels must
+    # not bypass the exact same credential rules as their ASCII forms.
+    text = unicodedata.normalize("NFKC", str(value or ""))
+    folded = text.casefold()
+    if any((
+        _SECRET_ASSIGNMENT.search(text), _BEARER_VALUE.search(text),
+        _AWS_ACCESS_KEY.search(text), _GITHUB_TOKEN.search(text),
+        _JWT.search(text), _PRIVATE_KEY_MARKER.search(text),
+        _WINDOWS_PATH.search(text), _POSIX_PATH.search(text),
+    )):
+        return True
+    if any(marker in folded for marker in (
+        "private_credential", "secret_value", "api_key_value",
+        "password_value",
+    )):
+        return True
+    return any(
+        _is_high_entropy_candidate(match.group(0))
+        for match in _HIGH_ENTROPY_CANDIDATE.finditer(text)
+    ) or any(
+        _is_high_entropy_candidate(match.group(0))
+        for match in _HIGH_ENTROPY_NONSPACE.finditer(text)
+    )
+
+
+def redact_potential_secrets(value: object) -> str:
+    """Deterministically remove common credentials and opaque secret material."""
+
+    text = unicodedata.normalize("NFKC", str(value or ""))
+    text = _SECRET_ASSIGNMENT.sub(
+        lambda match: f"{match.group(1)}=<redacted>", text,
+    )
+    for pattern in (
+        _BEARER_VALUE, _AWS_ACCESS_KEY, _GITHUB_TOKEN, _JWT,
+        _PRIVATE_KEY_MARKER,
+    ):
+        text = pattern.sub("<redacted>", text)
+    text = _HIGH_ENTROPY_CANDIDATE.sub(
+        lambda match: (
+            "<redacted>"
+            if _is_high_entropy_candidate(match.group(0)) else match.group(0)
+        ),
+        text,
+    )
+    text = _HIGH_ENTROPY_NONSPACE.sub(
+        lambda match: (
+            "<redacted>"
+            if _is_high_entropy_candidate(match.group(0)) else match.group(0)
+        ),
+        text,
+    )
+    return text
 
 
 class SafeFailureEnvelopeV1(BaseModel):
@@ -114,11 +213,16 @@ def safe_local_validation_message(
 ) -> str:
     """Keep actionable local validator feedback after deterministic redaction."""
 
+    safe_fallback = redact_potential_secrets(fallback)
+    safe_fallback = _WINDOWS_PATH.sub("<path>", safe_fallback)
+    safe_fallback = _POSIX_PATH.sub("<path>", safe_fallback)
+    safe_fallback = re.sub(r"\s+", " ", safe_fallback).strip()[:300]
+    safe_fallback = safe_fallback or "输入未通过本地校验。"
     message = unicodedata.normalize("NFC", str(exc or "")).strip()
     if not message:
-        return fallback
-    message = _SECRET_VALUE.sub(lambda match: f"{match.group(1)}=<redacted>", message)
+        return safe_fallback
+    message = redact_potential_secrets(message)
     message = _WINDOWS_PATH.sub("<path>", message)
     message = _POSIX_PATH.sub("<path>", message)
     message = re.sub(r"\s+", " ", message).strip()
-    return message[:300] or fallback
+    return message[:300] or safe_fallback

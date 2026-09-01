@@ -21,6 +21,8 @@ import subprocess
 import tempfile
 from typing import Any, Callable
 
+import httpx
+
 from novel_flywheel.db import Database
 from novel_flywheel.failure_boundary import failure_evidence_sha256
 from novel_flywheel.full_short_execution import (
@@ -33,7 +35,6 @@ from novel_flywheel.models import ModelResult
 from novel_flywheel.offline_http_transport import (
     OfflineHttpRequestV1,
     OfflineHttpResponseV1,
-    build_offline_http_client_v1,
     build_offline_http_transport_v1,
 )
 from novel_flywheel.provider_response_capture import (
@@ -44,7 +45,7 @@ from novel_flywheel.provider_response_capture import (
 )
 from novel_flywheel.projects import ProjectStore
 from novel_flywheel.providers.http import SingleDispatchTransportPolicyV1
-from novel_flywheel.providers.registry import ProviderRegistry
+from novel_flywheel.providers.registry import ADAPTERS, ProviderRegistry, ResolvedModel
 from novel_flywheel.secrets import MemorySecretStore
 from tools.canary.fake_boundary import (
     DeterministicShortBoundary,
@@ -54,8 +55,8 @@ from tools.canary.fake_boundary import (
 from tools.canary.short_completion import COMPLETION_GOAL
 from tools.canary.first_trustworthy_full_short_runner import (
     FULL_SHORT_REQUIRED_EXECUTION_ROLES,
+    _execute_full_short_control_plane_offline,
     collect_live_bindings,
-    execute_full_short_control_plane,
     run_full_short_workflow_path,
 )
 
@@ -535,8 +536,6 @@ class _PrivateDryRunOracle:
 class _OfflineHttpTransportFactory:
     """The only response stub: one in-memory ``httpx`` transport factory."""
 
-    offline_only = True
-
     def __init__(
         self, *, inject_planning_business_incomplete_once: bool = False,
         inject_adapter_failure_after_exact_capture_once: bool = False,
@@ -706,8 +705,6 @@ class _OfflineHttpTransportFactory:
 
 class _CapturedResponseReplayTransportFactory:
     """Feed ledger-anchored captured bytes back through real adapters."""
-
-    offline_only = True
 
     def __init__(
         self, *, capture_store: ProviderResponseCaptureStoreV1,
@@ -976,12 +973,44 @@ class _LowestHttpSeamRegistry(ProviderRegistry):
         self, provider_id: str, model_id: str, *,
         role: str | None = None, lane: str | None = None,
     ):
-        provider = self.db.get_provider(provider_id) or {}
-        protocol = str(provider.get("protocol") or "")
+        public = self.inspect_public_route(provider_id, model_id)
+        provider = public.provider
+        model = public.model
+        protocol = public.protocol
         destination = str(provider.get("base_url") or "").rstrip("/")
         try:
-            resolved = super().resolve(
-                provider_id, model_id, role=role, lane=lane,
+            bind_route = getattr(self.attempt_observer, "bind_route", None)
+            if callable(bind_route):
+                bind_route(
+                    role=str(role or ""), lane=str(lane or ""),
+                    provider_id=provider_id, model_id=model_id,
+                    route_fingerprint=public.route_fingerprint,
+                )
+            secret = self.secrets.get(provider_id)
+            if not secret:
+                raise ValueError("offline memory secret is missing")
+            transport = self.transport_factory.build(
+                protocol=protocol, destination=destination, bound_role=role,
+            )
+            if type(transport) is not httpx.MockTransport:
+                raise ValueError("OFFLINE_HTTP_TRANSPORT_NOT_CLOSED")
+            adapter = ADAPTERS[protocol](
+                provider["base_url"], secret, provider["extra_headers"],
+                provider["timeout_seconds"], auth_type=provider["auth_type"],
+                transport_policy=self.transport_policy,
+                attempt_observer=self.attempt_observer,
+                injected_http_transport=transport,
+            )
+            resolved = ResolvedModel(
+                provider_id, model_id, model["model_name"], adapter,
+                self._effective_capabilities(
+                    model.get("capabilities") or {}, public.route_fingerprint,
+                ),
+                public.route_fingerprint,
+                provider_operator=public.provider_operator,
+                protocol=public.protocol,
+                destination=public.destination,
+                route_lane=str(lane or ""),
             )
         except Exception as exc:
             self.transport_factory.failure = {
@@ -992,14 +1021,8 @@ class _LowestHttpSeamRegistry(ProviderRegistry):
                 "reason_code": getattr(exc, "reason_code", None),
             }
             raise
-        previous = resolved.adapter.client
-        resolved.adapter.client = build_offline_http_client_v1(
-            self.transport_factory.build(
-                protocol=protocol, destination=destination, bound_role=role,
-            ), timeout_seconds=30,
-        )
         self._install_optional_adapter_failure_hook(resolved.adapter)
-        self.open_clients.extend([previous, resolved.adapter.client])
+        self.open_clients.append(resolved.adapter.client)
         return resolved
 
     async def close(self) -> None:
@@ -1010,9 +1033,6 @@ class _LowestHttpSeamRegistry(ProviderRegistry):
 
 def _registry_factory(*args: Any, **kwargs: Any) -> _LowestHttpSeamRegistry:
     return _LowestHttpSeamRegistry(*args, **kwargs)
-
-
-_registry_factory.offline_only = True
 
 
 def _copy_private_data(
@@ -1077,7 +1097,6 @@ def _memory_secrets(data_dir: Path) -> Callable[[], MemorySecretStore]:
             store.set(provider_id, "offline-memory-only-secret")
         return store
 
-    create.offline_only = True
     return create
 
 
@@ -1485,11 +1504,9 @@ async def _run(args: argparse.Namespace) -> dict[str, Any]:
             ),
         )
         try:
-            execution = await execute_full_short_control_plane(
+            execution = await _execute_full_short_control_plane_offline(
                 control_args, authorization,
-                external_actions_enabled=False,
-                secret_store_factory=_memory_secrets(execution_data),
-                registry_factory=_registry_factory,
+                secret_store=_memory_secrets(execution_data)(),
                 http_transport_factory=transport,
                 required_stage_roles=discovered_roles,
             )

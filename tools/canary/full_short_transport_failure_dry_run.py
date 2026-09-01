@@ -39,14 +39,13 @@ from tools.canary.first_trustworthy_full_short_dry_run import (
     _discover_plan,
     _domain,
     _memory_secrets,
-    _registry_factory,
     _request_messages,
     _request_role,
 )
 from tools.canary.first_trustworthy_full_short_runner import (
     FULL_SHORT_REQUIRED_EXECUTION_ROLES,
+    _execute_full_short_control_plane_offline,
     collect_live_bindings,
-    execute_full_short_control_plane,
 )
 
 
@@ -69,8 +68,6 @@ def _file_sha256(path: Path) -> str | None:
 
 
 class _FailureInjectionTransportFactory:
-    offline_only = True
-
     def __init__(self, scenario: str) -> None:
         self.scenario = scenario
         self.call_plan: list[dict[str, Any]] = []
@@ -188,10 +185,9 @@ async def _run_scenario(
     )
     observed_exception: BaseException | None = None
     try:
-        await execute_full_short_control_plane(
-            args, authorization, external_actions_enabled=False,
-            secret_store_factory=_memory_secrets(execution_data),
-            registry_factory=_registry_factory,
+        await _execute_full_short_control_plane_offline(
+            args, authorization,
+            secret_store=_memory_secrets(execution_data)(),
             http_transport_factory=factory,
             required_stage_roles=roles,
         )

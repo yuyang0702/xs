@@ -63,6 +63,47 @@ def test_local_validation_feedback_keeps_actionable_text_but_redacts_secrets() -
     assert "<path>" in redacted
 
 
+def test_local_validation_feedback_redacts_token_families_and_entropy() -> None:
+    secrets = (
+        "AKIA" + "IOSFODNN7EXAMPLE",
+        "ghp_" + "0123456789abcdefghijklmnopqrstuvwxyz",
+        "password=" + "correct-horse-battery-staple",
+        "token=" + "sensitive-token-value",
+        "eyJhbGciOiJIUzI1NiJ9" + ".eyJzdWIiOiIxMjM0NTY3ODkwIn0."
+        + "c2lnbmF0dXJl",
+        "0f4c9a8e73b21d65" + "c087fa349db821c0",
+    )
+    message = "validation failed: " + " ".join(secrets)
+
+    redacted = safe_local_validation_message(ValueError(message))
+
+    assert redacted.startswith("validation failed:")
+    assert all(secret.casefold() not in redacted.casefold() for secret in secrets)
+    assert "<redacted>" in redacted
+
+    fallback_secret = "token=" + "fallback-sensitive-value"
+    fallback = safe_local_validation_message(
+        ValueError(""), fallback=fallback_secret,
+    )
+    assert fallback_secret not in fallback
+    assert fallback == "token=<redacted>"
+
+
+def test_secret_detection_normalizes_labels_and_catches_punctuated_entropy() -> None:
+    punctuated = "aB3$kL9@qR2!xY7.vW4#nM8%pT6&cD1*zF5"
+    dotted = "aB3kL9qR.2xY7vW4n.M8pT6cD1z.F5hJ0sQ9u"
+    for secret in (
+        punctuated,
+        dotted,
+        "ｐａｓｓｗｏｒｄ＝full-width-secret-value",
+    ):
+        projected = safe_local_validation_message(
+            ValueError("invalid " + secret),
+        )
+        assert secret not in projected
+        assert "<redacted>" in projected
+
+
 def test_api_and_workflow_boundaries_do_not_project_raw_exception_text() -> None:
     root = Path(__file__).parents[1] / "src" / "novel_flywheel"
     api_source = "\n".join(

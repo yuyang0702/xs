@@ -106,6 +106,7 @@ class HttpProvider:
         auth_type: str | None = None,
         transport_policy: SingleDispatchTransportPolicyV1 | None = None,
         attempt_observer: SingleDispatchAttemptObserver | None = None,
+        injected_http_transport: httpx.AsyncBaseTransport | None = None,
     ) -> None:
         self.base_url = base_url.rstrip("/")
         self.api_key = api_key
@@ -116,7 +117,13 @@ class HttpProvider:
         self._model_logical_calls = 0
         self._http_post_attempts = 0
         self._last_protocol_input_v1: tuple[bytes, str, str] | None = None
-        if transport_policy is None:
+        if injected_http_transport is not None:
+            if type(injected_http_transport) is not httpx.MockTransport:
+                raise ValueError("offline_http_transport_must_be_mock_transport")
+            self.client = httpx.AsyncClient(
+                timeout=timeout, transport=injected_http_transport,
+            )
+        elif transport_policy is None:
             self.client = httpx.AsyncClient(timeout=timeout)
         else:
             self.client = httpx.AsyncClient(

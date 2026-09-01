@@ -120,8 +120,29 @@ def test_maintenance_accepts_explicit_complete_no_change_proof() -> None:
     ) == payload
 
 
+def test_maintenance_accepts_exact_typed_state_transition() -> None:
+    digest = hashlib.sha256(b"manuscript").hexdigest()
+    payload = {
+        "facts": [],
+        "state": {"hero": {"knowledge": {"published": True}}},
+        "state_transitions": [{
+            "character": "hero",
+            "field": "knowledge.published",
+            "from": False,
+            "to": True,
+            "evidence": "The hero publishes the ledger.",
+        }],
+        "coverage": {"manuscript_sha256": digest, "complete": True},
+        "disposition": "changes",
+        "no_change_reason": "not_applicable_changes_present",
+    }
+
+    assert validate_short_maintenance_business_complete_v2(
+        payload, expected_manuscript_sha256=digest,
+    ) == payload
+
+
 def test_planning_contract_keeps_business_required_fields_model_visible() -> None:
     schema = registered_business_wire_schema("planning_semantic_v2", {})
 
     assert {"initial_state", "segments"} <= set(schema["required"])
-

@@ -1194,11 +1194,10 @@ class FakeGateway:
                 "ending": "完成正式结局",
                 "covered_event_ids": covered_event_ids,
             }, ensure_ascii=False), {"role": role, "model_name": f"fake-{role}"})
-        text = next(self.responses)
         if "short_maintenance_business_complete_v2" in user:
             authority = json.loads(user)
             manuscript_sha256 = authority["authoritative_manuscript"]["sha256"]
-            text = json.dumps({
+            return ModelResult(json.dumps({
                 "facts": ["The hero survived."],
                 "state": {},
                 "coverage": {
@@ -1207,7 +1206,8 @@ class FakeGateway:
                 },
                 "disposition": "changes",
                 "no_change_reason": "not_applicable_changes_present",
-            })
+            }), {"role": role, "model_name": f"fake-{role}"})
+        text = next(self.responses)
         if "TARGET READER SIMULATION" in user:
             payload = json.loads(text)
             payload["reader_signals"] = {
@@ -1769,7 +1769,16 @@ class ProductionSizedShortGateway:
                     "fact_key": "ending.public_ledger",
                     "value": "The investigator publishes the complete ledger.",
                 }],
-                "state": {},
+                "state": {"沈砚": {"knowledge": {
+                    "public-ledger": True,
+                }}},
+                "state_transitions": [{
+                    "character": "沈砚",
+                    "field": "knowledge.public-ledger",
+                    "from": False,
+                    "to": True,
+                    "evidence": "天亮前，沈砚公开完整底账",
+                }],
                 "coverage": {
                     "manuscript_sha256": manuscript_sha256,
                     "complete": True,
@@ -4696,6 +4705,19 @@ class RecordingGateway:
                 "ending": "完成正式结局",
                 "covered_event_ids": covered_event_ids,
             }, ensure_ascii=False), {"role": role, "model_name": f"fake-{role}"})
+        if "short_maintenance_business_complete_v2" in user:
+            authority = json.loads(user)
+            manuscript_sha256 = authority["authoritative_manuscript"]["sha256"]
+            return ModelResult(json.dumps({
+                "facts": ["The hero survived."],
+                "state": {},
+                "coverage": {
+                    "manuscript_sha256": manuscript_sha256,
+                    "complete": True,
+                },
+                "disposition": "changes",
+                "no_change_reason": "not_applicable_changes_present",
+            }), {"role": role, "model_name": f"fake-{role}"})
         text = next(self.responses)
         if "TARGET READER SIMULATION" in user:
             payload = json.loads(text)

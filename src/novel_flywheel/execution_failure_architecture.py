@@ -9,6 +9,7 @@ they can contain credentials, request bodies, or workstation paths.
 """
 
 from collections.abc import Callable, Mapping
+from dataclasses import dataclass
 from enum import StrEnum
 import hashlib
 import json
@@ -17,6 +18,10 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from novel_flywheel.failure_boundary import contains_potential_secret
+from novel_flywheel.full_short_reason_catalog import (
+    FULL_SHORT_LITERAL_REASON_CATEGORY_V1,
+)
 from novel_flywheel.recovery_engine import FailureClass, ReliabilityFailure
 
 
@@ -71,6 +76,312 @@ class RestartBehavior(StrEnum):
     EXACT_REPLAY_ONLY = "exact_replay_only"
     NO_REDISPATCH = "no_redispatch"
     FRESH_AUTHORIZATION_REQUIRED = "fresh_authorization_required"
+
+
+@dataclass(frozen=True)
+class _FailureTaxonomyRuleV1:
+    code: str
+    family: str
+    layer: FailureLayer
+    boundary: str
+    failure_class: FailureClass
+    retryable: bool
+    dispatch_state: DispatchState
+    authority_effect: AuthorityEffect
+    restart_behavior: RestartBehavior
+    recovery_action: str
+
+
+def _predispatch_rule(
+    code: str, *, family: str, layer: FailureLayer,
+    failure_class: FailureClass,
+) -> _FailureTaxonomyRuleV1:
+    return _FailureTaxonomyRuleV1(
+        code=code.casefold(), family=family, layer=layer,
+        boundary=f"full_short.{layer.value}", failure_class=failure_class,
+        retryable=False, dispatch_state=DispatchState.NOT_REACHED,
+        authority_effect=AuthorityEffect.BLOCKS_ACCEPTANCE,
+        restart_behavior=RestartBehavior.FRESH_AUTHORIZATION_REQUIRED,
+        recovery_action="repair_local_readiness_then_fresh_authorization",
+    )
+
+
+# FullShort reason codes are a machine-control field.  Only exact entries may
+# override the source exception's safe projection; substring/token guessing is
+# deliberately not authoritative.
+_FULL_SHORT_BOUNDARY_TAXONOMY_V1 = {
+    code: _predispatch_rule(
+        code, family=f"provider.{code.casefold().removeprefix('provider_')}",
+        layer=FailureLayer.PROVIDER_CREDENTIAL,
+        failure_class=FailureClass.CREDENTIAL,
+    )
+    for code in (
+        "CREDENTIAL_ABSENT", "CREDENTIAL_EMPTY", "CREDENTIAL_SOURCE_MISSING",
+        "CREDENTIAL_ACCESS_FAILED", "CREDENTIAL_ACCESS_TYPED_ERROR",
+    )
+} | {
+    code: _predispatch_rule(
+        code, family=f"provider.{code.casefold().removeprefix('provider_')}",
+        layer=FailureLayer.PROVIDER_ROUTE,
+        failure_class=FailureClass.CAPABILITY,
+    )
+    for code in (
+        "PROVIDER_ROUTE_CONFIG_MISSING", "PROVIDER_CONFIG_MISSING",
+        "MODEL_CONFIG_MISSING", "ROUTE_FINGERPRINT_MISMATCH",
+        "CAPABILITY_UNAVAILABLE",
+    )
+} | {
+    code: _predispatch_rule(
+        code, family=f"provider.{code.casefold()}",
+        layer=FailureLayer.PROVIDER_CLIENT,
+        failure_class=FailureClass.CAPABILITY,
+    )
+    for code in (
+        "CLIENT_CONFIG_CONSTRUCTION_FAILED",
+        "PROVIDER_CLIENT_CONFIG_FAILED",
+        "PROVIDER_CLIENT_CONSTRUCTION_FAILED",
+    )
+} | {
+    code: _predispatch_rule(
+        code, family=f"provider.{code.casefold()}",
+        layer=FailureLayer.PROVIDER_REQUEST_BUILD,
+        failure_class=(
+            FailureClass.CAPABILITY
+            if code == "REASONING_POLICY_PROJECTION_FAILED"
+            else FailureClass.SYNTAX_PROTOCOL
+        ),
+    )
+    for code in (
+        "REQUEST_BUILD_FAILED", "REQUEST_SERIALIZATION_FAILED",
+        "REASONING_POLICY_PROJECTION_FAILED",
+    )
+} | {
+    code: _predispatch_rule(
+        code, family="execution.authorization_binding",
+        layer=FailureLayer.EXECUTION_RUNTIME_BINDING,
+        failure_class=FailureClass.STALE_AUTHORITY,
+    )
+    for code in (
+        "HEAD_DRIFT",
+    )
+} | {
+    code: _predispatch_rule(
+        code, family="execution.authorization",
+        layer=FailureLayer.EXECUTION_AUTHORIZATION,
+        failure_class=FailureClass.STALE_AUTHORITY,
+    )
+    for code in (
+        "ACTIVATED_AUTHORIZATION_SHA256_MISMATCH",
+        "FULL_SHORT_AUTHORIZATION_OBJECT_DRIFT",
+    )
+}
+
+
+def _closed_literal_reason_rule(
+    code: str, category: str,
+) -> _FailureTaxonomyRuleV1:
+    if category == "authorization":
+        return _predispatch_rule(
+            code, family="execution.authorization",
+            layer=FailureLayer.EXECUTION_AUTHORIZATION,
+            failure_class=FailureClass.STALE_AUTHORITY,
+        )
+    if category == "route":
+        return _predispatch_rule(
+            code, family="provider.route_binding",
+            layer=FailureLayer.PROVIDER_ROUTE,
+            failure_class=FailureClass.CAPABILITY,
+        )
+    if category == "readiness":
+        return _FailureTaxonomyRuleV1(
+            code=code.casefold(), family="execution.dispatch_readiness",
+            layer=FailureLayer.EXECUTION_RUNTIME_BINDING,
+            boundary="full_short.execution.dispatch_readiness",
+            failure_class=FailureClass.STALE_AUTHORITY, retryable=False,
+            dispatch_state=DispatchState.READY_NOT_COMMITTED,
+            authority_effect=AuthorityEffect.BLOCKS_ACCEPTANCE,
+            restart_behavior=RestartBehavior.FRESH_AUTHORIZATION_REQUIRED,
+            recovery_action="repair_readiness_then_fresh_authorization",
+        )
+    if category == "predispatch":
+        return _FailureTaxonomyRuleV1(
+            code=code.casefold(), family="execution.predispatch_guard",
+            layer=FailureLayer.EXECUTION_RUNTIME_BINDING,
+            boundary="full_short.execution.predispatch_guard",
+            failure_class=FailureClass.STALE_AUTHORITY, retryable=False,
+            dispatch_state=DispatchState.READY_NOT_COMMITTED,
+            authority_effect=AuthorityEffect.BLOCKS_ACCEPTANCE,
+            restart_behavior=RestartBehavior.FRESH_AUTHORIZATION_REQUIRED,
+            recovery_action="repair_guard_then_fresh_authorization",
+        )
+    if category == "no_response":
+        return _FailureTaxonomyRuleV1(
+            code=code.casefold(), family="provider.response_absent",
+            layer=FailureLayer.PROVIDER_TRANSPORT,
+            boundary="full_short.provider.response_absent",
+            failure_class=FailureClass.TRANSPORT, retryable=False,
+            dispatch_state=DispatchState.NETWORK_AMBIGUOUS,
+            authority_effect=AuthorityEffect.PRESERVES_LAST_ACCEPTED,
+            restart_behavior=RestartBehavior.NO_REDISPATCH,
+            recovery_action="reconcile_absent_response_without_redispatch",
+        )
+    if category == "postrun":
+        return _FailureTaxonomyRuleV1(
+            code=code.casefold(), family="authority.postrun_invariant",
+            layer=FailureLayer.AUTHORITY,
+            boundary="full_short.authority.postrun_invariant",
+            failure_class=FailureClass.SEMANTIC_INVARIANT, retryable=False,
+            dispatch_state=DispatchState.NOT_REACHED,
+            authority_effect=AuthorityEffect.PRESERVES_LAST_ACCEPTED,
+            restart_behavior=RestartBehavior.NO_REDISPATCH,
+            recovery_action="inspect_durable_postrun_state",
+        )
+    if category == "transport":
+        return _FailureTaxonomyRuleV1(
+            code=code.casefold(), family="provider.transport_boundary",
+            layer=FailureLayer.PROVIDER_TRANSPORT,
+            boundary="full_short.provider.transport",
+            failure_class=FailureClass.TRANSPORT, retryable=False,
+            dispatch_state=DispatchState.NETWORK_AMBIGUOUS,
+            authority_effect=AuthorityEffect.PRESERVES_LAST_ACCEPTED,
+            restart_behavior=RestartBehavior.NO_REDISPATCH,
+            recovery_action="reconcile_without_redispatch",
+        )
+    if category == "response":
+        return _FailureTaxonomyRuleV1(
+            code=code.casefold(), family="provider.response_boundary",
+            layer=FailureLayer.PROVIDER_PROTOCOL,
+            boundary="full_short.provider.response",
+            failure_class=FailureClass.SYNTAX_PROTOCOL, retryable=False,
+            dispatch_state=DispatchState.RESPONSE_CAPTURED,
+            authority_effect=AuthorityEffect.PRESERVES_LAST_ACCEPTED,
+            restart_behavior=RestartBehavior.NO_REDISPATCH,
+            recovery_action="use_exact_capture_or_stop",
+        )
+    return _FailureTaxonomyRuleV1(
+        code=code.casefold(), family="authority.invariant",
+        layer=FailureLayer.AUTHORITY,
+        boundary="full_short.authority.invariant",
+        failure_class=FailureClass.SEMANTIC_INVARIANT, retryable=False,
+        dispatch_state=DispatchState.NOT_REACHED,
+        authority_effect=AuthorityEffect.PRESERVES_LAST_ACCEPTED,
+        restart_behavior=RestartBehavior.NO_REDISPATCH,
+        recovery_action="inspect_durable_state_without_redispatch",
+    )
+
+
+for _reason_code, _reason_category in (
+    FULL_SHORT_LITERAL_REASON_CATEGORY_V1.items()
+):
+    _FULL_SHORT_BOUNDARY_TAXONOMY_V1.setdefault(
+        _reason_code,
+        _closed_literal_reason_rule(_reason_code, _reason_category),
+    )
+
+
+_SOURCE_EXCEPTION_TAXONOMY_V1 = {
+    ("novel_flywheel.models", "ModelRoutesExhaustedError"): _FailureTaxonomyRuleV1(
+        code="model_routes_exhausted",
+        family="provider.routes_exhausted",
+        layer=FailureLayer.PROVIDER_ROUTE,
+        boundary="model_gateway.routes_exhausted",
+        failure_class=FailureClass.UNKNOWN, retryable=False,
+        dispatch_state=DispatchState.NOT_REACHED,
+        authority_effect=AuthorityEffect.PRESERVES_LAST_ACCEPTED,
+        restart_behavior=RestartBehavior.NO_REDISPATCH,
+        recovery_action="stop_after_ordered_route_exhaustion",
+    ),
+    ("novel_flywheel.models", "TransportInterruptedError"): _FailureTaxonomyRuleV1(
+        code="transport_interrupted", family="provider.transport_interrupted",
+        layer=FailureLayer.PROVIDER_TRANSPORT,
+        boundary="provider.transport.interrupted",
+        failure_class=FailureClass.TRANSPORT, retryable=False,
+        dispatch_state=DispatchState.NETWORK_AMBIGUOUS,
+        authority_effect=AuthorityEffect.PRESERVES_LAST_ACCEPTED,
+        restart_behavior=RestartBehavior.NO_REDISPATCH,
+        recovery_action="reconcile_transport_without_redispatch",
+    ),
+    (
+        "novel_flywheel.models", "CapabilityRoutesExhaustedError",
+    ): _FailureTaxonomyRuleV1(
+        code="capability_routes_exhausted",
+        family="provider.capability_routes_exhausted",
+        layer=FailureLayer.PROVIDER_ROUTE,
+        boundary="model_gateway.capability_routes_exhausted",
+        failure_class=FailureClass.CAPABILITY, retryable=False,
+        dispatch_state=DispatchState.NOT_REACHED,
+        authority_effect=AuthorityEffect.PRESERVES_LAST_ACCEPTED,
+        restart_behavior=RestartBehavior.FRESH_AUTHORIZATION_REQUIRED,
+        recovery_action="repair_capability_route_then_fresh_authorization",
+    ),
+    (
+        "novel_flywheel.models", "ReasoningOnlyFinalArtifactUnavailableError",
+    ): _FailureTaxonomyRuleV1(
+        code="reasoning_only_final_artifact_unavailable",
+        family="provider.reasoning_only_final_artifact_unavailable",
+        layer=FailureLayer.PROVIDER_FINAL_ARTIFACT,
+        boundary="model_gateway.final_artifact",
+        failure_class=FailureClass.OUTPUT_TRUNCATION, retryable=False,
+        dispatch_state=DispatchState.RESPONSE_CAPTURED,
+        authority_effect=AuthorityEffect.BLOCKS_ACCEPTANCE,
+        restart_behavior=RestartBehavior.NO_REDISPATCH,
+        recovery_action="use_typed_shared_finalization_slot_or_stop",
+    ),
+}
+
+
+_CONNECTION_ERROR_RULE = _FailureTaxonomyRuleV1(
+    code="connection_error", family="provider.transport_interrupted",
+    layer=FailureLayer.PROVIDER_TRANSPORT,
+    boundary="provider.transport.connection",
+    failure_class=FailureClass.TRANSPORT, retryable=False,
+    dispatch_state=DispatchState.NETWORK_AMBIGUOUS,
+    authority_effect=AuthorityEffect.PRESERVES_LAST_ACCEPTED,
+    restart_behavior=RestartBehavior.NO_REDISPATCH,
+    recovery_action="reconcile_transport_without_redispatch",
+)
+
+
+def full_short_boundary_taxonomy_v1(
+    reason_code: str,
+) -> dict[str, object] | None:
+    """Return the closed taxonomy projection for one exact control reason."""
+
+    normalized = re.sub(
+        r"[^A-Z0-9]+", "_", str(reason_code).upper(),
+    ).strip("_")
+    rule = _FULL_SHORT_BOUNDARY_TAXONOMY_V1.get(normalized)
+    if rule is None:
+        return None
+    return {
+        "code": rule.code, "family": rule.family, "layer": rule.layer,
+        "boundary": rule.boundary, "failure_class": rule.failure_class,
+        "retryable": rule.retryable, "dispatch_state": rule.dispatch_state,
+        "authority_effect": rule.authority_effect,
+        "restart_behavior": rule.restart_behavior,
+        "recovery_action": rule.recovery_action,
+    }
+
+
+def _explicit_taxonomy_rule(
+    exc: BaseException,
+) -> _FailureTaxonomyRuleV1 | None:
+    reason_code = getattr(exc, "reason_code", None)
+    if isinstance(reason_code, str):
+        normalized = re.sub(
+            r"[^A-Z0-9]+", "_", reason_code.upper(),
+        ).strip("_")
+        rule = _FULL_SHORT_BOUNDARY_TAXONOMY_V1.get(normalized)
+        if rule is not None:
+            return rule
+    rule = _SOURCE_EXCEPTION_TAXONOMY_V1.get((
+        type(exc).__module__, type(exc).__name__,
+    ))
+    if rule is not None:
+        return rule
+    if isinstance(exc, ConnectionError):
+        return _CONNECTION_ERROR_RULE
+    return None
 
 
 class SafeFailureNodeV1(BaseModel):
@@ -199,7 +510,10 @@ class ProviderClientConstructionFailure(ExecutionBoundaryFailure):
 
 
 def _safe_name(value: object, *, fallback: str) -> str:
-    text = str(value or "").strip().casefold()
+    raw_text = str(value or "").strip()
+    if contains_potential_secret(raw_text):
+        return fallback
+    text = raw_text.casefold()
     allowed = "abcdefghijklmnopqrstuvwxyz0123456789_.-"
     normalized = "".join(character if character in allowed else "_" for character in text)
     normalized = normalized.strip("_.-")
@@ -232,6 +546,7 @@ def _safe_exception_class(exc: BaseException) -> str:
     if (
         len(name) <= 80
         and re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", name)
+        and not contains_potential_secret(name)
         and not folded.startswith(("sk_", "bearer_"))
         and "privatecredential" not in folded
         and "secretvalue" not in folded
@@ -342,6 +657,7 @@ def _node(
             model_id_sha256=model_id_sha256,
         )
     child_ancestors = ancestors | {id(exc)}
+    explicit_rule = _explicit_taxonomy_rule(exc)
     reliability = getattr(exc, "reliability_failure", None)
     raw_failure_class = getattr(reliability, "failure_class", FailureClass.UNKNOWN)
     failure_class = _enum_value(
@@ -380,6 +696,18 @@ def _node(
     recovery_action = _safe_name(
         getattr(exc, "recovery_action", ""), fallback="inspect_typed_failure",
     )
+    retryable = bool(getattr(reliability, "retryable", False))
+    if explicit_rule is not None:
+        code = explicit_rule.code
+        family = explicit_rule.family
+        layer = explicit_rule.layer
+        node_boundary = explicit_rule.boundary
+        failure_class = explicit_rule.failure_class
+        retryable = explicit_rule.retryable
+        dispatch_state = explicit_rule.dispatch_state
+        authority_effect = explicit_rule.authority_effect
+        restart_behavior = explicit_rule.restart_behavior
+        recovery_action = explicit_rule.recovery_action
     children = tuple(
         _node(
             child, boundary=node_boundary, ancestors=child_ancestors,
@@ -389,10 +717,30 @@ def _node(
         )
         for child, ordinal, provider_sha, model_sha in _ordered_children(exc)
     )
+    if children and type(exc).__name__ in {
+        "ModelRoutesExhaustedError", "CapabilityRoutesExhaustedError",
+    }:
+        if any(
+            child.dispatch_state == DispatchState.RESPONSE_CAPTURED
+            for child in children
+        ):
+            dispatch_state = DispatchState.RESPONSE_CAPTURED
+        elif any(
+            child.dispatch_state in {
+                DispatchState.NETWORK_AMBIGUOUS,
+                DispatchState.COMMITTED_PRE_NETWORK,
+            }
+            for child in children
+        ):
+            dispatch_state = DispatchState.NETWORK_AMBIGUOUS
+        else:
+            dispatch_state = DispatchState.NETWORK_AMBIGUOUS
+        authority_effect = AuthorityEffect.PRESERVES_LAST_ACCEPTED
+        restart_behavior = RestartBehavior.NO_REDISPATCH
     return SafeFailureNodeV1(
         code=code, family=family, layer=layer, boundary=node_boundary or "unknown",
         source_exception_class=_safe_exception_class(exc), failure_class=failure_class,
-        retryable=bool(getattr(reliability, "retryable", False)),
+        retryable=retryable,
         dispatch_state=dispatch_state, authority_effect=authority_effect,
         restart_behavior=restart_behavior, recovery_action=recovery_action,
         route_ordinal=route_ordinal,

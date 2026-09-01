@@ -94,6 +94,17 @@ class ModelRoutesExhaustedError(RuntimeError):
         )
 
 
+def _bound_route_error(
+    binding: dict, lane: str, exc: Exception,
+) -> tuple[str, str, Exception]:
+    prefix = "primary" if lane == "primary" else "fallback"
+    return (
+        str(binding.get(f"{prefix}_provider_id") or f"unresolved_{prefix}_provider"),
+        str(binding.get(f"{prefix}_model_id") or f"unresolved_{prefix}_model"),
+        exc,
+    )
+
+
 class CapabilityRoutesExhaustedError(RuntimeError):
     """Every route that explicitly advertised the required protocol failed."""
 
@@ -255,6 +266,7 @@ class ModelGateway:
         binding = self.db.get_role_binding(role)
         if binding is None:
             raise LookupError(f"Model role is not configured: {role}")
+        route_errors: list[tuple[str, str, Exception]] = []
         primary_limit = self._route_output_limit(
             binding.get("primary_model_id"), max_output_tokens,
         )
@@ -282,6 +294,7 @@ class ModelGateway:
                 # controller.  Generic gateway retry/fallback paths are not
                 # permitted to spend an unrecorded physical attempt.
                 raise
+            route_errors.append(_bound_route_error(binding, "primary", exc))
             if resolved is not None and self._is_transient_connect_error(exc):
                 await asyncio.sleep(self.CONNECT_RETRY_DELAY)
                 try:
@@ -293,17 +306,25 @@ class ModelGateway:
                 except asyncio.CancelledError:
                     raise
                 except Exception as retry_exc:
+                    route_errors.append(
+                        _bound_route_error(binding, "primary", retry_exc)
+                    )
                     exc = retry_exc
             try:
                 fallback = self._resolve_configured_fallback(binding, role=role)
             except asyncio.CancelledError:
                 raise
             except Exception as fallback_exc:
+                route_errors.append(
+                    _bound_route_error(binding, "fallback", fallback_exc)
+                )
                 # A missing or invalid fallback credential is part of the
                 # route failure.  Do not let fallback resolution replace the
                 # primary error with a bare ValueError; recovery layers need
                 # both route failures to classify the incident correctly.
-                raise ModelRoutesExhaustedError(exc, fallback_exc) from fallback_exc
+                raise ModelRoutesExhaustedError(
+                    exc, fallback_exc, route_errors=route_errors,
+                ) from fallback_exc
             if fallback is None:
                 raise
             try:
@@ -315,7 +336,12 @@ class ModelGateway:
             except asyncio.CancelledError:
                 raise
             except Exception as fallback_exc:
-                raise ModelRoutesExhaustedError(exc, fallback_exc) from fallback_exc
+                route_errors.append(
+                    _bound_route_error(binding, "fallback", fallback_exc)
+                )
+                raise ModelRoutesExhaustedError(
+                    exc, fallback_exc, route_errors=route_errors,
+                ) from fallback_exc
             return self._mark_fallback(
                 result, binding["primary_provider_id"], binding["primary_model_id"], exc,
             )
@@ -1078,6 +1104,7 @@ class ModelGateway:
         binding = self.db.get_role_binding(role)
         if binding is None:
             raise LookupError(f"Model role is not configured: {role}")
+        route_errors: list[tuple[str, str, Exception]] = []
         resolved = None
         try:
             resolved = self._resolve_bound_route(
@@ -1093,6 +1120,7 @@ class ModelGateway:
         except Exception as exc:
             if self._exact_single_dispatch_active():
                 raise
+            route_errors.append(_bound_route_error(binding, "primary", exc))
             recovered = self._recover_toolbox_proposals(role, resolved, toolbox, exc)
             if recovered is not None:
                 return recovered
@@ -1106,6 +1134,9 @@ class ModelGateway:
                 except asyncio.CancelledError:
                     raise
                 except Exception as retry_exc:
+                    route_errors.append(
+                        _bound_route_error(binding, "primary", retry_exc)
+                    )
                     exc = retry_exc
                     recovered = self._recover_toolbox_proposals(
                         role, resolved, toolbox, exc,
@@ -1117,7 +1148,12 @@ class ModelGateway:
             except asyncio.CancelledError:
                 raise
             except Exception as fallback_exc:
-                raise ModelRoutesExhaustedError(exc, fallback_exc) from fallback_exc
+                route_errors.append(
+                    _bound_route_error(binding, "fallback", fallback_exc)
+                )
+                raise ModelRoutesExhaustedError(
+                    exc, fallback_exc, route_errors=route_errors,
+                ) from fallback_exc
             if fallback is None:
                 raise
             repair_context = self._prepare_toolbox_fallback(toolbox, exc)
@@ -1133,11 +1169,16 @@ class ModelGateway:
             except asyncio.CancelledError:
                 raise
             except Exception as fallback_exc:
+                route_errors.append(
+                    _bound_route_error(binding, "fallback", fallback_exc)
+                )
                 recovered = self._recover_toolbox_proposals(
                     role, fallback, toolbox, fallback_exc,
                 )
                 if recovered is None:
-                    raise ModelRoutesExhaustedError(exc, fallback_exc) from fallback_exc
+                    raise ModelRoutesExhaustedError(
+                        exc, fallback_exc, route_errors=route_errors,
+                    ) from fallback_exc
                 recovered = ModelResult(recovered.text, {
                     **recovered.receipt,
                     "fallback_route_error": _safe_model_error(
