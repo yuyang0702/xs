@@ -13,7 +13,10 @@ from novel_flywheel.generated_artifacts import (
     GeneratedArtifactGateway,
     SemanticNormalizer,
 )
-from novel_flywheel.full_short_runtime_kernel import full_short_boundary_entry
+from novel_flywheel.full_short_runtime_kernel import (
+    FullShortBoundaryFailureV1,
+    full_short_boundary_entry,
+)
 from novel_flywheel.context_policy import (
     classify_model_failure,
     expanded_output_budget,
@@ -1055,6 +1058,17 @@ def _emit_final_artifact_rejection(
     })
 
 
+def _is_reasoning_only_final_artifact_failure(error: BaseException) -> bool:
+    return isinstance(error, ReasoningOnlyFinalArtifactUnavailableError) or (
+        isinstance(error, FullShortBoundaryFailureV1)
+        and error.envelope.failure_code == "planning.reasoning_only_no_final"
+        and isinstance(
+            error.source_exception,
+            ReasoningOnlyFinalArtifactUnavailableError,
+        )
+    )
+
+
 def _close_durable_post_capture_exception(
     gateway: Any, *, error: BaseException,
     failure_class: str, attempt: ProtocolReceiptAttempt,
@@ -1474,7 +1488,7 @@ async def execute_contract_runtime(
             attempt_ptr12_decision = current_ptr12_guard_decision()
             final_artifact_failure = isinstance(
                 exc, FinalArtifactCapabilityError,
-            )
+            ) or _is_reasoning_only_final_artifact_failure(exc)
             failure_class = (
                 "final_artifact_unavailable"
                 if final_artifact_failure else classify_model_failure(exc)
@@ -1539,8 +1553,8 @@ async def execute_contract_runtime(
                     ptr12_triggered_context = (
                         attempt_context, attempt_ptr12_decision,
                     )
-                exact_reasoning_only = isinstance(
-                    exc, ReasoningOnlyFinalArtifactUnavailableError,
+                exact_reasoning_only = (
+                    _is_reasoning_only_final_artifact_failure(exc)
                 )
                 if (
                     exact_reasoning_only

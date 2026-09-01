@@ -1135,12 +1135,17 @@ async def _execute_full_short_control_plane_with_capability(
         registry=DEFAULT_FAILURE_BOUNDARY_REGISTRY_V1,
         journal=runtime_journal,
     )
+
+    def prepare_predispatch_with_kernel() -> dict[str, Any]:
+        with activate_full_short_kernel_v1(runtime_kernel):
+            return store.prepare_predispatch_ledger(
+                execution_id=execution_id, policy=policy,
+                permission=permission, approval=approval,
+                external_actions_enabled=external_actions_enabled,
+            )
+
     prelaunch(
-        lambda: store.prepare_predispatch_ledger(
-            execution_id=execution_id, policy=policy,
-            permission=permission, approval=approval,
-            external_actions_enabled=external_actions_enabled,
-        ),
+        prepare_predispatch_with_kernel,
         "full_short.prelaunch.predispatch_ledger",
     )
     observer = prelaunch(

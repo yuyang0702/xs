@@ -30,10 +30,14 @@ FULL_SHORT_RUNTIME_PROOF_DOMAIN_V1 = {
         "durable, policy-owned, and executable-test-bound."
     ),
     "roots": {
-        "tools.canary.first_trustworthy_full_short_runner:execute_full_short_control_plane": "FS.CONTROL.PREFLIGHT",
-        "tools.canary.first_trustworthy_full_short_runner:_execute_full_short_control_plane_offline": "FS.CONTROL.PREFLIGHT",
-        "tools.canary.first_trustworthy_full_short_runner:run_full_short_workflow_path": "FS.CONTROL.PREFLIGHT",
-        "novel_flywheel.workflows:WorkflowService.run_short": "FS.WORKFLOW.SHORT",
+        "tools.canary.first_trustworthy_full_short_runner:_execute_full_short_control_plane_with_capability.<locals>.supervised_operation": "FS.WORKFLOW.SHORT",
+        "tools.canary.first_trustworthy_full_short_runner:_execute_full_short_control_plane_with_capability.<locals>.prepare_predispatch_with_kernel": "FS.CHECKPOINT.TRANSITION",
+        "tools.canary.first_trustworthy_full_short_runner:_execute_full_short_control_plane_with_capability.<locals>.terminal_closure.<locals>.commit_after_saga_cleanup": "FS.TERMINAL.VERIFY_COMMIT",
+    },
+    "kernel_activation_requirements": {
+        "tools.canary.first_trustworthy_full_short_runner:_execute_full_short_control_plane_with_capability.<locals>.supervised_operation": "context_activation",
+        "tools.canary.first_trustworthy_full_short_runner:_execute_full_short_control_plane_with_capability.<locals>.prepare_predispatch_with_kernel": "context_activation",
+        "tools.canary.first_trustworthy_full_short_runner:_execute_full_short_control_plane_with_capability.<locals>.terminal_closure.<locals>.commit_after_saga_cleanup": "explicit_kernel_boundary",
     },
     "in_scope": [
         "exact Full Short control plane and task-manager bridge",
@@ -42,12 +46,38 @@ FULL_SHORT_RUNTIME_PROOF_DOMAIN_V1 = {
         "central recovery, checkpoint, authority, and terminal boundaries",
     ],
     "out_of_scope": [
+        "ordinary WorkflowService.run_short calls that are not activated as the exact authorized Full Short control plane",
+        "offline planning/oracle discovery runs without execution authority",
         "Long and short revision",
         "unrelated UI/admin entry points",
         "external dependency internals below a registered adapter boundary",
         "retired Hybrid/Selective model-visible paths",
     ],
 }
+
+
+def _kernel_activation_evidence_v1(
+    node: ast.FunctionDef | ast.AsyncFunctionDef,
+    mode: str,
+) -> bool:
+    if mode == "context_activation":
+        return any(
+            isinstance(item, ast.withitem)
+            and isinstance(item.context_expr, ast.Call)
+            and _call_name(item.context_expr) == "activate_full_short_kernel_v1"
+            for candidate in ast.walk(node)
+            if isinstance(candidate, (ast.With, ast.AsyncWith))
+            for item in candidate.items
+        )
+    if mode == "explicit_kernel_boundary":
+        return any(
+            isinstance(candidate, ast.Call)
+            and _call_name(candidate) in {
+                "execute_boundary", "execute_boundary_sync",
+            }
+            for candidate in ast.walk(node)
+        )
+    raise ValueError("unknown_kernel_activation_requirement")
 
 
 _CALLBACK_TARGETS: dict[tuple[str, str], tuple[str, ...]] = {
@@ -800,6 +830,20 @@ def build_source_exit_inventory_v1(repo_root: Path) -> dict[str, object]:
     )
     roots = dict(FULL_SHORT_RUNTIME_PROOF_DOMAIN_V1["roots"])
     missing_roots = sorted(set(roots) - set(functions))
+    activation_requirements = dict(
+        FULL_SHORT_RUNTIME_PROOF_DOMAIN_V1[
+            "kernel_activation_requirements"
+        ]
+    )
+    missing_kernel_activation = sorted(
+        function_id
+        for function_id, mode in activation_requirements.items()
+        if function_id not in functions
+        or not _kernel_activation_evidence_v1(
+            functions[function_id].node,
+            str(mode),
+        )
+    )
 
     graph: dict[str, set[str]] = {key: set() for key in functions}
     exits_by_function: dict[str, set[str]] = {}
@@ -925,6 +969,7 @@ def build_source_exit_inventory_v1(repo_root: Path) -> dict[str, object]:
     ]
     failure_summary = {
         "missing_execution_roots": missing_roots,
+        "missing_kernel_activation_roots": missing_kernel_activation,
         "registry_entries_without_exact_wrapper": bad_registry_wrappers,
         "unreachable_registered_boundaries": unreachable_boundaries,
         "unbound_exit_ids": unbound[:20],
@@ -940,7 +985,8 @@ def build_source_exit_inventory_v1(repo_root: Path) -> dict[str, object]:
         },
     }
     passed = not any((
-        missing_roots, bad_registry_wrappers, unreachable_boundaries,
+        missing_roots, missing_kernel_activation, bad_registry_wrappers,
+        unreachable_boundaries,
         unbound, unresolved, stale_dynamic_contracts,
         *direct_path_metrics.values(),
     ))
@@ -965,6 +1011,9 @@ def build_source_exit_inventory_v1(repo_root: Path) -> dict[str, object]:
         "stale_dynamic_edge_contract_count": len(stale_dynamic_contracts),
         "unreachable_registered_boundary_count": len(unreachable_boundaries),
         "registry_entry_without_exact_wrapper_count": len(bad_registry_wrappers),
+        "kernel_activation_root_without_evidence_count": len(
+            missing_kernel_activation
+        ),
         "reachable_function_count": len(reachable_functions),
         "registered_boundary_count": len(registered_boundary_ids),
         **direct_path_metrics,

@@ -30,6 +30,9 @@ from novel_flywheel.full_short_runtime_kernel import (
 from novel_flywheel.project_transactions import (
     write_full_short_formal_artifacts_v1,
 )
+from novel_flywheel.models import (
+    ReasoningOnlyFinalArtifactUnavailableError,
+)
 
 
 def _journal(tmp_path: Path, name: str = "journal.json") -> DurableExecutionJournalV1:
@@ -201,6 +204,47 @@ async def test_every_boundary_maps_unexpected_to_durable_fail_closed(
         envelope.failure_envelope_sha256
     )
     assert sentinel.encode("utf-8") not in journal.path.read_bytes()
+
+
+@pytest.mark.asyncio
+async def test_dispatch_reasoning_only_is_known_durable_recoverable(
+    tmp_path: Path,
+) -> None:
+    journal = DurableExecutionJournalV1.create(
+        tmp_path / "reasoning-only.json",
+        execution_id="offline-execution",
+        initial_state=ExecutionState.RESPONSE_CAPTURED,
+    )
+    kernel = FullShortExecutionKernel(
+        registry=DEFAULT_FAILURE_BOUNDARY_REGISTRY_V1,
+        journal=journal,
+    )
+    source = ReasoningOnlyFinalArtifactUnavailableError(receipt={
+        "failure_code": "reasoning_only_final_artifact_unavailable",
+        "provider_call_executed": True,
+    })
+
+    async def fail() -> None:
+        raise source
+
+    with pytest.raises(FullShortBoundaryFailureV1) as caught:
+        await kernel.execute_boundary("FS.DISPATCH.MODEL", fail)
+
+    assert caught.value.envelope.classification == FailureClassification.KNOWN
+    assert caught.value.envelope.failure_code == (
+        "planning.reasoning_only_no_final"
+    )
+    assert caught.value.envelope.source_exception_class == (
+        "ReasoningOnlyFinalArtifactUnavailableError"
+    )
+    assert caught.value.source_exception is source
+    assert caught.value.failure_code == (
+        "reasoning_only_final_artifact_unavailable"
+    )
+    assert caught.value.receipt["provider_call_executed"] is True
+    reopened = DurableExecutionJournalV1.open(journal.path)
+    assert reopened.state == ExecutionState.STAGE_REJECTED_RECOVERABLE
+    assert len(reopened.failure_receipts) == 1
 
 
 @pytest.mark.asyncio

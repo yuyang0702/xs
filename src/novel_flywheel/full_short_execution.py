@@ -3583,19 +3583,32 @@ class FullShortDispatchLedgerObserverV1:
         _require(ordinal is not None, "NO_RESPONSE_TO_REJECT")
         value = dict(rejection)
         runtime_kernel = active_full_short_kernel_v1()
+        kernel_rejection_preclosed = bool(
+            runtime_kernel is not None
+            and value.get("failure_code")
+            == "reasoning_only_final_artifact_unavailable"
+            and runtime_kernel.recoverable_failure_already_recorded(
+                boundary_id="FS.DISPATCH.MODEL",
+                failure_code="planning.reasoning_only_no_final",
+            )
+        )
         if runtime_kernel is not None:
-            _require(
-                runtime_kernel.journal.state
-                == KernelExecutionState.RESPONSE_CAPTURED,
-                "RUNTIME_KERNEL_RESPONSE_CAPTURE_REQUIRED",
-            )
-            runtime_kernel.journal.transition(
-                KernelExecutionState.VALIDATING,
-                transition_id="contract-validating-rejection:" + hashlib.sha256(
-                    canonical_json_bytes(value)
-                ).hexdigest(),
-                boundary_id="FS.CONTRACT.VALIDATE",
-            )
+            if not kernel_rejection_preclosed:
+                _require(
+                    runtime_kernel.journal.state
+                    == KernelExecutionState.RESPONSE_CAPTURED,
+                    "RUNTIME_KERNEL_RESPONSE_CAPTURE_REQUIRED",
+                )
+                runtime_kernel.journal.transition(
+                    KernelExecutionState.VALIDATING,
+                    transition_id=(
+                        "contract-validating-rejection:"
+                        + hashlib.sha256(
+                            canonical_json_bytes(value)
+                        ).hexdigest()
+                    ),
+                    boundary_id="FS.CONTRACT.VALIDATE",
+                )
         pre_contract_final_artifact = (
             value.get("schema") == "ProviderFinalArtifactRejectionReceiptV1"
         )
@@ -3773,7 +3786,7 @@ class FullShortDispatchLedgerObserverV1:
             return body
 
         self.store.update_ledger(self.execution_id, mutate)
-        if runtime_kernel is not None:
+        if runtime_kernel is not None and not kernel_rejection_preclosed:
             runtime_kernel.journal.transition(
                 KernelExecutionState.STAGE_REJECTED_RECOVERABLE,
                 transition_id="stage-rejected:" + hashlib.sha256(

@@ -26,6 +26,13 @@ _AUTHORITY_REQUIRED_STAGE_BOUNDARIES = frozenset({
     "FS.STAGE.FINAL_REVIEW",
     "FS.STAGE.MAINTENANCE",
 })
+_SOURCE_FAILURE_BINDINGS_V1 = {
+    (
+        "FS.DISPATCH.MODEL",
+        "novel_flywheel.models",
+        "ReasoningOnlyFinalArtifactUnavailableError",
+    ): "planning.reasoning_only_no_final",
+}
 
 
 def _is_sha256(value: object) -> bool:
@@ -521,6 +528,7 @@ _BOUNDARIES = (
         "RESPONSE_CAPTURED", "provider.configuration_invalid",
         "provider.credential_unavailable", "provider.transport_pre_dispatch",
         "provider.transport_ambiguous", "provider.capture_replay_available",
+        "planning.reasoning_only_no_final",
     ),
     _boundary(
         "FS.CONTRACT.VALIDATE", "contract", "novel_flywheel.workflows:WorkflowService._stage",
@@ -649,12 +657,28 @@ class RegisteredBoundaryFailureV1(Exception):
 
 
 class FullShortBoundaryFailureV1(Exception):
-    def __init__(self, envelope: FailureEnvelopeV1) -> None:
+    def __init__(
+        self,
+        envelope: FailureEnvelopeV1,
+        *,
+        source_exception: BaseException | None = None,
+    ) -> None:
         super().__init__(
             f"full_short_boundary_failure:{envelope.boundary_id}:"
             f"{envelope.failure_code}"
         )
         self.envelope = envelope
+        # Runtime-only provenance lets the registered outer recovery owner
+        # consume an already-enveloped control failure. It is never written
+        # to the durable journal and cannot persist raw provider content.
+        self.source_exception = source_exception
+        receipt = getattr(source_exception, "receipt", None)
+        if isinstance(receipt, dict):
+            self.receipt = dict(receipt)
+        source_failure_code = getattr(source_exception, "failure_code", None)
+        if isinstance(source_failure_code, str):
+            self.source_failure_code = source_failure_code
+            self.failure_code = source_failure_code
 
 
 @dataclass(frozen=True)
@@ -1462,13 +1486,27 @@ class FullShortExecutionKernel:
                 self._last_failure_envelope
             ) from None
         boundary_id = boundary.boundary_id
+        source_failure_id = _SOURCE_FAILURE_BINDINGS_V1.get((
+            boundary_id,
+            type(exc).__module__,
+            type(exc).__name__,
+        ))
+        registered_failure_id = (
+            exc.failure_id
+            if isinstance(exc, RegisteredBoundaryFailureV1)
+            else source_failure_id
+        )
         is_registered = (
             isinstance(exc, RegisteredBoundaryFailureV1)
             and exc.boundary_id == boundary_id
-            and exc.failure_id in boundary.allowed_typed_failures
+            and registered_failure_id in boundary.allowed_typed_failures
+        ) or (
+            source_failure_id is not None
+            and source_failure_id in boundary.allowed_typed_failures
         )
         if is_registered:
-            spec = self.registry.failure(exc.failure_id)
+            assert registered_failure_id is not None
+            spec = self.registry.failure(registered_failure_id)
             classification = FailureClassification.KNOWN
             failure_code = spec.failure_code
             failure_family = spec.failure_family
@@ -1533,7 +1571,27 @@ class FullShortExecutionKernel:
             transition_id=f"failure:{envelope.failure_envelope_sha256}",
             boundary_id=boundary_id,
         )
-        raise FullShortBoundaryFailureV1(envelope) from None
+        raise FullShortBoundaryFailureV1(
+            envelope,
+            source_exception=exc,
+        ) from None
+
+    def recoverable_failure_already_recorded(
+        self,
+        *,
+        boundary_id: str,
+        failure_code: str,
+    ) -> bool:
+        envelope = self._last_failure_envelope
+        return bool(
+            envelope is not None
+            and self.journal.state
+            == ExecutionState.STAGE_REJECTED_RECOVERABLE
+            and envelope.boundary_id == boundary_id
+            and envelope.failure_code == failure_code
+            and envelope.recovery_decision
+            == RecoveryDecisionKind.ONE_TYPED_REATTEMPT
+        )
 
     def execute_boundary_sync(
         self,
