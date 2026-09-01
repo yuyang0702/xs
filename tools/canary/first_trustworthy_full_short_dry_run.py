@@ -1689,6 +1689,7 @@ async def _run(args: argparse.Namespace) -> dict[str, Any]:
         summary = {
             "schema": "FirstTrustworthyFullShortPrivateDryRunV2",
             "version": 2,
+            "status": "PASS",
             "source_head": start_head,
             "project_id_sha256": hashlib.sha256(project_id.encode()).hexdigest(),
             "workload_sha256": actual["workload_sha256"],
