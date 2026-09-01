@@ -649,6 +649,59 @@ class FailureEnvelopeV1:
     failure_envelope_sha256: str
 
 
+def _failure_envelope_from_mapping_v1(
+    value: dict[str, object],
+) -> FailureEnvelopeV1:
+    causes = tuple(
+        FailureCauseV1(
+            ordinal=int(item["ordinal"]),
+            relation=str(item["relation"]),
+            source_exception_class=str(item["source_exception_class"]),
+            safe_class_id=str(item["safe_class_id"]),
+            parent_ordinal=(
+                int(item["parent_ordinal"])
+                if item.get("parent_ordinal") is not None else None
+            ),
+            cause_sha256=str(item["cause_sha256"]),
+        )
+        for item in value.get("ordered_causes", ())
+        if isinstance(item, dict)
+    )
+    return FailureEnvelopeV1(
+        boundary_id=str(value["boundary_id"]),
+        classification=FailureClassification(str(value["classification"])),
+        failure_code=str(value["failure_code"]),
+        failure_family=str(value["failure_family"]),
+        source_exception_class=str(value["source_exception_class"]),
+        source_reason_code=(
+            str(value["source_reason_code"])
+            if value.get("source_reason_code") is not None else None
+        ),
+        ordered_causes=causes,
+        recovery_decision=RecoveryDecisionKind(
+            str(value["recovery_decision"])
+        ),
+        restart_policy_id=str(value["restart_policy_id"]),
+        authority_effect=str(value["authority_effect"]),
+        logical_stage_id=(
+            str(value["logical_stage_id"])
+            if value.get("logical_stage_id") is not None else None
+        ),
+        physical_attempt=int(value["physical_attempt"]),
+        capture_reference_sha256=(
+            str(value["capture_reference_sha256"])
+            if value.get("capture_reference_sha256") is not None else None
+        ),
+        current_state=ExecutionState(str(value["current_state"])),
+        allowed_next_states=tuple(
+            ExecutionState(str(item))
+            for item in value.get("allowed_next_states", ())
+        ),
+        raw_content_persisted=bool(value["raw_content_persisted"]),
+        failure_envelope_sha256=str(value["failure_envelope_sha256"]),
+    )
+
+
 class RegisteredBoundaryFailureV1(Exception):
     def __init__(self, *, boundary_id: str, failure_id: str) -> None:
         super().__init__(failure_id)
@@ -679,6 +732,9 @@ class FullShortBoundaryFailureV1(Exception):
         if isinstance(source_failure_code, str):
             self.source_failure_code = source_failure_code
             self.failure_code = source_failure_code
+        reliability = getattr(source_exception, "reliability_failure", None)
+        if reliability is not None:
+            self.reliability_failure = reliability
 
 
 @dataclass(frozen=True)
@@ -698,6 +754,7 @@ class DurableFailureReceiptV1:
     boundary_id: str
     failure_code: str
     failure_envelope_sha256: str
+    failure_envelope: FailureEnvelopeV1
     previous_record_sha256: str
     record_sha256: str
 
@@ -841,6 +898,9 @@ class DurableExecutionJournalV1:
                     boundary_id=str(item["boundary_id"]),
                     failure_code=str(item["failure_code"]),
                     failure_envelope_sha256=str(item["failure_envelope_sha256"]),
+                    failure_envelope=_failure_envelope_from_mapping_v1(
+                        dict(item["failure_envelope"])
+                    ),
                     previous_record_sha256=str(item["previous_record_sha256"]),
                     record_sha256=str(item["record_sha256"]),
                 )
@@ -1015,6 +1075,7 @@ class DurableExecutionJournalV1:
             "boundary_id": envelope.boundary_id,
             "failure_code": envelope.failure_code,
             "failure_envelope_sha256": envelope.failure_envelope_sha256,
+            "failure_envelope": envelope,
             "previous_record_sha256": self._last_hash(),
         }
         receipt = DurableFailureReceiptV1(
@@ -1274,7 +1335,10 @@ class FullShortExecutionKernel:
         self.registry = registry
         self.journal = journal
         self.fault_injector = fault_injector or DeterministicFaultInjectorV1()
-        self._last_failure_envelope: FailureEnvelopeV1 | None = None
+        self._last_failure_envelope: FailureEnvelopeV1 | None = (
+            journal.failure_receipts[-1].failure_envelope
+            if journal.failure_receipts else None
+        )
 
     def _successful_boundaries(self) -> set[str]:
         return {

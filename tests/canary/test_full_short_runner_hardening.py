@@ -426,6 +426,19 @@ def test_dry_run_has_no_test_owned_oracle_or_fixed_call_count() -> None:
     )
 
 
+def test_existing_runtime_journal_reconciles_before_approval_or_nonce() -> None:
+    source = Path(runner.__file__).read_text(encoding="utf-8")
+    existing = source.index("if runtime_journal_path.exists():")
+    reconcile = source.index("FullShortRestartReconcilerV1().reconcile(")
+    permission = source.index("store.create_permission(")
+    approval = source.index("store.create_jit_approval(")
+    predispatch = source.index("prepare_predispatch_with_kernel")
+    assert existing < reconcile < permission < approval < predispatch
+    assert "AMBIGUOUS_OR_UNCLOSED_DISPATCH_NO_RESTART" in source[
+        existing:permission
+    ]
+
+
 def test_dry_run_failure_projection_is_hash_only() -> None:
     from tools.canary.first_trustworthy_full_short_dry_run import (
         _safe_failure_projection,

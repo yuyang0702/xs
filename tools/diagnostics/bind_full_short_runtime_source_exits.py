@@ -35,8 +35,8 @@ FULL_SHORT_RUNTIME_PROOF_DOMAIN_V1 = {
         "tools.canary.first_trustworthy_full_short_runner:_execute_full_short_control_plane_with_capability.<locals>.terminal_closure.<locals>.commit_after_saga_cleanup": "FS.TERMINAL.VERIFY_COMMIT",
     },
     "kernel_activation_requirements": {
-        "tools.canary.first_trustworthy_full_short_runner:_execute_full_short_control_plane_with_capability.<locals>.supervised_operation": "context_activation",
-        "tools.canary.first_trustworthy_full_short_runner:_execute_full_short_control_plane_with_capability.<locals>.prepare_predispatch_with_kernel": "context_activation",
+        "tools.canary.first_trustworthy_full_short_runner:_execute_full_short_control_plane_with_capability.<locals>.supervised_operation": "context_activation:run_short",
+        "tools.canary.first_trustworthy_full_short_runner:_execute_full_short_control_plane_with_capability.<locals>.prepare_predispatch_with_kernel": "context_activation:prepare_predispatch_ledger",
         "tools.canary.first_trustworthy_full_short_runner:_execute_full_short_control_plane_with_capability.<locals>.terminal_closure.<locals>.commit_after_saga_cleanup": "explicit_kernel_boundary",
     },
     "in_scope": [
@@ -60,15 +60,61 @@ def _kernel_activation_evidence_v1(
     node: ast.FunctionDef | ast.AsyncFunctionDef,
     mode: str,
 ) -> bool:
-    if mode == "context_activation":
-        return any(
-            isinstance(item, ast.withitem)
-            and isinstance(item.context_expr, ast.Call)
-            and _call_name(item.context_expr) == "activate_full_short_kernel_v1"
-            for candidate in ast.walk(node)
-            if isinstance(candidate, (ast.With, ast.AsyncWith))
-            for item in candidate.items
-        )
+    if mode.startswith("context_activation:"):
+        required_call = mode.split(":", 1)[1]
+        inside = 0
+        outside = 0
+
+        class ActivationVisitor(ast.NodeVisitor):
+            def __init__(self) -> None:
+                self.activation_depth = 0
+
+            def visit_FunctionDef(self, candidate: ast.FunctionDef) -> None:
+                if candidate is node:
+                    for statement in candidate.body:
+                        self.visit(statement)
+
+            def visit_AsyncFunctionDef(
+                self, candidate: ast.AsyncFunctionDef,
+            ) -> None:
+                if candidate is node:
+                    for statement in candidate.body:
+                        self.visit(statement)
+
+            def visit_Lambda(self, candidate: ast.Lambda) -> None:
+                return
+
+            def _visit_with(self, candidate: ast.With | ast.AsyncWith) -> None:
+                active = any(
+                    isinstance(item.context_expr, ast.Call)
+                    and _call_name(item.context_expr)
+                    == "activate_full_short_kernel_v1"
+                    for item in candidate.items
+                )
+                for item in candidate.items:
+                    self.visit(item.context_expr)
+                self.activation_depth += int(active)
+                for statement in candidate.body:
+                    self.visit(statement)
+                self.activation_depth -= int(active)
+
+            def visit_With(self, candidate: ast.With) -> None:
+                self._visit_with(candidate)
+
+            def visit_AsyncWith(self, candidate: ast.AsyncWith) -> None:
+                self._visit_with(candidate)
+
+            def visit_Call(self, candidate: ast.Call) -> None:
+                nonlocal inside, outside
+                if _call_name(candidate) == required_call:
+                    if self.activation_depth:
+                        inside += 1
+                    else:
+                        outside += 1
+                self.generic_visit(candidate)
+
+        ActivationVisitor().visit(node)
+        return inside > 0 and outside == 0
     if mode == "explicit_kernel_boundary":
         return any(
             isinstance(candidate, ast.Call)
@@ -234,6 +280,7 @@ _RECOVERY_DECISION_CALL_NAMES = frozenset({
     "authorize_shared_second_slot",
 })
 _RETRY_GOVERNOR_CALL_NAMES = frozenset({
+    "_transport_attempt_limit",
     "_exact_single_dispatch_active",
     "_protocol_receipt_attempt_plan",
     "_runtime_attempts",
@@ -476,17 +523,128 @@ def _looks_like_provider_dispatch(
     )
 
 
-def _has_retry_governor(function: _Function) -> bool:
-    calls = {
-        _call_name(node) for node in ast.walk(function.node)
-        if isinstance(node, ast.Call)
-    }
-    if calls & _RETRY_GOVERNOR_CALL_NAMES:
-        return True
-    return any(
-        isinstance(node, ast.Attribute) and node.attr == "transport_policy"
-        for node in ast.walk(function.node)
+def _active_kernel_positive_test(node: ast.AST) -> bool:
+    return (
+        isinstance(node, ast.Compare)
+        and len(node.ops) == 1
+        and isinstance(node.ops[0], ast.IsNot)
+        and isinstance(node.left, ast.Name)
+        and node.left.id == "runtime_kernel"
+        and len(node.comparators) == 1
+        and isinstance(node.comparators[0], ast.Constant)
+        and node.comparators[0].value is None
     )
+
+
+def _statement_calls_v1(node: ast.AST) -> list[ast.Call]:
+    calls: list[ast.Call] = []
+
+    class CallVisitor(ast.NodeVisitor):
+        def visit_FunctionDef(self, candidate: ast.FunctionDef) -> None:
+            return
+
+        def visit_AsyncFunctionDef(
+            self, candidate: ast.AsyncFunctionDef,
+        ) -> None:
+            return
+
+        def visit_Lambda(self, candidate: ast.Lambda) -> None:
+            return
+
+        def visit_Call(self, candidate: ast.Call) -> None:
+            calls.append(candidate)
+            self.generic_visit(candidate)
+
+    CallVisitor().visit(node)
+    return sorted(calls, key=lambda item: (
+        int(getattr(item, "lineno", 0)),
+        int(getattr(item, "col_offset", 0)),
+    ))
+
+
+def _dominating_call_facts_v1(
+    function: _Function,
+    *,
+    fact_names: frozenset[str],
+    assume_active_kernel: bool,
+) -> dict[int, frozenset[str]]:
+    """Conservative must-fact propagation for calls in one function body."""
+
+    observed: dict[int, frozenset[str]] = {}
+
+    def expression(node: ast.AST | None, facts: set[str]) -> set[str]:
+        current = set(facts)
+        if node is None:
+            return current
+        for call in _statement_calls_v1(node):
+            observed[id(call)] = frozenset(current)
+            name = _call_name(call)
+            if name in fact_names:
+                current.add(name)
+        return current
+
+    def block(statements: list[ast.stmt], facts: set[str]) -> set[str]:
+        current = set(facts)
+        for statement in statements:
+            current = one(statement, current)
+        return current
+
+    def intersect(paths: list[set[str]], fallback: set[str]) -> set[str]:
+        if not paths:
+            return set(fallback)
+        result = set(paths[0])
+        for path in paths[1:]:
+            result.intersection_update(path)
+        return result
+
+    def one(statement: ast.stmt, facts: set[str]) -> set[str]:
+        if isinstance(statement, ast.If):
+            tested = expression(statement.test, facts)
+            body_facts = block(statement.body, tested)
+            if assume_active_kernel and _active_kernel_positive_test(
+                statement.test
+            ):
+                return body_facts
+            else_facts = block(statement.orelse, tested)
+            return body_facts & else_facts
+        if isinstance(statement, (ast.For, ast.AsyncFor)):
+            tested = expression(statement.iter, facts)
+            expression(statement.target, tested)
+            block(statement.body, tested)
+            block(statement.orelse, tested)
+            return tested
+        if isinstance(statement, ast.While):
+            tested = expression(statement.test, facts)
+            block(statement.body, tested)
+            block(statement.orelse, tested)
+            return tested
+        if isinstance(statement, ast.Try):
+            body_facts = block(statement.body, facts)
+            normal_facts = block(statement.orelse, body_facts)
+            paths = [normal_facts]
+            for handler in statement.handlers:
+                paths.append(block(handler.body, set(facts)))
+            merged = intersect(paths, facts)
+            return block(statement.finalbody, merged)
+        if isinstance(statement, (ast.With, ast.AsyncWith)):
+            current = set(facts)
+            for item in statement.items:
+                current = expression(item.context_expr, current)
+                current = expression(item.optional_vars, current)
+            return block(statement.body, current)
+        if isinstance(statement, ast.Match):
+            subject_facts = expression(statement.subject, facts)
+            paths = [
+                block(case.body, expression(case.guard, subject_facts))
+                for case in statement.cases
+            ]
+            return intersect(paths, subject_facts)
+        if isinstance(statement, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            return set(facts)
+        return expression(statement, facts)
+
+    block(function.node.body, set())
+    return observed
 
 
 def _direct_path_metric_violations_v1(
@@ -526,7 +684,14 @@ def _direct_path_metric_violations_v1(
         binding = function_bindings.get(function_id)
         visitor = _BodyVisitor(function.node)
         visitor.visit(function.node)
-        earlier_names: list[str] = []
+        dominating_facts = _dominating_call_facts_v1(
+            function,
+            fact_names=frozenset(
+                set(_RETRY_GOVERNOR_CALL_NAMES)
+                | {"mark_predispatch_ready", "reserve_dispatch_token"}
+            ),
+            assume_active_kernel=_binding_is_kernel_owned(binding),
+        )
         for call in sorted(
             visitor.calls,
             key=lambda item: (
@@ -568,7 +733,10 @@ def _direct_path_metric_violations_v1(
                         reason="retry_dispatch_not_owned_by_dispatch_boundary",
                         contexts=contexts,
                     )
-                if not _has_retry_governor(function):
+                if not (
+                    dominating_facts.get(id(call), frozenset())
+                    & _RETRY_GOVERNOR_CALL_NAMES
+                ):
                     add(
                         "HIDDEN_RETRY_PATH_COUNT",
                         function, call,
@@ -592,7 +760,9 @@ def _direct_path_metric_violations_v1(
                     call_name == "reserve_nonce_from_dispatch_readiness"
                     and not {
                         "mark_predispatch_ready", "reserve_dispatch_token",
-                    }.issubset(earlier_names)
+                    }.issubset(
+                        dominating_facts.get(id(call), frozenset())
+                    )
                 ):
                     add(
                         "NONCE_PREMATURE_RESERVATION_PATH_COUNT",
@@ -644,7 +814,6 @@ def _direct_path_metric_violations_v1(
                     reason="recovery_decision_not_owned_by_registered_boundary",
                     contexts=contexts,
                 )
-            earlier_names.append(call_name)
 
     for rows in violations.values():
         rows.sort(key=lambda item: (

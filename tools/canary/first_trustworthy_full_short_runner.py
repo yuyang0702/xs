@@ -64,6 +64,7 @@ from novel_flywheel.full_short_runtime_kernel import (
     DurableExecutionJournalV1,
     ExecutionState,
     FullShortExecutionKernel,
+    FullShortRestartReconcilerV1,
     activate_full_short_kernel_v1,
 )
 from novel_flywheel.models import ModelGateway
@@ -1061,6 +1062,25 @@ async def _execute_full_short_control_plane_with_capability(
     db.migrate()
     execution_id = policy["run_id"]
     manager = RunTaskManager(db)
+    runtime_journal_path = (
+        args.store_root / f"{execution_id}.runtime-journal-v1.json"
+    )
+    if runtime_journal_path.exists():
+        reconciliation = FullShortRestartReconcilerV1().reconcile(
+            runtime_journal_path
+        )
+        failure = FullShortExecutionBoundaryError(
+            "AMBIGUOUS_OR_UNCLOSED_DISPATCH_NO_RESTART"
+        )
+        failure.add_note(
+            "RUNTIME_RECONCILIATION_DECISION="
+            + reconciliation.decision.value
+        )
+        failure.add_note(
+            "RUNTIME_RECONCILIATION_HEAD_SHA256="
+            + reconciliation.journal_head_sha256
+        )
+        raise failure
     if db.get_run(execution_id) is not None:
         if manager.fail_closed_exact_once_reservation(
             execution_id,
@@ -1115,7 +1135,7 @@ async def _execute_full_short_control_plane_with_capability(
     prelaunch_state["approval_created"] = True
     runtime_journal = prelaunch(
         lambda: DurableExecutionJournalV1.create(
-            args.store_root / f"{execution_id}.runtime-journal-v1.json",
+            runtime_journal_path,
             execution_id=execution_id,
             initial_state=ExecutionState.TEMPLATE_READY,
         ),

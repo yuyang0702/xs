@@ -33,6 +33,11 @@ from novel_flywheel.project_transactions import (
 from novel_flywheel.models import (
     ReasoningOnlyFinalArtifactUnavailableError,
 )
+from novel_flywheel.completion_supervisor import classify_completion_failure
+from novel_flywheel.execution_failure_architecture import (
+    build_durable_failure_evidence,
+)
+from novel_flywheel.recovery_engine import FailureClass
 
 
 def _journal(tmp_path: Path, name: str = "journal.json") -> DurableExecutionJournalV1:
@@ -245,6 +250,33 @@ async def test_dispatch_reasoning_only_is_known_durable_recoverable(
     reopened = DurableExecutionJournalV1.open(journal.path)
     assert reopened.state == ExecutionState.STAGE_REJECTED_RECOVERABLE
     assert len(reopened.failure_receipts) == 1
+    assert reopened.failure_receipts[0].failure_envelope == (
+        caught.value.envelope
+    )
+    restarted_kernel = FullShortExecutionKernel(
+        registry=DEFAULT_FAILURE_BOUNDARY_REGISTRY_V1,
+        journal=reopened,
+    )
+    assert restarted_kernel.recoverable_failure_already_recorded(
+        boundary_id="FS.DISPATCH.MODEL",
+        failure_code="planning.reasoning_only_no_final",
+    )
+    assert classify_completion_failure(caught.value) == (
+        FailureClass.OUTPUT_TRUNCATION
+    )
+    evidence = build_durable_failure_evidence(
+        caught.value,
+        boundary="full_short.kernel",
+    )
+    assert evidence.root.code == (
+        "reasoning_only_final_artifact_unavailable"
+    )
+    assert evidence.root.children[0].code == (
+        "reasoning_only_final_artifact_unavailable"
+    )
+    assert evidence.root.children[0].source_exception_class == (
+        "ReasoningOnlyFinalArtifactUnavailableError"
+    )
 
 
 @pytest.mark.asyncio

@@ -42,6 +42,7 @@ def _nested_reliability_failure(
         if reliability is not None:
             candidates.append(reliability)
         for nested in (
+            getattr(current, "source_exception", None),
             *(
                 item[-1] for item in (getattr(current, "route_errors", None) or ())
                 if isinstance(item, (tuple, list)) and item

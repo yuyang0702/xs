@@ -331,9 +331,24 @@ class HttpProvider:
             ),
         }
 
+    def _transport_attempt_limit(self) -> int:
+        """Return the single explicit governor for every HTTP retry loop."""
+
+        policy = self.transport_policy
+        if policy is None:
+            return 2
+        if not (
+            policy.sdk_retries_disabled
+            and policy.transport_request_retries_disabled
+            and not policy.application_second_dispatch_allowed
+            and policy.max_http_post_attempts == 1
+        ):
+            raise RuntimeError("transport retry policy is not fail closed")
+        return 1
+
     async def post(self, path: str, *, payload: dict[str, Any], headers: dict[str, str]) -> dict[str, Any]:
         url = f"{self.base_url}/{path.lstrip('/')}"
-        max_attempts = 1 if self.transport_policy is not None else 2
+        max_attempts = self._transport_attempt_limit()
         for attempt in range(max_attempts):
             try:
                 request = self._build_http_post_request(
@@ -390,7 +405,7 @@ class HttpProvider:
     ) -> tuple[list[dict[str, Any]], dict[str, Any] | None]:
         url = f"{self.base_url}/{path.lstrip('/')}"
         request_headers = {**headers, **self.headers}
-        max_attempts = 1 if self.transport_policy is not None else 2
+        max_attempts = self._transport_attempt_limit()
         for attempt in range(max_attempts):
             events: list[dict[str, Any]] = []
             request = self._build_http_post_request(

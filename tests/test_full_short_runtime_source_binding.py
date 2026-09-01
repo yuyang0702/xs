@@ -72,13 +72,37 @@ async def unsafe():
     assert isinstance(direct_root, ast.FunctionDef)
     assert isinstance(unsafe_root, ast.AsyncFunctionDef)
     assert _kernel_activation_evidence_v1(
-        context_root, "context_activation",
+        context_root, "context_activation:operation",
     )
     assert _kernel_activation_evidence_v1(
         direct_root, "explicit_kernel_boundary",
     )
     assert not _kernel_activation_evidence_v1(
-        unsafe_root, "context_activation",
+        unsafe_root, "context_activation:run_short",
+    )
+
+    late_tree = ast.parse("""
+async def late():
+    await service.run_short("project")
+    with activate_full_short_kernel_v1(kernel):
+        pass
+""")
+    dormant_tree = ast.parse("""
+async def dormant():
+    def never_called():
+        with activate_full_short_kernel_v1(kernel):
+            return service.run_short("project")
+    return await service.run_short("project")
+""")
+    late_root = late_tree.body[0]
+    dormant_root = dormant_tree.body[0]
+    assert isinstance(late_root, ast.AsyncFunctionDef)
+    assert isinstance(dormant_root, ast.AsyncFunctionDef)
+    assert not _kernel_activation_evidence_v1(
+        late_root, "context_activation:run_short",
+    )
+    assert not _kernel_activation_evidence_v1(
+        dormant_root, "context_activation:run_short",
     )
 
 
@@ -150,3 +174,43 @@ def unsafe_decision():
         for rows in violations.values()
         for row in rows
     )
+
+
+def test_direct_metrics_reject_post_governor_and_conditional_readiness() -> None:
+    source = """
+async def post_governed_retry():
+    for item in items:
+        await gateway.complete_primary()
+        controller.authorize_shared_second_slot()
+
+def conditional_readiness():
+    if flag:
+        kernel.mark_predispatch_ready(readiness)
+        kernel.reserve_dispatch_token()
+    store.reserve_nonce_from_dispatch_readiness()
+"""
+    fixture_path = Path.cwd() / "fixture_cfg_dominance.py"
+    tree = ast.parse(source, filename=str(fixture_path))
+    functions = {
+        function.function_id: function
+        for function in _collect_functions(
+            "novel_flywheel.models", fixture_path, tree,
+        )
+    }
+    reachable_functions = set(functions)
+    violations = _direct_path_metric_violations_v1(
+        repo_root=Path.cwd(),
+        functions=functions,
+        reachable_functions=reachable_functions,
+        function_bindings={
+            function_id: {
+                "boundary_ids": ["FS.DISPATCH.MODEL"],
+                "unprotected_path_count": 0,
+            }
+            for function_id in reachable_functions
+        },
+        boundary_entries={},
+        resolved_calls={},
+    )
+    assert len(violations["HIDDEN_RETRY_PATH_COUNT"]) == 1
+    assert len(violations["NONCE_PREMATURE_RESERVATION_PATH_COUNT"]) == 1

@@ -591,9 +591,12 @@ def _ordered_children(
     exc: BaseException,
 ) -> tuple[tuple[BaseException, int, str | None, str | None], ...]:
     children: list[tuple[BaseException, int, str | None, str | None]] = []
+    source_exception = getattr(exc, "source_exception", None)
+    if isinstance(source_exception, BaseException):
+        children.append((source_exception, 1, None, None))
     route_errors = getattr(exc, "route_errors", None)
     if isinstance(route_errors, (list, tuple)):
-        for ordinal, item in enumerate(route_errors, 1):
+        for ordinal, item in enumerate(route_errors, len(children) + 1):
             candidate: object = item
             provider_id: object = None
             model_id: object = None
