@@ -1,0 +1,22 @@
+{
+  "schema": "FullShortArchitectureNarrowFixTestReceiptV1",
+  "version": 1,
+  "source_head": "b9e46df9acafa84ceddd412bcd0d59518360edc8",
+  "status": "PASS",
+  "tests": 74,
+  "failures": 0,
+  "errors": 0,
+  "skipped": 0,
+  "command_scope": [
+    "tests/providers/test_single_dispatch_transport_guard.py",
+    "tests/test_execution_failure_architecture.py",
+    "tests/test_full_short_execution.py::test_credential_reflection_is_rejected_before_attempt_accounting",
+    "tests/test_full_short_failure_surface_static_audit.py"
+  ],
+  "real_credential_lookup_count": 0,
+  "real_provider_request_attempts": 0,
+  "network_calls": 0,
+  "model_calls": 0,
+  "paid_calls": 0,
+  "full_short_execution_count": 0
+}

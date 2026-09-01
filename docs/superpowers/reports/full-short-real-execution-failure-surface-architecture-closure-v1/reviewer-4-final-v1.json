@@ -1,0 +1,7 @@
+{
+  "schema": "FullShortArchitectureFinalReviewV1",
+  "reviewer": null,
+  "scope": "recovery, idempotency, and budget",
+  "status": "NOT_LAUNCHED_STOP_LOSS",
+  "reason": "Reviewer 1 established a broad unresolved class; the Master requires STOP."
+}

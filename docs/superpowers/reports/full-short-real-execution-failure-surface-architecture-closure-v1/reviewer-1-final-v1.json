@@ -1,0 +1,15 @@
+{
+  "schema": "FullShortArchitectureFinalReviewV1",
+  "reviewer": "final_surface",
+  "scope": "full failure-surface completeness",
+  "status": "ARCHITECTURE_FAIL",
+  "issue_scope": "BROAD",
+  "findings": [
+    "The 70-case canonical surface is generated from PHASE9_FAULT_CASES rather than a source-derived reachable failure-exit inventory.",
+    "The materialized call graph contains broad steps rather than exact function/class call edges and per-exit semantics.",
+    "The static audit does not close registry, models, HTTP, Contract Runtime, workflows, and tasks against every reachable exit.",
+    "Phase 9 per-case PASS assertions do not consume case-specific typed failure, durable receipt, dispatch, authority, restart, and recovery evidence.",
+    "Multiple cases share proxy tests or inaccurate source bindings, so one-to-one real-boundary injection is not established."
+  ],
+  "authorization_effect": "BLOCK_NEW_AUTHORIZATION"
+}

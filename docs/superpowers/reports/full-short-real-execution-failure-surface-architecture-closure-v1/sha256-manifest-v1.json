@@ -1,0 +1,16 @@
+{
+  "schema": "FullShortArchitectureStopEvidenceManifestV1",
+  "version": 1,
+  "disposition": "FAIL_CLOSED_BROAD_UNRESOLVED_CLASS",
+  "files": {
+    "architecture-stop-disposition-v1.json": "9572700c0acafb2255c037547613736e3b89991f98dc3f63618b74610c2fa54a",
+    "narrow-fix-test-receipt-v1.json": "bf20bd0ae64b181144ba47a531b4b5f3ab03b12fa3ba2e903c8ffad2384b81bc",
+    "pre-authorization-final-report-v1.md": "59e678ac67562880301e2ab1474f225830a0bdfbcb1f7e21fc08dc81a2356a0b",
+    "README.md": "6138fbcc054014a6b460203e5e020f73c7a0fca9ecc11351b9392f62e8cd96c0",
+    "reviewer-1-final-v1.json": "e220c02ab68fb678ab2345a8a442b719cd058810624dd8b0d67e81d75b7b2a88",
+    "reviewer-2-final-v1.json": "ace82717860be687ac9bd5cb252ba6d55bac3f7b28a822add3411b3415c47f77",
+    "reviewer-3-final-v1.json": "e514d33f9c3b4a9c1508cf1c0d9985a13f71f0d1e2e7cb8108601dc5c03ab49b",
+    "reviewer-4-final-v1.json": "0b110b48f451773bec778ff8362825cb90536232db0475311df49f44f7e83e7c",
+    "reviewer-5-final-v1.json": "3c4413ee3ff59a573cb3299d65e2e5a2223d7ca38de37b34f7e17377d71a3e4b"
+  }
+}

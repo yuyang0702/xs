@@ -1,0 +1,7 @@
+{
+  "schema": "FullShortArchitectureFinalReviewV1",
+  "reviewer": "final_taxonomy",
+  "scope": "error taxonomy and provenance",
+  "status": "NOT_COMPLETED_STOP_LOSS",
+  "reason": "Reviewer 1 established a broad unresolved class; the Master requires STOP rather than continuing to accumulate PASS artifacts."
+}
