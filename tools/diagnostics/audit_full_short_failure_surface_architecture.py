@@ -245,7 +245,10 @@ def audit() -> dict[str, Any]:
         ),
         "route_exhaustion_preserves_ordered_children": (
             "route_errors" in _source(ModelRoutesExhaustedError)
-            and "enumerate(route_errors, 1)" in _source(_ordered_children)
+            and "enumerate(route_errors, len(children) + 1)" in _source(
+                _ordered_children
+            )
+            and "source_exception" in _source(_ordered_children)
             and "children.append((candidate, ordinal" in _source(_ordered_children)
         ),
         "phase9_inventory_is_source_bound": (

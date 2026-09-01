@@ -37,7 +37,7 @@ FULL_SHORT_RUNTIME_PROOF_DOMAIN_V1 = {
     "kernel_activation_requirements": {
         "tools.canary.first_trustworthy_full_short_runner:_execute_full_short_control_plane_with_capability.<locals>.supervised_operation": "context_activation:run_short",
         "tools.canary.first_trustworthy_full_short_runner:_execute_full_short_control_plane_with_capability.<locals>.prepare_predispatch_with_kernel": "context_activation:prepare_predispatch_ledger",
-        "tools.canary.first_trustworthy_full_short_runner:_execute_full_short_control_plane_with_capability.<locals>.terminal_closure.<locals>.commit_after_saga_cleanup": "explicit_kernel_boundary",
+        "tools.canary.first_trustworthy_full_short_runner:_execute_full_short_control_plane_with_capability.<locals>.terminal_closure.<locals>.commit_after_saga_cleanup": "explicit_kernel_boundary:FS.TERMINAL.VERIFY_COMMIT:commit_completion",
     },
     "in_scope": [
         "exact Full Short control plane and task-manager bridge",
@@ -115,14 +115,63 @@ def _kernel_activation_evidence_v1(
 
         ActivationVisitor().visit(node)
         return inside > 0 and outside == 0
-    if mode == "explicit_kernel_boundary":
-        return any(
-            isinstance(candidate, ast.Call)
-            and _call_name(candidate) in {
+    if mode.startswith("explicit_kernel_boundary:"):
+        _, required_boundary_id, required_operation = mode.split(":", 2)
+        calls: list[ast.Call] = []
+
+        class SameScopeCallVisitor(ast.NodeVisitor):
+            def visit_FunctionDef(self, candidate: ast.FunctionDef) -> None:
+                if candidate is node:
+                    for statement in candidate.body:
+                        self.visit(statement)
+
+            def visit_AsyncFunctionDef(
+                self, candidate: ast.AsyncFunctionDef,
+            ) -> None:
+                if candidate is node:
+                    for statement in candidate.body:
+                        self.visit(statement)
+
+            def visit_Call(self, candidate: ast.Call) -> None:
+                calls.append(candidate)
+                self.generic_visit(candidate)
+
+        SameScopeCallVisitor().visit(node)
+        protected_calls = [
+            candidate for candidate in calls
+            if _call_name(candidate) == required_operation
+        ]
+        protected_inside: set[int] = set()
+        for candidate in calls:
+            if _call_name(candidate) not in {
                 "execute_boundary", "execute_boundary_sync",
-            }
-            for candidate in ast.walk(node)
-        )
+            }:
+                continue
+            if not (
+                candidate.args
+                and isinstance(candidate.args[0], ast.Constant)
+                and candidate.args[0].value == required_boundary_id
+            ):
+                continue
+            operation = (
+                candidate.args[1] if len(candidate.args) > 1 else next(
+                    (
+                        item.value for item in candidate.keywords
+                        if item.arg == "operation"
+                    ),
+                    None,
+                )
+            )
+            if operation is None:
+                continue
+            protected_inside.update(
+                id(child) for child in ast.walk(operation)
+                if isinstance(child, ast.Call)
+                and _call_name(child) == required_operation
+            )
+        return bool(protected_calls) and {
+            id(candidate) for candidate in protected_calls
+        } == protected_inside
     raise ValueError("unknown_kernel_activation_requirement")
 
 
@@ -523,43 +572,20 @@ def _looks_like_provider_dispatch(
     )
 
 
-def _active_kernel_positive_test(node: ast.AST) -> bool:
+def _active_kernel_positive_test(
+    node: ast.AST, facts: set[str],
+) -> bool:
     return (
         isinstance(node, ast.Compare)
         and len(node.ops) == 1
         and isinstance(node.ops[0], ast.IsNot)
         and isinstance(node.left, ast.Name)
         and node.left.id == "runtime_kernel"
+        and "active_kernel:runtime_kernel" in facts
         and len(node.comparators) == 1
         and isinstance(node.comparators[0], ast.Constant)
         and node.comparators[0].value is None
     )
-
-
-def _statement_calls_v1(node: ast.AST) -> list[ast.Call]:
-    calls: list[ast.Call] = []
-
-    class CallVisitor(ast.NodeVisitor):
-        def visit_FunctionDef(self, candidate: ast.FunctionDef) -> None:
-            return
-
-        def visit_AsyncFunctionDef(
-            self, candidate: ast.AsyncFunctionDef,
-        ) -> None:
-            return
-
-        def visit_Lambda(self, candidate: ast.Lambda) -> None:
-            return
-
-        def visit_Call(self, candidate: ast.Call) -> None:
-            calls.append(candidate)
-            self.generic_visit(candidate)
-
-    CallVisitor().visit(node)
-    return sorted(calls, key=lambda item: (
-        int(getattr(item, "lineno", 0)),
-        int(getattr(item, "col_offset", 0)),
-    ))
 
 
 def _dominating_call_facts_v1(
@@ -576,11 +602,31 @@ def _dominating_call_facts_v1(
         current = set(facts)
         if node is None:
             return current
-        for call in _statement_calls_v1(node):
-            observed[id(call)] = frozenset(current)
-            name = _call_name(call)
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.Lambda)):
+            return current
+        if isinstance(node, ast.BoolOp):
+            path = set(current)
+            for value in node.values:
+                path = expression(value, path)
+            # Every operand after the first is conditional, so no new fact
+            # established by the expression dominates its continuation.
+            return current
+        if isinstance(node, ast.IfExp):
+            tested = expression(node.test, current)
+            return expression(node.body, tested) & expression(node.orelse, tested)
+        if isinstance(node, ast.Call):
+            current = expression(node.func, current)
+            for argument in node.args:
+                current = expression(argument, current)
+            for keyword in node.keywords:
+                current = expression(keyword.value, current)
+            observed[id(node)] = frozenset(current)
+            name = _call_name(node)
             if name in fact_names:
                 current.add(name)
+            return current
+        for child in ast.iter_child_nodes(node):
+            current = expression(child, current)
         return current
 
     def block(statements: list[ast.stmt], facts: set[str]) -> set[str]:
@@ -602,7 +648,7 @@ def _dominating_call_facts_v1(
             tested = expression(statement.test, facts)
             body_facts = block(statement.body, tested)
             if assume_active_kernel and _active_kernel_positive_test(
-                statement.test
+                statement.test, tested,
             ):
                 return body_facts
             else_facts = block(statement.orelse, tested)
@@ -641,6 +687,33 @@ def _dominating_call_facts_v1(
             return intersect(paths, subject_facts)
         if isinstance(statement, (ast.FunctionDef, ast.AsyncFunctionDef)):
             return set(facts)
+        if isinstance(statement, (ast.Assign, ast.AnnAssign)):
+            value = statement.value
+            current = expression(value, facts)
+            targets = (
+                list(statement.targets)
+                if isinstance(statement, ast.Assign)
+                else [statement.target]
+            )
+            for target in targets:
+                if isinstance(target, ast.Name):
+                    current.discard(f"active_kernel:{target.id}")
+                    if (
+                        assume_active_kernel
+                        and isinstance(value, ast.Call)
+                        and _call_name(value) == "active_full_short_kernel_v1"
+                    ):
+                        current.add(f"active_kernel:{target.id}")
+            return current
+        if isinstance(statement, (ast.AugAssign, ast.Delete)):
+            current = expression(statement, facts)
+            targets = [statement.target] if isinstance(
+                statement, ast.AugAssign,
+            ) else list(statement.targets)
+            for target in targets:
+                if isinstance(target, ast.Name):
+                    current.discard(f"active_kernel:{target.id}")
+            return current
         return expression(statement, facts)
 
     block(function.node.body, set())

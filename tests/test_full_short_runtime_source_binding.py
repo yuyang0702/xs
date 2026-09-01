@@ -59,7 +59,7 @@ async def root():
 """)
     direct_tree = ast.parse("""
 def terminal():
-    return runtime_kernel.execute_boundary_sync("FS.TEST", operation)
+    return runtime_kernel.execute_boundary_sync("FS.TEST", lambda: operation())
 """)
     unsafe_tree = ast.parse("""
 async def unsafe():
@@ -75,7 +75,7 @@ async def unsafe():
         context_root, "context_activation:operation",
     )
     assert _kernel_activation_evidence_v1(
-        direct_root, "explicit_kernel_boundary",
+        direct_root, "explicit_kernel_boundary:FS.TEST:operation",
     )
     assert not _kernel_activation_evidence_v1(
         unsafe_root, "context_activation:run_short",
@@ -103,6 +103,31 @@ async def dormant():
     )
     assert not _kernel_activation_evidence_v1(
         dormant_root, "context_activation:run_short",
+    )
+
+    nested_boundary_tree = ast.parse("""
+def dormant_terminal():
+    def never_called():
+        return runtime_kernel.execute_boundary_sync(
+            "FS.TEST", lambda: store.commit_completion()
+        )
+    return store.commit_completion()
+""")
+    wrong_boundary_tree = ast.parse("""
+def wrong_terminal():
+    runtime_kernel.execute_boundary_sync("FS.UNRELATED", lambda: operation())
+    return store.commit_completion()
+""")
+    nested_boundary_root = nested_boundary_tree.body[0]
+    wrong_boundary_root = wrong_boundary_tree.body[0]
+    assert isinstance(nested_boundary_root, ast.FunctionDef)
+    assert isinstance(wrong_boundary_root, ast.FunctionDef)
+    exact_mode = "explicit_kernel_boundary:FS.TEST:commit_completion"
+    assert not _kernel_activation_evidence_v1(
+        nested_boundary_root, exact_mode,
+    )
+    assert not _kernel_activation_evidence_v1(
+        wrong_boundary_root, exact_mode,
     )
 
 
@@ -188,6 +213,24 @@ def conditional_readiness():
         kernel.mark_predispatch_ready(readiness)
         kernel.reserve_dispatch_token()
     store.reserve_nonce_from_dispatch_readiness()
+
+async def short_circuit_governed_retry():
+    for item in items:
+        flag and controller.authorize_shared_second_slot()
+        await gateway.complete_primary()
+
+def short_circuit_readiness():
+    flag and kernel.mark_predispatch_ready(readiness)
+    flag and kernel.reserve_dispatch_token()
+    store.reserve_nonce_from_dispatch_readiness()
+
+def reassigned_kernel_readiness():
+    runtime_kernel = active_full_short_kernel_v1()
+    runtime_kernel = None
+    if runtime_kernel is not None:
+        runtime_kernel.mark_predispatch_ready(readiness)
+        runtime_kernel.reserve_dispatch_token()
+    store.reserve_nonce_from_dispatch_readiness()
 """
     fixture_path = Path.cwd() / "fixture_cfg_dominance.py"
     tree = ast.parse(source, filename=str(fixture_path))
@@ -212,5 +255,5 @@ def conditional_readiness():
         boundary_entries={},
         resolved_calls={},
     )
-    assert len(violations["HIDDEN_RETRY_PATH_COUNT"]) == 1
-    assert len(violations["NONCE_PREMATURE_RESERVATION_PATH_COUNT"]) == 1
+    assert len(violations["HIDDEN_RETRY_PATH_COUNT"]) == 2
+    assert len(violations["NONCE_PREMATURE_RESERVATION_PATH_COUNT"]) == 3

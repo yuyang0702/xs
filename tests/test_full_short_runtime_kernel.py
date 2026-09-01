@@ -26,6 +26,7 @@ from novel_flywheel.full_short_runtime_kernel import (
     RegisteredBoundaryFailureV1,
     activate_full_short_kernel_v1,
     fault_case_keys_v1,
+    _sha256,
 )
 from novel_flywheel.project_transactions import (
     write_full_short_formal_artifacts_v1,
@@ -277,6 +278,72 @@ async def test_dispatch_reasoning_only_is_known_durable_recoverable(
     assert evidence.root.children[0].source_exception_class == (
         "ReasoningOnlyFinalArtifactUnavailableError"
     )
+
+    restart_wrapper = FullShortBoundaryFailureV1(
+        reopened.failure_receipts[0].failure_envelope
+    )
+    assert classify_completion_failure(restart_wrapper) == (
+        FailureClass.OUTPUT_TRUNCATION
+    )
+    restart_evidence = build_durable_failure_evidence(
+        restart_wrapper, boundary="full_short.kernel.restart",
+    )
+    assert restart_evidence.root.code == "planning.reasoning_only_no_final"
+    assert restart_evidence.root.family == "reasoning.finalization"
+    assert restart_evidence.root.source_exception_class == (
+        "ReasoningOnlyFinalArtifactUnavailableError"
+    )
+
+    legacy = DurableExecutionJournalV1.create(
+        tmp_path / "legacy-reasoning-only.json",
+        execution_id="offline-legacy",
+        initial_state=ExecutionState.TEMPLATE_READY,
+    )
+    legacy.append_failure(caught.value.envelope)
+    legacy_payload = json.loads(legacy.path.read_text(encoding="utf-8"))
+    legacy_record = legacy_payload["failure_receipts"][0]
+    legacy_record.pop("failure_envelope")
+    legacy_hash_payload = dict(legacy_record)
+    legacy_hash_payload.pop("record_sha256")
+    legacy_record["record_sha256"] = _sha256(legacy_hash_payload)
+    legacy.path.write_text(
+        json.dumps(legacy_payload, sort_keys=True, separators=(",", ":")),
+        encoding="utf-8",
+    )
+    reopened_legacy = DurableExecutionJournalV1.open(legacy.path)
+    assert reopened_legacy.failure_receipts[0].failure_envelope is None
+    assert reopened_legacy.head_sha256 == legacy_record["record_sha256"]
+    reopened_legacy._persist()
+    assert "failure_envelope" not in json.loads(
+        legacy.path.read_text(encoding="utf-8")
+    )["failure_receipts"][0]
+
+
+@pytest.mark.asyncio
+async def test_registered_boundary_wrapper_projects_envelope_and_child(
+    tmp_path: Path,
+) -> None:
+    kernel = FullShortExecutionKernel(
+        registry=DEFAULT_FAILURE_BOUNDARY_REGISTRY_V1,
+        journal=_journal(tmp_path, "registered-wrapper.json"),
+    )
+
+    async def fail() -> None:
+        raise RegisteredBoundaryFailureV1(
+            boundary_id="FS.CONTROL.PREFLIGHT",
+            failure_id="control.binding_mismatch",
+        )
+
+    with pytest.raises(FullShortBoundaryFailureV1) as caught:
+        await kernel.execute_boundary("FS.CONTROL.PREFLIGHT", fail)
+
+    assert classify_completion_failure(caught.value) == FailureClass.CAPABILITY
+    evidence = build_durable_failure_evidence(
+        caught.value, boundary="full_short.kernel",
+    )
+    assert evidence.root.code == "control.binding_mismatch"
+    assert evidence.root.family == "control.binding"
+    assert evidence.root.children[0].code == "control.binding_mismatch"
 
 
 @pytest.mark.asyncio

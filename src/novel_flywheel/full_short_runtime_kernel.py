@@ -14,6 +14,8 @@ from functools import wraps
 from pathlib import Path
 from typing import Any, Awaitable, Callable, TypeVar
 
+from novel_flywheel.recovery_engine import FailureClass, ReliabilityFailure
+
 
 _T = TypeVar("_T")
 _UNEXPECTED_FAILURE_ID = "internal.unexpected_at_boundary"
@@ -709,6 +711,46 @@ class RegisteredBoundaryFailureV1(Exception):
         self.failure_id = failure_id
 
 
+_ENVELOPE_FAILURE_CLASS_V1: dict[str, FailureClass] = {
+    "control.binding_mismatch": FailureClass.CAPABILITY,
+    "workflow.invariant_rejected": FailureClass.SEMANTIC_INVARIANT,
+    "planning.business_incomplete": FailureClass.SEMANTIC_INVARIANT,
+    "planning.reasoning_only_no_final": FailureClass.OUTPUT_TRUNCATION,
+    "stage.semantic_repair_required": FailureClass.SEMANTIC_INVARIANT,
+    "stage.artifact_rejected": FailureClass.OWNERSHIP_EVIDENCE,
+    "provider.configuration_invalid": FailureClass.CAPABILITY,
+    "provider.credential_unavailable": FailureClass.CREDENTIAL,
+    "provider.transport_pre_dispatch": FailureClass.TRANSPORT,
+    "provider.transport_ambiguous": FailureClass.TRANSPORT,
+    "provider.capture_replay_available": FailureClass.SYNTAX_PROTOCOL,
+    "contract.validation_rejected": FailureClass.SYNTAX_PROTOCOL,
+    "checkpoint.persistence_failed": FailureClass.CAPABILITY,
+    "authority.stale": FailureClass.STALE_AUTHORITY,
+    "authority.promotion_rejected": FailureClass.STALE_AUTHORITY,
+    "authority.prerequisite_missing": FailureClass.STALE_AUTHORITY,
+    "terminal.binding_invalid": FailureClass.CAPABILITY,
+    "recovery.budget_exhausted": FailureClass.CAPABILITY,
+    _UNEXPECTED_FAILURE_ID: FailureClass.UNKNOWN,
+}
+
+
+def _envelope_reliability_failure_v1(
+    envelope: FailureEnvelopeV1,
+) -> ReliabilityFailure:
+    return ReliabilityFailure(
+        code=envelope.failure_code,
+        failure_class=_ENVELOPE_FAILURE_CLASS_V1.get(
+            envelope.failure_code, FailureClass.UNKNOWN,
+        ),
+        boundary=envelope.boundary_id,
+        retryable=envelope.recovery_decision in {
+            RecoveryDecisionKind.LOCAL_REPLAY,
+            RecoveryDecisionKind.ONE_TYPED_REATTEMPT,
+            RecoveryDecisionKind.LOCAL_REPAIR,
+        },
+    )
+
+
 class FullShortBoundaryFailureV1(Exception):
     def __init__(
         self,
@@ -721,6 +763,7 @@ class FullShortBoundaryFailureV1(Exception):
             f"{envelope.failure_code}"
         )
         self.envelope = envelope
+        self.failure_family = envelope.failure_family
         # Runtime-only provenance lets the registered outer recovery owner
         # consume an already-enveloped control failure. It is never written
         # to the durable journal and cannot persist raw provider content.
@@ -733,8 +776,21 @@ class FullShortBoundaryFailureV1(Exception):
             self.source_failure_code = source_failure_code
             self.failure_code = source_failure_code
         reliability = getattr(source_exception, "reliability_failure", None)
+        if (
+            reliability is None
+            and isinstance(source_exception, RegisteredBoundaryFailureV1)
+        ):
+            reliability = _envelope_reliability_failure_v1(envelope)
+            source_exception.reliability_failure = reliability
         if reliability is not None:
             self.reliability_failure = reliability
+        else:
+            # The durable envelope is the source of truth after restart.  A
+            # wrapper reconstructed without the original in-memory exception
+            # must retain the same typed public classification and code.
+            self.reliability_failure = _envelope_reliability_failure_v1(
+                envelope
+            )
 
 
 @dataclass(frozen=True)
@@ -754,7 +810,7 @@ class DurableFailureReceiptV1:
     boundary_id: str
     failure_code: str
     failure_envelope_sha256: str
-    failure_envelope: FailureEnvelopeV1
+    failure_envelope: FailureEnvelopeV1 | None
     previous_record_sha256: str
     record_sha256: str
 
@@ -898,8 +954,12 @@ class DurableExecutionJournalV1:
                     boundary_id=str(item["boundary_id"]),
                     failure_code=str(item["failure_code"]),
                     failure_envelope_sha256=str(item["failure_envelope_sha256"]),
-                    failure_envelope=_failure_envelope_from_mapping_v1(
-                        dict(item["failure_envelope"])
+                    failure_envelope=(
+                        _failure_envelope_from_mapping_v1(
+                            dict(item["failure_envelope"])
+                        )
+                        if isinstance(item.get("failure_envelope"), dict)
+                        else None
                     ),
                     previous_record_sha256=str(item["previous_record_sha256"]),
                     record_sha256=str(item["record_sha256"]),
@@ -984,6 +1044,14 @@ class DurableExecutionJournalV1:
                 raise ValueError("journal_hash_chain_invalid")
             data = asdict(record)
             actual_hash = data.pop("record_sha256")
+            if (
+                isinstance(record, DurableFailureReceiptV1)
+                and record.failure_envelope is None
+            ):
+                # Pre-envelope V1 receipts remain byte/hash compatible.  They
+                # can be reconciled fail-closed, but cannot authorize recovery
+                # because their typed envelope was never durably recorded.
+                data.pop("failure_envelope", None)
             if data["previous_record_sha256"] != previous:
                 raise ValueError("journal_hash_chain_invalid")
             if _sha256(data) != actual_hash:
@@ -1023,7 +1091,13 @@ class DurableExecutionJournalV1:
             "initial_state": self.initial_state,
             "state": self.state,
             "transitions": [asdict(item) for item in self.transitions],
-            "failure_receipts": [asdict(item) for item in self.failure_receipts],
+            "failure_receipts": [
+                {
+                    key: value for key, value in asdict(item).items()
+                    if not (key == "failure_envelope" and value is None)
+                }
+                for item in self.failure_receipts
+            ],
             "audit_receipts": [asdict(item) for item in self.audit_receipts],
             "dispatch_token_receipts": [
                 asdict(item) for item in self.dispatch_token_receipts
@@ -1335,9 +1409,13 @@ class FullShortExecutionKernel:
         self.registry = registry
         self.journal = journal
         self.fault_injector = fault_injector or DeterministicFaultInjectorV1()
-        self._last_failure_envelope: FailureEnvelopeV1 | None = (
-            journal.failure_receipts[-1].failure_envelope
-            if journal.failure_receipts else None
+        self._last_failure_envelope: FailureEnvelopeV1 | None = next(
+            (
+                item.failure_envelope
+                for item in reversed(journal.failure_receipts)
+                if item.failure_envelope is not None
+            ),
+            None,
         )
 
     def _successful_boundaries(self) -> set[str]:

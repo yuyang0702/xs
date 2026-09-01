@@ -575,6 +575,21 @@ def _safe_exception_class(exc: BaseException) -> str:
     return "RedactedExceptionClass"
 
 
+def _safe_source_exception_class_name(
+    value: object, *, fallback: str,
+) -> str:
+    name = str(value or "")
+    if (
+        len(name) <= 80
+        and re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", name)
+        and not name.casefold().startswith(("sk_", "bearer_"))
+        and "privatecredential" not in name.casefold()
+        and "secretvalue" not in name.casefold()
+    ):
+        return name
+    return fallback
+
+
 def _enum_value(enum_type: type[StrEnum], value: object, default: StrEnum) -> StrEnum:
     try:
         return enum_type(str(getattr(value, "value", value)))
@@ -681,6 +696,7 @@ def _node(
         )
     child_ancestors = ancestors | {id(exc)}
     explicit_rule = _explicit_taxonomy_rule(exc)
+    envelope = getattr(exc, "envelope", None)
     reliability = getattr(exc, "reliability_failure", None)
     raw_failure_class = getattr(reliability, "failure_class", FailureClass.UNKNOWN)
     failure_class = _enum_value(
@@ -694,7 +710,9 @@ def _node(
     if code == "unclassified_failure":
         code = "unknown_child" if is_child else "external_unknown_after_boundary"
     family = _safe_name(
-        getattr(exc, "failure_family", "") or f"{failure_class.value}.failure",
+        getattr(exc, "failure_family", "")
+        or getattr(envelope, "failure_family", "")
+        or f"{failure_class.value}.failure",
         fallback="unknown.failure",
     )
     layer = _enum_value(
@@ -760,9 +778,18 @@ def _node(
             dispatch_state = DispatchState.NETWORK_AMBIGUOUS
         authority_effect = AuthorityEffect.PRESERVES_LAST_ACCEPTED
         restart_behavior = RestartBehavior.NO_REDISPATCH
+    source_exception_class = _safe_exception_class(exc)
+    if (
+        getattr(exc, "source_exception", None) is None
+        and isinstance(getattr(envelope, "source_exception_class", None), str)
+    ):
+        source_exception_class = _safe_source_exception_class_name(
+            envelope.source_exception_class,
+            fallback=source_exception_class,
+        )
     return SafeFailureNodeV1(
         code=code, family=family, layer=layer, boundary=node_boundary or "unknown",
-        source_exception_class=_safe_exception_class(exc), failure_class=failure_class,
+        source_exception_class=source_exception_class, failure_class=failure_class,
         retryable=retryable,
         dispatch_state=dispatch_state, authority_effect=authority_effect,
         restart_behavior=restart_behavior, recovery_action=recovery_action,
