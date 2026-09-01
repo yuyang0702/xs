@@ -9,12 +9,20 @@ import pytest
 from novel_flywheel.db import Database
 from novel_flywheel.domain.models import Message, ModelRequest
 import novel_flywheel.providers.anthropic as anthropic_module
+from novel_flywheel.execution_failure_architecture import (
+    AuthorityEffect,
+    FailureLayer,
+    RestartBehavior,
+    build_durable_failure_evidence,
+)
 from novel_flywheel.providers.anthropic import (
     AnthropicAdapter,
     AnthropicStreamProtocolError,
 )
 from novel_flywheel.providers.http import (
     HttpProvider,
+    ProviderRequestBuildFailure,
+    SingleDispatchTransportGuardError,
     ProviderResponseError,
     SingleDispatchTransportPolicyV1,
 )
@@ -82,7 +90,7 @@ async def test_request_materialization_failure_precedes_dispatch_authority(
 
     provider.client.build_request = fail_build
     try:
-        with pytest.raises(ValueError, match="local request build failure"):
+        with pytest.raises(ProviderRequestBuildFailure) as caught:
             if streaming:
                 await provider.post_stream(
                     "messages", payload={"stream": True}, headers={},
@@ -96,6 +104,71 @@ async def test_request_materialization_failure_precedes_dispatch_authority(
 
     assert observer.events == []
     assert provider.transport_attempt_snapshot()["http_post_attempts"] == 0
+    assert isinstance(caught.value.__cause__, ValueError)
+    assert caught.value.failure_layer == FailureLayer.PROVIDER_REQUEST_BUILD
+    assert caught.value.authority_effect == AuthorityEffect.BLOCKS_ACCEPTANCE
+    assert caught.value.restart_behavior == RestartBehavior.FRESH_AUTHORIZATION_REQUIRED
+    assert caught.value.reliability_failure.code == "request_build_failed"
+    evidence = build_durable_failure_evidence(
+        caught.value, boundary="provider_http.request_materialization",
+    )
+    assert evidence.root.layer == FailureLayer.PROVIDER_REQUEST_BUILD
+    assert evidence.root.code == "request_build_failed"
+    assert evidence.root.source_exception_class == "ProviderRequestBuildFailure"
+    assert evidence.root.children[0].source_exception_class == "ValueError"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("reason", "expected_layer", "expected_restart"),
+    [
+        (
+            "credential_reflection_rejected",
+            FailureLayer.PROVIDER_REQUEST_BUILD,
+            RestartBehavior.FRESH_AUTHORIZATION_REQUIRED,
+        ),
+        (
+            "single_dispatch_http_post_attempt_limit_exhausted",
+            FailureLayer.WORKFLOW_RECOVERY,
+            RestartBehavior.NO_REDISPATCH,
+        ),
+    ],
+)
+async def test_local_single_dispatch_guards_have_typed_durable_ownership(
+    reason: str,
+    expected_layer: FailureLayer,
+    expected_restart: RestartBehavior,
+) -> None:
+    observer = _RecordingBoundaryObserver()
+    provider = HttpProvider(
+        "https://provider.example.invalid", "test-only-secret",
+        transport_policy=SingleDispatchTransportPolicyV1.phase_b(),
+        attempt_observer=observer,
+    )
+    if reason == "credential_reflection_rejected":
+        payload = {"stream": True, "value": "prefix-test-only-secret-suffix"}
+    else:
+        payload = {"stream": True}
+        provider._http_post_attempts = 1
+    try:
+        with pytest.raises(SingleDispatchTransportGuardError) as caught:
+            await provider.post_stream("messages", payload=payload, headers={})
+    finally:
+        await provider.client.aclose()
+
+    assert str(caught.value) == reason
+    assert caught.value.failure_layer == expected_layer
+    assert caught.value.authority_effect == AuthorityEffect.BLOCKS_ACCEPTANCE
+    assert caught.value.restart_behavior == expected_restart
+    assert caught.value.reliability_failure.code == reason
+    evidence = build_durable_failure_evidence(
+        caught.value, boundary="provider_http.guard",
+    )
+    assert evidence.root.layer == expected_layer
+    assert evidence.root.code == reason
+    assert evidence.root.source_exception_class == "SingleDispatchTransportGuardError"
+    assert evidence.root.children == ()
+    assert observer.events == []
 
 
 @pytest.mark.asyncio

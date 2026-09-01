@@ -509,6 +509,20 @@ class ProviderClientConstructionFailure(ExecutionBoundaryFailure):
         )
 
 
+class ProviderRequestBuildFailure(ExecutionBoundaryFailure):
+    """Local provider request materialization failed before dispatch authority."""
+
+    def __init__(self, code: str = "request_build_failed") -> None:
+        super().__init__(
+            code, layer=FailureLayer.PROVIDER_REQUEST_BUILD,
+            boundary="provider_http.request_materialization",
+            failure_class=FailureClass.SYNTAX_PROTOCOL,
+            authority_effect=AuthorityEffect.BLOCKS_ACCEPTANCE,
+            restart_behavior=RestartBehavior.FRESH_AUTHORIZATION_REQUIRED,
+            recovery_action="repair_request_materialization_then_fresh_authorization",
+        )
+
+
 def _safe_name(value: object, *, fallback: str) -> str:
     raw_text = str(value or "").strip()
     if contains_potential_secret(raw_text):
@@ -543,10 +557,15 @@ def _safe_failure_code(value: object) -> str:
 def _safe_exception_class(exc: BaseException) -> str:
     name = type(exc).__name__
     folded = name.casefold()
+    module = str(getattr(type(exc), "__module__", ""))
+    source_owned = module == "novel_flywheel" or module.startswith("novel_flywheel.")
     if (
         len(name) <= 80
         and re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", name)
-        and not contains_potential_secret(name)
+        # Long CamelCase project exception names are source-controlled class
+        # identifiers, not external high-entropy values.  Preserve them while
+        # retaining the entropy screen for unknown/external exception types.
+        and (source_owned or not contains_potential_secret(name))
         and not folded.startswith(("sk_", "bearer_"))
         and "privatecredential" not in folded
         and "secretvalue" not in folded

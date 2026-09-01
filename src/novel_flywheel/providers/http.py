@@ -7,6 +7,14 @@ from typing import Any, Protocol
 
 import httpx
 
+from novel_flywheel.execution_failure_architecture import (
+    AuthorityEffect,
+    DispatchState,
+    ExecutionBoundaryFailure,
+    FailureLayer,
+    ProviderRequestBuildFailure,
+    RestartBehavior,
+)
 from novel_flywheel.provider_response_capture import (
     ProviderResponseCaptureError,
     parse_provider_protocol_input_bytes_v1,
@@ -31,8 +39,37 @@ class ProviderResponseError(RuntimeError):
         super().__init__(message)
 
 
-class SingleDispatchTransportGuardError(RuntimeError):
-    pass
+class SingleDispatchTransportGuardError(ExecutionBoundaryFailure):
+    """Typed fail-closed guard for a source-predictable extra dispatch."""
+
+    def __init__(self, code: str) -> None:
+        credential_reflection = code == "credential_reflection_rejected"
+        super().__init__(
+            code,
+            layer=(
+                FailureLayer.PROVIDER_REQUEST_BUILD
+                if credential_reflection
+                else FailureLayer.WORKFLOW_RECOVERY
+            ),
+            boundary=(
+                "provider_http.request_materialization"
+                if credential_reflection
+                else "provider_http.single_dispatch_guard"
+            ),
+            failure_class=FailureClass.OWNERSHIP_EVIDENCE,
+            dispatch_state=DispatchState.NOT_REACHED,
+            authority_effect=AuthorityEffect.BLOCKS_ACCEPTANCE,
+            restart_behavior=(
+                RestartBehavior.FRESH_AUTHORIZATION_REQUIRED
+                if credential_reflection
+                else RestartBehavior.NO_REDISPATCH
+            ),
+            recovery_action=(
+                "remove_credential_reflection_then_fresh_authorization"
+                if credential_reflection
+                else "stop_without_additional_dispatch"
+            ),
+        )
 
 
 _MAX_CONTENT_TYPE_PROVENANCE_CHARS = 128
@@ -177,20 +214,28 @@ class HttpProvider:
             raise SingleDispatchTransportGuardError(
                 "credential_reflection_rejected",
             )
-        return self.client.build_request(
-            "POST", url, json=payload, headers={**headers, **self.headers},
-        )
+        try:
+            return self.client.build_request(
+                "POST", url, json=payload, headers={**headers, **self.headers},
+            )
+        except Exception as exc:
+            # Request serialization/materialization is local and precedes the
+            # dispatch-authority transition.  Preserve it as a typed owned
+            # failure instead of letting an arbitrary SDK exception escape.
+            raise ProviderRequestBuildFailure() from exc
 
     def _before_http_post_attempt(
         self, *, url: str, payload: dict[str, Any],
     ) -> None:
+        # The local one-call ceiling is knowable before the observer may
+        # reserve dispatch authority or a durable nonce.
+        self._begin_logical_call()
         if self.attempt_observer is not None:
             before_dispatch = getattr(
                 self.attempt_observer, "before_http_dispatch", None,
             )
             if callable(before_dispatch):
                 before_dispatch(method="POST", url=url, payload=payload)
-        self._begin_logical_call()
         self._http_post_attempts += 1
         if self.attempt_observer is not None:
             self.attempt_observer.before_http_post()
