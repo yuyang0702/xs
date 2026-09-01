@@ -702,13 +702,15 @@ def _advance_project_mutation(
     return journal
 
 
-@full_short_boundary_entry("FS.AUTHORITY.PROMOTE")
 def commit_project_mutation_authority(
     store: _ProjectStore,
     run_id: str,
 ) -> ProjectMutationJournalV1:
     """Commit files/state/memory while leaving a later business gate pending."""
 
+    runtime_kernel = active_full_short_kernel_v1()
+    if runtime_kernel is not None:
+        runtime_kernel.enforce_current_run_authority_gate(run_id=run_id)
     journal = _advance_project_mutation(
         store, run_id, finalize_run=False, allow_post_commit_gate=False,
     )
@@ -716,7 +718,6 @@ def commit_project_mutation_authority(
     return journal
 
 
-@full_short_boundary_entry("FS.AUTHORITY.PROMOTE")
 def finalize_project_mutation(
     store: _ProjectStore,
     run_id: str, *,
@@ -730,6 +731,9 @@ def finalize_project_mutation(
     commit.  All existing callers retain the original terminal behavior.
     """
 
+    runtime_kernel = active_full_short_kernel_v1()
+    if runtime_kernel is not None:
+        runtime_kernel.enforce_current_run_authority_gate(run_id=run_id)
     journal = _advance_project_mutation(
         store, run_id,
         finalize_run=finalize_run,
@@ -781,13 +785,15 @@ def record_project_mutation_gate_result(
     return journal
 
 
-@full_short_boundary_entry("FS.AUTHORITY.PROMOTE")
 def complete_project_mutation(
     store: _ProjectStore,
     run_id: str,
 ) -> ProjectMutationJournalV1:
     """Complete a Saga that has no deferred domain-owned business gate."""
 
+    runtime_kernel = active_full_short_kernel_v1()
+    if runtime_kernel is not None:
+        runtime_kernel.enforce_current_run_authority_gate(run_id=run_id)
     journal = _advance_project_mutation(
         store, run_id, finalize_run=True, allow_post_commit_gate=False,
     )

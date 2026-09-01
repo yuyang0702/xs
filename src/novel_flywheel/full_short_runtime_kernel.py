@@ -1318,6 +1318,20 @@ class FullShortExecutionKernel:
             },
         )
 
+    def enforce_current_run_authority_gate(self, *, run_id: str) -> None:
+        """Guard current-run Saga mutations while allowing older-run repair."""
+
+        if run_id != self.journal.execution_id:
+            return
+        if not any(
+            item.receipt_kind == "authority_gate_ready"
+            for item in self.journal.audit_receipts
+        ):
+            raise RegisteredBoundaryFailureV1(
+                boundary_id="FS.AUTHORITY.PROMOTE",
+                failure_id="authority.prerequisite_missing",
+            )
+
     def reconcile_validating_stage_projection(
         self,
         *,
