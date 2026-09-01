@@ -88,7 +88,10 @@ from novel_flywheel.context_policy import (
     stage_output_budget,
 )
 from novel_flywheel.execution_failure_architecture import ObserverGuard
-from novel_flywheel.full_short_runtime_kernel import full_short_boundary_entry
+from novel_flywheel.full_short_runtime_kernel import (
+    RegisteredBoundaryFailureV1,
+    full_short_boundary_entry,
+)
 from novel_flywheel.contract_runtime import (
     ContractOutputLimitExhaustedError,
     ExecutableContractSpec,
@@ -5840,9 +5843,10 @@ class WorkflowService:
                             "semantic_re_evaluation": False,
                         },
                     )
-                    return self.db.get_run(run_id) or {
-                        "id": run_id, "status": "recovering_protocol",
-                    }
+                    raise RegisteredBoundaryFailureV1(
+                        boundary_id="FS.WORKFLOW.SHORT",
+                        failure_id="checkpoint.persistence_failed",
+                    ) from exc
             else:
                 completed_journal = complete_project_mutation(
                     self.projects, run_id,

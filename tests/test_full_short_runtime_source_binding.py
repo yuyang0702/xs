@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import ast
+import hashlib
 from pathlib import Path
 
 from tools.diagnostics.bind_full_short_runtime_source_exits import (
@@ -184,6 +185,39 @@ def generator_terminal():
         candidate = tree.body[0]
         assert isinstance(candidate, ast.FunctionDef)
         assert not _kernel_activation_evidence_v1(candidate, exact_mode)
+    short_circuit_tree = ast.parse("""
+def short_circuit_terminal():
+    False and runtime_kernel.execute_boundary_sync(
+        "FS.TEST", lambda: store.commit_completion()
+    )
+""")
+    post_return_tree = ast.parse("""
+def post_return_terminal():
+    return None
+    runtime_kernel.execute_boundary_sync(
+        "FS.TEST", lambda: store.commit_completion()
+    )
+""")
+    deferred_operation_tree = ast.parse("""
+def deferred_operation_terminal():
+    return runtime_kernel.execute_boundary_sync(
+        "FS.TEST", lambda: (store.commit_completion() for _ in [1])
+    )
+""")
+    for tree in (
+        short_circuit_tree, post_return_tree, deferred_operation_tree,
+    ):
+        candidate = tree.body[0]
+        assert isinstance(candidate, ast.FunctionDef)
+        assert not _kernel_activation_evidence_v1(candidate, exact_mode)
+
+    exact_fingerprint = "exact_ast_sha256:" + hashlib.sha256(
+        ast.dump(direct_root, include_attributes=False).encode("utf-8")
+    ).hexdigest()
+    assert _kernel_activation_evidence_v1(direct_root, exact_fingerprint)
+    assert not _kernel_activation_evidence_v1(
+        wrong_boundary_root, exact_fingerprint,
+    )
 
 
 def test_source_exit_inventory_is_deterministic() -> None:
@@ -327,6 +361,25 @@ def function_binding_kernel_readiness():
         runtime_kernel.mark_predispatch_ready(readiness)
         runtime_kernel.reserve_dispatch_token()
     store.reserve_nonce_from_dispatch_readiness()
+
+def default_binding_kernel_readiness():
+    runtime_kernel = active_full_short_kernel_v1()
+    def helper(value=(runtime_kernel := None)):
+        return value
+    if runtime_kernel is not None:
+        runtime_kernel.mark_predispatch_ready(readiness)
+        runtime_kernel.reserve_dispatch_token()
+    store.reserve_nonce_from_dispatch_readiness()
+
+def while_binding_kernel_readiness():
+    runtime_kernel = active_full_short_kernel_v1()
+    while True:
+        runtime_kernel = None
+        break
+    if runtime_kernel is not None:
+        runtime_kernel.mark_predispatch_ready(readiness)
+        runtime_kernel.reserve_dispatch_token()
+    store.reserve_nonce_from_dispatch_readiness()
 """
     fixture_path = Path.cwd() / "fixture_cfg_dominance.py"
     tree = ast.parse(source, filename=str(fixture_path))
@@ -352,4 +405,4 @@ def function_binding_kernel_readiness():
         resolved_calls={},
     )
     assert len(violations["HIDDEN_RETRY_PATH_COUNT"]) == 3
-    assert len(violations["NONCE_PREMATURE_RESERVATION_PATH_COUNT"]) == 7
+    assert len(violations["NONCE_PREMATURE_RESERVATION_PATH_COUNT"]) == 9

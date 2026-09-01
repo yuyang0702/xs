@@ -35,17 +35,18 @@ FULL_SHORT_RUNTIME_PROOF_DOMAIN_V1 = {
         "tools.canary.first_trustworthy_full_short_runner:_execute_full_short_control_plane_with_capability.<locals>.terminal_closure.<locals>.commit_after_saga_cleanup": "FS.TERMINAL.VERIFY_COMMIT",
     },
     "kernel_activation_requirements": {
-        "tools.canary.first_trustworthy_full_short_runner:_execute_full_short_control_plane_with_capability.<locals>.supervised_operation": "context_activation:run_short",
-        "tools.canary.first_trustworthy_full_short_runner:_execute_full_short_control_plane_with_capability.<locals>.prepare_predispatch_with_kernel": "context_activation:prepare_predispatch_ledger",
-        "tools.canary.first_trustworthy_full_short_runner:_execute_full_short_control_plane_with_capability.<locals>.terminal_closure.<locals>.commit_after_saga_cleanup": "explicit_kernel_boundary:FS.TERMINAL.VERIFY_COMMIT:commit_completion",
+        "tools.canary.first_trustworthy_full_short_runner:_execute_full_short_control_plane_with_capability.<locals>.supervised_operation": "exact_ast_sha256:44c8090c7020466ddd15ddcdf4e14f2f96694d868c2a73483a95a7cfd4120e6c",
+        "tools.canary.first_trustworthy_full_short_runner:_execute_full_short_control_plane_with_capability.<locals>.prepare_predispatch_with_kernel": "exact_ast_sha256:c9be4dc06dfb0c01aa9a03bd7b5023a5580e9fbcb5b5736ba52a9388cfc60d51",
+        "tools.canary.first_trustworthy_full_short_runner:_execute_full_short_control_plane_with_capability.<locals>.terminal_closure.<locals>.commit_after_saga_cleanup": "exact_ast_sha256:e1bf111f296f3138d29137287a3331034f9069c6b6bb9052a195eb5f8d1f9fb6",
     },
     "in_scope": [
-        "exact Full Short control plane and task-manager bridge",
+        "kernel-active exact Full Short runtime after canonical activation, JIT approval, and durable journal construction",
         "all Short stage and contract boundaries",
         "provider dispatch, predispatch, nonce, and capture boundaries",
         "central recovery, checkpoint, authority, and terminal boundaries",
     ],
     "out_of_scope": [
+        "pre-kernel authorization/bootstrap validation before the durable runtime journal exists; this path is separately fail-closed and cannot dispatch, reserve nonce, or mutate story authority",
         "ordinary WorkflowService.run_short calls that are not activated as the exact authorized Full Short control plane",
         "offline planning/oracle discovery runs without execution authority",
         "Long and short revision",
@@ -60,6 +61,12 @@ def _kernel_activation_evidence_v1(
     node: ast.FunctionDef | ast.AsyncFunctionDef,
     mode: str,
 ) -> bool:
+    if mode.startswith("exact_ast_sha256:"):
+        expected = mode.split(":", 1)[1]
+        actual = hashlib.sha256(
+            ast.dump(node, include_attributes=False).encode("utf-8")
+        ).hexdigest()
+        return actual == expected
     if mode.startswith("context_activation:"):
         required_call = mode.split(":", 1)[1]
         inside = 0
@@ -120,17 +127,21 @@ def _kernel_activation_evidence_v1(
         calls: list[ast.Call] = []
 
         class SameScopeCallVisitor(ast.NodeVisitor):
+            def _visit_statements(self, statements: list[ast.stmt]) -> None:
+                for statement in statements:
+                    self.visit(statement)
+                    if isinstance(statement, (ast.Return, ast.Raise)):
+                        break
+
             def visit_FunctionDef(self, candidate: ast.FunctionDef) -> None:
                 if candidate is node:
-                    for statement in candidate.body:
-                        self.visit(statement)
+                    self._visit_statements(candidate.body)
 
             def visit_AsyncFunctionDef(
                 self, candidate: ast.AsyncFunctionDef,
             ) -> None:
                 if candidate is node:
-                    for statement in candidate.body:
-                        self.visit(statement)
+                    self._visit_statements(candidate.body)
 
             def visit_Call(self, candidate: ast.Call) -> None:
                 calls.append(candidate)
@@ -150,6 +161,15 @@ def _kernel_activation_evidence_v1(
 
             def visit_DictComp(self, candidate: ast.DictComp) -> None:
                 return
+
+            def visit_BoolOp(self, candidate: ast.BoolOp) -> None:
+                for value in candidate.values:
+                    self.visit(value)
+                    if isinstance(value, ast.Constant):
+                        if isinstance(candidate.op, ast.And) and not value.value:
+                            break
+                        if isinstance(candidate.op, ast.Or) and value.value:
+                            break
 
             def visit_If(self, candidate: ast.If) -> None:
                 if isinstance(candidate.test, ast.Constant):
@@ -244,6 +264,18 @@ def _kernel_activation_evidence_v1(
                             if isinstance(child.op, ast.Or) and value.value:
                                 break
 
+                def visit_GeneratorExp(self, child: ast.GeneratorExp) -> None:
+                    return
+
+                def visit_ListComp(self, child: ast.ListComp) -> None:
+                    return
+
+                def visit_SetComp(self, child: ast.SetComp) -> None:
+                    return
+
+                def visit_DictComp(self, child: ast.DictComp) -> None:
+                    return
+
                 def visit_Call(self, child: ast.Call) -> None:
                     if _call_name(child) == required_operation:
                         self.matches.add(id(child))
@@ -267,6 +299,12 @@ _CALLBACK_TARGETS: dict[tuple[str, str], tuple[str, ...]] = {
     ): (),
     (
         "novel_flywheel.workflow_coordination:WorkflowCoordinator._execute",
+        "pipeline",
+    ): (
+        "novel_flywheel.workflows:WorkflowService._short_pipeline",
+    ),
+    (
+        "novel_flywheel.workflows:WorkflowService._run_in_crewai.<locals>.RuntimeFlow.execute",
         "pipeline",
     ): (
         "novel_flywheel.workflows:WorkflowService._short_pipeline",
@@ -349,6 +387,7 @@ _DYNAMIC_EDGE_CALLSITE_SHA256: dict[tuple[str, str], tuple[str, ...]] = {
     ("novel_flywheel.tasks:RunTaskManager._execute", "operation"): ("58bfb9eb2d49b1ce256acb0132994e103f043471736575a0c4498d9d82145355",),
     ("novel_flywheel.tasks:RunTaskManager._execute", "terminal_finalizer"): ("e2630b7c1dc32b812f2fc1818dfa2532f6784d304e1b382c3d1ac190607405ee",),
     ("novel_flywheel.workflow_coordination:WorkflowCoordinator._execute", "pipeline"): ("2946f7a674ec90af88448aee71aa8d2d3079cf3358b09c0e4be3a9d416ebfc9c",),
+    ("novel_flywheel.workflows:WorkflowService._run_in_crewai.<locals>.RuntimeFlow.execute", "pipeline"): ("2946f7a674ec90af88448aee71aa8d2d3079cf3358b09c0e4be3a9d416ebfc9c",),
     ("novel_flywheel.workflow_coordination:WorkflowCoordinator.run_short", "_short_pipeline"): ("4029127d5c7f5b79ffc3e0360622cd6a6b1dd12e51147683ac4e9c523c490eda",),
     ("novel_flywheel.workflows:WorkflowService._execute_protocol_receipt_attempt", "operation"): ("a87e9308f442543543ba30660fdcfe8ebe4b953e43f6c45c57a7ee156557df56",),
     ("novel_flywheel.workflows:WorkflowService.bind_full_short_terminal_finalizer.<locals>.finalize", "closure"): ("5adead1706018889b647d482a843a3b3b6a9ff97b386cc2a52d9ba23db3dbdde",),
@@ -793,14 +832,22 @@ def _dominating_call_facts_v1(
         if isinstance(statement, (ast.For, ast.AsyncFor)):
             tested = expression(statement.iter, facts)
             loop_facts = kill_assignments(tested, statement.target)
-            block(statement.body, loop_facts)
-            block(statement.orelse, tested)
-            return kill_assignments(tested, statement.target)
+            body_facts = block(statement.body, loop_facts)
+            else_facts = block(statement.orelse, tested)
+            return (
+                kill_assignments(tested, statement.target)
+                & body_facts
+                & else_facts
+            )
         if isinstance(statement, ast.While):
             tested = expression(statement.test, facts)
-            block(statement.body, tested)
-            block(statement.orelse, tested)
-            return tested
+            body_facts = block(statement.body, tested)
+            else_facts = block(statement.orelse, tested)
+            if isinstance(statement.test, ast.Constant) and bool(
+                statement.test.value
+            ):
+                return body_facts
+            return tested & body_facts & else_facts
         if isinstance(statement, ast.Try):
             body_facts = block(statement.body, facts)
             normal_facts = block(statement.orelse, body_facts)
@@ -839,8 +886,26 @@ def _dominating_call_facts_v1(
             if not exhaustive:
                 paths.append(subject_facts)
             return intersect(paths, subject_facts)
-        if isinstance(statement, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+        if isinstance(statement, (ast.FunctionDef, ast.AsyncFunctionDef)):
             current = set(facts)
+            for decorator in statement.decorator_list:
+                current = expression(decorator, current)
+            for default in (
+                *statement.args.defaults,
+                *(item for item in statement.args.kw_defaults if item is not None),
+            ):
+                current = expression(default, current)
+            current = expression(statement.returns, current)
+            current.discard(f"active_kernel:{statement.name}")
+            return current
+        if isinstance(statement, ast.ClassDef):
+            current = set(facts)
+            for decorator in statement.decorator_list:
+                current = expression(decorator, current)
+            for base in statement.bases:
+                current = expression(base, current)
+            for keyword in statement.keywords:
+                current = expression(keyword.value, current)
             current.discard(f"active_kernel:{statement.name}")
             return current
         if isinstance(statement, (ast.Assign, ast.AnnAssign)):
@@ -1161,6 +1226,14 @@ def _resolve_call(
             key for key, candidate in functions.items()
             if candidate.qualname.endswith("." + name)
         ))
+        same_module = tuple(
+            key for key in candidates if key.startswith(function.module + ":")
+        )
+        if same_module:
+            # Unknown receivers are over-approximated within their owning
+            # module. Cross-module dynamic callbacks require an exact
+            # callsite-fingerprinted contract above.
+            return same_module, None
         if len(candidates) == 1:
             return candidates, None
         if name in _CRITICAL_CALL_NAMES:
@@ -1211,6 +1284,10 @@ def bind_exit_states_v1(
                 "boundary_ids": sorted(protected),
                 "protected_path_count": len(protected),
                 "unprotected_path_count": unprotected,
+                "containment_proof": (
+                    "ALL_REACHING_PATHS_ENTER_EXACT_REGISTERED_WRAPPER"
+                    if not unprotected and len(protected) > 1 else None
+                ),
             }
     return result
 

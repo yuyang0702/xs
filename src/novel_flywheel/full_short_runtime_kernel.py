@@ -488,6 +488,7 @@ _BOUNDARIES = (
     _boundary(
         "FS.WORKFLOW.SHORT", "workflow", "novel_flywheel.workflows:WorkflowService._short_pipeline",
         "COMPLETED", "workflow.invariant_rejected", "stage.artifact_rejected",
+        "checkpoint.persistence_failed",
     ),
     _boundary(
         "FS.STAGE.PLANNING", "stage", "novel_flywheel.workflows:WorkflowService._plan_short_ir_first",

@@ -23,7 +23,13 @@ from novel_flywheel.full_short_reason_catalog import (
     FULL_SHORT_LITERAL_REASON_CATEGORY_V1,
 )
 from novel_flywheel.recovery_engine import FailureClass, ReliabilityFailure
-from novel_flywheel.full_short_runtime_kernel import full_short_boundary_entry
+from novel_flywheel.full_short_runtime_kernel import (
+    DEFAULT_FAILURE_BOUNDARY_REGISTRY_V1,
+    RecoveryDecisionEngineV1,
+    RecoveryDecisionInputV1,
+    RecoveryDecisionKind,
+    full_short_boundary_entry,
+)
 
 
 FAILURE_ARCHITECTURE_IDENTITY = "full-short-failure-architecture-v2"
@@ -986,6 +992,29 @@ class FullShortExactRecoveryControllerV1:
             or not str(policy["recovery"]).startswith("shared_second_slot")
         ):
             raise ExactRecoveryViolation("registry_disallows_second_slot")
+        failure_id = (
+            "planning.reasoning_only_no_final"
+            if recovery_kind == "reasoning_finalization"
+            else "planning.business_incomplete"
+        )
+        central = RecoveryDecisionEngineV1(
+            DEFAULT_FAILURE_BOUNDARY_REGISTRY_V1
+        ).decide(RecoveryDecisionInputV1(
+            boundary_id="FS.STAGE.PLANNING",
+            failure_id=failure_id,
+            logical_stage_id=logical_stage_id,
+            physical_attempts_consumed=1,
+            slot_2_owner=None,
+            capture_state="complete_valid",
+            exact_replay_consumed=False,
+            authority_matches=True,
+        ))
+        if (
+            central.decision != RecoveryDecisionKind.ONE_TYPED_REATTEMPT
+            or central.physical_attempt_delta != 1
+            or central.slot_2_owner != failure_id
+        ):
+            raise ExactRecoveryViolation("central_recovery_engine_rejected")
         self._attempts[logical_stage_id] = 2
         return 2
 
