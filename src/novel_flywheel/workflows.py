@@ -30103,6 +30103,7 @@ class WorkflowService:
                 "sealed_route_for_next_logical_stage",
                 None,
             )
+            sealed_contract_attempt_routes = requested_routes
             if callable(sealed_route_selector):
                 sealed_route = sealed_route_selector(
                     stage_id=node_key,
@@ -30116,6 +30117,14 @@ class WorkflowService:
                         "sealed Full Short route conflicts with stage route policy"
                     )
                 requested_routes = (sealed_route,)
+                # A logical stage owns one immutable route and at most two
+                # physical attempts.  The contract runtime consumes the
+                # second entry only after it has durably typed and closed the
+                # first local rejection; normal success returns after entry 1.
+                sealed_contract_attempt_routes = (
+                    sealed_route,
+                    sealed_route,
+                )
             selected_route = (
                 requested_routes[0] if requested_routes else "primary"
             )
@@ -30404,7 +30413,7 @@ class WorkflowService:
                             expected_output_characters or 0
                         ),
                         same_route_attempts=2, fallback_attempts=2,
-                        attempt_routes=requested_routes,
+                        attempt_routes=sealed_contract_attempt_routes,
                         audit_sink=lambda audit: write_conversion_audit(
                             run_path / "outputs" / "conversion-audits", audit,
                         ),
