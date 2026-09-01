@@ -581,10 +581,9 @@ class FailureCauseV1:
 
 
 def _safe_exception_class(exc: BaseException) -> str:
-    cls = type(exc)
-    if cls.__module__ in {"builtins", __name__}:
-        return cls.__name__
-    return "ExternalException"
+    # Class identity is non-content provenance required for root-cause
+    # preservation.  Messages, args and object reprs remain forbidden.
+    return type(exc).__name__
 
 
 def _cause_chain(exc: BaseException) -> tuple[FailureCauseV1, ...]:
@@ -597,13 +596,7 @@ def _cause_chain(exc: BaseException) -> tuple[FailureCauseV1, ...]:
         seen.add(id(current))
         ordinal = len(chain)
         source_class = _safe_exception_class(current)
-        safe_class_id = (
-            source_class
-            if source_class != "ExternalException"
-            else "external:" + hashlib.sha256(
-                type(current).__name__.encode("utf-8", errors="replace")
-            ).hexdigest()
-        )
+        safe_class_id = source_class
         node_without_sha = {
             "ordinal": ordinal,
             "relation": relation,
