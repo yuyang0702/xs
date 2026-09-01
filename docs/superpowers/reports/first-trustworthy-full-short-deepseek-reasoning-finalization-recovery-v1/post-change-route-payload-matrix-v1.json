@@ -1,0 +1,16 @@
+{
+  "schema":"ReasoningRoutePayloadMatrixV1","version":1,"phase":"POST_CHANGE",
+  "normal_anthropic_payload_sha256":"702529430d9c7954aa15fd725073e1e1778e9f042cc66b08892a7c15b6b10596","recovery_anthropic_payload_sha256":"a138dc12396a3531515037c64c3a49c787f12dc72e05b35dc9388feacd3c383a",
+  "rows":[
+    {"route":"DeepSeek Official Anthropic","stage":"planning","stage_role":"NORMAL","reasoning_field_present":false,"diff_from_pre":0},
+    {"route":"DeepSeek Official Anthropic","stage":"planning","stage_role":"PLANNING_FINAL_ARTIFACT_RECOVERY","reasoning_field_present":true,"reasoning_effort":"none","diff_keys":["reasoning"]},
+    {"route":"DeepSeek Official Anthropic","stage":"draft","stage_role":"NORMAL","reasoning_field_present":false,"diff_from_pre":0},
+    {"route":"DeepSeek Official Anthropic","stage":"review","stage_role":"NORMAL","reasoning_field_present":false,"diff_from_pre":0},
+    {"route":"non-DeepSeek Anthropic fixture","stage":"planning","stage_role":"NORMAL","reasoning_field_present":false,"diff_from_pre":0},
+    {"route":"third-party DeepSeek-named fixture","stage":"planning","stage_role":"NORMAL","reasoning_field_present":false,"diff_from_pre":0},
+    {"route":"OpenAI chat fixture","stage":"planning","stage_role":"NORMAL","request_policy_sha256":"670eac5dc25c97bc41ab2ec558f557c1fd2683fd48d557d938f22c66520a0154","diff_from_pre":0},
+    {"route":"OpenAI responses fixture","stage":"planning","stage_role":"NORMAL","request_policy_sha256":"37d58fd07190af1d4e6a960ab8176e264f2436d47b68c132796ad74c573da7f0","diff_from_pre":0}
+  ],
+  "global_anthropic_default_changed":"NO","unrelated_anthropic_route_request_diff_count":0,"unrelated_stage_request_diff_count":0
+}
+

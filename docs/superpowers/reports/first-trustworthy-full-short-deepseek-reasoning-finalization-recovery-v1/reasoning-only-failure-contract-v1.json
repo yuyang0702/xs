@@ -1,0 +1,7 @@
+{
+  "schema":"ReasoningOnlyMaxTokensNoFinalArtifactV1","version":1,
+  "predicates":{"transport_complete":true,"terminal_event_present":true,"stop_reason":"max_tokens","provider_error_present":false,"usable_final_artifact_present":false,"reasoning_present":true,"contract_runtime_input_created":false},
+  "classification":"REASONING_ONLY_MAX_TOKENS_NO_FINAL_ARTIFACT","exception":"ReasoningOnlyFinalArtifactUnavailableError","not_classes":["transport","provider_unavailable","business_incomplete","ambiguous_completion"],
+  "reasoning_only_max_tokens_classification":"PASS","pre_recovery_durable_rejection":"PASS"
+}
+

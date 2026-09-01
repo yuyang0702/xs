@@ -1,0 +1,10 @@
+{
+  "schema":"NovelDevCouncilSplitReviewReportV1","version":1,
+  "source_head":"d5b2a275bd17116b78df057e98dc40a7cec848fc",
+  "core_tree_sha256":"064c4b4be0144bfb97b4a7de93599634f8fe3a7080232783d8122178c46f1f57",
+  "reviews":[
+    {"review_id":"provider-isolation-final","reviewer":"final_provider_review","status":"passed","core_paths":["src/novel_flywheel/providers/anthropic.py","src/novel_flywheel/providers/registry.py"],"test_paths":["tests/test_reasoning_finalization_recovery.py"],"evidence":"Fresh review at d5b2a27: exact official binding closed, normal Anthropic byte-identical, third-party fail-closed, OpenAI unaffected; 12 tests passed."},
+    {"review_id":"quality-authority-final","reviewer":"final_quality_review_v2","status":"passed","core_paths":["src/novel_flywheel/models.py","src/novel_flywheel/workflows.py"],"test_paths":["tests/test_reasoning_finalization_recovery.py","tests/test_workflows.py"],"evidence":"Fresh review verifies normal Planning and Skill identity unchanged, recovery scope frozen, and original schema/business/semantic/authority gates retained."}
+  ]
+}
+

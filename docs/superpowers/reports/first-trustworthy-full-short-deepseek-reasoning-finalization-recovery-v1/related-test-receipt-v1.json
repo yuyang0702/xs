@@ -1,0 +1,11 @@
+{
+  "schema":"RelatedOfflineTestReceiptV1","version":1,"status":"PASS_WITH_KNOWN_NON_DELTA_DEBT",
+  "runs":[
+    {"scope":"provider/contract/capture/SSE/transport","passed":117,"failed":0},
+    {"scope":"canary runner and segment closure","passed":30,"failed":0},
+    {"scope":"13K/20K/30K real workflow orchestration with deterministic boundary","passed":3,"failed":0},
+    {"scope":"broad quality reviewer set","passed":569,"failed":1,"failure":"existing safe-projection metadata.error expectation outside this delta"}
+  ],
+  "production_baseline_skill_identity":"PASS","hybrid_model_visible_leak_count":0,"external_actions":0
+}
+

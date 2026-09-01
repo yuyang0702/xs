@@ -1,0 +1,7 @@
+{
+  "schema":"ProviderReasoningCapabilityContractV1","version":1,
+  "binding":{"provider_id":"0e6a5627-5882-40df-bca5-7d98b97fdd0b","operator":"DEEPSEEK_OFFICIAL","destination":"https://api.deepseek.com:443/anthropic/v1/messages","protocol":"anthropic","model_id":"e4b6f0b8-3c5e-412e-8d4e-8453c840a032","model":"deepseek-v4-pro","route_fingerprint":"04a443a6702fcc95b74906e44b7233c9370cb9b94bbbbadce4bf59c088b68c31","lanes":["primary","fallback"],"stage":"planning","contract_name":"planning_semantic_v2","contract_version":2,"model_role":"planning","stage_role":"PLANNING_FINAL_ARTIFACT_RECOVERY"},
+  "directive":"disable_reasoning","wire":{"reasoning":{"effort":"none"}},
+  "every_key_closed":true,"model_name_alone_sufficient":false,"third_party_inherits":false
+}
+

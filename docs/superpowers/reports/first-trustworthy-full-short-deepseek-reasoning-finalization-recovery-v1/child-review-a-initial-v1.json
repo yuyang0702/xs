@@ -1,0 +1,2 @@
+{"schema":"ChildReviewV1","version":1,"reviewer":"A_PLANNING_QUALITY","status":"PASS_WITH_MATERIAL_GLOBAL_OFF_RISK","findings":{"stage_classification":"MIXED_REASONING_AND_FINALIZATION","normal_planning_thinking_policy":"PRESERVE_CURRENT","quality_risk_of_global_planning_thinking_off":"MATERIAL","separate_existing_finalization_boundary":false,"minimal_quality_safe_architecture":"PRESERVE_NORMAL_PATH_AND_ADD_ONE_FROZEN_AUTHORITY_RECOVERY_ONLY_FINALIZATION_ATTEMPT"},"external_actions":0}
+

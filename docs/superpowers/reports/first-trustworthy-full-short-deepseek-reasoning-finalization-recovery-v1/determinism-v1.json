@@ -1,0 +1,2 @@
+{"schema":"DeterminismReceiptV1","version":1,"status":"PASS","discovered_call_plan_sha256":"f0357c0a4bde25ecb8c60ead32a13125061d751d999577789093f21378f5af27","logical_stage_plan_sha256":"781aafb742f5e060a0ec54447f1278c4d5652f96206d9e0b6d84a3e3b26e0c9a","final_artifact_sha256":"0dc997a7770cbd267f7ae97c41da5a311f6e630236323f7266cdd56064d36133","replay_final_artifact_sha256":"0dc997a7770cbd267f7ae97c41da5a311f6e630236323f7266cdd56064d36133","same_final_artifact":true,"exact_capture_replay":true,"baseline_skill_identity":"UNCHANGED","hybrid_model_visible_leak_count":0}
+

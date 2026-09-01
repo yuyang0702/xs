@@ -4,7 +4,7 @@
   "task_class": "open_world_authority_critical",
   "start_head": "28d656a03bedb581409891413817981cab86c744",
   "branch": "r1-ptr3/planning-repair-finding-propagation-20260817",
-  "external_baseline_path": "C:\\小说\\deepseek-reasoning-finalization-baseline-v1.json",
+  "external_baseline_path": "EXTERNAL_TASK_BASELINE",
   "problem_statement": "A transport-complete official DeepSeek Anthropic response can consume max_tokens entirely in reasoning and expose no final Planning artifact. Preserve the normal Planning request exactly and permit only one same-route, same-authority, final-artifact recovery request whose verified provider policy disables reasoning.",
   "in_scope": [
     "abstract reasoning/finalization request policy",

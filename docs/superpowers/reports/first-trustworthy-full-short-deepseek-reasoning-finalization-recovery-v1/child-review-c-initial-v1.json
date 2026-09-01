@@ -1,0 +1,2 @@
+{"schema":"ChildReviewV1","version":1,"reviewer":"C_TYPED_RECOVERY","status":"PASS","findings":{"root_gap":"PRE_CONTRACT_TYPED_REJECTION_DID_NOT_AUTHORIZE_ONE_LOCAL_RECOVERY","recovery":"FIRST_EXACT_REASONING_ONLY_REJECTION_OWNS_THE_MUTUALLY_EXCLUSIVE_SECOND_SLOT","max_physical_attempts_per_logical_stage":2,"duplicate_acceptance_prevention":"ONE_DURABLE_STAGE_RECEIPT_WITH_BIDIRECTIONAL_ACCEPTED_REJECTED_PROVENANCE","restart_policy":"NO_SILENT_EXTERNAL_REDISPATCH_EXACT_LOCAL_CAPTURE_REPLAY_ONLY"},"external_actions":0}
+

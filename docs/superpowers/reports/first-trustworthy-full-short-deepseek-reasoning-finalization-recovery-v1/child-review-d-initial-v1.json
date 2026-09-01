@@ -1,0 +1,2 @@
+{"schema":"ChildReviewV1","version":1,"reviewer":"D_BUDGET_IMPACT","status":"PASS","findings":{"historical_failed_request_cap":3724,"global_per_call_max":8328,"planning_output_cap_disposition":"PRIMARY_STAGE_SPECIFIC_3724_RECOVERY_SPECIFIC_3724_GLOBAL_PER_CALL_HARD_CAP_8328_UNCHANGED","max_tokens_recurrence_risk_policy":"DISABLE_REASONING_ONLY_FOR_ONE_FINAL_ARTIFACT_RECOVERY_INSTEAD_OF_RAISING_GLOBAL_CAP","other_anthropic_provider_impact":"NONE","normal_plan_total":249386,"recovery_increment":3724,"total_output_cap":253110},"external_actions":0}
+

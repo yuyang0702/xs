@@ -1,0 +1,2 @@
+{"schema":"ChildReviewV1","version":1,"reviewer":"final_budget_review","source_head":"d5b2a275bd17116b78df057e98dc40a7cec848fc","status":"PASS","findings":{"logical_stages":70,"normal_physical":70,"maximum_physical":71,"normal_plan_output_cap":249386,"recovery_output_cap":3724,"total_output_cap":253110,"per_call_max":8328,"max_physical_per_logical":2,"second_slot_mutually_exclusive":true,"d5_changed_budget":false,"old_authorization_stale":true},"tests":{"passed":14,"failed":0},"blockers":[],"external_actions":0}
+

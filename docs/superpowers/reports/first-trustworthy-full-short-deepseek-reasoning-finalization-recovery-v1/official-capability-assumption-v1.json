@@ -1,0 +1,12 @@
+{
+  "schema": "OfficialDeepSeekAnthropicReasoningCapabilityAssumptionV1",
+  "version": 1,
+  "authority": "USER_SUPPLIED_CURRENT_OFFICIAL_DOCUMENTATION_FACT",
+  "fact": "DeepSeek Anthropic-format thinking is default-on/high and may be disabled with reasoning.effort=none.",
+  "network_probe_performed": false,
+  "local_support": "YES",
+  "wire_projection": {"reasoning": {"effort": "none"}},
+  "scope": "EXACT_VERIFIED_ROUTE_AND_PLANNING_FINAL_ARTIFACT_RECOVERY_ROLE_ONLY",
+  "unverified_route_behavior": "FAIL_CLOSED_WITHOUT_WIRE_INJECTION"
+}
+

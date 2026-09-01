@@ -1,0 +1,2 @@
+{"schema":"PlanningRecoveryQualityProtectionContractV1","version":1,"normal_path_unchanged":true,"recovery_scope":"DIRECT_FINAL_ARTIFACT_COMPLETION_FOR_SAME_FROZEN_PLANNING_LOGICAL_STAGE","hidden_reasoning_reuse":false,"same_gates":["structured_schema","business_completeness","typed_semantic_findings","character_and_state_consistency","causal_coherence","setup_payoff","segment_dependency","authority_binding","deterministic_closure"],"gate_failure":"TERMINAL_FAIL_CLOSED","literary_quality_risk_disposition":"PRIMARY_PATH_UNCHANGED_RECOVERY_ONLY_POLICY"}
+

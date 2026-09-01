@@ -1,0 +1,6 @@
+{
+  "schema":"NovelDevCouncilStrictGateReceiptV1","version":1,"status":"PASS","declared_level":"L3","recommended_level":"L3","baseline_used":true,"baseline_path":"EXTERNAL_TASK_BASELINE","forward_risk_report":"forward-risk-report-v2.json","forward_risk_resolution":"systemically_resolved","warnings":0,"blockers":0,
+  "committed_source_detection_note":"The task baseline records the clean worktree status and implementation commits were already created, so the gate's status-only automatic classifier saw the pending evidence set as L1; L3 was explicitly declared as required.",
+  "independent_split_review":{"validated_separately_against_actual_start_to_implementation_core_paths":true,"report":"split-review-report-v1.json","core_paths":["src/novel_flywheel/models.py","src/novel_flywheel/providers/anthropic.py","src/novel_flywheel/providers/registry.py","src/novel_flywheel/workflows.py"],"core_tree_sha256":"064c4b4be0144bfb97b4a7de93599634f8fe3a7080232783d8122178c46f1f57"},
+  "external_actions":0
+}

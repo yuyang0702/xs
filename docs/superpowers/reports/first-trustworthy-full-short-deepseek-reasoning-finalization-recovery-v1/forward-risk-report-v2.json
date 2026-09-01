@@ -1,0 +1,38 @@
+{
+  "version":2,
+  "original_requirement":"Preserve the normal Planning quality path and systemically recover only an exact reasoning-only max_tokens response with one route-bound final-artifact attempt.",
+  "scope_classification":"open_world",
+  "operational_definition":"Every exact transport-complete reasoning-only max_tokens response is durably rejected before at most one same-route frozen-authority finalization attempt; all unrelated provider and stage requests remain unchanged and every accepted artifact crosses the original gates.",
+  "forbidden_narrowing":["no capture-content special case","no global Anthropic default change","no model-name-only capability inheritance","no route or fallback switch","no business or literary gate weakening","no third physical attempt","no external call in this task"],
+  "resolution_status":"systemically_resolved",
+  "constraint_traceability":[
+    {"requirement":"normal Planning unchanged","implementation":"abstract current-provider-default policy and pure payload projection","test_paths":["tests/test_reasoning_finalization_recovery.py"],"evidence":"normal Anthropic sentinel payload remains 702529... and seven normal stage roles omit reasoning"},
+    {"requirement":"exact route-bound reasoning disable","implementation":"closed capability registry over provider/operator/destination/protocol/model/fingerprint/lane/stage/contract/roles","test_paths":["tests/test_reasoning_finalization_recovery.py"],"evidence":"every binding key mutation fails closed; exact primary/fallback resolve"},
+    {"requirement":"one typed durable recovery","implementation":"pre-contract rejection plus mutually exclusive second slot and bidirectional completion provenance","test_paths":["tests/test_full_short_execution.py","tests/test_reasoning_finalization_recovery.py"],"evidence":"same logical/fresh physical/max2/no third/tamper rejection"},
+    {"requirement":"complete production-shaped closure","implementation":"private 70-stage lowest-boundary dry run and exact captured-byte replay","test_paths":["tests/canary/test_full_short_runner_hardening.py","tests/test_provider_response_capture.py"],"evidence":"70 logical/71 physical, final artifact hash equals replay, external counters zero"}
+  ],
+  "historical_incident_families_checked":["provider reasoning-only final artifact unavailable","model output truncated","planning business incomplete","provider explicit error","ambiguous transport completion","post-capture adapter failure","restart/reconciliation","duplicate physical identity"],
+  "projected_failure_mechanisms":["reasoning consumes cap before final artifact","unverified relay receives provider-specific field","normal creative stage loses reasoning","recovery families compose beyond cap","recovery artifact bypasses validation","restart redispatches externally","pre-contract rejection is miscounted as missing Contract capture","accepted provenance drifts from rejected attempt"],
+  "model_output_boundary_changed":true,
+  "model_output_variants_tested":["normal structured final artifact","reasoning-only max_tokens","reasoning then final text","plain final text","tool-use final artifact","nested/wrapped final artifact","valid recovery artifact","large complete entity"],
+  "invalid_output_variants_tested":["malformed structured artifact","business-incomplete recovery","reasoning-only second attempt","unknown wrapper without final artifact"],
+  "transport_capacity_variants_tested":["explicit provider error","ambiguous completion timeout","adapter failure after exact capture","output-token cap exhaustion"],
+  "model_output_topology_classes_tested":["reasoning-only","text final artifact","thinking then text","tool use","nested wrapper","malformed or absent artifact"],
+  "unseen_valid_variants_tested":["nested final artifact wrapper","tool-use final artifact","large complete entity"],
+  "unknown_variant_behavior":"Typed fail-closed, preserve exact capture, never guess a provider capability and never redispatch after ambiguous completion.",
+  "why_previous_tests_missed":"Earlier guards classified the response correctly only after transport completion but did not connect the pre-Contract rejection to a route-bound second physical slot and did not replay that topology through the complete Full Short workflow.",
+  "sibling_boundaries":[
+    {"boundary":"planning normal","disposition":"tested_not_susceptible","evidence":"normal payload byte identity and first-attempt success tests"},
+    {"boundary":"draft","disposition":"tested_not_susceptible","evidence":"normal stage-policy matrix and 70-stage rerun"},
+    {"boundary":"reader review","disposition":"tested_not_susceptible","evidence":"normal stage-policy matrix and 70-stage rerun"},
+    {"boundary":"polish","disposition":"tested_not_susceptible","evidence":"normal stage-policy matrix and 70-stage rerun"},
+    {"boundary":"final review","disposition":"tested_not_susceptible","evidence":"normal stage-policy matrix and final completion receipt"},
+    {"boundary":"maintenance","disposition":"tested_not_susceptible","evidence":"normal stage-policy matrix and 70-stage rerun"},
+    {"boundary":"third-party Anthropic and OpenAI","disposition":"tested_not_susceptible","evidence":"fail-closed capability mutation and payload no-op tests"}
+  ],
+  "production_shaped_tests":["tests/canary/test_full_short_runner_hardening.py","tests/test_workflows.py"],
+  "next_authoritative_boundary_tests":["tests/test_full_short_execution.py","tests/test_workflows.py","tests/test_provider_response_capture.py"],
+  "invariant_test_paths":["tests/test_reasoning_finalization_recovery.py","tests/test_full_short_execution.py","tests/test_final_artifact_guard.py","tests/test_provider_response_capture.py","tests/providers/test_anthropic_sse_state_machine.py","tests/canary/test_full_short_runner_hardening.py"],
+  "remaining_risks":["The first separately authorized real recovered sample must be retained for later literary review; no offline fixture claims literary non-inferiority."]
+}
+

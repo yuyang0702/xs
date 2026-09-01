@@ -1,0 +1,2 @@
+{"schema":"ReasoningImpactIsolationV1","version":1,"global_anthropic_default_changed":"NO","unrelated_anthropic_route_request_diff_count":0,"unrelated_stage_request_diff_count":0,"normal_planning_model_visible_bytes_unchanged":true,"normal_planning_reasoning_policy_unchanged":true,"normal_planning_baseline_skill_identity_unchanged":true,"openai_routes_unchanged":true,"third_party_deepseek_routes_unchanged":true,"changed_scope":["exact official DeepSeek Anthropic Planning final-artifact recovery request"]}
+

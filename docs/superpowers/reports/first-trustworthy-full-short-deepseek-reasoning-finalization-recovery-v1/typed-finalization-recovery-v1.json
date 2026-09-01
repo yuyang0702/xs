@@ -1,0 +1,8 @@
+{
+  "schema":"TypedPlanningFinalArtifactRecoveryV1","version":1,
+  "trigger":"EXACT_REASONING_ONLY_MAX_TOKENS_NO_FINAL_ARTIFACT_AFTER_DURABLE_REJECTION",
+  "attempt_1":{"stage_role":"NORMAL","reasoning_policy":"CURRENT_PROVIDER_DEFAULT"},
+  "attempt_2":{"stage_role":"PLANNING_FINAL_ARTIFACT_RECOVERY","reasoning_policy":"FINALIZATION_FIRST","same_logical_stage":true,"fresh_physical_attempt":true,"same_route":true,"same_model":true,"same_frozen_authority":true,"same_contract_and_validators":true,"route_switch":false,"fallback":false},
+  "max_physical_attempts_per_logical_stage":2,"max_reasoning_recovery_dispatches":1,"attempt_2_failure":"TERMINAL_FAIL_CLOSED","restart":"NO_EXTERNAL_REDISPATCH","accepted_artifact_count_max":1
+}
+

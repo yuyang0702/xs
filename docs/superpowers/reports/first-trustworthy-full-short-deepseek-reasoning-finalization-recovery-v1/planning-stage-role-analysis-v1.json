@@ -1,0 +1,10 @@
+{
+  "schema":"PlanningStageRoleAnalysisV1","version":1,
+  "classification":"MIXED_REASONING_AND_FINALIZATION",
+  "responsibilities":["character_agency","causal_coherence","setup_payoff_integrity","segment_decomposition","state_transition_quality","structured_finalization"],
+  "normal_planning_thinking_policy":"PRESERVE_CURRENT",
+  "quality_risk_of_global_planning_thinking_off":"MATERIAL",
+  "recovery_boundary":"ONLY_AFTER_TYPED_REASONING_ONLY_MAX_TOKENS_NO_FINAL_ARTIFACT",
+  "literary_quality_claim":"NO_OFFLINE_NON_INFERIORITY_CLAIM"
+}
+

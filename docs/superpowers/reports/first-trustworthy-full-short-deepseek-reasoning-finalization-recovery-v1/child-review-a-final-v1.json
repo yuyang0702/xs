@@ -1,0 +1,7 @@
+{
+  "schema":"ChildReviewV1","version":1,"reviewer":"final_quality_review_v2","source_head":"d5b2a275bd17116b78df057e98dc40a7cec848fc","status":"PASS",
+  "findings":{"normal_planning_policy":"CURRENT_PROVIDER_DEFAULT","normal_model_visible_bytes_unchanged":true,"baseline_skill_identity_unchanged":true,"recovery_scope_frozen":true,"same_contract_business_semantic_authority_gates":true,"literary_gate_weakened":false},
+  "tests":{"passed":569,"failed":1,"target_delta_passed":120,"contract_provider_passed":89,"extended_passed":360,"known_non_delta_failure":"tests/test_planning_adaptation_workflow.py::test_production_shape_collapsed_event_patch_is_rejected_then_recovers reads metadata.error after safe projection removed it"},
+  "blockers":[],"external_actions":0
+}
+

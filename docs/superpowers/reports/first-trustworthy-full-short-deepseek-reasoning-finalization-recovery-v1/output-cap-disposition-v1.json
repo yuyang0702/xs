@@ -1,0 +1,2 @@
+{"schema":"PlanningOutputCapDispositionV1","version":1,"master_text_claimed_historical_cap":8328,"exact_historical_capture_cap":3724,"source_truth_precedence":"EXACT_CAPTURE_AND_LEDGER","planning_output_cap_disposition":"PRIMARY_STAGE_SPECIFIC_3724_RECOVERY_SPECIFIC_3724_GLOBAL_PER_CALL_HARD_CAP_8328_UNCHANGED","normal_plan_output_cap":249386,"recovery_output_cap":3724,"total_output_token_hard_cap":253110,"max_tokens_recurrence_risk_explicitly_addressed":true,"global_cap_raise":false}
+

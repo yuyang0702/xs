@@ -1,0 +1,2 @@
+{"schema":"ReasoningPolicyAbstractionV1","version":1,"business_policies":["CURRENT_PROVIDER_DEFAULT","FINALIZATION_FIRST"],"wire_directives":["current_provider_default","disable_reasoning"],"normal_planning":"CURRENT_PROVIDER_DEFAULT","planning_final_artifact_recovery":"FINALIZATION_FIRST","provider_translation":"CAPABILITY_BOUND","business_layer_contains_deepseek_json":false,"unverified_required_translation":"FAIL_CLOSED"}
+

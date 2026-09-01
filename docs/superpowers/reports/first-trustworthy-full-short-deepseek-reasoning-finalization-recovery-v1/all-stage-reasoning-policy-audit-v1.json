@@ -1,0 +1,15 @@
+{
+  "schema":"AllStageReasoningPolicyAuditV1","version":1,"status":"PASS",
+  "rows":[
+    {"stage":"planning","role":"NORMAL","current":"CURRENT_PROVIDER_DEFAULT","strict_final_artifact":true,"known_risk":"reasoning-only max_tokens","changed":false},
+    {"stage":"planning","role":"PLANNING_FINAL_ARTIFACT_RECOVERY","current":"FINALIZATION_FIRST","strict_final_artifact":true,"known_risk":"bounded typed recovery","changed":true},
+    {"stage":"draft","role":"NORMAL","current":"CURRENT_PROVIDER_DEFAULT","strict_final_artifact":true,"known_risk":"not changed","changed":false},
+    {"stage":"semantic verification","role":"NORMAL","current":"CURRENT_PROVIDER_DEFAULT","strict_final_artifact":true,"known_risk":"not changed","changed":false},
+    {"stage":"reader review","role":"NORMAL","current":"CURRENT_PROVIDER_DEFAULT","strict_final_artifact":true,"known_risk":"not changed","changed":false},
+    {"stage":"polish","role":"NORMAL","current":"CURRENT_PROVIDER_DEFAULT","strict_final_artifact":true,"known_risk":"not changed","changed":false},
+    {"stage":"quality/final review","role":"NORMAL","current":"CURRENT_PROVIDER_DEFAULT","strict_final_artifact":true,"known_risk":"not changed","changed":false},
+    {"stage":"maintenance","role":"NORMAL","current":"CURRENT_PROVIDER_DEFAULT","strict_final_artifact":true,"known_risk":"not changed","changed":false}
+  ],
+  "cross_stage_reasoning_policy_isolation":"PASS"
+}
+

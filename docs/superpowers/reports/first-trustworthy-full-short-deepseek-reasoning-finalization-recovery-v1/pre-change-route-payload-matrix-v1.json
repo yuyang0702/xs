@@ -1,0 +1,17 @@
+{
+  "schema": "ReasoningRoutePayloadMatrixV1",
+  "version": 1,
+  "phase": "PRE_CHANGE_SOURCE_TRUTH_RECONSTRUCTION",
+  "sentinel_payload_hash_domain": "canonical_json_with_SYSTEM_USER_and_3724_cap",
+  "normal_anthropic_payload_sha256": "702529430d9c7954aa15fd725073e1e1778e9f042cc66b08892a7c15b6b10596",
+  "rows": [
+    {"route": "DeepSeek Official Anthropic", "stage": "planning", "stage_role": "NORMAL", "reasoning_field_present": false, "disposition": "PRESERVE"},
+    {"route": "DeepSeek Official Anthropic", "stage": "draft", "stage_role": "NORMAL", "reasoning_field_present": false, "disposition": "PRESERVE"},
+    {"route": "DeepSeek Official Anthropic", "stage": "review", "stage_role": "NORMAL", "reasoning_field_present": false, "disposition": "PRESERVE"},
+    {"route": "non-DeepSeek Anthropic fixture", "stage": "planning", "stage_role": "NORMAL", "reasoning_field_present": false, "disposition": "PRESERVE"},
+    {"route": "third-party DeepSeek-named fixture", "stage": "planning", "stage_role": "NORMAL", "reasoning_field_present": false, "disposition": "PRESERVE"},
+    {"route": "OpenAI chat fixture", "stage": "planning", "stage_role": "NORMAL", "reasoning_field_present": false, "request_policy_sha256": "670eac5dc25c97bc41ab2ec558f557c1fd2683fd48d557d938f22c66520a0154", "disposition": "PRESERVE"}
+  ],
+  "secrets_present": false
+}
+

@@ -1,0 +1,18 @@
+{
+  "schema": "DeepSeekReasoningFinalizationBaselineBindingV1",
+  "version": 1,
+  "repository": "WORKSPACE_REPOSITORY",
+  "branch": "r1-ptr3/planning-repair-finding-propagation-20260817",
+  "start_head": "28d656a03bedb581409891413817981cab86c744",
+  "start_worktree": "CLEAN",
+  "implementation_head_before_evidence": "d5b2a275bd17116b78df057e98dc40a7cec848fc",
+  "prior_authorization_path": "EXTERNAL_HISTORICAL_AUTHORIZATION_HASH_BOUND",
+  "prior_authorization_sha256": "69c68ee6e0a417bdd02cd9c6d7d69bc89e82dd640dfcf1e830403696eacd2f1c",
+  "prior_authorization_disposition": "STALE_DO_NOT_USE",
+  "historical_capture_sha256": {
+    "segment_1_transport": "4bb0489d3ed9d4cacefa495b5627931c21d2ef0878402da32572121350914879",
+    "segment_1_contract_runtime_input": "82ec9df51e775b4f65eabf0abc475d57735fe32152e03f620f32191c914ff76a",
+    "segment_2_transport": "59afe3d76435b3d2651da53c05f0bd96ea347a669474d3384f43acb7b64c2d7b"
+  },
+  "external_action_counts": {"credential_lookup": 0, "provider_client_creation": 0, "provider_request": 0, "http_post": 0, "network": 0, "model": 0, "paid": 0, "real_full_short": 0}
+}

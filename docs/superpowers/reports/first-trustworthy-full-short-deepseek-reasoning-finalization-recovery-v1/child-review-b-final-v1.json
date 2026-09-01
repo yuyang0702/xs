@@ -1,0 +1,2 @@
+{"schema":"ChildReviewV1","version":1,"reviewer":"final_provider_review","source_head":"d5b2a275bd17116b78df057e98dc40a7cec848fc","status":"PASS","findings":{"d5_replay_audit_changed_provider_code":false,"exact_official_binding_closed":true,"normal_anthropic_byte_identical":true,"third_party_fail_closed":true,"openai_unchanged":true,"global_anthropic_default_changed":"NO"},"tests":{"passed":12,"failed":0},"blockers":[],"external_actions":0}
+

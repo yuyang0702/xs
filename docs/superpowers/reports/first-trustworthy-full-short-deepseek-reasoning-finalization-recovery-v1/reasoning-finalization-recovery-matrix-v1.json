@@ -1,0 +1,6 @@
+{
+  "schema":"ReasoningFinalizationRecoveryMatrixV1","version":1,"status":"PASS","case_count":24,
+  "cases":["normal Planning valid attempt 1","historical reasoning-only typed rejection","same logical fresh physical","official DeepSeek recovery payload","normal DeepSeek Planning unchanged","DeepSeek Draft unchanged","other Anthropic unchanged","third-party DeepSeek unchanged","OpenAI unchanged","recovery valid one accept","recovery reasoning-only terminal","recovery business-incomplete terminal","recovery malformed terminal","provider explicit error distinct","ambiguous transport no redispatch","restart after rejection no dispatch","restart after recovery dispatch reconciliation","duplicate attempt ID rejected","two accepts impossible","physical cap","total output cap","elapsed cap","both attempts captured","rejected provenance in accepted receipt"],
+  "primary_tests":["tests/test_reasoning_finalization_recovery.py","tests/test_full_short_execution.py","tests/test_final_artifact_guard.py","tests/test_provider_response_capture.py","tests/canary/test_full_short_runner_hardening.py"]
+}
+

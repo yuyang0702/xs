@@ -1,0 +1,2 @@
+{"schema":"ChildReviewV1","version":1,"reviewer":"B_PROVIDER_CAPABILITY","status":"PASS","findings":{"deepseek_anthropic_reasoning_control_local_support":"YES","injection_layer":"ABSTRACT_REASONING_POLICY_TO_PROVIDER_PAYLOAD_PROJECTION","capability_binding_keys":["provider_id","operator","normalized_destination","protocol","model_id","model","route_fingerprint","lane","stage","contract_name","contract_version","model_role","stage_role"],"global_anthropic_default_changed":"NO","unrelated_route_impact":"NONE"},"external_actions":0}
+

@@ -1,0 +1,2 @@
+{"schema":"PrivacyScanReceiptV1","version":1,"status":"PASS","scope":"TASK_DIFF_AND_COMMITTED_EVIDENCE","raw_prompt_persisted":false,"raw_reference_persisted":false,"raw_story_persisted":false,"raw_title_persisted":false,"credential_lookup_count":0,"secret_value_count":0,"evidence_uses":"HASHES_TYPED_STATES_AND_PUBLIC_ROUTE_METADATA_ONLY"}
+
