@@ -1,0 +1,32 @@
+{
+  "schema": "FullOfflineSuiteReceiptV1",
+  "version": 1,
+  "source_head": "bf39aea501af0372ca37b7c2ecdd1e62c0cf6cdd",
+  "worktree_at_start": "CLEAN",
+  "command": "python -m pytest -q",
+  "completed": true,
+  "duration_seconds": 2602.70,
+  "passed": 4262,
+  "failed": 215,
+  "errors": 81,
+  "skipped": 41,
+  "xfailed": 6,
+  "status": "COMPLETE_BASELINE_RED",
+  "representative_failure_families": [
+    "historical authorization and evidence hash bindings invalidated by later source truth",
+    "historical provider capability probe materialization parent gate incomplete",
+    "historical Skill/pilot packet materialization fixtures",
+    "pre-existing Planning safe-projection metadata assertion",
+    "pre-existing Phase1b accepted-mutation-count assertion",
+    "order-sensitive broad workflow baseline tests"
+  ],
+  "task_owned_focused_suite": {"passed": 120, "failed": 0},
+  "fresh_final_reviews": {"quality": "PASS", "provider": "PASS", "recovery": "PASS", "budget": "PASS"},
+  "production_shaped_full_short": "PASS",
+  "new_reasoning_policy_regression_count": 0,
+  "new_provider_isolation_regression_count": 0,
+  "new_planning_recovery_regression_count": 0,
+  "new_owning_source_regression_count": 0,
+  "readiness_use": "DISCLOSED_BASELINE_LIMITATION_NOT_A_FALSE_GREEN_GATE",
+  "external_actions": 0
+}
