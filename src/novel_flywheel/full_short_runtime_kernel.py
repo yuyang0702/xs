@@ -1255,6 +1255,7 @@ class FullShortExecutionKernel:
         self.registry = registry
         self.journal = journal
         self.fault_injector = fault_injector or DeterministicFaultInjectorV1()
+        self._last_failure_envelope: FailureEnvelopeV1 | None = None
 
     def _successful_boundaries(self) -> set[str]:
         return {
@@ -1434,6 +1435,19 @@ class FullShortExecutionKernel:
         physical_attempt: int,
         capture_reference_sha256: str | None,
     ) -> None:
+        if (
+            self.journal.state in {
+                ExecutionState.TERMINAL_FAILED,
+                ExecutionState.PAUSED_RECONCILIATION,
+            }
+            and self._last_failure_envelope is not None
+        ):
+            # Nested registered wrappers must propagate the first durable root
+            # failure; they may not overwrite it or attempt a second terminal
+            # transition while unwinding the same call stack.
+            raise FullShortBoundaryFailureV1(
+                self._last_failure_envelope
+            ) from None
         boundary_id = boundary.boundary_id
         is_registered = (
             isinstance(exc, RegisteredBoundaryFailureV1)
@@ -1489,6 +1503,7 @@ class FullShortExecutionKernel:
             **envelope_without_sha,
             failure_envelope_sha256=_sha256(envelope_without_sha),
         )
+        self._last_failure_envelope = envelope
         # Failure receipt and state are one durable journal replacement.  A
         # crash cannot expose a receipt without its owned recovery/stop state.
         self.journal.append_failure(envelope, _persist_now=False)

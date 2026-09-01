@@ -616,3 +616,30 @@ async def test_failure_receipt_and_state_use_one_atomic_persist(
     reopened = DurableExecutionJournalV1.open(journal.path)
     assert len(reopened.failure_receipts) == 1
     assert reopened.state == ExecutionState.TERMINAL_FAILED
+
+
+@pytest.mark.asyncio
+async def test_nested_boundaries_propagate_first_durable_root_failure_once(
+    tmp_path: Path,
+) -> None:
+    journal = _journal(tmp_path)
+    kernel = FullShortExecutionKernel(
+        registry=DEFAULT_FAILURE_BOUNDARY_REGISTRY_V1,
+        journal=journal,
+    )
+
+    async def inner() -> None:
+        raise RuntimeError("offline root fault")
+
+    async def outer() -> None:
+        await kernel.execute_boundary("FS.CONTRACT.VALIDATE", inner)
+
+    with pytest.raises(FullShortBoundaryFailureV1) as caught:
+        await kernel.execute_boundary("FS.STAGE.PLANNING", outer)
+
+    assert caught.value.envelope.boundary_id == "FS.CONTRACT.VALIDATE"
+    reopened = DurableExecutionJournalV1.open(journal.path)
+    assert len(reopened.failure_receipts) == 1
+    assert reopened.failure_receipts[0].failure_envelope_sha256 == (
+        caught.value.envelope.failure_envelope_sha256
+    )
