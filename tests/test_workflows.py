@@ -2745,6 +2745,30 @@ async def test_route_failure_passthrough_persists_only_typed_hash_audit(tmp_path
     assert "secret-provider" not in persisted
 
 
+def test_exact_full_short_protocol_attempt_plan_uses_canonical_registry(
+    tmp_path,
+) -> None:
+    gateway = SimpleNamespace(
+        registry=SimpleNamespace(
+            attempt_observer=SimpleNamespace(
+                exact_full_short_execution=True,
+                policy={"failure_architecture_identity": "test"},
+            ),
+        ),
+    )
+    _db, _project, service, _run_path = make_polish_recovery_service(
+        tmp_path, gateway, run_id="exact-protocol-attempt-plan",
+    )
+
+    attempts = service._protocol_receipt_attempt_plan(
+        "review", same_route_attempts=4,
+    )
+
+    assert len(attempts) == 2
+    assert [attempt.route for attempt in attempts] == ["primary", "primary"]
+    assert [attempt.route_attempt for attempt in attempts] == [1, 2]
+
+
 @pytest.mark.asyncio
 async def test_explicit_transport_type_outranks_stale_capacity_context(tmp_path) -> None:
     class InterruptedGateway:

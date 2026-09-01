@@ -445,6 +445,7 @@ from novel_flywheel.recovery_engine import (
     ProtocolRouteCircuitBreaker,
     ReliabilityFailure,
     ProtocolReceiptAttempt,
+    protocol_receipt_attempts,
 )
 from novel_flywheel.narrative_rules import validate_narrative_graph
 from novel_flywheel.planning_compiler import (
