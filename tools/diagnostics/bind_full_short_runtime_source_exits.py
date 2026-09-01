@@ -139,7 +139,7 @@ _DYNAMIC_EDGE_CALLSITE_SHA256: dict[tuple[str, str], tuple[str, ...]] = {
     ("novel_flywheel.full_short_runtime_kernel:FullShortExecutionKernel.execute_boundary", "operation"): ("a87e9308f442543543ba30660fdcfe8ebe4b953e43f6c45c57a7ee156557df56",),
     ("novel_flywheel.full_short_runtime_kernel:FullShortExecutionKernel.execute_boundary_sync", "operation"): ("a87e9308f442543543ba30660fdcfe8ebe4b953e43f6c45c57a7ee156557df56",),
     ("novel_flywheel.models:ModelGateway._complete_resolved", "complete"): ("9a7f144801a99f9d84beb21235abf340cefd13a160745884ae51373ece220d76",),
-    ("novel_flywheel.providers.http:HttpProvider._before_http_post_attempt", "before_dispatch"): ("a406d1132e5e66e730accf08228a6889b8832f9471c9dffb2e219333efd68e98",),
+    ("novel_flywheel.providers.http:HttpProvider._before_http_post_attempt", "before_dispatch"): ("d1ea1675515ab5c8b76a53cc0a7b3c08334a956378eb2fcb257dbf039d98d6c1",),
     ("novel_flywheel.tasks:RunTaskManager._execute", "operation"): ("58bfb9eb2d49b1ce256acb0132994e103f043471736575a0c4498d9d82145355",),
     ("novel_flywheel.tasks:RunTaskManager._execute", "terminal_finalizer"): ("e2630b7c1dc32b812f2fc1818dfa2532f6784d304e1b382c3d1ac190607405ee",),
     ("novel_flywheel.workflow_coordination:WorkflowCoordinator._execute", "pipeline"): ("2946f7a674ec90af88448aee71aa8d2d3079cf3358b09c0e4be3a9d416ebfc9c",),

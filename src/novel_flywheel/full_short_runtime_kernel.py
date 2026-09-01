@@ -16,6 +16,23 @@ from typing import Any, Awaitable, Callable, TypeVar
 
 _T = TypeVar("_T")
 _UNEXPECTED_FAILURE_ID = "internal.unexpected_at_boundary"
+_AUTHORITY_REQUIRED_STAGE_BOUNDARIES = frozenset({
+    "FS.STAGE.PLANNING",
+    "FS.STAGE.DRAFT",
+    "FS.STAGE.REVIEW",
+    "FS.STAGE.READER_REVIEW",
+    "FS.STAGE.POLISH",
+    "FS.STAGE.FINAL_REVIEW",
+    "FS.STAGE.MAINTENANCE",
+})
+
+
+def _is_sha256(value: object) -> bool:
+    return (
+        isinstance(value, str)
+        and len(value) == 64
+        and all(char in "0123456789abcdef" for char in value)
+    )
 
 
 def _canonical_json_bytes(value: object) -> bytes:
@@ -160,6 +177,69 @@ class RestartPolicyRegistryV1:
     @property
     def state_without_explicit_policy_count(self) -> int:
         return len(set(ExecutionState) - set(self.policies))
+
+
+@dataclass(frozen=True)
+class RestartReconciliationResultV1:
+    state_before: ExecutionState
+    state_after: ExecutionState
+    decision: RestartDecisionKind
+    provider_redispatch_allowed: bool
+    authority_mutation_allowed: bool
+    journal_head_sha256: str
+
+
+class FullShortRestartReconcilerV1:
+    """Execute the closed restart policy without dispatch or authority writes."""
+
+    def __init__(
+        self,
+        policies: RestartPolicyRegistryV1 | None = None,
+    ) -> None:
+        self.policies = policies or RestartPolicyRegistryV1.default()
+
+    def reconcile(
+        self,
+        journal_path: Path,
+        *,
+        paused_resolution: str | None = None,
+    ) -> RestartReconciliationResultV1:
+        journal = DurableExecutionJournalV1.open(journal_path)
+        before = journal.state
+        policy = self.policies.policies[before]
+        if before in {
+            ExecutionState.DISPATCH_TOKEN_RESERVED,
+            ExecutionState.DISPATCHING,
+        }:
+            journal.transition(
+                ExecutionState.PAUSED_RECONCILIATION,
+                transition_id="restart-ambiguous-dispatch-pause",
+                boundary_id="FS.RECOVERY.DECIDE",
+            )
+        elif before == ExecutionState.PAUSED_RECONCILIATION:
+            if paused_resolution == "captured":
+                journal.transition(
+                    ExecutionState.RESPONSE_CAPTURED,
+                    transition_id="reconciliation-capture-proven",
+                    boundary_id="FS.RECOVERY.DECIDE",
+                )
+            elif paused_resolution == "terminal_failed":
+                journal.transition(
+                    ExecutionState.TERMINAL_FAILED,
+                    transition_id="reconciliation-terminal-failure",
+                    boundary_id="FS.RECOVERY.DECIDE",
+                )
+            elif paused_resolution is not None:
+                raise ValueError("restart_resolution_invalid")
+        reopened = DurableExecutionJournalV1.open(journal_path)
+        return RestartReconciliationResultV1(
+            state_before=before,
+            state_after=reopened.state,
+            decision=policy.decision,
+            provider_redispatch_allowed=policy.provider_redispatch_allowed,
+            authority_mutation_allowed=False,
+            journal_head_sha256=reopened.head_sha256,
+        )
 
 
 @dataclass(frozen=True)
@@ -372,6 +452,16 @@ _FAILURES = (
         "restart.from_last_accepted.v1",
     ),
     FailureSpecV1(
+        "authority.prerequisite_missing", "authority.prerequisite_missing",
+        "authority.prerequisite", RecoveryDecisionKind.FAIL_CLOSED,
+        "restart.forbidden.v1",
+    ),
+    FailureSpecV1(
+        "terminal.binding_invalid", "terminal.binding_invalid",
+        "terminal.binding", RecoveryDecisionKind.FAIL_CLOSED,
+        "restart.forbidden.v1",
+    ),
+    FailureSpecV1(
         "recovery.budget_exhausted", "recovery.budget_exhausted",
         "recovery.budget", RecoveryDecisionKind.FAIL_CLOSED,
         "restart.forbidden.v1",
@@ -446,13 +536,14 @@ _BOUNDARIES = (
         "CHECKPOINT_COMMITTED", "checkpoint.persistence_failed",
     ),
     _boundary(
-        "FS.AUTHORITY.PROMOTE", "authority", "novel_flywheel.project_transactions:commit_project_mutation_authority",
+        "FS.AUTHORITY.PROMOTE", "authority", "novel_flywheel.project_transactions:write_full_short_formal_artifacts_v1",
         "AUTHORITY_COMMITTED", "authority.stale", "authority.promotion_rejected",
-        "checkpoint.persistence_failed",
+        "authority.prerequisite_missing", "checkpoint.persistence_failed",
     ),
     _boundary(
         "FS.TERMINAL.VERIFY_COMMIT", "completion", "novel_flywheel.full_short_execution:FullShortDurableExecutionStoreV1.commit_completion",
         "COMPLETED", "checkpoint.persistence_failed", "authority.stale",
+        "terminal.binding_invalid",
     ),
 )
 
@@ -607,6 +698,8 @@ class DispatchTokenReceiptV1:
     sequence: int
     logical_stage_id_sha256: str
     physical_attempt: int
+    physical_attempt_id_sha256: str
+    request_bytes_sha256: str
     dispatch_token_sha256: str
     previous_record_sha256: str
     record_sha256: str
@@ -618,6 +711,8 @@ class DispatchTokenV1:
     token_sha256: str
     logical_stage_id_sha256: str
     physical_attempt: int
+    physical_attempt_id_sha256: str
+    request_bytes_sha256: str
     raw_token_persisted: bool = False
 
 
@@ -643,7 +738,10 @@ _NORMAL_TRANSITIONS: dict[ExecutionState, frozenset[ExecutionState]] = {
         ExecutionState.PREDISPATCH_READY,
         ExecutionState.COMPLETED,
     }),
-    ExecutionState.PAUSED_RECONCILIATION: frozenset(),
+    ExecutionState.PAUSED_RECONCILIATION: frozenset({
+        ExecutionState.RESPONSE_CAPTURED,
+        ExecutionState.TERMINAL_FAILED,
+    }),
     ExecutionState.TERMINAL_FAILED: frozenset(),
     ExecutionState.COMPLETED: frozenset(),
 }
@@ -747,6 +845,10 @@ class DurableExecutionJournalV1:
                         item["logical_stage_id_sha256"]
                     ),
                     physical_attempt=int(item["physical_attempt"]),
+                    physical_attempt_id_sha256=str(
+                        item["physical_attempt_id_sha256"]
+                    ),
+                    request_bytes_sha256=str(item["request_bytes_sha256"]),
                     dispatch_token_sha256=str(item["dispatch_token_sha256"]),
                     previous_record_sha256=str(item["previous_record_sha256"]),
                     record_sha256=str(item["record_sha256"]),
@@ -783,6 +885,10 @@ class DurableExecutionJournalV1:
     def _last_hash(self) -> str:
         records = self._records()
         return records[-1].record_sha256 if records else self._genesis_hash()
+
+    @property
+    def head_sha256(self) -> str:
+        return self._last_hash()
 
     def _next_sequence(self) -> int:
         return (
@@ -857,6 +963,7 @@ class DurableExecutionJournalV1:
         *,
         transition_id: str,
         boundary_id: str,
+        _persist_now: bool = True,
     ) -> ExecutionTransitionV1:
         if not self._transition_allowed(self.state, to_state):
             raise ValueError("illegal_execution_transition")
@@ -874,12 +981,15 @@ class DurableExecutionJournalV1:
         )
         self.transitions.append(transition)
         self.state = to_state
-        self._persist()
+        if _persist_now:
+            self._persist()
         return transition
 
     def append_failure(
         self,
         envelope: FailureEnvelopeV1,
+        *,
+        _persist_now: bool = True,
     ) -> DurableFailureReceiptV1:
         data = {
             "sequence": self._next_sequence(),
@@ -893,7 +1003,8 @@ class DurableExecutionJournalV1:
             record_sha256=_sha256(data),
         )
         self.failure_receipts.append(receipt)
-        self._persist()
+        if _persist_now:
+            self._persist()
         return receipt
 
     def append_audit(
@@ -902,6 +1013,7 @@ class DurableExecutionJournalV1:
         receipt_kind: str,
         boundary_id: str,
         payload: object,
+        _persist_now: bool = True,
     ) -> DurableAuditReceiptV1:
         data = {
             "sequence": self._next_sequence(),
@@ -915,7 +1027,8 @@ class DurableExecutionJournalV1:
             record_sha256=_sha256(data),
         )
         self.audit_receipts.append(receipt)
-        self._persist()
+        if _persist_now:
+            self._persist()
         return receipt
 
     def reserve_dispatch_token(
@@ -923,12 +1036,19 @@ class DurableExecutionJournalV1:
         *,
         logical_stage_id: str,
         physical_attempt: int,
+        physical_attempt_id: str,
+        request_bytes_sha256: str,
     ) -> DispatchTokenV1:
         if physical_attempt not in {1, 2}:
             raise ValueError("physical_attempt_out_of_bounds")
         logical_stage_id_sha256 = hashlib.sha256(
             logical_stage_id.encode("utf-8", errors="replace")
         ).hexdigest()
+        physical_attempt_id_sha256 = hashlib.sha256(
+            physical_attempt_id.encode("utf-8", errors="replace")
+        ).hexdigest()
+        if not _is_sha256(request_bytes_sha256):
+            raise ValueError("dispatch_request_bytes_sha256_invalid")
         if any(
             item.logical_stage_id_sha256 == logical_stage_id_sha256
             and item.physical_attempt == physical_attempt
@@ -941,6 +1061,8 @@ class DurableExecutionJournalV1:
             "execution_id": self.execution_id,
             "logical_stage_id_sha256": logical_stage_id_sha256,
             "physical_attempt": physical_attempt,
+            "physical_attempt_id_sha256": physical_attempt_id_sha256,
+            "request_bytes_sha256": request_bytes_sha256,
             "previous_record_sha256": self._last_hash(),
             "unique_material": uuid.uuid4().hex,
         })).hexdigest()
@@ -949,6 +1071,8 @@ class DurableExecutionJournalV1:
             "sequence": self._next_sequence(),
             "logical_stage_id_sha256": logical_stage_id_sha256,
             "physical_attempt": physical_attempt,
+            "physical_attempt_id_sha256": physical_attempt_id_sha256,
+            "request_bytes_sha256": request_bytes_sha256,
             "dispatch_token_sha256": token_sha256,
             "previous_record_sha256": self._last_hash(),
         }
@@ -957,12 +1081,13 @@ class DurableExecutionJournalV1:
             record_sha256=_sha256(data),
         )
         self.dispatch_token_receipts.append(receipt)
-        self._persist()
         return DispatchTokenV1(
             token=token,
             token_sha256=token_sha256,
             logical_stage_id_sha256=logical_stage_id_sha256,
             physical_attempt=physical_attempt,
+            physical_attempt_id_sha256=physical_attempt_id_sha256,
+            request_bytes_sha256=request_bytes_sha256,
         )
 
 
@@ -1131,15 +1256,117 @@ class FullShortExecutionKernel:
         self.journal = journal
         self.fault_injector = fault_injector or DeterministicFaultInjectorV1()
 
+    def _successful_boundaries(self) -> set[str]:
+        return {
+            item.boundary_id for item in self.journal.audit_receipts
+            if item.receipt_kind == "boundary_success"
+        }
+
+    def _enforce_entry_prerequisites(self, boundary_id: str) -> None:
+        if boundary_id == "FS.AUTHORITY.PROMOTE":
+            if self.journal.state != ExecutionState.STAGE_ACCEPTED:
+                raise RegisteredBoundaryFailureV1(
+                    boundary_id=boundary_id,
+                    failure_id="authority.prerequisite_missing",
+                )
+            if not _AUTHORITY_REQUIRED_STAGE_BOUNDARIES.issubset(
+                self._successful_boundaries()
+            ):
+                raise RegisteredBoundaryFailureV1(
+                    boundary_id=boundary_id,
+                    failure_id="authority.prerequisite_missing",
+                )
+        elif boundary_id == "FS.TERMINAL.VERIFY_COMMIT":
+            if "FS.AUTHORITY.PROMOTE" not in self._successful_boundaries():
+                raise RegisteredBoundaryFailureV1(
+                    boundary_id=boundary_id,
+                    failure_id="terminal.binding_invalid",
+                )
+
+    def authorize_authority_mutation(
+        self,
+        *,
+        artifact_sha256s: tuple[str, ...],
+    ) -> DurableAuditReceiptV1:
+        """Create the single durable gate receipt immediately before writes."""
+
+        self._enforce_entry_prerequisites("FS.AUTHORITY.PROMOTE")
+        if not artifact_sha256s or any(
+            not _is_sha256(value) for value in artifact_sha256s
+        ):
+            raise ValueError("authority_artifact_identity_invalid")
+        if any(
+            item.receipt_kind == "authority_gate_ready"
+            for item in self.journal.audit_receipts
+        ):
+            raise ValueError("authority_gate_already_consumed")
+        return self.journal.append_audit(
+            receipt_kind="authority_gate_ready",
+            boundary_id="FS.AUTHORITY.PROMOTE",
+            payload={
+                "state": self.journal.state,
+                "required_stage_boundaries": sorted(
+                    _AUTHORITY_REQUIRED_STAGE_BOUNDARIES
+                ),
+                "artifact_sha256s": artifact_sha256s,
+                "authority_effect": "formal_artifact_set_once",
+            },
+        )
+
+    def reconcile_validating_stage_projection(
+        self,
+        *,
+        projected_attempt_state: str,
+        receipt_sha256: str,
+    ) -> ExecutionTransitionV1:
+        """Finish a split-store stage close without executing business code."""
+
+        if self.journal.state != ExecutionState.VALIDATING:
+            raise ValueError("validating_state_required")
+        if not _is_sha256(receipt_sha256):
+            raise ValueError("stage_projection_receipt_invalid")
+        target = {
+            "LOCAL_STAGE_COMPLETE": ExecutionState.STAGE_ACCEPTED,
+            "LOCAL_ATTEMPT_REJECTED": (
+                ExecutionState.STAGE_REJECTED_RECOVERABLE
+            ),
+        }.get(projected_attempt_state)
+        if target is None:
+            raise ValueError("stage_projection_unresolved")
+        return self.journal.transition(
+            target,
+            transition_id="stage-projection-reconciled:" + receipt_sha256,
+            boundary_id="FS.RECOVERY.DECIDE",
+        )
+
+    def mark_completed(self, *, completion_receipt_sha256: str) -> None:
+        if not _is_sha256(completion_receipt_sha256):
+            raise ValueError("completion_receipt_identity_invalid")
+        self._enforce_entry_prerequisites("FS.TERMINAL.VERIFY_COMMIT")
+        if self.journal.state == ExecutionState.COMPLETED:
+            return
+        if self.journal.state != ExecutionState.STAGE_ACCEPTED:
+            raise ValueError("terminal_stage_acceptance_required")
+        self.journal.transition(
+            ExecutionState.COMPLETED,
+            transition_id="completion-committed:" + completion_receipt_sha256,
+            boundary_id="FS.TERMINAL.VERIFY_COMMIT",
+        )
+
     def mark_predispatch_ready(
         self,
         readiness: PredispatchReadinessV1,
     ) -> ExecutionTransitionV1:
         readiness.validate()
+        if not self.journal._transition_allowed(
+            self.journal.state, ExecutionState.PREDISPATCH_READY
+        ):
+            raise ValueError("illegal_execution_transition")
         self.journal.append_audit(
             receipt_kind="predispatch_readiness",
             boundary_id="FS.CONTROL.PREFLIGHT",
             payload=asdict(readiness),
+            _persist_now=False,
         )
         return self.journal.transition(
             ExecutionState.PREDISPATCH_READY,
@@ -1152,10 +1379,14 @@ class FullShortExecutionKernel:
         *,
         logical_stage_id: str,
         physical_attempt: int,
+        physical_attempt_id: str,
+        request_bytes_sha256: str,
     ) -> DispatchTokenV1:
         token = self.journal.reserve_dispatch_token(
             logical_stage_id=logical_stage_id,
             physical_attempt=physical_attempt,
+            physical_attempt_id=physical_attempt_id,
+            request_bytes_sha256=request_bytes_sha256,
         )
         self.journal.transition(
             ExecutionState.DISPATCH_TOKEN_RESERVED,
@@ -1258,7 +1489,9 @@ class FullShortExecutionKernel:
             **envelope_without_sha,
             failure_envelope_sha256=_sha256(envelope_without_sha),
         )
-        self.journal.append_failure(envelope)
+        # Failure receipt and state are one durable journal replacement.  A
+        # crash cannot expose a receipt without its owned recovery/stop state.
+        self.journal.append_failure(envelope, _persist_now=False)
         self.journal.transition(
             next_state,
             transition_id=f"failure:{envelope.failure_envelope_sha256}",
@@ -1280,6 +1513,7 @@ class FullShortExecutionKernel:
             injected = self._injected_exception(boundary_id)
             if injected is not None:
                 raise injected
+            self._enforce_entry_prerequisites(boundary_id)
             result = operation()
             if inspect.isawaitable(result):
                 raise TypeError("sync_boundary_returned_awaitable")
@@ -1314,6 +1548,7 @@ class FullShortExecutionKernel:
             injected = self._injected_exception(boundary_id)
             if injected is not None:
                 raise injected
+            self._enforce_entry_prerequisites(boundary_id)
             result = operation()
             if inspect.isawaitable(result):
                 result = await result
@@ -1405,6 +1640,7 @@ __all__ = [
     "FailureEnvelopeV1",
     "FullShortBoundaryFailureV1",
     "FullShortExecutionKernel",
+    "FullShortRestartReconcilerV1",
     "PredispatchReadinessV1",
     "DeterministicFaultInjectorV1",
     "RecoveryDecisionEngineV1",
@@ -1413,6 +1649,7 @@ __all__ = [
     "RecoveryDecisionV1",
     "RegisteredBoundaryFailureV1",
     "RestartDecisionKind",
+    "RestartReconciliationResultV1",
     "RestartPolicyRegistryV1",
     "activate_full_short_kernel_v1",
     "active_full_short_kernel_v1",

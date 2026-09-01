@@ -17,7 +17,10 @@ from novel_flywheel.learning_artifacts import (
     apply_learning_artifact_invalidations,
 )
 from novel_flywheel.story_state import StoryStateStore
-from novel_flywheel.full_short_runtime_kernel import full_short_boundary_entry
+from novel_flywheel.full_short_runtime_kernel import (
+    active_full_short_kernel_v1,
+    full_short_boundary_entry,
+)
 from novel_flywheel.reliability_trace import emit_observation, safe_canonical_hash
 from novel_flywheel.canonical_shadow import (
     ProjectionProvenanceV1,
@@ -36,6 +39,14 @@ def write_full_short_formal_artifacts_v1(
 
     if not artifacts:
         raise ValueError("full_short_formal_artifact_set_empty")
+    runtime_kernel = active_full_short_kernel_v1()
+    if runtime_kernel is not None:
+        runtime_kernel.authorize_authority_mutation(
+            artifact_sha256s=tuple(
+                hashlib.sha256(content.encode("utf-8")).hexdigest()
+                for _path, content in artifacts
+            ),
+        )
     for path, content in artifacts:
         atomic_write(path, content)
 

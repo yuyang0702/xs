@@ -225,7 +225,7 @@ class HttpProvider:
             raise ProviderRequestBuildFailure() from exc
 
     def _before_http_post_attempt(
-        self, *, url: str, payload: dict[str, Any],
+        self, *, url: str, payload: dict[str, Any], request_bytes: bytes,
     ) -> None:
         # The local one-call ceiling is knowable before the observer may
         # reserve dispatch authority or a durable nonce.
@@ -235,7 +235,10 @@ class HttpProvider:
                 self.attempt_observer, "before_http_dispatch", None,
             )
             if callable(before_dispatch):
-                before_dispatch(method="POST", url=url, payload=payload)
+                before_dispatch(
+                    method="POST", url=url, payload=payload,
+                    request_bytes=request_bytes,
+                )
         self._http_post_attempts += 1
         if self.attempt_observer is not None:
             self.attempt_observer.before_http_post()
@@ -336,7 +339,9 @@ class HttpProvider:
                 request = self._build_http_post_request(
                     url=url, payload=payload, headers=headers,
                 )
-                self._before_http_post_attempt(url=url, payload=payload)
+                self._before_http_post_attempt(
+                    url=url, payload=payload, request_bytes=request.content,
+                )
                 response = await self.client.send(request)
                 break
             except httpx.TransportError as exc:
@@ -392,7 +397,9 @@ class HttpProvider:
                 url=url, payload=payload, headers=request_headers,
             )
             try:
-                self._before_http_post_attempt(url=url, payload=payload)
+                self._before_http_post_attempt(
+                    url=url, payload=payload, request_bytes=request.content,
+                )
                 async with aclosing(
                     await self.client.send(request, stream=True)
                 ) as response:

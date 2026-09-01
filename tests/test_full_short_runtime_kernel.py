@@ -16,13 +16,18 @@ from novel_flywheel.full_short_runtime_kernel import (
     FailureClassification,
     FullShortBoundaryFailureV1,
     FullShortExecutionKernel,
+    FullShortRestartReconcilerV1,
     RecoveryDecisionInputV1,
     RecoveryDecisionKind,
     RecoveryDecisionEngineV1,
     RestartDecisionKind,
     RestartPolicyRegistryV1,
     RegisteredBoundaryFailureV1,
+    activate_full_short_kernel_v1,
     fault_case_keys_v1,
+)
+from novel_flywheel.project_transactions import (
+    write_full_short_formal_artifacts_v1,
 )
 
 
@@ -132,7 +137,34 @@ async def test_every_boundary_maps_unexpected_to_durable_fail_closed(
     boundary_id: str,
 ) -> None:
     sentinel = "sk-test-secret-DO-NOT-PERSIST"
-    journal = _journal(tmp_path, boundary_id.replace(".", "-") + ".json")
+    journal = DurableExecutionJournalV1.create(
+        tmp_path / (boundary_id.replace(".", "-") + ".json"),
+        execution_id="offline-execution",
+        initial_state=(
+            ExecutionState.STAGE_ACCEPTED
+            if boundary_id in {
+                "FS.AUTHORITY.PROMOTE", "FS.TERMINAL.VERIFY_COMMIT",
+            }
+            else ExecutionState.TEMPLATE_READY
+        ),
+    )
+    if boundary_id == "FS.AUTHORITY.PROMOTE":
+        for stage_boundary in (
+            "FS.STAGE.PLANNING", "FS.STAGE.DRAFT", "FS.STAGE.REVIEW",
+            "FS.STAGE.READER_REVIEW", "FS.STAGE.POLISH",
+            "FS.STAGE.FINAL_REVIEW", "FS.STAGE.MAINTENANCE",
+        ):
+            journal.append_audit(
+                receipt_kind="boundary_success",
+                boundary_id=stage_boundary,
+                payload={"accepted": True},
+            )
+    elif boundary_id == "FS.TERMINAL.VERIFY_COMMIT":
+        journal.append_audit(
+            receipt_kind="boundary_success",
+            boundary_id="FS.AUTHORITY.PROMOTE",
+            payload={"accepted": True},
+        )
     kernel = FullShortExecutionKernel(
         registry=DEFAULT_FAILURE_BOUNDARY_REGISTRY_V1,
         journal=journal,
@@ -176,10 +208,36 @@ async def test_every_registered_failure_has_executable_boundary_evidence(
     boundary_id: str,
     failure_id: str,
 ) -> None:
-    journal = _journal(
-        tmp_path,
-        (boundary_id + "-" + failure_id).replace(".", "-") + ".json",
+    journal = DurableExecutionJournalV1.create(
+        tmp_path / (
+            (boundary_id + "-" + failure_id).replace(".", "-") + ".json"
+        ),
+        execution_id="offline-execution",
+        initial_state=(
+            ExecutionState.STAGE_ACCEPTED
+            if boundary_id in {
+                "FS.AUTHORITY.PROMOTE", "FS.TERMINAL.VERIFY_COMMIT",
+            }
+            else ExecutionState.TEMPLATE_READY
+        ),
     )
+    if boundary_id == "FS.AUTHORITY.PROMOTE":
+        for stage_boundary in (
+            "FS.STAGE.PLANNING", "FS.STAGE.DRAFT", "FS.STAGE.REVIEW",
+            "FS.STAGE.READER_REVIEW", "FS.STAGE.POLISH",
+            "FS.STAGE.FINAL_REVIEW", "FS.STAGE.MAINTENANCE",
+        ):
+            journal.append_audit(
+                receipt_kind="boundary_success",
+                boundary_id=stage_boundary,
+                payload={"accepted": True},
+            )
+    elif boundary_id == "FS.TERMINAL.VERIFY_COMMIT":
+        journal.append_audit(
+            receipt_kind="boundary_success",
+            boundary_id="FS.AUTHORITY.PROMOTE",
+            payload={"accepted": True},
+        )
     kernel = FullShortExecutionKernel(
         registry=DEFAULT_FAILURE_BOUNDARY_REGISTRY_V1,
         journal=journal,
@@ -326,6 +384,8 @@ def test_predispatch_readiness_precedes_unique_attempt_token(tmp_path: Path) -> 
     token = kernel.reserve_dispatch_token(
         logical_stage_id="planning:1",
         physical_attempt=1,
+        physical_attempt_id="physical-1",
+        request_bytes_sha256="a" * 64,
     )
 
     assert journal.state == ExecutionState.DISPATCH_TOKEN_RESERVED
@@ -344,6 +404,8 @@ def test_predispatch_readiness_precedes_unique_attempt_token(tmp_path: Path) -> 
         ).reserve_dispatch_token(
             logical_stage_id="planning:1",
             physical_attempt=1,
+            physical_attempt_id="physical-1",
+            request_bytes_sha256="a" * 64,
         )
 
 
@@ -356,6 +418,8 @@ def test_nonce_cannot_be_reserved_before_predispatch_ready(tmp_path: Path) -> No
         kernel.reserve_dispatch_token(
             logical_stage_id="planning:1",
             physical_attempt=1,
+            physical_attempt_id="physical-1",
+            request_bytes_sha256="a" * 64,
         )
     assert kernel.journal.dispatch_token_receipts == []
 
@@ -373,3 +437,182 @@ def test_restart_policy_is_explicit_for_every_durable_state() -> None:
     assert registry.policies[ExecutionState.COMPLETED].decision == (
         RestartDecisionKind.RETURN_COMPLETED
     )
+
+
+def _accepted_kernel_with_stage_audits(
+    tmp_path: Path,
+) -> FullShortExecutionKernel:
+    journal = DurableExecutionJournalV1.create(
+        tmp_path / "authority-journal.json",
+        execution_id="authority-test",
+        initial_state=ExecutionState.STAGE_ACCEPTED,
+    )
+    for boundary_id in (
+        "FS.STAGE.PLANNING",
+        "FS.STAGE.DRAFT",
+        "FS.STAGE.REVIEW",
+        "FS.STAGE.READER_REVIEW",
+        "FS.STAGE.POLISH",
+        "FS.STAGE.FINAL_REVIEW",
+        "FS.STAGE.MAINTENANCE",
+    ):
+        journal.append_audit(
+            receipt_kind="boundary_success",
+            boundary_id=boundary_id,
+            payload={"accepted": True},
+        )
+    return FullShortExecutionKernel(
+        registry=DEFAULT_FAILURE_BOUNDARY_REGISTRY_V1,
+        journal=journal,
+    )
+
+
+def test_authority_gate_rejects_before_any_formal_write(
+    tmp_path: Path,
+) -> None:
+    journal = DurableExecutionJournalV1.create(
+        tmp_path / "missing-stage-journal.json",
+        execution_id="missing-stage-authority",
+        initial_state=ExecutionState.STAGE_ACCEPTED,
+    )
+    kernel = FullShortExecutionKernel(
+        registry=DEFAULT_FAILURE_BOUNDARY_REGISTRY_V1,
+        journal=journal,
+    )
+    target = tmp_path / "formal.md"
+
+    with activate_full_short_kernel_v1(kernel):
+        with pytest.raises(FullShortBoundaryFailureV1) as rejected:
+            write_full_short_formal_artifacts_v1(((target, "never-write"),))
+
+    assert rejected.value.envelope.failure_code == (
+        "authority.prerequisite_missing"
+    )
+    assert target.exists() is False
+    assert journal.state == ExecutionState.TERMINAL_FAILED
+
+
+def test_authority_gate_receipt_precedes_exact_formal_artifact_set(
+    tmp_path: Path,
+) -> None:
+    kernel = _accepted_kernel_with_stage_audits(tmp_path)
+    targets = (
+        (tmp_path / "formal.md", "formal\ntext"),
+        (tmp_path / "chapter.md", "chapter\ntext"),
+        (tmp_path / "canon.json", '{"facts":[]}'),
+    )
+
+    with activate_full_short_kernel_v1(kernel):
+        write_full_short_formal_artifacts_v1(targets)
+
+    assert [path.read_text(encoding="utf-8") for path, _ in targets] == [
+        content for _path, content in targets
+    ]
+    ready = [
+        item for item in kernel.journal.audit_receipts
+        if item.receipt_kind == "authority_gate_ready"
+    ]
+    success = [
+        item for item in kernel.journal.audit_receipts
+        if item.receipt_kind == "boundary_success"
+        and item.boundary_id == "FS.AUTHORITY.PROMOTE"
+    ]
+    assert len(ready) == len(success) == 1
+    assert ready[0].sequence < success[0].sequence
+
+
+@pytest.mark.parametrize("state", tuple(ExecutionState))
+def test_restart_reconciler_executes_policy_for_every_durable_state(
+    tmp_path: Path,
+    state: ExecutionState,
+) -> None:
+    journal = DurableExecutionJournalV1.create(
+        tmp_path / f"restart-{state.value}.json",
+        execution_id=f"restart-{state.value}",
+        initial_state=state,
+    )
+    result = FullShortRestartReconcilerV1().reconcile(journal.path)
+
+    assert result.state_before == state
+    assert len(result.journal_head_sha256) == 64
+    assert result.authority_mutation_allowed is False
+    if state in {
+        ExecutionState.DISPATCH_TOKEN_RESERVED,
+        ExecutionState.DISPATCHING,
+    }:
+        assert result.state_after == ExecutionState.PAUSED_RECONCILIATION
+        assert result.provider_redispatch_allowed is False
+    else:
+        assert result.state_after == state
+    assert result.provider_redispatch_allowed is (
+        state == ExecutionState.PREDISPATCH_READY
+    )
+
+
+def test_paused_reconciliation_requires_typed_resolution_without_dispatch(
+    tmp_path: Path,
+) -> None:
+    journal = DurableExecutionJournalV1.create(
+        tmp_path / "paused.json",
+        execution_id="paused",
+        initial_state=ExecutionState.PAUSED_RECONCILIATION,
+    )
+    unchanged = FullShortRestartReconcilerV1().reconcile(journal.path)
+    assert unchanged.state_after == ExecutionState.PAUSED_RECONCILIATION
+    captured = FullShortRestartReconcilerV1().reconcile(
+        journal.path, paused_resolution="captured",
+    )
+    assert captured.state_after == ExecutionState.RESPONSE_CAPTURED
+    assert captured.provider_redispatch_allowed is False
+
+
+def test_validating_split_store_projection_is_reconciled_without_business_run(
+    tmp_path: Path,
+) -> None:
+    journal = DurableExecutionJournalV1.create(
+        tmp_path / "validating.json",
+        execution_id="validating",
+        initial_state=ExecutionState.VALIDATING,
+    )
+    kernel = FullShortExecutionKernel(
+        registry=DEFAULT_FAILURE_BOUNDARY_REGISTRY_V1,
+        journal=journal,
+    )
+    kernel.reconcile_validating_stage_projection(
+        projected_attempt_state="LOCAL_STAGE_COMPLETE",
+        receipt_sha256="a" * 64,
+    )
+    assert DurableExecutionJournalV1.open(journal.path).state == (
+        ExecutionState.STAGE_ACCEPTED
+    )
+
+
+@pytest.mark.asyncio
+async def test_failure_receipt_and_state_use_one_atomic_persist(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    journal = _journal(tmp_path)
+    kernel = FullShortExecutionKernel(
+        registry=DEFAULT_FAILURE_BOUNDARY_REGISTRY_V1,
+        journal=journal,
+    )
+    original = journal._persist
+    calls = 0
+
+    def counted() -> None:
+        nonlocal calls
+        calls += 1
+        original()
+
+    monkeypatch.setattr(journal, "_persist", counted)
+
+    async def fail() -> None:
+        raise RuntimeError("offline deterministic fault")
+
+    with pytest.raises(FullShortBoundaryFailureV1):
+        await kernel.execute_boundary("FS.STAGE.DRAFT", fail)
+    assert calls == 1
+    reopened = DurableExecutionJournalV1.open(journal.path)
+    assert len(reopened.failure_receipts) == 1
+    assert reopened.state == ExecutionState.TERMINAL_FAILED

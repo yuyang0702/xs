@@ -2355,6 +2355,13 @@ class FullShortDurableExecutionStoreV1:
                 "COMPLETION_LEDGER_NOT_EXACT",
             )
             self._exclusive_write(self._path(execution_id, "completion"), value)
+        runtime_kernel = active_full_short_kernel_v1()
+        if runtime_kernel is not None:
+            runtime_kernel.mark_completed(
+                completion_receipt_sha256=str(
+                    value["completion_receipt_sha256"]
+                ),
+            )
         return value
 
     def completion_exists(self, execution_id: str) -> bool:
@@ -2667,6 +2674,7 @@ class FullShortDispatchLedgerObserverV1:
     @full_short_boundary_entry("FS.CONTROL.PREFLIGHT")
     def before_http_dispatch(
         self, *, method: str, url: str, payload: Mapping[str, Any],
+        request_bytes: bytes | None = None,
     ) -> None:
         if self.live_authority_recheck is not None:
             self.live_authority_recheck()
@@ -2696,6 +2704,12 @@ class FullShortDispatchLedgerObserverV1:
             dict(payload) == expected_payload,
             "EGRESS_PAYLOAD_SCHEMA_OR_CONTENT_DRIFT",
         )
+        if request_bytes is not None:
+            _require(
+                isinstance(request_bytes, bytes)
+                and json.loads(request_bytes.decode("utf-8")) == dict(payload),
+                "MATERIALIZED_REQUEST_BYTES_DRIFT",
+            )
         _require(
             str(payload.get("model") or "") == route.get("model_name"),
             "MODEL_BINDING_DRIFT",
@@ -2853,6 +2867,11 @@ class FullShortDispatchLedgerObserverV1:
                 "ordinal": ordinal,
             },
         )[:32]
+        outbound_request_bytes_sha256 = hashlib.sha256(
+            request_bytes
+            if request_bytes is not None
+            else canonical_json_bytes(dict(payload))
+        ).hexdigest()
         runtime_kernel = active_full_short_kernel_v1()
         if runtime_kernel is not None:
             runtime_kernel.mark_predispatch_ready(PredispatchReadinessV1(
@@ -2865,9 +2884,7 @@ class FullShortDispatchLedgerObserverV1:
                 authorized_credential_readiness=True,
                 network_free_request_constructable=True,
                 reasoning_policy_projected=True,
-                request_bytes_sha256=request_shape[
-                    "provider_payload_sha256"
-                ],
+                request_bytes_sha256=outbound_request_bytes_sha256,
                 route_policy_sha256=domain_sha256(
                     "novel-flywheel-full-short-route-policy-v1",
                     {
@@ -2883,6 +2900,8 @@ class FullShortDispatchLedgerObserverV1:
             runtime_kernel.reserve_dispatch_token(
                 logical_stage_id=logical_stage_id,
                 physical_attempt=len(prior_logical_attempts) + 1,
+                physical_attempt_id=physical_attempt_id,
+                request_bytes_sha256=outbound_request_bytes_sha256,
             )
         attempt = {
             "ordinal": ordinal,
@@ -2912,6 +2931,9 @@ class FullShortDispatchLedgerObserverV1:
             ],
             "logical_stage_id": logical_stage_id,
             "physical_attempt_id": physical_attempt_id,
+            "outbound_request_bytes_sha256": (
+                outbound_request_bytes_sha256
+            ),
             "stage_role": stage_role,
             "recovery_family": (
                 "REASONING_ONLY_FINALIZATION"
@@ -3650,9 +3672,18 @@ class FullShortDispatchLedgerObserverV1:
                         "FINAL_ARTIFACT_REJECTION_AFTER_CONTRACT_INPUT",
                     )
             _require(current.get("bound_role") == role, "STAGE_ROLE_DRIFT")
+            _require(current.get("stage") == stage, "STAGE_ID_DRIFT")
             _require(
                 current.get("role_binding_sha256") == role_binding_sha256,
                 "ROLE_BINDING_DRIFT",
+            )
+            _require(
+                current.get("contract_name") == value["contract_name"]
+                and int(current.get("contract_version") or 0)
+                == int(value["contract_version"])
+                and current.get("contract_schema_sha256")
+                == value["contract_schema_sha256"],
+                "LOCAL_REJECTION_CONTRACT_IDENTITY_DRIFT",
             )
             contract_route = value.get("route")
             manifest_lane = (

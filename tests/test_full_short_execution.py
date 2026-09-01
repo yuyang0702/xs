@@ -601,6 +601,21 @@ def _local_rejection(*, route_attempt: int = 1) -> dict:
     }
 
 
+def _matching_local_rejection(
+    observer: FullShortDispatchLedgerObserverV1,
+    *,
+    route_attempt: int = 1,
+) -> dict:
+    context = observer.pending_stage_context
+    assert isinstance(context, dict)
+    return {
+        **_local_rejection(route_attempt=route_attempt),
+        "contract_name": context["contract_name"],
+        "contract_version": context["contract_version"],
+        "contract_schema_sha256": context["contract_schema_sha256"],
+    }
+
+
 def _final_artifact_rejection() -> dict:
     return {
         "schema": "ProviderFinalArtifactRejectionReceiptV1",
@@ -620,6 +635,19 @@ def _final_artifact_rejection() -> dict:
     }
 
 
+def _matching_final_artifact_rejection(
+    observer: FullShortDispatchLedgerObserverV1,
+) -> dict:
+    context = observer.pending_stage_context
+    assert isinstance(context, dict)
+    return {
+        **_final_artifact_rejection(),
+        "contract_name": context["contract_name"],
+        "contract_version": context["contract_version"],
+        "contract_schema_sha256": context["contract_schema_sha256"],
+    }
+
+
 def _dispatch_reasoning_recovery_and_close(
     store: FullShortDurableExecutionStoreV1, execution_id: str,
 ) -> FullShortDispatchLedgerObserverV1:
@@ -636,7 +664,7 @@ def _dispatch_reasoning_recovery_and_close(
     observer.mark_local_attempt_rejected(
         stage="planning", role="planning",
         role_binding_sha256=observer.bound_route["role_binding_sha256"],
-        rejection=_final_artifact_rejection(),
+        rejection=_matching_final_artifact_rejection(observer),
     )
     observer.bind_stage_context(
         stage_id="planning", contract_name="unstructured_text",
@@ -697,7 +725,7 @@ def _approved_runtime_kernel(
     )
 
 
-def test_active_runtime_kernel_tracks_lowest_http_attempt_through_acceptance(
+def test_active_runtime_kernel_tracks_observer_attempt_through_acceptance(
     tmp_path: Path,
 ) -> None:
     execution_id = "active-runtime-kernel-accepted"
@@ -764,7 +792,7 @@ def test_active_runtime_kernel_second_attempt_uses_shared_slot_once(
         observer.mark_local_attempt_rejected(
             stage="planning", role="planning",
             role_binding_sha256=observer.bound_route["role_binding_sha256"],
-            rejection=_local_rejection(),
+            rejection=_matching_local_rejection(observer),
         )
         assert kernel.journal.state == (
             KernelExecutionState.STAGE_REJECTED_RECOVERABLE
@@ -786,6 +814,134 @@ def test_active_runtime_kernel_second_attempt_uses_shared_slot_once(
 
     reopened = DurableExecutionJournalV1.open(kernel.journal.path)
     assert reopened.state == KernelExecutionState.DISPATCHING
+    assert [
+        item.physical_attempt for item in reopened.dispatch_token_receipts
+    ] == [1, 2]
+    assert len({
+        item.dispatch_token_sha256 for item in reopened.dispatch_token_receipts
+    }) == 2
+
+
+@pytest.mark.asyncio
+async def test_active_runtime_kernel_token_precedes_lowest_http_send(
+    tmp_path: Path,
+) -> None:
+    execution_id = "active-runtime-kernel-lowest-send"
+    store = _store(tmp_path / "store")
+    _authorize_predispatch_offline(store, execution_id)
+    observer = _observer(store, execution_id)
+    kernel = _approved_runtime_kernel(tmp_path, execution_id)
+
+    async def handler(request: httpx.Request) -> httpx.Response:
+        assert kernel.journal.state == KernelExecutionState.DISPATCHING
+        assert len(kernel.journal.dispatch_token_receipts) == 1
+        token_receipt = kernel.journal.dispatch_token_receipts[0]
+        assert token_receipt.request_bytes_sha256 == hashlib.sha256(
+            request.content
+        ).hexdigest()
+        attempt = store.load_ledger(execution_id)["attempts"][0]
+        assert token_receipt.physical_attempt_id_sha256 == hashlib.sha256(
+            attempt["physical_attempt_id"].encode("utf-8")
+        ).hexdigest()
+        assert attempt["outbound_request_bytes_sha256"] == (
+            token_receipt.request_bytes_sha256
+        )
+        return httpx.Response(200, json={"ok": True}, request=request)
+
+    provider = HttpProvider(
+        "https://unit.test", "offline-key",
+        transport_policy=SingleDispatchTransportPolicyV1.phase_b(),
+        attempt_observer=observer,
+        injected_http_transport=httpx.MockTransport(handler),
+    )
+    with activate_full_short_kernel_v1(kernel):
+        assert await provider.post(
+            "v1/messages", payload=_payload(), headers={},
+        ) == {"ok": True}
+        assert kernel.journal.state == KernelExecutionState.RESPONSE_CAPTURED
+        observer.mark_local_stage_complete(
+            stage="planning", role="planning",
+            role_binding_sha256=observer.bound_route["role_binding_sha256"],
+            output_sha256="a" * 64, receipt_sha256="b" * 64,
+        )
+    await provider.client.aclose()
+
+    reopened = DurableExecutionJournalV1.open(kernel.journal.path)
+    assert reopened.state == KernelExecutionState.STAGE_ACCEPTED
+    kinds = [item.receipt_kind for item in reopened.audit_receipts]
+    assert "predispatch_readiness" in kinds
+    token_sequence = reopened.dispatch_token_receipts[0].sequence
+    dispatch_sequence = next(
+        item.sequence for item in reopened.transitions
+        if item.to_state == KernelExecutionState.DISPATCHING
+    )
+    readiness_sequence = next(
+        item.sequence for item in reopened.audit_receipts
+        if item.receipt_kind == "predispatch_readiness"
+    )
+    assert readiness_sequence < token_sequence < dispatch_sequence
+
+
+@pytest.mark.asyncio
+async def test_lowest_http_send_recovery_consumes_only_shared_second_slot(
+    tmp_path: Path,
+) -> None:
+    execution_id = "active-runtime-kernel-lowest-recovery"
+    store = _store(tmp_path / "store")
+    _authorize_predispatch_offline(store, execution_id)
+    observer = _observer(store, execution_id)
+    kernel = _approved_runtime_kernel(tmp_path, execution_id)
+    sends: list[str] = []
+
+    async def handler(request: httpx.Request) -> httpx.Response:
+        sends.append(hashlib.sha256(request.content).hexdigest())
+        assert kernel.journal.state == KernelExecutionState.DISPATCHING
+        assert len(kernel.journal.dispatch_token_receipts) == len(sends)
+        assert kernel.journal.dispatch_token_receipts[-1].request_bytes_sha256 == (
+            sends[-1]
+        )
+        return httpx.Response(200, json={"attempt": len(sends)}, request=request)
+
+    async def one_send() -> dict:
+        provider = HttpProvider(
+            "https://unit.test", "offline-key",
+            transport_policy=SingleDispatchTransportPolicyV1.phase_b(),
+            attempt_observer=observer,
+            injected_http_transport=httpx.MockTransport(handler),
+        )
+        try:
+            return await provider.post(
+                "v1/messages", payload=_payload(), headers={},
+            )
+        finally:
+            await provider.client.aclose()
+
+    with activate_full_short_kernel_v1(kernel):
+        assert await one_send() == {"attempt": 1}
+        observer.mark_local_attempt_rejected(
+            stage="planning", role="planning",
+            role_binding_sha256=observer.bound_route["role_binding_sha256"],
+            rejection=_matching_local_rejection(observer),
+        )
+        observer.bind_stage_context(
+            stage_id="planning", contract_name="unstructured_text",
+            contract_version=1, contract_schema_sha256=_hash({}),
+        )
+        observer.bind_route(
+            role="planning", lane="primary", provider_id="provider",
+            model_id="model-id", route_fingerprint="9" * 64,
+        )
+        observer.bind_model_request(protocol="anthropic", request=_request())
+        assert await one_send() == {"attempt": 2}
+        observer.mark_local_stage_complete(
+            stage="planning", role="planning",
+            role_binding_sha256=observer.bound_route["role_binding_sha256"],
+            output_sha256="c" * 64, receipt_sha256="d" * 64,
+        )
+
+    reopened = DurableExecutionJournalV1.open(kernel.journal.path)
+    assert reopened.state == KernelExecutionState.STAGE_ACCEPTED
+    assert len(sends) == 2
     assert [
         item.physical_attempt for item in reopened.dispatch_token_receipts
     ] == [1, 2]
@@ -1355,9 +1511,9 @@ def test_closed_local_rejection_allows_only_same_session_bounded_recovery(
     observer.after_http_response(status_code=200)
     role_binding = observer.bound_route["role_binding_sha256"]
     observer.mark_local_attempt_rejected(
-        stage="planning-semantic-v2", role="planning",
+        stage="planning", role="planning",
         role_binding_sha256=role_binding,
-        rejection=_local_rejection(),
+        rejection=_matching_local_rejection(observer),
     )
 
     with pytest.raises(FullShortExecutionBoundaryError) as restarted:
@@ -1431,11 +1587,13 @@ def test_two_rejections_exhaust_shared_logical_stage_physical_ceiling(
         )
         observer.after_http_response(status_code=200)
         observer.mark_local_attempt_rejected(
-            stage="planning-semantic-v2", role="planning",
+            stage="planning", role="planning",
             role_binding_sha256=observer.bound_route[
                 "role_binding_sha256"
             ],
-            rejection=_local_rejection(route_attempt=route_attempt),
+            rejection=_matching_local_rejection(
+                observer, route_attempt=route_attempt,
+            ),
         )
         if route_attempt == 1:
             observer.bind_route(
@@ -1484,24 +1642,9 @@ def test_pre_contract_final_artifact_rejection_closes_captured_response(
     )
     observer.after_http_response(status_code=200)
     observer.mark_local_attempt_rejected(
-        stage="planning-semantic-v2", role="planning",
+        stage="planning", role="planning",
         role_binding_sha256=observer.bound_route["role_binding_sha256"],
-        rejection={
-            "schema": "ProviderFinalArtifactRejectionReceiptV1",
-            "version": 1,
-            "contract_name": "planning_semantic_v2",
-            "contract_version": 2,
-            "contract_schema_sha256": "a" * 64,
-            "attempt_index": 1,
-            "route": "primary",
-            "route_attempt": 1,
-            "failure_kind": "final_artifact_unavailable",
-            "failure_code": "reasoning_only_final_artifact_unavailable",
-            "failure_reason_sha256": "b" * 64,
-            "provider_output_shape_sha256": "c" * 64,
-            "contract_runtime_input_present": False,
-            "raw_content_persisted": False,
-        },
+        rejection=_matching_final_artifact_rejection(observer),
     )
 
     ledger = store.load_ledger("pre-contract-final-artifact")
@@ -1535,7 +1678,7 @@ def test_reasoning_only_rejection_requires_exact_recovery_stage_role(
     observer.mark_local_attempt_rejected(
         stage="planning", role="planning",
         role_binding_sha256=observer.bound_route["role_binding_sha256"],
-        rejection=_final_artifact_rejection(),
+        rejection=_matching_final_artifact_rejection(observer),
     )
     observer.bind_stage_context(
         stage_id="planning", contract_name="unstructured_text",
@@ -2471,9 +2614,9 @@ def test_durable_ledger_rejects_reopening_closed_attempt(tmp_path: Path) -> None
     )
     observer.after_http_response(status_code=200)
     observer.mark_local_attempt_rejected(
-        stage="planning-semantic-v2", role="planning",
+        stage="planning", role="planning",
         role_binding_sha256=observer.bound_route["role_binding_sha256"],
-        rejection=_local_rejection(),
+        rejection=_matching_local_rejection(observer),
     )
     observer.bind_route(
         role="planning", lane="primary", provider_id="provider",
@@ -2524,9 +2667,9 @@ def test_closed_attempt_same_state_cannot_rewrite_failure_or_evidence(
     )
     observer.after_http_response(status_code=200)
     observer.mark_local_attempt_rejected(
-        stage="planning-semantic-v2", role="planning",
+        stage="planning", role="planning",
         role_binding_sha256=observer.bound_route["role_binding_sha256"],
-        rejection=_local_rejection(),
+        rejection=_matching_local_rejection(observer),
     )
     before = store.load_ledger(execution_id)
 
@@ -2693,7 +2836,7 @@ def test_local_rejection_must_match_current_logical_attempt_identity(
 
     with pytest.raises(FullShortExecutionBoundaryError) as mismatch:
         observer.mark_local_attempt_rejected(
-            stage="planning-semantic-v2", role="planning",
+            stage="planning", role="planning",
             role_binding_sha256=observer.bound_route["role_binding_sha256"],
             rejection=_local_rejection(route_attempt=2),
         )
