@@ -1263,22 +1263,26 @@ class FullShortExecutionKernel:
             if item.receipt_kind == "boundary_success"
         }
 
+    def _enforce_authority_stage_prerequisites(self) -> None:
+        if self.journal.state != ExecutionState.STAGE_ACCEPTED:
+            raise RegisteredBoundaryFailureV1(
+                boundary_id="FS.AUTHORITY.PROMOTE",
+                failure_id="authority.prerequisite_missing",
+            )
+        if not _AUTHORITY_REQUIRED_STAGE_BOUNDARIES.issubset(
+            self._successful_boundaries()
+        ):
+            raise RegisteredBoundaryFailureV1(
+                boundary_id="FS.AUTHORITY.PROMOTE",
+                failure_id="authority.prerequisite_missing",
+            )
+
     def _enforce_entry_prerequisites(self, boundary_id: str) -> None:
-        if boundary_id == "FS.AUTHORITY.PROMOTE":
-            if self.journal.state != ExecutionState.STAGE_ACCEPTED:
-                raise RegisteredBoundaryFailureV1(
-                    boundary_id=boundary_id,
-                    failure_id="authority.prerequisite_missing",
-                )
-            if not _AUTHORITY_REQUIRED_STAGE_BOUNDARIES.issubset(
-                self._successful_boundaries()
+        if boundary_id == "FS.TERMINAL.VERIFY_COMMIT":
+            if not any(
+                item.receipt_kind == "authority_gate_ready"
+                for item in self.journal.audit_receipts
             ):
-                raise RegisteredBoundaryFailureV1(
-                    boundary_id=boundary_id,
-                    failure_id="authority.prerequisite_missing",
-                )
-        elif boundary_id == "FS.TERMINAL.VERIFY_COMMIT":
-            if "FS.AUTHORITY.PROMOTE" not in self._successful_boundaries():
                 raise RegisteredBoundaryFailureV1(
                     boundary_id=boundary_id,
                     failure_id="terminal.binding_invalid",
@@ -1291,7 +1295,7 @@ class FullShortExecutionKernel:
     ) -> DurableAuditReceiptV1:
         """Create the single durable gate receipt immediately before writes."""
 
-        self._enforce_entry_prerequisites("FS.AUTHORITY.PROMOTE")
+        self._enforce_authority_stage_prerequisites()
         if not artifact_sha256s or any(
             not _is_sha256(value) for value in artifact_sha256s
         ):

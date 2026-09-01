@@ -161,7 +161,7 @@ async def test_every_boundary_maps_unexpected_to_durable_fail_closed(
             )
     elif boundary_id == "FS.TERMINAL.VERIFY_COMMIT":
         journal.append_audit(
-            receipt_kind="boundary_success",
+            receipt_kind="authority_gate_ready",
             boundary_id="FS.AUTHORITY.PROMOTE",
             payload={"accepted": True},
         )
@@ -234,7 +234,7 @@ async def test_every_registered_failure_has_executable_boundary_evidence(
             )
     elif boundary_id == "FS.TERMINAL.VERIFY_COMMIT":
         journal.append_audit(
-            receipt_kind="boundary_success",
+            receipt_kind="authority_gate_ready",
             boundary_id="FS.AUTHORITY.PROMOTE",
             payload={"accepted": True},
         )
