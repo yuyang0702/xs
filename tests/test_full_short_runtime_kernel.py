@@ -6,7 +6,9 @@ from pathlib import Path
 import pytest
 
 from novel_flywheel.full_short_runtime_kernel import (
+    DEFAULT_FAULT_INJECTION_REGISTRY_V1,
     DEFAULT_FAILURE_BOUNDARY_REGISTRY_V1,
+    DeterministicFaultInjectorV1,
     DurableExecutionJournalV1,
     ExecutionState,
     FailureClassification,
@@ -43,6 +45,63 @@ def test_registry_is_closed_and_fault_coverage_is_mechanical() -> None:
     assert registry.boundary_without_unexpected_handler_count == 0
     assert registry.registered_failure_without_executable_test_count == 0
     assert registry.boundary_without_unexpected_exception_test_count == 0
+    assert {
+        case.case_key for case in DEFAULT_FAULT_INJECTION_REGISTRY_V1.cases
+    } == {
+        f"{boundary_id}|{failure_id}"
+        for boundary_id, failure_id in expected
+    }
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "fault_case",
+    DEFAULT_FAULT_INJECTION_REGISTRY_V1.cases,
+    ids=lambda item: item.case_key,
+)
+async def test_registry_generated_fault_campaign_executes_kernel_path(
+    tmp_path: Path,
+    fault_case,
+) -> None:
+    journal = _journal(
+        tmp_path,
+        fault_case.injection_id.replace(".", "-").replace(":", "-") + ".json",
+    )
+    injector = DeterministicFaultInjectorV1(fault_case)
+    kernel = FullShortExecutionKernel(
+        registry=DEFAULT_FAILURE_BOUNDARY_REGISTRY_V1,
+        journal=journal,
+        fault_injector=injector,
+    )
+    operation_called = False
+
+    async def must_not_run() -> None:
+        nonlocal operation_called
+        operation_called = True
+
+    with pytest.raises(FullShortBoundaryFailureV1) as caught:
+        await kernel.execute_boundary(fault_case.boundary_id, must_not_run)
+
+    assert operation_called is False
+    assert injector.trigger_count == 1
+    expected_code = (
+        "internal.unexpected_at_boundary"
+        if fault_case.failure_id == "__unexpected__"
+        else DEFAULT_FAILURE_BOUNDARY_REGISTRY_V1.failure(
+            fault_case.failure_id
+        ).failure_code
+    )
+    assert caught.value.envelope.failure_code == expected_code
+    reopened = DurableExecutionJournalV1.open(journal.path)
+    triggered = [
+        item for item in reopened.audit_receipts
+        if item.receipt_kind == "fault_injection_triggered"
+    ]
+    assert len(triggered) == 1
+    assert triggered[0].boundary_id == fault_case.boundary_id
+    assert reopened.failure_receipts[-1].failure_envelope_sha256 == (
+        caught.value.envelope.failure_envelope_sha256
+    )
 
 
 @pytest.mark.asyncio

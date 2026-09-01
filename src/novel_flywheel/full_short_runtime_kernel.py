@@ -494,6 +494,16 @@ class DurableFailureReceiptV1:
     record_sha256: str
 
 
+@dataclass(frozen=True)
+class DurableAuditReceiptV1:
+    sequence: int
+    receipt_kind: str
+    boundary_id: str
+    payload_sha256: str
+    previous_record_sha256: str
+    record_sha256: str
+
+
 _NORMAL_TRANSITIONS: dict[ExecutionState, frozenset[ExecutionState]] = {
     ExecutionState.TEMPLATE_READY: frozenset({ExecutionState.AUTHORIZED}),
     ExecutionState.AUTHORIZED: frozenset({ExecutionState.APPROVED}),
@@ -534,6 +544,7 @@ class DurableExecutionJournalV1:
         state: ExecutionState,
         transitions: list[ExecutionTransitionV1],
         failure_receipts: list[DurableFailureReceiptV1],
+        audit_receipts: list[DurableAuditReceiptV1],
     ) -> None:
         self.path = path
         self.execution_id = execution_id
@@ -541,6 +552,7 @@ class DurableExecutionJournalV1:
         self.state = state
         self.transitions = transitions
         self.failure_receipts = failure_receipts
+        self.audit_receipts = audit_receipts
 
     @classmethod
     def create(
@@ -559,6 +571,7 @@ class DurableExecutionJournalV1:
             state=initial_state,
             transitions=[],
             failure_receipts=[],
+            audit_receipts=[],
         )
         journal._persist()
         return journal
@@ -596,6 +609,17 @@ class DurableExecutionJournalV1:
                 )
                 for item in payload.get("failure_receipts", [])
             ],
+            audit_receipts=[
+                DurableAuditReceiptV1(
+                    sequence=int(item["sequence"]),
+                    receipt_kind=str(item["receipt_kind"]),
+                    boundary_id=str(item["boundary_id"]),
+                    payload_sha256=str(item["payload_sha256"]),
+                    previous_record_sha256=str(item["previous_record_sha256"]),
+                    record_sha256=str(item["record_sha256"]),
+                )
+                for item in payload.get("audit_receipts", [])
+            ],
         )
         journal._verify()
         return journal
@@ -607,9 +631,13 @@ class DurableExecutionJournalV1:
             "initial_state": self.initial_state,
         })
 
-    def _records(self) -> list[ExecutionTransitionV1 | DurableFailureReceiptV1]:
+    def _records(
+        self,
+    ) -> list[
+        ExecutionTransitionV1 | DurableFailureReceiptV1 | DurableAuditReceiptV1
+    ]:
         return sorted(
-            [*self.transitions, *self.failure_receipts],
+            [*self.transitions, *self.failure_receipts, *self.audit_receipts],
             key=lambda item: item.sequence,
         )
 
@@ -618,7 +646,10 @@ class DurableExecutionJournalV1:
         return records[-1].record_sha256 if records else self._genesis_hash()
 
     def _next_sequence(self) -> int:
-        return len(self.transitions) + len(self.failure_receipts) + 1
+        return (
+            len(self.transitions) + len(self.failure_receipts)
+            + len(self.audit_receipts) + 1
+        )
 
     def _verify(self) -> None:
         previous = self._genesis_hash()
@@ -669,6 +700,7 @@ class DurableExecutionJournalV1:
             "state": self.state,
             "transitions": [asdict(item) for item in self.transitions],
             "failure_receipts": [asdict(item) for item in self.failure_receipts],
+            "audit_receipts": [asdict(item) for item in self.audit_receipts],
         }
         temp_path = self.path.with_name(self.path.name + ".tmp")
         with temp_path.open("wb") as handle:
@@ -719,6 +751,28 @@ class DurableExecutionJournalV1:
             record_sha256=_sha256(data),
         )
         self.failure_receipts.append(receipt)
+        self._persist()
+        return receipt
+
+    def append_audit(
+        self,
+        *,
+        receipt_kind: str,
+        boundary_id: str,
+        payload: object,
+    ) -> DurableAuditReceiptV1:
+        data = {
+            "sequence": self._next_sequence(),
+            "receipt_kind": receipt_kind,
+            "boundary_id": boundary_id,
+            "payload_sha256": _sha256(payload),
+            "previous_record_sha256": self._last_hash(),
+        }
+        receipt = DurableAuditReceiptV1(
+            **data,
+            record_sha256=_sha256(data),
+        )
+        self.audit_receipts.append(receipt)
         self._persist()
         return receipt
 
@@ -801,15 +855,92 @@ class RecoveryDecisionEngineV1:
         )
 
 
+@dataclass(frozen=True)
+class FaultInjectionCaseV1:
+    case_key: str
+    boundary_id: str
+    failure_id: str
+    injection_id: str
+
+
+@dataclass(frozen=True)
+class FaultInjectionRegistryV1:
+    cases: tuple[FaultInjectionCaseV1, ...]
+    source_registry_sha256: str
+    schema_version: str = "FaultInjectionRegistryV1"
+
+    @classmethod
+    def from_boundary_registry(
+        cls,
+        registry: FailureBoundaryRegistryV1,
+    ) -> FaultInjectionRegistryV1:
+        cases = tuple(
+            FaultInjectionCaseV1(
+                case_key=f"{boundary_id}|{failure_id}",
+                boundary_id=boundary_id,
+                failure_id=failure_id,
+                injection_id=f"{boundary_id}:{failure_id}",
+            )
+            for boundary_id, failure_id in fault_case_keys_v1(registry)
+        )
+        instance = cls(cases, registry.identity_sha256)
+        if len({item.case_key for item in cases}) != len(cases):
+            raise ValueError("duplicate_fault_case_key")
+        declared = {
+            injection_id
+            for boundary in registry.boundaries
+            for injection_id in boundary.fault_injection_ids
+        }
+        if {item.injection_id for item in cases} != declared:
+            raise ValueError("fault_injection_registry_coverage_incomplete")
+        return instance
+
+    @property
+    def identity_sha256(self) -> str:
+        return _sha256({
+            "schema_version": self.schema_version,
+            "source_registry_sha256": self.source_registry_sha256,
+            "cases": [asdict(item) for item in self.cases],
+        })
+
+
+DEFAULT_FAULT_INJECTION_REGISTRY_V1 = (
+    FaultInjectionRegistryV1.from_boundary_registry(
+        DEFAULT_FAILURE_BOUNDARY_REGISTRY_V1,
+    )
+)
+
+
+class DeterministicFaultInjectorV1:
+    def __init__(self, case: FaultInjectionCaseV1 | None = None) -> None:
+        self.case = case
+        self.trigger_count = 0
+
+    def exception_for(self, boundary_id: str) -> BaseException | None:
+        if self.case is None or self.case.boundary_id != boundary_id:
+            return None
+        if self.trigger_count:
+            raise RuntimeError("fault_injection_case_triggered_more_than_once")
+        self.trigger_count += 1
+        if self.case.failure_id == "__unexpected__":
+            return RuntimeError("deterministic unexpected boundary fault")
+        return RegisteredBoundaryFailureV1(
+            boundary_id=boundary_id,
+            failure_id=self.case.failure_id,
+        )
+
+
 class FullShortExecutionKernel:
     def __init__(
         self,
         *,
         registry: FailureBoundaryRegistryV1,
         journal: DurableExecutionJournalV1,
+        fault_injector: DeterministicFaultInjectorV1 | None = None,
     ) -> None:
         self.registry = registry
         self.journal = journal
+        self.fault_injector = fault_injector or DeterministicFaultInjectorV1()
 
     async def execute_boundary(
         self,
@@ -822,9 +953,29 @@ class FullShortExecutionKernel:
     ) -> _T:
         boundary = self.registry.boundary(boundary_id)
         try:
+            injected = self.fault_injector.exception_for(boundary_id)
+            if injected is not None:
+                self.journal.append_audit(
+                    receipt_kind="fault_injection_triggered",
+                    boundary_id=boundary_id,
+                    payload={
+                        "boundary_id": boundary_id,
+                        "source_exception_class": _safe_exception_class(injected),
+                    },
+                )
+                raise injected
             result = operation()
             if inspect.isawaitable(result):
                 result = await result
+            self.journal.append_audit(
+                receipt_kind="boundary_success",
+                boundary_id=boundary_id,
+                payload={
+                    "logical_stage_id": logical_stage_id,
+                    "physical_attempt": physical_attempt,
+                    "allowed_success_outcome": boundary.allowed_success_outcome,
+                },
+            )
             return result
         except FullShortBoundaryFailureV1:
             raise
@@ -894,14 +1045,18 @@ class FullShortExecutionKernel:
 
 __all__ = [
     "DEFAULT_FAILURE_BOUNDARY_REGISTRY_V1",
+    "DEFAULT_FAULT_INJECTION_REGISTRY_V1",
     "BoundarySpecV1",
     "DurableExecutionJournalV1",
     "ExecutionState",
+    "FaultInjectionCaseV1",
+    "FaultInjectionRegistryV1",
     "FailureBoundaryRegistryV1",
     "FailureClassification",
     "FailureEnvelopeV1",
     "FullShortBoundaryFailureV1",
     "FullShortExecutionKernel",
+    "DeterministicFaultInjectorV1",
     "RecoveryDecisionEngineV1",
     "RecoveryDecisionInputV1",
     "RecoveryDecisionKind",
