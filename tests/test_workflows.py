@@ -2440,6 +2440,39 @@ class ExplicitPrimaryGateway:
         )
 
 
+def bind_fake_gateway_capacity(db: Database) -> None:
+    """Install explicit capacity truth for successful FakeGateway workflows."""
+    db.save_provider(
+        provider_id="fake-capacity-provider",
+        name="fake-capacity-provider",
+        protocol="anthropic",
+        base_url="https://fake-capacity.unit.test/v1",
+        auth_type="x-api-key",
+        timeout_seconds=30,
+        extra_headers={},
+    )
+    db.save_model(
+        model_id="fake-capacity-model",
+        provider_id="fake-capacity-provider",
+        display_name="Fake capacity model",
+        model_name="fake-capacity-model",
+        context_window=32_768,
+        max_output_tokens=8_192,
+    )
+    for role in (
+        "planning", "draft", "review", "reader_review", "polish",
+        "final_review", "maintenance",
+    ):
+        if db.get_role_binding(role) is None:
+            db.save_role_binding(
+                role,
+                "fake-capacity-provider",
+                "fake-capacity-model",
+                "fake-capacity-provider",
+                "fake-capacity-model",
+            )
+
+
 def make_polish_recovery_service(tmp_path, gateway, run_id="polish-recovery"):
     db = Database(tmp_path / "app.db")
     db.migrate()
@@ -2862,6 +2895,7 @@ async def test_explicit_transport_type_outranks_stale_capacity_context(tmp_path)
 async def test_material_audit_records_evidenced_conflicts(tmp_path) -> None:
     db = Database(tmp_path / "app.db")
     db.migrate()
+    bind_fake_gateway_capacity(db)
     store = ProjectStore(db, tmp_path / "workspace")
     project = store.create(ProjectCreate(
         title="Audit", mode="short", genre="suspense",
@@ -2912,6 +2946,7 @@ async def test_material_audit_durable_report_resumes_exact_story_state_commit(
 
     db = Database(tmp_path / "app.db")
     db.migrate()
+    bind_fake_gateway_capacity(db)
     store = ProjectStore(db, tmp_path / "workspace")
     project = store.create(ProjectCreate(
         title="Audit forward recovery", mode="short", genre="suspense",
@@ -2981,6 +3016,7 @@ async def test_material_audit_report_write_failure_rolls_back_without_state_drif
 
     db = Database(tmp_path / "app.db")
     db.migrate()
+    bind_fake_gateway_capacity(db)
     store = ProjectStore(db, tmp_path / "workspace")
     project = store.create(ProjectCreate(
         title="Audit rollback", mode="short", genre="suspense",
@@ -3033,6 +3069,7 @@ async def test_material_audit_production_lengths_cover_full_reference_tail(
 ) -> None:
     db = Database(tmp_path / "app.db")
     db.migrate()
+    bind_fake_gateway_capacity(db)
     store = ProjectStore(db, tmp_path / "workspace")
     project = store.create(ProjectCreate(
         title=f"Audit {target_characters}", mode="short", genre="suspense",
@@ -3086,6 +3123,7 @@ async def test_material_audit_production_lengths_cover_full_reference_tail(
 async def test_material_audit_reuses_fallback_after_first_window_timeout(tmp_path) -> None:
     db = Database(tmp_path / "app.db")
     db.migrate()
+    bind_fake_gateway_capacity(db)
     store = ProjectStore(db, tmp_path / "workspace")
     project = store.create(ProjectCreate(
         title="Audit circuit", mode="short", genre="suspense",
@@ -3119,6 +3157,7 @@ async def test_material_audit_reuses_fallback_after_first_window_timeout(tmp_pat
 async def test_material_audit_resume_reuses_completed_window_checkpoints(tmp_path) -> None:
     db = Database(tmp_path / "app.db")
     db.migrate()
+    bind_fake_gateway_capacity(db)
     store = ProjectStore(db, tmp_path / "workspace")
     project = store.create(ProjectCreate(
         title="Audit resume", mode="short", genre="suspense",
@@ -3180,6 +3219,7 @@ async def test_material_audit_resume_reuses_completed_window_checkpoints(tmp_pat
 async def test_material_repair_preserves_candidate_until_publication(tmp_path) -> None:
     db = Database(tmp_path / "app.db")
     db.migrate()
+    bind_fake_gateway_capacity(db)
     store = ProjectStore(db, tmp_path / "workspace")
     project = store.create(ProjectCreate(
         title="Repair", mode="short", genre="suspense",
