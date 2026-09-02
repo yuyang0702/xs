@@ -5372,6 +5372,13 @@ class WorkflowService:
                     ),
                 )
                 review = await self._accept_short_initial_review(review_text)
+                # `_stage` persists ordinary model artifacts itself, while a
+                # capacity splitter returns before that common write point.
+                # Materialize the accepted top-level Review artifact here so
+                # both topologies have the same terminal authority surface.
+                atomic_write(
+                    run_path / "outputs" / "review.md", str(review_text),
+                )
                 self._save_short_review_binding(
                     run_path / "outputs",
                     review_text=str(review_text),
