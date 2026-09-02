@@ -1,0 +1,44 @@
+{
+  "hybrid_model_visible_leak_count": 0,
+  "normal_production_model_visible_bytes_unchanged": true,
+  "production_baseline_skill_identity": "PASS",
+  "schema": "FullShortStageMigrationMatrixV1",
+  "stages": [
+    {
+      "accepted_receipt_required": true,
+      "kernel_boundary": true,
+      "stage": "Planning"
+    },
+    {
+      "accepted_receipt_required": true,
+      "kernel_boundary": true,
+      "stage": "Draft"
+    },
+    {
+      "accepted_receipt_required": true,
+      "kernel_boundary": true,
+      "stage": "Review"
+    },
+    {
+      "accepted_receipt_required": true,
+      "kernel_boundary": true,
+      "stage": "Reader Review"
+    },
+    {
+      "accepted_receipt_required": true,
+      "kernel_boundary": true,
+      "stage": "Polish"
+    },
+    {
+      "accepted_receipt_required": true,
+      "kernel_boundary": true,
+      "stage": "Final Review"
+    },
+    {
+      "accepted_receipt_required": true,
+      "kernel_boundary": true,
+      "stage": "Maintenance"
+    }
+  ],
+  "status": "PASS"
+}

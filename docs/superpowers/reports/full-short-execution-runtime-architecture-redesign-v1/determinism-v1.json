@@ -1,0 +1,8 @@
+{
+  "inventory_sha256": "3f2cfb8e1e641e97ca36b36c06c9fd6ebe4d800522b389920fb4289965619414",
+  "schema": "FullShortRuntimeDeterminismV1",
+  "source_inventory_byte_exact": true,
+  "source_inventory_first_sha256": "1a1d581d83c2de23f8948fa380cfd63d08431ffb52f8c84aee6267abb3d84051",
+  "source_inventory_repeat_sha256": "1a1d581d83c2de23f8948fa380cfd63d08431ffb52f8c84aee6267abb3d84051",
+  "status": "PASS"
+}

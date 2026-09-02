@@ -1,0 +1,76 @@
+{
+  "authority_corruption_count": 0,
+  "double_accepted_artifact_count": 0,
+  "duplicate_dispatch_after_restart_count": 0,
+  "policies": [
+    {
+      "decision": "START_FROM_TEMPLATE",
+      "provider_redispatch_allowed": false,
+      "state": "TEMPLATE_READY"
+    },
+    {
+      "decision": "REVALIDATE_AUTHORIZATION",
+      "provider_redispatch_allowed": false,
+      "state": "AUTHORIZED"
+    },
+    {
+      "decision": "REVALIDATE_APPROVAL",
+      "provider_redispatch_allowed": false,
+      "state": "APPROVED"
+    },
+    {
+      "decision": "RESUME_PREDISPATCH",
+      "provider_redispatch_allowed": true,
+      "state": "PREDISPATCH_READY"
+    },
+    {
+      "decision": "PAUSE_RECONCILIATION",
+      "provider_redispatch_allowed": false,
+      "state": "DISPATCH_TOKEN_RESERVED"
+    },
+    {
+      "decision": "PAUSE_RECONCILIATION",
+      "provider_redispatch_allowed": false,
+      "state": "DISPATCHING"
+    },
+    {
+      "decision": "LOCAL_REPLAY_ONLY",
+      "provider_redispatch_allowed": false,
+      "state": "RESPONSE_CAPTURED"
+    },
+    {
+      "decision": "RESUME_VALIDATION",
+      "provider_redispatch_allowed": false,
+      "state": "VALIDATING"
+    },
+    {
+      "decision": "APPLY_CENTRAL_RECOVERY",
+      "provider_redispatch_allowed": false,
+      "state": "STAGE_REJECTED_RECOVERABLE"
+    },
+    {
+      "decision": "RESUME_NEXT_STAGE",
+      "provider_redispatch_allowed": false,
+      "state": "STAGE_ACCEPTED"
+    },
+    {
+      "decision": "PAUSE_RECONCILIATION",
+      "provider_redispatch_allowed": false,
+      "state": "PAUSED_RECONCILIATION"
+    },
+    {
+      "decision": "RETURN_TERMINAL_FAILURE",
+      "provider_redispatch_allowed": false,
+      "state": "TERMINAL_FAILED"
+    },
+    {
+      "decision": "RETURN_COMPLETED",
+      "provider_redispatch_allowed": false,
+      "state": "COMPLETED"
+    }
+  ],
+  "restart_state_without_explicit_policy_count": 0,
+  "schema": "RestartReconciliationReportV1",
+  "state_count": 13,
+  "status": "PASS"
+}

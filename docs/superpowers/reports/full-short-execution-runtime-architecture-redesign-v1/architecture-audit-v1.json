@@ -1,0 +1,58 @@
+{
+  "checks": {
+    "control_stage_receipt_precedes_diagnostics": true,
+    "disabled_actions_require_offline_seams": true,
+    "dispatch_ready_precedes_nonce": true,
+    "durable_ledger_rejects_unregistered_transitions": true,
+    "full_short_reason_catalog_is_ast_closed": true,
+    "gateway_exact_mode_precedes_retry_and_fallback": true,
+    "phase9_campaign_requires_junit_receipts": true,
+    "phase9_campaign_uses_real_boundaries": true,
+    "phase9_inventory_is_source_bound": true,
+    "post_nonce_crash_is_nonrestartable": true,
+    "production_dispatch_queries_recovery_registry": true,
+    "route_exhaustion_preserves_ordered_children": true,
+    "runner_has_no_premature_reserve_nonce": true,
+    "terminal_failure_uses_durable_graph": true,
+    "wire_request_build_precedes_nonce": true,
+    "workflow_exact_plan_has_no_fallback": true
+  },
+  "failed_checks": [],
+  "identities": {
+    "durable_failure_evidence_policy_sha256": "c7e84bbcd397a2ae82572428876d5e56cf9ab294b11cb4d5ac2654cd3355713e",
+    "failure_architecture_identity": "full-short-failure-architecture-v2",
+    "nonce_reservation_policy_sha256": "c9a052d3668c0f8df1d9248ae219e39b2c7ee61533542b81e2b586fe0f5ebc67",
+    "observer_isolation_policy_sha256": "93c58e25971c5417425c1a99e54f242d0383b1e76170eb746b40ff4e099ed4a1",
+    "predispatch_state_machine_sha256": "ca48c6ee642cff64c5a841703559c29e20cde89b589958fed1dad21c8781b517",
+    "recovery_policy_registry_sha256": "75c7edeb5fcc96ca636d096a355860881291f77638ddce520e7de76c025243e9"
+  },
+  "metrics": {
+    "authority_mutation_before_accepted_receipt_count": 0,
+    "failure_without_durable_receipt_count": 0,
+    "generic_wrapper_without_child_provenance_count": 0,
+    "hidden_retry_path_count": 0,
+    "locally_predictable_unmapped_failure_count": 0,
+    "nonce_premature_reservation_path_count": 0,
+    "observer_business_coupling_count": 0,
+    "recoverable_failure_without_bounded_policy_count": 0,
+    "restart_ambiguity_count": 0
+  },
+  "schema": "FullShortFailureSurfaceStaticAuditV1",
+  "source_sha256": {
+    "dispatch": "ea5bb93d1e2cc9e4309f2749d19b6a5e99780cbafcc18f16a742f801bda231ac",
+    "failure_record": "80c24ba7c3eeab0b8d858f0795be1299d9cce3f29b1c26996c473856f34b7af4",
+    "full_short_reason_catalog": "6a3fea16068001d706e62914c7a98106a9419576ab21ef96f224102386b3e1ad",
+    "gateway_complete": "031d5843eec78240dfa21a4782070a7c061854f5692812fcae0d34e359dd349e",
+    "gateway_tools": "0aa3d499a1661c8abbac04b68c83307ff5f343096172cc237c1be0c7de51c0a0",
+    "http_stream": "1ac8559a538988d5b19191ee3aeaabd7c1f7ed9e5611b50413579f74515ff557",
+    "ledger_transition": "62304efb6a973994f9dc80ca1cc56e91585184bbc332f5e599339160a800a23d",
+    "nonce_boundary": "03923f91dd6186ada47d10b49f100c21228b2b9f8180a224360aa99dde20ced0",
+    "phase9_campaign": "d96ded3e29bc9f22b80cb81eecefd60046c09653b7fa8d16956880348d616520",
+    "protocol_plan": "8639ca2d0a00bdfc8ceded59b890312f483fe4a8f7360bdad4f9ee5afc36e2ec",
+    "public_runner": "fb947ca98af8b3a670e987667ee71ef28e2400267bd0f417ee87f638b5d2142a",
+    "runner": "3a09a44aab402fda4f2da0c1534877426713b549dd56f918b9de753f77ed1bd3",
+    "stage": "8b82649113f527bca7284784e9784fecc185277ea37889be6c1e9a0f5f6c29eb"
+  },
+  "status": "PASS",
+  "version": 1
+}

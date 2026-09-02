@@ -1,0 +1,31 @@
+{
+  "claim": "All exits crossing registered Short runtime boundaries are typed, durable, policy-owned, and executable-test-bound.",
+  "in_scope": [
+    "kernel-active exact Full Short runtime after canonical activation, JIT approval, and durable journal construction",
+    "all Short stage and contract boundaries",
+    "provider dispatch, predispatch, nonce, and capture boundaries",
+    "central recovery, checkpoint, authority, and terminal boundaries"
+  ],
+  "kernel_activation_requirements": {
+    "tools.canary.first_trustworthy_full_short_runner:_execute_full_short_control_plane_with_capability.<locals>.prepare_predispatch_with_kernel": "exact_ast_sha256:c9be4dc06dfb0c01aa9a03bd7b5023a5580e9fbcb5b5736ba52a9388cfc60d51",
+    "tools.canary.first_trustworthy_full_short_runner:_execute_full_short_control_plane_with_capability.<locals>.supervised_operation": "exact_ast_sha256:44c8090c7020466ddd15ddcdf4e14f2f96694d868c2a73483a95a7cfd4120e6c",
+    "tools.canary.first_trustworthy_full_short_runner:_execute_full_short_control_plane_with_capability.<locals>.terminal_closure.<locals>.commit_after_saga_cleanup": "exact_ast_sha256:e1bf111f296f3138d29137287a3331034f9069c6b6bb9052a195eb5f8d1f9fb6"
+  },
+  "out_of_scope": [
+    "pre-kernel authorization/bootstrap validation before the durable runtime journal exists; this path is separately fail-closed and cannot dispatch, reserve nonce, or mutate story authority",
+    "ordinary WorkflowService.run_short calls that are not activated as the exact authorized Full Short control plane",
+    "offline planning/oracle discovery runs without execution authority",
+    "Long and short revision",
+    "unrelated UI/admin entry points",
+    "external dependency internals below a registered adapter boundary",
+    "retired Hybrid/Selective model-visible paths"
+  ],
+  "proof_domain_explicit": true,
+  "roots": {
+    "tools.canary.first_trustworthy_full_short_runner:_execute_full_short_control_plane_with_capability.<locals>.prepare_predispatch_with_kernel": "FS.CHECKPOINT.TRANSITION",
+    "tools.canary.first_trustworthy_full_short_runner:_execute_full_short_control_plane_with_capability.<locals>.supervised_operation": "FS.WORKFLOW.SHORT",
+    "tools.canary.first_trustworthy_full_short_runner:_execute_full_short_control_plane_with_capability.<locals>.terminal_closure.<locals>.commit_after_saga_cleanup": "FS.TERMINAL.VERIFY_COMMIT"
+  },
+  "schema": "FullShortRuntimeProofDomainV1",
+  "version": 1
+}

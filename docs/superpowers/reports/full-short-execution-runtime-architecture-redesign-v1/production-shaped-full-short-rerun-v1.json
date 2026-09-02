@@ -1,0 +1,18 @@
+{
+  "adapter_after_capture_local_replay": "PASS",
+  "adapter_replay_receipt_sha256": "1e66de35fcbfb92d66428aaeb28254aadeba756d89c93ef85b08c7341eaae130",
+  "all_required_stages_executed": true,
+  "completed_stage_count": 68,
+  "completion_receipt_created": true,
+  "external_actions": 0,
+  "final_artifact_created_in_dry_run_namespace": true,
+  "final_checkpoint_created": true,
+  "normal_receipt_sha256": "ee7771d1f004a474fa3efbe98caef74721ba22b3ff9c74d1ce9f4d8196e6444a",
+  "planning_business_incomplete_recovery": "PASS",
+  "planning_reasoning_finalization_recovery": "PASS",
+  "provider_request_count": 70,
+  "replay_call_count": 70,
+  "schema": "ProductionShapedFullShortRerunV1",
+  "source_head": "85f1bf9140e9beecfbe6a5bcbe77f4a5abb1b0ba",
+  "status": "PASS"
+}

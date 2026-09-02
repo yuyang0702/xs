@@ -1,0 +1,13 @@
+{
+  "all_five_clean_room_reviewers": "ARCHITECTURE_PASS",
+  "blockers": 0,
+  "focused_tests": 249,
+  "length_matrix_tests": 3,
+  "mode": "MANUAL_EQUIVALENT_AFTER_PROJECT_SKILL_SCRIPT_ABSENCE",
+  "related_tests": 572,
+  "schema": "NovelDevCouncilStrictGateReceiptV1",
+  "source_head": "85f1bf9140e9beecfbe6a5bcbe77f4a5abb1b0ba",
+  "status": "PASS",
+  "version": 1,
+  "warnings": 0
+}

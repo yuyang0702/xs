@@ -1,0 +1,10 @@
+{
+  "durable_envelope_secret_match_count": 0,
+  "raw_prompt_persisted": false,
+  "raw_reference_persisted": false,
+  "raw_story_persisted": false,
+  "raw_title_persisted": false,
+  "schema": "FullShortRuntimePrivacyScanV1",
+  "status": "PASS",
+  "unexpected_secretlike_reason_code_persisted": false
+}

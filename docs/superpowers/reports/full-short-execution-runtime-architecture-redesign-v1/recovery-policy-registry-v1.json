@@ -1,0 +1,14 @@
+{
+  "hidden_retry_path_count": 0,
+  "no_unbounded_recovery_composition": true,
+  "outputs": [
+    "LOCAL_REPLAY",
+    "ONE_TYPED_REATTEMPT",
+    "LOCAL_REPAIR",
+    "FAIL_CLOSED",
+    "PAUSE_RECONCILIATION"
+  ],
+  "schema": "CentralRecoveryDecisionRegistryV1",
+  "status": "PASS",
+  "unregistered_recovery_decision_count": 0
+}

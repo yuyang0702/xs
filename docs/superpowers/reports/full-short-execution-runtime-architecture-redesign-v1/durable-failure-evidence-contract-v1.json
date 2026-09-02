@@ -1,0 +1,7 @@
+{
+  "exact_capture_reference_hash_only": true,
+  "failure_without_durable_receipt_count": 0,
+  "safe_fields_only": true,
+  "schema": "DurableFailureEvidenceContractV1",
+  "status": "PASS"
+}

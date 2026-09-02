@@ -1,0 +1,16 @@
+{
+  "architecture_related_receipt_status": "PASS",
+  "collected_tests": 4947,
+  "historical_packet_materialization_fail_closed": true,
+  "known_unrelated_product_copy_failure": "tests/api/test_learning.py::test_outline_generation_not_ready_errors_are_fixed_chinese",
+  "new_authority_regression_count": 0,
+  "new_model_visible_literary_regression_count": 0,
+  "new_owning_source_regression_count": 0,
+  "new_runtime_kernel_regression_count": 0,
+  "reason": "historical one-shot approvals and successor seals correctly reject the current long-lived branch",
+  "retired_single_use_seal_fixture": "tests/canary/test_short_completion_materialization.py",
+  "schema": "OfflineFullSuiteQualifiedReceiptV1",
+  "source_head": "85f1bf9140e9beecfbe6a5bcbe77f4a5abb1b0ba",
+  "status": "BASELINE_BLOCKED_NOT_CLAIMED_AS_PASS",
+  "version": 1
+}

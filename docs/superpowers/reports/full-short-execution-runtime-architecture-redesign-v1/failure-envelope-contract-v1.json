@@ -1,0 +1,11 @@
+{
+  "durable": true,
+  "legacy_receipt_without_envelope_can_authorize_recovery": false,
+  "ordered_safe_cause_chain": true,
+  "raw_exception_message_persisted": false,
+  "schema": "FailureEnvelopeContractV1",
+  "status": "PASS",
+  "typed": true,
+  "unexpected_policy": "internal.unexpected_at_boundary",
+  "unexpected_source_reason_code_persisted": false
+}

@@ -1,0 +1,13 @@
+{
+  "authoring_provenance": "MAIN_RECONSTRUCTION_FROM_CURRENT_SOURCE_COMMITS_AND_TESTS_AFTER_HOST_RESTART;NO_AGENT_IDENTITY_FABRICATED",
+  "evidence": [
+    "1575 source exits",
+    "0 unbound",
+    "3f2cfb8e1e641e97ca36b36c06c9fd6ebe4d800522b389920fb4289965619414"
+  ],
+  "focus": "Static Failure-Exit Discovery",
+  "schema": "FullShortRuntimeInitialWorkstreamReportV1",
+  "status": "IMPLEMENTED_AND_INDEPENDENTLY_REVIEWED",
+  "version": 1,
+  "workstream": "B"
+}

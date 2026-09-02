@@ -1,0 +1,10 @@
+{
+  "boundary_without_unexpected_exception_test_count": 0,
+  "fault_injection_registry_coverage": "100_PERCENT",
+  "fault_registry_identity_sha256": "66a0091c5b555e903d2cccad928d6355516d6b32170129311a551d06ce6aa278",
+  "generated_boundary_failure_cases": 59,
+  "registered_failure_count": 18,
+  "registered_failure_without_executable_test_count": 0,
+  "schema": "GeneratedFaultInjectionReportV1",
+  "status": "PASS"
+}

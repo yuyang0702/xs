@@ -1,0 +1,21 @@
+{
+  "failure_and_transition_atomic_replacement": true,
+  "failure_without_durable_receipt_count": 0,
+  "schema": "DurableExecutionStateMachineV1",
+  "state_count": 13,
+  "states": [
+    "TEMPLATE_READY",
+    "AUTHORIZED",
+    "APPROVED",
+    "PREDISPATCH_READY",
+    "DISPATCH_TOKEN_RESERVED",
+    "DISPATCHING",
+    "RESPONSE_CAPTURED",
+    "VALIDATING",
+    "STAGE_REJECTED_RECOVERABLE",
+    "STAGE_ACCEPTED",
+    "PAUSED_RECONCILIATION",
+    "TERMINAL_FAILED",
+    "COMPLETED"
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "direct_path_metrics": {
+    "DIRECT_AUTHORITY_PROMOTION_OUTSIDE_AUTHORITY_GATE_COUNT": 0,
+    "DIRECT_NONCE_RESERVATION_OUTSIDE_KERNEL_COUNT": 0,
+    "DIRECT_PROVIDER_DISPATCH_OUTSIDE_KERNEL_COUNT": 0,
+    "DIRECT_RECOVERY_REDISPATCH_OUTSIDE_KERNEL_COUNT": 0,
+    "DIRECT_STAGE_TERMINAL_FAILURE_OUTSIDE_KERNEL_COUNT": 0,
+    "HIDDEN_RETRY_PATH_COUNT": 0,
+    "NONCE_PREMATURE_RESERVATION_PATH_COUNT": 0,
+    "UNREGISTERED_RECOVERY_DECISION_COUNT": 0
+  },
+  "inventory_sha256": "3f2cfb8e1e641e97ca36b36c06c9fd6ebe4d800522b389920fb4289965619414",
+  "reachable_function_count": 1301,
+  "repeat_file_sha256": "1a1d581d83c2de23f8948fa380cfd63d08431ffb52f8c84aee6267abb3d84051",
+  "schema": "FullShortSourceExitBindingReportV1",
+  "source_failure_exit_count": 1575,
+  "stale_dynamic_edge_contract_count": 0,
+  "status": "PASS",
+  "unbound_source_failure_exit_count": 0,
+  "unresolved_critical_edge_count": 0
+}

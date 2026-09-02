@@ -1,0 +1,8 @@
+{
+  "authority_gate_receipt_precedes_promotion": true,
+  "authority_mutation_before_accepted_receipt_count": 0,
+  "required_stage_acceptance_receipts": 7,
+  "schema": "FullShortAuthorityGatesV1",
+  "status": "PASS",
+  "story_state_canon_ready_same_run_gate": true
+}

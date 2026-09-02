@@ -1,0 +1,15 @@
+{
+  "full_short_execution_count": 0,
+  "http_post_attempts": 0,
+  "hybrid_model_visible_leak_count": 0,
+  "model_calls": 0,
+  "network_calls": 0,
+  "paid_calls": 0,
+  "production_baseline_skill_identity": "PASS",
+  "real_credential_lookup_count": 0,
+  "real_provider_client_creation_count": 0,
+  "real_provider_request_attempts": 0,
+  "real_secret_read_count": 0,
+  "schema": "FullShortRuntimeProductionIsolationV1",
+  "status": "PASS"
+}

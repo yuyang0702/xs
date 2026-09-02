@@ -1,0 +1,17 @@
+{
+  "agent": "/root/kernel_provenance_review",
+  "external_actions": 0,
+  "findings": [
+    "AKIA durable bypass closed",
+    "known envelope round-trip exact",
+    "legacy journal fail-closed"
+  ],
+  "focus": "runtime kernel and failure provenance",
+  "mode": "fresh_read_only_offline",
+  "reviewed_head": "8a045f5181ae339b87863163d57e36f853f71d46",
+  "reviewer_number": 3,
+  "schema": "FullShortRuntimeCleanRoomReviewV1",
+  "status": "ARCHITECTURE_PASS",
+  "tests": "196 passed",
+  "version": 1
+}

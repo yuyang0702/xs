@@ -1,0 +1,16 @@
+{
+  "nonce_premature_reservation_path_count": 0,
+  "required_before_nonce": [
+    "route",
+    "provider",
+    "model",
+    "endpoint",
+    "capability",
+    "credential_source",
+    "authorized_credential_readiness",
+    "network_free_request_construction",
+    "reasoning_projection",
+    "sealed_dispatch_readiness_receipt"
+  ],
+  "schema": "PredispatchStateMachineV1"
+}

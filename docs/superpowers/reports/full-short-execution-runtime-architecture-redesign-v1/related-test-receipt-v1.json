@@ -1,0 +1,13 @@
+{
+  "classification": "RELATED",
+  "errors": 0,
+  "failures": 0,
+  "junit_sha256": "201029a75a88e7e597ac3b3b84a0eb37df43dcc2c5e9162f1c320c6e1dfc4b37",
+  "schema": "OfflinePytestReceiptV1",
+  "skipped": 0,
+  "source_head": "85f1bf9140e9beecfbe6a5bcbe77f4a5abb1b0ba",
+  "status": "PASS",
+  "testcase_name_set_sha256": "09a91ca138be32e6ef3a4f4e2e6de2e79261d79256e687f53ab1ef97f542c1ab",
+  "tests": 572,
+  "version": 1
+}

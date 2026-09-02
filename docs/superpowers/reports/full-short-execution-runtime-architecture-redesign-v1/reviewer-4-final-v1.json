@@ -1,0 +1,17 @@
+{
+  "agent": "/root/recovery_restart_review",
+  "external_actions": 0,
+  "findings": [
+    "13 of 13 restart policies",
+    "shared second slot",
+    "no duplicate dispatch"
+  ],
+  "focus": "recovery idempotency and restart",
+  "mode": "fresh_read_only_offline",
+  "reviewed_head": "e84f9d0de5ee2e0562ff31bed4eaf125b3fbe4e8",
+  "reviewer_number": 4,
+  "schema": "FullShortRuntimeCleanRoomReviewV1",
+  "status": "ARCHITECTURE_PASS",
+  "tests": "452 passed",
+  "version": 1
+}

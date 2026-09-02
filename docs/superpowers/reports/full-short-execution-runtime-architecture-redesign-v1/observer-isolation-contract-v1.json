@@ -1,0 +1,13 @@
+{
+  "injections": [
+    "GBK_EMOJI",
+    "CREWAI_EVENT_HANDLER",
+    "LOGGING_SINK",
+    "TELEMETRY_SERIALIZATION"
+  ],
+  "observer_business_coupling_count": 0,
+  "observer_failure_cannot_mask_root_cause": true,
+  "observer_failures_cannot_change_business_outcome": true,
+  "schema": "ObserverIsolationContractV1",
+  "status": "PASS"
+}

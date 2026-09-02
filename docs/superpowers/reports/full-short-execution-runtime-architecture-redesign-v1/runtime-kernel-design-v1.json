@@ -1,0 +1,9 @@
+{
+  "all_real_short_production_roots_exactly_fingerprinted": true,
+  "boundary_count": 15,
+  "fault_registry_identity_sha256": "66a0091c5b555e903d2cccad928d6355516d6b32170129311a551d06ce6aa278",
+  "kernel": "FullShortExecutionKernel",
+  "registry_identity_sha256": "73c20bdb528ec0b4251cce2b8ff1e06d768ccc1ec18d0937f493ba6e7a0c0013",
+  "schema": "FullShortExecutionKernelDesignV1",
+  "status": "PASS"
+}

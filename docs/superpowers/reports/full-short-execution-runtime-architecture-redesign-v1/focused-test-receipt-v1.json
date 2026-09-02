@@ -1,0 +1,13 @@
+{
+  "classification": "FOCUSED",
+  "errors": 0,
+  "failures": 0,
+  "junit_sha256": "dca8a2cc7b97f6294b9dce4897fab1ecc23cbc1ab20c0f1892e34db4a7be77f6",
+  "schema": "OfflinePytestReceiptV1",
+  "skipped": 0,
+  "source_head": "85f1bf9140e9beecfbe6a5bcbe77f4a5abb1b0ba",
+  "status": "PASS",
+  "testcase_name_set_sha256": "5669bbb14ddc75ec5c893230b3f7b569ebc5b11bdcd985d3ae9372ad3fc9e2c0",
+  "tests": 249,
+  "version": 1
+}

@@ -1,0 +1,9 @@
+{
+  "max_physical_attempts_per_logical_stage": 2,
+  "maximum_accepted_final_artifacts": 1,
+  "normal_attempts": 1,
+  "reasoning_and_business_recovery_share_slot": true,
+  "schema": "FullShortPhysicalAttemptBudgetV1",
+  "shared_recovery_slots": 1,
+  "third_attempt_allowed": false
+}

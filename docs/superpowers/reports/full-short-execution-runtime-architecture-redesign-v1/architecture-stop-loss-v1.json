@@ -1,0 +1,20 @@
+{
+  "boundary_without_unexpected_exception_test_count": 0,
+  "boundary_without_unexpected_handler_count": 0,
+  "direct_authority_promotion_outside_authority_gate_count": 0,
+  "direct_nonce_reservation_outside_kernel_count": 0,
+  "direct_provider_dispatch_outside_kernel_count": 0,
+  "direct_recovery_redispatch_outside_kernel_count": 0,
+  "execution_runtime_redesign": "CLOSED",
+  "failure_without_durable_receipt_count": 0,
+  "hidden_retry_path_count": 0,
+  "nonce_premature_reservation_path_count": 0,
+  "observer_business_coupling_count": 0,
+  "registered_failure_without_executable_test_count": 0,
+  "restart_state_without_explicit_policy_count": 0,
+  "schema": "FullShortRuntimeArchitectureStopLossV1",
+  "status": "PASS",
+  "stop_loss_policy": "ACTIVE",
+  "unbound_source_failure_exit_count": 0,
+  "unregistered_recovery_decision_count": 0
+}

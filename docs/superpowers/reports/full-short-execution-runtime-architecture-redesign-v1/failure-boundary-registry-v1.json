@@ -1,0 +1,481 @@
+{
+  "boundaries": [
+    {
+      "allowed_success_outcome": "PREDISPATCH_READY",
+      "allowed_typed_failures": [
+        "control.binding_mismatch",
+        "provider.configuration_invalid",
+        "provider.credential_unavailable"
+      ],
+      "authority_effect": "none_until_accepted_receipt",
+      "boundary_id": "FS.CONTROL.PREFLIGHT",
+      "durable_receipt_type": "FailureEnvelopeV1",
+      "entry_function": "novel_flywheel.full_short_execution:FullShortDispatchLedgerObserverV1.before_http_dispatch",
+      "fault_injection_ids": [
+        "FS.CONTROL.PREFLIGHT:control.binding_mismatch",
+        "FS.CONTROL.PREFLIGHT:provider.configuration_invalid",
+        "FS.CONTROL.PREFLIGHT:provider.credential_unavailable",
+        "FS.CONTROL.PREFLIGHT:__unexpected__"
+      ],
+      "owner_layer": "control",
+      "recovery_policy_id": "central.recovery.v1",
+      "restart_policy_id": "journal.reconcile.v1",
+      "unexpected_exception_policy": "internal.unexpected_at_boundary"
+    },
+    {
+      "allowed_success_outcome": "COMPLETED",
+      "allowed_typed_failures": [
+        "workflow.invariant_rejected",
+        "stage.artifact_rejected",
+        "checkpoint.persistence_failed"
+      ],
+      "authority_effect": "none_until_accepted_receipt",
+      "boundary_id": "FS.WORKFLOW.SHORT",
+      "durable_receipt_type": "FailureEnvelopeV1",
+      "entry_function": "novel_flywheel.workflows:WorkflowService._short_pipeline",
+      "fault_injection_ids": [
+        "FS.WORKFLOW.SHORT:workflow.invariant_rejected",
+        "FS.WORKFLOW.SHORT:stage.artifact_rejected",
+        "FS.WORKFLOW.SHORT:checkpoint.persistence_failed",
+        "FS.WORKFLOW.SHORT:__unexpected__"
+      ],
+      "owner_layer": "workflow",
+      "recovery_policy_id": "central.recovery.v1",
+      "restart_policy_id": "journal.reconcile.v1",
+      "unexpected_exception_policy": "internal.unexpected_at_boundary"
+    },
+    {
+      "allowed_success_outcome": "STAGE_ACCEPTED",
+      "allowed_typed_failures": [
+        "planning.business_incomplete",
+        "planning.reasoning_only_no_final",
+        "contract.validation_rejected",
+        "recovery.budget_exhausted"
+      ],
+      "authority_effect": "none_until_accepted_receipt",
+      "boundary_id": "FS.STAGE.PLANNING",
+      "durable_receipt_type": "FailureEnvelopeV1",
+      "entry_function": "novel_flywheel.workflows:WorkflowService._plan_short_ir_first",
+      "fault_injection_ids": [
+        "FS.STAGE.PLANNING:planning.business_incomplete",
+        "FS.STAGE.PLANNING:planning.reasoning_only_no_final",
+        "FS.STAGE.PLANNING:contract.validation_rejected",
+        "FS.STAGE.PLANNING:recovery.budget_exhausted",
+        "FS.STAGE.PLANNING:__unexpected__"
+      ],
+      "owner_layer": "stage",
+      "recovery_policy_id": "central.recovery.v1",
+      "restart_policy_id": "journal.reconcile.v1",
+      "unexpected_exception_policy": "internal.unexpected_at_boundary"
+    },
+    {
+      "allowed_success_outcome": "STAGE_ACCEPTED",
+      "allowed_typed_failures": [
+        "stage.semantic_repair_required",
+        "stage.artifact_rejected",
+        "contract.validation_rejected"
+      ],
+      "authority_effect": "none_until_accepted_receipt",
+      "boundary_id": "FS.STAGE.DRAFT",
+      "durable_receipt_type": "FailureEnvelopeV1",
+      "entry_function": "novel_flywheel.workflows:WorkflowService._draft_short_in_segments",
+      "fault_injection_ids": [
+        "FS.STAGE.DRAFT:stage.semantic_repair_required",
+        "FS.STAGE.DRAFT:stage.artifact_rejected",
+        "FS.STAGE.DRAFT:contract.validation_rejected",
+        "FS.STAGE.DRAFT:__unexpected__"
+      ],
+      "owner_layer": "stage",
+      "recovery_policy_id": "central.recovery.v1",
+      "restart_policy_id": "journal.reconcile.v1",
+      "unexpected_exception_policy": "internal.unexpected_at_boundary"
+    },
+    {
+      "allowed_success_outcome": "STAGE_ACCEPTED",
+      "allowed_typed_failures": [
+        "stage.semantic_repair_required",
+        "stage.artifact_rejected",
+        "contract.validation_rejected"
+      ],
+      "authority_effect": "none_until_accepted_receipt",
+      "boundary_id": "FS.STAGE.REVIEW",
+      "durable_receipt_type": "FailureEnvelopeV1",
+      "entry_function": "novel_flywheel.workflows:WorkflowService._accept_short_initial_review",
+      "fault_injection_ids": [
+        "FS.STAGE.REVIEW:stage.semantic_repair_required",
+        "FS.STAGE.REVIEW:stage.artifact_rejected",
+        "FS.STAGE.REVIEW:contract.validation_rejected",
+        "FS.STAGE.REVIEW:__unexpected__"
+      ],
+      "owner_layer": "stage",
+      "recovery_policy_id": "central.recovery.v1",
+      "restart_policy_id": "journal.reconcile.v1",
+      "unexpected_exception_policy": "internal.unexpected_at_boundary"
+    },
+    {
+      "allowed_success_outcome": "STAGE_ACCEPTED",
+      "allowed_typed_failures": [
+        "stage.semantic_repair_required",
+        "stage.artifact_rejected",
+        "contract.validation_rejected"
+      ],
+      "authority_effect": "none_until_accepted_receipt",
+      "boundary_id": "FS.STAGE.READER_REVIEW",
+      "durable_receipt_type": "FailureEnvelopeV1",
+      "entry_function": "novel_flywheel.workflows:WorkflowService._reader_review",
+      "fault_injection_ids": [
+        "FS.STAGE.READER_REVIEW:stage.semantic_repair_required",
+        "FS.STAGE.READER_REVIEW:stage.artifact_rejected",
+        "FS.STAGE.READER_REVIEW:contract.validation_rejected",
+        "FS.STAGE.READER_REVIEW:__unexpected__"
+      ],
+      "owner_layer": "stage",
+      "recovery_policy_id": "central.recovery.v1",
+      "restart_policy_id": "journal.reconcile.v1",
+      "unexpected_exception_policy": "internal.unexpected_at_boundary"
+    },
+    {
+      "allowed_success_outcome": "STAGE_ACCEPTED",
+      "allowed_typed_failures": [
+        "stage.semantic_repair_required",
+        "stage.artifact_rejected",
+        "contract.validation_rejected"
+      ],
+      "authority_effect": "none_until_accepted_receipt",
+      "boundary_id": "FS.STAGE.POLISH",
+      "durable_receipt_type": "FailureEnvelopeV1",
+      "entry_function": "novel_flywheel.workflows:WorkflowService._quality_polish",
+      "fault_injection_ids": [
+        "FS.STAGE.POLISH:stage.semantic_repair_required",
+        "FS.STAGE.POLISH:stage.artifact_rejected",
+        "FS.STAGE.POLISH:contract.validation_rejected",
+        "FS.STAGE.POLISH:__unexpected__"
+      ],
+      "owner_layer": "stage",
+      "recovery_policy_id": "central.recovery.v1",
+      "restart_policy_id": "journal.reconcile.v1",
+      "unexpected_exception_policy": "internal.unexpected_at_boundary"
+    },
+    {
+      "allowed_success_outcome": "STAGE_ACCEPTED",
+      "allowed_typed_failures": [
+        "stage.artifact_rejected",
+        "contract.validation_rejected"
+      ],
+      "authority_effect": "none_until_accepted_receipt",
+      "boundary_id": "FS.STAGE.FINAL_REVIEW",
+      "durable_receipt_type": "FailureEnvelopeV1",
+      "entry_function": "novel_flywheel.workflows:WorkflowService._full_manuscript_review",
+      "fault_injection_ids": [
+        "FS.STAGE.FINAL_REVIEW:stage.artifact_rejected",
+        "FS.STAGE.FINAL_REVIEW:contract.validation_rejected",
+        "FS.STAGE.FINAL_REVIEW:__unexpected__"
+      ],
+      "owner_layer": "stage",
+      "recovery_policy_id": "central.recovery.v1",
+      "restart_policy_id": "journal.reconcile.v1",
+      "unexpected_exception_policy": "internal.unexpected_at_boundary"
+    },
+    {
+      "allowed_success_outcome": "STAGE_ACCEPTED",
+      "allowed_typed_failures": [
+        "stage.artifact_rejected",
+        "checkpoint.persistence_failed"
+      ],
+      "authority_effect": "none_until_accepted_receipt",
+      "boundary_id": "FS.STAGE.MAINTENANCE",
+      "durable_receipt_type": "FailureEnvelopeV1",
+      "entry_function": "novel_flywheel.workflows:WorkflowService._close_short_maintenance_authority",
+      "fault_injection_ids": [
+        "FS.STAGE.MAINTENANCE:stage.artifact_rejected",
+        "FS.STAGE.MAINTENANCE:checkpoint.persistence_failed",
+        "FS.STAGE.MAINTENANCE:__unexpected__"
+      ],
+      "owner_layer": "stage",
+      "recovery_policy_id": "central.recovery.v1",
+      "restart_policy_id": "journal.reconcile.v1",
+      "unexpected_exception_policy": "internal.unexpected_at_boundary"
+    },
+    {
+      "allowed_success_outcome": "RESPONSE_CAPTURED",
+      "allowed_typed_failures": [
+        "provider.configuration_invalid",
+        "provider.credential_unavailable",
+        "provider.transport_pre_dispatch",
+        "provider.transport_ambiguous",
+        "provider.capture_replay_available",
+        "planning.reasoning_only_no_final"
+      ],
+      "authority_effect": "none_until_accepted_receipt",
+      "boundary_id": "FS.DISPATCH.MODEL",
+      "durable_receipt_type": "FailureEnvelopeV1",
+      "entry_function": "novel_flywheel.contract_runtime:dispatch_explicit_model_route",
+      "fault_injection_ids": [
+        "FS.DISPATCH.MODEL:provider.configuration_invalid",
+        "FS.DISPATCH.MODEL:provider.credential_unavailable",
+        "FS.DISPATCH.MODEL:provider.transport_pre_dispatch",
+        "FS.DISPATCH.MODEL:provider.transport_ambiguous",
+        "FS.DISPATCH.MODEL:provider.capture_replay_available",
+        "FS.DISPATCH.MODEL:planning.reasoning_only_no_final",
+        "FS.DISPATCH.MODEL:__unexpected__"
+      ],
+      "owner_layer": "dispatch",
+      "recovery_policy_id": "central.recovery.v1",
+      "restart_policy_id": "journal.reconcile.v1",
+      "unexpected_exception_policy": "internal.unexpected_at_boundary"
+    },
+    {
+      "allowed_success_outcome": "STAGE_ACCEPTED",
+      "allowed_typed_failures": [
+        "contract.validation_rejected",
+        "stage.artifact_rejected"
+      ],
+      "authority_effect": "none_until_accepted_receipt",
+      "boundary_id": "FS.CONTRACT.VALIDATE",
+      "durable_receipt_type": "FailureEnvelopeV1",
+      "entry_function": "novel_flywheel.workflows:WorkflowService._stage",
+      "fault_injection_ids": [
+        "FS.CONTRACT.VALIDATE:contract.validation_rejected",
+        "FS.CONTRACT.VALIDATE:stage.artifact_rejected",
+        "FS.CONTRACT.VALIDATE:__unexpected__"
+      ],
+      "owner_layer": "contract",
+      "recovery_policy_id": "central.recovery.v1",
+      "restart_policy_id": "journal.reconcile.v1",
+      "unexpected_exception_policy": "internal.unexpected_at_boundary"
+    },
+    {
+      "allowed_success_outcome": "RECOVERY_DECIDED",
+      "allowed_typed_failures": [
+        "recovery.budget_exhausted",
+        "provider.transport_ambiguous"
+      ],
+      "authority_effect": "none_until_accepted_receipt",
+      "boundary_id": "FS.RECOVERY.DECIDE",
+      "durable_receipt_type": "FailureEnvelopeV1",
+      "entry_function": "novel_flywheel.execution_failure_architecture:FullShortExactRecoveryControllerV1.authorize_shared_second_slot",
+      "fault_injection_ids": [
+        "FS.RECOVERY.DECIDE:recovery.budget_exhausted",
+        "FS.RECOVERY.DECIDE:provider.transport_ambiguous",
+        "FS.RECOVERY.DECIDE:__unexpected__"
+      ],
+      "owner_layer": "recovery",
+      "recovery_policy_id": "central.recovery.v1",
+      "restart_policy_id": "journal.reconcile.v1",
+      "unexpected_exception_policy": "internal.unexpected_at_boundary"
+    },
+    {
+      "allowed_success_outcome": "CHECKPOINT_COMMITTED",
+      "allowed_typed_failures": [
+        "checkpoint.persistence_failed"
+      ],
+      "authority_effect": "none_until_accepted_receipt",
+      "boundary_id": "FS.CHECKPOINT.TRANSITION",
+      "durable_receipt_type": "FailureEnvelopeV1",
+      "entry_function": "novel_flywheel.full_short_execution:FullShortDurableExecutionStoreV1.prepare_predispatch_ledger",
+      "fault_injection_ids": [
+        "FS.CHECKPOINT.TRANSITION:checkpoint.persistence_failed",
+        "FS.CHECKPOINT.TRANSITION:__unexpected__"
+      ],
+      "owner_layer": "checkpoint",
+      "recovery_policy_id": "central.recovery.v1",
+      "restart_policy_id": "journal.reconcile.v1",
+      "unexpected_exception_policy": "internal.unexpected_at_boundary"
+    },
+    {
+      "allowed_success_outcome": "AUTHORITY_COMMITTED",
+      "allowed_typed_failures": [
+        "authority.stale",
+        "authority.promotion_rejected",
+        "authority.prerequisite_missing",
+        "checkpoint.persistence_failed"
+      ],
+      "authority_effect": "none_until_accepted_receipt",
+      "boundary_id": "FS.AUTHORITY.PROMOTE",
+      "durable_receipt_type": "FailureEnvelopeV1",
+      "entry_function": "novel_flywheel.project_transactions:write_full_short_formal_artifacts_v1",
+      "fault_injection_ids": [
+        "FS.AUTHORITY.PROMOTE:authority.stale",
+        "FS.AUTHORITY.PROMOTE:authority.promotion_rejected",
+        "FS.AUTHORITY.PROMOTE:authority.prerequisite_missing",
+        "FS.AUTHORITY.PROMOTE:checkpoint.persistence_failed",
+        "FS.AUTHORITY.PROMOTE:__unexpected__"
+      ],
+      "owner_layer": "authority",
+      "recovery_policy_id": "central.recovery.v1",
+      "restart_policy_id": "journal.reconcile.v1",
+      "unexpected_exception_policy": "internal.unexpected_at_boundary"
+    },
+    {
+      "allowed_success_outcome": "COMPLETED",
+      "allowed_typed_failures": [
+        "checkpoint.persistence_failed",
+        "authority.stale",
+        "terminal.binding_invalid"
+      ],
+      "authority_effect": "none_until_accepted_receipt",
+      "boundary_id": "FS.TERMINAL.VERIFY_COMMIT",
+      "durable_receipt_type": "FailureEnvelopeV1",
+      "entry_function": "novel_flywheel.full_short_execution:FullShortDurableExecutionStoreV1.commit_completion",
+      "fault_injection_ids": [
+        "FS.TERMINAL.VERIFY_COMMIT:checkpoint.persistence_failed",
+        "FS.TERMINAL.VERIFY_COMMIT:authority.stale",
+        "FS.TERMINAL.VERIFY_COMMIT:terminal.binding_invalid",
+        "FS.TERMINAL.VERIFY_COMMIT:__unexpected__"
+      ],
+      "owner_layer": "completion",
+      "recovery_policy_id": "central.recovery.v1",
+      "restart_policy_id": "journal.reconcile.v1",
+      "unexpected_exception_policy": "internal.unexpected_at_boundary"
+    }
+  ],
+  "boundary_without_unexpected_handler_count": 0,
+  "failures": [
+    {
+      "authority_effect": "preserve_last_accepted",
+      "failure_code": "control.binding_mismatch",
+      "failure_family": "control.binding",
+      "failure_id": "control.binding_mismatch",
+      "recovery_decision": "FAIL_CLOSED",
+      "restart_policy_id": "restart.forbidden.v1"
+    },
+    {
+      "authority_effect": "preserve_last_accepted",
+      "failure_code": "workflow.invariant_rejected",
+      "failure_family": "workflow.invariant",
+      "failure_id": "workflow.invariant_rejected",
+      "recovery_decision": "FAIL_CLOSED",
+      "restart_policy_id": "restart.from_last_accepted.v1"
+    },
+    {
+      "authority_effect": "preserve_last_accepted",
+      "failure_code": "planning.business_incomplete",
+      "failure_family": "business.incomplete",
+      "failure_id": "planning.business_incomplete",
+      "recovery_decision": "ONE_TYPED_REATTEMPT",
+      "restart_policy_id": "restart.same_logical_stage.v1"
+    },
+    {
+      "authority_effect": "preserve_last_accepted",
+      "failure_code": "planning.reasoning_only_no_final",
+      "failure_family": "reasoning.finalization",
+      "failure_id": "planning.reasoning_only_no_final",
+      "recovery_decision": "ONE_TYPED_REATTEMPT",
+      "restart_policy_id": "restart.same_logical_stage.v1"
+    },
+    {
+      "authority_effect": "preserve_last_accepted",
+      "failure_code": "stage.semantic_repair_required",
+      "failure_family": "business.semantic",
+      "failure_id": "stage.semantic_repair_required",
+      "recovery_decision": "LOCAL_REPAIR",
+      "restart_policy_id": "restart.same_logical_stage.v1"
+    },
+    {
+      "authority_effect": "preserve_last_accepted",
+      "failure_code": "stage.artifact_rejected",
+      "failure_family": "business.artifact",
+      "failure_id": "stage.artifact_rejected",
+      "recovery_decision": "FAIL_CLOSED",
+      "restart_policy_id": "restart.from_last_accepted.v1"
+    },
+    {
+      "authority_effect": "preserve_last_accepted",
+      "failure_code": "provider.configuration_invalid",
+      "failure_family": "provider.configuration",
+      "failure_id": "provider.configuration_invalid",
+      "recovery_decision": "FAIL_CLOSED",
+      "restart_policy_id": "restart.after_configuration_change.v1"
+    },
+    {
+      "authority_effect": "preserve_last_accepted",
+      "failure_code": "provider.credential_unavailable",
+      "failure_family": "provider.credential",
+      "failure_id": "provider.credential_unavailable",
+      "recovery_decision": "FAIL_CLOSED",
+      "restart_policy_id": "restart.after_credential_readiness.v1"
+    },
+    {
+      "authority_effect": "preserve_last_accepted",
+      "failure_code": "provider.transport_pre_dispatch",
+      "failure_family": "provider.transport",
+      "failure_id": "provider.transport_pre_dispatch",
+      "recovery_decision": "FAIL_CLOSED",
+      "restart_policy_id": "restart.new_dispatch_token.v1"
+    },
+    {
+      "authority_effect": "preserve_last_accepted",
+      "failure_code": "provider.transport_ambiguous",
+      "failure_family": "provider.transport",
+      "failure_id": "provider.transport_ambiguous",
+      "recovery_decision": "PAUSE_RECONCILIATION",
+      "restart_policy_id": "restart.reconcile_dispatch.v1"
+    },
+    {
+      "authority_effect": "preserve_last_accepted",
+      "failure_code": "provider.capture_replay_available",
+      "failure_family": "provider.capture",
+      "failure_id": "provider.capture_replay_available",
+      "recovery_decision": "LOCAL_REPLAY",
+      "restart_policy_id": "restart.local_replay.v1"
+    },
+    {
+      "authority_effect": "preserve_last_accepted",
+      "failure_code": "contract.validation_rejected",
+      "failure_family": "contract.validation",
+      "failure_id": "contract.validation_rejected",
+      "recovery_decision": "LOCAL_REPAIR",
+      "restart_policy_id": "restart.same_logical_stage.v1"
+    },
+    {
+      "authority_effect": "preserve_last_accepted",
+      "failure_code": "checkpoint.persistence_failed",
+      "failure_family": "checkpoint.persistence",
+      "failure_id": "checkpoint.persistence_failed",
+      "recovery_decision": "PAUSE_RECONCILIATION",
+      "restart_policy_id": "restart.reconcile_checkpoint.v1"
+    },
+    {
+      "authority_effect": "preserve_last_accepted",
+      "failure_code": "authority.stale",
+      "failure_family": "authority.conflict",
+      "failure_id": "authority.stale",
+      "recovery_decision": "PAUSE_RECONCILIATION",
+      "restart_policy_id": "restart.reconcile_authority.v1"
+    },
+    {
+      "authority_effect": "preserve_last_accepted",
+      "failure_code": "authority.promotion_rejected",
+      "failure_family": "authority.validation",
+      "failure_id": "authority.promotion_rejected",
+      "recovery_decision": "FAIL_CLOSED",
+      "restart_policy_id": "restart.from_last_accepted.v1"
+    },
+    {
+      "authority_effect": "preserve_last_accepted",
+      "failure_code": "authority.prerequisite_missing",
+      "failure_family": "authority.prerequisite",
+      "failure_id": "authority.prerequisite_missing",
+      "recovery_decision": "FAIL_CLOSED",
+      "restart_policy_id": "restart.forbidden.v1"
+    },
+    {
+      "authority_effect": "preserve_last_accepted",
+      "failure_code": "terminal.binding_invalid",
+      "failure_family": "terminal.binding",
+      "failure_id": "terminal.binding_invalid",
+      "recovery_decision": "FAIL_CLOSED",
+      "restart_policy_id": "restart.forbidden.v1"
+    },
+    {
+      "authority_effect": "preserve_last_accepted",
+      "failure_code": "recovery.budget_exhausted",
+      "failure_family": "recovery.budget",
+      "failure_id": "recovery.budget_exhausted",
+      "recovery_decision": "FAIL_CLOSED",
+      "restart_policy_id": "restart.forbidden.v1"
+    }
+  ],
+  "identity_sha256": "73c20bdb528ec0b4251cce2b8ff1e06d768ccc1ec18d0937f493ba6e7a0c0013",
+  "schema": "FailureBoundaryRegistryV1"
+}

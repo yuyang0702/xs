@@ -1,0 +1,17 @@
+{
+  "agent": "/root/source_binding_review",
+  "external_actions": 0,
+  "findings": [
+    "15 exact wrappers",
+    "16 dynamic contracts",
+    "0 unbound"
+  ],
+  "focus": "source-exit mechanical binding",
+  "mode": "fresh_read_only_offline",
+  "reviewed_head": "9232bd8a93573c71f01c5bbd10d8dc6a4913c42c",
+  "reviewer_number": 2,
+  "schema": "FullShortRuntimeCleanRoomReviewV1",
+  "status": "ARCHITECTURE_PASS",
+  "tests": "7 passed",
+  "version": 1
+}
