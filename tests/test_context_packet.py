@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import replace
 import hashlib
+import json
 
 import pytest
 
@@ -186,8 +187,115 @@ def test_rendered_advisory_provenance_is_hash_only_and_exact() -> None:
         packet.advisory.encode("utf-8")
     ).hexdigest()
     assert receipt["advisory_truncation_occurred"] is True
-    assert receipt["advisory_shedding_occurred"] is False
+    assert receipt["advisory_shedding_occurred"] is True
+    assert receipt["advisory_omission_reasons"] == [
+        "ADVISORY_MAX_CHARS", "PARAGRAPH_BOUNDARY_BUDGET",
+    ]
     assert "rendered_text" not in receipt
+
+
+@pytest.mark.parametrize(
+    ("marker", "rule"),
+    [
+        ("保持", "应保持已经确认的时间线。"),
+        ("应当", "角色应当遵守已确认的知识边界。"),
+        ("preserve", "Preserve every confirmed causal dependency."),
+    ],
+)
+def test_preservation_language_is_bound_as_mandatory(marker: str, rule: str) -> None:
+    rules, _duplicates = extract_mandatory_rules(
+        f"普通建议。\n{rule}",
+        "",
+        stage="review",
+    )
+
+    assert marker.casefold() in rules[0].text.casefold()
+    assert [item.text for item in rules] == [rule]
+
+
+def test_advisory_compaction_never_emits_a_partial_paragraph() -> None:
+    first = "第一段完整建议。"
+    second = "第二段也必须保持完整，不能从中间切断。"
+    packet = build_stage_context_packet(
+        stage="review",
+        current_contract={"task_id": "review-01"},
+        constraints="必须保持确认结局。",
+        skill_prompt="",
+        explicit_invariants=None,
+        relevant_context="受保护的当前故事正文。",
+        global_skeleton="受保护的全局故事骨架。",
+        advisory=f"{first}\n\n{second}",
+        advisory_max_chars=len(first) + 2 + len(second) - 1,
+    )
+
+    assert packet.advisory == first
+    assert second not in packet.advisory
+    assert packet.metrics["advisory_compaction"]["partial_paragraph_count"] == 0
+
+
+def test_oversized_single_advisory_paragraph_is_omitted_not_sliced() -> None:
+    advisory = "不可被切成半段的建议内容。" * 30
+    packet = build_stage_context_packet(
+        stage="review",
+        current_contract={"task_id": "review-02"},
+        constraints="必须保持确认结局。",
+        skill_prompt="",
+        explicit_invariants=None,
+        relevant_context="受保护的当前故事正文。",
+        global_skeleton="受保护的全局故事骨架。",
+        advisory=advisory,
+        advisory_max_chars=17,
+    )
+
+    assert packet.advisory == ""
+    assert packet.metrics["advisory_truncation_occurred"] is True
+    assert packet.metrics["advisory_compaction"]["omitted_paragraph_count"] == 1
+    assert packet.metrics["advisory_compaction"]["partial_paragraph_count"] == 0
+
+
+def test_only_advisory_is_compacted_and_receipt_is_hash_only_verifiable() -> None:
+    relevant_context = "受保护正文" * 200
+    global_skeleton = "受保护骨架" * 200
+    advisory = "私密建议甲。\n\n私密建议乙。"
+    kwargs = dict(
+        stage="final_review",
+        current_contract={"task_id": "final-review-01", "required": ["A", "B"]},
+        constraints="必须保持确认结局。",
+        skill_prompt="Preserve all locked facts.",
+        explicit_invariants=None,
+        relevant_context=relevant_context,
+        global_skeleton=global_skeleton,
+        advisory=advisory,
+        advisory_max_chars=1,
+    )
+
+    first = build_stage_context_packet(**kwargs)
+    second = build_stage_context_packet(**kwargs)
+    receipt = advisory_provenance(first)
+
+    assert first.relevant_context == relevant_context
+    assert first.global_skeleton == global_skeleton
+    assert first.current_contract == kwargs["current_contract"]
+    assert first.metrics["protected_layer_silent_truncation_count"] == 0
+    assert first.metrics["layer_compaction_policy"] == {
+        "current_contract": "PROTECTED_NO_COMPACTION",
+        "mandatory_rules": "PROTECTED_NO_COMPACTION",
+        "relevant_context": "PROTECTED_NO_COMPACTION",
+        "global_skeleton": "PROTECTED_NO_COMPACTION",
+        "advisory": "ADVISORY_COMPLETE_PARAGRAPH_PREFIX_V1",
+    }
+    assert receipt == advisory_provenance(second)
+    assert advisory not in json.dumps(receipt, ensure_ascii=False)
+    receipt_payload = {
+        key: value for key, value in receipt.items()
+        if key != "receipt_sha256"
+    }
+    assert receipt["receipt_sha256"] == hashlib.sha256(json.dumps(
+        receipt_payload,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("utf-8")).hexdigest()
 
 
 def test_system_layer_keeps_authority_without_duplicating_current_user_payload() -> None:

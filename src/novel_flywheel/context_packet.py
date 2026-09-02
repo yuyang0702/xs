@@ -11,8 +11,8 @@ from novel_flywheel.context_policy import estimate_input_tokens
 
 
 _HARD_MARKERS = (
-    "必须", "不得", "不能", "不可", "禁止", "只允许", "务必",
-    "must", "never", "do not", "cannot", "required", "forbidden",
+    "必须", "不得", "不能", "不可", "禁止", "只允许", "务必", "保持", "应当",
+    "must", "never", "do not", "cannot", "required", "forbidden", "preserve",
 )
 _KNOWN_INVARIANT_MARKERS = (
     "视角", "叙述人称", "viewpoint", "point of view", "pov",
@@ -32,6 +32,8 @@ _EXAMPLE_LINE = re.compile(
     r"^(?:example|examples|示例|改写前|改写后)\s*[:：]",
     re.IGNORECASE,
 )
+_ADVISORY_COMPACTION_POLICY_ID = "ADVISORY_COMPLETE_PARAGRAPH_PREFIX_V1"
+_PROTECTED_LAYER_POLICY = "PROTECTED_NO_COMPACTION"
 
 
 @dataclass(frozen=True)
@@ -187,7 +189,22 @@ def _advisory_excerpt(value: str, limit: int) -> str:
         if len(result) + len(addition) > limit:
             break
         result += addition
-    return result or text[:limit]
+    # Advisory may be omitted, but a partial paragraph must never be emitted.
+    return result
+
+
+def _paragraph_count(value: str) -> int:
+    return len([
+        item for item in re.split(r"\n\s*\n", str(value or "").strip())
+        if item.strip()
+    ])
+
+
+def _hash_only_receipt(payload: dict[str, Any]) -> str:
+    encoded = json.dumps(
+        payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"),
+    ).encode("utf-8")
+    return hashlib.sha256(encoded).hexdigest()
 
 
 def _advisory_without_mandatory_rules(
@@ -244,10 +261,17 @@ def build_stage_context_packet(
     if not rules:
         raise ValueError("context packet contains no mandatory narrative rules")
     filtered_advisory = _advisory_without_mandatory_rules(advisory, rules)
+    normalized_filtered_advisory = str(filtered_advisory or "").strip()
     advisory_excerpt = _advisory_excerpt(filtered_advisory, advisory_max_chars)
     advisory_truncation_occurred = bool(
-        str(filtered_advisory or "").strip()
-        and advisory_excerpt != str(filtered_advisory or "").strip()
+        normalized_filtered_advisory
+        and advisory_excerpt != normalized_filtered_advisory
+    )
+    complete_advisory_omission = bool(
+        normalized_filtered_advisory and not advisory_excerpt
+    )
+    effective_advisory_shedding = bool(
+        advisory_shedding_occurred or complete_advisory_omission
     )
     layer_text = {
         "current_contract": _contract_text(current_contract),
@@ -272,7 +296,46 @@ def build_stage_context_packet(
         "filtered_advisory_characters": max(0, len(str(advisory or "")) - len(advisory_excerpt)),
         "advisory_source_characters": len(str(advisory or "")),
         "advisory_truncation_occurred": advisory_truncation_occurred,
-        "advisory_shedding_occurred": bool(advisory_shedding_occurred),
+        "advisory_shedding_occurred": effective_advisory_shedding,
+        "advisory_shedding_reason": (
+            "CONTEXT_CAPACITY_POLICY"
+            if advisory_shedding_occurred
+            else (
+                "PARAGRAPH_BOUNDARY_BUDGET"
+                if complete_advisory_omission else "NONE"
+            )
+        ),
+        "protected_layer_silent_truncation_count": 0,
+        "layer_compaction_policy": {
+            "current_contract": _PROTECTED_LAYER_POLICY,
+            "mandatory_rules": _PROTECTED_LAYER_POLICY,
+            "relevant_context": _PROTECTED_LAYER_POLICY,
+            "global_skeleton": _PROTECTED_LAYER_POLICY,
+            "advisory": _ADVISORY_COMPACTION_POLICY_ID,
+        },
+        "advisory_compaction": {
+            "schema": "AdvisoryCompactionMetricsV1",
+            "source_layer_id": "advisory",
+            "policy_id": _ADVISORY_COMPACTION_POLICY_ID,
+            "source_sha256": _source_hash(str(advisory or "")),
+            "source_characters": len(str(advisory or "")),
+            "filtered_sha256": _source_hash(normalized_filtered_advisory),
+            "filtered_characters": len(normalized_filtered_advisory),
+            "rendered_sha256": _source_hash(advisory_excerpt),
+            "rendered_characters": len(advisory_excerpt),
+            "source_paragraph_count": _paragraph_count(
+                normalized_filtered_advisory
+            ),
+            "rendered_paragraph_count": _paragraph_count(advisory_excerpt),
+            "omitted_paragraph_count": max(
+                0,
+                _paragraph_count(normalized_filtered_advisory)
+                - _paragraph_count(advisory_excerpt),
+            ),
+            "partial_paragraph_count": 0,
+            "compaction_occurred": advisory_truncation_occurred,
+            "raw_advisory_persisted": False,
+        },
     }
     return StageContextPacket(
         stage=str(stage).strip(),
@@ -306,11 +369,38 @@ def advisory_provenance(packet: StageContextPacket) -> dict[str, Any]:
         omission_reasons.append("ADVISORY_MAX_CHARS")
     if packet.metrics.get("advisory_shedding_occurred"):
         omitted_components.append("ADVISORY_CONTEXT")
-        omission_reasons.append("CONTEXT_CAPACITY_POLICY")
-    return {
+        omission_reasons.append(str(
+            packet.metrics.get(
+                "advisory_shedding_reason", "CONTEXT_CAPACITY_POLICY"
+            )
+        ))
+    compaction = dict(packet.metrics.get("advisory_compaction") or {})
+    actual_rendered_sha256 = _source_hash(packet.advisory)
+    receipt = {
         "schema": "RenderedAdvisoryProvenanceV1",
-        "final_rendered_advisory_sha256": _source_hash(packet.advisory),
+        "compaction_policy_id": compaction.get(
+            "policy_id", _ADVISORY_COMPACTION_POLICY_ID
+        ),
+        "source_advisory_sha256": compaction.get(
+            "source_sha256", _source_hash("")
+        ),
+        "source_advisory_chars": int(compaction.get("source_characters", 0)),
+        "filtered_advisory_sha256": compaction.get(
+            "filtered_sha256", _source_hash("")
+        ),
+        "filtered_advisory_chars": int(
+            compaction.get("filtered_characters", 0)
+        ),
+        "final_rendered_advisory_sha256": actual_rendered_sha256,
         "final_rendered_advisory_chars": len(packet.advisory),
+        "source_paragraph_count": int(
+            compaction.get("source_paragraph_count", 0)
+        ),
+        "rendered_paragraph_count": _paragraph_count(packet.advisory),
+        "omitted_paragraph_count": int(
+            compaction.get("omitted_paragraph_count", 0)
+        ),
+        "partial_paragraph_count": 0,
         "advisory_omitted_components": omitted_components,
         "advisory_omission_reasons": omission_reasons,
         "advisory_truncation_occurred": bool(
@@ -319,8 +409,17 @@ def advisory_provenance(packet: StageContextPacket) -> dict[str, Any]:
         "advisory_shedding_occurred": bool(
             packet.metrics.get("advisory_shedding_occurred")
         ),
+        "rendered_advisory_drift_detected": bool(
+            compaction
+            and compaction.get("rendered_sha256") != actual_rendered_sha256
+        ),
+        "protected_layer_silent_truncation_count": int(
+            packet.metrics.get("protected_layer_silent_truncation_count", 0)
+        ),
         "raw_advisory_persisted": False,
     }
+    receipt["receipt_sha256"] = _hash_only_receipt(receipt)
+    return receipt
 
 
 def render_stage_context_packet(packet: StageContextPacket) -> str:
