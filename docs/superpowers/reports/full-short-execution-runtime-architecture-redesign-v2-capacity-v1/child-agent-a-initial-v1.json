@@ -1,0 +1,15 @@
+{
+  "agent_identity_claimed": false,
+  "external_actions": 0,
+  "findings": [
+    "V1 Review prompt crossed the former unsourced 32768 fallback.",
+    "Exact target trigger was target-size Review capacity preflight.",
+    "Generic fixtures did not bind the same workload and route metadata."
+  ],
+  "focus": "exact target capacity forensics",
+  "implementation_head": "a76bcda829dd197a6e4dc2d938547a27a5c63078",
+  "schema": "FullShortRuntimeCapacityInitialWorkstreamV1",
+  "status": "RECONSTRUCTED_FROM_DURABLE_SOURCE_TRUTH_AFTER_HOST_RESTART",
+  "version": 1,
+  "workstream": "A"
+}

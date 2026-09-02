@@ -1,0 +1,14 @@
+{
+  "agent_identity_claimed": false,
+  "external_actions": 0,
+  "findings": [
+    "Eight stage policies are registered.",
+    "Live route capability metadata remains unavailable for 14 bindings."
+  ],
+  "focus": "cross-stage capacity",
+  "implementation_head": "a76bcda829dd197a6e4dc2d938547a27a5c63078",
+  "schema": "FullShortRuntimeCapacityInitialWorkstreamV1",
+  "status": "RECONSTRUCTED_FROM_DURABLE_SOURCE_TRUTH_AFTER_HOST_RESTART",
+  "version": 1,
+  "workstream": "E"
+}

@@ -1,0 +1,20 @@
+{
+  "context_capacity_generic_unexpected_mapping_count": 0,
+  "failure_ids": [
+    "capacity.compaction_insufficient",
+    "capacity.context_limit_inconsistent",
+    "capacity.context_limit_unavailable",
+    "capacity.model_context_exceeded",
+    "capacity.output_reserve_unsatisfied",
+    "capacity.policy_violation",
+    "capacity.protected_layers_exceed_budget",
+    "capacity.rendered_prompt_drift",
+    "capacity.windowing_exhausted",
+    "capacity.windowing_required"
+  ],
+  "implementation_head": "a76bcda829dd197a6e4dc2d938547a27a5c63078",
+  "schema": "CapacityFailureTaxonomyV1",
+  "static_audit_sha256": "a34968a67ec8b69d5fbcf219d1670b75630b41548577b5aeb249d48e1994266c",
+  "status": "PASS",
+  "version": 1
+}

@@ -1,0 +1,10 @@
+{
+  "direct_final_head_coverage_receipt_present": false,
+  "historical_exact_target_workflow_pass": true,
+  "implementation_head": "a76bcda829dd197a6e4dc2d938547a27a5c63078",
+  "review_global_invariant_coverage": "FAIL_CLOSED",
+  "review_window_coverage": "UNPROVEN_NOT_100_PERCENT_CLAIMED",
+  "schema": "ReviewWindowCoverageV1",
+  "status": "NOT_PROVEN",
+  "version": 1
+}

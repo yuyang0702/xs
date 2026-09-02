@@ -1,0 +1,18 @@
+{
+  "combined_pytest": "1 passed, 5 failed",
+  "implementation_head": "a76bcda829dd197a6e4dc2d938547a27a5c63078",
+  "independent_matrix_review": "80 passed, 2 failed; 20K/30K rerun 0/2",
+  "material_audit": {
+    "13K": "FAIL_CAPACITY_CONTEXT_LIMIT_UNAVAILABLE",
+    "20K": "FAIL_CAPACITY_CONTEXT_LIMIT_UNAVAILABLE",
+    "30K": "FAIL_CAPACITY_CONTEXT_LIMIT_UNAVAILABLE"
+  },
+  "production_shaped": {
+    "13K": "PASS",
+    "20K": "FAIL_PROTOCOL_ROUTE_TRANSPORT_INTERRUPTED",
+    "30K": "FAIL_PROTOCOL_ROUTE_NORMAL_INVALID_OUTPUT"
+  },
+  "schema": "FullShortProductionLengthMatrixV1",
+  "status": "FAIL",
+  "version": 1
+}

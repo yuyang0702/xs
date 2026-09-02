@@ -1,0 +1,9 @@
+{
+  "implementation_head": "a76bcda829dd197a6e4dc2d938547a27a5c63078",
+  "schema": "FullShortRuntimeCapacityV1StopLossInputV1",
+  "status": "PRESERVED_WITH_V2_BLOCKERS",
+  "v1_exact_ready_result": "FAIL_CONTEXT_CAPACITY_PREFLIGHT",
+  "v1_next_gate": "FULL_SHORT_EXECUTION_RUNTIME_ARCHITECTURE_REDESIGN_V2_REQUIRED",
+  "v1_static_zero_metrics_preserved": true,
+  "version": 1
+}

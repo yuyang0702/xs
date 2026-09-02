@@ -1,0 +1,11 @@
+{
+  "capacity_fault_campaign_sha256": "3c502da5719c4c557589396e00f6ab8ea3392a362335c947c1c78ebc7efc4002",
+  "capacity_fault_campaign_status": "PASS",
+  "implementation_head": "a76bcda829dd197a6e4dc2d938547a27a5c63078",
+  "schema": "RelatedValidationReceiptV1",
+  "size_matrix_status": "FAIL",
+  "static_audit_sha256": "a34968a67ec8b69d5fbcf219d1670b75630b41548577b5aeb249d48e1994266c",
+  "static_audit_status": "PASS",
+  "status": "MIXED",
+  "version": 1
+}

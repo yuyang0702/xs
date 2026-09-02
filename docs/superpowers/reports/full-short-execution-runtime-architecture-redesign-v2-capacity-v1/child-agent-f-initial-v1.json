@@ -1,0 +1,15 @@
+{
+  "agent_identity_claimed": false,
+  "external_actions": 0,
+  "findings": [
+    "Capacity token is required immediately before exact dispatch.",
+    "Capacity receipt/failure reasons are registered and fault campaign is closed.",
+    "Runtime readiness blockers remain nonzero despite static audit zeros."
+  ],
+  "focus": "Runtime Kernel and Stop-Loss integration",
+  "implementation_head": "a76bcda829dd197a6e4dc2d938547a27a5c63078",
+  "schema": "FullShortRuntimeCapacityInitialWorkstreamV1",
+  "status": "RECONSTRUCTED_FROM_DURABLE_SOURCE_TRUTH_AFTER_HOST_RESTART",
+  "version": 1,
+  "workstream": "F"
+}

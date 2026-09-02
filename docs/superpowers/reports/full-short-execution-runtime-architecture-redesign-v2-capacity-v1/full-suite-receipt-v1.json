@@ -1,0 +1,8 @@
+{
+  "completed": false,
+  "implementation_head": "a76bcda829dd197a6e4dc2d938547a27a5c63078",
+  "reason": "Required production length tests fail; full historical suite not sealed.",
+  "schema": "FullSuiteReceiptV1",
+  "status": "NOT_PASS",
+  "version": 1
+}

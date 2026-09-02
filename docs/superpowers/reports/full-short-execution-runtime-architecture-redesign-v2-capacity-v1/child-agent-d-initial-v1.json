@@ -1,0 +1,15 @@
+{
+  "agent_identity_claimed": false,
+  "external_actions": 0,
+  "findings": [
+    "Protected layer size drift is rejected even when mislabeled PRESERVE.",
+    "Advisory shedding receipts bind original hash/size and rendered zero size.",
+    "Whole-paragraph compaction changes long-single-paragraph normal bytes."
+  ],
+  "focus": "compaction and shedding safety",
+  "implementation_head": "a76bcda829dd197a6e4dc2d938547a27a5c63078",
+  "schema": "FullShortRuntimeCapacityInitialWorkstreamV1",
+  "status": "RECONSTRUCTED_FROM_DURABLE_SOURCE_TRUTH_AFTER_HOST_RESTART",
+  "version": 1,
+  "workstream": "D"
+}

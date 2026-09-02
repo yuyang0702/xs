@@ -1,0 +1,21 @@
+{
+  "branch": "r1-ptr3/planning-repair-finding-propagation-20260817",
+  "current_implementation_head": "a76bcda829dd197a6e4dc2d938547a27a5c63078",
+  "expected_start_head": "5759d6c341882f55e48d52aef484a1e7deec7394",
+  "external_boundary": {
+    "FULL_SHORT_EXECUTION_COUNT": 0,
+    "HTTP_POST_ATTEMPTS": 0,
+    "MODEL_CALLS": 0,
+    "NETWORK_CALLS": 0,
+    "PAID_CALLS": 0,
+    "REAL_CREDENTIAL_LOOKUP_COUNT": 0,
+    "REAL_PROVIDER_CLIENT_CREATION_COUNT": 0,
+    "REAL_PROVIDER_REQUEST_ATTEMPTS": 0,
+    "REAL_SECRET_READ_COUNT": 0
+  },
+  "implementation_head": "a76bcda829dd197a6e4dc2d938547a27a5c63078",
+  "schema": "FullShortRuntimeCapacityBaselineBindingV1",
+  "status": "PASS",
+  "v1_evidence_path": "docs\\superpowers\\reports\\full-short-execution-runtime-architecture-redesign-v1",
+  "version": 1
+}

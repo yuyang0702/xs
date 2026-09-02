@@ -1,0 +1,13 @@
+{
+  "exact_target_offline_execution_head": "79c3a58c9ed1f677da6d4053d09aebeae37587f2",
+  "implementation_head": "a76bcda829dd197a6e4dc2d938547a27a5c63078",
+  "production_length_matrix": "FAIL_20K_AND_30K",
+  "schema": "ReviewCapacityExecutionPlanV1",
+  "status": "IMPLEMENTED_NOT_CLOSED",
+  "topology": [
+    "deterministic_windows",
+    "per_window_receipts",
+    "bounded_reduce"
+  ],
+  "version": 1
+}

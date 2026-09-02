@@ -1,0 +1,9 @@
+{
+  "command": "pytest test_stage_capacity.py test_context_packet.py test_full_short_runner_hardening.py test_bounded_protocol_stage_sheds_only_advisory_context_before_split",
+  "failures": 0,
+  "implementation_head": "a76bcda829dd197a6e4dc2d938547a27a5c63078",
+  "schema": "OfflinePytestReceiptV1",
+  "status": "PASS",
+  "tests": 118,
+  "version": 1
+}

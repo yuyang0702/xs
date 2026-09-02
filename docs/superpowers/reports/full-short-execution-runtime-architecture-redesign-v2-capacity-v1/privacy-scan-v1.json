@@ -1,0 +1,21 @@
+{
+  "exact_raw_prompt_persisted": false,
+  "exact_raw_reference_persisted": false,
+  "exact_raw_story_persisted": false,
+  "exact_raw_title_persisted": false,
+  "external_boundary": {
+    "FULL_SHORT_EXECUTION_COUNT": 0,
+    "HTTP_POST_ATTEMPTS": 0,
+    "MODEL_CALLS": 0,
+    "NETWORK_CALLS": 0,
+    "PAID_CALLS": 0,
+    "REAL_CREDENTIAL_LOOKUP_COUNT": 0,
+    "REAL_PROVIDER_CLIENT_CREATION_COUNT": 0,
+    "REAL_PROVIDER_REQUEST_ATTEMPTS": 0,
+    "REAL_SECRET_READ_COUNT": 0
+  },
+  "implementation_head": "a76bcda829dd197a6e4dc2d938547a27a5c63078",
+  "schema": "PrivacyScanV1",
+  "status": "PASS_FOR_RECORDED_ARTIFACTS",
+  "version": 1
+}

@@ -1,0 +1,14 @@
+{
+  "agent_identity_claimed": false,
+  "external_actions": 0,
+  "findings": [
+    "Review/Reader Review use deterministic bounded windows.",
+    "20K and 30K matrix failures prevent global-coverage closure."
+  ],
+  "focus": "Review windowing and hierarchical review",
+  "implementation_head": "a76bcda829dd197a6e4dc2d938547a27a5c63078",
+  "schema": "FullShortRuntimeCapacityInitialWorkstreamV1",
+  "status": "RECONSTRUCTED_FROM_DURABLE_SOURCE_TRUTH_AFTER_HOST_RESTART",
+  "version": 1,
+  "workstream": "C"
+}

@@ -1,0 +1,8 @@
+{
+  "current_head_readiness_claim": false,
+  "historical_v1_fixture_evidence_available": true,
+  "implementation_head": "a76bcda829dd197a6e4dc2d938547a27a5c63078",
+  "schema": "GenericFullShortRerunV1",
+  "status": "NOT_RUN_CURRENT_IMPLEMENTATION_HEAD",
+  "version": 1
+}

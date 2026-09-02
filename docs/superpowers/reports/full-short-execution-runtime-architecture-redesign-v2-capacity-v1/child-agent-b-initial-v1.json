@@ -1,0 +1,15 @@
+{
+  "agent_identity_claimed": false,
+  "external_actions": 0,
+  "findings": [
+    "StageCapacityPlanV1 owns protected/advisory projections and admission.",
+    "Stage ceiling and route capability are distinct, effective limit is min.",
+    "Missing or inconsistent route capability fails closed as typed capacity."
+  ],
+  "focus": "capacity contract architecture",
+  "implementation_head": "a76bcda829dd197a6e4dc2d938547a27a5c63078",
+  "schema": "FullShortRuntimeCapacityInitialWorkstreamV1",
+  "status": "RECONSTRUCTED_FROM_DURABLE_SOURCE_TRUTH_AFTER_HOST_RESTART",
+  "version": 1,
+  "workstream": "B"
+}

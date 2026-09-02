@@ -1,0 +1,371 @@
+{
+  "implementation_head": "a76bcda829dd197a6e4dc2d938547a27a5c63078",
+  "live_route_capability": {
+    "bound_route_count": 14,
+    "records": [
+      {
+        "context_window_present": false,
+        "lane": "fallback",
+        "model_id_sha256": "8f7f8c73311d769a7f0b82334be8b69e0872d0c9f4dff424488de705e81e3de2",
+        "offline_context_manifest_present": false,
+        "role": "draft"
+      },
+      {
+        "context_window_present": false,
+        "lane": "primary",
+        "model_id_sha256": "bc3f8fcc6cfa21850d99966eb9ba7b2594c3ee3ebd9155a18d9e43f8a40f2824",
+        "offline_context_manifest_present": false,
+        "role": "draft"
+      },
+      {
+        "context_window_present": false,
+        "lane": "fallback",
+        "model_id_sha256": "ffaf088b15c6107032e5450965693c6d9a1e0735a6186e2957463bfa460a8937",
+        "offline_context_manifest_present": false,
+        "role": "final_review"
+      },
+      {
+        "context_window_present": false,
+        "lane": "primary",
+        "model_id_sha256": "ea1a960d5a1238e83de64f6213eaf940854d0ee475f33f79098b1a2dfe4f49bd",
+        "offline_context_manifest_present": false,
+        "role": "final_review"
+      },
+      {
+        "context_window_present": false,
+        "lane": "fallback",
+        "model_id_sha256": "ffaf088b15c6107032e5450965693c6d9a1e0735a6186e2957463bfa460a8937",
+        "offline_context_manifest_present": false,
+        "role": "maintenance"
+      },
+      {
+        "context_window_present": false,
+        "lane": "primary",
+        "model_id_sha256": "ea1a960d5a1238e83de64f6213eaf940854d0ee475f33f79098b1a2dfe4f49bd",
+        "offline_context_manifest_present": false,
+        "role": "maintenance"
+      },
+      {
+        "context_window_present": false,
+        "lane": "fallback",
+        "model_id_sha256": "ffaf088b15c6107032e5450965693c6d9a1e0735a6186e2957463bfa460a8937",
+        "offline_context_manifest_present": false,
+        "role": "planning"
+      },
+      {
+        "context_window_present": false,
+        "lane": "primary",
+        "model_id_sha256": "ea1a960d5a1238e83de64f6213eaf940854d0ee475f33f79098b1a2dfe4f49bd",
+        "offline_context_manifest_present": false,
+        "role": "planning"
+      },
+      {
+        "context_window_present": false,
+        "lane": "fallback",
+        "model_id_sha256": "93c8e5b2faf72616ba121886b6d244e3ed8a018c863931fd866e5919874f34c3",
+        "offline_context_manifest_present": false,
+        "role": "polish"
+      },
+      {
+        "context_window_present": false,
+        "lane": "primary",
+        "model_id_sha256": "f223d23b11bb1bcb9150fb6cf4bfb90b6b7d3756e9cca0aefefe7b0e339d4b2e",
+        "offline_context_manifest_present": false,
+        "role": "polish"
+      },
+      {
+        "context_window_present": false,
+        "lane": "fallback",
+        "model_id_sha256": "7f862ac54cc1a4dec658621af143fbb57edd703e99a73071fc792cae8e597161",
+        "offline_context_manifest_present": false,
+        "role": "reader_review"
+      },
+      {
+        "context_window_present": false,
+        "lane": "primary",
+        "model_id_sha256": "c1f03f8c3ed8fdbb9aae3b2e6711970a78da4236291e1865fd3466b078f66c28",
+        "offline_context_manifest_present": false,
+        "role": "reader_review"
+      },
+      {
+        "context_window_present": false,
+        "lane": "fallback",
+        "model_id_sha256": "ea1a960d5a1238e83de64f6213eaf940854d0ee475f33f79098b1a2dfe4f49bd",
+        "offline_context_manifest_present": false,
+        "role": "review"
+      },
+      {
+        "context_window_present": false,
+        "lane": "primary",
+        "model_id_sha256": "ffaf088b15c6107032e5450965693c6d9a1e0735a6186e2957463bfa460a8937",
+        "offline_context_manifest_present": false,
+        "role": "review"
+      }
+    ],
+    "route_with_context_window_count": 0,
+    "route_with_offline_manifest_count": 0
+  },
+  "policies": {
+    "draft": {
+      "allowed_layer_classes": [
+        "HARD_PROTECTED",
+        "SOFT_PROTECTED",
+        "ADVISORY_COMPACTABLE",
+        "ADVISORY_SHEDDABLE",
+        "DERIVED_REGENERABLE"
+      ],
+      "allowed_semantic_scopes": [
+        "complete",
+        "bounded_component"
+      ],
+      "allowed_transform_policy_ids": [
+        "identity.v1",
+        "advisory.paragraph.v1"
+      ],
+      "compaction_allowed": true,
+      "compaction_policy_id": "capacity.compact.advisory.paragraph.v1",
+      "minimum_wrapper_and_estimator_margin_tokens": 1024,
+      "policy_id": "stage-capacity.draft.v1",
+      "recovery_policy_id": "capacity.recovery.draft.v1",
+      "segmentation_failure_ids": [
+        "capacity.model_context_exceeded",
+        "capacity.protected_layers_exceed_budget",
+        "capacity.compaction_insufficient",
+        "capacity.windowing_required"
+      ],
+      "segmentation_policy_id": "capacity.segment.draft.event-owner.v1",
+      "semantic_windowing_allowed": true,
+      "stage": "draft",
+      "stage_operational_context_ceiling_tokens": 32768
+    },
+    "final_review": {
+      "allowed_layer_classes": [
+        "HARD_PROTECTED",
+        "SOFT_PROTECTED",
+        "ADVISORY_COMPACTABLE",
+        "ADVISORY_SHEDDABLE",
+        "DERIVED_REGENERABLE"
+      ],
+      "allowed_semantic_scopes": [
+        "complete",
+        "bounded_component"
+      ],
+      "allowed_transform_policy_ids": [
+        "identity.v1",
+        "advisory.paragraph.v1"
+      ],
+      "compaction_allowed": true,
+      "compaction_policy_id": "capacity.compact.advisory.paragraph.v1",
+      "minimum_wrapper_and_estimator_margin_tokens": 1024,
+      "policy_id": "stage-capacity.final_review.v1",
+      "recovery_policy_id": "capacity.recovery.final_review.v1",
+      "segmentation_failure_ids": [
+        "capacity.model_context_exceeded",
+        "capacity.protected_layers_exceed_budget",
+        "capacity.compaction_insufficient",
+        "capacity.windowing_required"
+      ],
+      "segmentation_policy_id": "capacity.segment.final-review.hierarchical.v1",
+      "semantic_windowing_allowed": true,
+      "stage": "final_review",
+      "stage_operational_context_ceiling_tokens": 32768
+    },
+    "maintenance": {
+      "allowed_layer_classes": [
+        "HARD_PROTECTED",
+        "SOFT_PROTECTED",
+        "ADVISORY_COMPACTABLE",
+        "ADVISORY_SHEDDABLE",
+        "DERIVED_REGENERABLE"
+      ],
+      "allowed_semantic_scopes": [
+        "complete",
+        "bounded_component"
+      ],
+      "allowed_transform_policy_ids": [
+        "identity.v1",
+        "advisory.paragraph.v1"
+      ],
+      "compaction_allowed": true,
+      "compaction_policy_id": "capacity.compact.advisory.paragraph.v1",
+      "minimum_wrapper_and_estimator_margin_tokens": 1024,
+      "policy_id": "stage-capacity.maintenance.v1",
+      "recovery_policy_id": "capacity.recovery.maintenance.v1",
+      "segmentation_failure_ids": [
+        "capacity.model_context_exceeded",
+        "capacity.protected_layers_exceed_budget",
+        "capacity.compaction_insufficient",
+        "capacity.windowing_required"
+      ],
+      "segmentation_policy_id": "capacity.segment.maintenance.window.v1",
+      "semantic_windowing_allowed": true,
+      "stage": "maintenance",
+      "stage_operational_context_ceiling_tokens": 32768
+    },
+    "planning": {
+      "allowed_layer_classes": [
+        "HARD_PROTECTED",
+        "SOFT_PROTECTED",
+        "ADVISORY_COMPACTABLE",
+        "ADVISORY_SHEDDABLE",
+        "DERIVED_REGENERABLE"
+      ],
+      "allowed_semantic_scopes": [
+        "complete",
+        "bounded_component"
+      ],
+      "allowed_transform_policy_ids": [
+        "identity.v1",
+        "advisory.paragraph.v1"
+      ],
+      "compaction_allowed": true,
+      "compaction_policy_id": "capacity.compact.advisory.paragraph.v1",
+      "minimum_wrapper_and_estimator_margin_tokens": 1024,
+      "policy_id": "stage-capacity.planning.v1",
+      "recovery_policy_id": "capacity.recovery.planning.v1",
+      "segmentation_failure_ids": [
+        "capacity.model_context_exceeded",
+        "capacity.protected_layers_exceed_budget",
+        "capacity.compaction_insufficient",
+        "capacity.windowing_required"
+      ],
+      "segmentation_policy_id": "capacity.segment.planning.semantic.v1",
+      "semantic_windowing_allowed": true,
+      "stage": "planning",
+      "stage_operational_context_ceiling_tokens": 32768
+    },
+    "polish": {
+      "allowed_layer_classes": [
+        "HARD_PROTECTED",
+        "SOFT_PROTECTED",
+        "ADVISORY_COMPACTABLE",
+        "ADVISORY_SHEDDABLE",
+        "DERIVED_REGENERABLE"
+      ],
+      "allowed_semantic_scopes": [
+        "complete",
+        "bounded_component"
+      ],
+      "allowed_transform_policy_ids": [
+        "identity.v1",
+        "advisory.paragraph.v1"
+      ],
+      "compaction_allowed": true,
+      "compaction_policy_id": "capacity.compact.advisory.paragraph.v1",
+      "minimum_wrapper_and_estimator_margin_tokens": 1024,
+      "policy_id": "stage-capacity.polish.v1",
+      "recovery_policy_id": "capacity.recovery.polish.v1",
+      "segmentation_failure_ids": [
+        "capacity.model_context_exceeded",
+        "capacity.protected_layers_exceed_budget",
+        "capacity.compaction_insufficient",
+        "capacity.windowing_required"
+      ],
+      "segmentation_policy_id": "capacity.segment.polish.targeted.v1",
+      "semantic_windowing_allowed": true,
+      "stage": "polish",
+      "stage_operational_context_ceiling_tokens": 32768
+    },
+    "reader_review": {
+      "allowed_layer_classes": [
+        "HARD_PROTECTED",
+        "SOFT_PROTECTED",
+        "ADVISORY_COMPACTABLE",
+        "ADVISORY_SHEDDABLE",
+        "DERIVED_REGENERABLE"
+      ],
+      "allowed_semantic_scopes": [
+        "complete",
+        "bounded_component"
+      ],
+      "allowed_transform_policy_ids": [
+        "identity.v1",
+        "advisory.paragraph.v1"
+      ],
+      "compaction_allowed": true,
+      "compaction_policy_id": "capacity.compact.advisory.paragraph.v1",
+      "minimum_wrapper_and_estimator_margin_tokens": 1024,
+      "policy_id": "stage-capacity.reader_review.v1",
+      "recovery_policy_id": "capacity.recovery.reader_review.v1",
+      "segmentation_failure_ids": [
+        "capacity.model_context_exceeded",
+        "capacity.protected_layers_exceed_budget",
+        "capacity.compaction_insufficient",
+        "capacity.windowing_required"
+      ],
+      "segmentation_policy_id": "capacity.segment.reader-review.hierarchical.v1",
+      "semantic_windowing_allowed": true,
+      "stage": "reader_review",
+      "stage_operational_context_ceiling_tokens": 32768
+    },
+    "review": {
+      "allowed_layer_classes": [
+        "HARD_PROTECTED",
+        "SOFT_PROTECTED",
+        "ADVISORY_COMPACTABLE",
+        "ADVISORY_SHEDDABLE",
+        "DERIVED_REGENERABLE"
+      ],
+      "allowed_semantic_scopes": [
+        "complete",
+        "bounded_component"
+      ],
+      "allowed_transform_policy_ids": [
+        "identity.v1",
+        "advisory.paragraph.v1"
+      ],
+      "compaction_allowed": true,
+      "compaction_policy_id": "capacity.compact.advisory.paragraph.v1",
+      "minimum_wrapper_and_estimator_margin_tokens": 1024,
+      "policy_id": "stage-capacity.review.v1",
+      "recovery_policy_id": "capacity.recovery.review.v1",
+      "segmentation_failure_ids": [
+        "capacity.model_context_exceeded",
+        "capacity.protected_layers_exceed_budget",
+        "capacity.compaction_insufficient",
+        "capacity.windowing_required"
+      ],
+      "segmentation_policy_id": "capacity.segment.review.hierarchical.v1",
+      "semantic_windowing_allowed": true,
+      "stage": "review",
+      "stage_operational_context_ceiling_tokens": 32768
+    },
+    "revision_plan": {
+      "allowed_layer_classes": [
+        "HARD_PROTECTED",
+        "SOFT_PROTECTED",
+        "ADVISORY_COMPACTABLE",
+        "ADVISORY_SHEDDABLE",
+        "DERIVED_REGENERABLE"
+      ],
+      "allowed_semantic_scopes": [
+        "complete",
+        "bounded_component"
+      ],
+      "allowed_transform_policy_ids": [
+        "identity.v1",
+        "advisory.paragraph.v1"
+      ],
+      "compaction_allowed": true,
+      "compaction_policy_id": "capacity.compact.advisory.paragraph.v1",
+      "minimum_wrapper_and_estimator_margin_tokens": 1024,
+      "policy_id": "stage-capacity.revision_plan.v1",
+      "recovery_policy_id": "capacity.recovery.revision_plan.v1",
+      "segmentation_failure_ids": [
+        "capacity.model_context_exceeded",
+        "capacity.protected_layers_exceed_budget",
+        "capacity.compaction_insufficient",
+        "capacity.windowing_required"
+      ],
+      "segmentation_policy_id": "capacity.segment.revision-plan.target.v1",
+      "semantic_windowing_allowed": true,
+      "stage": "revision_plan",
+      "stage_operational_context_ceiling_tokens": 32768
+    }
+  },
+  "policy_registry_sha256": "336c6a46b6671a8507bd5199b1bd7d275197117d9812fff591eba68353d80834",
+  "schema": "FullShortStageCapacityMatrixV1",
+  "status": "STATIC_PASS_RUNTIME_BLOCKED",
+  "unregistered_stage_capacity_policy_count": 0,
+  "version": 1
+}

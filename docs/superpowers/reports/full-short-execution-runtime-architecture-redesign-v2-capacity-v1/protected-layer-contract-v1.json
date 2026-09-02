@@ -1,0 +1,17 @@
+{
+  "focused_adversarial_tests": 2,
+  "forbidden_actions": [
+    "COMPACT",
+    "SHED"
+  ],
+  "implementation_head": "a76bcda829dd197a6e4dc2d938547a27a5c63078",
+  "preserve_requires_pre_post_size_identity": true,
+  "protected_classes": [
+    "HARD_PROTECTED",
+    "SOFT_PROTECTED"
+  ],
+  "protected_layer_silent_truncation_count": 0,
+  "schema": "ProtectedLayerContractV1",
+  "status": "IMPLEMENTED_FOCUSED_PASS",
+  "version": 1
+}

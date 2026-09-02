@@ -1,0 +1,11 @@
+{
+  "deterministic": true,
+  "implementation_head": "a76bcda829dd197a6e4dc2d938547a27a5c63078",
+  "normal_model_visible_identity": "NO: oversized single advisory paragraphs are omitted rather than emitting an unsafe partial paragraph",
+  "partial_paragraph_count": 0,
+  "policy_id": "ADVISORY_COMPLETE_PARAGRAPH_PREFIX_V1",
+  "schema": "AdvisoryCompactionContractV1",
+  "source_and_rendered_hash_size_receipted": true,
+  "status": "IMPLEMENTED_WITH_JUSTIFIED_IDENTITY_DELTA",
+  "version": 1
+}

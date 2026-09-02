@@ -1,0 +1,9 @@
+{
+  "historical_receipt_schema": "ExactReadyCapacityPreFixReceiptV1",
+  "implementation_head": "a76bcda829dd197a6e4dc2d938547a27a5c63078",
+  "schema": "FullShortExactReadyCapacityPreFixEvidenceV1",
+  "source_file_sha256": "a661134a034a0b1185b35731d2495e1702bec3e75166b2dc684e6547e87d10b0",
+  "status": "HISTORICAL_FAILURE_PRESERVED",
+  "version": 1,
+  "warning": "Historical 32768 role-source label was not source-grounded because the live model rows have context_window NULL; receipt is preserved but is not reusable as readiness proof."
+}

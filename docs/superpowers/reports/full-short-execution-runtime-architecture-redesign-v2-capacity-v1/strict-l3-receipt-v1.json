@@ -1,0 +1,14 @@
+{
+  "blockers": [
+    "LIVE_ROUTE_CONTEXT_CAPABILITY_METADATA_MISSING",
+    "PRODUCTION_LENGTH_MATRIX_20K_30K_FAILED",
+    "FINAL_IMPLEMENTATION_EXACT_TARGET_PASS_MISSING",
+    "FIVE_FINAL_REVIEWERS_NOT_ALL_PASS"
+  ],
+  "implementation_head": "a76bcda829dd197a6e4dc2d938547a27a5c63078",
+  "schema": "StrictL3ReceiptV1",
+  "status": "FAIL_NOT_PROVEN",
+  "strict_l3": "FAIL",
+  "version": 1,
+  "warnings": "NOT_ZERO_OR_NOT_ENUMERATED"
+}

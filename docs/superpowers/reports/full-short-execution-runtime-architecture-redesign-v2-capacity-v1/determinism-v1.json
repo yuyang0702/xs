@@ -1,0 +1,11 @@
+{
+  "current_head_exact_determinism_closed": false,
+  "fault_scenarios": 16,
+  "fault_scenarios_deterministic": true,
+  "historical_exact_replay_all": true,
+  "historical_exact_replay_count": 97,
+  "implementation_head": "a76bcda829dd197a6e4dc2d938547a27a5c63078",
+  "schema": "DeterminismReceiptV1",
+  "status": "PARTIAL_PASS_NOT_READINESS",
+  "version": 1
+}
