@@ -5,6 +5,7 @@ import hashlib
 
 import pytest
 
+from novel_flywheel.contract_runtime import execute_model_route_runtime
 from novel_flywheel.stage_capacity import (
     CAPACITY_FAILURE_IDS_V1,
     DEFAULT_STAGE_CAPACITY_POLICY_REGISTRY_V1,
@@ -150,3 +151,40 @@ def test_plan_hash_rejects_mutated_status() -> None:
     plan = _plan()
     with pytest.raises(ValueError, match="capacity_plan_sha256_mismatch"):
         replace(plan, admission_status=AdmissionStatus.DENIED)
+
+
+@pytest.mark.asyncio
+async def test_denied_attempt_never_retries_or_reaches_gateway() -> None:
+    class Gateway:
+        def __init__(self) -> None:
+            self.calls = 0
+
+        @staticmethod
+        def has_configured_fallback(_role: str) -> bool:
+            return True
+
+        async def complete_primary(self, *_args, **_kwargs):
+            self.calls += 1
+
+        async def complete_configured_fallback(self, *_args, **_kwargs):
+            self.calls += 1
+
+    denied = _plan(model_context_limit=0)
+    gateway = Gateway()
+
+    def deny(*_args, **_kwargs) -> None:
+        denied.require_pass()
+
+    with pytest.raises(CapacityAdmissionFailureV1) as caught:
+        await execute_model_route_runtime(
+            gateway,
+            role="review",
+            system="system",
+            user="user",
+            same_route_attempts=2,
+            fallback_attempts=2,
+            attempt_admitter=deny,
+        )
+
+    assert caught.value.failure_id == "capacity.context_limit_unavailable"
+    assert gateway.calls == 0

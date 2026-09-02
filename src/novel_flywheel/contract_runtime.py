@@ -57,6 +57,7 @@ from novel_flywheel.recovery_engine import (
     protocol_receipt_attempts,
 )
 from novel_flywheel.structured_artifacts import StructuredArtifactContract
+from novel_flywheel.stage_capacity import CapacityAdmissionFailureV1
 
 
 DomainValidator = Callable[[Mapping[str, Any]], Any]
@@ -692,6 +693,11 @@ async def execute_model_route_runtime(
                 fallback_context=fallback_context,
                 run_id=run_id,
             )
+        except CapacityAdmissionFailureV1:
+            # Admission happens before dispatch. Replaying the same or a
+            # fallback route cannot heal a denied request and would falsely
+            # consume a physical attempt without a provider call.
+            raise
         except Exception as exc:
             provider_id, model_id = route_identities[attempt.route]
             route_errors.append((provider_id, model_id, exc))

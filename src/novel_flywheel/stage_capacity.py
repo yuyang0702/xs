@@ -10,6 +10,7 @@ from novel_flywheel.full_short_runtime_kernel import (
     RegisteredBoundaryFailureV1,
     full_short_boundary_entry,
 )
+from novel_flywheel.recovery_engine import FailureClass, ReliabilityFailure
 
 
 CAPACITY_BOUNDARY_ID_V1 = "FS.CAPACITY.ADMIT"
@@ -65,13 +66,51 @@ CAPACITY_FAILURE_IDS_V1 = {item.value for item in CapacityFailureCode}
 
 
 class CapacityAdmissionFailureV1(RegisteredBoundaryFailureV1):
-    def __init__(self, failure_id: CapacityFailureCode | str) -> None:
+    def __init__(
+        self,
+        failure_id: CapacityFailureCode | str,
+        *,
+        plan: StageCapacityPlanV1 | None = None,
+    ) -> None:
         code = CapacityFailureCode(failure_id)
         super().__init__(
             boundary_id=CAPACITY_BOUNDARY_ID_V1,
             failure_id=code.value,
         )
         self.failure_code = code.value
+        self.reason_code = code.value
+        self.reliability_failure = ReliabilityFailure(
+            code=code.value,
+            failure_class=FailureClass.CONTEXT_CAPACITY,
+            boundary=CAPACITY_BOUNDARY_ID_V1,
+            retryable=code in {
+                CapacityFailureCode.MODEL_CONTEXT_EXCEEDED,
+                CapacityFailureCode.PROTECTED_LAYERS_EXCEED_BUDGET,
+                CapacityFailureCode.COMPACTION_INSUFFICIENT,
+                CapacityFailureCode.WINDOWING_REQUIRED,
+            },
+        )
+        if plan is not None:
+            self.receipt = {
+                "schema": "CapacityAdmissionFailureReceiptV1",
+                "failure_id": code.value,
+                "stage_id_sha256": hashlib.sha256(
+                    plan.stage_id.encode("utf-8")
+                ).hexdigest(),
+                "logical_stage_id_sha256": hashlib.sha256(
+                    plan.logical_stage_id.encode("utf-8")
+                ).hexdigest(),
+                "physical_attempt": plan.physical_attempt,
+                "plan_sha256": plan.plan_sha256,
+                "admission_status": plan.admission_status.value,
+                "model_context_limit": plan.model_context_limit,
+                "prompt_budget": plan.prompt_budget,
+                "expected_rendered_input": plan.expected_rendered_input,
+                "protected_layer_tokens": plan.protected_layer_tokens,
+                "advisory_layer_tokens": plan.advisory_layer_tokens,
+                "headroom": plan.headroom,
+                "raw_prompt_persisted": False,
+            }
 
 
 @dataclass(frozen=True)
@@ -285,7 +324,7 @@ class StageCapacityPlanV1:
         failure_id = self.denial_failure_id
         if failure_id is None:
             failure_id = CapacityFailureCode.MODEL_CONTEXT_EXCEEDED
-        raise CapacityAdmissionFailureV1(failure_id)
+        raise CapacityAdmissionFailureV1(failure_id, plan=self)
 
 
 def build_stage_capacity_plan_v1(

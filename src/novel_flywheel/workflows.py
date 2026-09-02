@@ -96,6 +96,7 @@ from novel_flywheel.stage_capacity import (
     AdmissionStatus,
     CapacityLayerClass,
     CapacityLayerProjectionV1,
+    CapacityAdmissionFailureV1,
     StageCapacityAdmissionEngineV1,
     build_stage_capacity_plan_v1,
 )
@@ -30763,6 +30764,7 @@ class WorkflowService:
                     and capacity_splitter is not None
                     and (
                         classify_model_failure(exc) == "input_context_overflow"
+                        or isinstance(exc, CapacityAdmissionFailureV1)
                         or isinstance(
                             exc, ContractOutputLimitExhaustedError,
                         )
@@ -31183,16 +31185,40 @@ class WorkflowService:
                 # Checkpoint observability must never mask the actual workflow
                 # failure or alter the existing recovery path.
                 pass
-            if isinstance(exc, ContextCapacityPreflightError):
+            if isinstance(
+                exc,
+                (ContextCapacityPreflightError, CapacityAdmissionFailureV1),
+            ):
+                receipt = getattr(exc, "receipt", {})
                 self.db.add_run_event(
                     run_id, "warning", "stage_capacity_split_required",
                     f"{stage} 需要按语义所有权拆分后重试，尚未调用模型",
                     stage=stage, metadata={
-                        "pressure": exc.pressure,
-                        "estimated_input_tokens": exc.estimated_input_tokens,
-                        "authority_input_tokens": exc.authority_input_tokens,
-                        "output_reserve": exc.output_reserve,
-                        "context_window": exc.context_window,
+                        "pressure": getattr(
+                            exc, "pressure", receipt.get("admission_status")
+                        ),
+                        "estimated_input_tokens": getattr(
+                            exc,
+                            "estimated_input_tokens",
+                            receipt.get("expected_rendered_input"),
+                        ),
+                        "authority_input_tokens": getattr(
+                            exc,
+                            "authority_input_tokens",
+                            receipt.get("protected_layer_tokens"),
+                        ),
+                        "output_reserve": getattr(
+                            exc, "output_reserve", None
+                        ),
+                        "context_window": getattr(
+                            exc,
+                            "context_window",
+                            receipt.get("model_context_limit"),
+                        ),
+                        "capacity_failure_id": getattr(
+                            exc, "failure_id", None
+                        ),
+                        "capacity_plan_sha256": receipt.get("plan_sha256"),
                     },
                 )
                 raise
