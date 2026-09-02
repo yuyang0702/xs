@@ -76,6 +76,7 @@ from novel_flywheel.stage_capacity import (
     RouteContextCapabilitySourceV1,
     StageCapacityAdmissionEngineV1,
     StageCapacityPlanV1,
+    capacity_recovery_prompt_delta_sha256_v1,
 )
 
 
@@ -308,6 +309,9 @@ _CAPACITY_ADMISSION_RECEIPT_FIELDS_V1 = frozenset({
     "requested_output_token_cap", "final_output_reserve",
     "route_max_output_tokens", "reasoning_token_reserve",
     "reasoning_token_accounting",
+    "recovery_stage_role", "reasoning_policy",
+    "prior_rendered_request_sha256", "recovery_prompt_delta_sha256",
+    "recovery_source_capture_receipt_sha256",
     "admission_status", "model_request_sha256",
     "provider_payload_sha256", "egress_intent_sha256",
     "outbound_request_bytes_sha256", "destination_sha256", "state",
@@ -321,6 +325,7 @@ _CAPACITY_ADMISSION_RECEIPT_HASH_FIELDS_V1 = frozenset({
     "role_sha256", "rendered_request_sha256",
     "logical_capacity_envelope_sha256",
     "route_capability_snapshot_sha256",
+    "recovery_prompt_delta_sha256",
 })
 _CAPACITY_ADMISSION_REQUEST_HASH_FIELDS_V1 = frozenset({
     "model_request_sha256", "provider_payload_sha256",
@@ -375,6 +380,26 @@ def _validate_capacity_admission_receipt_v1(
         all(type(body.get(field)) is int and body[field] > 0
             for field in integer_fields),
         "CAPACITY_ADMISSION_RECEIPT_LIMIT_INVALID",
+    )
+    for optional_hash_field in (
+        "prior_rendered_request_sha256",
+        "recovery_source_capture_receipt_sha256",
+    ):
+        optional_hash = body.get(optional_hash_field)
+        _require(
+            optional_hash is None
+            or (
+                isinstance(optional_hash, str)
+                and _HEX64.fullmatch(optional_hash) is not None
+            ),
+            "CAPACITY_ADMISSION_RECEIPT_HASH_INVALID",
+        )
+    _require(
+        isinstance(body.get("recovery_stage_role"), str)
+        and bool(body["recovery_stage_role"])
+        and isinstance(body.get("reasoning_policy"), str)
+        and bool(body["reasoning_policy"]),
+        "CAPACITY_ADMISSION_RECEIPT_SCHEMA_INVALID",
     )
     _require(
         body["stage_operational_context_ceiling_tokens"]
@@ -2165,8 +2190,26 @@ class FullShortDurableExecutionStoreV1:
                 == logical_stage_id
                 and receipt.get("physical_attempt")
                 == logical_attempt_counts[logical_stage_id]
+                and receipt.get("physical_attempt_id")
+                == attempt.get("physical_attempt_id")
+                and receipt.get("global_physical_attempt_ordinal")
+                == attempt.get("global_physical_attempt_ordinal")
+                and receipt.get("logical_capacity_envelope_sha256")
+                == attempt.get("logical_capacity_envelope_sha256")
+                and receipt.get("route_capability_snapshot_sha256")
+                == attempt.get("route_capability_snapshot_sha256")
                 and receipt.get("provider_route_identity_sha256")
-                == attempt.get("role_binding_sha256"),
+                == attempt.get("role_binding_sha256")
+                and receipt.get("rendered_request_sha256")
+                == attempt.get("rendered_request_sha256")
+                and receipt.get("recovery_stage_role")
+                == attempt.get("recovery_stage_role")
+                and receipt.get("reasoning_policy")
+                == attempt.get("reasoning_policy")
+                and receipt.get("recovery_prompt_delta_sha256")
+                == attempt.get("recovery_prompt_delta_sha256")
+                and receipt.get("recovery_source_capture_receipt_sha256")
+                == attempt.get("recovery_source_capture_receipt_sha256"),
                 "COMPLETION_CAPACITY_ADMISSION_PROVENANCE_INVALID",
             )
             receipts.append(receipt)
@@ -2974,6 +3017,59 @@ class FullShortDispatchLedgerObserverV1:
                 "ordinal": len(attempts) + 1,
             },
         )[:32]
+        prior_logical_attempts = [
+            item for item in attempts
+            if item.get("logical_stage_id") == logical_stage_id
+        ]
+        recovery_stage_role = str(
+            (self.pending_stage_context or {}).get("stage_role") or "NORMAL"
+        )
+        prior_rendered_request_sha256 = None
+        recovery_source_capture_receipt_sha256 = None
+        if prior_logical_attempts:
+            prior_attempt = prior_logical_attempts[-1]
+            prior_capacity_receipt = self.store.load_capacity_admission_receipt(
+                execution_id=self.execution_id,
+                plan_sha256=str(prior_attempt["capacity_plan_sha256"]),
+            )
+            prior_rendered_request_sha256 = str(
+                prior_capacity_receipt["rendered_request_sha256"]
+            )
+            recovery_source_capture_receipt_sha256 = (
+                prior_attempt.get("contract_runtime_capture_receipt_sha256")
+                or prior_attempt.get(
+                    "provider_protocol_capture_receipt_sha256"
+                )
+            )
+            if (
+                recovery_source_capture_receipt_sha256 is None
+                and not prior_attempt.get("capture_enforcement_required")
+            ):
+                recovery_source_capture_receipt_sha256 = domain_sha256(
+                    "novel-flywheel-local-response-identity-v1",
+                    {key: prior_attempt.get(key) for key in (
+                        "physical_attempt_id",
+                        "response_status_sha256",
+                        "local_stage_receipt_sha256",
+                        "state",
+                    )},
+                )
+            if not isinstance(
+                recovery_source_capture_receipt_sha256, str
+            ) or _HEX64.fullmatch(
+                recovery_source_capture_receipt_sha256
+            ) is None:
+                raise CapacityAdmissionFailureV1(
+                    CapacityFailureCode.INVALID_ATTEMPT_DELTA
+                )
+            reasoning_policy = (
+                "DISABLE_REASONING"
+                if recovery_stage_role
+                == "PLANNING_FINAL_ARTIFACT_RECOVERY"
+                else "PRESERVE_REASONING_POLICY"
+            )
+        else:
+            reasoning_policy = "DEFAULT"
         return {
             "logical_stage_id": logical_stage_id,
             "physical_attempt": expected_physical_attempt,
@@ -2999,6 +3095,14 @@ class FullShortDispatchLedgerObserverV1:
                 "reasoning_token_accounting"
             ],
             "reasoning_token_reserve": 0,
+            "recovery_stage_role": recovery_stage_role,
+            "reasoning_policy": reasoning_policy,
+            "prior_rendered_request_sha256": (
+                prior_rendered_request_sha256
+            ),
+            "recovery_source_capture_receipt_sha256": (
+                recovery_source_capture_receipt_sha256
+            ),
         }
 
     @full_short_boundary_entry("FS.CAPACITY.ADMIT")
@@ -3062,6 +3166,24 @@ class FullShortDispatchLedgerObserverV1:
             == context["reasoning_token_reserve"]
             and plan.reasoning_token_accounting
             == context["reasoning_token_accounting"]
+            and plan.recovery_stage_role == context["recovery_stage_role"]
+            and plan.reasoning_policy == context["reasoning_policy"]
+            and plan.prior_rendered_request_sha256
+            == context["prior_rendered_request_sha256"]
+            and plan.recovery_source_capture_receipt_sha256
+            == context["recovery_source_capture_receipt_sha256"]
+            and plan.recovery_prompt_delta_sha256
+            == capacity_recovery_prompt_delta_sha256_v1(
+                prior_rendered_request_sha256=context[
+                    "prior_rendered_request_sha256"
+                ],
+                rendered_request_sha256=plan.rendered_request_sha256,
+                recovery_stage_role=context["recovery_stage_role"],
+                reasoning_policy=context["reasoning_policy"],
+                recovery_source_capture_receipt_sha256=context[
+                    "recovery_source_capture_receipt_sha256"
+                ],
+            )
         ):
             raise CapacityAdmissionFailureV1(
                 CapacityFailureCode.INVALID_ATTEMPT_DELTA
@@ -3182,6 +3304,17 @@ class FullShortDispatchLedgerObserverV1:
             "final_output_reserve": plan.final_output_reserve,
             "reasoning_token_reserve": plan.reasoning_token_reserve,
             "reasoning_token_accounting": plan.reasoning_token_accounting,
+            "recovery_stage_role": plan.recovery_stage_role,
+            "reasoning_policy": plan.reasoning_policy,
+            "prior_rendered_request_sha256": (
+                plan.prior_rendered_request_sha256
+            ),
+            "recovery_prompt_delta_sha256": (
+                plan.recovery_prompt_delta_sha256
+            ),
+            "recovery_source_capture_receipt_sha256": (
+                plan.recovery_source_capture_receipt_sha256
+            ),
             "admission_status": "PASS",
             "model_request_sha256": None,
             "provider_payload_sha256": None,
@@ -3484,6 +3617,19 @@ class FullShortDispatchLedgerObserverV1:
             == self.pending_stage_context.get("stage_role", "NORMAL"),
             "MODEL_REQUEST_STAGE_ROLE_DRIFT",
         )
+        expected_reasoning_policy = str(
+            self.pending_capacity_receipt.get("reasoning_policy")
+        )
+        if expected_reasoning_policy == "DISABLE_REASONING":
+            _require(
+                request.reasoning_directive == "disable_reasoning",
+                "MODEL_REQUEST_REASONING_POLICY_DRIFT",
+            )
+        else:
+            _require(
+                request.reasoning_directive != "disable_reasoning",
+                "MODEL_REQUEST_REASONING_POLICY_DRIFT",
+            )
         _require(protocol == route.get("protocol"), "EGRESS_PROTOCOL_DRIFT")
         expected = _expected_provider_payload_v1(
             protocol, request, destination=str(route["destination"]),
@@ -3919,6 +4065,22 @@ class FullShortDispatchLedgerObserverV1:
                     "route_capability_snapshot_sha256"
                 ]
             ),
+            "rendered_request_sha256": capacity_receipt[
+                "rendered_request_sha256"
+            ],
+            "recovery_stage_role": capacity_receipt[
+                "recovery_stage_role"
+            ],
+            "reasoning_policy": capacity_receipt["reasoning_policy"],
+            "prior_rendered_request_sha256": capacity_receipt[
+                "prior_rendered_request_sha256"
+            ],
+            "recovery_prompt_delta_sha256": capacity_receipt[
+                "recovery_prompt_delta_sha256"
+            ],
+            "recovery_source_capture_receipt_sha256": capacity_receipt[
+                "recovery_source_capture_receipt_sha256"
+            ],
             "outbound_request_bytes_sha256": (
                 outbound_request_bytes_sha256
             ),
@@ -4871,6 +5033,7 @@ def build_full_short_completion_receipt_v1(
     permission_sha256: str, signed_approval_sha256: str, nonce_sha256: str,
     ledger: Mapping[str, Any], final_bindings: Mapping[str, str],
     terminal_verification: Mapping[str, Any],
+    capacity_admission_receipts: Iterable[Mapping[str, Any]],
 ) -> dict[str, Any]:
     validated = validate_policy_v1(policy)
     sealed_ledger = FullShortDurableExecutionStoreV1._verify_seal(
@@ -4888,6 +5051,18 @@ def build_full_short_completion_receipt_v1(
     _require(sealed_ledger.get("state") == "READY_FOR_NEXT_STAGE", "LEDGER_NOT_CLOSED")
     attempts = sealed_ledger.get("attempts")
     _require(isinstance(attempts, list) and attempts, "LEDGER_HAS_NO_DISPATCH")
+    validated_capacity_receipts = tuple(
+        _validate_capacity_admission_receipt_v1(
+            item,
+            execution_id=execution_id,
+            plan_sha256=str(item.get("capacity_plan_sha256") or ""),
+        )
+        for item in capacity_admission_receipts
+    )
+    receipts_by_plan = {
+        item["capacity_plan_sha256"]: item
+        for item in validated_capacity_receipts
+    }
     _require(
         all(item.get("state") in _CLOSED_LOCAL_ATTEMPT_STATES for item in attempts),
         "LEDGER_HAS_UNCLOSED_DISPATCH",
@@ -4905,6 +5080,33 @@ def build_full_short_completion_receipt_v1(
                 item.get("capacity_admission_receipt_sha256") or ""
             )) is not None
             and item.get("capacity_admission_status") == "PASS"
+            for item in attempts
+        )
+        and len(validated_capacity_receipts) == len(attempts)
+        and len(receipts_by_plan) == len(attempts)
+        and all(
+            (
+                receipt := receipts_by_plan.get(
+                    item.get("capacity_plan_sha256")
+                )
+            ) is not None
+            and receipt.get("state") == "CONSUMED"
+            and receipt.get("capacity_admission_receipt_sha256")
+            == item.get("capacity_admission_receipt_sha256")
+            and receipt.get("physical_attempt_id")
+            == item.get("physical_attempt_id")
+            and receipt.get("global_physical_attempt_ordinal")
+            == item.get("global_physical_attempt_ordinal")
+            and receipt.get("logical_capacity_envelope_sha256")
+            == item.get("logical_capacity_envelope_sha256")
+            and receipt.get("route_capability_snapshot_sha256")
+            == item.get("route_capability_snapshot_sha256")
+            and receipt.get("rendered_request_sha256")
+            == item.get("rendered_request_sha256")
+            and receipt.get("recovery_prompt_delta_sha256")
+            == item.get("recovery_prompt_delta_sha256")
+            and receipt.get("recovery_source_capture_receipt_sha256")
+            == item.get("recovery_source_capture_receipt_sha256")
             for item in attempts
         )
         and len({

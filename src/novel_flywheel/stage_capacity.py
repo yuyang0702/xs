@@ -426,6 +426,11 @@ class StageCapacityPlanV1:
     final_output_reserve: int
     reasoning_token_reserve: int
     reasoning_token_accounting: str
+    recovery_stage_role: str
+    reasoning_policy: str
+    prior_rendered_request_sha256: str | None
+    recovery_prompt_delta_sha256: str
+    recovery_source_capture_receipt_sha256: str | None
     rendered_message_tokens: int
     structured_envelope_tokens: int
     provider_envelope_tokens: int
@@ -470,6 +475,7 @@ class StageCapacityPlanV1:
             "contract_schema_sha256",
             "provider_route_identity_sha256",
             "rendered_request_sha256",
+            "recovery_prompt_delta_sha256",
             "policy_registry_sha256",
             "plan_sha256",
         ):
@@ -479,6 +485,13 @@ class StageCapacityPlanV1:
                 self.parent_plan_sha256,
                 field_name="parent_plan_sha256",
             )
+        for field_name in (
+            "prior_rendered_request_sha256",
+            "recovery_source_capture_receipt_sha256",
+        ):
+            value = getattr(self, field_name)
+            if value is not None:
+                _require_sha256(value, field_name=field_name)
         for field_name in (
             "logical_capacity_envelope_sha256",
             "route_capability_snapshot_sha256",
@@ -528,6 +541,21 @@ class StageCapacityPlanV1:
             or not self.reasoning_token_accounting
         ):
             raise ValueError("capacity_output_or_reasoning_limit_invalid")
+        if not self.recovery_stage_role or not self.reasoning_policy:
+            raise ValueError("capacity_recovery_delta_identity_invalid")
+        expected_delta = capacity_recovery_prompt_delta_sha256_v1(
+            prior_rendered_request_sha256=(
+                self.prior_rendered_request_sha256
+            ),
+            rendered_request_sha256=self.rendered_request_sha256,
+            recovery_stage_role=self.recovery_stage_role,
+            reasoning_policy=self.reasoning_policy,
+            recovery_source_capture_receipt_sha256=(
+                self.recovery_source_capture_receipt_sha256
+            ),
+        )
+        if self.recovery_prompt_delta_sha256 != expected_delta:
+            raise ValueError("capacity_recovery_prompt_delta_sha256_mismatch")
         if _canonical_sha256(self.canonical_payload()) != self.plan_sha256:
             raise ValueError("capacity_plan_sha256_mismatch")
 
@@ -538,6 +566,39 @@ class StageCapacityPlanV1:
         if failure_id is None:
             failure_id = CapacityFailureCode.MODEL_CONTEXT_EXCEEDED
         raise CapacityAdmissionFailureV1(failure_id, plan=self)
+
+
+def capacity_recovery_prompt_delta_sha256_v1(
+    *, prior_rendered_request_sha256: str | None,
+    rendered_request_sha256: str,
+    recovery_stage_role: str,
+    reasoning_policy: str,
+    recovery_source_capture_receipt_sha256: str | None,
+) -> str:
+    _require_sha256(
+        rendered_request_sha256, field_name="rendered_request_sha256",
+    )
+    for field_name, value in (
+        ("prior_rendered_request_sha256", prior_rendered_request_sha256),
+        (
+            "recovery_source_capture_receipt_sha256",
+            recovery_source_capture_receipt_sha256,
+        ),
+    ):
+        if value is not None:
+            _require_sha256(value, field_name=field_name)
+    if not recovery_stage_role or not reasoning_policy:
+        raise ValueError("capacity_recovery_delta_identity_invalid")
+    return _canonical_sha256({
+        "domain": "novel-flywheel-capacity-recovery-prompt-delta-v1",
+        "prior_rendered_request_sha256": prior_rendered_request_sha256,
+        "rendered_request_sha256": rendered_request_sha256,
+        "recovery_stage_role": recovery_stage_role,
+        "reasoning_policy": reasoning_policy,
+        "recovery_source_capture_receipt_sha256": (
+            recovery_source_capture_receipt_sha256
+        ),
+    })
 
 
 def build_stage_capacity_plan_v1(
@@ -570,6 +631,10 @@ def build_stage_capacity_plan_v1(
     route_max_output_tokens: int | None = None,
     reasoning_token_reserve: int = 0,
     reasoning_token_accounting: str = "INCLUDED_IN_COMPLETION_CAP",
+    recovery_stage_role: str = "NORMAL",
+    reasoning_policy: str = "DEFAULT",
+    prior_rendered_request_sha256: str | None = None,
+    recovery_source_capture_receipt_sha256: str | None = None,
     policy_registry: StageCapacityPolicyRegistryV1 = (
         DEFAULT_STAGE_CAPACITY_POLICY_REGISTRY_V1
     ),
@@ -636,6 +701,38 @@ def build_stage_capacity_plan_v1(
             raise CapacityAdmissionFailureV1(
                 CapacityFailureCode.CONTEXT_LIMIT_INCONSISTENT,
             )
+        if physical_attempt == 1:
+            if (
+                recovery_stage_role != "NORMAL"
+                or reasoning_policy != "DEFAULT"
+                or prior_rendered_request_sha256 is not None
+                or recovery_source_capture_receipt_sha256 is not None
+            ):
+                raise CapacityAdmissionFailureV1(
+                    CapacityFailureCode.INVALID_ATTEMPT_DELTA,
+                )
+        elif (
+            prior_rendered_request_sha256 is None
+            or recovery_source_capture_receipt_sha256 is None
+            or (recovery_stage_role, reasoning_policy) not in {
+                ("PLANNING_FINAL_ARTIFACT_RECOVERY", "DISABLE_REASONING"),
+                ("NORMAL", "PRESERVE_REASONING_POLICY"),
+            }
+        ):
+            raise CapacityAdmissionFailureV1(
+                CapacityFailureCode.INVALID_ATTEMPT_DELTA,
+            )
+    recovery_prompt_delta_sha256 = (
+        capacity_recovery_prompt_delta_sha256_v1(
+            prior_rendered_request_sha256=prior_rendered_request_sha256,
+            rendered_request_sha256=rendered_request_sha256,
+            recovery_stage_role=recovery_stage_role,
+            reasoning_policy=reasoning_policy,
+            recovery_source_capture_receipt_sha256=(
+                recovery_source_capture_receipt_sha256
+            ),
+        )
+    )
     expected_rendered_input = rendered_message_tokens + structured_envelope_tokens
     prompt_budget = (
         effective_context_limit
@@ -759,6 +856,13 @@ def build_stage_capacity_plan_v1(
         "final_output_reserve": final_output_reserve,
         "reasoning_token_reserve": reasoning_token_reserve,
         "reasoning_token_accounting": reasoning_token_accounting,
+        "recovery_stage_role": recovery_stage_role,
+        "reasoning_policy": reasoning_policy,
+        "prior_rendered_request_sha256": prior_rendered_request_sha256,
+        "recovery_prompt_delta_sha256": recovery_prompt_delta_sha256,
+        "recovery_source_capture_receipt_sha256": (
+            recovery_source_capture_receipt_sha256
+        ),
         "rendered_message_tokens": rendered_message_tokens,
         "structured_envelope_tokens": structured_envelope_tokens,
         "provider_envelope_tokens": provider_envelope_tokens,

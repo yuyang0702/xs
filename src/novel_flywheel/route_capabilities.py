@@ -150,7 +150,12 @@ class RouteCapabilityRecordV1:
                 self.context_window_tokens is None
                 or self.max_output_tokens is None
                 or not self.source_evidence
-                or not {"context_window_tokens", "max_output_tokens"} <= proved
+                or not {
+                    "context_window_tokens",
+                    "max_output_tokens",
+                    "reasoning_token_accounting",
+                    "reasoning_output_reservation",
+                } <= proved
                 or self.blocking_reason_codes
                 or self.reasoning_token_accounting
                 != "INCLUDED_IN_COMPLETION_CAP"

@@ -30933,6 +30933,26 @@ class WorkflowService:
                             "INCLUDED_IN_COMPLETION_CAP",
                         )
                     ),
+                    "recovery_stage_role": str(
+                        (admission_context or {}).get(
+                            "recovery_stage_role", "NORMAL",
+                        )
+                    ),
+                    "reasoning_policy": str(
+                        (admission_context or {}).get(
+                            "reasoning_policy", "DEFAULT",
+                        )
+                    ),
+                    "prior_rendered_request_sha256": (
+                        (admission_context or {}).get(
+                            "prior_rendered_request_sha256"
+                        )
+                    ),
+                    "recovery_source_capture_receipt_sha256": (
+                        (admission_context or {}).get(
+                            "recovery_source_capture_receipt_sha256"
+                        )
+                    ),
                     "rendered_message_tokens": estimate_input_tokens(
                         actual_system + "\n" + actual_user
                     ),

@@ -2149,6 +2149,7 @@ async def _run(
             "logical_stage_plan_sha256": policy[
                 "logical_stage_plan_sha256"
             ],
+            "logical_stage_plan": logical_stage_plan,
             "transport_recovery_policy_sha256": policy[
                 "transport_recovery_policy_sha256"
             ],

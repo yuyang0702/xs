@@ -25,7 +25,10 @@ def _evidence(route_fingerprint: str = "c" * 64) -> CapabilityEvidenceV1:
         evidence_version=1,
         evidence_date="2026-08-14",
         route_fingerprint=route_fingerprint,
-        proved_fields=("context_window_tokens", "max_output_tokens"),
+        proved_fields=(
+            "context_window_tokens", "max_output_tokens",
+            "reasoning_token_accounting", "reasoning_output_reservation",
+        ),
         provenance_available=True,
     )
 

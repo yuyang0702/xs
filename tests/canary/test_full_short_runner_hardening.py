@@ -410,6 +410,8 @@ def _bound_project(tmp_path: Path) -> tuple[Path, Path, str, Database]:
         json.dumps({
             "context_window_tokens": 32_768,
             "max_output_tokens": 8_192,
+            "reasoning_token_accounting": "INCLUDED_IN_COMPLETION_CAP",
+            "reasoning_output_reservation": "WITHIN_COMPLETION_CAP",
         }, sort_keys=True),
         encoding="utf-8",
     )
@@ -422,7 +424,10 @@ def _bound_project(tmp_path: Path) -> tuple[Path, Path, str, Database]:
         evidence_version=1,
         evidence_date="2026-09-02",
         route_fingerprint=fingerprint,
-        proved_fields=("context_window_tokens", "max_output_tokens"),
+        proved_fields=(
+            "context_window_tokens", "max_output_tokens",
+            "reasoning_token_accounting", "reasoning_output_reservation",
+        ),
         provenance_available=True,
     )
     registry = RouteCapabilityRegistryV1.create(
@@ -743,6 +748,70 @@ def test_live_bindings_reject_missing_route_capability_record(
     assert caught.value.failure_id == "capacity.route_capability_unknown"
 
 
+def test_verified_capability_rejects_hash_valid_but_wrong_semantic_value(
+    tmp_path: Path,
+) -> None:
+    repo, _data, _project_id, _db = _bound_project(tmp_path)
+    evidence_path = repo / "unit-route-capability-evidence.json"
+    evidence_path.write_text(json.dumps({
+        "context_window_tokens": 1,
+        "max_output_tokens": 8_192,
+        "reasoning_token_accounting": "INCLUDED_IN_COMPLETION_CAP",
+        "reasoning_output_reservation": "WITHIN_COMPLETION_CAP",
+    }, sort_keys=True), encoding="utf-8")
+    path = repo / runner._ROUTE_CAPABILITY_REGISTRY_PATH_V1
+    original = RouteCapabilityRegistryV1.from_document(
+        json.loads(path.read_text(encoding="utf-8"))
+    )
+    rebuilt = []
+    for record in original.records:
+        evidence = CapabilityEvidenceV1(
+            source_kind="unit_test_fixture",
+            source_locator="unit-route-capability-evidence.json",
+            source_evidence_sha256=hashlib.sha256(
+                evidence_path.read_bytes()
+            ).hexdigest(),
+            evidence_version=1,
+            evidence_date="2026-09-02",
+            route_fingerprint=record.route_fingerprint,
+            proved_fields=(
+                "context_window_tokens", "max_output_tokens",
+                "reasoning_token_accounting",
+                "reasoning_output_reservation",
+            ),
+            provenance_available=True,
+        )
+        rebuilt.append(RouteCapabilityRecordV1.create(
+            role=record.role, lane=record.lane,
+            provider=record.provider,
+            provider_id_sha256=record.provider_id_sha256,
+            operator=record.operator,
+            destination=record.destination,
+            protocol=record.protocol,
+            model=record.model,
+            model_id_sha256=record.model_id_sha256,
+            route_fingerprint=record.route_fingerprint,
+            context_window_tokens=record.context_window_tokens,
+            max_output_tokens=record.max_output_tokens,
+            reasoning_token_accounting=record.reasoning_token_accounting,
+            reasoning_output_reservation=record.reasoning_output_reservation,
+            capability_status=record.capability_status,
+            source_evidence=(evidence,),
+        ))
+    path.write_text(
+        json.dumps(
+            RouteCapabilityRegistryV1.create(rebuilt).to_document()
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="verified route capability evidence values not proven",
+    ):
+        runner._load_route_capability_registry_v1(repo)
+
+
 def _add_unknown_planning_fallback(
     *, repo: Path, db: Database,
 ) -> None:
@@ -804,6 +873,28 @@ def test_unknown_unused_fallback_is_visible_but_does_not_block_primary_plan(
     assert fallback["route_capability_status"] == "UNKNOWN_BLOCKED"
     assert fallback["route_context_capability_limit_tokens"] is None
     assert public["authorization_eligible"] is True
+
+
+def test_selected_route_output_request_above_verified_max_blocks_authorization(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    repo, data, project_id, _db = _bound_project(tmp_path)
+    monkeypatch.setenv("NOVEL_SHORT_CANONICAL_V2", "1")
+    monkeypatch.setattr(runner, "_git", lambda *_args: "")
+    plan = _logical_plan()
+    plan[0]["requested_output_tokens"] = 8_193
+
+    with pytest.raises(CapacityAdmissionFailureV1) as caught:
+        runner.collect_live_bindings(
+            repo=repo,
+            data_dir=data,
+            project_id=project_id,
+            run_id="hardening",
+            logical_stage_plan=plan,
+            store_root=tmp_path / "control-store",
+        )
+
+    assert caught.value.failure_id == "capacity.output_reserve_unsatisfied"
 
 
 def test_unknown_selected_fallback_blocks_before_authorization(

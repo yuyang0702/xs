@@ -14,6 +14,10 @@ from novel_flywheel.db import Database
 from novel_flywheel.execution_failure_architecture import (
     FAILURE_ARCHITECTURE_IDENTITY,
 )
+from novel_flywheel.full_short_execution import (
+    full_short_logical_stage_plan_sha256_v1,
+    validate_full_short_logical_stage_plan_v1,
+)
 from novel_flywheel.providers.registry import ProviderRegistry
 from novel_flywheel.route_capabilities import (
     CapabilityEvidenceV1,
@@ -38,7 +42,6 @@ ROLES = (
     "planning", "draft", "review", "reader_review", "polish",
     "final_review", "maintenance",
 )
-REQUIRED_ROUTES = tuple((role, "primary") for role in ROLES)
 ROOT = Path(
     "docs/superpowers/reports/"
     "full-short-execution-runtime-architecture-redesign-v3-"
@@ -228,17 +231,34 @@ def _record_document(record: RouteCapabilityRecordV1) -> dict[str, Any]:
     return value
 
 
-def materialize(repo: Path, registry: RouteCapabilityRegistryV1) -> None:
+def materialize(
+    repo: Path,
+    registry: RouteCapabilityRegistryV1,
+    *,
+    logical_stage_plan: list[dict[str, Any]],
+) -> None:
     root = repo / ROOT
     root.mkdir(parents=True, exist_ok=True)
+    logical_stage_plan = validate_full_short_logical_stage_plan_v1(
+        logical_stage_plan
+    )
+    required_routes = tuple(sorted({
+        (
+            str(item["role"]),
+            "fallback"
+            if item["route_lane"] == "configured_fallback"
+            else str(item["route_lane"]),
+        )
+        for item in logical_stage_plan
+    }))
     records = [_record_document(item) for item in registry.records]
     required = [
         item for item in records
-        if (item["role"], item["lane"]) in REQUIRED_ROUTES
+        if (item["role"], item["lane"]) in required_routes
     ]
     unused = [
         item for item in records
-        if (item["role"], item["lane"]) not in REQUIRED_ROUTES
+        if (item["role"], item["lane"]) not in required_routes
     ]
     unknown_required = [
         item for item in required
@@ -283,13 +303,13 @@ def materialize(repo: Path, registry: RouteCapabilityRegistryV1) -> None:
 
     child_reports = {
         "a": ("historical capability evidence", [
-            "DeepSeek exact official route has reusable 1,000,000 context and 384,000 max-output historical evidence.",
+            "DeepSeek exact official route has an unarchived 1,000,000/384,000 historical assertion, not reusable verified evidence.",
             "8798/16000/4624/3724 observations are lower bounds or requests, not maxima.",
             "No tracked original screenshots were found.",
         ]),
         "b": ("Exact READY required routes", [
-            "Seven primary role routes are required; five unique physical fingerprints are involved.",
-            "Only review:primary binds the verified DeepSeek route.",
+            "The required role/lane set is derived from the sealed Exact READY logical-stage plan receipt.",
+            "Every selected route remains UNKNOWN_BLOCKED without trustworthy capability evidence.",
         ]),
         "c": ("route capability registry architecture", [
             "Every role/lane requires an exact content-addressed record.",
@@ -351,6 +371,11 @@ def materialize(repo: Path, registry: RouteCapabilityRegistryV1) -> None:
     ))
     write_json(root / "exact-ready-required-route-set-v1.json", receipt(
         "ExactReadyRequiredRouteSetV1", "MATERIALIZED",
+        derivation="SEALED_EXACT_READY_LOGICAL_STAGE_PLAN",
+        logical_stage_plan=logical_stage_plan,
+        logical_stage_plan_sha256=(
+            full_short_logical_stage_plan_sha256_v1(logical_stage_plan)
+        ),
         exact_ready_required_route_count=len(required),
         required_routes=[{
             "role": item["role"], "lane": item["lane"],
@@ -574,6 +599,7 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--repo", type=Path, default=Path("."))
     parser.add_argument("--registry-only", action="store_true")
+    parser.add_argument("--logical-stage-plan-receipt", type=Path)
     args = parser.parse_args()
     repo = args.repo.resolve(strict=True)
     if git(repo, "branch", "--show-current") != BRANCH:
@@ -581,12 +607,38 @@ def main() -> int:
     registry = build_registry(repo)
     write_registry(repo, registry)
     if not args.registry_only:
-        materialize(repo, registry)
+        if args.logical_stage_plan_receipt is None:
+            raise ValueError("logical_stage_plan_receipt_required")
+        plan_receipt_path = args.logical_stage_plan_receipt.resolve(
+            strict=True
+        )
+        plan_receipt = json.loads(
+            plan_receipt_path.read_text(encoding="utf-8")
+        )
+        logical_stage_plan = validate_full_short_logical_stage_plan_v1(
+            plan_receipt.get("logical_stage_plan")
+        )
+        expected_plan_sha = full_short_logical_stage_plan_sha256_v1(
+            logical_stage_plan
+        )
+        if plan_receipt.get("logical_stage_plan_sha256") != expected_plan_sha:
+            raise ValueError("logical_stage_plan_receipt_sha256_mismatch")
+        materialize(
+            repo, registry, logical_stage_plan=logical_stage_plan,
+        )
     print(json.dumps({
         "registry_sha256": registry.registry_sha256,
         "live_route_count": len(registry.records),
         "unknown_required_route_count": registry.unknown_required_count(
-            REQUIRED_ROUTES
+            () if args.registry_only else tuple(sorted({
+                (
+                    str(item["role"]),
+                    "fallback"
+                    if item["route_lane"] == "configured_fallback"
+                    else str(item["route_lane"]),
+                )
+                for item in logical_stage_plan
+            }))
         ),
         "output": str((repo / (CONFIG_PATH if args.registry_only else ROOT))),
     }, ensure_ascii=False, sort_keys=True))

@@ -333,6 +333,14 @@ def _bind_route_with_capacity(
         final_output_reserve=expected["requested_output_tokens"],
         reasoning_token_reserve=context["reasoning_token_reserve"],
         reasoning_token_accounting=context["reasoning_token_accounting"],
+        recovery_stage_role=context["recovery_stage_role"],
+        reasoning_policy=context["reasoning_policy"],
+        prior_rendered_request_sha256=context[
+            "prior_rendered_request_sha256"
+        ],
+        recovery_source_capture_receipt_sha256=context[
+            "recovery_source_capture_receipt_sha256"
+        ],
         rendered_message_tokens=0,
         structured_envelope_tokens=0,
         provider_envelope_tokens=256,
@@ -662,6 +670,19 @@ def _terminal(manuscript_sha256: str = "4" * 64) -> dict:
     return {**body, "verification_receipt_sha256": domain_sha256(
         "novel-flywheel-short-completion-verification-v1", body,
     )}
+
+
+def _capacity_receipts(
+    store: FullShortDurableExecutionStoreV1, execution_id: str,
+    ledger: dict,
+) -> tuple[dict, ...]:
+    return tuple(
+        store.load_capacity_admission_receipt(
+            execution_id=execution_id,
+            plan_sha256=str(attempt["capacity_plan_sha256"]),
+        )
+        for attempt in ledger["attempts"]
+    )
 
 
 def _dispatch_and_close(
@@ -1215,6 +1236,9 @@ async def test_lowest_transport_seam_is_durable_and_completable(tmp_path: Path) 
             ],
         },
         terminal_verification=_terminal(),
+        capacity_admission_receipts=_capacity_receipts(
+            store, "offline-full-short", ledger,
+        ),
     )
     assert completion["outcome"] == "FULL_SHORT_COMPLETED_EXACT"
     store.commit_completion(
@@ -1660,6 +1684,9 @@ def test_closed_local_rejection_allows_only_same_session_bounded_recovery(
             ],
         },
         terminal_verification=_terminal(),
+        capacity_admission_receipts=_capacity_receipts(
+            store, "local-rejection-recovery", ledger,
+        ),
     )
     assert completion["provider_request_count"] == 2
     assert completion["completed_stage_count"] == 1
@@ -2707,6 +2734,9 @@ def test_completion_rejects_terminal_false_positive_and_binding_key_drift(
             signed_approval_sha256=approval["signed_approval_sha256"],
             nonce_sha256=nonce["nonce_sha256"], ledger=ledger,
             final_bindings=bindings, terminal_verification=false_terminal,
+            capacity_admission_receipts=_capacity_receipts(
+                store, "terminal-false", ledger,
+            ),
         )
     assert false_positive.value.reason_code == "TERMINAL_VERIFICATION_NOT_SUCCESSFUL"
 
@@ -2718,6 +2748,9 @@ def test_completion_rejects_terminal_false_positive_and_binding_key_drift(
             signed_approval_sha256=approval["signed_approval_sha256"],
             nonce_sha256=nonce["nonce_sha256"], ledger=ledger,
             final_bindings=bindings, terminal_verification=_terminal(),
+            capacity_admission_receipts=_capacity_receipts(
+                store, "terminal-false", ledger,
+            ),
         )
     assert keys.value.reason_code == "COMPLETION_BINDING_KEYS_MISMATCH"
 
@@ -3091,6 +3124,8 @@ def test_real_runner_collects_live_bindings_without_secret_lookup(
         json.dumps({
             "context_window_tokens": 32_768,
             "max_output_tokens": 32_000,
+            "reasoning_token_accounting": "INCLUDED_IN_COMPLETION_CAP",
+            "reasoning_output_reservation": "WITHIN_COMPLETION_CAP",
         }, sort_keys=True),
         encoding="utf-8",
     )
@@ -3103,7 +3138,10 @@ def test_real_runner_collects_live_bindings_without_secret_lookup(
         evidence_version=1,
         evidence_date="2026-09-02",
         route_fingerprint=fingerprint,
-        proved_fields=("context_window_tokens", "max_output_tokens"),
+        proved_fields=(
+            "context_window_tokens", "max_output_tokens",
+            "reasoning_token_accounting", "reasoning_output_reservation",
+        ),
         provenance_available=True,
     )
     registry = RouteCapabilityRegistryV1.create(
@@ -3502,7 +3540,66 @@ def test_completion_rejects_capacity_receipt_one_to_one_drift(
                     "verification_receipt_sha256"
                 ],
             }, terminal_verification=_terminal(),
+            capacity_admission_receipts=_capacity_receipts(
+                store, execution_id, ledger,
+            ),
         )
+    assert caught.value.reason_code == (
+        "COMPLETION_CAPACITY_ADMISSION_PROVENANCE_INVALID"
+    )
+
+
+@pytest.mark.parametrize(
+    "field",
+    (
+        "global_physical_attempt_ordinal",
+        "logical_capacity_envelope_sha256",
+        "route_capability_snapshot_sha256",
+        "recovery_prompt_delta_sha256",
+    ),
+)
+def test_completion_rejects_resealed_attempt_identity_forgery(
+    tmp_path: Path, field: str,
+) -> None:
+    store = _store(tmp_path)
+    execution_id = f"completion-attempt-forgery-{field}"
+    permission, approval, nonce = _authorize_offline(store, execution_id)
+    _dispatch_and_close(store, execution_id)
+    ledger = store.load_ledger(execution_id)
+    receipts = _capacity_receipts(store, execution_id, ledger)
+    body = dict(ledger)
+    body.pop("ledger_sha256")
+    attempts = [dict(item) for item in body["attempts"]]
+    attempts[0][field] = (
+        999 if field == "global_physical_attempt_ordinal" else "f" * 64
+    )
+    body["attempts"] = attempts
+    forged = {**body, "ledger_sha256": domain_sha256(
+        "novel-flywheel-full-short-dispatch-ledger-v1", body,
+    )}
+
+    with pytest.raises(FullShortExecutionBoundaryError) as caught:
+        build_full_short_completion_receipt_v1(
+            execution_id=execution_id,
+            policy=_policy(store),
+            permission_sha256=permission["permission_sha256"],
+            signed_approval_sha256=approval["signed_approval_sha256"],
+            nonce_sha256=nonce["nonce_sha256"],
+            ledger=forged,
+            final_bindings={
+                "manuscript_sha256": "4" * 64,
+                "chapter_sha256": "5" * 64,
+                "canon_sha256": "6" * 64,
+                "story_state_sha256": "7" * 64,
+                "quality_checkpoint_sha256": "8" * 64,
+                "terminal_verification_sha256": _terminal()[
+                    "verification_receipt_sha256"
+                ],
+            },
+            terminal_verification=_terminal(),
+            capacity_admission_receipts=receipts,
+        )
+
     assert caught.value.reason_code == (
         "COMPLETION_CAPACITY_ADMISSION_PROVENANCE_INVALID"
     )

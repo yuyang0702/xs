@@ -542,7 +542,8 @@ MASTER_CAPACITY_FAULT_SCENARIOS_V3 = (
 def _allowed_v3_scenario(scenario_id: str) -> dict[str, object]:
     payload: dict[str, object] = {
         "scenario_id": scenario_id,
-        "classification": "ALLOWED_BY_POLICY",
+        "classification": "POLICY_ASSERTION_COVERED_BY_INTEGRATION_TEST",
+        "execution_mode": "STATIC_POLICY_ASSERTION",
         "failure_id": None,
         "dispatch_attempt_count": 0,
         "dispatch_token_receipt_count": 0,
@@ -657,7 +658,10 @@ def run_capacity_fault_campaign_v3(artifact_dir: Path) -> dict[str, object]:
         "master_enumerated_scenario_count": 20,
         "registered_capacity_failure_count": len(CAPACITY_FAILURE_IDS_V3),
         "registered_capacity_failure_coverage": "100_PERCENT",
-        "scenario_coverage": "100_PERCENT",
+        "scenario_coverage": "18_INJECTED_PLUS_2_POLICY_ASSERTIONS",
+        "injected_fault_scenario_count": 18,
+        "policy_assertion_scenario_count": 2,
+        "v3_capacity_fault_injection_coverage": "90_PERCENT",
         "coverage_kind": "REGISTERED_FAILURE_ADAPTER_INJECTION",
         "production_observer_behavior_coverage_claimed": False,
         "production_shaped_integration_tests": [

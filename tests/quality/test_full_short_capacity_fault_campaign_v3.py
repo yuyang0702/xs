@@ -58,6 +58,10 @@ def test_v3_campaign_covers_all_registered_failures_and_master_scenarios(
         "REGISTERED_FAILURE_ADAPTER_INJECTION"
     )
     assert report["production_observer_behavior_coverage_claimed"] is False
+    assert report["scenario_coverage"] == (
+        "18_INJECTED_PLUS_2_POLICY_ASSERTIONS"
+    )
+    assert report["v3_capacity_fault_injection_coverage"] == "90_PERCENT"
 
 
 def test_unused_unknown_and_legal_recovery_delta_are_not_faults(
@@ -66,7 +70,8 @@ def test_unused_unknown_and_legal_recovery_delta_are_not_faults(
     report = CAMPAIGN.run_capacity_fault_campaign_v3(tmp_path)
     allowed = {
         item["scenario_id"]: item for item in report["results"]
-        if item["classification"] == "ALLOWED_BY_POLICY"
+        if item["classification"]
+        == "POLICY_ASSERTION_COVERED_BY_INTEGRATION_TEST"
     }
 
     assert set(allowed) == {

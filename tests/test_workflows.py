@@ -2443,6 +2443,26 @@ class ExplicitPrimaryGateway:
 def make_polish_recovery_service(tmp_path, gateway, run_id="polish-recovery"):
     db = Database(tmp_path / "app.db")
     db.migrate()
+    for provider_id in ("primary", "backup"):
+        db.save_provider(
+            provider_id=provider_id,
+            name=provider_id,
+            protocol="anthropic",
+            base_url=f"https://{provider_id}.unit.test/v1",
+            auth_type="x-api-key",
+            timeout_seconds=30,
+            extra_headers={},
+        )
+    db.save_model(
+        model_id="primary-model", provider_id="primary",
+        display_name="Primary", model_name="primary-model",
+        context_window=32_768, max_output_tokens=8_192,
+    )
+    db.save_model(
+        model_id="backup-model", provider_id="backup",
+        display_name="Backup", model_name="backup-model",
+        context_window=32_768, max_output_tokens=8_192,
+    )
     db.save_role_binding("polish", "primary", "primary-model", "backup", "backup-model")
     store = ProjectStore(db, tmp_path / "workspace")
     project = store.create(ProjectCreate(

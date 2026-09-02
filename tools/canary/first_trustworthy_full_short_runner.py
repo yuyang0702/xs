@@ -188,13 +188,61 @@ def _load_route_capability_registry_v1(
         raise ValueError("route capability registry document invalid")
     registry = RouteCapabilityRegistryV1.from_document(document)
     repo_root = repo.resolve(strict=True)
+
+    def resolve_locator(value: Any, fragment: str) -> Any:
+        if not fragment:
+            return value
+        current = value
+        for raw_part in fragment.lstrip("/").split("/"):
+            part = raw_part.replace("~1", "/").replace("~0", "~")
+            if isinstance(current, dict) and part in current:
+                current = current[part]
+            elif isinstance(current, list) and part.isdigit():
+                index = int(part)
+                if index >= len(current):
+                    raise ValueError(
+                        "route capability evidence locator missing"
+                    )
+                current = current[index]
+            else:
+                raise ValueError("route capability evidence locator missing")
+        return current
+
+    def contains_exact_field(value: Any, field: str, expected: Any) -> bool:
+        if isinstance(value, dict):
+            if field in value and value[field] == expected:
+                return True
+            return any(
+                contains_exact_field(item, field, expected)
+                for item in value.values()
+            )
+        if isinstance(value, list):
+            return any(
+                contains_exact_field(item, field, expected)
+                for item in value
+            )
+        return False
+
     for record in registry.records:
         if not record.capability_status.value.startswith("VERIFIED_"):
             continue
+        expected_values = {
+            "context_window_tokens": record.context_window_tokens,
+            "max_output_tokens": record.max_output_tokens,
+            "reasoning_token_accounting": (
+                record.reasoning_token_accounting
+            ),
+            "reasoning_output_reservation": (
+                record.reasoning_output_reservation
+            ),
+        }
+        semantically_proved: set[str] = set()
         for evidence in record.source_evidence:
             if not evidence.provenance_available:
                 continue
-            relative = evidence.source_locator.split("#", 1)[0]
+            locator_parts = evidence.source_locator.split("#", 1)
+            relative = locator_parts[0]
+            fragment = locator_parts[1] if len(locator_parts) == 2 else ""
             source = (repo_root / relative).resolve(strict=False)
             try:
                 source.relative_to(repo_root)
@@ -207,6 +255,27 @@ def _load_route_capability_registry_v1(
                 or _sha256(source) != evidence.source_evidence_sha256
             ):
                 raise ValueError("route capability evidence hash mismatch")
+            try:
+                source_document = json.loads(
+                    source.read_text(encoding="utf-8")
+                )
+            except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+                raise ValueError(
+                    "verified route capability evidence must be JSON"
+                ) from exc
+            located = resolve_locator(source_document, fragment)
+            for field in evidence.proved_fields:
+                if (
+                    field in expected_values
+                    and contains_exact_field(
+                        located, field, expected_values[field]
+                    )
+                ):
+                    semantically_proved.add(field)
+        if semantically_proved != set(expected_values):
+            raise ValueError(
+                "verified route capability evidence values not proven"
+            )
     return registry
 
 
@@ -503,15 +572,19 @@ def collect_live_bindings(
     destinations: set[str] = set()
     max_per_call = 0
     capability_registry = _load_route_capability_registry_v1(repo)
-    selected_routes = {
-        (
+    selected_route_output_caps: dict[tuple[str, str], int] = {}
+    for item in logical_stage_plan:
+        route_key = (
             str(item["role"]),
             "fallback"
             if item["route_lane"] == "configured_fallback"
             else str(item["route_lane"]),
         )
-        for item in logical_stage_plan
-    }
+        selected_route_output_caps[route_key] = max(
+            selected_route_output_caps.get(route_key, 0),
+            int(item["requested_output_tokens"]),
+        )
+    selected_routes = set(selected_route_output_caps)
     for role in FULL_SHORT_BOUND_ROLES:
         binding = db.get_role_binding(role) or {}
         for lane in ("primary", "fallback"):
@@ -630,6 +703,10 @@ def collect_live_bindings(
             if max_output is not None and max_output <= 0:
                 raise ValueError("runtime stage output cap is unavailable")
             if route_selected and max_output is not None:
+                if selected_route_output_caps[(role, lane)] > max_output:
+                    raise CapacityAdmissionFailureV1(
+                        CapacityFailureCode.OUTPUT_RESERVE_UNSATISFIED
+                    )
                 max_per_call = max(max_per_call, max_output)
             records.append({
                 "role": role, "lane": lane,
@@ -1540,7 +1617,7 @@ async def _execute_full_short_control_plane_with_capability(
             )
         try:
             elapsed_seconds = _completion_elapsed_recheck(policy, ledger)
-            store.verify_completion_capacity_receipts(
+            capacity_admission_receipts = store.verify_completion_capacity_receipts(
                 execution_id=execution_id, policy=policy, ledger=ledger,
             )
             nonce = store.load_nonce(execution_id)
@@ -1571,6 +1648,7 @@ async def _execute_full_short_control_plane_with_capability(
                     ),
                 },
                 terminal_verification=terminal,
+                capacity_admission_receipts=capacity_admission_receipts,
             )
         except Exception as exc:
             closure_state["terminal_failure"] = _safe_failure_metadata(
