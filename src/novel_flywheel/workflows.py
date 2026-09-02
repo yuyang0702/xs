@@ -29703,20 +29703,12 @@ class WorkflowService:
                     **context_packet.metrics,
                     "output_reserve_tokens": route_output_reserve,
                 })
-            context_window = (
-                self._route_safe_context_window(
-                    gateway_role,
-                    prefer_configured_fallback=prefer_configured_fallback,
-                    include_configured_fallback=(
-                        route_capacity_guard
-                        and not prefer_configured_fallback
-                        and not primary_only
-                    ),
-                )
-                if route_capacity_guard else
-                self._provider_context_window(
-                    gateway_role, prefer_configured_fallback,
-                )
+            context_window = self._route_safe_context_window(
+                gateway_role,
+                prefer_configured_fallback=prefer_configured_fallback,
+                include_configured_fallback=(
+                    not prefer_configured_fallback and not primary_only
+                ),
             )
             capacity_plan_head_sha256: str | None = None
 
