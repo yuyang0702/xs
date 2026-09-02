@@ -4,6 +4,7 @@ import json
 import hashlib
 import os
 from datetime import datetime, timedelta, timezone
+from difflib import SequenceMatcher
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -453,6 +454,37 @@ def test_dry_run_failure_projection_is_hash_only() -> None:
     assert len(projection["failure_sha256"]) == 64
     assert secret not in json.dumps(projection)
     assert "safe_message" not in projection
+
+
+def test_private_dry_run_oracle_distinguishes_semantic_subwindows() -> None:
+    from tools.canary.first_trustworthy_full_short_dry_run import (
+        _PrivateDryRunOracle,
+    )
+
+    def prompt(task_id: str, *, exit_requirement: str = "close scope") -> str:
+        contract = json.dumps({
+            "task_id": task_id,
+            "target_han": 600,
+            "exit_requirement": exit_requirement,
+        })
+        return f"CURRENT_TASK_CONTRACT:\n{contract}\n\n"
+
+    first = _PrivateDryRunOracle._draft(prompt("draft-short-segment-02/sub-1"))
+    replay = _PrivateDryRunOracle._draft(prompt("draft-short-segment-02/sub-1"))
+    sibling = _PrivateDryRunOracle._draft(prompt("draft-short-segment-02/sub-2"))
+    corrected = _PrivateDryRunOracle._draft(prompt(
+        "draft-short-segment-02/sub-1",
+        exit_requirement="close scope and correct the sealed finding",
+    ))
+
+    assert first == replay
+    assert first != sibling
+    assert first != corrected
+    first_paragraph = first.split("\n\n", 1)[0]
+    sibling_paragraph = sibling.split("\n\n", 1)[0]
+    corrected_paragraph = corrected.split("\n\n", 1)[0]
+    assert SequenceMatcher(None, first_paragraph, sibling_paragraph).ratio() < 0.92
+    assert SequenceMatcher(None, first_paragraph, corrected_paragraph).ratio() < 0.92
 
 
 def test_pre_contract_final_artifact_rejection_needs_no_contract_capture() -> None:

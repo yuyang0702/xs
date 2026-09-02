@@ -181,8 +181,20 @@ class _PrivateDryRunOracle:
             user.split("CURRENT_TASK_CONTRACT:\n", 1)[1].split("\n\n", 1)[0]
         )
         target = max(600, int(contract.get("target_han") or 600))
+        task_id = str(contract.get("task_id") or "segment-01")
+        contract_identity = json.dumps(
+            contract, ensure_ascii=False, sort_keys=True, separators=(",", ":"),
+        )
+        contract_digest = hashlib.sha256(
+            contract_identity.encode("utf-8")
+        ).hexdigest()
+        task_variant = int(contract_digest[:8], 16)
+        signature_alphabet = "零一二三四五六七八九甲乙丙丁戊己"
+        task_signature = "".join(
+            signature_alphabet[int(value, 16)] for value in contract_digest
+        )
         segment_match = re.search(
-            r"segment-(\d+)", str(contract.get("task_id") or ""), re.IGNORECASE,
+            r"segment-(\d+)", task_id, re.IGNORECASE,
         )
         segment = int(segment_match.group(1)) if segment_match else 1
         actors = ("调查员", "档案员", "见证人", "审核员", "联络人", "保管员")
@@ -199,13 +211,25 @@ class _PrivateDryRunOracle:
         paragraphs: list[str] = []
         turn = 0
         while len("".join(paragraphs)) < target:
-            actor = actors[(segment + turn) % len(actors)]
-            partner = actors[(segment + turn + 2) % len(actors)]
-            place = places[(segment * 3 + turn) % len(places)]
-            action = actions[(segment + turn * 2) % len(actions)]
+            actor = actors[(segment + task_variant + turn) % len(actors)]
+            partner = actors[
+                (segment + task_variant + turn + 2) % len(actors)
+            ]
+            place = places[
+                (segment * 3 + task_variant + turn) % len(places)
+            ]
+            action = actions[
+                (segment + task_variant + turn * 2) % len(actions)
+            ]
+            signature_offset = turn % len(task_signature)
+            rotated_signature = (
+                task_signature[signature_offset:]
+                + task_signature[:signature_offset]
+            )
             paragraphs.append(
-                themes[(segment - 1) % len(themes)]
+                themes[(segment - 1 + task_variant) % len(themes)]
                 + f"第{segment}段第{turn + 1}次核查发生在{place}。"
+                + f"封签暗纹依次呈现{rotated_signature}。"
                 f"{actor}围绕当前正式事件{action}，"
                 f"在{partner}提出反证后重新排列时间、证物与知情边界；行动得到可复核结果，"
                 "人物关系由戒备推进为有限合作，当前因果状态完整交给下一事件。"
