@@ -1837,7 +1837,7 @@ async def _run(
         # different already-sealed Planning logical stage.  No stage receives
         # a third attempt and no unused global retry topology is authorized.
         hard_max_dispatches = (
-            expected_calls + additional_dispatch_hard_cap
+            expected_calls + max(1, additional_dispatch_hard_cap)
         )
         total_cap = (
             discovered_plan_total_cap
