@@ -602,7 +602,13 @@ def build_stage_capacity_plan_v1(
     )
     protected_content_transformed = any(
         layer.classification in protected_classes
-        and layer.action in {"COMPACT", "SHED"}
+        and (
+            layer.action in {"COMPACT", "SHED"}
+            or layer.pre_transform_characters
+            != layer.post_transform_characters
+            or layer.pre_transform_tokens != layer.post_transform_tokens
+            or layer.transform_policy_id != "identity.v1"
+        )
         for layer in projections
     )
     if (
@@ -742,7 +748,13 @@ def enforce_stage_capacity_plan_v1(
                 CapacityLayerClass.HARD_PROTECTED,
                 CapacityLayerClass.SOFT_PROTECTED,
             }
-            and layer.action in {"COMPACT", "SHED"}
+            and (
+                layer.action in {"COMPACT", "SHED"}
+                or layer.pre_transform_characters
+                != layer.post_transform_characters
+                or layer.pre_transform_tokens != layer.post_transform_tokens
+                or layer.transform_policy_id != "identity.v1"
+            )
             for layer in plan.layer_projections
         )
         or any(

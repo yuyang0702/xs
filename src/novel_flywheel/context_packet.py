@@ -242,6 +242,7 @@ def build_stage_context_packet(
     relevant_context: str,
     global_skeleton: str,
     advisory: str = "",
+    advisory_source: str | None = None,
     output_reserve: int = 0,
     advisory_max_chars: int = 4000,
     advisory_shedding_occurred: bool = False,
@@ -260,7 +261,10 @@ def build_stage_context_packet(
     )
     if not rules:
         raise ValueError("context packet contains no mandatory narrative rules")
-    filtered_advisory = _advisory_without_mandatory_rules(advisory, rules)
+    source_advisory = advisory if advisory_source is None else advisory_source
+    filtered_advisory = _advisory_without_mandatory_rules(
+        source_advisory, rules
+    )
     normalized_filtered_advisory = str(filtered_advisory or "").strip()
     advisory_excerpt = _advisory_excerpt(filtered_advisory, advisory_max_chars)
     advisory_truncation_occurred = bool(
@@ -293,8 +297,10 @@ def build_stage_context_packet(
         "total_input_tokens": sum(item["estimated_tokens"] for item in layers.values()),
         "output_reserve_tokens": max(0, int(output_reserve or 0)),
         "removed_duplicate_rules": duplicate_count,
-        "filtered_advisory_characters": max(0, len(str(advisory or "")) - len(advisory_excerpt)),
-        "advisory_source_characters": len(str(advisory or "")),
+        "filtered_advisory_characters": max(
+            0, len(str(source_advisory or "")) - len(advisory_excerpt)
+        ),
+        "advisory_source_characters": len(str(source_advisory or "")),
         "advisory_truncation_occurred": advisory_truncation_occurred,
         "advisory_shedding_occurred": effective_advisory_shedding,
         "advisory_shedding_reason": (
@@ -317,12 +323,19 @@ def build_stage_context_packet(
             "schema": "AdvisoryCompactionMetricsV1",
             "source_layer_id": "advisory",
             "policy_id": _ADVISORY_COMPACTION_POLICY_ID,
-            "source_sha256": _source_hash(str(advisory or "")),
-            "source_characters": len(str(advisory or "")),
+            "source_sha256": _source_hash(str(source_advisory or "")),
+            "source_characters": len(str(source_advisory or "")),
+            "source_tokens": estimate_input_tokens(
+                str(source_advisory or "")
+            ),
             "filtered_sha256": _source_hash(normalized_filtered_advisory),
             "filtered_characters": len(normalized_filtered_advisory),
+            "filtered_tokens": estimate_input_tokens(
+                normalized_filtered_advisory
+            ),
             "rendered_sha256": _source_hash(advisory_excerpt),
             "rendered_characters": len(advisory_excerpt),
+            "rendered_tokens": estimate_input_tokens(advisory_excerpt),
             "source_paragraph_count": _paragraph_count(
                 normalized_filtered_advisory
             ),
@@ -385,14 +398,21 @@ def advisory_provenance(packet: StageContextPacket) -> dict[str, Any]:
             "source_sha256", _source_hash("")
         ),
         "source_advisory_chars": int(compaction.get("source_characters", 0)),
+        "source_advisory_tokens": int(compaction.get("source_tokens", 0)),
         "filtered_advisory_sha256": compaction.get(
             "filtered_sha256", _source_hash("")
         ),
         "filtered_advisory_chars": int(
             compaction.get("filtered_characters", 0)
         ),
+        "filtered_advisory_tokens": int(
+            compaction.get("filtered_tokens", 0)
+        ),
         "final_rendered_advisory_sha256": actual_rendered_sha256,
         "final_rendered_advisory_chars": len(packet.advisory),
+        "final_rendered_advisory_tokens": estimate_input_tokens(
+            packet.advisory
+        ),
         "source_paragraph_count": int(
             compaction.get("source_paragraph_count", 0)
         ),

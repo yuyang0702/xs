@@ -12061,7 +12061,7 @@ async def test_bounded_protocol_stage_sheds_only_advisory_context_before_split(
     )
     db.save_model(
         model_id="planning-model", provider_id="provider", display_name="Planning",
-        model_name="planning-model", context_window=32_768,
+        model_name="planning-model", context_window=3_220,
     )
     db.save_role_binding("planning", "provider", "planning-model", None, None)
     store = ProjectStore(db, tmp_path / "workspace")
@@ -12087,13 +12087,6 @@ async def test_bounded_protocol_stage_sheds_only_advisory_context_before_split(
     run_path = project.path / "runs" / "advisory-shed"
     (run_path / "outputs").mkdir(parents=True)
     (run_path / "receipts").mkdir()
-    pressures = iter(["compact", "full"])
-
-    monkeypatch.setattr(
-        "novel_flywheel.workflows.classify_input_pressure",
-        lambda **_kwargs: next(pressures),
-    )
-
     result = await service._stage(
         "advisory-shed", run_path, project, "planning",
         "MUST preserve every confirmed story invariant.",
@@ -12114,11 +12107,26 @@ async def test_bounded_protocol_stage_sheds_only_advisory_context_before_split(
     assert receipt["model_system_sha256"] == hashlib.sha256(
         gateway.calls[0]["system"].encode("utf-8")
     ).hexdigest()
+    capacity_receipts = [
+        json.loads(path.read_text(encoding="utf-8"))
+        for path in (run_path / "outputs" / "capacity-plans").glob("*.json")
+    ]
+    shed_layer = next(
+        layer
+        for capacity_receipt in capacity_receipts
+        for layer in capacity_receipt["plan"]["layer_projections"]
+        if layer["layer_id"] == "advisory" and layer["action"] == "SHED"
+    )
+    assert shed_layer["pre_transform_characters"] > 0
+    assert shed_layer["pre_transform_tokens"] > 0
+    assert shed_layer["post_transform_characters"] == 0
+    assert shed_layer["post_transform_tokens"] == 0
+    assert shed_layer["source_sha256"] != shed_layer["rendered_sha256"]
     event = next(
         item for item in db.list_run_events("advisory-shed")
         if item["event_type"] == "stage_advisory_context_shed"
     )
-    assert event["metadata"]["remaining_pressure"] == "full"
+    assert event["metadata"]["remaining_pressure"] == "PASS"
     assert event["metadata"]["after_required_tokens"] <= (
         event["metadata"]["before_required_tokens"]
     )

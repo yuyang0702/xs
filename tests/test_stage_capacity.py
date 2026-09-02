@@ -458,6 +458,37 @@ def test_registry_rejects_unregistered_or_protected_transform(
     assert plan.denial_failure_id is CapacityFailureCode.POLICY_VIOLATION
 
 
+@pytest.mark.parametrize(
+    ("pre_characters", "post_characters", "pre_tokens", "post_tokens"),
+    ((5000, 1, 1250, 1), (5000, 5000, 1250, 1)),
+)
+def test_protected_layers_cannot_hide_transform_as_preserve(
+    pre_characters: int,
+    post_characters: int,
+    pre_tokens: int,
+    post_tokens: int,
+) -> None:
+    protected = CapacityLayerProjectionV1.create(
+        layer_id="authority",
+        classification=CapacityLayerClass.HARD_PROTECTED,
+        owner="review",
+        source_sha256="a" * 64,
+        semantic_scope="complete",
+        coverage=("authority",),
+        pre_transform_characters=pre_characters,
+        pre_transform_tokens=pre_tokens,
+        post_transform_characters=post_characters,
+        post_transform_tokens=post_tokens,
+        transform_policy_id="identity.v1",
+        action="PRESERVE",
+        rendered_sha256="b" * 64,
+    )
+    plan = _plan(layer_projections=(protected,))
+
+    assert plan.admission_status is AdmissionStatus.DENIED
+    assert plan.denial_failure_id is CapacityFailureCode.POLICY_VIOLATION
+
+
 def test_stage_specific_segmentation_and_recovery_are_registry_bound() -> None:
     policies = DEFAULT_STAGE_CAPACITY_POLICY_REGISTRY_V1.policies
     assert len({

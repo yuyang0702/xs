@@ -124,7 +124,9 @@ def _route_context_capability_v1(model: dict[str, Any]) -> tuple[int, str]:
     )
     if manifest is None:
         if type(configured_context) is not int or configured_context <= 0:
-            raise ValueError("runtime route context limit is unavailable")
+            raise CapacityAdmissionFailureV1(
+                CapacityFailureCode.CONTEXT_LIMIT_UNAVAILABLE
+            )
         return configured_context, "model_configuration"
     expected_manifest = {
         "schema": _OFFLINE_CONTEXT_MANIFEST_SCHEMA_V1,
@@ -142,8 +144,8 @@ def _route_context_capability_v1(model: dict[str, Any]) -> tuple[int, str]:
         or type(manifest) is not dict
         or manifest != expected_manifest
     ):
-        raise ValueError(
-            "offline deterministic route context manifest is invalid"
+        raise CapacityAdmissionFailureV1(
+            CapacityFailureCode.CONTEXT_LIMIT_INCONSISTENT
         )
     return configured_context, "offline_deterministic_gateway_manifest"
 FULL_SHORT_REQUIRED_EXECUTION_ROLES = (

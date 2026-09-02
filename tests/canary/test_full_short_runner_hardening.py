@@ -17,6 +17,7 @@ import pytest
 from novel_flywheel.db import Database
 from novel_flywheel.projects import ProjectCreate, ProjectStore
 from novel_flywheel.secrets import MemorySecretStore
+from novel_flywheel.stage_capacity import CapacityAdmissionFailureV1
 from novel_flywheel.skills import SkillScanner
 from novel_flywheel.story_state import StoryStateStore
 from tools.canary import first_trustworthy_full_short_dry_run as dry_run
@@ -680,10 +681,7 @@ def test_live_bindings_reject_missing_route_context_limit(
         max_output_tokens=None,
     )
     monkeypatch.setattr(runner, "_git", lambda *_args: "")
-    with pytest.raises(
-        ValueError,
-        match="runtime route context limit is unavailable",
-    ):
+    with pytest.raises(CapacityAdmissionFailureV1) as caught:
         runner.collect_live_bindings(
             repo=repo,
             data_dir=data,
@@ -692,6 +690,7 @@ def test_live_bindings_reject_missing_route_context_limit(
             logical_stage_plan=_logical_plan(),
             store_root=tmp_path / "control-store",
         )
+    assert caught.value.failure_id == "capacity.context_limit_unavailable"
 
 
 def test_completion_elapsed_is_rechecked_after_last_dispatch() -> None:

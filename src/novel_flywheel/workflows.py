@@ -30718,7 +30718,7 @@ class WorkflowService:
                         "global_skeleton"
                     ],
                     "advisory": advisory_provenance(context_packet)[
-                        "final_rendered_advisory_sha256"
+                        "source_advisory_sha256"
                     ],
                 }
                 result: list[CapacityLayerProjectionV1] = []
@@ -30744,6 +30744,10 @@ class WorkflowService:
                         "characters": int(metrics["characters"]),
                         "estimated_tokens": int(metrics["estimated_tokens"]),
                     })
+                    advisory_receipt = (
+                        advisory_provenance(context_packet)
+                        if layer_id == "advisory" else None
+                    )
                     result.append(CapacityLayerProjectionV1.create(
                         layer_id=layer_id,
                         classification=classifications[layer_id],
@@ -30754,8 +30758,16 @@ class WorkflowService:
                             if layer_id == "advisory" else "complete"
                         ),
                         coverage=(layer_id,),
-                        pre_transform_characters=int(metrics["characters"]),
-                        pre_transform_tokens=int(metrics["estimated_tokens"]),
+                        pre_transform_characters=int(
+                            advisory_receipt["source_advisory_chars"]
+                            if advisory_receipt is not None
+                            else metrics["characters"]
+                        ),
+                        pre_transform_tokens=int(
+                            advisory_receipt["source_advisory_tokens"]
+                            if advisory_receipt is not None
+                            else metrics["estimated_tokens"]
+                        ),
                         post_transform_characters=int(metrics["characters"]),
                         post_transform_tokens=int(metrics["estimated_tokens"]),
                         transform_policy_id=(
@@ -31047,6 +31059,7 @@ class WorkflowService:
                             )
                         ),
                         advisory="",
+                        advisory_source=advisory,
                         output_reserve=preliminary_route_reserve,
                         advisory_max_chars=0,
                         advisory_shedding_occurred=True,

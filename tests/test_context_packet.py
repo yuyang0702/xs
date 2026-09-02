@@ -253,6 +253,34 @@ def test_oversized_single_advisory_paragraph_is_omitted_not_sliced() -> None:
     assert packet.metrics["advisory_compaction"]["partial_paragraph_count"] == 0
 
 
+def test_explicit_advisory_shedding_preserves_source_identity_and_sizes() -> None:
+    advisory = "第一段建议。\n\n第二段建议。"
+    packet = build_stage_context_packet(
+        stage="review",
+        current_contract={"task_id": "review-shed-01"},
+        constraints="必须保持确认结局。",
+        skill_prompt="",
+        explicit_invariants=None,
+        relevant_context="受保护的当前故事正文。",
+        global_skeleton="受保护的全局故事骨架。",
+        advisory="",
+        advisory_source=advisory,
+        advisory_max_chars=0,
+        advisory_shedding_occurred=True,
+    )
+
+    receipt = advisory_provenance(packet)
+    assert packet.advisory == ""
+    assert receipt["source_advisory_sha256"] == hashlib.sha256(
+        advisory.encode("utf-8")
+    ).hexdigest()
+    assert receipt["source_advisory_chars"] == len(advisory)
+    assert receipt["source_advisory_tokens"] > 0
+    assert receipt["final_rendered_advisory_chars"] == 0
+    assert receipt["final_rendered_advisory_tokens"] == 0
+    assert receipt["advisory_shedding_occurred"] is True
+
+
 def test_only_advisory_is_compacted_and_receipt_is_hash_only_verifiable() -> None:
     relevant_context = "受保护正文" * 200
     global_skeleton = "受保护骨架" * 200
