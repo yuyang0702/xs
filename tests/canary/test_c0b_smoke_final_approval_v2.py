@@ -135,9 +135,11 @@ def test_complete_validate_only_receipt_is_exact_and_inert(materialized) -> None
 def test_launcher_validate_only_accepts_candidate_but_real_execution_does_not(materialized) -> None:
     plan = materialized["plan"]
     paths = materialized["paths"]
+    validation_time = datetime(2026, 8, 16, 4, 45, tzinfo=timezone.utc)
     validated = validate_packet(
         plan_path=paths["plan"], approval_path=paths["approval_candidate"],
         cli_approved_plan_sha256=plan["plan_sha256"],
+        now=validation_time,
     )
     assert validated["approval_document_kind"] == "final_approval_candidate"
     assert validated["execution_authorized"] is False
@@ -146,6 +148,7 @@ def test_launcher_validate_only_accepts_candidate_but_real_execution_does_not(ma
             plan_path=paths["plan"], approval_path=paths["approval_candidate"],
             cli_approved_plan_sha256=plan["plan_sha256"],
             execution_requested=True,
+            now=validation_time,
         )
 
 
