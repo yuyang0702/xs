@@ -158,6 +158,7 @@ def test_candidate_and_patch_cannot_execute_or_reserve(materialized, tmp_path: P
             expected_scope=profile.approval_scope,
             expected_plan_sha256=materialized["plan"]["plan_sha256"],
             expected_launcher_sha256=materialized["plan"]["launcher_sha256"],
+            now=NOW,
         )
 
 

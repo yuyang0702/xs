@@ -251,6 +251,7 @@ def test_registered_patch_is_never_an_executable_document(signed_documents, mate
             expected_scope=profile.approval_scope,
             expected_plan_sha256=materialized["plan"]["plan_sha256"],
             expected_launcher_sha256=materialized["plan"]["launcher_sha256"],
+            now=datetime(2026, 8, 15, 13, 45, tzinfo=timezone.utc),
         )
 
 
