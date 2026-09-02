@@ -5916,6 +5916,53 @@ async def test_capacity_denied_draft_segment_splits_before_dispatch(
 
 
 @pytest.mark.asyncio
+async def test_duplicate_draft_candidate_splits_semantic_ownership(
+    tmp_path, monkeypatch,
+) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Semantic split draft", mode="short", genre="suspense",
+        premise="A duplicate candidate must shrink ownership.", target_words=1000,
+    ))
+    skill_root = tmp_path / "skills"
+    make_prompt_skills(skill_root)
+    service = WorkflowService(
+        db, store, object(), SkillGate(db, SkillScanner([skill_root])),
+    )
+    db.create_run("semantic-split", project.id, "short-story", status="running")
+    run_path = project.path / "runs" / "semantic-split"
+    (run_path / "outputs").mkdir(parents=True)
+    (run_path / "receipts").mkdir()
+    previous = "甲" * 1000
+    calls = 0
+
+    async def fake_stage(*_args, **_kwargs):
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            return previous
+        return "乙" * 500 if calls == 2 else "丙" * 500
+
+    monkeypatch.setattr(service, "_stage", fake_stage)
+    text = await service._draft_short_segment_task(
+        "semantic-split", run_path, project, "constraints", "写完本段事件",
+        suffix="-part-02", target=1000, previous_parts=[previous],
+        event_ids=["EV-00000001", "EV-00000002"],
+    )
+
+    assert text == "乙" * 500 + "\n\n" + "丙" * 500
+    assert calls == 3
+    split = next(
+        item for item in db.list_run_events("semantic-split")
+        if item["event_type"] == "draft_task_split"
+    )
+    assert split["metadata"]["reason"] == "semantic_windowing"
+    assert "duplicate_prose" in split["metadata"]["issue_codes"]
+
+
+@pytest.mark.asyncio
 async def test_normal_finish_underlength_splits_semantically(tmp_path) -> None:
     db = Database(tmp_path / "app.db")
     db.migrate()

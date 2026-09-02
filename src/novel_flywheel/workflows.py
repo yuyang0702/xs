@@ -27010,6 +27010,7 @@ class WorkflowService:
 
         reason = "output_limit"
         han_characters = 0
+        split_issue_codes: list[str] = []
         try:
             part = await self._stage(
                 run_id, run_path, project, "draft", constraints, rendered_prompt,
@@ -27076,23 +27077,39 @@ class WorkflowService:
             underlength = next((
                 finding for finding in findings if finding.get("code") == "underlength"
             ), None)
-            if any(finding.get("code") != "underlength" for finding in findings):
-                return await retry_same_scope(findings, actionable_findings)
-            if finish_reason not in {"stop", "end_turn", "completed", "complete"}:
-                return await retry_same_scope([{
-                    **underlength,
-                    "code": "unknown_terminal_underlength",
-                    "message": "供应商没有提供可确认完整结束的状态，不能验收偏短正文",
-                }])
-            # Han-count recovery is meaningful only after the response proves it
-            # contains Chinese prose. Other-language projects keep using their
-            # normal prose/quality gates instead of being split on a zero metric.
-            han_characters = int(underlength.get("han_characters") or 0)
-            if han_characters <= 0:
-                return await accept_or_retry(part)
-            if depth >= 2 or target < 800 or len(owned_event_ids) < 2:
-                return await retry_same_scope(findings)
-            reason = "normal_finish_underlength"
+            non_length_findings = [
+                finding for finding in findings
+                if finding.get("code") != "underlength"
+            ]
+            if non_length_findings:
+                if depth < 2 and target >= 800 and len(owned_event_ids) >= 2:
+                    reason = "semantic_windowing"
+                    split_issue_codes = [
+                        str(finding.get("code") or "semantic_validation")
+                        for finding in non_length_findings
+                    ]
+                else:
+                    return await retry_same_scope(
+                        findings, actionable_findings
+                    )
+            else:
+                if finish_reason not in {
+                    "stop", "end_turn", "completed", "complete"
+                }:
+                    return await retry_same_scope([{
+                        **underlength,
+                        "code": "unknown_terminal_underlength",
+                        "message": "供应商没有提供可确认完整结束的状态，不能验收偏短正文",
+                    }])
+                # Han-count recovery is meaningful only after the response proves it
+                # contains Chinese prose. Other-language projects keep using their
+                # normal prose/quality gates instead of being split on a zero metric.
+                han_characters = int(underlength.get("han_characters") or 0)
+                if han_characters <= 0:
+                    return await accept_or_retry(part)
+                if depth >= 2 or target < 800 or len(owned_event_ids) < 2:
+                    return await retry_same_scope(findings)
+                reason = "normal_finish_underlength"
         split_at = max(1, math.ceil(len(owned_event_ids) / 2))
         first_event_ids = owned_event_ids[:split_at]
         second_event_ids = owned_event_ids[split_at:]
@@ -27130,7 +27147,11 @@ class WorkflowService:
                 else (
                     "正文子任务超出安全上下文容量，已在调用模型前按事件所有权自动拆分"
                     if reason == "capacity_windowing"
-                    else "单次正文子任务无法完整返回，已按本段事件和因果推进自动拆分"
+                    else (
+                        "正文子任务未通过叶子语义检查，已按事件所有权缩小重建范围"
+                        if reason == "semantic_windowing"
+                        else "单次正文子任务无法完整返回，已按本段事件和因果推进自动拆分"
+                    )
                 )
             ),
             stage="draft", metadata={
@@ -27138,13 +27159,17 @@ class WorkflowService:
                 "target_range": list(target_bounds(target)),
                 "subtasks": 2, "reason": reason,
                 "han_characters": han_characters,
-                "issue_codes": [
-                    "underlength" if reason == "normal_finish_underlength"
-                    else (
-                        "capacity_windowing"
-                        if reason == "capacity_windowing" else "output_limit"
-                    )
-                ],
+                "issue_codes": (
+                    split_issue_codes
+                    if reason == "semantic_windowing"
+                    else [
+                        "underlength" if reason == "normal_finish_underlength"
+                        else (
+                            "capacity_windowing"
+                            if reason == "capacity_windowing" else "output_limit"
+                        )
+                    ]
+                ),
                 "event_ids": owned_event_ids,
             },
         )
