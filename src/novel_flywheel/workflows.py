@@ -30648,14 +30648,6 @@ class WorkflowService:
                     sort_keys=True,
                     separators=(",", ":"),
                 )
-
-            def capacity_policy_stage(contract_name: str) -> str:
-                return (
-                    contract_name
-                    if contract_name
-                    in DEFAULT_STAGE_CAPACITY_POLICY_REGISTRY_V1.policies
-                    else stage
-                )
                 schema_sha = getattr(contract, "schema_sha256", None)
                 return (
                     str(getattr(contract, "name", None) or node_key),
@@ -30666,6 +30658,14 @@ class WorkflowService:
                         else hashlib.sha256(schema_bytes.encode("utf-8")).hexdigest()
                     ),
                     estimate_input_tokens(schema_bytes),
+                )
+
+            def capacity_policy_stage(contract_name: str) -> str:
+                return (
+                    contract_name
+                    if contract_name
+                    in DEFAULT_STAGE_CAPACITY_POLICY_REGISTRY_V1.policies
+                    else stage
                 )
 
             def capacity_layers(
