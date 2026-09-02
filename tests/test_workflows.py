@@ -3394,7 +3394,7 @@ async def test_short_flywheel_archives_all_stages_and_formal_story(tmp_path) -> 
     assert result["status"] == "completed"
     assert gateway.roles == [
         "planning", "planning", "planning", "review", "draft", "review",
-        "review", "review", "review", "polish", "review", "review",
+        "review", "review", "reader_review", "polish", "review", "review",
         "final_review", "maintenance",
     ]
     assert (project.path / "manuscript" / "story.md").read_text(encoding="utf-8") == "# Final Story\nHuman, polished prose."
@@ -3434,8 +3434,8 @@ async def test_short_flywheel_archives_all_stages_and_formal_story(tmp_path) -> 
     assert any(item["event_type"] == "quality_gate" and item["severity"] == "success"
                for item in events)
     escalation = next(item for item in events if item["event_type"] == "quality_escalated")
-    assert escalation["metadata"]["model_role"] == "review"
-    assert escalation["metadata"]["fallback_used"] is True
+    assert escalation["metadata"]["model_role"] == "reader_review"
+    assert escalation["metadata"]["fallback_used"] is False
     completed = next(item for item in events if item["event_type"] == "stage_completed")
     assert completed["metadata"]["model_name"].startswith("fake-")
     assert completed["metadata"]["skills"]
