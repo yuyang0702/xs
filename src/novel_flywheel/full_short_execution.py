@@ -554,6 +554,34 @@ def _validate_capacity_recovery_chain_v1(
         prior_by_logical_stage[logical_stage_id] = (attempt, receipt)
 
 
+def _validate_completion_physical_attempt_chain_v1(
+    *, execution_id: str, attempts: Iterable[Mapping[str, Any]],
+) -> None:
+    """Re-derive durable dispatch identity instead of trusting resealed fields."""
+
+    logical_counts: dict[str, int] = {}
+    for expected_ordinal, attempt in enumerate(attempts, 1):
+        logical_stage_id = str(attempt.get("logical_stage_id") or "")
+        logical_counts[logical_stage_id] = logical_counts.get(
+            logical_stage_id, 0
+        ) + 1
+        expected_physical_id = "physical-" + domain_sha256(
+            "novel-flywheel-full-short-physical-attempt-id-v1",
+            {
+                "execution_id": execution_id,
+                "logical_stage_id": logical_stage_id,
+                "ordinal": expected_ordinal,
+            },
+        )[:32]
+        _require(
+            attempt.get("ordinal") == expected_ordinal
+            and attempt.get("global_physical_attempt_ordinal")
+            == expected_ordinal
+            and attempt.get("physical_attempt_id") == expected_physical_id,
+            "COMPLETION_PHYSICAL_ATTEMPT_IDENTITY_INVALID",
+        )
+
+
 class FullShortExecutionBoundaryError(RuntimeError):
     def __init__(self, reason_code: str) -> None:
         self.reason_code = reason_code
@@ -2256,6 +2284,12 @@ class FullShortDurableExecutionStoreV1:
 
         validated = self._verify_store_binding(policy)
         attempts = list(ledger.get("attempts") or [])
+        _validate_completion_physical_attempt_chain_v1(
+            execution_id=execution_id, attempts=attempts,
+        )
+        self.verify_completion_capture_receipts(
+            execution_id=execution_id, ledger=ledger,
+        )
         receipts: list[dict[str, Any]] = []
         logical_attempt_counts: dict[str, int] = {}
         for attempt in attempts:
@@ -2314,6 +2348,96 @@ class FullShortDurableExecutionStoreV1:
             "COMPLETION_CAPACITY_ADMISSION_PROVENANCE_INVALID",
         )
         return tuple(receipts)
+
+    def verify_completion_capture_receipts(
+        self, *, execution_id: str, ledger: Mapping[str, Any],
+    ) -> tuple[dict[str, Any], ...]:
+        """Anchor every ledger capture hash to the immutable capture store."""
+
+        attempts = list(ledger.get("attempts") or [])
+        _validate_completion_physical_attempt_chain_v1(
+            execution_id=execution_id, attempts=attempts,
+        )
+        capture_store = ProviderResponseCaptureStoreV1(
+            repo_root=self.repo_root,
+            store_root=self.root / "provider-response-captures-v1",
+        )
+        try:
+            audited = capture_store.audit_all()
+        except Exception as exc:
+            raise FullShortExecutionBoundaryError(
+                "COMPLETION_CAPTURE_PROVENANCE_INVALID"
+            ) from exc
+        actual = [
+            item for item in audited
+            if item.get("execution_id") == execution_id
+        ]
+        expected: list[tuple[int, str, str]] = []
+        for ordinal, attempt in enumerate(attempts, 1):
+            for field, byte_domain in (
+                (
+                    "provider_protocol_capture_receipt_sha256",
+                    PROVIDER_PROTOCOL_INPUT_BYTES,
+                ),
+                (
+                    "contract_runtime_capture_receipt_sha256",
+                    CONTRACT_RUNTIME_INPUT_BYTES,
+                ),
+            ):
+                receipt_sha256 = attempt.get(field)
+                if receipt_sha256 is None:
+                    _require(
+                        not (
+                            field
+                            == "provider_protocol_capture_receipt_sha256"
+                            and attempt.get("capture_enforcement_required")
+                        ),
+                        "COMPLETION_CAPTURE_PROVENANCE_INVALID",
+                    )
+                    continue
+                _require(
+                    isinstance(receipt_sha256, str)
+                    and _HEX64.fullmatch(receipt_sha256) is not None,
+                    "COMPLETION_CAPTURE_PROVENANCE_INVALID",
+                )
+                matches = [
+                    item for item in actual
+                    if item.get("byte_domain") == byte_domain
+                    and item.get("call_id")
+                    == f"{execution_id}:{ordinal}"
+                    and item.get("ledger_receipt_sha256")
+                    == receipt_sha256
+                ]
+                _require(
+                    len(matches) == 1,
+                    "COMPLETION_CAPTURE_PROVENANCE_INVALID",
+                )
+                metadata = matches[0].get("metadata") or {}
+                _require(
+                    metadata.get("stage_id") == attempt.get("stage")
+                    and metadata.get("provider_id_sha256")
+                    == attempt.get("provider_id_sha256")
+                    and metadata.get("model_id_sha256")
+                    == attempt.get("model_id_sha256")
+                    and metadata.get("route_fingerprint")
+                    == attempt.get("route_fingerprint")
+                    and attempt.get("protocol_schema_id")
+                    == f"{metadata.get('protocol')}-wire-v1"
+                    and metadata.get("contract_name")
+                    == attempt.get("contract_name")
+                    and metadata.get("contract_version")
+                    == attempt.get("contract_version")
+                    and metadata.get("contract_schema_sha256")
+                    == attempt.get("contract_schema_sha256")
+                    and metadata.get("transport_complete") is True,
+                    "COMPLETION_CAPTURE_PROVENANCE_INVALID",
+                )
+                expected.append((ordinal, byte_domain, receipt_sha256))
+        _require(
+            len(actual) == len(expected),
+            "COMPLETION_CAPTURE_PROVENANCE_INVALID",
+        )
+        return tuple(actual)
 
     @staticmethod
     def _verify_seal(
@@ -5107,12 +5231,20 @@ def validate_full_short_dispatch_accounting_v1(
 
 def build_full_short_completion_receipt_v1(
     *, execution_id: str, policy: Mapping[str, Any],
+    durable_store: FullShortDurableExecutionStoreV1,
     permission_sha256: str, signed_approval_sha256: str, nonce_sha256: str,
     ledger: Mapping[str, Any], final_bindings: Mapping[str, str],
     terminal_verification: Mapping[str, Any],
     capacity_admission_receipts: Iterable[Mapping[str, Any]],
 ) -> dict[str, Any]:
     validated = validate_policy_v1(policy)
+    _require(
+        isinstance(durable_store, FullShortDurableExecutionStoreV1)
+        and durable_store.store_root_sha256
+        == validated["store_root_sha256"],
+        "COMPLETION_DURABLE_STORE_BINDING_INVALID",
+    )
+    persisted_ledger = durable_store.load_ledger(execution_id)
     sealed_ledger = FullShortDurableExecutionStoreV1._verify_seal(
         ledger, domain="novel-flywheel-full-short-dispatch-ledger-v1",
         field="ledger_sha256", reason="LEDGER_SHA256_MISMATCH",
@@ -5128,6 +5260,19 @@ def build_full_short_completion_receipt_v1(
     _require(sealed_ledger.get("state") == "READY_FOR_NEXT_STAGE", "LEDGER_NOT_CLOSED")
     attempts = sealed_ledger.get("attempts")
     _require(isinstance(attempts, list) and attempts, "LEDGER_HAS_NO_DISPATCH")
+    _validate_completion_physical_attempt_chain_v1(
+        execution_id=execution_id, attempts=attempts,
+    )
+    durable_capacity_receipts = (
+        durable_store.verify_completion_capacity_receipts(
+            execution_id=execution_id, policy=validated,
+            ledger=sealed_ledger,
+        )
+    )
+    _require(
+        dict(persisted_ledger) == dict(sealed_ledger),
+        "COMPLETION_LEDGER_CHAIN_MISMATCH",
+    )
     validated_capacity_receipts = tuple(
         _validate_capacity_admission_receipt_v1(
             item,
@@ -5135,6 +5280,10 @@ def build_full_short_completion_receipt_v1(
             plan_sha256=str(item.get("capacity_plan_sha256") or ""),
         )
         for item in capacity_admission_receipts
+    )
+    _require(
+        validated_capacity_receipts == durable_capacity_receipts,
+        "COMPLETION_CAPACITY_ADMISSION_PROVENANCE_INVALID",
     )
     receipts_by_plan = {
         item["capacity_plan_sha256"]: item

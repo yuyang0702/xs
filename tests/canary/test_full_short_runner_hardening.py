@@ -846,6 +846,74 @@ def test_verified_capability_rejects_hash_valid_but_wrong_semantic_value(
         runner._load_route_capability_registry_v1(repo)
 
 
+def test_verified_capability_rejects_cross_object_field_aggregation(
+    tmp_path: Path,
+) -> None:
+    repo, _data, _project_id, _db = _bound_project(tmp_path)
+    registry_path = repo / runner._ROUTE_CAPABILITY_REGISTRY_PATH_V1
+    original = RouteCapabilityRegistryV1.from_document(
+        json.loads(registry_path.read_text(encoding="utf-8"))
+    )
+    record = original.records[0]
+    expected = {
+        "context_window_tokens": record.context_window_tokens,
+        "max_output_tokens": record.max_output_tokens,
+        "reasoning_token_accounting": record.reasoning_token_accounting,
+        "reasoning_output_reservation": record.reasoning_output_reservation,
+        "route_fingerprint": record.route_fingerprint,
+        "provider": record.provider,
+        "provider_id_sha256": record.provider_id_sha256,
+        "operator": record.operator,
+        "destination": record.destination,
+        "protocol": record.protocol,
+        "model": record.model,
+        "model_id_sha256": record.model_id_sha256,
+    }
+    evidence_path = repo / "unit-route-capability-evidence.json"
+    evidence_path.write_text(
+        json.dumps([{field: value} for field, value in expected.items()]),
+        encoding="utf-8",
+    )
+    rebuilt = []
+    for item in original.records:
+        evidence = CapabilityEvidenceV1(
+            source_kind="unit_test_cross_object_fixture",
+            source_locator=evidence_path.relative_to(repo).as_posix(),
+            source_evidence_sha256=hashlib.sha256(
+                evidence_path.read_bytes()
+            ).hexdigest(),
+            evidence_version=1,
+            evidence_date="2026-09-03",
+            route_fingerprint=item.route_fingerprint,
+            proved_fields=tuple(expected),
+            provenance_available=True,
+        )
+        rebuilt.append(RouteCapabilityRecordV1.create(
+            role=item.role, lane=item.lane, provider=item.provider,
+            provider_id_sha256=item.provider_id_sha256,
+            operator=item.operator, destination=item.destination,
+            protocol=item.protocol, model=item.model,
+            model_id_sha256=item.model_id_sha256,
+            route_fingerprint=item.route_fingerprint,
+            context_window_tokens=item.context_window_tokens,
+            max_output_tokens=item.max_output_tokens,
+            reasoning_token_accounting=item.reasoning_token_accounting,
+            reasoning_output_reservation=item.reasoning_output_reservation,
+            capability_status=item.capability_status,
+            source_evidence=(evidence,),
+        ))
+    registry_path.write_text(
+        json.dumps(RouteCapabilityRegistryV1.create(rebuilt).to_document()),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="verified route capability evidence values not proven",
+    ):
+        runner._load_route_capability_registry_v1(repo)
+
+
 def _add_unknown_planning_fallback(
     *, repo: Path, db: Database,
 ) -> None:

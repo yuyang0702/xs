@@ -208,21 +208,6 @@ def _load_route_capability_registry_v1(
                 raise ValueError("route capability evidence locator missing")
         return current
 
-    def contains_exact_field(value: Any, field: str, expected: Any) -> bool:
-        if isinstance(value, dict):
-            if field in value and value[field] == expected:
-                return True
-            return any(
-                contains_exact_field(item, field, expected)
-                for item in value.values()
-            )
-        if isinstance(value, list):
-            return any(
-                contains_exact_field(item, field, expected)
-                for item in value
-            )
-        return False
-
     for record in registry.records:
         verified = record.capability_status.value.startswith("VERIFIED_")
         expected_values = {
@@ -242,6 +227,11 @@ def _load_route_capability_registry_v1(
             "protocol": record.protocol,
             "model": record.model,
             "model_id_sha256": record.model_id_sha256,
+        }
+        route_identity_fields = {
+            "route_fingerprint", "provider", "provider_id_sha256",
+            "operator", "destination", "protocol", "model",
+            "model_id_sha256",
         }
         semantically_proved: set[str] = set()
         for evidence in record.source_evidence:
@@ -273,14 +263,23 @@ def _load_route_capability_registry_v1(
             located = resolve_locator(source_document, fragment)
             if not verified:
                 continue
-            for field in evidence.proved_fields:
-                if (
-                    field in expected_values
-                    and contains_exact_field(
-                        located, field, expected_values[field]
-                    )
-                ):
-                    semantically_proved.add(field)
+            # One evidence locator must name one route-exact assertion.  Never
+            # assemble a VERIFIED record by recursively picking matching
+            # fields from unrelated objects in the same JSON subtree.
+            proved_fields = {
+                field for field in evidence.proved_fields
+                if field in expected_values
+            }
+            required_fields = proved_fields | route_identity_fields
+            if (
+                isinstance(located, dict)
+                and all(
+                    field in located
+                    and located[field] == expected_values[field]
+                    for field in required_fields
+                )
+            ):
+                semantically_proved.update(proved_fields)
         if verified and semantically_proved != set(expected_values):
             raise ValueError(
                 "verified route capability evidence values not proven"
@@ -1632,6 +1631,7 @@ async def _execute_full_short_control_plane_with_capability(
             nonce = store.load_nonce(execution_id)
             receipt = build_full_short_completion_receipt_v1(
                 execution_id=execution_id, policy=policy,
+                durable_store=store,
                 permission_sha256=permission["permission_sha256"],
                 signed_approval_sha256=approval["signed_approval_sha256"],
                 nonce_sha256=nonce["nonce_sha256"], ledger=ledger,

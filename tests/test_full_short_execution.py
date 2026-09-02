@@ -1223,6 +1223,7 @@ async def test_lowest_transport_seam_is_durable_and_completable(tmp_path: Path) 
     assert ledger["attempts"][0]["state"] == "LOCAL_STAGE_COMPLETE"
     completion = build_full_short_completion_receipt_v1(
         execution_id="offline-full-short", policy=_policy(store),
+        durable_store=store,
         permission_sha256=permission["permission_sha256"],
         signed_approval_sha256=approval["signed_approval_sha256"],
         nonce_sha256=nonce["nonce_sha256"], ledger=ledger,
@@ -1671,6 +1672,7 @@ def test_closed_local_rejection_allows_only_same_session_bounded_recovery(
     assert len(ledger["completed_stage_receipts"]) == 1
     completion = build_full_short_completion_receipt_v1(
         execution_id="local-rejection-recovery", policy=_policy(store),
+        durable_store=store,
         permission_sha256=permission["permission_sha256"],
         signed_approval_sha256=approval["signed_approval_sha256"],
         nonce_sha256=nonce["nonce_sha256"], ledger=ledger,
@@ -2731,6 +2733,7 @@ def test_completion_rejects_terminal_false_positive_and_binding_key_drift(
     with pytest.raises(FullShortExecutionBoundaryError) as false_positive:
         build_full_short_completion_receipt_v1(
             execution_id="terminal-false", policy=_policy(store),
+            durable_store=store,
             permission_sha256=permission["permission_sha256"],
             signed_approval_sha256=approval["signed_approval_sha256"],
             nonce_sha256=nonce["nonce_sha256"], ledger=ledger,
@@ -2745,6 +2748,7 @@ def test_completion_rejects_terminal_false_positive_and_binding_key_drift(
     with pytest.raises(FullShortExecutionBoundaryError) as keys:
         build_full_short_completion_receipt_v1(
             execution_id="terminal-false", policy=_policy(store),
+            durable_store=store,
             permission_sha256=permission["permission_sha256"],
             signed_approval_sha256=approval["signed_approval_sha256"],
             nonce_sha256=nonce["nonce_sha256"], ledger=ledger,
@@ -3541,6 +3545,7 @@ def test_completion_rejects_capacity_receipt_one_to_one_drift(
     with pytest.raises(FullShortExecutionBoundaryError) as caught:
         build_full_short_completion_receipt_v1(
             execution_id=execution_id, policy=_policy(store),
+            durable_store=store,
             permission_sha256=permission["permission_sha256"],
             signed_approval_sha256=approval["signed_approval_sha256"],
             nonce_sha256=nonce["nonce_sha256"], ledger=tampered,
@@ -3596,6 +3601,7 @@ def test_completion_rejects_resealed_attempt_identity_forgery(
         build_full_short_completion_receipt_v1(
             execution_id=execution_id,
             policy=_policy(store),
+            durable_store=store,
             permission_sha256=permission["permission_sha256"],
             signed_approval_sha256=approval["signed_approval_sha256"],
             nonce_sha256=nonce["nonce_sha256"],
@@ -3615,7 +3621,9 @@ def test_completion_rejects_resealed_attempt_identity_forgery(
         )
 
     assert caught.value.reason_code == (
-        "COMPLETION_CAPACITY_ADMISSION_PROVENANCE_INVALID"
+        "COMPLETION_PHYSICAL_ATTEMPT_IDENTITY_INVALID"
+        if field == "global_physical_attempt_ordinal"
+        else "COMPLETION_CAPACITY_ADMISSION_PROVENANCE_INVALID"
     )
 
 
@@ -3674,6 +3682,7 @@ def test_completion_rejects_coherently_resealed_recovery_source_forgery(
         build_full_short_completion_receipt_v1(
             execution_id=execution_id,
             policy=_policy(store),
+            durable_store=store,
             permission_sha256=permission["permission_sha256"],
             signed_approval_sha256=approval["signed_approval_sha256"],
             nonce_sha256=nonce["nonce_sha256"],
@@ -3693,7 +3702,158 @@ def test_completion_rejects_coherently_resealed_recovery_source_forgery(
         )
 
     assert caught.value.reason_code == (
-        "COMPLETION_CAPACITY_RECOVERY_PROVENANCE_INVALID"
+        "COMPLETION_CAPACITY_ADMISSION_PROVENANCE_INVALID"
+    )
+
+
+def test_completion_rejects_durably_resealed_global_ordinal_forgery(
+    tmp_path: Path,
+) -> None:
+    store = _store(tmp_path)
+    execution_id = "completion-durable-global-ordinal-forgery"
+    permission, approval, nonce = _authorize_offline(store, execution_id)
+    _dispatch_and_close(store, execution_id)
+    ledger = store.load_ledger(execution_id)
+    receipt = store.load_capacity_admission_receipt(
+        execution_id=execution_id,
+        plan_sha256=ledger["attempts"][0]["capacity_plan_sha256"],
+    )
+    receipt_body = dict(receipt)
+    receipt_body.pop("capacity_admission_receipt_sha256")
+    receipt_body["global_physical_attempt_ordinal"] = 999
+    forged_receipt = {
+        **receipt_body,
+        "capacity_admission_receipt_sha256": domain_sha256(
+            "novel-flywheel-capacity-admission-receipt-v1", receipt_body,
+        ),
+    }
+    store._replace(
+        store._capacity_path(
+            execution_id, receipt["capacity_plan_sha256"],
+        ),
+        forged_receipt,
+    )
+    ledger_body = dict(ledger)
+    ledger_body.pop("ledger_sha256")
+    attempts = [dict(item) for item in ledger_body["attempts"]]
+    attempts[0]["global_physical_attempt_ordinal"] = 999
+    attempts[0]["capacity_admission_receipt_sha256"] = forged_receipt[
+        "capacity_admission_receipt_sha256"
+    ]
+    ledger_body["attempts"] = attempts
+    forged_ledger = {
+        **ledger_body,
+        "ledger_sha256": domain_sha256(
+            "novel-flywheel-full-short-dispatch-ledger-v1", ledger_body,
+        ),
+    }
+    store._replace(store._path(execution_id, "ledger"), forged_ledger)
+
+    with pytest.raises(FullShortExecutionBoundaryError) as caught:
+        build_full_short_completion_receipt_v1(
+            execution_id=execution_id, policy=_policy(store),
+            durable_store=store,
+            permission_sha256=permission["permission_sha256"],
+            signed_approval_sha256=approval["signed_approval_sha256"],
+            nonce_sha256=nonce["nonce_sha256"], ledger=forged_ledger,
+            final_bindings={
+                "manuscript_sha256": "4" * 64,
+                "chapter_sha256": "5" * 64,
+                "canon_sha256": "6" * 64,
+                "story_state_sha256": "7" * 64,
+                "quality_checkpoint_sha256": "8" * 64,
+                "terminal_verification_sha256": _terminal()[
+                    "verification_receipt_sha256"
+                ],
+            },
+            terminal_verification=_terminal(),
+            capacity_admission_receipts=(forged_receipt,),
+        )
+
+    assert caught.value.reason_code == (
+        "COMPLETION_PHYSICAL_ATTEMPT_IDENTITY_INVALID"
+    )
+
+
+def test_completion_rejects_transitively_resealed_capture_forgery(
+    tmp_path: Path,
+) -> None:
+    store = _store(tmp_path)
+    execution_id = "completion-transitive-capture-forgery"
+    permission, approval, nonce = _authorize_offline(store, execution_id)
+    _dispatch_reasoning_recovery_and_close(store, execution_id)
+    ledger = store.load_ledger(execution_id)
+    receipts = list(_capacity_receipts(store, execution_id, ledger))
+    forged_source = "f" * 64
+    second_body = dict(receipts[1])
+    second_body.pop("capacity_admission_receipt_sha256")
+    second_body["recovery_source_capture_receipt_sha256"] = forged_source
+    second_body["recovery_prompt_delta_sha256"] = (
+        capacity_recovery_prompt_delta_sha256_v1(
+            prior_rendered_request_sha256=second_body[
+                "prior_rendered_request_sha256"
+            ],
+            rendered_request_sha256=second_body["rendered_request_sha256"],
+            recovery_stage_role=second_body["recovery_stage_role"],
+            reasoning_policy=second_body["reasoning_policy"],
+            recovery_source_capture_receipt_sha256=forged_source,
+        )
+    )
+    receipts[1] = {
+        **second_body,
+        "capacity_admission_receipt_sha256": domain_sha256(
+            "novel-flywheel-capacity-admission-receipt-v1", second_body,
+        ),
+    }
+    store._replace(
+        store._capacity_path(
+            execution_id, receipts[1]["capacity_plan_sha256"],
+        ),
+        receipts[1],
+    )
+    ledger_body = dict(ledger)
+    ledger_body.pop("ledger_sha256")
+    attempts = [dict(item) for item in ledger_body["attempts"]]
+    attempts[0]["provider_protocol_capture_receipt_sha256"] = forged_source
+    attempts[1]["recovery_source_capture_receipt_sha256"] = forged_source
+    attempts[1]["recovery_prompt_delta_sha256"] = receipts[1][
+        "recovery_prompt_delta_sha256"
+    ]
+    attempts[1]["capacity_admission_receipt_sha256"] = receipts[1][
+        "capacity_admission_receipt_sha256"
+    ]
+    ledger_body["attempts"] = attempts
+    forged_ledger = {
+        **ledger_body,
+        "ledger_sha256": domain_sha256(
+            "novel-flywheel-full-short-dispatch-ledger-v1", ledger_body,
+        ),
+    }
+    store._replace(store._path(execution_id, "ledger"), forged_ledger)
+
+    with pytest.raises(FullShortExecutionBoundaryError) as caught:
+        build_full_short_completion_receipt_v1(
+            execution_id=execution_id, policy=_policy(store),
+            durable_store=store,
+            permission_sha256=permission["permission_sha256"],
+            signed_approval_sha256=approval["signed_approval_sha256"],
+            nonce_sha256=nonce["nonce_sha256"], ledger=forged_ledger,
+            final_bindings={
+                "manuscript_sha256": "4" * 64,
+                "chapter_sha256": "5" * 64,
+                "canon_sha256": "6" * 64,
+                "story_state_sha256": "7" * 64,
+                "quality_checkpoint_sha256": "8" * 64,
+                "terminal_verification_sha256": _terminal()[
+                    "verification_receipt_sha256"
+                ],
+            },
+            terminal_verification=_terminal(),
+            capacity_admission_receipts=receipts,
+        )
+
+    assert caught.value.reason_code == (
+        "COMPLETION_CAPTURE_PROVENANCE_INVALID"
     )
 
 

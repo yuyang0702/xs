@@ -45,9 +45,11 @@ reserve, prompt overlay, and capture identity.
 
 ## Historical evidence disposition
 
-The 2026-08-14 DeepSeek official-route matrix is reusable for the exact official
-route. Local relay claims without their original screenshots or route-exact
-provenance remain historical-but-unproven. Observed request budgets prove only a
+The 2026-08-14 DeepSeek official-route matrix is a route-exact historical
+candidate, but its cited external source content was not archived. It therefore
+remains historical-but-unproven and is not reusable as VERIFIED capability
+evidence. Local relay claims without their original screenshots or route-exact
+provenance receive the same disposition. Observed request budgets prove only a
 successful lower-bound observation, never a maximum capability. Existing
 `32,768` values are stage policy ceilings and are explicitly not provider
 context limits.

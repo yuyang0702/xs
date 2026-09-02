@@ -66,11 +66,15 @@ DEEPSEEK_ROUTE_FINGERPRINT = (
 )
 EXTERNAL_ZERO = {
     "real_credential_lookup_count": 0,
+    "real_secret_read_count": 0,
+    "real_provider_client_creation_count": 0,
     "real_provider_request_attempts": 0,
+    "http_post_attempts": 0,
     "http_calls": 0,
     "network_calls": 0,
     "model_calls": 0,
     "paid_calls": 0,
+    "full_short_execution_count": 0,
     "real_full_short_runs": 0,
 }
 
@@ -230,6 +234,178 @@ def _record_document(record: RouteCapabilityRecordV1) -> dict[str, Any]:
     return value
 
 
+_HISTORICAL_CAPACITY_SEARCH_TERMS = (
+    "1000000", "384000", "8798", "16000", "4624", "3724",
+    "32768", "8328", "372000",
+)
+
+
+def _historical_search_inventory(repo: Path) -> list[dict[str, Any]]:
+    """Hash every tracked historical report that contains a candidate value."""
+
+    tracked = git(repo, "ls-files").splitlines()
+    inventory: list[dict[str, Any]] = []
+    for relative in tracked:
+        normalized = relative.replace("\\", "/")
+        if (
+            not normalized.startswith("docs/superpowers/reports/")
+            or normalized.startswith(ROOT.as_posix() + "/")
+            or not normalized.endswith((".json", ".md"))
+        ):
+            continue
+        path = repo / normalized
+        try:
+            text = path.read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError):
+            continue
+        matched = [
+            int(term) for term in _HISTORICAL_CAPACITY_SEARCH_TERMS
+            if term in text
+        ]
+        if matched:
+            inventory.append({
+                "path": normalized,
+                "sha256": sha_file(path),
+                "matched_candidate_values": matched,
+            })
+    return inventory
+
+
+def _historical_value_records(repo: Path) -> list[dict[str, Any]]:
+    matrix_sha = sha_file(repo / HISTORICAL_MATRIX)
+    sources = {
+        8798: Path(
+            "docs/superpowers/reports/sc-fresh-real-short-"
+            "20260821t141234z-001/short-completion-1-"
+            "external-call-ledger-summary-v1.json"
+        ),
+        16000: Path(
+            "docs/superpowers/reports/r1-ptr7-reasoning-probe-mat/"
+            "r1-ptr7-reasoning-probe-20260820t144046z-001/"
+            "real-observation-v1/reports/"
+            "provider-reasoning-capability-probe-observation-v1.json"
+        ),
+        4624: Path(
+            "docs/superpowers/reports/skill-v3-hybrid-character-heavy-"
+            "multi-sample-pilot-materialization-v1/capacity-preflight-v1.json"
+        ),
+        3724: Path(
+            "docs/superpowers/reports/first-trustworthy-full-short-"
+            "captured-response-and-skill-source-disposition-v1/"
+            "historical-evidence-level-v1.json"
+        ),
+        8328: Path(
+            "docs/superpowers/reports/first-trustworthy-full-short-"
+            "execution-boundary-v1/request-budget-policy-v1.json"
+        ),
+    }
+
+    def source_sha(value: int) -> str | None:
+        path = sources.get(value)
+        return sha_file(repo / path) if path and (repo / path).is_file() else None
+
+    common = {
+        "used_by_current_runtime_as_capability": False,
+        "eligible_for_verified_registry": False,
+    }
+    return [
+        {
+            **common,
+            "capability_field": "context_window_tokens",
+            "value": 1_000_000,
+            "classification_code": "B",
+            "classification": "HISTORICAL_BUT_UNPROVEN",
+            "original_source_path": HISTORICAL_MATRIX.as_posix(),
+            "original_source_type": "official_url_locator_without_archived_content",
+            "original_source_date": "2026-08-14",
+            "source_evidence_sha256": matrix_sha,
+            "provenance_available": False,
+            "used_by_historical_runtime": False,
+            "trust_level": "ROUTE_EXACT_CLAIM_SOURCE_CONTENT_UNARCHIVED",
+            "route_fingerprint": DEEPSEEK_ROUTE_FINGERPRINT,
+            "disposition": "REJECT_AS_VERIFIED",
+        },
+        {
+            **common,
+            "capability_field": "max_output_tokens",
+            "value": 384_000,
+            "classification_code": "B",
+            "classification": "HISTORICAL_BUT_UNPROVEN",
+            "original_source_path": HISTORICAL_MATRIX.as_posix(),
+            "original_source_type": "official_url_locator_without_archived_content",
+            "original_source_date": "2026-08-14",
+            "source_evidence_sha256": matrix_sha,
+            "provenance_available": False,
+            "used_by_historical_runtime": False,
+            "trust_level": "ROUTE_EXACT_CLAIM_SOURCE_CONTENT_UNARCHIVED",
+            "route_fingerprint": DEEPSEEK_ROUTE_FINGERPRINT,
+            "disposition": "REJECT_AS_VERIFIED",
+        },
+        *[
+            {
+                **common,
+                "capability_field": (
+                    "observed_output_tokens" if value == 8798
+                    else "requested_output_token_cap"
+                ),
+                "value": value,
+                "classification_code": "B",
+                "classification": "HISTORICAL_BUT_UNPROVEN",
+                "original_source_path": sources[value].as_posix(),
+                "original_source_type": (
+                    "captured_usage_lower_bound" if value == 8798
+                    else "historical_request_or_policy_cap"
+                ),
+                "original_source_date": (
+                    "2026-08-21" if value == 8798 else "UNKNOWN_LOCAL_DATE"
+                ),
+                "source_evidence_sha256": source_sha(value),
+                "provenance_available": True,
+                "used_by_historical_runtime": True,
+                "trust_level": "VALUE_PROVEN_NOT_PROVIDER_MAXIMUM",
+                "route_fingerprint": (
+                    DEEPSEEK_ROUTE_FINGERPRINT if value in {8798, 3724}
+                    else None
+                ),
+                "disposition": "LOWER_BOUND_OR_REQUEST_CAP_ONLY",
+            }
+            for value in (8798, 16000, 4624, 3724, 8328)
+        ],
+        {
+            **common,
+            "capability_field": "context_window_tokens",
+            "value": 32_768,
+            "classification_code": "B",
+            "classification": "HISTORICAL_BUT_UNPROVEN",
+            "original_source_path": "data/app.db safe model configuration projection",
+            "original_source_type": "local_configuration_without_route_capability_provenance",
+            "original_source_date": "UNKNOWN_LOCAL_DATE",
+            "source_evidence_sha256": None,
+            "provenance_available": False,
+            "used_by_historical_runtime": True,
+            "trust_level": "STAGE_OR_MODEL_CONFIG_NOT_PROVIDER_PROOF",
+            "route_fingerprint": None,
+            "disposition": "DO_NOT_PROMOTE_TO_VERIFIED",
+        },
+        {
+            **common,
+            "capability_field": "context_window_tokens",
+            "value": 372_000,
+            "classification_code": "D",
+            "classification": "NO_EVIDENCE",
+            "original_source_path": None,
+            "original_source_type": None,
+            "original_source_date": None,
+            "source_evidence_sha256": None,
+            "provenance_available": False,
+            "used_by_historical_runtime": False,
+            "trust_level": "NO_LOCAL_SOURCE_FOUND",
+            "route_fingerprint": None,
+            "disposition": "REJECT_AS_UNSOURCED",
+        },
+    ]
+
+
 def materialize(
     repo: Path,
     registry: RouteCapabilityRegistryV1,
@@ -365,11 +541,24 @@ def materialize(
             mode="fresh_read_only_offline", old_authority_reused=False,
         ))
 
+    historical_search_inventory = _historical_search_inventory(repo)
+    historical_values = _historical_value_records(repo)
     historical = {
         "schema": "HistoricalRouteCapabilityEvidenceV1",
         "version": 1,
-        "status": "SEARCH_COMPLETE_PARTIAL_REUSE",
+        "status": "SEARCH_COMPLETE_NO_VERIFIED_REUSE",
         "historical_evidence_search_complete": True,
+        "search_scope": (
+            "all Git-tracked JSON/Markdown under docs/superpowers/reports, "
+            "excluding this generated evidence directory; plus the safe local "
+            "provider/model/role projection already sealed in the historical matrix"
+        ),
+        "search_terms": [
+            int(value) for value in _HISTORICAL_CAPACITY_SEARCH_TERMS
+        ],
+        "search_inventory_file_count": len(historical_search_inventory),
+        "search_inventory_sha256": sha_json(historical_search_inventory),
+        "search_inventory": historical_search_inventory,
         "searched_sources": [
             HISTORICAL_MATRIX.as_posix(),
             HISTORICAL_PRICE_PACKET.as_posix(),
@@ -383,22 +572,69 @@ def materialize(
         ],
         "partial_only_observations": [8798, 16000, 4624, 3724],
         "unproven_claims_rejected": [32768, 8328, 372000],
+        "value_records": historical_values,
         "screenshots_found": 0,
         "external_boundary": EXTERNAL_ZERO,
     }
     write_json(root / "historical-route-capability-evidence-v1.json", historical)
+    route_field_records = []
+    for item in records:
+        for capability_field in (
+            "context_window_tokens", "max_output_tokens",
+        ):
+            deepseek_candidate = (
+                item["route_fingerprint"] == DEEPSEEK_ROUTE_FINGERPRINT
+            )
+            route_field_records.append({
+                "role": item["role"],
+                "lane": item["lane"],
+                "provider": item["provider"],
+                "operator": item["operator"],
+                "destination": item["destination"],
+                "protocol": item["protocol"],
+                "model": item["model"],
+                "route_fingerprint": item["route_fingerprint"],
+                "capability_field": capability_field,
+                "value": None,
+                "classification_code": "B" if deepseek_candidate else "D",
+                "classification": (
+                    "HISTORICAL_BUT_UNPROVEN"
+                    if deepseek_candidate else "NO_EVIDENCE"
+                ),
+                "original_source_path": (
+                    HISTORICAL_MATRIX.as_posix()
+                    if deepseek_candidate else None
+                ),
+                "original_source_type": (
+                    "official_url_locator_without_archived_content"
+                    if deepseek_candidate else None
+                ),
+                "original_source_date": (
+                    "2026-08-14" if deepseek_candidate else None
+                ),
+                "source_evidence_sha256": (
+                    sha_file(repo / HISTORICAL_MATRIX)
+                    if deepseek_candidate else None
+                ),
+                "provenance_available": False,
+                "used_by_historical_runtime": False,
+                "trust_level": (
+                    "ROUTE_EXACT_CLAIM_SOURCE_CONTENT_UNARCHIVED"
+                    if deepseek_candidate else "NO_LOCAL_SOURCE_FOUND"
+                ),
+                "eligible_for_verified_registry": False,
+                "registry_disposition": "UNKNOWN_BLOCKED",
+            })
     write_json(root / "historical-capability-evidence-matrix-v1.json", receipt(
-        "HistoricalCapabilityEvidenceMatrixV1", "PARTIAL",
-        records=[{
-            "role": item["role"], "lane": item["lane"],
-            "route_fingerprint": item["route_fingerprint"],
-            "classification": (
-                "VERIFIED_REUSABLE" if item["capability_status"].startswith("VERIFIED")
-                else "PARTIAL_ONLY"
-            ),
-            "context_window_tokens": item["context_window_tokens"],
-            "max_output_tokens": item["max_output_tokens"],
-        } for item in records],
+        "HistoricalCapabilityEvidenceMatrixV1", "NO_VERIFIED_REUSE",
+        classification_contract={
+            "A": "VERIFIED_REUSABLE",
+            "B": "HISTORICAL_BUT_UNPROVEN",
+            "C": "STALE_ROUTE_IDENTITY",
+            "D": "NO_EVIDENCE",
+        },
+        value_records=historical_values,
+        route_capability_field_records=route_field_records,
     ))
     write_json(root / "exact-ready-required-route-set-v1.json", receipt(
         "ExactReadyRequiredRouteSetV1", "MATERIALIZED",
