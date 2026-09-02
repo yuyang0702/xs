@@ -30,6 +30,7 @@ from novel_flywheel.db import Database
 from novel_flywheel.failure_boundary import failure_evidence_sha256
 from novel_flywheel.full_short_execution import (
     FullShortExecutionPolicyV1,
+    LOGICAL_STAGE_RECOVERY_POLICY_V1,
     full_short_logical_stage_id_v1,
     render_full_short_canonical_authorization_v1,
     validate_full_short_canonical_authorization_v1,
@@ -1840,7 +1841,12 @@ async def _run(
         )
         total_cap = (
             discovered_plan_total_cap
-            + planning_recovery_output_token_hard_cap
+            + max(
+                planning_recovery_output_token_hard_cap,
+                int(LOGICAL_STAGE_RECOVERY_POLICY_V1[
+                    "recovery_output_tokens"
+                ]),
+            )
         )
         policy = FullShortExecutionPolicyV1(
             execution_head=actual["head"], branch=actual["branch"],
