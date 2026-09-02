@@ -92,6 +92,13 @@ from novel_flywheel.full_short_runtime_kernel import (
     RegisteredBoundaryFailureV1,
     full_short_boundary_entry,
 )
+from novel_flywheel.stage_capacity import (
+    AdmissionStatus,
+    CapacityLayerClass,
+    CapacityLayerProjectionV1,
+    StageCapacityAdmissionEngineV1,
+    build_stage_capacity_plan_v1,
+)
 from novel_flywheel.contract_runtime import (
     ContractOutputLimitExhaustedError,
     ExecutableContractSpec,
@@ -29399,6 +29406,7 @@ class WorkflowService:
                     },
                 )
             context_packet = None
+            current_contract = self._stage_contract_envelope(stage, user)
             if layered_context:
                 story_state = self.story_states.ensure(project.id, project.path).data
                 narrative_findings = validate_narrative_graph(
@@ -29445,7 +29453,6 @@ class WorkflowService:
                     model_constraints + "\n\nSkill instructions (advisory):\n"
                     + model_skill_prompt
                 )
-                current_contract = self._stage_contract_envelope(stage, user)
                 if style:
                     current_contract = {
                         **current_contract,
@@ -29710,6 +29717,223 @@ class WorkflowService:
                     gateway_role, prefer_configured_fallback,
                 )
             )
+            capacity_plan_head_sha256: str | None = None
+
+            def capacity_contract_identity(
+                actual_contract: object | None,
+            ) -> tuple[str, int, str, int]:
+                contract = actual_contract or structured_contract
+                if contract is None:
+                    schema = {
+                        "stage": node_key,
+                        "role": gateway_role,
+                        "kind": "text",
+                    }
+                    return (
+                        f"{node_key}_text",
+                        1,
+                        canonical_sha256(schema),
+                        0,
+                    )
+                schema = getattr(contract, "json_schema", None)
+                if schema is None:
+                    provider_schema = getattr(contract, "provider_schema", None)
+                    schema = provider_schema() if callable(provider_schema) else {}
+                schema_bytes = json.dumps(
+                    schema,
+                    ensure_ascii=False,
+                    sort_keys=True,
+                    separators=(",", ":"),
+                )
+                schema_sha = getattr(contract, "schema_sha256", None)
+                return (
+                    str(getattr(contract, "name", None) or node_key),
+                    int(getattr(contract, "version", None) or 1),
+                    (
+                        str(schema_sha())
+                        if callable(schema_sha)
+                        else hashlib.sha256(schema_bytes.encode("utf-8")).hexdigest()
+                    ),
+                    estimate_input_tokens(schema_bytes),
+                )
+
+            def capacity_layers(
+                actual_system: str,
+                actual_user: str,
+            ) -> tuple[CapacityLayerProjectionV1, ...]:
+                if context_packet is None:
+                    exact_hash = hashlib.sha256(
+                        (actual_system + "\n\0" + actual_user).encode("utf-8")
+                    ).hexdigest()
+                    tokens = estimate_input_tokens(
+                        actual_system + "\n" + actual_user
+                    )
+                    return (CapacityLayerProjectionV1.create(
+                        layer_id="complete_request",
+                        classification=CapacityLayerClass.HARD_PROTECTED,
+                        owner=stage,
+                        source_sha256=exact_hash,
+                        semantic_scope="complete",
+                        coverage=(node_key,),
+                        pre_transform_characters=len(actual_system) + len(actual_user),
+                        pre_transform_tokens=tokens,
+                        post_transform_characters=len(actual_system) + len(actual_user),
+                        post_transform_tokens=tokens,
+                        transform_policy_id="identity.v1",
+                        action="PRESERVE",
+                        rendered_sha256=exact_hash,
+                    ),)
+                packet_hash = context_packet_sha256(context_packet)
+                classifications = {
+                    "current_contract": CapacityLayerClass.HARD_PROTECTED,
+                    "mandatory_rules": CapacityLayerClass.HARD_PROTECTED,
+                    "relevant_context": CapacityLayerClass.SOFT_PROTECTED,
+                    "global_skeleton": CapacityLayerClass.HARD_PROTECTED,
+                    "advisory": CapacityLayerClass.ADVISORY_SHEDDABLE,
+                }
+                sources = {
+                    "current_contract": canonical_sha256(
+                        context_packet.current_contract
+                    ),
+                    "mandatory_rules": canonical_sha256([
+                        asdict(rule) for rule in context_packet.mandatory_rules
+                    ]),
+                    "relevant_context": context_packet.source_hashes[
+                        "relevant_context"
+                    ],
+                    "global_skeleton": context_packet.source_hashes[
+                        "global_skeleton"
+                    ],
+                    "advisory": advisory_provenance(context_packet)[
+                        "final_rendered_advisory_sha256"
+                    ],
+                }
+                result: list[CapacityLayerProjectionV1] = []
+                for layer_id, metrics in context_packet.metrics["layers"].items():
+                    action = "PRESERVE"
+                    if (
+                        layer_id == "advisory"
+                        and context_packet.metrics.get(
+                            "advisory_shedding_occurred"
+                        )
+                    ):
+                        action = "SHED"
+                    elif (
+                        layer_id == "advisory"
+                        and context_packet.metrics.get(
+                            "advisory_truncation_occurred"
+                        )
+                    ):
+                        action = "COMPACT"
+                    rendered_sha = canonical_sha256({
+                        "packet_sha256": packet_hash,
+                        "layer_id": layer_id,
+                        "characters": int(metrics["characters"]),
+                        "estimated_tokens": int(metrics["estimated_tokens"]),
+                    })
+                    result.append(CapacityLayerProjectionV1.create(
+                        layer_id=layer_id,
+                        classification=classifications[layer_id],
+                        owner=stage,
+                        source_sha256=sources[layer_id],
+                        semantic_scope=(
+                            "bounded_component"
+                            if layer_id == "advisory" else "complete"
+                        ),
+                        coverage=(layer_id,),
+                        pre_transform_characters=int(metrics["characters"]),
+                        pre_transform_tokens=int(metrics["estimated_tokens"]),
+                        post_transform_characters=int(metrics["characters"]),
+                        post_transform_tokens=int(metrics["estimated_tokens"]),
+                        transform_policy_id=(
+                            "advisory.paragraph.v1"
+                            if layer_id == "advisory" else "identity.v1"
+                        ),
+                        action=action,
+                        rendered_sha256=rendered_sha,
+                    ))
+                return tuple(result)
+
+            def stage_capacity_plan(
+                actual_system: str,
+                actual_user: str,
+                actual_budget: int | None,
+                *,
+                physical_attempt: int,
+                route: str,
+                actual_contract: object | None = None,
+                enforce: bool = True,
+            ):
+                nonlocal capacity_plan_head_sha256
+                contract_name, contract_version, schema_sha, schema_tokens = (
+                    capacity_contract_identity(actual_contract)
+                )
+                selected_context_window = (
+                    self._provider_context_window(
+                        gateway_role, route == "configured_fallback"
+                    )
+                    if route in {"primary", "configured_fallback"}
+                    else context_window
+                ) or context_window or 0
+                output_cap = int(actual_budget or route_output_reserve or 0)
+                rendered_request_sha = hashlib.sha256(
+                    (actual_system + "\n\0" + actual_user).encode("utf-8")
+                ).hexdigest()
+                kwargs = {
+                    "stage_id": node_key,
+                    "logical_stage_id": node_key,
+                    "physical_attempt": physical_attempt,
+                    "stage": stage,
+                    "contract_name": contract_name,
+                    "contract_version": contract_version,
+                    "contract_schema_sha256": schema_sha,
+                    "provider_route_identity_sha256": canonical_sha256({
+                        "role": gateway_role,
+                        "route": route,
+                        "context_window": selected_context_window,
+                    }),
+                    "model_context_limit": int(selected_context_window),
+                    "requested_output_token_cap": output_cap,
+                    "final_output_reserve": output_cap,
+                    "rendered_message_tokens": estimate_input_tokens(
+                        actual_system + "\n" + actual_user
+                    ),
+                    "structured_envelope_tokens": schema_tokens,
+                    "provider_envelope_tokens": 256,
+                    "wrapper_and_estimator_margin_tokens": 1024,
+                    "rendered_request_sha256": rendered_request_sha,
+                    "layer_projections": capacity_layers(
+                        actual_system, actual_user
+                    ),
+                    "parent_plan_sha256": capacity_plan_head_sha256,
+                }
+                plan = build_stage_capacity_plan_v1(**kwargs)
+                capacity_plan_head_sha256 = plan.plan_sha256
+                safe_node = re.sub(r"[^A-Za-z0-9_.-]+", "-", node_key)
+                receipt_path = (
+                    run_path / "outputs" / "capacity-plans"
+                    / (
+                        f"{safe_node}-attempt-{physical_attempt}-{route}-"
+                        f"{plan.plan_sha256[:12]}.json"
+                    )
+                )
+                atomic_write(
+                    receipt_path,
+                    json.dumps(
+                        {
+                            "schema": "StageCapacityPlanReceiptV1",
+                            "version": 1,
+                            "raw_prompt_persisted": False,
+                            "plan": asdict(plan),
+                        },
+                        ensure_ascii=False,
+                        sort_keys=True,
+                        indent=2,
+                    ),
+                )
+                if enforce:
+                    return StageCapacityAdmissionEngineV1.enforce(plan)
+                return plan
 
             async def complete_capacity_split(details: dict) -> StageText:
                 trigger = str(details.get("trigger") or "preflight")
@@ -29780,14 +30004,17 @@ class WorkflowService:
                     for name, item in context_packet.metrics["layers"].items()
                     if name != "advisory"
                 ) if context_packet is not None else estimated_input_tokens
-                pressure = classify_input_pressure(
-                    full_input_tokens=estimated_input_tokens,
-                    authority_input_tokens=authority_input_tokens,
-                    output_reserve=route_output_reserve,
-                    context_window=context_window,
+                capacity_plan = stage_capacity_plan(
+                    system,
+                    user,
+                    route_output_reserve,
+                    physical_attempt=1,
+                    route="route_plan",
+                    enforce=False,
                 )
                 if (
-                    pressure == "compact"
+                    capacity_plan.admission_status
+                    is AdmissionStatus.COMPACTION_REQUIRED
                     and context_packet is not None
                     and context_packet.metrics["layers"]["advisory"][
                         "estimated_tokens"
@@ -29860,11 +30087,13 @@ class WorkflowService:
                         for name, item in context_packet.metrics["layers"].items()
                         if name != "advisory"
                     )
-                    pressure = classify_input_pressure(
-                        full_input_tokens=estimated_input_tokens,
-                        authority_input_tokens=authority_input_tokens,
-                        output_reserve=route_output_reserve,
-                        context_window=context_window,
+                    capacity_plan = stage_capacity_plan(
+                        system,
+                        user,
+                        route_output_reserve,
+                        physical_attempt=1,
+                        route="route_plan",
+                        enforce=False,
                     )
                     self.db.add_run_event(
                         run_id, "info", "stage_advisory_context_shed",
@@ -29877,27 +30106,27 @@ class WorkflowService:
                                 estimated_input_tokens + route_output_reserve
                             ),
                             "context_window": context_window,
-                            "remaining_pressure": pressure,
+                            "remaining_pressure": (
+                                capacity_plan.admission_status.value
+                            ),
+                            "capacity_plan_sha256": (
+                                capacity_plan.plan_sha256
+                            ),
                         },
                     )
-                if pressure in {"compact", "split"}:
-                    capacity_error = ContextCapacityPreflightError(
-                        pressure=pressure,
-                        estimated_input_tokens=estimated_input_tokens,
-                        authority_input_tokens=authority_input_tokens,
-                        output_reserve=route_output_reserve,
-                        context_window=context_window,
-                    )
+                if capacity_plan.admission_status is not AdmissionStatus.PASS:
                     if capacity_splitter is None:
-                        raise capacity_error
+                        StageCapacityAdmissionEngineV1.enforce(capacity_plan)
                     return await complete_capacity_split({
                         "trigger": "preflight",
-                        "pressure": pressure,
+                        "pressure": capacity_plan.admission_status.value,
                         "estimated_input_tokens": estimated_input_tokens,
                         "authority_input_tokens": authority_input_tokens,
                         "output_reserve": route_output_reserve,
                         "context_window": context_window,
+                        "capacity_plan_sha256": capacity_plan.plan_sha256,
                     })
+                StageCapacityAdmissionEngineV1.enforce(capacity_plan)
             style_receipt_path: Path | None = None
 
             def bind_style_dispatch_input(
@@ -29986,30 +30215,27 @@ class WorkflowService:
                 # input, so the accepted attempt remains the durable value.
                 bind_style_dispatch_input(system, user)
             if not layered_context and route_capacity_guard and context_window:
-                pressure = classify_input_pressure(
-                    full_input_tokens=estimated_input_tokens,
-                    authority_input_tokens=estimated_input_tokens,
-                    output_reserve=route_output_reserve,
-                    context_window=context_window,
+                capacity_plan = stage_capacity_plan(
+                    system,
+                    user,
+                    route_output_reserve,
+                    physical_attempt=1,
+                    route="route_plan",
+                    enforce=False,
                 )
-                if pressure in {"compact", "split"}:
-                    capacity_error = ContextCapacityPreflightError(
-                        pressure=pressure,
-                        estimated_input_tokens=estimated_input_tokens,
-                        authority_input_tokens=estimated_input_tokens,
-                        output_reserve=route_output_reserve,
-                        context_window=context_window,
-                    )
+                if capacity_plan.admission_status is not AdmissionStatus.PASS:
                     if capacity_splitter is None:
-                        raise capacity_error
+                        StageCapacityAdmissionEngineV1.enforce(capacity_plan)
                     return await complete_capacity_split({
                         "trigger": "preflight",
-                        "pressure": pressure,
+                        "pressure": capacity_plan.admission_status.value,
                         "estimated_input_tokens": estimated_input_tokens,
                         "authority_input_tokens": estimated_input_tokens,
                         "output_reserve": route_output_reserve,
                         "context_window": context_window,
+                        "capacity_plan_sha256": capacity_plan.plan_sha256,
                     })
+                StageCapacityAdmissionEngineV1.enforce(capacity_plan)
             confirmed_context = self._stage_context_labels(
                 model_constraints, user + style,
             )
@@ -30197,14 +30423,26 @@ class WorkflowService:
                     stage_role=stage_role,
                 )
 
+            direct_route_attempt = 0
+
             async def execute_route(
                 route: str, route_system: str, route_user: str,
                 route_budget: int | None,
             ):
                 """Execute one Runtime-selected route for every retry topology."""
 
+                nonlocal direct_route_attempt
                 if route not in {"primary", "configured_fallback"}:
                     raise RuntimeError(f"unknown model route: {route}")
+                direct_route_attempt += 1
+                stage_capacity_plan(
+                    route_system,
+                    route_user,
+                    route_budget,
+                    physical_attempt=direct_route_attempt,
+                    route=route,
+                    actual_contract=structured_contract,
+                )
                 bind_response_capture_stage()
                 return await dispatch_explicit_model_route(
                     self.gateway,
@@ -30339,6 +30577,14 @@ class WorkflowService:
                                     "contract_name": execution_spec.contract_name,
                                 },
                             )
+                        stage_capacity_plan(
+                            attempt_system,
+                            attempt_user,
+                            route_budget,
+                            physical_attempt=attempt.attempt_index,
+                            route=attempt.route,
+                            actual_contract=attempt_contract,
+                        )
                         bind_style_dispatch_input(
                             attempt_system,
                             attempt_user,
@@ -30462,6 +30708,23 @@ class WorkflowService:
                     selected_route = contract_runtime.attempt.route
                 else:
                     bind_response_capture_stage()
+
+                    def admit_model_route_attempt(
+                        attempt,
+                        attempt_system: str,
+                        attempt_user: str,
+                        attempt_budget: int | None,
+                        attempt_contract,
+                    ) -> None:
+                        stage_capacity_plan(
+                            attempt_system,
+                            attempt_user,
+                            attempt_budget,
+                            physical_attempt=attempt.attempt_index,
+                            route=attempt.route,
+                            actual_contract=attempt_contract,
+                        )
+
                     route_runtime = await execute_model_route_runtime(
                         self.gateway,
                         role=gateway_role,
@@ -30488,6 +30751,7 @@ class WorkflowService:
                         ),
                         run_id=run_id,
                         attempt_observer=attempt_observations.append,
+                        attempt_admitter=admit_model_route_attempt,
                     )
                     result = route_runtime.model_response
                     selected_route = route_runtime.attempt.route

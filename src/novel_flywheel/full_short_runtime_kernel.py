@@ -91,6 +91,7 @@ class RecoveryDecisionKind(StrEnum):
     LOCAL_REPLAY = "LOCAL_REPLAY"
     ONE_TYPED_REATTEMPT = "ONE_TYPED_REATTEMPT"
     LOCAL_REPAIR = "LOCAL_REPAIR"
+    SEMANTIC_SPLIT = "SEMANTIC_SPLIT"
     FAIL_CLOSED = "FAIL_CLOSED"
     PAUSE_RECONCILIATION = "PAUSE_RECONCILIATION"
 
@@ -476,6 +477,51 @@ _FAILURES = (
         "recovery.budget", RecoveryDecisionKind.FAIL_CLOSED,
         "restart.forbidden.v1",
     ),
+    FailureSpecV1(
+        "capacity.model_context_exceeded", "capacity.model_context_exceeded",
+        "capacity.admission", RecoveryDecisionKind.SEMANTIC_SPLIT,
+        "restart.same_logical_stage.v1",
+    ),
+    FailureSpecV1(
+        "capacity.output_reserve_unsatisfied",
+        "capacity.output_reserve_unsatisfied", "capacity.output_reserve",
+        RecoveryDecisionKind.FAIL_CLOSED, "restart.forbidden.v1",
+    ),
+    FailureSpecV1(
+        "capacity.protected_layers_exceed_budget",
+        "capacity.protected_layers_exceed_budget", "capacity.protected_layers",
+        RecoveryDecisionKind.SEMANTIC_SPLIT, "restart.same_logical_stage.v1",
+    ),
+    FailureSpecV1(
+        "capacity.compaction_insufficient", "capacity.compaction_insufficient",
+        "capacity.compaction", RecoveryDecisionKind.SEMANTIC_SPLIT,
+        "restart.same_logical_stage.v1",
+    ),
+    FailureSpecV1(
+        "capacity.windowing_required", "capacity.windowing_required",
+        "capacity.windowing", RecoveryDecisionKind.SEMANTIC_SPLIT,
+        "restart.same_logical_stage.v1",
+    ),
+    FailureSpecV1(
+        "capacity.windowing_exhausted", "capacity.windowing_exhausted",
+        "capacity.windowing", RecoveryDecisionKind.FAIL_CLOSED,
+        "restart.forbidden.v1",
+    ),
+    FailureSpecV1(
+        "capacity.rendered_prompt_drift", "capacity.rendered_prompt_drift",
+        "capacity.integrity", RecoveryDecisionKind.FAIL_CLOSED,
+        "restart.forbidden.v1",
+    ),
+    FailureSpecV1(
+        "capacity.context_limit_unavailable",
+        "capacity.context_limit_unavailable", "capacity.capability",
+        RecoveryDecisionKind.FAIL_CLOSED, "restart.after_configuration_change.v1",
+    ),
+    FailureSpecV1(
+        "capacity.context_limit_inconsistent",
+        "capacity.context_limit_inconsistent", "capacity.capability",
+        RecoveryDecisionKind.FAIL_CLOSED, "restart.after_configuration_change.v1",
+    ),
 )
 
 
@@ -532,6 +578,17 @@ _BOUNDARIES = (
         "provider.credential_unavailable", "provider.transport_pre_dispatch",
         "provider.transport_ambiguous", "provider.capture_replay_available",
         "planning.reasoning_only_no_final",
+    ),
+    _boundary(
+        "FS.CAPACITY.ADMIT", "capacity",
+        "novel_flywheel.stage_capacity:enforce_stage_capacity_plan_v1",
+        "CAPACITY_ADMITTED", "capacity.model_context_exceeded",
+        "capacity.output_reserve_unsatisfied",
+        "capacity.protected_layers_exceed_budget",
+        "capacity.compaction_insufficient", "capacity.windowing_required",
+        "capacity.windowing_exhausted", "capacity.rendered_prompt_drift",
+        "capacity.context_limit_unavailable",
+        "capacity.context_limit_inconsistent",
     ),
     _boundary(
         "FS.CONTRACT.VALIDATE", "contract", "novel_flywheel.workflows:WorkflowService._stage",
@@ -731,6 +788,15 @@ _ENVELOPE_FAILURE_CLASS_V1: dict[str, FailureClass] = {
     "authority.prerequisite_missing": FailureClass.STALE_AUTHORITY,
     "terminal.binding_invalid": FailureClass.CAPABILITY,
     "recovery.budget_exhausted": FailureClass.CAPABILITY,
+    "capacity.model_context_exceeded": FailureClass.CONTEXT_CAPACITY,
+    "capacity.output_reserve_unsatisfied": FailureClass.CONTEXT_CAPACITY,
+    "capacity.protected_layers_exceed_budget": FailureClass.CONTEXT_CAPACITY,
+    "capacity.compaction_insufficient": FailureClass.CONTEXT_CAPACITY,
+    "capacity.windowing_required": FailureClass.CONTEXT_CAPACITY,
+    "capacity.windowing_exhausted": FailureClass.CONTEXT_CAPACITY,
+    "capacity.rendered_prompt_drift": FailureClass.CONTEXT_CAPACITY,
+    "capacity.context_limit_unavailable": FailureClass.CONTEXT_CAPACITY,
+    "capacity.context_limit_inconsistent": FailureClass.CONTEXT_CAPACITY,
     _UNEXPECTED_FAILURE_ID: FailureClass.UNKNOWN,
 }
 
@@ -748,6 +814,7 @@ def _envelope_reliability_failure_v1(
             RecoveryDecisionKind.LOCAL_REPLAY,
             RecoveryDecisionKind.ONE_TYPED_REATTEMPT,
             RecoveryDecisionKind.LOCAL_REPAIR,
+            RecoveryDecisionKind.SEMANTIC_SPLIT,
         },
     )
 
@@ -1680,6 +1747,8 @@ class FullShortExecutionKernel:
             RecoveryDecisionKind.ONE_TYPED_REATTEMPT:
                 ExecutionState.STAGE_REJECTED_RECOVERABLE,
             RecoveryDecisionKind.LOCAL_REPAIR:
+                ExecutionState.STAGE_REJECTED_RECOVERABLE,
+            RecoveryDecisionKind.SEMANTIC_SPLIT:
                 ExecutionState.STAGE_REJECTED_RECOVERABLE,
             RecoveryDecisionKind.FAIL_CLOSED:
                 ExecutionState.TERMINAL_FAILED,

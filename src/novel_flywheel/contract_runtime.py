@@ -69,6 +69,16 @@ DomainRetryRenderer = Callable[
 TextValidator = Callable[[str], Any]
 AuditSink = Callable[[ArtifactConversionAudit], None]
 AttemptObserver = Callable[[dict[str, Any]], None]
+AttemptAdmitter = Callable[
+    [
+        ProtocolReceiptAttempt,
+        str,
+        str,
+        int | None,
+        StructuredArtifactContract | None,
+    ],
+    None,
+]
 LocalRejectionSink = Callable[[Mapping[str, Any]], None]
 ModelRoute = Literal["primary", "configured_fallback"]
 ContractAttemptExecutor = Callable[
@@ -618,6 +628,7 @@ async def execute_model_route_runtime(
     fallback_context: Callable[[], str] | None = None,
     run_id: str | None = None,
     attempt_observer: AttemptObserver | None = None,
+    attempt_admitter: AttemptAdmitter | None = None,
 ) -> ModelRouteRuntimeResult:
     """Execute one immutable task through an explicit, auditable route plan.
 
@@ -660,6 +671,14 @@ async def execute_model_route_runtime(
                 route_max_output_tokens.get(attempt.route, max_output_tokens)
                 if route_max_output_tokens is not None else max_output_tokens
             )
+            if attempt_admitter is not None:
+                attempt_admitter(
+                    attempt,
+                    system,
+                    route_user,
+                    route_budget,
+                    structured_contract,
+                )
             response = await dispatch_explicit_model_route(
                 gateway,
                 attempt.route,
