@@ -31,6 +31,7 @@ from novel_flywheel.planning_recovery import (
     write_planning_recovery,
 )
 from novel_flywheel.projects import ProjectCreate, ProjectStore
+from novel_flywheel.stage_capacity import CapacityAdmissionFailureV1
 from novel_flywheel.workflows import (
     ContextCapacityPreflightError,
     GeneratedArtifactShapeError,
@@ -421,7 +422,7 @@ def test_whole_receipt_completeness_accepts_semantic_failure_but_not_truncation(
     assert not check(receipt[:-1])
 
 
-def test_planning_route_capacity_uses_smallest_configured_route_and_unknown_32k(
+def test_planning_route_capacity_uses_smallest_route_and_rejects_unknown_limit(
     tmp_path,
 ) -> None:
     service, _project, _run_path, _state, _contracts = make_service(tmp_path)
@@ -481,9 +482,13 @@ def test_planning_route_capacity_uses_smallest_configured_route_and_unknown_32k(
         "planning", "large-provider", "unknown-primary",
         "small-provider", "unknown-fallback",
     )
-    assert service._route_safe_context_window(
-        "planning", include_configured_fallback=True,
-    ) == 32_768
+    with pytest.raises(
+        CapacityAdmissionFailureV1,
+        match="capacity.context_limit_unavailable",
+    ):
+        service._route_safe_context_window(
+            "planning", include_configured_fallback=True,
+        )
 
 
 def adaptation_receipt_with_invalid_invariants(

@@ -78,7 +78,7 @@ AttemptAdmitter = Callable[
         int | None,
         StructuredArtifactContract | None,
     ],
-    None,
+    str | None,
 ]
 LocalRejectionSink = Callable[[Mapping[str, Any]], None]
 ModelRoute = Literal["primary", "configured_fallback"]
@@ -89,6 +89,26 @@ ContractAttemptExecutor = Callable[
     ],
     Awaitable[Any],
 ]
+
+
+def _is_predispatch_capacity_boundary_failure(exc: BaseException) -> bool:
+    """Recognize capacity integrity failures through the boundary wrapper.
+
+    ``dispatch_explicit_model_route`` is itself a registered boundary, so an
+    exact observer's local CAPACITY_* denial is wrapped before it reaches the
+    route scheduler.  Such a denial happened before provider resolution and
+    must never be counted as a transport/model attempt or consume slot two.
+    """
+
+    if isinstance(exc, CapacityAdmissionFailureV1):
+        return True
+    if not isinstance(exc, FullShortBoundaryFailureV1):
+        return False
+    source = getattr(exc, "source_exception", None)
+    if isinstance(source, CapacityAdmissionFailureV1):
+        return True
+    reason_code = getattr(source, "reason_code", None)
+    return isinstance(reason_code, str) and reason_code.startswith("CAPACITY_")
 
 
 def _observe_attempt(observer: AttemptObserver | None, **observation: Any) -> None:
@@ -522,8 +542,22 @@ async def dispatch_explicit_model_route(
     reasoning_policy: ReasoningPolicy = ReasoningPolicy.CURRENT_PROVIDER_DEFAULT,
     stage_role: str = "NORMAL",
     stage: str | None = None,
+    capacity_admission_token: str | None = None,
 ) -> Any:
     """Execute exactly one selected route without a hidden route fallback."""
+
+    execution_observer = getattr(
+        getattr(gateway, "registry", None), "attempt_observer", None,
+    )
+    if getattr(execution_observer, "exact_full_short_execution", False):
+        if not isinstance(capacity_admission_token, str):
+            raise CapacityAdmissionFailureV1("capacity.policy_violation")
+        authorize = getattr(
+            execution_observer, "authorize_capacity_dispatch_token", None,
+        )
+        if not callable(authorize):
+            raise CapacityAdmissionFailureV1("capacity.policy_violation")
+        authorize(capacity_admission_token)
 
     if toolbox is not None:
         complete_tools = getattr(gateway, "complete_with_tools_route", None)
@@ -668,12 +702,13 @@ async def execute_model_route_runtime(
             if repair_context:
                 route_user += "\n\nRUNTIME REPAIR CONTEXT:\n" + repair_context
         try:
+            capacity_admission_token: str | None = None
             route_budget = (
                 route_max_output_tokens.get(attempt.route, max_output_tokens)
                 if route_max_output_tokens is not None else max_output_tokens
             )
             if attempt_admitter is not None:
-                attempt_admitter(
+                capacity_admission_token = attempt_admitter(
                     attempt,
                     system,
                     route_user,
@@ -692,6 +727,7 @@ async def execute_model_route_runtime(
                 toolbox=toolbox,
                 fallback_context=fallback_context,
                 run_id=run_id,
+                capacity_admission_token=capacity_admission_token,
             )
         except CapacityAdmissionFailureV1:
             # Admission happens before dispatch. Replaying the same or a
@@ -699,6 +735,8 @@ async def execute_model_route_runtime(
             # consume a physical attempt without a provider call.
             raise
         except Exception as exc:
+            if _is_predispatch_capacity_boundary_failure(exc):
+                raise
             provider_id, model_id = route_identities[attempt.route]
             route_errors.append((provider_id, model_id, exc))
             _observe_attempt(
@@ -1513,6 +1551,8 @@ async def execute_contract_runtime(
             # or be aggregated into route exhaustion.
             raise
         except Exception as exc:
+            if _is_predispatch_capacity_boundary_failure(exc):
+                raise
             provider_id, model_id = route_identities[attempt.route]
             route_errors.append((provider_id, model_id, exc))
             attempt_ptr12_decision = current_ptr12_guard_decision()

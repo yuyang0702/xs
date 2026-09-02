@@ -67,6 +67,11 @@ from novel_flywheel.provider_response_capture import (
     ProviderResponseCaptureStoreV1,
 )
 from novel_flywheel.recovery_engine import FailureClass, ReliabilityFailure
+from novel_flywheel.stage_capacity import (
+    AdmissionStatus,
+    DEFAULT_STAGE_CAPACITY_POLICY_REGISTRY_V1,
+    StageCapacityPlanV1,
+)
 
 
 POLICY_SCHEMA = "FullShortExecutionPolicyV1"
@@ -252,6 +257,8 @@ _DISPATCH_READINESS_FIELDS_V1 = frozenset({
     "http_post_count_before_commit", "network_request_count_before_commit",
     "provider_response_count_before_commit",
     "completed_stage_count_before_commit",
+    "capacity_policy_registry_sha256", "capacity_plan_sha256",
+    "capacity_admission_receipt_sha256", "capacity_admission_status",
 })
 _DISPATCH_READINESS_HASH_FIELDS_V1 = frozenset({
     "policy_sha256", "logical_stage_plan_sha256", "permission_sha256",
@@ -259,6 +266,8 @@ _DISPATCH_READINESS_HASH_FIELDS_V1 = frozenset({
     "observer_session_sha256", "role_binding_sha256", "route_fingerprint",
     "destination_sha256", "request_shape_sha256", "provider_payload_sha256",
     "egress_intent_sha256",
+    "capacity_policy_registry_sha256", "capacity_plan_sha256",
+    "capacity_admission_receipt_sha256",
 })
 _DISPATCH_READINESS_CAP_FIELDS_V1 = frozenset({
     "expected_stage_calls", "hard_max_provider_requests",
@@ -388,7 +397,10 @@ def _validate_dispatch_readiness_v1(
     _require(
         body["policy_sha256"] == policy.get("policy_sha256")
         and body["logical_stage_plan_sha256"]
-        == policy.get("logical_stage_plan_sha256"),
+        == policy.get("logical_stage_plan_sha256")
+        and body["capacity_policy_registry_sha256"]
+        == policy.get("capacity_policy_registry_sha256")
+        and body.get("capacity_admission_status") == "PASS",
         "DISPATCH_READINESS_POLICY_MISMATCH",
     )
     _require(
@@ -898,6 +910,9 @@ class FullShortExecutionPolicyV1:
             "response_capture_policy_sha256": (
                 self.response_capture_policy_sha256
             ),
+            "capacity_policy_registry_sha256": (
+                DEFAULT_STAGE_CAPACITY_POLICY_REGISTRY_V1.identity_sha256
+            ),
             "store_root_sha256": self.store_root_sha256,
             "required_stage_roles": list(self.required_stage_roles),
             "logical_stage_plan": logical_stage_plan,
@@ -1041,6 +1056,7 @@ def render_full_short_canonical_authorization_v1(
         "observer_isolation_policy_sha256",
         "durable_failure_evidence_policy",
         "durable_failure_evidence_policy_sha256",
+        "capacity_policy_registry_sha256",
     ):
         _require(
             public_bindings.get(field) == validated.get(field),
@@ -1119,6 +1135,9 @@ def validate_full_short_preflight_v1(
         "response_capture_policy_sha256": validated[
             "response_capture_policy_sha256"
         ],
+        "capacity_policy_registry_sha256": validated[
+            "capacity_policy_registry_sha256"
+        ],
         "logical_stage_plan_sha256": validated["logical_stage_plan_sha256"],
         "transport_recovery_policy_sha256": validated[
             "transport_recovery_policy_sha256"
@@ -1184,6 +1203,9 @@ def validate_full_short_preflight_v1(
         "durable_failure_evidence_policy_sha256": (
             DURABLE_FAILURE_EVIDENCE_POLICY_SHA256
         ),
+        "capacity_policy_registry_sha256": validated[
+            "capacity_policy_registry_sha256"
+        ],
         "authorization_text_sha256": authorization_text_sha256,
         "binding_status": "exact",
         "external_actions_enabled": bool(external_actions_enabled),
@@ -1228,6 +1250,11 @@ def validate_policy_v1(value: Mapping[str, Any]) -> dict[str, Any]:
         body["response_capture_policy_sha256"]
         == RESPONSE_CAPTURE_POLICY_SHA256,
         "RESPONSE_CAPTURE_POLICY_NOT_ENFORCED",
+    )
+    _require(
+        body["capacity_policy_registry_sha256"]
+        == DEFAULT_STAGE_CAPACITY_POLICY_REGISTRY_V1.identity_sha256,
+        "CAPACITY_POLICY_REGISTRY_NOT_ENFORCED",
     )
     logical_stage_plan = validate_full_short_logical_stage_plan_v1(
         body.get("logical_stage_plan"),
@@ -1371,6 +1398,8 @@ class FullShortDurableExecutionStoreV1:
             "STORE_PATH_NOT_EXACT",
         )
         self.lock_path = self.root / ".full-short-execution.lock"
+        self.capacity_receipt_root = self.root / "capacity-v1"
+        self.capacity_receipt_root.mkdir(parents=False, exist_ok=True)
         self.store_root_sha256 = hashlib.sha256(
             str(self.root).encode("utf-8"),
         ).hexdigest()
@@ -1413,6 +1442,15 @@ class FullShortDurableExecutionStoreV1:
 
     def _path(self, execution_id: str, kind: str) -> Path:
         return self.root / f"{self._key(execution_id)}.{kind}.json"
+
+    def _capacity_path(self, execution_id: str, plan_sha256: str) -> Path:
+        _require(_HEX64.fullmatch(plan_sha256) is not None,
+                 "CAPACITY_PLAN_SHA256_INVALID")
+        key = domain_sha256(
+            "full-short-capacity-admission-storage-key-v1",
+            {"execution_id": execution_id, "plan_sha256": plan_sha256},
+        )
+        return self.capacity_receipt_root / f"{key}.json"
 
     def _read(self, execution_id: str, kind: str) -> dict[str, Any]:
         try:
@@ -1569,6 +1607,9 @@ class FullShortDurableExecutionStoreV1:
             "logical_stage_recovery_policy_sha256": validated[
                 "logical_stage_recovery_policy_sha256"
             ],
+            "capacity_policy_registry_sha256": validated[
+                "capacity_policy_registry_sha256"
+            ],
             "store_root_sha256": self.store_root_sha256,
             "state": "READY", "attempts": [], "completed_stage_receipts": [],
             "created_at": _now(), "updated_at": _now(),
@@ -1621,6 +1662,9 @@ class FullShortDurableExecutionStoreV1:
             "logical_stage_recovery_policy_sha256": validated[
                 "logical_stage_recovery_policy_sha256"
             ],
+            "capacity_policy_registry_sha256": validated[
+                "capacity_policy_registry_sha256"
+            ],
             "store_root_sha256": self.store_root_sha256,
             "permission_sha256": permission["permission_sha256"],
             "signed_approval_sha256": approval["signed_approval_sha256"],
@@ -1662,6 +1706,11 @@ class FullShortDurableExecutionStoreV1:
             self._read(execution_id, "ledger"),
             domain="novel-flywheel-full-short-dispatch-ledger-v1",
             field="ledger_sha256", reason="LEDGER_SHA256_MISMATCH",
+        )
+        _require(
+            ledger.get("capacity_policy_registry_sha256")
+            == validated["capacity_policy_registry_sha256"],
+            "EXECUTION_CHAIN_CAPACITY_POLICY_MISMATCH",
         )
         _require(permission.get("state") == "ACTIVE", "PERMISSION_NOT_ACTIVE")
         _require(approval.get("state") == "SIGNED", "APPROVAL_NOT_SIGNED")
@@ -1841,6 +1890,78 @@ class FullShortDurableExecutionStoreV1:
     def load_ledger(self, execution_id: str) -> dict[str, Any]:
         return self._read(execution_id, "ledger")
 
+    def create_capacity_admission_receipt(
+        self, *, execution_id: str, plan_sha256: str,
+        body: Mapping[str, Any],
+    ) -> dict[str, Any]:
+        """Persist one hash-only, unconsumed capacity admission receipt."""
+
+        _require(_HEX64.fullmatch(plan_sha256) is not None,
+                 "CAPACITY_PLAN_SHA256_INVALID")
+        value = _seal(
+            "novel-flywheel-capacity-admission-receipt-v1",
+            dict(body), "capacity_admission_receipt_sha256",
+        )
+        with self._locked():
+            self._exclusive_write(
+                self._capacity_path(execution_id, plan_sha256),
+                value,
+            )
+        return value
+
+    def load_capacity_admission_receipt(
+        self, *, execution_id: str, plan_sha256: str,
+    ) -> dict[str, Any]:
+        _require(_HEX64.fullmatch(plan_sha256) is not None,
+                 "CAPACITY_PLAN_SHA256_INVALID")
+        try:
+            value = json.loads(
+                self._capacity_path(execution_id, plan_sha256).read_text(
+                    encoding="utf-8",
+                )
+            )
+        except (OSError, ValueError) as exc:
+            raise FullShortExecutionBoundaryError(
+                "CAPACITY_ADMISSION_RECEIPT_NOT_FOUND_OR_CORRUPT"
+            ) from exc
+        return self._verify_seal(
+            value,
+            domain="novel-flywheel-capacity-admission-receipt-v1",
+            field="capacity_admission_receipt_sha256",
+            reason="CAPACITY_ADMISSION_RECEIPT_TAMPERED",
+        )
+
+    def transition_capacity_admission_receipt(
+        self, *, execution_id: str, plan_sha256: str,
+        expected_receipt_sha256: str, expected_state: str,
+        updates: Mapping[str, Any],
+    ) -> dict[str, Any]:
+        """Crash-safely advance exactly one capacity receipt state."""
+
+        with self._locked():
+            current = self.load_capacity_admission_receipt(
+                execution_id=execution_id, plan_sha256=plan_sha256,
+            )
+            _require(
+                current["capacity_admission_receipt_sha256"]
+                == expected_receipt_sha256,
+                "CAPACITY_ADMISSION_RECEIPT_STALE",
+            )
+            _require(current.get("state") == expected_state,
+                     "CAPACITY_ADMISSION_RECEIPT_STATE_INVALID")
+            body = dict(current)
+            body.pop("capacity_admission_receipt_sha256", None)
+            body.update(deepcopy(dict(updates)))
+            value = _seal(
+                "novel-flywheel-capacity-admission-receipt-v1",
+                body, "capacity_admission_receipt_sha256",
+            )
+            self._replace(
+                self._capacity_path(execution_id, plan_sha256),
+                value,
+            )
+            return value
+
     @staticmethod
     def _verify_seal(
         value: Mapping[str, Any], *, domain: str, field: str, reason: str,
@@ -1891,6 +2012,11 @@ class FullShortDurableExecutionStoreV1:
             self._read(execution_id, "ledger"),
             domain="novel-flywheel-full-short-dispatch-ledger-v1",
             field="ledger_sha256", reason="LEDGER_SHA256_MISMATCH",
+        )
+        _require(
+            ledger.get("capacity_policy_registry_sha256")
+            == validated["capacity_policy_registry_sha256"],
+            "EXECUTION_CHAIN_CAPACITY_POLICY_MISMATCH",
         )
         _require(permission.get("state") == "ACTIVE", "PERMISSION_NOT_ACTIVE")
         _require(approval.get("state") == "SIGNED", "APPROVAL_NOT_SIGNED")
@@ -2039,6 +2165,11 @@ class FullShortDurableExecutionStoreV1:
                 domain="novel-flywheel-full-short-dispatch-ledger-v1",
                 field="ledger_sha256", reason="LEDGER_SHA256_MISMATCH",
             )
+            _require(
+                ledger.get("capacity_policy_registry_sha256")
+                == validated["capacity_policy_registry_sha256"],
+                "EXECUTION_CHAIN_CAPACITY_POLICY_MISMATCH",
+            )
             attempts = list(ledger.get("attempts") or [])
             for value in (permission, approval, nonce, ledger):
                 _require(
@@ -2160,6 +2291,10 @@ class FullShortDurableExecutionStoreV1:
                         "role_binding_sha256", "route_fingerprint",
                         "destination_sha256", "request_shape_sha256",
                         "provider_payload_sha256", "egress_intent_sha256",
+                        "capacity_policy_registry_sha256",
+                        "capacity_plan_sha256",
+                        "capacity_admission_receipt_sha256",
+                        "capacity_admission_status",
                         "requested_output_tokens",
                     }
                     _require(
@@ -2425,6 +2560,9 @@ class FullShortDispatchLedgerObserverV1:
         self.expected_provider_payload: dict[str, Any] | None = None
         self.egress_intent_sha256: str | None = None
         self.pending_stage_context: dict[str, Any] | None = None
+        self.pending_capacity_plan_sha256: str | None = None
+        self.pending_capacity_receipt: dict[str, Any] | None = None
+        self.capacity_dispatch_token_authorized = False
         self.capture_store = ProviderResponseCaptureStoreV1(
             repo_root=self.store.repo_root,
             store_root=self.store.root / "provider-response-captures-v1",
@@ -2454,6 +2592,190 @@ class FullShortDispatchLedgerObserverV1:
                 session_id=self.session_id,
                 external_actions_enabled=external_actions_enabled,
             )
+
+    def _sealed_route_binding(self, *, route: str, role: str) -> dict[str, Any]:
+        lane = "fallback" if route == "configured_fallback" else route
+        _require(lane in {"primary", "fallback"},
+                 "CAPACITY_ROUTE_IDENTITY_INVALID")
+        matches = [
+            deepcopy(dict(item)) for item in self.authorized_routes
+            if item.get("role") == role and item.get("lane") == lane
+        ]
+        _require(len(matches) == 1, "CAPACITY_ROUTE_BINDING_DRIFT")
+        sealed = matches[0]
+        _require(
+            type(sealed.get("model_context_limit")) is int
+            and int(sealed["model_context_limit"]) > 0
+            and sealed.get("model_context_limit_source")
+            == "model_configuration",
+            "CAPACITY_ROUTE_CONTEXT_LIMIT_INVALID",
+        )
+        sealed["role_binding_sha256"] = domain_sha256(
+            "novel-flywheel-full-short-role-binding-v1",
+            {key: sealed.get(key) for key in (
+                "role", "lane", "provider_id_sha256", "model_id_sha256",
+                "model_name", "protocol", "route_fingerprint", "destination",
+                "model_context_limit", "model_context_limit_source",
+            )},
+        )
+        return sealed
+
+    def capacity_admission_context(
+        self, *, route: str, role: str, physical_attempt: int,
+    ) -> dict[str, Any]:
+        """Return the canonical, sealed identities required by capacity planning."""
+
+        _require(self.pending_ordinal is None, "PRIOR_DISPATCH_STILL_PENDING")
+        expected = (
+            self._validate_pending_logical_stage_plan()
+            if self.pending_stage_context is not None
+            else self._next_logical_stage_plan_entry()
+        )
+        _require(role == expected["role"], "LOGICAL_STAGE_PLAN_ROLE_DRIFT")
+        expected_route = str(expected["route_lane"])
+        _require(route == expected_route, "CAPACITY_ROUTE_BINDING_DRIFT")
+        logical_stage_id = str(expected["logical_stage_id"])
+        attempts = list(
+            self.store.load_ledger(self.execution_id).get("attempts") or []
+        )
+        expected_physical_attempt = 1 + sum(
+            1 for item in attempts
+            if item.get("logical_stage_id") == logical_stage_id
+        )
+        _require(
+            expected_physical_attempt
+            <= self.policy["max_physical_attempts_per_logical_stage"],
+            "CAPACITY_PHYSICAL_ATTEMPT_CAP_EXHAUSTED",
+        )
+        _require(
+            physical_attempt == expected_physical_attempt,
+            "CAPACITY_PHYSICAL_ATTEMPT_DRIFT",
+        )
+        sealed = self._sealed_route_binding(route=route, role=role)
+        return {
+            "logical_stage_id": logical_stage_id,
+            "physical_attempt": expected_physical_attempt,
+            "provider_route_identity_sha256": sealed[
+                "role_binding_sha256"
+            ],
+            "model_context_limit": sealed["model_context_limit"],
+        }
+
+    def bind_capacity_plan(
+        self, *, plan: StageCapacityPlanV1, route: str, role: str,
+    ) -> str:
+        """Durably bind one PASS plan before route/provider resolution."""
+
+        _require(self.pending_capacity_plan_sha256 is None,
+                 "CAPACITY_PLAN_ALREADY_PENDING")
+        plan.require_pass()
+        expected = (
+            self._validate_pending_logical_stage_plan()
+            if self.pending_stage_context is not None
+            else self._next_logical_stage_plan_entry()
+        )
+        context = self.capacity_admission_context(
+            route=route, role=role, physical_attempt=plan.physical_attempt,
+        )
+        _require(
+            plan.stage_id == expected["stage_id"]
+            and plan.logical_stage_id == context["logical_stage_id"]
+            and plan.contract_name == expected["contract_name"]
+            and plan.contract_version == expected["contract_version"]
+            and plan.contract_schema_sha256
+            == expected["contract_schema_sha256"],
+            "CAPACITY_PLAN_CONTRACT_OR_STAGE_DRIFT",
+        )
+        _require(
+            plan.provider_route_identity_sha256
+            == context["provider_route_identity_sha256"]
+            and plan.model_context_limit == context["model_context_limit"],
+            "CAPACITY_PLAN_ROUTE_DRIFT",
+        )
+        _require(
+            plan.policy_registry_sha256
+            == self.policy["capacity_policy_registry_sha256"]
+            and plan.admission_status is AdmissionStatus.PASS,
+            "CAPACITY_PLAN_POLICY_OR_ADMISSION_DRIFT",
+        )
+        body = {
+            "schema": "FullShortCapacityAdmissionReceiptV1",
+            "version": 1,
+            "execution_id": self.execution_id,
+            "policy_sha256": self.policy["policy_sha256"],
+            "capacity_policy_registry_sha256": plan.policy_registry_sha256,
+            "capacity_plan_sha256": plan.plan_sha256,
+            "stage_id_sha256": hashlib.sha256(
+                plan.stage_id.encode("utf-8")
+            ).hexdigest(),
+            "logical_stage_id": plan.logical_stage_id,
+            "physical_attempt": plan.physical_attempt,
+            "contract_name_sha256": hashlib.sha256(
+                plan.contract_name.encode("utf-8")
+            ).hexdigest(),
+            "contract_version": plan.contract_version,
+            "contract_schema_sha256": plan.contract_schema_sha256,
+            "provider_route_identity_sha256": (
+                plan.provider_route_identity_sha256
+            ),
+            "role_sha256": hashlib.sha256(role.encode("utf-8")).hexdigest(),
+            "route": route,
+            "rendered_request_sha256": plan.rendered_request_sha256,
+            "requested_output_token_cap": plan.requested_output_token_cap,
+            "final_output_reserve": plan.final_output_reserve,
+            "admission_status": "PASS",
+            "model_request_sha256": None,
+            "provider_payload_sha256": None,
+            "egress_intent_sha256": None,
+            "outbound_request_bytes_sha256": None,
+            "destination_sha256": None,
+            "state": "PLAN_BOUND_UNCONSUMED",
+            "raw_prompt_persisted": False,
+            "created_at": _now(),
+            "updated_at": _now(),
+        }
+        capacity_path = self.store._capacity_path(
+            self.execution_id, plan.plan_sha256,
+        )
+        if capacity_path.exists():
+            receipt = self.store.load_capacity_admission_receipt(
+                execution_id=self.execution_id,
+                plan_sha256=plan.plan_sha256,
+            )
+            immutable_fields = set(body) - {"created_at", "updated_at"}
+            _require(
+                receipt.get("state") == "PLAN_BOUND_UNCONSUMED"
+                and all(receipt.get(field) == body.get(field)
+                        for field in immutable_fields),
+                "CAPACITY_ADMISSION_RECEIPT_REPLAY_DRIFT",
+            )
+        else:
+            receipt = self.store.create_capacity_admission_receipt(
+                execution_id=self.execution_id,
+                plan_sha256=plan.plan_sha256,
+                body=body,
+            )
+        self.pending_capacity_plan_sha256 = plan.plan_sha256
+        self.pending_capacity_receipt = receipt
+        self.capacity_dispatch_token_authorized = False
+        return plan.plan_sha256
+
+    def authorize_capacity_dispatch_token(self, token: str) -> None:
+        """Authorize the exact capacity token before provider route resolution."""
+
+        _require(
+            token == self.pending_capacity_plan_sha256,
+            "CAPACITY_DISPATCH_TOKEN_MISSING_OR_STALE",
+        )
+        receipt = self.store.load_capacity_admission_receipt(
+            execution_id=self.execution_id, plan_sha256=token,
+        )
+        _require(
+            receipt == self.pending_capacity_receipt
+            and receipt.get("state") == "PLAN_BOUND_UNCONSUMED",
+            "CAPACITY_ADMISSION_RECEIPT_STALE",
+        )
+        self.capacity_dispatch_token_authorized = True
 
     def _next_logical_stage_plan_entry(self) -> dict[str, Any]:
         ledger = self.store.load_ledger(self.execution_id)
@@ -2587,6 +2909,24 @@ class FullShortDispatchLedgerObserverV1:
         if self.live_authority_recheck is not None:
             self.live_authority_recheck()
         _require(self.pending_ordinal is None, "PRIOR_DISPATCH_STILL_PENDING")
+        _require(
+            self.pending_capacity_plan_sha256 is not None
+            and self.capacity_dispatch_token_authorized,
+            "CAPACITY_DISPATCH_TOKEN_NOT_AUTHORIZED",
+        )
+        capacity_receipt = self.store.load_capacity_admission_receipt(
+            execution_id=self.execution_id,
+            plan_sha256=self.pending_capacity_plan_sha256,
+        )
+        _require(
+            capacity_receipt == self.pending_capacity_receipt
+            and capacity_receipt.get("state") == "PLAN_BOUND_UNCONSUMED"
+            and capacity_receipt.get("route")
+            == ("configured_fallback" if lane == "fallback" else lane)
+            and capacity_receipt.get("role_sha256")
+            == hashlib.sha256(role.encode("utf-8")).hexdigest(),
+            "CAPACITY_ADMISSION_ROUTE_OR_ROLE_DRIFT",
+        )
         expected_stage = self._next_logical_stage_plan_entry()
         _require(role == expected_stage["role"],
                  "LOGICAL_STAGE_PLAN_ROLE_DRIFT")
@@ -2617,7 +2957,13 @@ class FullShortDispatchLedgerObserverV1:
             {key: route.get(key) for key in (
                 "role", "lane", "provider_id_sha256", "model_id_sha256",
                 "model_name", "protocol", "route_fingerprint", "destination",
+                "model_context_limit", "model_context_limit_source",
             )},
+        )
+        _require(
+            route["role_binding_sha256"]
+            == capacity_receipt.get("provider_route_identity_sha256"),
+            "CAPACITY_ADMISSION_ROUTE_OR_ROLE_DRIFT",
         )
         if self.bound_route is not None:
             _require(
@@ -2638,6 +2984,12 @@ class FullShortDispatchLedgerObserverV1:
 
         route = self.bound_route
         _require(route is not None, "ROUTE_NOT_BOUND_BEFORE_MODEL_REQUEST")
+        _require(
+            self.pending_capacity_plan_sha256 is not None
+            and self.pending_capacity_receipt is not None
+            and self.capacity_dispatch_token_authorized,
+            "CAPACITY_ADMISSION_NOT_BOUND_BEFORE_MODEL_REQUEST",
+        )
         _require(self.pending_ordinal is None, "PRIOR_DISPATCH_STILL_PENDING")
         _require(
             self.expected_provider_payload is None,
@@ -2688,6 +3040,54 @@ class FullShortDispatchLedgerObserverV1:
                 "provider_payload_sha256": _canonical_sha256(expected),
             },
         )
+        current_capacity = self.pending_capacity_receipt
+        _require(
+            len(request.messages) == 2
+            and request.messages[0].role == "system"
+            and request.messages[1].role == "user",
+            "CAPACITY_MODEL_REQUEST_MESSAGE_TOPOLOGY_DRIFT",
+        )
+        rendered_request_sha256 = hashlib.sha256(
+            (
+                request.messages[0].content
+                + "\n\0"
+                + request.messages[1].content
+            ).encode("utf-8")
+        ).hexdigest()
+        _require(
+            current_capacity.get("logical_stage_id")
+            == self.pending_stage_context.get("logical_stage_id")
+            and current_capacity.get("provider_route_identity_sha256")
+            == route.get("role_binding_sha256")
+            and current_capacity.get("contract_schema_sha256")
+            == self.pending_stage_context.get("contract_schema_sha256")
+            and current_capacity.get("rendered_request_sha256")
+            == rendered_request_sha256
+            and current_capacity.get("requested_output_token_cap")
+            == int(request.max_output_tokens or 8192)
+            and current_capacity.get("final_output_reserve")
+            == int(request.max_output_tokens or 8192),
+            "CAPACITY_ADMISSION_REQUEST_CONTEXT_DRIFT",
+        )
+        self.pending_capacity_receipt = (
+            self.store.transition_capacity_admission_receipt(
+                execution_id=self.execution_id,
+                plan_sha256=self.pending_capacity_plan_sha256,
+                expected_receipt_sha256=current_capacity[
+                    "capacity_admission_receipt_sha256"
+                ],
+                expected_state="PLAN_BOUND_UNCONSUMED",
+                updates={
+                    "model_request_sha256": _canonical_sha256(
+                        request.model_dump(mode="json")
+                    ),
+                    "provider_payload_sha256": _canonical_sha256(expected),
+                    "egress_intent_sha256": self.egress_intent_sha256,
+                    "state": "REQUEST_BOUND_UNCONSUMED",
+                    "updated_at": _now(),
+                },
+            )
+        )
 
     @full_short_boundary_entry("FS.CONTROL.PREFLIGHT")
     def before_http_dispatch(
@@ -2721,6 +3121,10 @@ class FullShortDispatchLedgerObserverV1:
         _require(
             dict(payload) == expected_payload,
             "EGRESS_PAYLOAD_SCHEMA_OR_CONTENT_DRIFT",
+        )
+        _require(
+            request_bytes is not None or not self.external_actions_enabled,
+            "MATERIALIZED_REQUEST_BYTES_REQUIRED",
         )
         if request_bytes is not None:
             _require(
@@ -2890,6 +3294,56 @@ class FullShortDispatchLedgerObserverV1:
             if request_bytes is not None
             else canonical_json_bytes(dict(payload))
         ).hexdigest()
+        capacity_plan_sha256 = self.pending_capacity_plan_sha256
+        capacity_receipt = self.pending_capacity_receipt
+        _require(
+            capacity_plan_sha256 is not None
+            and capacity_receipt is not None
+            and self.capacity_dispatch_token_authorized,
+            "CAPACITY_ADMISSION_NOT_READY",
+        )
+        durable_capacity_receipt = self.store.load_capacity_admission_receipt(
+            execution_id=self.execution_id,
+            plan_sha256=capacity_plan_sha256,
+        )
+        _require(
+            durable_capacity_receipt == capacity_receipt
+            and capacity_receipt.get("state")
+            == "REQUEST_BOUND_UNCONSUMED"
+            and capacity_receipt.get("admission_status") == "PASS"
+            and capacity_receipt.get("capacity_policy_registry_sha256")
+            == self.policy["capacity_policy_registry_sha256"]
+            and capacity_receipt.get("logical_stage_id") == logical_stage_id
+            and capacity_receipt.get("physical_attempt")
+            == len(prior_logical_attempts) + 1
+            and capacity_receipt.get("provider_route_identity_sha256")
+            == route.get("role_binding_sha256")
+            and capacity_receipt.get("provider_payload_sha256")
+            == request_shape["provider_payload_sha256"]
+            and capacity_receipt.get("egress_intent_sha256")
+            == self.egress_intent_sha256,
+            "CAPACITY_ADMISSION_BINDING_DRIFT",
+        )
+        capacity_receipt = self.store.transition_capacity_admission_receipt(
+            execution_id=self.execution_id,
+            plan_sha256=capacity_plan_sha256,
+            expected_receipt_sha256=capacity_receipt[
+                "capacity_admission_receipt_sha256"
+            ],
+            expected_state="REQUEST_BOUND_UNCONSUMED",
+            updates={
+                "outbound_request_bytes_sha256": (
+                    outbound_request_bytes_sha256
+                ),
+                "destination_sha256": hashlib.sha256(
+                    normalized.encode("utf-8")
+                ).hexdigest(),
+                "state": "CONSUMED",
+                "consumed_at": _now(),
+                "updated_at": _now(),
+            },
+        )
+        self.pending_capacity_receipt = capacity_receipt
         runtime_kernel = active_full_short_kernel_v1()
         if runtime_kernel is not None:
             runtime_kernel.mark_predispatch_ready(PredispatchReadinessV1(
@@ -2902,6 +3356,7 @@ class FullShortDispatchLedgerObserverV1:
                 authorized_credential_readiness=True,
                 network_free_request_constructable=True,
                 reasoning_policy_projected=True,
+                capacity_admission_passed=True,
                 request_bytes_sha256=outbound_request_bytes_sha256,
                 route_policy_sha256=domain_sha256(
                     "novel-flywheel-full-short-route-policy-v1",
@@ -2914,6 +3369,13 @@ class FullShortDispatchLedgerObserverV1:
                         "egress_intent_sha256": self.egress_intent_sha256,
                     },
                 ),
+                capacity_policy_registry_sha256=self.policy[
+                    "capacity_policy_registry_sha256"
+                ],
+                capacity_plan_sha256=capacity_plan_sha256,
+                capacity_admission_receipt_sha256=capacity_receipt[
+                    "capacity_admission_receipt_sha256"
+                ],
             ))
             runtime_kernel.reserve_dispatch_token(
                 logical_stage_id=logical_stage_id,
@@ -2952,6 +3414,14 @@ class FullShortDispatchLedgerObserverV1:
             "outbound_request_bytes_sha256": (
                 outbound_request_bytes_sha256
             ),
+            "capacity_policy_registry_sha256": self.policy[
+                "capacity_policy_registry_sha256"
+            ],
+            "capacity_plan_sha256": capacity_plan_sha256,
+            "capacity_admission_receipt_sha256": capacity_receipt[
+                "capacity_admission_receipt_sha256"
+            ],
+            "capacity_admission_status": "PASS",
             "stage_role": stage_role,
             "recovery_family": (
                 "REASONING_ONLY_FINALIZATION"
@@ -3022,6 +3492,14 @@ class FullShortDispatchLedgerObserverV1:
                         "provider_payload_sha256"
                     ],
                     "egress_intent_sha256": self.egress_intent_sha256,
+                    "capacity_policy_registry_sha256": self.policy[
+                        "capacity_policy_registry_sha256"
+                    ],
+                    "capacity_plan_sha256": capacity_plan_sha256,
+                    "capacity_admission_receipt_sha256": capacity_receipt[
+                        "capacity_admission_receipt_sha256"
+                    ],
+                    "capacity_admission_status": "PASS",
                     "requested_output_tokens": requested_tokens,
                     "total_requested_output_tokens": total_requested,
                     "hard_max_provider_requests": self.policy[
@@ -3286,10 +3764,34 @@ class FullShortDispatchLedgerObserverV1:
             # seam cannot leave request identity attached to a later route.
             # No external completion is possible because no attempt ordinal
             # was recorded.
+            if (
+                self.pending_capacity_plan_sha256 is not None
+                and self.pending_capacity_receipt is not None
+                and self.pending_capacity_receipt.get("state")
+                == "REQUEST_BOUND_UNCONSUMED"
+            ):
+                self.store.transition_capacity_admission_receipt(
+                    execution_id=self.execution_id,
+                    plan_sha256=self.pending_capacity_plan_sha256,
+                    expected_receipt_sha256=self.pending_capacity_receipt[
+                        "capacity_admission_receipt_sha256"
+                    ],
+                    expected_state="REQUEST_BOUND_UNCONSUMED",
+                    updates={
+                        "model_request_sha256": None,
+                        "provider_payload_sha256": None,
+                        "egress_intent_sha256": None,
+                        "state": "PLAN_BOUND_UNCONSUMED",
+                        "updated_at": _now(),
+                    },
+                )
             self.bound_route = None
             self.expected_provider_payload = None
             self.egress_intent_sha256 = None
             self.pending_stage_context = None
+            self.pending_capacity_plan_sha256 = None
+            self.pending_capacity_receipt = None
+            self.capacity_dispatch_token_authorized = False
             return
 
         def mutate(body: dict[str, Any]) -> dict[str, Any]:
@@ -3567,6 +4069,9 @@ class FullShortDispatchLedgerObserverV1:
         self.expected_provider_payload = None
         self.egress_intent_sha256 = None
         self.pending_stage_context = None
+        self.pending_capacity_plan_sha256 = None
+        self.pending_capacity_receipt = None
+        self.capacity_dispatch_token_authorized = False
 
     def mark_local_attempt_rejected(
         self, *, stage: str, role: str, role_binding_sha256: str,
@@ -3799,6 +4304,9 @@ class FullShortDispatchLedgerObserverV1:
         self.expected_provider_payload = None
         self.egress_intent_sha256 = None
         self.pending_stage_context = None
+        self.pending_capacity_plan_sha256 = None
+        self.pending_capacity_receipt = None
+        self.capacity_dispatch_token_authorized = False
 
 
 def validate_full_short_dispatch_accounting_v1(
@@ -3860,6 +4368,29 @@ def build_full_short_completion_receipt_v1(
     _require(
         all(item.get("state") in _CLOSED_LOCAL_ATTEMPT_STATES for item in attempts),
         "LEDGER_HAS_UNCLOSED_DISPATCH",
+    )
+    _require(
+        sealed_ledger.get("capacity_policy_registry_sha256")
+        == validated["capacity_policy_registry_sha256"]
+        and all(
+            item.get("capacity_policy_registry_sha256")
+            == validated["capacity_policy_registry_sha256"]
+            and _HEX64.fullmatch(str(
+                item.get("capacity_plan_sha256") or ""
+            )) is not None
+            and _HEX64.fullmatch(str(
+                item.get("capacity_admission_receipt_sha256") or ""
+            )) is not None
+            and item.get("capacity_admission_status") == "PASS"
+            for item in attempts
+        )
+        and len({
+            item.get("capacity_plan_sha256") for item in attempts
+        }) == len(attempts)
+        and len({
+            item.get("capacity_admission_receipt_sha256") for item in attempts
+        }) == len(attempts),
+        "COMPLETION_CAPACITY_ADMISSION_PROVENANCE_INVALID",
     )
     _require(
         [item.get("ordinal") for item in attempts]
@@ -4126,6 +4657,12 @@ def build_full_short_completion_receipt_v1(
         "signed_approval_sha256": signed_approval_sha256,
         "nonce_sha256": nonce_sha256,
         "dispatch_ledger_sha256": sealed_ledger["ledger_sha256"],
+        "capacity_policy_registry_sha256": validated[
+            "capacity_policy_registry_sha256"
+        ],
+        "capacity_admission_receipt_sha256s": [
+            item["capacity_admission_receipt_sha256"] for item in attempts
+        ],
         "provider_request_count": len(attempts),
         "http_post_count": len(attempts),
         "network_attempt_count": len(attempts),

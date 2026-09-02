@@ -555,8 +555,12 @@ def test_predispatch_readiness_precedes_unique_attempt_token(tmp_path: Path) -> 
         authorized_credential_readiness=True,
         network_free_request_constructable=True,
         reasoning_policy_projected=True,
+        capacity_admission_passed=True,
         request_bytes_sha256="a" * 64,
         route_policy_sha256="b" * 64,
+        capacity_policy_registry_sha256="c" * 64,
+        capacity_plan_sha256="d" * 64,
+        capacity_admission_receipt_sha256="e" * 64,
     )
     kernel = FullShortExecutionKernel(
         registry=DEFAULT_FAILURE_BOUNDARY_REGISTRY_V1,

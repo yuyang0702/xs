@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from dataclasses import replace
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -60,6 +61,11 @@ from novel_flywheel.story_state import StoryStateStore
 from novel_flywheel.structured_artifacts import StructuredArtifactContract
 from novel_flywheel.runtime_fingerprint_build import domain_sha256
 from novel_flywheel.recovery_engine import FailureClass
+from novel_flywheel.stage_capacity import (
+    DEFAULT_STAGE_CAPACITY_POLICY_REGISTRY_V1,
+    StageCapacityPolicyRegistryV1,
+    build_stage_capacity_plan_v1,
+)
 from tools.canary import first_trustworthy_full_short_runner as real_runner
 
 
@@ -85,13 +91,17 @@ def _egress() -> dict:
 
 def _request(max_tokens: int = 128) -> ModelRequest:
     return ModelRequest(
-        model="offline", messages=[], max_output_tokens=max_tokens,
+        model="offline", messages=[
+            Message(role="system", content=""),
+            Message(role="user", content=""),
+        ], max_output_tokens=max_tokens,
     )
 
 
 def _payload(max_tokens: int = 128) -> dict:
     return {
-        "model": "offline", "messages": [], "max_tokens": max_tokens,
+        "model": "offline", "messages": [{"role": "user", "content": ""}],
+        "max_tokens": max_tokens,
         "stream": True,
     }
 
@@ -105,6 +115,8 @@ def _routes() -> tuple[dict, ...]:
         "route_fingerprint": "9" * 64,
         "destination": "https://unit.test:443/v1/messages",
         "max_output_tokens": 4096,
+        "model_context_limit": 32768,
+        "model_context_limit_source": "model_configuration",
     },)
 
 
@@ -196,6 +208,7 @@ def _architecture_bindings(policy: dict) -> dict:
         "observer_isolation_policy_sha256",
         "durable_failure_evidence_policy",
         "durable_failure_evidence_policy_sha256",
+        "capacity_policy_registry_sha256",
     )
     return {field: policy[field] for field in fields}
 
@@ -258,6 +271,61 @@ def _authorize_predispatch_offline(
     return permission, approval
 
 
+def _bind_route_with_capacity(
+    observer: FullShortDispatchLedgerObserverV1, *, role: str, lane: str,
+    provider_id: str, model_id: str, route_fingerprint: str,
+    resolve_route: bool = True,
+    system_content: str = "", user_content: str = "",
+) -> None:
+    """Arm the exact offline capacity gate before resolving a test route."""
+
+    expected = observer._next_logical_stage_plan_entry()
+    logical_stage_id = (
+        observer.pending_stage_context["logical_stage_id"]
+        if observer.pending_stage_context is not None
+        else expected["logical_stage_id"]
+    )
+    attempts = observer.store.load_ledger(observer.execution_id)["attempts"]
+    physical_attempt = 1 + sum(
+        1 for item in attempts
+        if item.get("logical_stage_id") == logical_stage_id
+    )
+    route = "configured_fallback" if lane == "fallback" else lane
+    context = observer.capacity_admission_context(
+        route=route, role=role, physical_attempt=physical_attempt,
+    )
+    plan = build_stage_capacity_plan_v1(
+        stage_id=expected["stage_id"],
+        logical_stage_id=context["logical_stage_id"],
+        physical_attempt=context["physical_attempt"],
+        stage=role,
+        contract_name=expected["contract_name"],
+        contract_version=expected["contract_version"],
+        contract_schema_sha256=expected["contract_schema_sha256"],
+        provider_route_identity_sha256=context[
+            "provider_route_identity_sha256"
+        ],
+        model_context_limit=context["model_context_limit"],
+        requested_output_token_cap=expected["requested_output_tokens"],
+        final_output_reserve=expected["requested_output_tokens"],
+        rendered_message_tokens=0,
+        structured_envelope_tokens=0,
+        provider_envelope_tokens=256,
+        wrapper_and_estimator_margin_tokens=1024,
+        rendered_request_sha256=hashlib.sha256(
+            (system_content + "\n\0" + user_content).encode("utf-8")
+        ).hexdigest(),
+        layer_projections=(), parent_plan_sha256=None,
+    )
+    token = observer.bind_capacity_plan(plan=plan, route=route, role=role)
+    observer.authorize_capacity_dispatch_token(token)
+    if resolve_route:
+        observer.bind_route(
+            role=role, lane=lane, provider_id=provider_id,
+            model_id=model_id, route_fingerprint=route_fingerprint,
+        )
+
+
 def _predispatch_observer(
     store: FullShortDurableExecutionStoreV1, execution_id: str,
 ) -> FullShortDispatchLedgerObserverV1:
@@ -265,7 +333,7 @@ def _predispatch_observer(
         store=store, execution_id=execution_id, policy=_policy(store),
         authorized_routes=_routes(), egress_policy=_egress(),
     )
-    observer.bind_route(
+    _bind_route_with_capacity(observer,
         role="planning", lane="primary", provider_id="provider",
         model_id="model-id", route_fingerprint="9" * 64,
     )
@@ -322,6 +390,11 @@ def test_predispatch_credential_failure_leaves_nonce_absent(
     registry = ProviderRegistry(db, MissingSecrets(), attempt_observer=observer)
     monkeypatch.setattr(
         registry, "route_fingerprint", lambda _provider, _model: "9" * 64,
+    )
+    _bind_route_with_capacity(
+        observer, role="planning", lane="primary", provider_id="provider",
+        model_id="model-id", route_fingerprint="9" * 64,
+        resolve_route=False,
     )
     with pytest.raises(ValueError, match="missing_api_key"):
         registry.resolve("provider", "model-id", role="planning", lane="primary")
@@ -536,7 +609,7 @@ def _observer(
         authorized_routes=_routes(), egress_policy=_egress(),
         session_id=session_id,
     )
-    observer.bind_route(
+    _bind_route_with_capacity(observer,
         role="planning", lane="primary", provider_id="provider",
         model_id="model-id", route_fingerprint="9" * 64,
     )
@@ -671,7 +744,7 @@ def _dispatch_reasoning_recovery_and_close(
         contract_version=1, contract_schema_sha256=_hash({}),
         stage_role="PLANNING_FINAL_ARTIFACT_RECOVERY",
     )
-    observer.bind_route(
+    _bind_route_with_capacity(observer,
         role="planning", lane="primary", provider_id="provider",
         model_id="model-id", route_fingerprint="9" * 64,
     )
@@ -802,7 +875,7 @@ def test_active_runtime_kernel_second_attempt_uses_shared_slot_once(
             stage_id="planning", contract_name="unstructured_text",
             contract_version=1, contract_schema_sha256=_hash({}),
         )
-        observer.bind_route(
+        _bind_route_with_capacity(observer,
             role="planning", lane="primary", provider_id="provider",
             model_id="model-id", route_fingerprint="9" * 64,
         )
@@ -927,7 +1000,7 @@ async def test_lowest_http_send_recovery_consumes_only_shared_second_slot(
             stage_id="planning", contract_name="unstructured_text",
             contract_version=1, contract_schema_sha256=_hash({}),
         )
-        observer.bind_route(
+        _bind_route_with_capacity(observer,
             role="planning", lane="primary", provider_id="provider",
             model_id="model-id", route_fingerprint="9" * 64,
         )
@@ -1022,7 +1095,7 @@ def test_live_authority_is_rechecked_again_before_nonce_consumption(
         policy=_policy(store), authorized_routes=_routes(),
         egress_policy=_egress(), live_authority_recheck=drift_on_wire,
     )
-    observer.bind_route(
+    _bind_route_with_capacity(observer,
         role="planning", lane="primary", provider_id="provider",
         model_id="model-id", route_fingerprint="9" * 64,
     )
@@ -1052,7 +1125,7 @@ def test_exact_pre_dispatch_route_rebind_is_idempotent_but_drift_fails(
         policy=_policy(store), authorized_routes=_routes(),
         egress_policy=_egress(),
     )
-    observer.bind_route(
+    _bind_route_with_capacity(observer,
         role="planning", lane="primary", provider_id="provider",
         model_id="model-id", route_fingerprint="9" * 64,
     )
@@ -1069,7 +1142,7 @@ def test_exact_pre_dispatch_route_rebind_is_idempotent_but_drift_fails(
             provider_id="provider", model_id="model-id",
             route_fingerprint="9" * 64,
         )
-    assert drift.value.reason_code == "ROUTE_SWITCH_OR_FALLBACK_FORBIDDEN"
+    assert drift.value.reason_code == "CAPACITY_ADMISSION_ROUTE_OR_ROLE_DRIFT"
 
 
 @pytest.mark.asyncio
@@ -1128,7 +1201,7 @@ async def test_lowest_transport_seam_is_durable_and_completable(tmp_path: Path) 
             role="planning", lane="primary", provider_id="provider",
             model_id="model-id", route_fingerprint="9" * 64,
         )
-    assert replay.value.reason_code == "LOGICAL_STAGE_PLAN_EXHAUSTED"
+    assert replay.value.reason_code == "CAPACITY_DISPATCH_TOKEN_NOT_AUTHORIZED"
     await provider.client.aclose()
 
 
@@ -1299,7 +1372,7 @@ def test_capture_reconciliation_binds_openai_protocol_adapter_identity(
         policy=_policy(store, routes=route),
         authorized_routes=route, egress_policy=_egress(),
     )
-    observer.bind_route(
+    _bind_route_with_capacity(observer,
         role="planning", lane="primary", provider_id="provider",
         model_id="model-id", route_fingerprint="9" * 64,
     )
@@ -1364,7 +1437,7 @@ async def test_contract_runtime_terminal_exception_after_complete_capture_never_
         contract_attempt_index=1, contract_route="primary",
         contract_route_attempt=1,
     )
-    observer.bind_route(
+    _bind_route_with_capacity(observer,
         role="planning", lane="primary", provider_id="provider",
         model_id="model-id", route_fingerprint="9" * 64,
     )
@@ -1522,7 +1595,7 @@ def test_closed_local_rejection_allows_only_same_session_bounded_recovery(
         )
     assert restarted.value.reason_code == "NONCE_ALREADY_CONSUMED_NO_RESTART"
 
-    observer.bind_route(
+    _bind_route_with_capacity(observer,
         role="planning", lane="primary", provider_id="provider",
         model_id="model-id", route_fingerprint="9" * 64,
     )
@@ -1596,7 +1669,7 @@ def test_two_rejections_exhaust_shared_logical_stage_physical_ceiling(
             ),
         )
         if route_attempt == 1:
-            observer.bind_route(
+            _bind_route_with_capacity(observer,
                 role="planning", lane="primary", provider_id="provider",
                 model_id="model-id", route_fingerprint="9" * 64,
             )
@@ -1604,18 +1677,14 @@ def test_two_rejections_exhaust_shared_logical_stage_physical_ceiling(
                 protocol="anthropic", request=_request(),
             )
 
-    observer.bind_route(
-        role="planning", lane="primary", provider_id="provider",
-        model_id="model-id", route_fingerprint="9" * 64,
-    )
-    observer.bind_model_request(protocol="anthropic", request=_request())
     with pytest.raises(FullShortExecutionBoundaryError) as rejected:
-        observer.before_http_dispatch(
-            method="POST", url="https://unit.test/v1/messages",
-            payload=_payload(),
+        _bind_route_with_capacity(
+            observer, role="planning", lane="primary",
+            provider_id="provider", model_id="model-id",
+            route_fingerprint="9" * 64,
         )
     assert rejected.value.reason_code == (
-        "LOGICAL_STAGE_REDISPATCH_NOT_AUTHORIZED"
+        "CAPACITY_PHYSICAL_ATTEMPT_CAP_EXHAUSTED"
     )
     ledger = store.load_ledger("two-slot-recovery-ceiling")
     assert len(ledger["attempts"]) == 2
@@ -1685,7 +1754,7 @@ def test_reasoning_only_rejection_requires_exact_recovery_stage_role(
         contract_version=1, contract_schema_sha256=_hash({}),
         stage_role="NORMAL",
     )
-    observer.bind_route(
+    _bind_route_with_capacity(observer,
         role="planning", lane="primary", provider_id="provider",
         model_id="model-id", route_fingerprint="9" * 64,
     )
@@ -1790,11 +1859,11 @@ def test_exact_full_short_rejects_configured_fallback_lane_before_dispatch(
         authorized_routes=routes, egress_policy=_egress(),
     )
     with pytest.raises(FullShortExecutionBoundaryError) as rejected:
-        observer.bind_route(
+        _bind_route_with_capacity(observer,
             role="planning", lane="fallback", provider_id="fallback-provider",
             model_id="fallback-model-id", route_fingerprint="8" * 64,
         )
-    assert rejected.value.reason_code == "ROUTE_SWITCH_OR_FALLBACK_FORBIDDEN"
+    assert rejected.value.reason_code == "CAPACITY_ROUTE_BINDING_DRIFT"
     assert store.load_ledger("fallback-local-rejection")["attempts"] == []
 
 
@@ -1847,7 +1916,7 @@ def test_exact_full_short_accepts_only_presealed_configured_fallback_lane(
         stage_id=logical_plan[0]["stage_id"],
         role="planning",
     ) == "configured_fallback"
-    observer.bind_route(
+    _bind_route_with_capacity(observer,
         role="planning",
         lane="fallback",
         provider_id="fallback-provider",
@@ -1957,12 +2026,16 @@ def test_egress_model_request_content_is_exactly_bound(tmp_path: Path) -> None:
         store=store, execution_id="egress-content", policy=_policy(store),
         authorized_routes=_routes(), egress_policy=_egress(),
     )
-    observer.bind_route(
+    _bind_route_with_capacity(observer,
         role="planning", lane="primary", provider_id="provider",
         model_id="model-id", route_fingerprint="9" * 64,
+        user_content="authorized",
     )
     request = ModelRequest(
-        model="offline", messages=[Message(role="user", content="authorized")],
+        model="offline", messages=[
+            Message(role="system", content=""),
+            Message(role="user", content="authorized"),
+        ],
         max_output_tokens=128,
     )
     observer.bind_model_request(protocol="anthropic", request=request)
@@ -2013,13 +2086,17 @@ def test_egress_intent_persists_only_hashes_not_raw_content(tmp_path: Path) -> N
         store=store, execution_id="egress-private", policy=_policy(store),
         authorized_routes=_routes(), egress_policy=_egress(),
     )
-    observer.bind_route(
+    sentinel = "RAW-STORY-SENTINEL-MUST-NOT-PERSIST"
+    _bind_route_with_capacity(observer,
         role="planning", lane="primary", provider_id="provider",
         model_id="model-id", route_fingerprint="9" * 64,
+        user_content=sentinel,
     )
-    sentinel = "RAW-STORY-SENTINEL-MUST-NOT-PERSIST"
     request = ModelRequest(
-        model="offline", messages=[Message(role="user", content=sentinel)],
+        model="offline", messages=[
+            Message(role="system", content=""),
+            Message(role="user", content=sentinel),
+        ],
         max_output_tokens=128,
     )
     observer.bind_model_request(protocol="anthropic", request=request)
@@ -2516,6 +2593,11 @@ def test_route_and_egress_drift_fail_before_nonce_consumption(tmp_path: Path) ->
         store=store, execution_id="route-drift", policy=_policy(store),
         authorized_routes=_routes(), egress_policy=_egress(),
     )
+    _bind_route_with_capacity(
+        observer, role="planning", lane="primary", provider_id="provider",
+        model_id="model-id", route_fingerprint="9" * 64,
+        resolve_route=False,
+    )
     with pytest.raises(FullShortExecutionBoundaryError) as route:
         observer.bind_route(
             role="planning", lane="primary", provider_id="other-provider",
@@ -2629,7 +2711,7 @@ def test_durable_ledger_rejects_reopening_closed_attempt(tmp_path: Path) -> None
         role_binding_sha256=observer.bound_route["role_binding_sha256"],
         rejection=_matching_local_rejection(observer),
     )
-    observer.bind_route(
+    _bind_route_with_capacity(observer,
         role="planning", lane="primary", provider_id="provider",
         model_id="model-id", route_fingerprint="9" * 64,
     )
@@ -2770,7 +2852,7 @@ def test_mark_local_stage_complete_cannot_replace_authorized_stage_id(
         stage_id="draft_node_1", contract_name="unstructured_text",
         contract_version=1, contract_schema_sha256=_hash({}),
     )
-    observer.bind_route(
+    _bind_route_with_capacity(observer,
         role="planning", lane="primary", provider_id="provider",
         model_id="model-id", route_fingerprint="9" * 64,
     )
@@ -2827,7 +2909,7 @@ def test_local_rejection_must_match_current_logical_attempt_identity(
         contract_attempt_index=1, contract_route="primary",
         contract_route_attempt=1,
     )
-    observer.bind_route(
+    _bind_route_with_capacity(observer,
         role="planning", lane="primary", provider_id="provider",
         model_id="model-id", route_fingerprint="9" * 64,
     )
@@ -2902,7 +2984,7 @@ def test_repeated_workflow_node_allocates_distinct_logical_occurrences(
             stage_id="draft", contract_name="draft_text",
             contract_version=1, contract_schema_sha256=_hash({}),
         )
-        observer.bind_route(
+        _bind_route_with_capacity(observer,
             role="planning", lane="primary", provider_id="provider",
             model_id="model-id", route_fingerprint="9" * 64,
         )
@@ -2944,7 +3026,7 @@ def test_pre_dispatch_failure_releases_only_unrecorded_request_binding(
     assert observer.egress_intent_sha256 is None
     assert observer.pending_stage_context is None
     assert store.load_ledger("pre-dispatch-release")["attempts"] == []
-    observer.bind_route(
+    _bind_route_with_capacity(observer,
         role="planning", lane="primary", provider_id="provider",
         model_id="model-id", route_fingerprint="9" * 64,
     )
@@ -2966,7 +3048,7 @@ def test_real_runner_collects_live_bindings_without_secret_lookup(
     db.save_model(
         model_id="public-model", provider_id="public-provider",
         display_name="Public Model", model_name="public-model",
-        context_window=None, max_output_tokens=None,
+        context_window=32768, max_output_tokens=None,
     )
     for role in (
         "planning", "draft", "review", "reader_review", "polish",
@@ -3044,3 +3126,231 @@ def test_unregistered_execution_boundary_is_explicitly_unmapped_fail_closed() ->
     assert error.failure_family == "execution.unmapped_local_boundary"
     assert error.reliability_failure.code == "unmapped_capture_fake_token_guess"
     assert error.dispatch_state == DispatchState.NOT_REACHED
+
+
+@pytest.mark.parametrize("physical_attempt", [1, 2])
+@pytest.mark.parametrize("fault", ["missing", "tampered"])
+def test_capacity_receipt_missing_or_tampered_fails_before_dispatch(
+    tmp_path: Path, physical_attempt: int, fault: str,
+) -> None:
+    execution_id = f"capacity-receipt-{fault}-{physical_attempt}"
+    store = _store(tmp_path)
+    _authorize_offline(store, execution_id)
+    observer = _observer(store, execution_id)
+    if physical_attempt == 2:
+        observer.before_http_dispatch(
+            method="POST", url="https://unit.test/v1/messages",
+            payload=_payload(),
+        )
+        observer.after_http_response(status_code=200)
+        observer.mark_local_attempt_rejected(
+            stage="planning", role="planning",
+            role_binding_sha256=observer.bound_route["role_binding_sha256"],
+            rejection=_matching_local_rejection(observer),
+        )
+        _bind_route_with_capacity(
+            observer, role="planning", lane="primary",
+            provider_id="provider", model_id="model-id",
+            route_fingerprint="9" * 64,
+        )
+        observer.bind_model_request(protocol="anthropic", request=_request())
+    plan_sha = observer.pending_capacity_plan_sha256
+    assert plan_sha is not None
+    receipt_path = store._capacity_path(execution_id, plan_sha)
+    if fault == "missing":
+        receipt_path.unlink()
+        expected = "CAPACITY_ADMISSION_RECEIPT_NOT_FOUND_OR_CORRUPT"
+    else:
+        value = json.loads(receipt_path.read_text(encoding="utf-8"))
+        value["admission_status"] = "DENIED"
+        receipt_path.write_text(json.dumps(value), encoding="utf-8")
+        expected = "CAPACITY_ADMISSION_RECEIPT_TAMPERED"
+    with pytest.raises(FullShortExecutionBoundaryError) as caught:
+        observer.before_http_dispatch(
+            method="POST", url="https://unit.test/v1/messages",
+            payload=_payload(),
+        )
+    assert caught.value.reason_code == expected
+    assert len(store.load_ledger(execution_id)["attempts"]) == physical_attempt - 1
+
+
+def test_capacity_receipt_duplicate_consume_fails_closed(tmp_path: Path) -> None:
+    store = _store(tmp_path)
+    execution_id = "capacity-duplicate-consume"
+    _authorize_offline(store, execution_id)
+    observer = _observer(store, execution_id)
+    observer.before_http_dispatch(
+        method="POST", url="https://unit.test/v1/messages", payload=_payload(),
+    )
+    plan_sha = observer.pending_capacity_plan_sha256
+    assert plan_sha is not None
+    receipt = store.load_capacity_admission_receipt(
+        execution_id=execution_id, plan_sha256=plan_sha,
+    )
+    with pytest.raises(FullShortExecutionBoundaryError) as caught:
+        store.transition_capacity_admission_receipt(
+            execution_id=execution_id, plan_sha256=plan_sha,
+            expected_receipt_sha256=receipt[
+                "capacity_admission_receipt_sha256"
+            ],
+            expected_state="REQUEST_BOUND_UNCONSUMED",
+            updates={"state": "CONSUMED"},
+        )
+    assert caught.value.reason_code == "CAPACITY_ADMISSION_RECEIPT_STATE_INVALID"
+
+
+def test_capacity_plan_replay_before_dispatch_reuses_one_receipt(
+    tmp_path: Path,
+) -> None:
+    store = _store(tmp_path)
+    execution_id = "capacity-plan-local-replay"
+    _authorize_offline(store, execution_id)
+    observer = _observer(store, execution_id)
+    first_plan = observer.pending_capacity_plan_sha256
+    observer.after_http_failure(failure_kind="LocalAuthorizationError")
+    _bind_route_with_capacity(
+        observer, role="planning", lane="primary", provider_id="provider",
+        model_id="model-id", route_fingerprint="9" * 64,
+    )
+    assert observer.pending_capacity_plan_sha256 == first_plan
+    assert len(list(store.capacity_receipt_root.glob("*.json"))) == 1
+
+
+def test_capacity_model_request_rendered_input_drift_fails_closed(
+    tmp_path: Path,
+) -> None:
+    store = _store(tmp_path)
+    execution_id = "capacity-request-drift"
+    _authorize_offline(store, execution_id)
+    observer = FullShortDispatchLedgerObserverV1(
+        store=store, execution_id=execution_id, policy=_policy(store),
+        authorized_routes=_routes(), egress_policy=_egress(),
+    )
+    _bind_route_with_capacity(
+        observer, role="planning", lane="primary", provider_id="provider",
+        model_id="model-id", route_fingerprint="9" * 64,
+        user_content="sealed",
+    )
+    request = _request().model_copy(update={"messages": [
+        Message(role="system", content=""),
+        Message(role="user", content="drifted"),
+    ]})
+    with pytest.raises(FullShortExecutionBoundaryError) as caught:
+        observer.bind_model_request(protocol="anthropic", request=request)
+    assert caught.value.reason_code == "CAPACITY_ADMISSION_REQUEST_CONTEXT_DRIFT"
+
+
+@pytest.mark.parametrize(
+    ("drift", "expected_reason"),
+    [
+        ("logical", "CAPACITY_PLAN_CONTRACT_OR_STAGE_DRIFT"),
+        ("physical", "CAPACITY_PHYSICAL_ATTEMPT_DRIFT"),
+        ("contract", "CAPACITY_PLAN_CONTRACT_OR_STAGE_DRIFT"),
+        ("route", "CAPACITY_PLAN_ROUTE_DRIFT"),
+        ("context_limit", "CAPACITY_PLAN_ROUTE_DRIFT"),
+        ("registry", "CAPACITY_PLAN_POLICY_OR_ADMISSION_DRIFT"),
+    ],
+)
+def test_capacity_plan_binding_drift_fails_before_route_resolution(
+    tmp_path: Path, drift: str, expected_reason: str,
+) -> None:
+    store = _store(tmp_path)
+    execution_id = f"capacity-plan-drift-{drift}"
+    _authorize_offline(store, execution_id)
+    observer = FullShortDispatchLedgerObserverV1(
+        store=store, execution_id=execution_id, policy=_policy(store),
+        authorized_routes=_routes(), egress_policy=_egress(),
+    )
+    expected = observer._next_logical_stage_plan_entry()
+    context = observer.capacity_admission_context(
+        route="primary", role="planning", physical_attempt=1,
+    )
+    registry = DEFAULT_STAGE_CAPACITY_POLICY_REGISTRY_V1
+    if drift == "registry":
+        policies = dict(registry.policies)
+        policies["planning"] = replace(
+            policies["planning"], policy_id="stage-capacity.planning.test-drift",
+        )
+        registry = StageCapacityPolicyRegistryV1(policies=policies)
+    plan = build_stage_capacity_plan_v1(
+        stage_id=expected["stage_id"],
+        logical_stage_id=(
+            "wrong-logical" if drift == "logical"
+            else context["logical_stage_id"]
+        ),
+        physical_attempt=2 if drift == "physical" else 1,
+        stage="planning",
+        contract_name=(
+            "wrong-contract" if drift == "contract"
+            else expected["contract_name"]
+        ),
+        contract_version=expected["contract_version"],
+        contract_schema_sha256=expected["contract_schema_sha256"],
+        provider_route_identity_sha256=(
+            "f" * 64 if drift == "route"
+            else context["provider_route_identity_sha256"]
+        ),
+        model_context_limit=(
+            16384 if drift == "context_limit"
+            else context["model_context_limit"]
+        ),
+        requested_output_token_cap=128, final_output_reserve=128,
+        rendered_message_tokens=0, structured_envelope_tokens=0,
+        provider_envelope_tokens=256,
+        wrapper_and_estimator_margin_tokens=1024,
+        rendered_request_sha256=hashlib.sha256(b"\n\0").hexdigest(),
+        layer_projections=(), parent_plan_sha256=None,
+        policy_registry=registry,
+    )
+    with pytest.raises(FullShortExecutionBoundaryError) as caught:
+        observer.bind_capacity_plan(plan=plan, route="primary", role="planning")
+    assert caught.value.reason_code == expected_reason
+    assert observer.bound_route is None
+    assert store.load_ledger(execution_id)["attempts"] == []
+
+
+@pytest.mark.parametrize("fault", ["missing", "duplicate"])
+def test_completion_rejects_capacity_receipt_one_to_one_drift(
+    tmp_path: Path, fault: str,
+) -> None:
+    store = _store(tmp_path)
+    execution_id = f"completion-capacity-{fault}"
+    permission, approval, nonce = _authorize_offline(store, execution_id)
+    if fault == "missing":
+        _dispatch_and_close(store, execution_id)
+    else:
+        _dispatch_reasoning_recovery_and_close(store, execution_id)
+    ledger = store.load_ledger(execution_id)
+    body = dict(ledger)
+    body.pop("ledger_sha256")
+    attempts = [dict(item) for item in body["attempts"]]
+    if fault == "missing":
+        attempts[0].pop("capacity_admission_receipt_sha256")
+    else:
+        attempts[1]["capacity_admission_receipt_sha256"] = attempts[0][
+            "capacity_admission_receipt_sha256"
+        ]
+    body["attempts"] = attempts
+    tampered = {**body, "ledger_sha256": domain_sha256(
+        "novel-flywheel-full-short-dispatch-ledger-v1", body,
+    )}
+    with pytest.raises(FullShortExecutionBoundaryError) as caught:
+        build_full_short_completion_receipt_v1(
+            execution_id=execution_id, policy=_policy(store),
+            permission_sha256=permission["permission_sha256"],
+            signed_approval_sha256=approval["signed_approval_sha256"],
+            nonce_sha256=nonce["nonce_sha256"], ledger=tampered,
+            final_bindings={
+                "manuscript_sha256": "4" * 64,
+                "chapter_sha256": "5" * 64,
+                "canon_sha256": "6" * 64,
+                "story_state_sha256": "7" * 64,
+                "quality_checkpoint_sha256": "8" * 64,
+                "terminal_verification_sha256": _terminal()[
+                    "verification_receipt_sha256"
+                ],
+            }, terminal_verification=_terminal(),
+        )
+    assert caught.value.reason_code == (
+        "COMPLETION_CAPACITY_ADMISSION_PROVENANCE_INVALID"
+    )

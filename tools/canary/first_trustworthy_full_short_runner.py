@@ -391,6 +391,14 @@ def collect_live_bindings(
             destination = _destination(provider)
             destinations.add(destination)
             configured_max = model.get("max_output_tokens")
+            configured_context = model.get("context_window")
+            if (
+                type(configured_context) is not int
+                or configured_context <= 0
+            ):
+                raise ValueError(
+                    "runtime route context limit is unavailable"
+                )
             stage_budget_role = "review" if role == "reader_review" else role
             max_output = int(
                 configured_max
@@ -428,6 +436,8 @@ def collect_live_bindings(
                     "model_configuration" if configured_max
                     else "runtime_stage_policy"
                 ),
+                "model_context_limit": configured_context,
+                "model_context_limit_source": "model_configuration",
             })
     records.sort(key=lambda item: (item["role"], item["lane"]))
     runtime_fingerprint = collect_runtime_fingerprint_v2(

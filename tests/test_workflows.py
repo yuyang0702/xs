@@ -12302,6 +12302,23 @@ async def test_capacity_split_failure_does_not_inherit_stale_provider_context(
     db, project, service, run_path = make_polish_recovery_service(
         tmp_path, OverflowGateway(), run_id="detached-capacity-error",
     )
+    db.save_provider(
+        provider_id="primary",
+        name="Primary",
+        protocol="openai",
+        base_url="https://example.test",
+        auth_type="bearer",
+        timeout_seconds=180,
+        extra_headers={},
+    )
+    db.save_model(
+        model_id="review-model",
+        provider_id="primary",
+        display_name="Review",
+        model_name="review-model",
+        context_window=131_072,
+        max_output_tokens=8_192,
+    )
     db.save_role_binding("review", "primary", "review-model", None, None)
 
     async def splitter(_details):
@@ -12320,6 +12337,54 @@ async def test_capacity_split_failure_does_not_inherit_stale_provider_context(
     assert str(captured.value) == "evidence_quote_unbound"
     assert captured.value.__context__ is None
     assert classify_model_failure(captured.value) == "normal_invalid_output"
+
+
+@pytest.mark.asyncio
+async def test_missing_context_metadata_stops_before_splitter_or_gateway(
+    tmp_path,
+) -> None:
+    class CountingGateway:
+        def __init__(self) -> None:
+            self.calls = 0
+
+        async def complete(self, *_args, **_kwargs):
+            self.calls += 1
+            raise AssertionError("missing context metadata reached gateway")
+
+    gateway = CountingGateway()
+    db, project, service, run_path = make_polish_recovery_service(
+        tmp_path, gateway, run_id="missing-capacity-metadata",
+    )
+    db.save_role_binding("review", "primary", "unknown-model", None, None)
+    split_calls = 0
+
+    async def splitter(_details):
+        nonlocal split_calls
+        split_calls += 1
+        raise AssertionError("configuration failure reached splitter")
+
+    with pytest.raises(CapacityAdmissionFailureV1) as caught:
+        await service._stage(
+            "missing-capacity-metadata",
+            run_path,
+            project,
+            "review",
+            "Preserve every protected fact.",
+            "Return a bounded review receipt.",
+            allow_tools=False,
+            route_capacity_guard=True,
+            capacity_splitter=splitter,
+        )
+
+    assert caught.value.failure_id == "capacity.context_limit_unavailable"
+    assert split_calls == 0
+    assert gateway.calls == 0
+    events = db.list_run_events("missing-capacity-metadata")
+    stopped = next(
+        item for item in events
+        if item["event_type"] == "stage_capacity_admission_stopped"
+    )
+    assert stopped["metadata"]["recovery_disposition"] == "STOP"
 
 
 def test_ordinary_stage_budgets_use_defaults_capped_by_selected_route_ceiling(tmp_path) -> None:

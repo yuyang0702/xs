@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import asyncio
 import json
 import hashlib
 import os
+import sys
 from datetime import datetime, timedelta, timezone
 from difflib import SequenceMatcher
 from pathlib import Path
@@ -16,6 +18,7 @@ from novel_flywheel.projects import ProjectCreate, ProjectStore
 from novel_flywheel.secrets import MemorySecretStore
 from novel_flywheel.skills import SkillScanner
 from novel_flywheel.story_state import StoryStateStore
+from tools.canary import first_trustworthy_full_short_dry_run as dry_run
 from tools.canary import first_trustworthy_full_short_runner as runner
 
 
@@ -321,7 +324,7 @@ def _bound_project(tmp_path: Path) -> tuple[Path, Path, str, Database]:
     )
     db.save_model(
         model_id="model", provider_id="provider", display_name="Model",
-        model_name="model", context_window=None, max_output_tokens=None,
+        model_name="model", context_window=32768, max_output_tokens=None,
     )
     for role in runner.FULL_SHORT_REQUIRED_EXECUTION_ROLES:
         db.save_role_binding(role, "provider", "model", None, None)
@@ -376,6 +379,12 @@ def test_live_bindings_seal_v2_runtime_skill_style_and_store_source_truth(
         "python_ast_and_constructor_signature"
     )
     assert public["store_root"] == str(store_root.resolve())
+    assert public["routes"]
+    assert all(
+        item["model_context_limit"] == 32768
+        and item["model_context_limit_source"] == "model_configuration"
+        for item in public["routes"]
+    )
     assert actual["store_root_sha256"] == hashlib.sha256(
         str(store_root.resolve()).encode("utf-8")
     ).hexdigest()
@@ -395,6 +404,35 @@ def test_live_bindings_reject_missing_ready_authority(
         runner.collect_live_bindings(
             repo=repo, data_dir=data, project_id=project_id,
             run_id="hardening", logical_stage_plan=_logical_plan(),
+            store_root=tmp_path / "control-store",
+        )
+
+
+def test_live_bindings_reject_missing_route_context_limit(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    repo, data, project_id, db = _bound_project(tmp_path)
+    model = db.get_model("model")
+    assert model is not None
+    db.save_model(
+        model_id="model",
+        provider_id="provider",
+        display_name="Model",
+        model_name="model",
+        context_window=None,
+        max_output_tokens=None,
+    )
+    monkeypatch.setattr(runner, "_git", lambda *_args: "")
+    with pytest.raises(
+        ValueError,
+        match="runtime route context limit is unavailable",
+    ):
+        runner.collect_live_bindings(
+            repo=repo,
+            data_dir=data,
+            project_id=project_id,
+            run_id="hardening",
+            logical_stage_plan=_logical_plan(),
             store_root=tmp_path / "control-store",
         )
 
@@ -638,6 +676,176 @@ def test_lowest_http_seam_adapter_fault_hook_is_optional() -> None:
     adapter = object()
     registry._install_optional_adapter_failure_hook(adapter)
     assert installed == [adapter]
+
+
+@pytest.mark.asyncio
+async def test_offline_registry_close_attempts_every_client_and_aggregates() -> None:
+    closed: list[str] = []
+
+    class Client:
+        def __init__(self, name: str, failure: Exception | None = None) -> None:
+            self.name = name
+            self.failure = failure
+
+        async def aclose(self) -> None:
+            closed.append(self.name)
+            if self.failure is not None:
+                raise self.failure
+
+    registry = object.__new__(dry_run._LowestHttpSeamRegistry)
+    registry.open_clients = [
+        Client("first", ValueError("first close")),
+        Client("second"),
+        Client("third", RuntimeError("third close")),
+    ]
+    registry.transport_factory = SimpleNamespace()
+
+    with pytest.raises(ExceptionGroup) as caught:
+        await registry.close()
+
+    assert closed == ["first", "second", "third"]
+    assert registry.open_clients == []
+    assert [type(item) for item in caught.value.exceptions] == [
+        ValueError, RuntimeError,
+    ]
+    assert registry.transport_factory.registry_close_failure is caught.value
+
+
+@pytest.mark.asyncio
+async def test_registry_close_failure_is_secondary_to_business_failure() -> None:
+    business_failure = ValueError("business failed")
+    close_failure = RuntimeError("close failed")
+
+    class Registry:
+        async def close(self) -> None:
+            raise close_failure
+
+    async def operation() -> None:
+        raise business_failure
+
+    with pytest.raises(ValueError) as caught:
+        await dry_run._await_with_registry_close(operation, Registry())
+
+    assert caught.value is business_failure
+    assert caught.value.__cause__ is close_failure
+
+
+def test_private_workspace_closes_after_asyncio_run_teardown(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    events: list[str] = []
+
+    class TemporaryDirectory:
+        name = str(tmp_path)
+
+        def cleanup(self) -> None:
+            events.append("temporary_directory_cleanup")
+
+    async def fake_run(_args, *, private_root: Path) -> dict:
+        assert private_root == tmp_path
+        events.append("async_operation")
+        return {"pass": True}
+
+    def run_async(awaitable) -> dict:
+        events.append("asyncio_run_enter")
+        result = asyncio.run(awaitable)
+        events.append("asyncio_run_teardown_complete")
+        return result
+
+    monkeypatch.setattr(dry_run, "_run", fake_run)
+    result = dry_run._run_with_private_workspace(
+        SimpleNamespace(),
+        temporary_directory_factory=lambda **_kwargs: TemporaryDirectory(),
+        async_runner=run_async,
+        event_bus_shutdown=lambda: events.append("event_bus_shutdown_wait"),
+    )
+
+    assert result == {"pass": True}
+    assert events == [
+        "asyncio_run_enter",
+        "async_operation",
+        "asyncio_run_teardown_complete",
+        "event_bus_shutdown_wait",
+        "temporary_directory_cleanup",
+    ]
+
+
+def test_crewai_event_bus_shutdown_waits_for_handlers(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    waits: list[bool] = []
+    event_bus = SimpleNamespace(
+        shutdown=lambda wait=True: waits.append(wait),
+    )
+    monkeypatch.setitem(
+        sys.modules, "crewai.events.event_bus",
+        SimpleNamespace(crewai_event_bus=event_bus),
+    )
+
+    dry_run._shutdown_crewai_event_bus()
+
+    assert waits == [True]
+
+
+def test_private_workspace_close_errors_fail_success_and_do_not_mask_primary(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    cleanup_called = False
+
+    class TemporaryDirectory:
+        name = str(tmp_path)
+
+        def cleanup(self) -> None:
+            nonlocal cleanup_called
+            cleanup_called = True
+            raise PermissionError("directory close failed")
+
+    primary = ValueError("business failed")
+
+    async def fail(_args, *, private_root: Path) -> dict:
+        raise primary
+
+    monkeypatch.setattr(dry_run, "_run", fail)
+    with pytest.raises(ValueError) as caught:
+        dry_run._run_with_private_workspace(
+            SimpleNamespace(),
+            temporary_directory_factory=lambda **_kwargs: TemporaryDirectory(),
+            event_bus_shutdown=lambda: (_ for _ in ()).throw(
+                RuntimeError("event bus close failed")
+            ),
+        )
+
+    assert caught.value is primary
+    assert cleanup_called is True
+    assert isinstance(caught.value.__cause__, ExceptionGroup)
+    assert [type(item) for item in caught.value.__cause__.exceptions] == [
+        RuntimeError, PermissionError,
+    ]
+
+
+def test_private_workspace_success_fails_when_resource_close_fails(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class TemporaryDirectory:
+        name = str(tmp_path)
+
+        def cleanup(self) -> None:
+            return None
+
+    async def succeed(_args, *, private_root: Path) -> dict:
+        return {"pass": True}
+
+    monkeypatch.setattr(dry_run, "_run", succeed)
+    with pytest.raises(ExceptionGroup) as caught:
+        dry_run._run_with_private_workspace(
+            SimpleNamespace(),
+            temporary_directory_factory=lambda **_kwargs: TemporaryDirectory(),
+            event_bus_shutdown=lambda: (_ for _ in ()).throw(
+                RuntimeError("event bus close failed")
+            ),
+        )
+
+    assert [type(item) for item in caught.value.exceptions] == [RuntimeError]
 
 
 @pytest.mark.asyncio

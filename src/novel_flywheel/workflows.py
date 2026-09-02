@@ -94,11 +94,15 @@ from novel_flywheel.full_short_runtime_kernel import (
 )
 from novel_flywheel.stage_capacity import (
     AdmissionStatus,
+    CapacityFailureCode,
     CapacityLayerClass,
     CapacityLayerProjectionV1,
     CapacityAdmissionFailureV1,
+    CapacityRecoveryDisposition,
+    DEFAULT_STAGE_CAPACITY_POLICY_REGISTRY_V1,
     StageCapacityAdmissionEngineV1,
     build_stage_capacity_plan_v1,
+    capacity_failure_recovery_disposition_v1,
 )
 from novel_flywheel.contract_runtime import (
     ContractOutputLimitExhaustedError,
@@ -30643,6 +30647,14 @@ class WorkflowService:
                     sort_keys=True,
                     separators=(",", ":"),
                 )
+
+            def capacity_policy_stage(contract_name: str) -> str:
+                return (
+                    contract_name
+                    if contract_name
+                    in DEFAULT_STAGE_CAPACITY_POLICY_REGISTRY_V1.policies
+                    else stage
+                )
                 schema_sha = getattr(contract, "schema_sha256", None)
                 return (
                     str(getattr(contract, "name", None) or node_key),
@@ -30658,6 +30670,8 @@ class WorkflowService:
             def capacity_layers(
                 actual_system: str,
                 actual_user: str,
+                *,
+                owner_stage: str,
             ) -> tuple[CapacityLayerProjectionV1, ...]:
                 if context_packet is None:
                     exact_hash = hashlib.sha256(
@@ -30669,7 +30683,7 @@ class WorkflowService:
                     return (CapacityLayerProjectionV1.create(
                         layer_id="complete_request",
                         classification=CapacityLayerClass.HARD_PROTECTED,
-                        owner=stage,
+                        owner=owner_stage,
                         source_sha256=exact_hash,
                         semantic_scope="complete",
                         coverage=(node_key,),
@@ -30732,7 +30746,7 @@ class WorkflowService:
                     result.append(CapacityLayerProjectionV1.create(
                         layer_id=layer_id,
                         classification=classifications[layer_id],
-                        owner=stage,
+                        owner=owner_stage,
                         source_sha256=sources[layer_id],
                         semantic_scope=(
                             "bounded_component"
@@ -30751,6 +30765,11 @@ class WorkflowService:
                         rendered_sha256=rendered_sha,
                     ))
                 return tuple(result)
+
+            execution_observer = getattr(
+                getattr(self.gateway, "registry", None),
+                "attempt_observer", None,
+            )
 
             def stage_capacity_plan(
                 actual_system: str,
@@ -30777,19 +30796,70 @@ class WorkflowService:
                 rendered_request_sha = hashlib.sha256(
                     (actual_system + "\n\0" + actual_user).encode("utf-8")
                 ).hexdigest()
+                admission_context: dict[str, object] | None = None
+                capacity_context = getattr(
+                    execution_observer, "capacity_admission_context", None,
+                )
+                if (
+                    route in {"primary", "configured_fallback"}
+                    and callable(capacity_context)
+                ):
+                    candidate = capacity_context(
+                        route=route,
+                        role=gateway_role,
+                        physical_attempt=physical_attempt,
+                    )
+                    if not isinstance(candidate, dict):
+                        raise RuntimeError(
+                            "capacity admission context is not a mapping"
+                        )
+                    admission_context = candidate
+                    sealed_context_limit = int(
+                        candidate.get("model_context_limit") or 0
+                    )
+                    if sealed_context_limit <= 0:
+                        raise CapacityAdmissionFailureV1(
+                            CapacityFailureCode.CONTEXT_LIMIT_UNAVAILABLE
+                        )
+                    if (
+                        selected_context_window
+                        and selected_context_window != sealed_context_limit
+                    ):
+                        raise CapacityAdmissionFailureV1(
+                            CapacityFailureCode.CONTEXT_LIMIT_INCONSISTENT
+                        )
+                    selected_context_window = sealed_context_limit
+                # Capacity policy belongs to the semantic execution contract,
+                # not to the provider route role.  In particular,
+                # ``revision_plan`` can route through ``planning`` and
+                # ``reader_review`` can route through ``review`` without
+                # inheriting those stages' capacity policy.
+                capacity_stage = capacity_policy_stage(contract_name)
                 kwargs = {
                     "stage_id": node_key,
-                    "logical_stage_id": node_key,
-                    "physical_attempt": physical_attempt,
-                    "stage": stage,
+                    "logical_stage_id": str(
+                        (admission_context or {}).get(
+                            "logical_stage_id", node_key,
+                        )
+                    ),
+                    "physical_attempt": int(
+                        (admission_context or {}).get(
+                            "physical_attempt", physical_attempt,
+                        )
+                    ),
+                    "stage": capacity_stage,
                     "contract_name": contract_name,
                     "contract_version": contract_version,
                     "contract_schema_sha256": schema_sha,
-                    "provider_route_identity_sha256": canonical_sha256({
-                        "role": gateway_role,
-                        "route": route,
-                        "context_window": selected_context_window,
-                    }),
+                    "provider_route_identity_sha256": str(
+                        (admission_context or {}).get(
+                            "provider_route_identity_sha256"
+                        ) or canonical_sha256({
+                            "role": gateway_role,
+                            "route": route,
+                            "context_window": selected_context_window,
+                        })
+                    ),
                     "model_context_limit": int(selected_context_window),
                     "requested_output_token_cap": output_cap,
                     "final_output_reserve": output_cap,
@@ -30801,7 +30871,9 @@ class WorkflowService:
                     "wrapper_and_estimator_margin_tokens": 1024,
                     "rendered_request_sha256": rendered_request_sha,
                     "layer_projections": capacity_layers(
-                        actual_system, actual_user
+                        actual_system,
+                        actual_user,
+                        owner_stage=capacity_stage,
                     ),
                     "parent_plan_sha256": capacity_plan_head_sha256,
                 }
@@ -30830,7 +30902,25 @@ class WorkflowService:
                     ),
                 )
                 if enforce:
-                    return StageCapacityAdmissionEngineV1.enforce(plan)
+                    admitted = StageCapacityAdmissionEngineV1.enforce(plan)
+                    bind_capacity_plan = getattr(
+                        execution_observer, "bind_capacity_plan", None,
+                    )
+                    if admission_context is not None:
+                        if not callable(bind_capacity_plan):
+                            raise RuntimeError(
+                                "exact capacity admission binder is unavailable"
+                            )
+                        token = bind_capacity_plan(
+                            plan=admitted,
+                            route=route,
+                            role=gateway_role,
+                        )
+                        if token != admitted.plan_sha256:
+                            raise RuntimeError(
+                                "capacity admission token identity drift"
+                            )
+                    return admitted
                 return plan
 
             async def complete_capacity_split(details: dict) -> StageText:
@@ -31333,7 +31423,8 @@ class WorkflowService:
                 if route not in {"primary", "configured_fallback"}:
                     raise RuntimeError(f"unknown model route: {route}")
                 direct_route_attempt += 1
-                stage_capacity_plan(
+                bind_response_capture_stage()
+                capacity_plan = stage_capacity_plan(
                     route_system,
                     route_user,
                     route_budget,
@@ -31341,7 +31432,6 @@ class WorkflowService:
                     route=route,
                     actual_contract=structured_contract,
                 )
-                bind_response_capture_stage()
                 return await dispatch_explicit_model_route(
                     self.gateway,
                     route,
@@ -31357,6 +31447,7 @@ class WorkflowService:
                         ensure_ascii=False,
                     ),
                     run_id=run_id,
+                    capacity_admission_token=capacity_plan.plan_sha256,
                 )
             provider_capacity_split: dict | None = None
             try:
@@ -31475,7 +31566,13 @@ class WorkflowService:
                                     "contract_name": execution_spec.contract_name,
                                 },
                             )
-                        stage_capacity_plan(
+                        bind_response_capture_stage(
+                            contract_attempt_index=attempt.attempt_index,
+                            contract_route=attempt.route,
+                            contract_route_attempt=attempt.route_attempt,
+                            stage_role=stage_role,
+                        )
+                        capacity_plan = stage_capacity_plan(
                             attempt_system,
                             attempt_user,
                             route_budget,
@@ -31488,12 +31585,6 @@ class WorkflowService:
                             attempt_user,
                             attempt_index=attempt.attempt_index,
                             attempt_route=attempt.route,
-                        )
-                        bind_response_capture_stage(
-                            contract_attempt_index=attempt.attempt_index,
-                            contract_route=attempt.route,
-                            contract_route_attempt=attempt.route_attempt,
-                            stage_role=stage_role,
                         )
                         return await dispatch_explicit_model_route(
                             self.gateway, attempt.route,
@@ -31510,6 +31601,9 @@ class WorkflowService:
                             ),
                             stage_role=stage_role,
                             stage=stage,
+                            capacity_admission_token=(
+                                capacity_plan.plan_sha256
+                            ),
                         )
 
                     execution_observer = getattr(
@@ -31613,8 +31707,8 @@ class WorkflowService:
                         attempt_user: str,
                         attempt_budget: int | None,
                         attempt_contract,
-                    ) -> None:
-                        stage_capacity_plan(
+                    ) -> str:
+                        capacity_plan = stage_capacity_plan(
                             attempt_system,
                             attempt_user,
                             attempt_budget,
@@ -31622,6 +31716,7 @@ class WorkflowService:
                             route=attempt.route,
                             actual_contract=attempt_contract,
                         )
+                        return capacity_plan.plan_sha256
 
                     route_runtime = await execute_model_route_runtime(
                         self.gateway,
@@ -31656,12 +31751,30 @@ class WorkflowService:
             except asyncio.CancelledError:
                 raise
             except Exception as exc:
+                capacity_failure_can_segment = False
+                if isinstance(exc, CapacityAdmissionFailureV1):
+                    contract_name = capacity_contract_identity(
+                        structured_contract
+                    )[0]
+                    capacity_failure_can_segment = (
+                        capacity_failure_recovery_disposition_v1(
+                            stage=capacity_policy_stage(contract_name),
+                            failure_id=exc.failure_id,
+                        )
+                        is CapacityRecoveryDisposition.SEGMENT
+                    )
+                    if not capacity_failure_can_segment:
+                        # Configuration and integrity failures are local
+                        # predispatch denials.  They must not mutate topology,
+                        # consume a retry slot, or be relabelled as provider
+                        # transport failures.
+                        raise
                 if (
                     route_capacity_guard
                     and capacity_splitter is not None
                     and (
                         classify_model_failure(exc) == "input_context_overflow"
-                        or isinstance(exc, CapacityAdmissionFailureV1)
+                        or capacity_failure_can_segment
                         or isinstance(
                             exc, ContractOutputLimitExhaustedError,
                         )
@@ -32087,9 +32200,39 @@ class WorkflowService:
                 (ContextCapacityPreflightError, CapacityAdmissionFailureV1),
             ):
                 receipt = getattr(exc, "receipt", {})
+                recovery_disposition = CapacityRecoveryDisposition.SEGMENT
+                if isinstance(exc, CapacityAdmissionFailureV1):
+                    contract_name = str(
+                        getattr(structured_contract, "name", None) or node_key
+                    )
+                    policy_stage = (
+                        contract_name
+                        if contract_name
+                        in DEFAULT_STAGE_CAPACITY_POLICY_REGISTRY_V1.policies
+                        else stage
+                    )
+                    recovery_disposition = (
+                        capacity_failure_recovery_disposition_v1(
+                            stage=policy_stage,
+                            failure_id=exc.failure_id,
+                        )
+                    )
                 self.db.add_run_event(
-                    run_id, "warning", "stage_capacity_split_required",
-                    f"{stage} 需要按语义所有权拆分后重试，尚未调用模型",
+                    run_id,
+                    "warning" if recovery_disposition
+                    is CapacityRecoveryDisposition.SEGMENT else "error",
+                    (
+                        "stage_capacity_split_required"
+                        if recovery_disposition
+                        is CapacityRecoveryDisposition.SEGMENT
+                        else "stage_capacity_admission_stopped"
+                    ),
+                    (
+                        f"{stage} 需要按语义所有权拆分后重试，尚未调用模型"
+                        if recovery_disposition
+                        is CapacityRecoveryDisposition.SEGMENT
+                        else f"{stage} 容量准入完整性检查失败，已在调用模型前停止"
+                    ),
                     stage=stage, metadata={
                         "pressure": getattr(
                             exc, "pressure", receipt.get("admission_status")
@@ -32116,6 +32259,7 @@ class WorkflowService:
                             exc, "failure_id", None
                         ),
                         "capacity_plan_sha256": receipt.get("plan_sha256"),
+                        "recovery_disposition": recovery_disposition.value,
                     },
                 )
                 raise
@@ -32897,23 +33041,30 @@ class WorkflowService:
     ) -> int:
         """Return the conservative context capacity for every possible route.
 
-        Missing provider metadata is deliberately treated as 32K.  A normal
-        call that may automatically fall back is planned against the smaller
-        of the primary and configured fallback routes, preventing a large
-        primary prompt from being forwarded unchanged to a smaller backup.
+        A normal call that may automatically fall back is planned against the
+        smaller of the primary and configured fallback routes.  Missing
+        metadata is a typed predispatch configuration failure; inventing a
+        32K limit would make the admission receipt untrustworthy.
         """
-        unknown_capacity = 32_768
         selected = self._provider_context_window(
             gateway_role, prefer_configured_fallback,
-        ) or unknown_capacity
+        )
+        if selected is None:
+            raise CapacityAdmissionFailureV1(
+                CapacityFailureCode.CONTEXT_LIMIT_UNAVAILABLE
+            )
         windows = [selected]
         if include_configured_fallback:
             binding = self.db.get_role_binding(gateway_role) or {}
             if binding.get("fallback_provider_id") and binding.get("fallback_model_id"):
-                windows.append(
-                    self._provider_context_window(gateway_role, True)
-                    or unknown_capacity
+                fallback_window = self._provider_context_window(
+                    gateway_role, True
                 )
+                if fallback_window is None:
+                    raise CapacityAdmissionFailureV1(
+                        CapacityFailureCode.CONTEXT_LIMIT_UNAVAILABLE
+                    )
+                windows.append(fallback_window)
         return min(windows)
 
     @staticmethod

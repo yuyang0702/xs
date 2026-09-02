@@ -50,6 +50,12 @@ class AdmissionStatus(StrEnum):
     DENIED = "DENIED"
 
 
+class CapacityRecoveryDisposition(StrEnum):
+    COMPACT = "COMPACT"
+    SEGMENT = "SEGMENT"
+    STOP = "STOP"
+
+
 class CapacityFailureCode(StrEnum):
     MODEL_CONTEXT_EXCEEDED = "capacity.model_context_exceeded"
     OUTPUT_RESERVE_UNSATISFIED = "capacity.output_reserve_unsatisfied"
@@ -60,6 +66,7 @@ class CapacityFailureCode(StrEnum):
     RENDERED_PROMPT_DRIFT = "capacity.rendered_prompt_drift"
     CONTEXT_LIMIT_UNAVAILABLE = "capacity.context_limit_unavailable"
     CONTEXT_LIMIT_INCONSISTENT = "capacity.context_limit_inconsistent"
+    POLICY_VIOLATION = "capacity.policy_violation"
 
 
 CAPACITY_FAILURE_IDS_V1 = {item.value for item in CapacityFailureCode}
@@ -121,6 +128,18 @@ class StageCapacityPolicyV1:
     compaction_allowed: bool
     semantic_windowing_allowed: bool
     minimum_wrapper_and_estimator_margin_tokens: int
+    allowed_transform_policy_ids: tuple[str, ...] = (
+        "identity.v1",
+        "advisory.paragraph.v1",
+    )
+    allowed_semantic_scopes: tuple[str, ...] = (
+        "complete",
+        "bounded_component",
+    )
+    compaction_policy_id: str = "capacity.compact.advisory.paragraph.v1"
+    segmentation_policy_id: str = "capacity.segment.none.v1"
+    recovery_policy_id: str = "capacity.recovery.fail-closed.v1"
+    segmentation_failure_ids: tuple[CapacityFailureCode, ...] = ()
 
     def canonical_payload(self) -> dict[str, object]:
         return {
@@ -134,7 +153,28 @@ class StageCapacityPolicyV1:
             "minimum_wrapper_and_estimator_margin_tokens": (
                 self.minimum_wrapper_and_estimator_margin_tokens
             ),
+            "allowed_transform_policy_ids": list(
+                self.allowed_transform_policy_ids
+            ),
+            "allowed_semantic_scopes": list(self.allowed_semantic_scopes),
+            "compaction_policy_id": self.compaction_policy_id,
+            "segmentation_policy_id": self.segmentation_policy_id,
+            "recovery_policy_id": self.recovery_policy_id,
+            "segmentation_failure_ids": [
+                item.value for item in self.segmentation_failure_ids
+            ],
         }
+
+    def recovery_disposition(
+        self,
+        failure_id: CapacityFailureCode | str,
+    ) -> CapacityRecoveryDisposition:
+        failure = CapacityFailureCode(failure_id)
+        if failure in self.segmentation_failure_ids:
+            return CapacityRecoveryDisposition.SEGMENT
+        if failure is CapacityFailureCode.MODEL_CONTEXT_EXCEEDED:
+            return CapacityRecoveryDisposition.COMPACT
+        return CapacityRecoveryDisposition.STOP
 
 
 @dataclass(frozen=True)
@@ -152,8 +192,32 @@ class StageCapacityPolicyRegistryV1:
             for stage, policy in sorted(self.policies.items())
         })
 
+    def require_policy(self, stage: str) -> StageCapacityPolicyV1:
+        try:
+            return self.policies[stage]
+        except KeyError as exc:
+            raise CapacityAdmissionFailureV1(
+                CapacityFailureCode.POLICY_VIOLATION,
+            ) from exc
+
 
 _ALL_LAYER_CLASSES = tuple(CapacityLayerClass)
+_SEGMENTABLE_CAPACITY_FAILURES = (
+    CapacityFailureCode.MODEL_CONTEXT_EXCEEDED,
+    CapacityFailureCode.PROTECTED_LAYERS_EXCEED_BUDGET,
+    CapacityFailureCode.COMPACTION_INSUFFICIENT,
+    CapacityFailureCode.WINDOWING_REQUIRED,
+)
+_SEGMENTATION_POLICY_IDS = {
+    "planning": "capacity.segment.planning.semantic.v1",
+    "draft": "capacity.segment.draft.event-owner.v1",
+    "review": "capacity.segment.review.hierarchical.v1",
+    "reader_review": "capacity.segment.reader-review.hierarchical.v1",
+    "polish": "capacity.segment.polish.targeted.v1",
+    "final_review": "capacity.segment.final-review.hierarchical.v1",
+    "maintenance": "capacity.segment.maintenance.window.v1",
+    "revision_plan": "capacity.segment.revision-plan.target.v1",
+}
 DEFAULT_STAGE_CAPACITY_POLICY_REGISTRY_V1 = StageCapacityPolicyRegistryV1(
     policies={
         stage: StageCapacityPolicyV1(
@@ -163,6 +227,9 @@ DEFAULT_STAGE_CAPACITY_POLICY_REGISTRY_V1 = StageCapacityPolicyRegistryV1(
             compaction_allowed=True,
             semantic_windowing_allowed=True,
             minimum_wrapper_and_estimator_margin_tokens=1024,
+            segmentation_policy_id=_SEGMENTATION_POLICY_IDS[stage],
+            recovery_policy_id=f"capacity.recovery.{stage}.v1",
+            segmentation_failure_ids=_SEGMENTABLE_CAPACITY_FAILURES,
         )
         for stage in (
             "planning",
@@ -194,6 +261,30 @@ class CapacityLayerProjectionV1:
     action: str
     rendered_sha256: str
     projection_sha256: str
+
+    def canonical_payload(self) -> dict[str, object]:
+        return {
+            "layer_id": self.layer_id,
+            "classification": self.classification.value,
+            "owner": self.owner,
+            "source_sha256": self.source_sha256,
+            "semantic_scope": self.semantic_scope,
+            "coverage": list(self.coverage),
+            "pre_transform_characters": self.pre_transform_characters,
+            "pre_transform_tokens": self.pre_transform_tokens,
+            "post_transform_characters": self.post_transform_characters,
+            "post_transform_tokens": self.post_transform_tokens,
+            "transform_policy_id": self.transform_policy_id,
+            "action": self.action,
+            "rendered_sha256": self.rendered_sha256,
+        }
+
+    def __post_init__(self) -> None:
+        _require_sha256(self.source_sha256, field_name="source_sha256")
+        _require_sha256(self.rendered_sha256, field_name="rendered_sha256")
+        _require_sha256(self.projection_sha256, field_name="projection_sha256")
+        if _canonical_sha256(self.canonical_payload()) != self.projection_sha256:
+            raise ValueError("capacity_layer_projection_sha256_mismatch")
 
     @classmethod
     def create(
@@ -282,6 +373,9 @@ class StageCapacityPlanV1:
     headroom: int
     admission_status: AdmissionStatus
     denial_failure_id: CapacityFailureCode | None
+    compaction_policy_id: str
+    segmentation_policy_id: str
+    recovery_policy_id: str
     policy_registry_sha256: str
     plan_sha256: str
 
@@ -352,7 +446,9 @@ def build_stage_capacity_plan_v1(
     ),
 ) -> StageCapacityPlanV1:
     if stage not in policy_registry.policies:
-        raise ValueError(f"capacity_policy_missing:{stage}")
+        raise CapacityAdmissionFailureV1(
+            CapacityFailureCode.POLICY_VIOLATION,
+        )
     if physical_attempt < 1:
         raise ValueError("capacity_physical_attempt_invalid")
     values = (
@@ -387,7 +483,54 @@ def build_stage_capacity_plan_v1(
         for layer in projections
         if layer.classification not in protected_classes
     )
-    if model_context_limit <= 0:
+    policy = policy_registry.policies[stage]
+    unsupported_layers = any(
+        layer.classification not in policy.allowed_layer_classes
+        for layer in projections
+    )
+    compaction_requested = any(
+        layer.action in {"COMPACT", "SHED"}
+        for layer in projections
+    )
+    windowing_requested = any(
+        layer.semantic_scope != "complete"
+        or layer.action in {"WINDOW", "SEGMENT"}
+        for layer in projections
+    )
+    invalid_action = any(
+        layer.action not in {
+            "IDENTITY", "PRESERVE", "COMPACT", "SHED", "WINDOW",
+            "SEGMENT",
+        }
+        for layer in projections
+    )
+    invalid_transform_policy = any(
+        layer.transform_policy_id not in policy.allowed_transform_policy_ids
+        for layer in projections
+    )
+    invalid_semantic_scope = any(
+        layer.semantic_scope not in policy.allowed_semantic_scopes
+        for layer in projections
+    )
+    protected_content_transformed = any(
+        layer.classification in protected_classes
+        and layer.action in {"COMPACT", "SHED"}
+        for layer in projections
+    )
+    if (
+        unsupported_layers
+        or invalid_action
+        or invalid_transform_policy
+        or invalid_semantic_scope
+        or protected_content_transformed
+        or compaction_requested and not policy.compaction_allowed
+        or windowing_requested and not policy.semantic_windowing_allowed
+        or wrapper_and_estimator_margin_tokens
+        < policy.minimum_wrapper_and_estimator_margin_tokens
+    ):
+        status = AdmissionStatus.DENIED
+        failure = CapacityFailureCode.POLICY_VIOLATION
+    elif model_context_limit <= 0:
         status = AdmissionStatus.DENIED
         failure = CapacityFailureCode.CONTEXT_LIMIT_UNAVAILABLE
     elif (
@@ -405,7 +548,11 @@ def build_stage_capacity_plan_v1(
         failure = CapacityFailureCode.WINDOWING_REQUIRED
     elif advisory_tokens > 0:
         status = AdmissionStatus.COMPACTION_REQUIRED
-        failure = CapacityFailureCode.MODEL_CONTEXT_EXCEEDED
+        failure = (
+            CapacityFailureCode.COMPACTION_INSUFFICIENT
+            if compaction_requested
+            else CapacityFailureCode.MODEL_CONTEXT_EXCEEDED
+        )
     else:
         status = AdmissionStatus.DENIED
         failure = CapacityFailureCode.MODEL_CONTEXT_EXCEEDED
@@ -435,6 +582,9 @@ def build_stage_capacity_plan_v1(
         "headroom": prompt_budget - expected_rendered_input,
         "admission_status": status,
         "denial_failure_id": failure,
+        "compaction_policy_id": policy.compaction_policy_id,
+        "segmentation_policy_id": policy.segmentation_policy_id,
+        "recovery_policy_id": policy.recovery_policy_id,
         "policy_registry_sha256": policy_registry.identity_sha256,
     }
     canonical_payload = {
@@ -473,20 +623,106 @@ def verify_rendered_request_v1(
 @full_short_boundary_entry("FS.CAPACITY.ADMIT")
 def enforce_stage_capacity_plan_v1(
     plan: StageCapacityPlanV1,
+    *,
+    policy_registry: StageCapacityPolicyRegistryV1 = (
+        DEFAULT_STAGE_CAPACITY_POLICY_REGISTRY_V1
+    ),
 ) -> StageCapacityPlanV1:
+    if plan.policy_registry_sha256 != policy_registry.identity_sha256:
+        raise CapacityAdmissionFailureV1(
+            CapacityFailureCode.POLICY_VIOLATION,
+            plan=plan,
+        )
+    policy = policy_registry.require_policy(plan.stage)
+    if (
+        any(
+            layer.classification not in policy.allowed_layer_classes
+            for layer in plan.layer_projections
+        )
+        or any(
+            layer.transform_policy_id
+            not in policy.allowed_transform_policy_ids
+            for layer in plan.layer_projections
+        )
+        or any(
+            layer.semantic_scope not in policy.allowed_semantic_scopes
+            for layer in plan.layer_projections
+        )
+        or any(
+            layer.classification in {
+                CapacityLayerClass.HARD_PROTECTED,
+                CapacityLayerClass.SOFT_PROTECTED,
+            }
+            and layer.action in {"COMPACT", "SHED"}
+            for layer in plan.layer_projections
+        )
+        or any(
+            layer.action not in {
+                "IDENTITY", "PRESERVE", "COMPACT", "SHED", "WINDOW",
+                "SEGMENT",
+            }
+            for layer in plan.layer_projections
+        )
+        or any(
+            layer.action in {"COMPACT", "SHED"}
+            for layer in plan.layer_projections
+        ) and not policy.compaction_allowed
+        or any(
+            layer.semantic_scope != "complete"
+            or layer.action in {"WINDOW", "SEGMENT"}
+            for layer in plan.layer_projections
+        ) and not policy.semantic_windowing_allowed
+        or plan.wrapper_and_estimator_margin_tokens
+        < policy.minimum_wrapper_and_estimator_margin_tokens
+        or plan.compaction_policy_id != policy.compaction_policy_id
+        or plan.segmentation_policy_id != policy.segmentation_policy_id
+        or plan.recovery_policy_id != policy.recovery_policy_id
+    ):
+        raise CapacityAdmissionFailureV1(
+            CapacityFailureCode.POLICY_VIOLATION,
+            plan=plan,
+        )
     plan.require_pass()
     return plan
+
+
+def capacity_failure_recovery_disposition_v1(
+    *,
+    stage: str,
+    failure_id: CapacityFailureCode | str,
+    policy_registry: StageCapacityPolicyRegistryV1 = (
+        DEFAULT_STAGE_CAPACITY_POLICY_REGISTRY_V1
+    ),
+) -> CapacityRecoveryDisposition:
+    return policy_registry.require_policy(stage).recovery_disposition(failure_id)
 
 
 class StageCapacityAdmissionEngineV1:
     @staticmethod
     def admit(**kwargs: object) -> StageCapacityPlanV1:
+        policy_registry = kwargs.get(
+            "policy_registry", DEFAULT_STAGE_CAPACITY_POLICY_REGISTRY_V1,
+        )
+        if not isinstance(policy_registry, StageCapacityPolicyRegistryV1):
+            raise TypeError("capacity_policy_registry_invalid")
         plan = build_stage_capacity_plan_v1(**kwargs)  # type: ignore[arg-type]
-        return enforce_stage_capacity_plan_v1(plan)
+        return enforce_stage_capacity_plan_v1(
+            plan,
+            policy_registry=policy_registry,
+        )
 
     @staticmethod
-    def enforce(plan: StageCapacityPlanV1) -> StageCapacityPlanV1:
-        return enforce_stage_capacity_plan_v1(plan)
+    def enforce(
+        plan: StageCapacityPlanV1,
+        *,
+        policy_registry: StageCapacityPolicyRegistryV1 = (
+            DEFAULT_STAGE_CAPACITY_POLICY_REGISTRY_V1
+        ),
+    ) -> StageCapacityPlanV1:
+        return enforce_stage_capacity_plan_v1(
+            plan,
+            policy_registry=policy_registry,
+        )
 
 
 __all__ = [
@@ -498,11 +734,13 @@ __all__ = [
     "CapacityLayerClass",
     "CapacityLayerProjectionV1",
     "DEFAULT_STAGE_CAPACITY_POLICY_REGISTRY_V1",
+    "CapacityRecoveryDisposition",
     "StageCapacityAdmissionEngineV1",
     "StageCapacityPlanV1",
     "StageCapacityPolicyRegistryV1",
     "StageCapacityPolicyV1",
     "build_stage_capacity_plan_v1",
+    "capacity_failure_recovery_disposition_v1",
     "enforce_stage_capacity_plan_v1",
     "verify_rendered_request_v1",
 ]

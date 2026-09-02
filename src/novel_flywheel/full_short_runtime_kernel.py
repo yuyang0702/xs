@@ -121,8 +121,12 @@ class PredispatchReadinessV1:
     authorized_credential_readiness: bool
     network_free_request_constructable: bool
     reasoning_policy_projected: bool
+    capacity_admission_passed: bool
     request_bytes_sha256: str
     route_policy_sha256: str
+    capacity_policy_registry_sha256: str
+    capacity_plan_sha256: str
+    capacity_admission_receipt_sha256: str
 
     def validate(self) -> None:
         checks = (
@@ -135,12 +139,19 @@ class PredispatchReadinessV1:
             self.authorized_credential_readiness,
             self.network_free_request_constructable,
             self.reasoning_policy_projected,
+            self.capacity_admission_passed,
         )
         if not all(checks):
             raise ValueError("predispatch_readiness_incomplete")
         if any(
             len(value) != 64 or any(char not in "0123456789abcdef" for char in value)
-            for value in (self.request_bytes_sha256, self.route_policy_sha256)
+            for value in (
+                self.request_bytes_sha256,
+                self.route_policy_sha256,
+                self.capacity_policy_registry_sha256,
+                self.capacity_plan_sha256,
+                self.capacity_admission_receipt_sha256,
+            )
         ):
             raise ValueError("predispatch_identity_invalid")
 
@@ -522,6 +533,11 @@ _FAILURES = (
         "capacity.context_limit_inconsistent", "capacity.capability",
         RecoveryDecisionKind.FAIL_CLOSED, "restart.after_configuration_change.v1",
     ),
+    FailureSpecV1(
+        "capacity.policy_violation", "capacity.policy_violation",
+        "capacity.policy", RecoveryDecisionKind.FAIL_CLOSED,
+        "restart.forbidden.v1",
+    ),
 )
 
 
@@ -589,6 +605,7 @@ _BOUNDARIES = (
         "capacity.windowing_exhausted", "capacity.rendered_prompt_drift",
         "capacity.context_limit_unavailable",
         "capacity.context_limit_inconsistent",
+        "capacity.policy_violation",
     ),
     _boundary(
         "FS.CONTRACT.VALIDATE", "contract", "novel_flywheel.workflows:WorkflowService._stage",
@@ -797,6 +814,7 @@ _ENVELOPE_FAILURE_CLASS_V1: dict[str, FailureClass] = {
     "capacity.rendered_prompt_drift": FailureClass.CONTEXT_CAPACITY,
     "capacity.context_limit_unavailable": FailureClass.CONTEXT_CAPACITY,
     "capacity.context_limit_inconsistent": FailureClass.CONTEXT_CAPACITY,
+    "capacity.policy_violation": FailureClass.CONTEXT_CAPACITY,
     _UNEXPECTED_FAILURE_ID: FailureClass.UNKNOWN,
 }
 

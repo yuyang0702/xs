@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+from contextlib import nullcontext
 import hashlib
 import json
 import os
@@ -18,8 +19,9 @@ from pathlib import Path
 import re
 import shutil
 import subprocess
+import sys
 import tempfile
-from typing import Any, Callable
+from typing import Any, Awaitable, Callable
 
 import httpx
 
@@ -90,6 +92,96 @@ def _safe_failure_projection(
 def _optional_text_sha256(value: object) -> str | None:
     text = str(value or "")
     return hashlib.sha256(text.encode("utf-8")).hexdigest() if text else None
+
+
+def _secondary_close_cause(
+    primary: Exception, close_error: Exception,
+) -> Exception:
+    """Retain an existing explicit cause alongside resource-close evidence."""
+
+    existing = primary.__cause__
+    if isinstance(existing, Exception) and existing is not close_error:
+        return ExceptionGroup(
+            "FULL_SHORT_PRIMARY_AND_RESOURCE_CLOSE_CAUSES",
+            [existing, close_error],
+        )
+    return close_error
+
+
+async def _await_with_registry_close(
+    operation: Callable[[], Awaitable[Any]], registry: Any,
+) -> Any:
+    """Close a registry without replacing the operation's primary failure."""
+
+    try:
+        result = await operation()
+    except Exception as primary:
+        try:
+            await registry.close()
+        except Exception as close_error:
+            raise primary from _secondary_close_cause(primary, close_error)
+        raise
+    await registry.close()
+    return result
+
+
+def _shutdown_crewai_event_bus() -> None:
+    """Drain CrewAI's process-global executor before private-file cleanup."""
+
+    event_bus_module = sys.modules.get("crewai.events.event_bus")
+    if event_bus_module is None:
+        return
+    event_bus = getattr(event_bus_module, "crewai_event_bus", None)
+    shutdown = getattr(event_bus, "shutdown", None)
+    if not callable(shutdown):
+        raise RuntimeError("FULL_SHORT_CREWAI_EVENT_BUS_SHUTDOWN_UNAVAILABLE")
+    shutdown(wait=True)
+
+
+def _run_with_private_workspace(
+    args: argparse.Namespace,
+    *,
+    temporary_directory_factory: Callable[..., Any] | None = None,
+    async_runner: Callable[[Awaitable[dict[str, Any]]], dict[str, Any]] | None = None,
+    event_bus_shutdown: Callable[[], None] | None = None,
+) -> dict[str, Any]:
+    """Run the async lifecycle fully before closing global and file resources."""
+
+    create_temporary_directory = (
+        temporary_directory_factory or tempfile.TemporaryDirectory
+    )
+    run_async = async_runner or asyncio.run
+    shutdown_event_bus = event_bus_shutdown or _shutdown_crewai_event_bus
+    temporary_directory = create_temporary_directory(
+        prefix="full-short-private-"
+    )
+    primary: Exception | None = None
+    summary: dict[str, Any] | None = None
+    try:
+        summary = run_async(
+            _run(args, private_root=Path(temporary_directory.name))
+        )
+    except Exception as exc:
+        primary = exc
+
+    close_errors: list[Exception] = []
+    for close in (shutdown_event_bus, temporary_directory.cleanup):
+        try:
+            close()
+        except Exception as exc:
+            close_errors.append(exc)
+    if close_errors:
+        close_error = ExceptionGroup(
+            "FULL_SHORT_PRIVATE_RESOURCE_CLOSE_FAILED", close_errors,
+        )
+        if primary is not None:
+            raise primary from _secondary_close_cause(primary, close_error)
+        raise close_error
+    if primary is not None:
+        raise primary
+    if summary is None:
+        raise RuntimeError("FULL_SHORT_PRIVATE_RUN_SUMMARY_MISSING")
+    return summary
 
 
 def _git(repo: Path, *args: str) -> str:
@@ -613,6 +705,7 @@ class _OfflineHttpTransportFactory:
         )
         self.call_plan: list[dict[str, Any]] = []
         self.failure: dict[str, Any] | None = None
+        self.registry_close_failure: Exception | None = None
         self.inject_adapter_failure_after_exact_capture_once = (
             inject_adapter_failure_after_exact_capture_once
         )
@@ -1126,9 +1219,20 @@ class _LowestHttpSeamRegistry(ProviderRegistry):
         return resolved
 
     async def close(self) -> None:
-        for client in self.open_clients:
-            await client.aclose()
+        clients = tuple(self.open_clients)
         self.open_clients.clear()
+        errors: list[Exception] = []
+        for client in clients:
+            try:
+                await client.aclose()
+            except Exception as exc:
+                errors.append(exc)
+        if errors:
+            close_error = ExceptionGroup(
+                "FULL_SHORT_OFFLINE_REGISTRY_CLOSE_FAILED", errors,
+            )
+            self.transport_factory.registry_close_failure = close_error
+            raise close_error
 
 
 def _registry_factory(*args: Any, **kwargs: Any) -> _LowestHttpSeamRegistry:
@@ -1210,13 +1314,13 @@ async def _discover_plan(
         http_transport_factory=factory,
         transport_policy=SingleDispatchTransportPolicyV1.phase_b(),
     )
-    try:
-        _db, _project, result = await run_full_short_workflow_path(
+    _db, _project, result = await _await_with_registry_close(
+        lambda: run_full_short_workflow_path(
             repo=repo, data_dir=data_dir, project_id=project_id,
             execution_id=DISCOVERY_ID, registry=registry,
-        )
-    finally:
-        await registry.close()
+        ),
+        registry,
+    )
     if result.get("status") != "completed":
         failure = {
             key: result.get(key)
@@ -1431,13 +1535,13 @@ async def _replay_full_workflow_from_captured_bytes(
         http_transport_factory=factory,
         transport_policy=SingleDispatchTransportPolicyV1.phase_b(),
     )
-    try:
-        _db, _project, result = await run_full_short_workflow_path(
+    _db, _project, result = await _await_with_registry_close(
+        lambda: run_full_short_workflow_path(
             repo=repo, data_dir=replay_data, project_id=project_id,
             execution_id=REPLAY_ID, registry=registry,
-        )
-    finally:
-        await registry.close()
+        ),
+        registry,
+    )
     if result.get("status") != "completed":
         raise RuntimeError(
             "FULL_SHORT_CAPTURE_REPLAY_WORKFLOW_FAILED:"
@@ -1470,7 +1574,9 @@ async def _replay_full_workflow_from_captured_bytes(
     }
 
 
-async def _run(args: argparse.Namespace) -> dict[str, Any]:
+async def _run(
+    args: argparse.Namespace, *, private_root: Path | None = None,
+) -> dict[str, Any]:
     repo = args.repo.resolve(strict=True)
     matches = []
     for candidate in (repo / "data" / "projects").glob("*/project.json"):
@@ -1488,7 +1594,10 @@ async def _run(args: argparse.Namespace) -> dict[str, Any]:
     if _git(repo, "status", "--porcelain"):
         raise RuntimeError("FULL_SHORT_DRY_RUN_REQUIRES_CLEAN_SOURCE_WORKTREE")
 
-    with tempfile.TemporaryDirectory(prefix="full-short-private-") as temp_name:
+    if private_root is None:
+        raise ValueError("private_root is required")
+    private_root = private_root.resolve(strict=True)
+    with nullcontext(str(private_root)) as temp_name:
         private_root = Path(temp_name)
         discovery_data = _copy_private_data(
             repo=repo, source_project=source_project, project_id=project_id,
@@ -1625,7 +1734,16 @@ async def _run(args: argparse.Namespace) -> dict[str, Any]:
                 http_transport_factory=transport,
                 required_stage_roles=discovered_roles,
             )
+            if transport.registry_close_failure is not None:
+                raise transport.registry_close_failure
         except Exception as exc:
+            if (
+                transport.registry_close_failure is not None
+                and exc is not transport.registry_close_failure
+            ):
+                exc.__cause__ = _secondary_close_cause(
+                    exc, transport.registry_close_failure,
+                )
             ledger_state: dict[str, Any] | None = None
             ledger_paths = sorted(store_root.glob("*.ledger.json"))
             if len(ledger_paths) == 1:
@@ -2038,7 +2156,7 @@ def main() -> int:
     previous_canonical_flag = os.environ.get("NOVEL_SHORT_CANONICAL_V2")
     os.environ["NOVEL_SHORT_CANONICAL_V2"] = "1"
     try:
-        summary = asyncio.run(_run(args))
+        summary = _run_with_private_workspace(args)
     finally:
         if previous_canonical_flag is None:
             os.environ.pop("NOVEL_SHORT_CANONICAL_V2", None)
