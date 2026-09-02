@@ -1,15 +1,19 @@
 {
-  "completion_receipt_sha256": "208395c6efc6bd079de29158403627950d0dc0ef073aefb50bc89eeb583aff0e",
+  "completion_receipt_sha256": "cbc7e560889d873cd66637bcf4e47302ffc9098696de9d05561ba51649eb5596",
   "derivation": "SEALED_EXACT_READY_LOGICAL_STAGE_PLAN",
   "exact_ready_required_route_count": 8,
   "external_boundary": {
+    "full_short_execution_count": 0,
     "http_calls": 0,
+    "http_post_attempts": 0,
     "model_calls": 0,
     "network_calls": 0,
     "paid_calls": 0,
     "real_credential_lookup_count": 0,
     "real_full_short_runs": 0,
-    "real_provider_request_attempts": 0
+    "real_provider_client_creation_count": 0,
+    "real_provider_request_attempts": 0,
+    "real_secret_read_count": 0
   },
   "logical_stage_plan": [
     {
@@ -1232,8 +1236,8 @@
   ],
   "schema": "ExactReadyRequiredRouteSetV1",
   "source_plan_receipt_artifact": "exact-ready-target-full-short-rerun-v1.json#source_receipt",
-  "source_plan_receipt_sha256": "298132be433b820683b34ba182ab4dcf3f33cda3bb485b62f19eb859ed27fee6",
-  "source_runtime_head": "000da5594a5ed9bacf799a443c2003ace2b1fdd0",
+  "source_plan_receipt_sha256": "68204d734cbc389e446b3b93e5921139846b30f549b3bb68ba0443c436f95f14",
+  "source_runtime_head": "2d4c6eadda8933ea9c08cb2a5e4b78e961b27cd6",
   "status": "MATERIALIZED",
   "unused_live_routes": [
     {

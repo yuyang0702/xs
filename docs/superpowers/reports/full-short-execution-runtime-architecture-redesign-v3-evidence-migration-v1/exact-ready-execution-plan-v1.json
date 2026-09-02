@@ -5,17 +5,21 @@
   "exact_ready_plan_unknown_required_route_count": 8,
   "exact_ready_required_route_count": 8,
   "external_boundary": {
+    "full_short_execution_count": 0,
     "http_calls": 0,
+    "http_post_attempts": 0,
     "model_calls": 0,
     "network_calls": 0,
     "paid_calls": 0,
     "real_credential_lookup_count": 0,
     "real_full_short_runs": 0,
-    "real_provider_request_attempts": 0
+    "real_provider_client_creation_count": 0,
+    "real_provider_request_attempts": 0,
+    "real_secret_read_count": 0
   },
   "logical_stage_count": 89,
   "logical_stage_plan_sha256": "690b515b0116b592f1edb59dcd00d1862296279b2323cabcf75e162a7392a04e",
-  "physical_attempt_policy_sha256": "1a9ce4d1686eb3f48c672d0c00687cd3c395b565b6fe94a0ef1b076955e3f45c",
+  "physical_attempt_policy_sha256": "bc5449a91a347b0193f332a21c1ffe38e203295f12a8363c889572609a38d09f",
   "required_route_capability_snapshots": [
     {
       "capability_sha256": "e67eb6d104bf4c47fa18a8440adfa8c6938cedf98b9936c61281e96b1cf0a1cd",

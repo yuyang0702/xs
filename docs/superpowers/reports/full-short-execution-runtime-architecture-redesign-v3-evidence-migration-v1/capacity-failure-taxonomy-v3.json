@@ -2,13 +2,17 @@
   "capacity_physical_attempt_drift_generic_mapping_count": 0,
   "context_capacity_generic_unexpected_mapping_count": 0,
   "external_boundary": {
+    "full_short_execution_count": 0,
     "http_calls": 0,
+    "http_post_attempts": 0,
     "model_calls": 0,
     "network_calls": 0,
     "paid_calls": 0,
     "real_credential_lookup_count": 0,
     "real_full_short_runs": 0,
-    "real_provider_request_attempts": 0
+    "real_provider_client_creation_count": 0,
+    "real_provider_request_attempts": 0,
+    "real_secret_read_count": 0
   },
   "failure_architecture_identity": "full-short-failure-architecture-v2",
   "newly_typed_failure_ids": [

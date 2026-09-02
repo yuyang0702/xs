@@ -1,13 +1,17 @@
 {
-  "contract_sha256": "1a9ce4d1686eb3f48c672d0c00687cd3c395b565b6fe94a0ef1b076955e3f45c",
+  "contract_sha256": "bc5449a91a347b0193f332a21c1ffe38e203295f12a8363c889572609a38d09f",
   "external_boundary": {
+    "full_short_execution_count": 0,
     "http_calls": 0,
+    "http_post_attempts": 0,
     "model_calls": 0,
     "network_calls": 0,
     "paid_calls": 0,
     "real_credential_lookup_count": 0,
     "real_full_short_runs": 0,
-    "real_provider_request_attempts": 0
+    "real_provider_client_creation_count": 0,
+    "real_provider_request_attempts": 0,
+    "real_secret_read_count": 0
   },
   "illegal_capacity_attempt_delta_count": 0,
   "legal_delta": "next durable dispatched-attempt ordinal only",

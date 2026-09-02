@@ -1,16 +1,20 @@
 {
   "command": "production-shaped dry-run exact capture replay",
   "external_boundary": {
+    "full_short_execution_count": 0,
     "http_calls": 0,
+    "http_post_attempts": 0,
     "model_calls": 0,
     "network_calls": 0,
     "paid_calls": 0,
     "real_credential_lookup_count": 0,
     "real_full_short_runs": 0,
-    "real_provider_request_attempts": 0
+    "real_provider_client_creation_count": 0,
+    "real_provider_request_attempts": 0,
+    "real_secret_read_count": 0
   },
   "final_artifact_sha256": "4a5735f3610198bd833bb6a4cd62db489177dfa8e9736cbe1926ee29fcb5deb1",
-  "implementation_head": "000da5594a5ed9bacf799a443c2003ace2b1fdd0",
+  "implementation_head": "16bdc7c723ca6b4b7e59f3795b2e1a0c7217345d",
   "logical_stage_plan_sha256": "690b515b0116b592f1edb59dcd00d1862296279b2323cabcf75e162a7392a04e",
   "replay_final_artifact_sha256": "4a5735f3610198bd833bb6a4cd62db489177dfa8e9736cbe1926ee29fcb5deb1",
   "same_final_artifact": true,

@@ -1,17 +1,21 @@
 {
   "completed_stage_count": 89,
   "completion_goal_outcome": "SHORT_WORKFLOW_COMPLETED_AND_FINAL_REVIEW_ACCEPTED",
-  "completion_receipt_sha256": "208395c6efc6bd079de29158403627950d0dc0ef073aefb50bc89eeb583aff0e",
+  "completion_receipt_sha256": "cbc7e560889d873cd66637bcf4e47302ffc9098696de9d05561ba51649eb5596",
   "deterministic_replay": true,
   "exact_ready_unknown_required_route_count": 8,
   "external_boundary": {
+    "full_short_execution_count": 0,
     "http_calls": 0,
+    "http_post_attempts": 0,
     "model_calls": 0,
     "network_calls": 0,
     "paid_calls": 0,
     "real_credential_lookup_count": 0,
     "real_full_short_runs": 0,
-    "real_provider_request_attempts": 0
+    "real_provider_client_creation_count": 0,
+    "real_provider_request_attempts": 0,
+    "real_secret_read_count": 0
   },
   "final_artifact_sha256": "4a5735f3610198bd833bb6a4cd62db489177dfa8e9736cbe1926ee29fcb5deb1",
   "logical_stage_plan_sha256": "690b515b0116b592f1edb59dcd00d1862296279b2323cabcf75e162a7392a04e",
@@ -28,7 +32,7 @@
   "replay_call_count": 89,
   "route_capability_closure_proved": false,
   "schema": "ExactReadyTargetFullShortRerunV1",
-  "source_head": "000da5594a5ed9bacf799a443c2003ace2b1fdd0",
+  "source_head": "2d4c6eadda8933ea9c08cb2a5e4b78e961b27cd6",
   "source_receipt": {
     "adapter_failure_after_exact_capture_injected": false,
     "adapter_failure_recovered_by_exact_local_replay": false,
@@ -49,7 +53,7 @@
       "review"
     ],
     "completion_goal_outcome": "SHORT_WORKFLOW_COMPLETED_AND_FINAL_REVIEW_ACCEPTED",
-    "completion_receipt_sha256": "208395c6efc6bd079de29158403627950d0dc0ef073aefb50bc89eeb583aff0e",
+    "completion_receipt_sha256": "cbc7e560889d873cd66637bcf4e47302ffc9098696de9d05561ba51649eb5596",
     "contract_runtime_capture_count": 51,
     "contract_runtime_capture_required_count": 51,
     "destination_manifest_sha256": "57c73c65a361bb0301e22af36b1390c3084e48277c08100944cc0f29087b7884",
@@ -58,7 +62,7 @@
     "dry_run_artifacts_cannot_be_mistaken_for_real_output": true,
     "dry_run_namespace": "two_isolated_temporary_copies",
     "egress_policy_sha256": "a632322b0c498e7be87f812cdb78638a333b8e1e9c71f9fa665ffd6888ab1c85",
-    "elapsed_seconds_at_completion_recheck": 1438,
+    "elapsed_seconds_at_completion_recheck": 1172,
     "executed_call_plan_sha256": "c78347ddced31d8bbb2baa59d19fc436a3bf2f71de3cde89924409599e4fb6ce",
     "expected_stage_calls": 89,
     "final_artifact_sha256": "4a5735f3610198bd833bb6a4cd62db489177dfa8e9736cbe1926ee29fcb5deb1",
@@ -1273,11 +1277,11 @@
     "response_capture_policy_sha256": "378bb649094ea4793bef2b96006dbe2291afd0c88cfc574fb87022b7c66aec8a",
     "response_capture_receipts_created_for_all_synthetic_provider_calls": true,
     "route_manifest_sha256": "7c788b04c5410f21f53c33c73ea2892c85238a281521f05922418b1d22661520",
-    "runtime_authority_sha256": "fe342bc259ece9ca7aefb6aed5777c95a221ade02d024aa0e242704c3bd5b7a7",
+    "runtime_authority_sha256": "23e5392d163daa2302869dc75b9bb50c41b566660ad3ee02b453a3bc280a17e7",
     "schema": "FirstTrustworthyFullShortPrivateDryRunV2",
-    "source_head": "000da5594a5ed9bacf799a443c2003ace2b1fdd0",
+    "source_head": "2d4c6eadda8933ea9c08cb2a5e4b78e961b27cd6",
     "status": "PASS",
-    "store_root_sha256": "880e56c6b09690597eaeeb31c3512f2b096db89923d1131ef006da61fc7b198c",
+    "store_root_sha256": "f6f959fec09775fc96dd828562a47e3f7aef23e5157f0c2edd50981cb180f51e",
     "style_reference_authority_sha256": "aaa5cb9770f11d8021309d3d130b998281dd239d962320dcf6295be54729e783",
     "total_output_token_hard_cap": 169914,
     "transport_recovery_policy_identity": "EXACT_REPLAY_ONLY",
@@ -1286,7 +1290,7 @@
     "workflow_status": "completed",
     "workload_sha256": "da96465f6bad2392dcc5dcfe2cbb4776f690a621360af3fa3678fc8005de0b29"
   },
-  "source_receipt_sha256": "298132be433b820683b34ba182ab4dcf3f33cda3bb485b62f19eb859ed27fee6",
+  "source_receipt_sha256": "68204d734cbc389e446b3b93e5921139846b30f549b3bb68ba0443c436f95f14",
   "status": "PASS_PRODUCTION_SHAPED_OFFLINE_STUB",
   "version": 1
 }

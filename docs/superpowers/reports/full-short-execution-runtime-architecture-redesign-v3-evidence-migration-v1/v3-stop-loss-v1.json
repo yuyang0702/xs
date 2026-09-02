@@ -3,13 +3,17 @@
   "exact_ready_plan_unknown_required_route_count": 8,
   "execution_runtime_redesign_v3": "NOT_CLOSED",
   "external_boundary": {
+    "full_short_execution_count": 0,
     "http_calls": 0,
+    "http_post_attempts": 0,
     "model_calls": 0,
     "network_calls": 0,
     "paid_calls": 0,
     "real_credential_lookup_count": 0,
     "real_full_short_runs": 0,
-    "real_provider_request_attempts": 0
+    "real_provider_client_creation_count": 0,
+    "real_provider_request_attempts": 0,
+    "real_secret_read_count": 0
   },
   "final_authorization_ready": "NO",
   "full_short": "NOT_EXECUTED",
