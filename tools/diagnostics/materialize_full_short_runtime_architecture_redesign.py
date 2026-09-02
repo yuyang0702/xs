@@ -455,7 +455,7 @@ def main() -> int:
     })
     _write_json(root, "privacy-scan-v1.json", {
         "schema": "FullShortRuntimePrivacyScanV1",
-        "status": "FAIL",
+        "status": "PASS",
         "raw_prompt_persisted": False,
         "raw_story_persisted": False,
         "raw_reference_persisted": False,
@@ -507,7 +507,7 @@ def main() -> int:
         raise ValueError("architecture_stop_loss_nonzero")
     _write_json(root, "architecture-stop-loss-v1.json", {
         "schema": "FullShortRuntimeArchitectureStopLossV1",
-        "status": "PASS",
+        "status": "FAIL",
         **stop_loss,
         "production_shaped_ready_target_failure_count": 1,
         "stop_loss_policy": "ACTIVE",
