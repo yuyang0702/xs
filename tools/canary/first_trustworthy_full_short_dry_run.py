@@ -21,6 +21,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 from typing import Any, Awaitable, Callable
 
 import httpx
@@ -156,6 +157,39 @@ def _shutdown_crewai_event_bus() -> None:
     shutdown(wait=True)
 
 
+def _cleanup_private_workspace_v1(temporary_directory: Any) -> None:
+    """Retry only the Windows non-empty-directory race in our exact temp root."""
+
+    try:
+        temporary_directory.cleanup()
+        return
+    except OSError as exc:
+        if getattr(exc, "winerror", None) != 145:
+            raise
+        last_error: OSError = exc
+    root = Path(str(temporary_directory.name)).resolve()
+    system_temp_root = Path(tempfile.gettempdir()).resolve()
+    if (
+        not root.is_relative_to(system_temp_root)
+        or not root.name.startswith("full-short-private-")
+    ):
+        raise RuntimeError("FULL_SHORT_PRIVATE_CLEANUP_TARGET_INVALID")
+    for attempt in range(5):
+        time.sleep(0.05 * (attempt + 1))
+        try:
+            shutil.rmtree(root)
+            return
+        except FileNotFoundError:
+            return
+        except OSError as exc:
+            if getattr(exc, "winerror", None) != 145:
+                raise
+            last_error = exc
+    raise RuntimeError(
+        "FULL_SHORT_PRIVATE_CLEANUP_NONEMPTY_RETRY_EXHAUSTED"
+    ) from last_error
+
+
 def _run_with_private_workspace(
     args: argparse.Namespace,
     *,
@@ -183,7 +217,10 @@ def _run_with_private_workspace(
         primary = exc
 
     close_errors: list[Exception] = []
-    for close in (shutdown_event_bus, temporary_directory.cleanup):
+    for close in (
+        shutdown_event_bus,
+        lambda: _cleanup_private_workspace_v1(temporary_directory),
+    ):
         try:
             close()
         except Exception as exc:

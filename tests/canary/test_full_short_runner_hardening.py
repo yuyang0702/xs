@@ -1105,6 +1105,38 @@ def test_private_workspace_success_fails_when_resource_close_fails(
     assert [type(item) for item in caught.value.exceptions] == [RuntimeError]
 
 
+def test_private_workspace_retries_only_verified_winerror_145_target(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    root = tmp_path / "full-short-private-cleanup-race"
+    root.mkdir()
+    (root / "late-capacity-receipt.json").write_text(
+        "{}", encoding="utf-8",
+    )
+
+    class TemporaryDirectory:
+        name = str(root)
+
+        def cleanup(self) -> None:
+            error = OSError("directory is not empty")
+            error.winerror = 145
+            raise error
+
+    async def succeed(_args, *, private_root: Path) -> dict:
+        assert private_root == root
+        return {"pass": True}
+
+    monkeypatch.setattr(dry_run, "_run", succeed)
+    result = dry_run._run_with_private_workspace(
+        SimpleNamespace(),
+        temporary_directory_factory=lambda **_kwargs: TemporaryDirectory(),
+        event_bus_shutdown=lambda: None,
+    )
+
+    assert result == {"pass": True}
+    assert not root.exists()
+
+
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     ("scenario", "expected_status", "expected_error"),
