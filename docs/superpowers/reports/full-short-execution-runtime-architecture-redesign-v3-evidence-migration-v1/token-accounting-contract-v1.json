@@ -1,0 +1,23 @@
+{
+  "external_boundary": {
+    "http_calls": 0,
+    "model_calls": 0,
+    "network_calls": 0,
+    "paid_calls": 0,
+    "real_credential_lookup_count": 0,
+    "real_full_short_runs": 0,
+    "real_provider_request_attempts": 0
+  },
+  "fallback_independent": true,
+  "input_tokens": "exact serialized system+user+contract payload estimate",
+  "invariant": "I + P + O + R + S <= C",
+  "output_tokens": "requested output reservation capped by exact route evidence",
+  "prompt_overhead": "provider/protocol envelope reserve",
+  "reasoning_tokens": "route-exact accounting semantics",
+  "safety_margin": "policy-bound estimator uncertainty reserve",
+  "schema": "TokenAccountingContractV1",
+  "silent_truncation_allowed": false,
+  "status": "DEFINED_FAIL_CLOSED",
+  "unknown_required_route_action": "capacity.route_capability_unknown",
+  "version": 1
+}

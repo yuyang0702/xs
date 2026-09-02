@@ -1,0 +1,33 @@
+{
+  "contract_sha256": "1a9ce4d1686eb3f48c672d0c00687cd3c395b565b6fe94a0ef1b076955e3f45c",
+  "external_boundary": {
+    "http_calls": 0,
+    "model_calls": 0,
+    "network_calls": 0,
+    "paid_calls": 0,
+    "real_credential_lookup_count": 0,
+    "real_full_short_runs": 0,
+    "real_provider_request_attempts": 0
+  },
+  "illegal_capacity_attempt_delta_count": 0,
+  "legal_delta": "next durable dispatched-attempt ordinal only",
+  "logical_envelope": [
+    "execution_id",
+    "policy_sha256",
+    "workload_sha256",
+    "runtime_authority_sha256",
+    "logical_stage_plan_sha256",
+    "logical_stage_recovery_policy_sha256",
+    "capacity_policy_registry_sha256",
+    "route_manifest_sha256",
+    "destination_manifest_sha256"
+  ],
+  "physical_allocator": "FullShortDispatchLedgerObserverV1 durable ledger",
+  "read_only_capture_replay_after_restart": true,
+  "recovery_schedule_slot_is_physical_attempt": false,
+  "restart_semantics": "FAIL_CLOSED_AFTER_PLAN_OR_REQUEST_BINDING; fresh authorization required; no network redispatch",
+  "schema": "CapacityAttemptIdentityContractV1",
+  "status": "IMPLEMENTED_AND_TESTED",
+  "unexplained_capacity_attempt_drift_count": 0,
+  "version": 1
+}

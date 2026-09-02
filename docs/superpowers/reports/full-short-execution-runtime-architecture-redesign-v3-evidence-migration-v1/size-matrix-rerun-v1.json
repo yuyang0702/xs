@@ -1,0 +1,33 @@
+{
+  "cases": {
+    "13K": {
+      "admission": "DENIED_BEFORE_DISPATCH",
+      "dispatch_count": 0,
+      "outcome": "capacity.route_capability_unknown"
+    },
+    "20K": {
+      "admission": "DENIED_BEFORE_DISPATCH",
+      "dispatch_count": 0,
+      "outcome": "capacity.route_capability_unknown"
+    },
+    "30K": {
+      "admission": "DENIED_BEFORE_DISPATCH",
+      "dispatch_count": 0,
+      "outcome": "capacity.route_capability_unknown"
+    }
+  },
+  "external_boundary": {
+    "http_calls": 0,
+    "model_calls": 0,
+    "network_calls": 0,
+    "paid_calls": 0,
+    "real_credential_lookup_count": 0,
+    "real_full_short_runs": 0,
+    "real_provider_request_attempts": 0
+  },
+  "reason": "EXACT_READY_PLAN_UNKNOWN_REQUIRED_ROUTE_COUNT_NONZERO",
+  "schema": "FullShortSizeMatrixRerunV1",
+  "source_grounded_and_typed": true,
+  "status": "SOURCE_GROUNDED_TYPED_STOP_LOSS",
+  "version": 1
+}

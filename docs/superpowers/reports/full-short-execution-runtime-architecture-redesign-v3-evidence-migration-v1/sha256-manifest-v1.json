@@ -1,0 +1,167 @@
+{
+  "artifact_count": 37,
+  "artifacts": {
+    "README.md": {
+      "bytes": 803,
+      "sha256": "8e46d235fafc93ec7a1069adb2b474ae5f643ab3953d20afe879d36a3c062d92"
+    },
+    "baseline-binding-v1.json": {
+      "bytes": 619,
+      "sha256": "d2b9dc37406d7bce3543753517c457f7acf6fae88eda89f618058adad5c20da7"
+    },
+    "capacity-attempt-identity-contract-v1.json": {
+      "bytes": 1221,
+      "sha256": "59e2f91b71b73539b65e5a9fd8bf21427998c5a6af4350b83d53ee2ffbdb4ceb"
+    },
+    "capacity-failure-taxonomy-v3.json": {
+      "bytes": 1939,
+      "sha256": "d27762d7f023c32064be0f1cdb9ac3807bcfee9a0e37411834890dbe4a8a815a"
+    },
+    "child-agent-a-initial-v1.json": {
+      "bytes": 773,
+      "sha256": "a2e2a2a088e5952ba979e1c6e063f7a43190821bf1a03f5fb41706f22642c7f3"
+    },
+    "child-agent-b-initial-v1.json": {
+      "bytes": 702,
+      "sha256": "49311b3378cbb61a36c7e9871f4fded51e3adc795f399eef57d3b1785e20b570"
+    },
+    "child-agent-c-initial-v1.json": {
+      "bytes": 667,
+      "sha256": "d5848464ae28f68947594c3009b2435f984ffa514bbc906bb2ce90dc83ebbd34"
+    },
+    "child-agent-d-initial-v1.json": {
+      "bytes": 661,
+      "sha256": "085b11660f6b1f44742d552857c2653fc5b69dd7f0ac94e4abc3b12ea1dcf8cf"
+    },
+    "child-agent-e-initial-v1.json": {
+      "bytes": 666,
+      "sha256": "ad4fe58a87a1f3c5d623871493eddad99a30760cb2a6d92ff7488d119084d603"
+    },
+    "child-agent-f-initial-v1.json": {
+      "bytes": 619,
+      "sha256": "dd6846413d931e9bd541e286d229bc931315c51fa021799ed93d1a4141d94b17"
+    },
+    "determinism-v1.json": {
+      "bytes": 809,
+      "sha256": "db96dbe658341d57e56fb036494729cccf33c872b4d4fefc06f8726a3959b1dc"
+    },
+    "exact-ready-execution-plan-v1.json": {
+      "bytes": 3443,
+      "sha256": "ae4659adde655d8c81dbd13f550073df5eadc5b319e983f92ff163b7c75e9e1e"
+    },
+    "exact-ready-required-route-set-v1.json": {
+      "bytes": 57117,
+      "sha256": "999e6a2aabe5819bb895660952d38b656e8474125c8c71cce04034025df543ac"
+    },
+    "exact-ready-target-binding-v1.json": {
+      "bytes": 753,
+      "sha256": "cf5ec6cd1d7f7f9f8ed99069acd002f60341178d7d337f5c9cfbf0d9d1669b3c"
+    },
+    "exact-ready-target-full-short-rerun-v1.json": {
+      "bytes": 1342,
+      "sha256": "66c48de3e2fe216a28b13b814b8f33634f47720517b4b0de4cf1194381dd96c2"
+    },
+    "existing-capacity-logic-reuse-v1.json": {
+      "bytes": 817,
+      "sha256": "c93c666ff6c4586ada7e8ab372427e53da9123057e117bcc87e24f37a5edd7e5"
+    },
+    "focused-test-receipt-v1.json": {
+      "bytes": 457,
+      "sha256": "128ab97c8cf21c38f6f48b12cada2751e9addc6080b5ffa8cc558d4860d9ba0a"
+    },
+    "full-suite-receipt-v1.json": {
+      "bytes": 454,
+      "sha256": "c67419c1cd86bd9d2304f1b3de642e9f2f552bc8caa58027ed73bd19e54370a4"
+    },
+    "historical-capability-evidence-matrix-v1.json": {
+      "bytes": 4238,
+      "sha256": "b99c46b636dbf84ee27c191de9369a187aa9b2f816639874b777bd84084dbeed"
+    },
+    "historical-route-capability-evidence-v1.json": {
+      "bytes": 1134,
+      "sha256": "732816e713d74c608549020cf3c3332dd624c85b1be5aa59a2a3f4f01f999be2"
+    },
+    "live-route-capability-matrix-v1.json": {
+      "bytes": 28020,
+      "sha256": "76adc3257046aade03d0a1f3747ea0accaa568164bfbcb0db9c9178248625f2d"
+    },
+    "pre-authorization-final-report-v1.md": {
+      "bytes": 679,
+      "sha256": "64f1a02ff992dd9e67d76c773fa8994e05cb892ae31b26e3fc93c28f4804ec80"
+    },
+    "privacy-scan-v1.json": {
+      "bytes": 574,
+      "sha256": "bedb5382a4e26032da728cf2aa39780071b2a7fb8ffd09d37255d947556d8647"
+    },
+    "production-isolation-v1.json": {
+      "bytes": 712,
+      "sha256": "3cef2025fd30e027d5c2dc271348b25b980314d3a758773a1b50da7a4dad30c5"
+    },
+    "related-test-receipt-v1.json": {
+      "bytes": 457,
+      "sha256": "1e673cd889ece10e9e037c6cc4a0ce72cd88473b3d986dfe9af6722dc968e0ce"
+    },
+    "reviewer-1-final-v1.json": {
+      "bytes": 475,
+      "sha256": "9fa382fe17840bdecf3181932c5624f4c17b2a0ae83c660c47b461036a9225a2"
+    },
+    "reviewer-2-final-v1.json": {
+      "bytes": 476,
+      "sha256": "44931827c8e9d3d539c0ac09fecffa69cdea923b66e56b54078016e307a08ee3"
+    },
+    "reviewer-3-final-v1.json": {
+      "bytes": 470,
+      "sha256": "14ab8bb5e9478e71a0728a2d7bb7cdf666bcfd61e5aeffc195cd3643e5297ed1"
+    },
+    "reviewer-4-final-v1.json": {
+      "bytes": 483,
+      "sha256": "18a4f27b5665a1623ba4eaf844a207fb3d377b08e715b6d114c9eb7a8afe6393"
+    },
+    "reviewer-5-final-v1.json": {
+      "bytes": 503,
+      "sha256": "3ad3c459cb0b51b39f0c488e82b704bae09ad4dfe25996751a78a955c5fc7a60"
+    },
+    "route-capability-registry-v1.json": {
+      "bytes": 27509,
+      "sha256": "034280f7a20447a4f84db9eb666df3802c76025c2f02942b5754421d1a3e9690"
+    },
+    "size-matrix-rerun-v1.json": {
+      "bytes": 927,
+      "sha256": "24b880ab08439b3199225e06c3975f818ac7b4b846206870104cd7c7c57050fa"
+    },
+    "strict-l3-receipt-v1.json": {
+      "bytes": 460,
+      "sha256": "047c4b85cc6a913a36d34b09dd94e6ad4fc82832fe47571ad638e76748cbf84b"
+    },
+    "token-accounting-contract-v1.json": {
+      "bytes": 869,
+      "sha256": "cf0b43f6bc45dff6c523017b6a26b5c32803947e8795eea40428b5048b6d87c6"
+    },
+    "v2-stop-loss-input-v1.json": {
+      "bytes": 630,
+      "sha256": "67facb120f22bd8de80c53ac7fda58aa5e1a8cf81b3710a575ba163dda5d3bac"
+    },
+    "v3-capacity-fault-injection-report-v1.json": {
+      "bytes": 27962,
+      "sha256": "bd764d6cd7adc2fe0df9f5e3a2438f311524ab2c111ec8c46412b83209b98ef5"
+    },
+    "v3-stop-loss-v1.json": {
+      "bytes": 811,
+      "sha256": "221e686613bb4d1099bb806b1a471d163ed7a0d302941b1ab6bf90a9c48e7b3c"
+    }
+  },
+  "external_boundary": {
+    "http_calls": 0,
+    "model_calls": 0,
+    "network_calls": 0,
+    "paid_calls": 0,
+    "real_credential_lookup_count": 0,
+    "real_full_short_runs": 0,
+    "real_provider_request_attempts": 0
+  },
+  "final_head_binding_closed": false,
+  "schema": "FullShortRuntimeCapacityV3Sha256ManifestV1",
+  "self_excluded": "sha256-manifest-v1.json",
+  "status": "PASS",
+  "version": 1
+}

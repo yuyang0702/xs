@@ -1,0 +1,23 @@
+{
+  "exact_next_gate": "FULL_SHORT_ROUTE_CAPABILITY_OR_WORKLOAD_POLICY_DECISION_REQUIRED",
+  "exact_ready_plan_unknown_required_route_count": 8,
+  "execution_runtime_redesign_v3": "NOT_CLOSED",
+  "external_boundary": {
+    "http_calls": 0,
+    "model_calls": 0,
+    "network_calls": 0,
+    "paid_calls": 0,
+    "real_credential_lookup_count": 0,
+    "real_full_short_runs": 0,
+    "real_provider_request_attempts": 0
+  },
+  "final_authorization_ready": "NO",
+  "full_short": "NOT_EXECUTED",
+  "full_short_execution_authorized": "NO",
+  "full_short_production_shaped_dry_run": "PASS_EXACT_READY_TARGET_OFFLINE_STUB",
+  "schema": "FullShortRuntimeCapacityV3StopLossV1",
+  "status": "ACTIVE_NOT_CLOSED",
+  "strict_l3": "PENDING",
+  "trustworthy_full_short_readiness": "NO",
+  "version": 1
+}

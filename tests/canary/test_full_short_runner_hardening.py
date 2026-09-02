@@ -953,11 +953,9 @@ def test_dry_run_has_no_test_owned_oracle_or_fixed_call_count() -> None:
     assert "_execute_full_short_control_plane_offline(" in source
     assert "run_full_short_workflow_path(" in source
     assert "expected_calls * 4" not in source
-    assert (
-        "discovered_plan_total_cap\n"
-        "            + planning_recovery_output_token_hard_cap"
-        in source
-    )
+    assert "discovered_plan_total_cap" in source
+    assert "LOGICAL_STAGE_RECOVERY_POLICY_V1" in source
+    assert "planning_recovery_output_token_hard_cap" in source
 
 
 def test_existing_runtime_journal_reconciles_before_approval_or_nonce() -> None:

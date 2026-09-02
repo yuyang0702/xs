@@ -1,0 +1,19 @@
+{
+  "external_boundary": {
+    "http_calls": 0,
+    "model_calls": 0,
+    "network_calls": 0,
+    "paid_calls": 0,
+    "real_credential_lookup_count": 0,
+    "real_full_short_runs": 0,
+    "real_provider_request_attempts": 0
+  },
+  "findings": [
+    "Fresh final review has not yet been sealed."
+  ],
+  "focus": "required-route closure",
+  "reviewer_number": 2,
+  "schema": "FullShortRuntimeCapacityV3FinalReviewV1",
+  "status": "PENDING",
+  "version": 1
+}

@@ -1,0 +1,38 @@
+{
+  "external_boundary": {
+    "http_calls": 0,
+    "model_calls": 0,
+    "network_calls": 0,
+    "paid_calls": 0,
+    "real_credential_lookup_count": 0,
+    "real_full_short_runs": 0,
+    "real_provider_request_attempts": 0
+  },
+  "historical_evidence_search_complete": true,
+  "partial_only_observations": [
+    8798,
+    16000,
+    4624,
+    3724
+  ],
+  "partial_unarchived_route_fingerprints": [
+    "04a443a6702fcc95b74906e44b7233c9370cb9b94bbbbadce4bf59c088b68c31"
+  ],
+  "schema": "HistoricalRouteCapabilityEvidenceV1",
+  "screenshots_found": 0,
+  "searched_sources": [
+    "docs/superpowers/reports/c0b-p0-provider-model-evidence-matrix.json",
+    "docs/superpowers/reports/c0b-smoke-1-approval-packet-v1.json",
+    "docs/superpowers/reports/full-short-execution-runtime-architecture-redesign-v2-capacity-v1",
+    "docs/superpowers/reports/**/*capacity*",
+    "data/app.db safe provider/model/role fields"
+  ],
+  "status": "SEARCH_COMPLETE_PARTIAL_REUSE",
+  "unproven_claims_rejected": [
+    32768,
+    8328,
+    372000
+  ],
+  "verified_reusable_route_fingerprints": [],
+  "version": 1
+}

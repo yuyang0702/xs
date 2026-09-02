@@ -1,0 +1,23 @@
+{
+  "external_boundary": {
+    "http_calls": 0,
+    "model_calls": 0,
+    "network_calls": 0,
+    "paid_calls": 0,
+    "real_credential_lookup_count": 0,
+    "real_full_short_runs": 0,
+    "real_provider_request_attempts": 0
+  },
+  "findings": [
+    "DeepSeek exact official route has an unarchived 1,000,000/384,000 historical assertion, not reusable verified evidence.",
+    "8798/16000/4624/3724 observations are lower bounds or requests, not maxima.",
+    "No tracked original screenshots were found."
+  ],
+  "focus": "historical capability evidence",
+  "mode": "fresh_read_only_offline",
+  "old_authority_reused": false,
+  "schema": "FullShortRuntimeCapacityV3InitialChildReportV1",
+  "status": "COMPLETE",
+  "version": 1,
+  "workstream": "A"
+}

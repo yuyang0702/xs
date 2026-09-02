@@ -1,0 +1,22 @@
+{
+  "external_boundary": {
+    "http_calls": 0,
+    "model_calls": 0,
+    "network_calls": 0,
+    "paid_calls": 0,
+    "real_credential_lookup_count": 0,
+    "real_full_short_runs": 0,
+    "real_provider_request_attempts": 0
+  },
+  "findings": [
+    "Admission invariant is I + P + O + R + S <= C per exact route.",
+    "Primary and fallback capacity are independently evaluated; no silent truncation is allowed."
+  ],
+  "focus": "token accounting",
+  "mode": "fresh_read_only_offline",
+  "old_authority_reused": false,
+  "schema": "FullShortRuntimeCapacityV3InitialChildReportV1",
+  "status": "COMPLETE",
+  "version": 1,
+  "workstream": "E"
+}

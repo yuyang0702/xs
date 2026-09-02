@@ -1,0 +1,28 @@
+{
+  "capacity_existing_logic_reused_where_valid": true,
+  "external_boundary": {
+    "http_calls": 0,
+    "model_calls": 0,
+    "network_calls": 0,
+    "paid_calls": 0,
+    "real_credential_lookup_count": 0,
+    "real_full_short_runs": 0,
+    "real_provider_request_attempts": 0
+  },
+  "replaced": [
+    "bare model_configuration context-window trust",
+    "caller-owned recovery-slot physical attempt identity"
+  ],
+  "reused": [
+    "DEFAULT_STAGE_CAPACITY_POLICY_REGISTRY_V1",
+    "StageCapacityAdmissionEngineV1",
+    "FullShortDispatchLedgerObserverV1",
+    "FullShortDurableExecutionStoreV1",
+    "FullShortExecutionKernel",
+    "DurableExecutionJournalV1",
+    "V1 fault campaign"
+  ],
+  "schema": "ExistingCapacityLogicReuseV1",
+  "status": "PASS_WITH_V3_REBIND",
+  "version": 1
+}

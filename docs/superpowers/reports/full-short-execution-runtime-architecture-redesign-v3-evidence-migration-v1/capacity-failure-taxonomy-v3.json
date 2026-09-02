@@ -1,0 +1,55 @@
+{
+  "capacity_physical_attempt_drift_generic_mapping_count": 0,
+  "context_capacity_generic_unexpected_mapping_count": 0,
+  "external_boundary": {
+    "http_calls": 0,
+    "model_calls": 0,
+    "network_calls": 0,
+    "paid_calls": 0,
+    "real_credential_lookup_count": 0,
+    "real_full_short_runs": 0,
+    "real_provider_request_attempts": 0
+  },
+  "failure_architecture_identity": "full-short-failure-architecture-v2",
+  "newly_typed_failure_ids": [
+    "capacity.context_window_exceeded",
+    "capacity.estimator_uncertainty_exceeded",
+    "capacity.invalid_attempt_delta",
+    "capacity.physical_attempt_cap_exhausted",
+    "capacity.physical_attempt_drift",
+    "capacity.route_capability_unknown"
+  ],
+  "schema": "CapacityFailureTaxonomyV3",
+  "status": "PASS",
+  "v1_failure_ids": [
+    "capacity.compaction_insufficient",
+    "capacity.context_limit_inconsistent",
+    "capacity.context_limit_unavailable",
+    "capacity.model_context_exceeded",
+    "capacity.output_reserve_unsatisfied",
+    "capacity.policy_violation",
+    "capacity.protected_layers_exceed_budget",
+    "capacity.rendered_prompt_drift",
+    "capacity.windowing_exhausted",
+    "capacity.windowing_required"
+  ],
+  "v3_failure_ids": [
+    "capacity.compaction_insufficient",
+    "capacity.context_limit_inconsistent",
+    "capacity.context_limit_unavailable",
+    "capacity.context_window_exceeded",
+    "capacity.estimator_uncertainty_exceeded",
+    "capacity.invalid_attempt_delta",
+    "capacity.model_context_exceeded",
+    "capacity.output_reserve_unsatisfied",
+    "capacity.physical_attempt_cap_exhausted",
+    "capacity.physical_attempt_drift",
+    "capacity.policy_violation",
+    "capacity.protected_layers_exceed_budget",
+    "capacity.rendered_prompt_drift",
+    "capacity.route_capability_unknown",
+    "capacity.windowing_exhausted",
+    "capacity.windowing_required"
+  ],
+  "version": 1
+}

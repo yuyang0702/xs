@@ -1,0 +1,128 @@
+{
+  "external_boundary": {
+    "http_calls": 0,
+    "model_calls": 0,
+    "network_calls": 0,
+    "paid_calls": 0,
+    "real_credential_lookup_count": 0,
+    "real_full_short_runs": 0,
+    "real_provider_request_attempts": 0
+  },
+  "records": [
+    {
+      "classification": "PARTIAL_ONLY",
+      "context_window_tokens": null,
+      "lane": "fallback",
+      "max_output_tokens": null,
+      "role": "draft",
+      "route_fingerprint": "eb1676db66669efb33b72997a2c4b59e44b786e505b693f5aac88097e4454fee"
+    },
+    {
+      "classification": "PARTIAL_ONLY",
+      "context_window_tokens": null,
+      "lane": "primary",
+      "max_output_tokens": null,
+      "role": "draft",
+      "route_fingerprint": "099e358eae5fd0ff5e3d1b8cda34cd90c73c735c001ed44334ade3e3b667bf4e"
+    },
+    {
+      "classification": "PARTIAL_ONLY",
+      "context_window_tokens": null,
+      "lane": "fallback",
+      "max_output_tokens": null,
+      "role": "final_review",
+      "route_fingerprint": "04a443a6702fcc95b74906e44b7233c9370cb9b94bbbbadce4bf59c088b68c31"
+    },
+    {
+      "classification": "PARTIAL_ONLY",
+      "context_window_tokens": null,
+      "lane": "primary",
+      "max_output_tokens": null,
+      "role": "final_review",
+      "route_fingerprint": "30e9cbaf86fbb4b89b43614d71cc11b359ad41e7411e8ebda5d3ce4199879bf0"
+    },
+    {
+      "classification": "PARTIAL_ONLY",
+      "context_window_tokens": null,
+      "lane": "fallback",
+      "max_output_tokens": null,
+      "role": "maintenance",
+      "route_fingerprint": "04a443a6702fcc95b74906e44b7233c9370cb9b94bbbbadce4bf59c088b68c31"
+    },
+    {
+      "classification": "PARTIAL_ONLY",
+      "context_window_tokens": null,
+      "lane": "primary",
+      "max_output_tokens": null,
+      "role": "maintenance",
+      "route_fingerprint": "30e9cbaf86fbb4b89b43614d71cc11b359ad41e7411e8ebda5d3ce4199879bf0"
+    },
+    {
+      "classification": "PARTIAL_ONLY",
+      "context_window_tokens": null,
+      "lane": "fallback",
+      "max_output_tokens": null,
+      "role": "planning",
+      "route_fingerprint": "04a443a6702fcc95b74906e44b7233c9370cb9b94bbbbadce4bf59c088b68c31"
+    },
+    {
+      "classification": "PARTIAL_ONLY",
+      "context_window_tokens": null,
+      "lane": "primary",
+      "max_output_tokens": null,
+      "role": "planning",
+      "route_fingerprint": "30e9cbaf86fbb4b89b43614d71cc11b359ad41e7411e8ebda5d3ce4199879bf0"
+    },
+    {
+      "classification": "PARTIAL_ONLY",
+      "context_window_tokens": null,
+      "lane": "fallback",
+      "max_output_tokens": null,
+      "role": "polish",
+      "route_fingerprint": "66ed2f039f6532193f7fcc0ce3dc459a4e4f53528bb1eda13007ee85e314677f"
+    },
+    {
+      "classification": "PARTIAL_ONLY",
+      "context_window_tokens": null,
+      "lane": "primary",
+      "max_output_tokens": null,
+      "role": "polish",
+      "route_fingerprint": "4a9f19e78d8101d0bc82aa664582c775741b59d5d9953c73a5624de03b2a539c"
+    },
+    {
+      "classification": "PARTIAL_ONLY",
+      "context_window_tokens": null,
+      "lane": "fallback",
+      "max_output_tokens": null,
+      "role": "reader_review",
+      "route_fingerprint": "ddc0178083370d3f590fabfdeeff0967cf5897be57b8b06b22a17c5db184b197"
+    },
+    {
+      "classification": "PARTIAL_ONLY",
+      "context_window_tokens": null,
+      "lane": "primary",
+      "max_output_tokens": null,
+      "role": "reader_review",
+      "route_fingerprint": "026d0b3206ad50c89b4eca81b4730ebfa3370815cac98078149c6438e705bfe1"
+    },
+    {
+      "classification": "PARTIAL_ONLY",
+      "context_window_tokens": null,
+      "lane": "fallback",
+      "max_output_tokens": null,
+      "role": "review",
+      "route_fingerprint": "30e9cbaf86fbb4b89b43614d71cc11b359ad41e7411e8ebda5d3ce4199879bf0"
+    },
+    {
+      "classification": "PARTIAL_ONLY",
+      "context_window_tokens": null,
+      "lane": "primary",
+      "max_output_tokens": null,
+      "role": "review",
+      "route_fingerprint": "04a443a6702fcc95b74906e44b7233c9370cb9b94bbbbadce4bf59c088b68c31"
+    }
+  ],
+  "schema": "HistoricalCapabilityEvidenceMatrixV1",
+  "status": "PARTIAL",
+  "version": 1
+}

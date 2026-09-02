@@ -1,0 +1,18 @@
+{
+  "external_boundary": {
+    "http_calls": 0,
+    "model_calls": 0,
+    "network_calls": 0,
+    "paid_calls": 0,
+    "real_credential_lookup_count": 0,
+    "real_full_short_runs": 0,
+    "real_provider_request_attempts": 0
+  },
+  "inherited_authority": false,
+  "schema": "FullShortRuntimeCapacityV2StopLossInputV1",
+  "source_directory": "docs/superpowers/reports/full-short-execution-runtime-architecture-redesign-v2-capacity-v1",
+  "source_manifest_sha256": "fcc2b83532900f8b7eef3c3d01e77f86e5549f5ca89c2470902c2e222fc3e2e1",
+  "status": "VERIFIED_INPUT",
+  "v2_disposition": "NOT_CLOSED",
+  "version": 1
+}

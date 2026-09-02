@@ -1,0 +1,16 @@
+{
+  "command": "strict L3 command pending",
+  "external_boundary": {
+    "http_calls": 0,
+    "model_calls": 0,
+    "network_calls": 0,
+    "paid_calls": 0,
+    "real_credential_lookup_count": 0,
+    "real_full_short_runs": 0,
+    "real_provider_request_attempts": 0
+  },
+  "implementation_head": "a7a4e30c30de067dd905341a12540f71898b8b43",
+  "schema": "FullShortRuntimeCapacityV3VerificationReceiptV1",
+  "status": "PENDING",
+  "version": 1
+}

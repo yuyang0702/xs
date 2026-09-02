@@ -1,0 +1,22 @@
+{
+  "external_boundary": {
+    "http_calls": 0,
+    "model_calls": 0,
+    "network_calls": 0,
+    "paid_calls": 0,
+    "real_credential_lookup_count": 0,
+    "real_full_short_runs": 0,
+    "real_provider_request_attempts": 0
+  },
+  "findings": [
+    "The required role/lane set is derived from the sealed Exact READY logical-stage plan receipt.",
+    "Every selected route remains UNKNOWN_BLOCKED without trustworthy capability evidence."
+  ],
+  "focus": "Exact READY required routes",
+  "mode": "fresh_read_only_offline",
+  "old_authority_reused": false,
+  "schema": "FullShortRuntimeCapacityV3InitialChildReportV1",
+  "status": "COMPLETE",
+  "version": 1,
+  "workstream": "B"
+}

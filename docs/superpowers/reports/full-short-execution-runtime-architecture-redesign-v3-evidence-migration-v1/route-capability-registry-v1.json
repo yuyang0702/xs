@@ -1,0 +1,563 @@
+{
+  "records": [
+    {
+      "blocking_reason_codes": [
+        "EXACT_ROUTE_CONTEXT_WINDOW_EVIDENCE_UNAVAILABLE",
+        "EXACT_ROUTE_MAX_OUTPUT_EVIDENCE_UNAVAILABLE"
+      ],
+      "capability_sha256": "8f86324f762cc96e1ac92e26ff7a7def06d5b670db306aa46693ff4d7149bdce",
+      "capability_status": "UNKNOWN_BLOCKED",
+      "context_window_tokens": null,
+      "destination": "https://happyapi.org:443/v1/messages",
+      "lane": "fallback",
+      "max_output_tokens": null,
+      "model": "qwen-max-thinking",
+      "model_id_sha256": "8f7f8c73311d769a7f0b82334be8b69e0872d0c9f4dff424488de705e81e3de2",
+      "operator": "THIRD_PARTY_RELAY_UNVERIFIED_UPSTREAM",
+      "protocol": "anthropic",
+      "provider": "happy",
+      "provider_id_sha256": "2ce3843fbf98768e57b7e0f38239da7d63a60637990bb80c51231ef7b67b4c84",
+      "reasoning_output_reservation": "SEPARATE_REPORTED_RESERVATION_REQUIRED",
+      "reasoning_token_accounting": "SEPARATE_IF_REPORTED",
+      "role": "draft",
+      "route_fingerprint": "eb1676db66669efb33b72997a2c4b59e44b786e505b693f5aac88097e4454fee",
+      "source_evidence": [
+        {
+          "evidence_date": "2026-08-15",
+          "evidence_version": 1,
+          "proved_fields": [
+            "reasoning_token_accounting"
+          ],
+          "provenance_available": true,
+          "route_fingerprint": "eb1676db66669efb33b72997a2c4b59e44b786e505b693f5aac88097e4454fee",
+          "source_evidence_sha256": "49e257c42d29b1898b36808fa685ef5954a6fbf5cac4e59c1450aae1919540ba",
+          "source_kind": "historical_route_token_accounting_packet",
+          "source_locator": "docs/superpowers/reports/c0b-smoke-1-approval-packet-v1.json#price_catalog/happy/qwen-max-thinking"
+        }
+      ]
+    },
+    {
+      "blocking_reason_codes": [
+        "EXACT_ROUTE_CONTEXT_WINDOW_EVIDENCE_UNAVAILABLE",
+        "EXACT_ROUTE_MAX_OUTPUT_EVIDENCE_UNAVAILABLE"
+      ],
+      "capability_sha256": "6f4c768a3f39e6d25cca35184d0a59fa596d20724e044e182a453f9257c2f7c1",
+      "capability_status": "UNKNOWN_BLOCKED",
+      "context_window_tokens": null,
+      "destination": "https://happyapi.org:443/v1/messages",
+      "lane": "primary",
+      "max_output_tokens": null,
+      "model": "qwen-3.7-plus",
+      "model_id_sha256": "bc3f8fcc6cfa21850d99966eb9ba7b2594c3ee3ebd9155a18d9e43f8a40f2824",
+      "operator": "THIRD_PARTY_RELAY_UNVERIFIED_UPSTREAM",
+      "protocol": "anthropic",
+      "provider": "happy",
+      "provider_id_sha256": "2ce3843fbf98768e57b7e0f38239da7d63a60637990bb80c51231ef7b67b4c84",
+      "reasoning_output_reservation": "WITHIN_COMPLETION_CAP",
+      "reasoning_token_accounting": "INCLUDED_IN_COMPLETION_CAP",
+      "role": "draft",
+      "route_fingerprint": "099e358eae5fd0ff5e3d1b8cda34cd90c73c735c001ed44334ade3e3b667bf4e",
+      "source_evidence": [
+        {
+          "evidence_date": "2026-08-15",
+          "evidence_version": 1,
+          "proved_fields": [
+            "reasoning_token_accounting"
+          ],
+          "provenance_available": true,
+          "route_fingerprint": "099e358eae5fd0ff5e3d1b8cda34cd90c73c735c001ed44334ade3e3b667bf4e",
+          "source_evidence_sha256": "49e257c42d29b1898b36808fa685ef5954a6fbf5cac4e59c1450aae1919540ba",
+          "source_kind": "historical_route_token_accounting_packet",
+          "source_locator": "docs/superpowers/reports/c0b-smoke-1-approval-packet-v1.json#price_catalog/happy/qwen-3.7-plus"
+        }
+      ]
+    },
+    {
+      "blocking_reason_codes": [
+        "HISTORICAL_ASSERTION_HAS_NO_ARCHIVED_SOURCE_CONTENT",
+        "EXACT_ROUTE_CONTEXT_WINDOW_EVIDENCE_UNAVAILABLE",
+        "EXACT_ROUTE_MAX_OUTPUT_EVIDENCE_UNAVAILABLE"
+      ],
+      "capability_sha256": "9ee893d6370f7727d5cd205e807776212da23fd766a714e01c98da399b9b761c",
+      "capability_status": "UNKNOWN_BLOCKED",
+      "context_window_tokens": null,
+      "destination": "https://api.deepseek.com:443/anthropic/v1/messages",
+      "lane": "fallback",
+      "max_output_tokens": null,
+      "model": "deepseek-v4-pro",
+      "model_id_sha256": "ffaf088b15c6107032e5450965693c6d9a1e0735a6186e2957463bfa460a8937",
+      "operator": "DEEPSEEK_OFFICIAL",
+      "protocol": "anthropic",
+      "provider": "deepseek",
+      "provider_id_sha256": "4555bcd38d06ac2e82d7b92da7d4fdbc31122db1636254cfaefc40aa20ac3b82",
+      "reasoning_output_reservation": "WITHIN_COMPLETION_CAP",
+      "reasoning_token_accounting": "INCLUDED_IN_COMPLETION_CAP",
+      "role": "final_review",
+      "route_fingerprint": "04a443a6702fcc95b74906e44b7233c9370cb9b94bbbbadce4bf59c088b68c31",
+      "source_evidence": [
+        {
+          "evidence_date": "2026-08-14",
+          "evidence_version": 1,
+          "proved_fields": [
+            "historical_unarchived_capacity_assertion"
+          ],
+          "provenance_available": true,
+          "route_fingerprint": "04a443a6702fcc95b74906e44b7233c9370cb9b94bbbbadce4bf59c088b68c31",
+          "source_evidence_sha256": "c61f574e7630647e65d033c5fda7169ca9f937caa7749c304cb3de2643651c98",
+          "source_kind": "historical_official_documentation_matrix",
+          "source_locator": "docs/superpowers/reports/c0b-p0-provider-model-evidence-matrix.json#models/deepseek-v4-pro"
+        },
+        {
+          "evidence_date": "2026-08-15",
+          "evidence_version": 1,
+          "proved_fields": [
+            "reasoning_token_accounting"
+          ],
+          "provenance_available": true,
+          "route_fingerprint": "04a443a6702fcc95b74906e44b7233c9370cb9b94bbbbadce4bf59c088b68c31",
+          "source_evidence_sha256": "49e257c42d29b1898b36808fa685ef5954a6fbf5cac4e59c1450aae1919540ba",
+          "source_kind": "historical_route_token_accounting_packet",
+          "source_locator": "docs/superpowers/reports/c0b-smoke-1-approval-packet-v1.json#price_catalog/deepseek/deepseek-v4-pro"
+        }
+      ]
+    },
+    {
+      "blocking_reason_codes": [
+        "EXACT_ROUTE_CONTEXT_WINDOW_EVIDENCE_UNAVAILABLE",
+        "EXACT_ROUTE_MAX_OUTPUT_EVIDENCE_UNAVAILABLE"
+      ],
+      "capability_sha256": "5a367f5e8617afc95020048ba9b0c5f09d52ed4fc5b157052d7ebcfbf5f7f4e0",
+      "capability_status": "UNKNOWN_BLOCKED",
+      "context_window_tokens": null,
+      "destination": "https://lingsuan.org:443/v1/messages",
+      "lane": "primary",
+      "max_output_tokens": null,
+      "model": "gpt-5.6-sol",
+      "model_id_sha256": "ea1a960d5a1238e83de64f6213eaf940854d0ee475f33f79098b1a2dfe4f49bd",
+      "operator": "THIRD_PARTY_RELAY_UNVERIFIED_UPSTREAM",
+      "protocol": "anthropic",
+      "provider": "lingsuan_gpt",
+      "provider_id_sha256": "482d8aa5ef40b74b95750f8c4d105c29c0c561d4c604809d85324b5b019a0a4f",
+      "reasoning_output_reservation": "WITHIN_COMPLETION_CAP",
+      "reasoning_token_accounting": "INCLUDED_IN_COMPLETION_CAP",
+      "role": "final_review",
+      "route_fingerprint": "30e9cbaf86fbb4b89b43614d71cc11b359ad41e7411e8ebda5d3ce4199879bf0",
+      "source_evidence": [
+        {
+          "evidence_date": "2026-08-15",
+          "evidence_version": 1,
+          "proved_fields": [
+            "reasoning_token_accounting"
+          ],
+          "provenance_available": true,
+          "route_fingerprint": "30e9cbaf86fbb4b89b43614d71cc11b359ad41e7411e8ebda5d3ce4199879bf0",
+          "source_evidence_sha256": "49e257c42d29b1898b36808fa685ef5954a6fbf5cac4e59c1450aae1919540ba",
+          "source_kind": "historical_route_token_accounting_packet",
+          "source_locator": "docs/superpowers/reports/c0b-smoke-1-approval-packet-v1.json#price_catalog/lingsuan_gpt/gpt-5.6-sol"
+        }
+      ]
+    },
+    {
+      "blocking_reason_codes": [
+        "HISTORICAL_ASSERTION_HAS_NO_ARCHIVED_SOURCE_CONTENT",
+        "EXACT_ROUTE_CONTEXT_WINDOW_EVIDENCE_UNAVAILABLE",
+        "EXACT_ROUTE_MAX_OUTPUT_EVIDENCE_UNAVAILABLE"
+      ],
+      "capability_sha256": "af37c783074afcf80c2b260b3b59dfffe5eff6765942e0bfdb352c07cbd1cac9",
+      "capability_status": "UNKNOWN_BLOCKED",
+      "context_window_tokens": null,
+      "destination": "https://api.deepseek.com:443/anthropic/v1/messages",
+      "lane": "fallback",
+      "max_output_tokens": null,
+      "model": "deepseek-v4-pro",
+      "model_id_sha256": "ffaf088b15c6107032e5450965693c6d9a1e0735a6186e2957463bfa460a8937",
+      "operator": "DEEPSEEK_OFFICIAL",
+      "protocol": "anthropic",
+      "provider": "deepseek",
+      "provider_id_sha256": "4555bcd38d06ac2e82d7b92da7d4fdbc31122db1636254cfaefc40aa20ac3b82",
+      "reasoning_output_reservation": "WITHIN_COMPLETION_CAP",
+      "reasoning_token_accounting": "INCLUDED_IN_COMPLETION_CAP",
+      "role": "maintenance",
+      "route_fingerprint": "04a443a6702fcc95b74906e44b7233c9370cb9b94bbbbadce4bf59c088b68c31",
+      "source_evidence": [
+        {
+          "evidence_date": "2026-08-14",
+          "evidence_version": 1,
+          "proved_fields": [
+            "historical_unarchived_capacity_assertion"
+          ],
+          "provenance_available": true,
+          "route_fingerprint": "04a443a6702fcc95b74906e44b7233c9370cb9b94bbbbadce4bf59c088b68c31",
+          "source_evidence_sha256": "c61f574e7630647e65d033c5fda7169ca9f937caa7749c304cb3de2643651c98",
+          "source_kind": "historical_official_documentation_matrix",
+          "source_locator": "docs/superpowers/reports/c0b-p0-provider-model-evidence-matrix.json#models/deepseek-v4-pro"
+        },
+        {
+          "evidence_date": "2026-08-15",
+          "evidence_version": 1,
+          "proved_fields": [
+            "reasoning_token_accounting"
+          ],
+          "provenance_available": true,
+          "route_fingerprint": "04a443a6702fcc95b74906e44b7233c9370cb9b94bbbbadce4bf59c088b68c31",
+          "source_evidence_sha256": "49e257c42d29b1898b36808fa685ef5954a6fbf5cac4e59c1450aae1919540ba",
+          "source_kind": "historical_route_token_accounting_packet",
+          "source_locator": "docs/superpowers/reports/c0b-smoke-1-approval-packet-v1.json#price_catalog/deepseek/deepseek-v4-pro"
+        }
+      ]
+    },
+    {
+      "blocking_reason_codes": [
+        "EXACT_ROUTE_CONTEXT_WINDOW_EVIDENCE_UNAVAILABLE",
+        "EXACT_ROUTE_MAX_OUTPUT_EVIDENCE_UNAVAILABLE"
+      ],
+      "capability_sha256": "62e492416831da3c584584997948207dba4fd2c14aedad29a296fbdf63083d4a",
+      "capability_status": "UNKNOWN_BLOCKED",
+      "context_window_tokens": null,
+      "destination": "https://lingsuan.org:443/v1/messages",
+      "lane": "primary",
+      "max_output_tokens": null,
+      "model": "gpt-5.6-sol",
+      "model_id_sha256": "ea1a960d5a1238e83de64f6213eaf940854d0ee475f33f79098b1a2dfe4f49bd",
+      "operator": "THIRD_PARTY_RELAY_UNVERIFIED_UPSTREAM",
+      "protocol": "anthropic",
+      "provider": "lingsuan_gpt",
+      "provider_id_sha256": "482d8aa5ef40b74b95750f8c4d105c29c0c561d4c604809d85324b5b019a0a4f",
+      "reasoning_output_reservation": "WITHIN_COMPLETION_CAP",
+      "reasoning_token_accounting": "INCLUDED_IN_COMPLETION_CAP",
+      "role": "maintenance",
+      "route_fingerprint": "30e9cbaf86fbb4b89b43614d71cc11b359ad41e7411e8ebda5d3ce4199879bf0",
+      "source_evidence": [
+        {
+          "evidence_date": "2026-08-15",
+          "evidence_version": 1,
+          "proved_fields": [
+            "reasoning_token_accounting"
+          ],
+          "provenance_available": true,
+          "route_fingerprint": "30e9cbaf86fbb4b89b43614d71cc11b359ad41e7411e8ebda5d3ce4199879bf0",
+          "source_evidence_sha256": "49e257c42d29b1898b36808fa685ef5954a6fbf5cac4e59c1450aae1919540ba",
+          "source_kind": "historical_route_token_accounting_packet",
+          "source_locator": "docs/superpowers/reports/c0b-smoke-1-approval-packet-v1.json#price_catalog/lingsuan_gpt/gpt-5.6-sol"
+        }
+      ]
+    },
+    {
+      "blocking_reason_codes": [
+        "HISTORICAL_ASSERTION_HAS_NO_ARCHIVED_SOURCE_CONTENT",
+        "EXACT_ROUTE_CONTEXT_WINDOW_EVIDENCE_UNAVAILABLE",
+        "EXACT_ROUTE_MAX_OUTPUT_EVIDENCE_UNAVAILABLE"
+      ],
+      "capability_sha256": "f340a6ff4bfb024914ba10ae1edfbfc19a04509cdf86132d167cf5b186d2e8fd",
+      "capability_status": "UNKNOWN_BLOCKED",
+      "context_window_tokens": null,
+      "destination": "https://api.deepseek.com:443/anthropic/v1/messages",
+      "lane": "fallback",
+      "max_output_tokens": null,
+      "model": "deepseek-v4-pro",
+      "model_id_sha256": "ffaf088b15c6107032e5450965693c6d9a1e0735a6186e2957463bfa460a8937",
+      "operator": "DEEPSEEK_OFFICIAL",
+      "protocol": "anthropic",
+      "provider": "deepseek",
+      "provider_id_sha256": "4555bcd38d06ac2e82d7b92da7d4fdbc31122db1636254cfaefc40aa20ac3b82",
+      "reasoning_output_reservation": "WITHIN_COMPLETION_CAP",
+      "reasoning_token_accounting": "INCLUDED_IN_COMPLETION_CAP",
+      "role": "planning",
+      "route_fingerprint": "04a443a6702fcc95b74906e44b7233c9370cb9b94bbbbadce4bf59c088b68c31",
+      "source_evidence": [
+        {
+          "evidence_date": "2026-08-14",
+          "evidence_version": 1,
+          "proved_fields": [
+            "historical_unarchived_capacity_assertion"
+          ],
+          "provenance_available": true,
+          "route_fingerprint": "04a443a6702fcc95b74906e44b7233c9370cb9b94bbbbadce4bf59c088b68c31",
+          "source_evidence_sha256": "c61f574e7630647e65d033c5fda7169ca9f937caa7749c304cb3de2643651c98",
+          "source_kind": "historical_official_documentation_matrix",
+          "source_locator": "docs/superpowers/reports/c0b-p0-provider-model-evidence-matrix.json#models/deepseek-v4-pro"
+        },
+        {
+          "evidence_date": "2026-08-15",
+          "evidence_version": 1,
+          "proved_fields": [
+            "reasoning_token_accounting"
+          ],
+          "provenance_available": true,
+          "route_fingerprint": "04a443a6702fcc95b74906e44b7233c9370cb9b94bbbbadce4bf59c088b68c31",
+          "source_evidence_sha256": "49e257c42d29b1898b36808fa685ef5954a6fbf5cac4e59c1450aae1919540ba",
+          "source_kind": "historical_route_token_accounting_packet",
+          "source_locator": "docs/superpowers/reports/c0b-smoke-1-approval-packet-v1.json#price_catalog/deepseek/deepseek-v4-pro"
+        }
+      ]
+    },
+    {
+      "blocking_reason_codes": [
+        "EXACT_ROUTE_CONTEXT_WINDOW_EVIDENCE_UNAVAILABLE",
+        "EXACT_ROUTE_MAX_OUTPUT_EVIDENCE_UNAVAILABLE"
+      ],
+      "capability_sha256": "7a57de83be43ccdf6ba636db315d28857cb0476d6b6e0a63bda2c0913c258873",
+      "capability_status": "UNKNOWN_BLOCKED",
+      "context_window_tokens": null,
+      "destination": "https://lingsuan.org:443/v1/messages",
+      "lane": "primary",
+      "max_output_tokens": null,
+      "model": "gpt-5.6-sol",
+      "model_id_sha256": "ea1a960d5a1238e83de64f6213eaf940854d0ee475f33f79098b1a2dfe4f49bd",
+      "operator": "THIRD_PARTY_RELAY_UNVERIFIED_UPSTREAM",
+      "protocol": "anthropic",
+      "provider": "lingsuan_gpt",
+      "provider_id_sha256": "482d8aa5ef40b74b95750f8c4d105c29c0c561d4c604809d85324b5b019a0a4f",
+      "reasoning_output_reservation": "WITHIN_COMPLETION_CAP",
+      "reasoning_token_accounting": "INCLUDED_IN_COMPLETION_CAP",
+      "role": "planning",
+      "route_fingerprint": "30e9cbaf86fbb4b89b43614d71cc11b359ad41e7411e8ebda5d3ce4199879bf0",
+      "source_evidence": [
+        {
+          "evidence_date": "2026-08-15",
+          "evidence_version": 1,
+          "proved_fields": [
+            "reasoning_token_accounting"
+          ],
+          "provenance_available": true,
+          "route_fingerprint": "30e9cbaf86fbb4b89b43614d71cc11b359ad41e7411e8ebda5d3ce4199879bf0",
+          "source_evidence_sha256": "49e257c42d29b1898b36808fa685ef5954a6fbf5cac4e59c1450aae1919540ba",
+          "source_kind": "historical_route_token_accounting_packet",
+          "source_locator": "docs/superpowers/reports/c0b-smoke-1-approval-packet-v1.json#price_catalog/lingsuan_gpt/gpt-5.6-sol"
+        }
+      ]
+    },
+    {
+      "blocking_reason_codes": [
+        "EXACT_ROUTE_CONTEXT_WINDOW_EVIDENCE_UNAVAILABLE",
+        "EXACT_ROUTE_MAX_OUTPUT_EVIDENCE_UNAVAILABLE"
+      ],
+      "capability_sha256": "962bcfffb6ef646a70935c57aad5d4c456ef5492624f42876899b71f95ffa213",
+      "capability_status": "UNKNOWN_BLOCKED",
+      "context_window_tokens": null,
+      "destination": "https://happyapi.org:443/v1/messages",
+      "lane": "fallback",
+      "max_output_tokens": null,
+      "model": "claude-opus-4-5",
+      "model_id_sha256": "93c8e5b2faf72616ba121886b6d244e3ed8a018c863931fd866e5919874f34c3",
+      "operator": "THIRD_PARTY_RELAY_UNVERIFIED_UPSTREAM",
+      "protocol": "anthropic",
+      "provider": "happy",
+      "provider_id_sha256": "2ce3843fbf98768e57b7e0f38239da7d63a60637990bb80c51231ef7b67b4c84",
+      "reasoning_output_reservation": "WITHIN_COMPLETION_CAP",
+      "reasoning_token_accounting": "INCLUDED_IN_COMPLETION_CAP",
+      "role": "polish",
+      "route_fingerprint": "66ed2f039f6532193f7fcc0ce3dc459a4e4f53528bb1eda13007ee85e314677f",
+      "source_evidence": [
+        {
+          "evidence_date": "2026-08-15",
+          "evidence_version": 1,
+          "proved_fields": [
+            "reasoning_token_accounting"
+          ],
+          "provenance_available": true,
+          "route_fingerprint": "66ed2f039f6532193f7fcc0ce3dc459a4e4f53528bb1eda13007ee85e314677f",
+          "source_evidence_sha256": "49e257c42d29b1898b36808fa685ef5954a6fbf5cac4e59c1450aae1919540ba",
+          "source_kind": "historical_route_token_accounting_packet",
+          "source_locator": "docs/superpowers/reports/c0b-smoke-1-approval-packet-v1.json#price_catalog/happy/claude-opus-4-5"
+        }
+      ]
+    },
+    {
+      "blocking_reason_codes": [
+        "EXACT_ROUTE_CONTEXT_WINDOW_EVIDENCE_UNAVAILABLE",
+        "EXACT_ROUTE_MAX_OUTPUT_EVIDENCE_UNAVAILABLE"
+      ],
+      "capability_sha256": "89a6de94fd1abc23b719b8a7b3b3ae01ce8514d9df22cf2190f4d735c144439e",
+      "capability_status": "UNKNOWN_BLOCKED",
+      "context_window_tokens": null,
+      "destination": "https://lingsuan.org:443/v1/messages",
+      "lane": "primary",
+      "max_output_tokens": null,
+      "model": "claude-sonnet-5",
+      "model_id_sha256": "f223d23b11bb1bcb9150fb6cf4bfb90b6b7d3756e9cca0aefefe7b0e339d4b2e",
+      "operator": "THIRD_PARTY_RELAY_UNVERIFIED_UPSTREAM",
+      "protocol": "anthropic",
+      "provider": "lingsuan_sonnet",
+      "provider_id_sha256": "22398ce7621e3265da16e55e18753e574e0d691ef51f486fefed1977ef9a9f40",
+      "reasoning_output_reservation": "WITHIN_COMPLETION_CAP",
+      "reasoning_token_accounting": "INCLUDED_IN_COMPLETION_CAP",
+      "role": "polish",
+      "route_fingerprint": "4a9f19e78d8101d0bc82aa664582c775741b59d5d9953c73a5624de03b2a539c",
+      "source_evidence": [
+        {
+          "evidence_date": "2026-08-15",
+          "evidence_version": 1,
+          "proved_fields": [
+            "reasoning_token_accounting"
+          ],
+          "provenance_available": true,
+          "route_fingerprint": "4a9f19e78d8101d0bc82aa664582c775741b59d5d9953c73a5624de03b2a539c",
+          "source_evidence_sha256": "49e257c42d29b1898b36808fa685ef5954a6fbf5cac4e59c1450aae1919540ba",
+          "source_kind": "historical_route_token_accounting_packet",
+          "source_locator": "docs/superpowers/reports/c0b-smoke-1-approval-packet-v1.json#price_catalog/lingsuan_sonnet/claude-sonnet-5"
+        }
+      ]
+    },
+    {
+      "blocking_reason_codes": [
+        "EXACT_ROUTE_CONTEXT_WINDOW_EVIDENCE_UNAVAILABLE",
+        "EXACT_ROUTE_MAX_OUTPUT_EVIDENCE_UNAVAILABLE"
+      ],
+      "capability_sha256": "0b326e4e742eda2ca78aad9bab38102a7fd1dc7f343f162a0ad59015358f9629",
+      "capability_status": "UNKNOWN_BLOCKED",
+      "context_window_tokens": null,
+      "destination": "https://ark.cn-beijing.volces.com:443/api/v3/responses",
+      "lane": "fallback",
+      "max_output_tokens": null,
+      "model": "doubao-seed-2-0-pro-260215",
+      "model_id_sha256": "7f862ac54cc1a4dec658621af143fbb57edd703e99a73071fc792cae8e597161",
+      "operator": "VOLCENGINE_ARK_DIRECT",
+      "protocol": "openai-responses",
+      "provider": "doubao",
+      "provider_id_sha256": "17f329a8acc07b5517b19b951b87d069ecd89d0c62bd15da2bed9b443849f27e",
+      "reasoning_output_reservation": "WITHIN_COMPLETION_CAP",
+      "reasoning_token_accounting": "INCLUDED_IN_COMPLETION_CAP",
+      "role": "reader_review",
+      "route_fingerprint": "ddc0178083370d3f590fabfdeeff0967cf5897be57b8b06b22a17c5db184b197",
+      "source_evidence": [
+        {
+          "evidence_date": "2026-08-15",
+          "evidence_version": 1,
+          "proved_fields": [
+            "reasoning_token_accounting"
+          ],
+          "provenance_available": true,
+          "route_fingerprint": "ddc0178083370d3f590fabfdeeff0967cf5897be57b8b06b22a17c5db184b197",
+          "source_evidence_sha256": "49e257c42d29b1898b36808fa685ef5954a6fbf5cac4e59c1450aae1919540ba",
+          "source_kind": "historical_route_token_accounting_packet",
+          "source_locator": "docs/superpowers/reports/c0b-smoke-1-approval-packet-v1.json#price_catalog/doubao/doubao-seed-2-0-pro-260215"
+        }
+      ]
+    },
+    {
+      "blocking_reason_codes": [
+        "EXACT_ROUTE_CONTEXT_WINDOW_EVIDENCE_UNAVAILABLE",
+        "EXACT_ROUTE_MAX_OUTPUT_EVIDENCE_UNAVAILABLE"
+      ],
+      "capability_sha256": "3d440077b07dc194bdb34aa8833e9f955f50575cf8242c221f1d461754a575e6",
+      "capability_status": "UNKNOWN_BLOCKED",
+      "context_window_tokens": null,
+      "destination": "https://ark.cn-beijing.volces.com:443/api/v3/responses",
+      "lane": "primary",
+      "max_output_tokens": null,
+      "model": "doubao-seed-character-260628",
+      "model_id_sha256": "c1f03f8c3ed8fdbb9aae3b2e6711970a78da4236291e1865fd3466b078f66c28",
+      "operator": "VOLCENGINE_ARK_DIRECT",
+      "protocol": "openai-responses",
+      "provider": "doubao",
+      "provider_id_sha256": "17f329a8acc07b5517b19b951b87d069ecd89d0c62bd15da2bed9b443849f27e",
+      "reasoning_output_reservation": "WITHIN_COMPLETION_CAP",
+      "reasoning_token_accounting": "INCLUDED_IN_COMPLETION_CAP",
+      "role": "reader_review",
+      "route_fingerprint": "026d0b3206ad50c89b4eca81b4730ebfa3370815cac98078149c6438e705bfe1",
+      "source_evidence": [
+        {
+          "evidence_date": "2026-08-15",
+          "evidence_version": 1,
+          "proved_fields": [
+            "reasoning_token_accounting"
+          ],
+          "provenance_available": true,
+          "route_fingerprint": "026d0b3206ad50c89b4eca81b4730ebfa3370815cac98078149c6438e705bfe1",
+          "source_evidence_sha256": "49e257c42d29b1898b36808fa685ef5954a6fbf5cac4e59c1450aae1919540ba",
+          "source_kind": "historical_route_token_accounting_packet",
+          "source_locator": "docs/superpowers/reports/c0b-smoke-1-approval-packet-v1.json#price_catalog/doubao/doubao-seed-character-260628"
+        }
+      ]
+    },
+    {
+      "blocking_reason_codes": [
+        "EXACT_ROUTE_CONTEXT_WINDOW_EVIDENCE_UNAVAILABLE",
+        "EXACT_ROUTE_MAX_OUTPUT_EVIDENCE_UNAVAILABLE"
+      ],
+      "capability_sha256": "5500614e86b8e11394814b94e7955e48026265713e5e6ebd1324cb7d91dca175",
+      "capability_status": "UNKNOWN_BLOCKED",
+      "context_window_tokens": null,
+      "destination": "https://lingsuan.org:443/v1/messages",
+      "lane": "fallback",
+      "max_output_tokens": null,
+      "model": "gpt-5.6-sol",
+      "model_id_sha256": "ea1a960d5a1238e83de64f6213eaf940854d0ee475f33f79098b1a2dfe4f49bd",
+      "operator": "THIRD_PARTY_RELAY_UNVERIFIED_UPSTREAM",
+      "protocol": "anthropic",
+      "provider": "lingsuan_gpt",
+      "provider_id_sha256": "482d8aa5ef40b74b95750f8c4d105c29c0c561d4c604809d85324b5b019a0a4f",
+      "reasoning_output_reservation": "WITHIN_COMPLETION_CAP",
+      "reasoning_token_accounting": "INCLUDED_IN_COMPLETION_CAP",
+      "role": "review",
+      "route_fingerprint": "30e9cbaf86fbb4b89b43614d71cc11b359ad41e7411e8ebda5d3ce4199879bf0",
+      "source_evidence": [
+        {
+          "evidence_date": "2026-08-15",
+          "evidence_version": 1,
+          "proved_fields": [
+            "reasoning_token_accounting"
+          ],
+          "provenance_available": true,
+          "route_fingerprint": "30e9cbaf86fbb4b89b43614d71cc11b359ad41e7411e8ebda5d3ce4199879bf0",
+          "source_evidence_sha256": "49e257c42d29b1898b36808fa685ef5954a6fbf5cac4e59c1450aae1919540ba",
+          "source_kind": "historical_route_token_accounting_packet",
+          "source_locator": "docs/superpowers/reports/c0b-smoke-1-approval-packet-v1.json#price_catalog/lingsuan_gpt/gpt-5.6-sol"
+        }
+      ]
+    },
+    {
+      "blocking_reason_codes": [
+        "HISTORICAL_ASSERTION_HAS_NO_ARCHIVED_SOURCE_CONTENT",
+        "EXACT_ROUTE_CONTEXT_WINDOW_EVIDENCE_UNAVAILABLE",
+        "EXACT_ROUTE_MAX_OUTPUT_EVIDENCE_UNAVAILABLE"
+      ],
+      "capability_sha256": "2c4fdb38cdcbf6605e659cf0215df6833b83f33da5ceca8b8e7572f8e7032224",
+      "capability_status": "UNKNOWN_BLOCKED",
+      "context_window_tokens": null,
+      "destination": "https://api.deepseek.com:443/anthropic/v1/messages",
+      "lane": "primary",
+      "max_output_tokens": null,
+      "model": "deepseek-v4-pro",
+      "model_id_sha256": "ffaf088b15c6107032e5450965693c6d9a1e0735a6186e2957463bfa460a8937",
+      "operator": "DEEPSEEK_OFFICIAL",
+      "protocol": "anthropic",
+      "provider": "deepseek",
+      "provider_id_sha256": "4555bcd38d06ac2e82d7b92da7d4fdbc31122db1636254cfaefc40aa20ac3b82",
+      "reasoning_output_reservation": "WITHIN_COMPLETION_CAP",
+      "reasoning_token_accounting": "INCLUDED_IN_COMPLETION_CAP",
+      "role": "review",
+      "route_fingerprint": "04a443a6702fcc95b74906e44b7233c9370cb9b94bbbbadce4bf59c088b68c31",
+      "source_evidence": [
+        {
+          "evidence_date": "2026-08-14",
+          "evidence_version": 1,
+          "proved_fields": [
+            "historical_unarchived_capacity_assertion"
+          ],
+          "provenance_available": true,
+          "route_fingerprint": "04a443a6702fcc95b74906e44b7233c9370cb9b94bbbbadce4bf59c088b68c31",
+          "source_evidence_sha256": "c61f574e7630647e65d033c5fda7169ca9f937caa7749c304cb3de2643651c98",
+          "source_kind": "historical_official_documentation_matrix",
+          "source_locator": "docs/superpowers/reports/c0b-p0-provider-model-evidence-matrix.json#models/deepseek-v4-pro"
+        },
+        {
+          "evidence_date": "2026-08-15",
+          "evidence_version": 1,
+          "proved_fields": [
+            "reasoning_token_accounting"
+          ],
+          "provenance_available": true,
+          "route_fingerprint": "04a443a6702fcc95b74906e44b7233c9370cb9b94bbbbadce4bf59c088b68c31",
+          "source_evidence_sha256": "49e257c42d29b1898b36808fa685ef5954a6fbf5cac4e59c1450aae1919540ba",
+          "source_kind": "historical_route_token_accounting_packet",
+          "source_locator": "docs/superpowers/reports/c0b-smoke-1-approval-packet-v1.json#price_catalog/deepseek/deepseek-v4-pro"
+        }
+      ]
+    }
+  ],
+  "registry_sha256": "123faeff8dde04f2421887ea300c2aa6ec5ce70ec1991076bf2144835d77ff25",
+  "schema": "RouteCapabilityRegistryV1",
+  "version": 1
+}

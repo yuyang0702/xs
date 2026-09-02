@@ -1,0 +1,81 @@
+{
+  "blocker_failure_id": "capacity.route_capability_unknown",
+  "exact_ready_execution_plan_complete": false,
+  "exact_ready_plan_capacity_blocker_count": 8,
+  "exact_ready_plan_unknown_required_route_count": 8,
+  "exact_ready_required_route_count": 8,
+  "external_boundary": {
+    "http_calls": 0,
+    "model_calls": 0,
+    "network_calls": 0,
+    "paid_calls": 0,
+    "real_credential_lookup_count": 0,
+    "real_full_short_runs": 0,
+    "real_provider_request_attempts": 0
+  },
+  "logical_stage_count": 89,
+  "logical_stage_plan_sha256": "9f1b95a04dadab6588ff22bf57ea7d85bc099f0c88c12a907981770ee8b5f42f",
+  "physical_attempt_policy_sha256": "1a9ce4d1686eb3f48c672d0c00687cd3c395b565b6fe94a0ef1b076955e3f45c",
+  "required_route_capability_snapshots": [
+    {
+      "capability_sha256": "6f4c768a3f39e6d25cca35184d0a59fa596d20724e044e182a453f9257c2f7c1",
+      "capability_status": "UNKNOWN_BLOCKED",
+      "lane": "primary",
+      "role": "draft",
+      "route_fingerprint": "099e358eae5fd0ff5e3d1b8cda34cd90c73c735c001ed44334ade3e3b667bf4e"
+    },
+    {
+      "capability_sha256": "5a367f5e8617afc95020048ba9b0c5f09d52ed4fc5b157052d7ebcfbf5f7f4e0",
+      "capability_status": "UNKNOWN_BLOCKED",
+      "lane": "primary",
+      "role": "final_review",
+      "route_fingerprint": "30e9cbaf86fbb4b89b43614d71cc11b359ad41e7411e8ebda5d3ce4199879bf0"
+    },
+    {
+      "capability_sha256": "62e492416831da3c584584997948207dba4fd2c14aedad29a296fbdf63083d4a",
+      "capability_status": "UNKNOWN_BLOCKED",
+      "lane": "primary",
+      "role": "maintenance",
+      "route_fingerprint": "30e9cbaf86fbb4b89b43614d71cc11b359ad41e7411e8ebda5d3ce4199879bf0"
+    },
+    {
+      "capability_sha256": "f340a6ff4bfb024914ba10ae1edfbfc19a04509cdf86132d167cf5b186d2e8fd",
+      "capability_status": "UNKNOWN_BLOCKED",
+      "lane": "fallback",
+      "role": "planning",
+      "route_fingerprint": "04a443a6702fcc95b74906e44b7233c9370cb9b94bbbbadce4bf59c088b68c31"
+    },
+    {
+      "capability_sha256": "7a57de83be43ccdf6ba636db315d28857cb0476d6b6e0a63bda2c0913c258873",
+      "capability_status": "UNKNOWN_BLOCKED",
+      "lane": "primary",
+      "role": "planning",
+      "route_fingerprint": "30e9cbaf86fbb4b89b43614d71cc11b359ad41e7411e8ebda5d3ce4199879bf0"
+    },
+    {
+      "capability_sha256": "89a6de94fd1abc23b719b8a7b3b3ae01ce8514d9df22cf2190f4d735c144439e",
+      "capability_status": "UNKNOWN_BLOCKED",
+      "lane": "primary",
+      "role": "polish",
+      "route_fingerprint": "4a9f19e78d8101d0bc82aa664582c775741b59d5d9953c73a5624de03b2a539c"
+    },
+    {
+      "capability_sha256": "3d440077b07dc194bdb34aa8833e9f955f50575cf8242c221f1d461754a575e6",
+      "capability_status": "UNKNOWN_BLOCKED",
+      "lane": "primary",
+      "role": "reader_review",
+      "route_fingerprint": "026d0b3206ad50c89b4eca81b4730ebfa3370815cac98078149c6438e705bfe1"
+    },
+    {
+      "capability_sha256": "2c4fdb38cdcbf6605e659cf0215df6833b83f33da5ceca8b8e7572f8e7032224",
+      "capability_status": "UNKNOWN_BLOCKED",
+      "lane": "primary",
+      "role": "review",
+      "route_fingerprint": "04a443a6702fcc95b74906e44b7233c9370cb9b94bbbbadce4bf59c088b68c31"
+    }
+  ],
+  "route_capability_registry_sha256": "123faeff8dde04f2421887ea300c2aa6ec5ce70ec1991076bf2144835d77ff25",
+  "schema": "ExactReadyExecutionPlanV1",
+  "status": "BLOCKED_BEFORE_DISPATCH",
+  "version": 1
+}
