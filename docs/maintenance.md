@@ -2542,3 +2542,31 @@ distinct injected recovery stages. It never grants a third per-stage attempt.
 Observer failures—including Windows GBK emoji encoding, CrewAI event handlers,
 logging sinks, and telemetry serialization—are best effort and cannot change a
 successful business object or replace the original business failure.
+
+## Full Short V3 route capacity and physical-attempt identity
+
+The production-shaped Exact runner reads the versioned route registry at
+`config/full_short_route_capability_registry_v1.json`. Records bind role, lane,
+provider/operator, destination, protocol, model, route fingerprint, context
+window, maximum output, reasoning accounting, evidence hashes, and status.
+Unknown limits are stored as null; they must never be inferred from a relay's
+claimed upstream model, a generic family limit, a requested output, or an
+observed successful lower bound. `UNKNOWN_BLOCKED` is route-local: it is legal
+for an unused fallback, while a selected route fails before credential lookup
+with `capacity.route_capability_unknown`.
+
+Capacity admission reserves exact input, protocol overhead, requested output,
+route-specific reasoning treatment, and estimator safety margin against that
+route's verified context window. Primary and fallback lanes are evaluated
+independently. The semantic windowing and compaction machinery may change
+representation only at an ownership boundary and must retain complete authority;
+prefix slicing and silent truncation remain prohibited.
+
+`FullShortDispatchLedgerObserverV1` is the sole physical-attempt allocator.
+The workflow recovery index selects a policy slot but is not a dispatch ordinal.
+Each physical plan binds the immutable logical capacity-envelope hash and the
+next durable ledger ordinal. Explicit incompatible caller assertions fail as
+`capacity.physical_attempt_drift`; illegal deltas and exhausted attempt caps are
+separate typed failures. Rejected predispatch work consumes no physical attempt,
+and restart derives the next ordinal from the durable ledger rather than process
+memory.

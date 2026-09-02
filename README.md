@@ -211,3 +211,9 @@ The runtime exposes no general shell, arbitrary path, browser, MCP, or Codex too
 ## Existing project migration
 
 The workbench can preview and run migration for an older project. Migration preserves legacy files, maps the old outline and canon into the canonical structure, sends ambiguous facts to `migration-report.json`, rebuilds registries, and restores the snapshot if Story CLI validation fails.
+
+## Full Short route-capacity authority
+
+Exact Full Short preflight uses `config/full_short_route_capability_registry_v1.json` as the route-exact capacity source. Every live primary and fallback lane has a content-addressed record. A record without trustworthy context-window and maximum-output provenance remains `UNKNOWN_BLOCKED`; it does not block an unused lane, but it is rejected before credential lookup when the execution plan selects that lane. Runtime no longer treats a bare model configuration value as provider capacity evidence.
+
+Logical recovery schedule slots and physical dispatch attempts are separate identities. The durable dispatch observer alone allocates the next physical attempt ordinal from the ledger, so a rejected recovery slot cannot create attempt-number drift. Context, output, estimator, route-capability, and attempt-identity failures remain typed and fail closed without truncating story authority.

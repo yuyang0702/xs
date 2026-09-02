@@ -56,6 +56,12 @@ from novel_flywheel.providers.http import (
     SingleDispatchTransportPolicyV1,
 )
 from novel_flywheel.providers.registry import ProviderRegistry
+from novel_flywheel.route_capabilities import (
+    CapabilityEvidenceV1,
+    CapabilityStatus,
+    RouteCapabilityRecordV1,
+    RouteCapabilityRegistryV1,
+)
 from novel_flywheel.projects import ProjectCreate, ProjectStore
 from novel_flywheel.story_state import StoryStateStore
 from novel_flywheel.structured_artifacts import StructuredArtifactContract
@@ -3062,6 +3068,48 @@ def test_real_runner_collects_live_bindings_without_secret_lookup(
         db.save_role_binding(
             role, "public-provider", "public-model", None, None,
         )
+    provider = db.get_provider("public-provider")
+    model = db.get_model("public-model")
+    assert provider is not None and model is not None
+    fingerprint = ProviderRegistry.route_fingerprint(provider, model)
+    evidence = CapabilityEvidenceV1(
+        source_kind="unit_test_fixture",
+        source_locator="tests/test_full_short_execution.py",
+        source_evidence_sha256="a" * 64,
+        evidence_version=1,
+        evidence_date="2026-09-02",
+        route_fingerprint=fingerprint,
+        proved_fields=("context_window_tokens", "max_output_tokens"),
+        provenance_available=True,
+    )
+    registry = RouteCapabilityRegistryV1.create(
+        RouteCapabilityRecordV1.create(
+            role=role,
+            lane="primary",
+            provider="Public",
+            provider_id_sha256=hashlib.sha256(
+                b"public-provider"
+            ).hexdigest(),
+            operator="UNIT_TEST_OPERATOR",
+            destination="https://unit.test:443/v1/messages",
+            protocol="anthropic",
+            model="public-model",
+            model_id_sha256=hashlib.sha256(b"public-model").hexdigest(),
+            route_fingerprint=fingerprint,
+            context_window_tokens=32_768,
+            max_output_tokens=32_000,
+            capability_status=(
+                CapabilityStatus.VERIFIED_LOCAL_CONFIG_WITH_PROVENANCE
+            ),
+            source_evidence=(evidence,),
+        )
+        for role in real_runner.FULL_SHORT_REQUIRED_EXECUTION_ROLES
+    )
+    registry_path = repo / real_runner._ROUTE_CAPABILITY_REGISTRY_PATH_V1
+    registry_path.parent.mkdir(parents=True, exist_ok=True)
+    registry_path.write_text(
+        json.dumps(registry.to_document()), encoding="utf-8"
+    )
     projects = ProjectStore(db, data / "projects")
     project = projects.create(ProjectCreate(
         title="Bound", mode="short", genre="mystery",
@@ -3315,6 +3363,74 @@ def test_capacity_plan_binding_drift_fails_before_route_resolution(
     assert caught.value.reason_code == expected_reason
     assert observer.bound_route is None
     assert store.load_ledger(execution_id)["attempts"] == []
+
+
+def test_capacity_physical_ordinal_is_allocated_from_durable_dispatches(
+    tmp_path: Path,
+) -> None:
+    store = _store(tmp_path)
+    execution_id = "capacity-durable-ordinal"
+    _authorize_offline(store, execution_id)
+    observer = _observer(store, execution_id)
+    observer.before_http_dispatch(
+        method="POST", url="https://unit.test/v1/messages", payload=_payload(),
+    )
+    observer.after_http_response(status_code=200)
+    observer.mark_local_attempt_rejected(
+        stage="planning",
+        role="planning",
+        role_binding_sha256=observer.bound_route["role_binding_sha256"],
+        rejection=_matching_local_rejection(observer),
+    )
+
+    # A Contract Runtime scheduler may now be at slot 3 after skipping a local
+    # slot.  It must not supply that schedule index as physical identity.
+    context = observer.capacity_admission_context(
+        route="primary", role="planning", physical_attempt=None,
+    )
+
+    assert context["physical_attempt"] == 2
+    assert context["physical_attempt_id"].startswith("physical-")
+    assert len(context["logical_capacity_envelope_sha256"]) == 64
+
+
+def test_capacity_physical_schedule_index_remains_a_drift_assertion(
+    tmp_path: Path,
+) -> None:
+    store = _store(tmp_path)
+    execution_id = "capacity-schedule-index-drift"
+    _authorize_offline(store, execution_id)
+    observer = _observer(store, execution_id)
+
+    with pytest.raises(FullShortExecutionBoundaryError) as caught:
+        observer.capacity_admission_context(
+            route="primary", role="planning", physical_attempt=3,
+        )
+
+    assert caught.value.reason_code == "CAPACITY_PHYSICAL_ATTEMPT_DRIFT"
+    assert caught.value.reliability_failure.code == (
+        "capacity.physical_attempt_drift"
+    )
+    assert caught.value.failure_family == "capacity.attempt_identity"
+
+
+def test_capacity_physical_attempt_rejects_invalid_delta_shape(
+    tmp_path: Path,
+) -> None:
+    store = _store(tmp_path)
+    execution_id = "capacity-invalid-attempt-delta"
+    _authorize_offline(store, execution_id)
+    observer = _observer(store, execution_id)
+
+    with pytest.raises(FullShortExecutionBoundaryError) as caught:
+        observer.capacity_admission_context(
+            route="primary", role="planning", physical_attempt=0,
+        )
+
+    assert caught.value.reason_code == "CAPACITY_INVALID_ATTEMPT_DELTA"
+    assert caught.value.reliability_failure.code == (
+        "capacity.invalid_attempt_delta"
+    )
 
 
 @pytest.mark.parametrize("fault", ["missing", "duplicate"])

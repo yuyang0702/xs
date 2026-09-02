@@ -30826,7 +30826,10 @@ class WorkflowService:
                     candidate = capacity_context(
                         route=route,
                         role=gateway_role,
-                        physical_attempt=physical_attempt,
+                        # The durable observer allocates physical ordinals.
+                        # Contract Runtime attempt_index is a schedule slot and
+                        # can contain gaps after a local/preflight rejection.
+                        physical_attempt=None,
                     )
                     if not isinstance(candidate, dict):
                         raise RuntimeError(
@@ -30916,7 +30919,7 @@ class WorkflowService:
                 receipt_path = (
                     run_path / "outputs" / "capacity-plans"
                     / (
-                        f"{safe_node}-attempt-{physical_attempt}-{route}-"
+                        f"{safe_node}-attempt-{plan.physical_attempt}-{route}-"
                         f"{plan.plan_sha256[:12]}.json"
                     )
                 )

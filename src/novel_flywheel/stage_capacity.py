@@ -65,6 +65,8 @@ class RouteContextCapabilitySourceV1(StrEnum):
 
 
 class CapacityFailureCode(StrEnum):
+    ROUTE_CAPABILITY_UNKNOWN = "capacity.route_capability_unknown"
+    CONTEXT_WINDOW_EXCEEDED = "capacity.context_window_exceeded"
     MODEL_CONTEXT_EXCEEDED = "capacity.model_context_exceeded"
     OUTPUT_RESERVE_UNSATISFIED = "capacity.output_reserve_unsatisfied"
     PROTECTED_LAYERS_EXCEED_BUDGET = "capacity.protected_layers_exceed_budget"
@@ -72,12 +74,29 @@ class CapacityFailureCode(StrEnum):
     WINDOWING_REQUIRED = "capacity.windowing_required"
     WINDOWING_EXHAUSTED = "capacity.windowing_exhausted"
     RENDERED_PROMPT_DRIFT = "capacity.rendered_prompt_drift"
+    PHYSICAL_ATTEMPT_DRIFT = "capacity.physical_attempt_drift"
+    INVALID_ATTEMPT_DELTA = "capacity.invalid_attempt_delta"
+    ESTIMATOR_UNCERTAINTY_EXCEEDED = (
+        "capacity.estimator_uncertainty_exceeded"
+    )
     CONTEXT_LIMIT_UNAVAILABLE = "capacity.context_limit_unavailable"
     CONTEXT_LIMIT_INCONSISTENT = "capacity.context_limit_inconsistent"
     POLICY_VIOLATION = "capacity.policy_violation"
 
 
-CAPACITY_FAILURE_IDS_V1 = {item.value for item in CapacityFailureCode}
+CAPACITY_FAILURE_IDS_V1 = {
+    CapacityFailureCode.MODEL_CONTEXT_EXCEEDED.value,
+    CapacityFailureCode.OUTPUT_RESERVE_UNSATISFIED.value,
+    CapacityFailureCode.PROTECTED_LAYERS_EXCEED_BUDGET.value,
+    CapacityFailureCode.COMPACTION_INSUFFICIENT.value,
+    CapacityFailureCode.WINDOWING_REQUIRED.value,
+    CapacityFailureCode.WINDOWING_EXHAUSTED.value,
+    CapacityFailureCode.RENDERED_PROMPT_DRIFT.value,
+    CapacityFailureCode.CONTEXT_LIMIT_UNAVAILABLE.value,
+    CapacityFailureCode.CONTEXT_LIMIT_INCONSISTENT.value,
+    CapacityFailureCode.POLICY_VIOLATION.value,
+}
+CAPACITY_FAILURE_IDS_V3 = {item.value for item in CapacityFailureCode}
 
 
 class CapacityAdmissionFailureV1(RegisteredBoundaryFailureV1):
@@ -99,6 +118,7 @@ class CapacityAdmissionFailureV1(RegisteredBoundaryFailureV1):
             failure_class=FailureClass.CONTEXT_CAPACITY,
             boundary=CAPACITY_BOUNDARY_ID_V1,
             retryable=code in {
+                CapacityFailureCode.CONTEXT_WINDOW_EXCEEDED,
                 CapacityFailureCode.MODEL_CONTEXT_EXCEEDED,
                 CapacityFailureCode.PROTECTED_LAYERS_EXCEED_BUDGET,
                 CapacityFailureCode.COMPACTION_INSUFFICIENT,
@@ -836,10 +856,31 @@ class StageCapacityAdmissionEngineV1:
         )
 
 
+@full_short_boundary_entry("FS.CAPACITY.ADMIT")
+def require_route_capability_v1(record: object) -> object:
+    """Reject an absent/UNKNOWN formal capability before dispatch planning."""
+
+    from novel_flywheel.route_capabilities import (
+        RouteCapabilityError,
+        RouteCapabilityRecordV1,
+    )
+
+    if not isinstance(record, RouteCapabilityRecordV1):
+        raise CapacityAdmissionFailureV1(
+            CapacityFailureCode.ROUTE_CAPABILITY_UNKNOWN
+        )
+    try:
+        return record.require_dispatchable()
+    except RouteCapabilityError as exc:
+        raise CapacityAdmissionFailureV1(
+            CapacityFailureCode.ROUTE_CAPABILITY_UNKNOWN
+        ) from exc
+
 __all__ = [
     "AdmissionStatus",
     "CAPACITY_BOUNDARY_ID_V1",
     "CAPACITY_FAILURE_IDS_V1",
+    "CAPACITY_FAILURE_IDS_V3",
     "CapacityAdmissionFailureV1",
     "CapacityFailureCode",
     "CapacityLayerClass",
@@ -856,4 +897,5 @@ __all__ = [
     "capacity_failure_recovery_disposition_v1",
     "enforce_stage_capacity_plan_v1",
     "verify_rendered_request_v1",
+    "require_route_capability_v1",
 ]

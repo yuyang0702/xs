@@ -16,6 +16,13 @@ import pytest
 
 from novel_flywheel.db import Database
 from novel_flywheel.projects import ProjectCreate, ProjectStore
+from novel_flywheel.providers.registry import ProviderRegistry
+from novel_flywheel.route_capabilities import (
+    CapabilityEvidenceV1,
+    CapabilityStatus,
+    RouteCapabilityRecordV1,
+    RouteCapabilityRegistryV1,
+)
 from novel_flywheel.secrets import MemorySecretStore
 from novel_flywheel.stage_capacity import CapacityAdmissionFailureV1
 from novel_flywheel.skills import SkillScanner
@@ -394,6 +401,44 @@ def _bound_project(tmp_path: Path) -> tuple[Path, Path, str, Database]:
     )
     for role in runner.FULL_SHORT_REQUIRED_EXECUTION_ROLES:
         db.save_role_binding(role, "provider", "model", None, None)
+    provider = db.get_provider("provider")
+    model = db.get_model("model")
+    assert provider is not None and model is not None
+    fingerprint = ProviderRegistry.route_fingerprint(provider, model)
+    evidence = CapabilityEvidenceV1(
+        source_kind="unit_test_fixture",
+        source_locator="tests/canary/test_full_short_runner_hardening.py",
+        source_evidence_sha256="a" * 64,
+        evidence_version=1,
+        evidence_date="2026-09-02",
+        route_fingerprint=fingerprint,
+        proved_fields=("context_window_tokens", "max_output_tokens"),
+        provenance_available=True,
+    )
+    registry = RouteCapabilityRegistryV1.create(
+        RouteCapabilityRecordV1.create(
+            role=role,
+            lane="primary",
+            provider="Provider",
+            provider_id_sha256=hashlib.sha256(b"provider").hexdigest(),
+            operator="UNIT_TEST_OPERATOR",
+            destination="https://unit.test:443/v1/messages",
+            protocol="anthropic",
+            model="model",
+            model_id_sha256=hashlib.sha256(b"model").hexdigest(),
+            route_fingerprint=fingerprint,
+            context_window_tokens=32_768,
+            max_output_tokens=8_192,
+            capability_status=CapabilityStatus.VERIFIED_LOCAL_CONFIG_WITH_PROVENANCE,
+            source_evidence=(evidence,),
+        )
+        for role in runner.FULL_SHORT_REQUIRED_EXECUTION_ROLES
+    )
+    registry_path = repo / runner._ROUTE_CAPABILITY_REGISTRY_PATH_V1
+    registry_path.parent.mkdir(parents=True, exist_ok=True)
+    registry_path.write_text(
+        json.dumps(registry.to_document()), encoding="utf-8"
+    )
     projects = ProjectStore(db, data / "projects")
     project = projects.create(ProjectCreate(
         title="Bound", mode="short", genre="mystery",
@@ -633,7 +678,9 @@ def test_live_bindings_seal_v2_runtime_skill_style_and_store_source_truth(
     assert public["routes"]
     assert all(
         item["route_context_capability_limit_tokens"] == 32768
-        and item["route_context_capability_source"] == "model_configuration"
+        and item["route_context_capability_source"] == "route_capability_registry"
+        and item["route_capability_status"]
+        == "VERIFIED_LOCAL_CONFIG_WITH_PROVENANCE"
         and "model_context_limit" not in item
         and "stage_operational_context_ceiling_tokens" not in item
         for item in public["routes"]
@@ -666,20 +713,11 @@ def test_live_bindings_reject_missing_ready_authority(
         )
 
 
-def test_live_bindings_reject_missing_route_context_limit(
+def test_live_bindings_reject_missing_route_capability_record(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     repo, data, project_id, db = _bound_project(tmp_path)
-    model = db.get_model("model")
-    assert model is not None
-    db.save_model(
-        model_id="model",
-        provider_id="provider",
-        display_name="Model",
-        model_name="model",
-        context_window=None,
-        max_output_tokens=None,
-    )
+    (repo / runner._ROUTE_CAPABILITY_REGISTRY_PATH_V1).unlink()
     monkeypatch.setattr(runner, "_git", lambda *_args: "")
     with pytest.raises(CapacityAdmissionFailureV1) as caught:
         runner.collect_live_bindings(
@@ -690,7 +728,7 @@ def test_live_bindings_reject_missing_route_context_limit(
             logical_stage_plan=_logical_plan(),
             store_root=tmp_path / "control-store",
         )
-    assert caught.value.failure_id == "capacity.context_limit_unavailable"
+    assert caught.value.failure_id == "capacity.route_capability_unknown"
 
 
 def test_completion_elapsed_is_rechecked_after_last_dispatch() -> None:

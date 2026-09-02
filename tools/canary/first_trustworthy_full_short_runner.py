@@ -76,6 +76,11 @@ from novel_flywheel.prompts import OPTIONAL_PROMPT_SKILLS, REQUIRED_SKILLS
 from novel_flywheel.quality_profiles import profile_for_project
 from novel_flywheel.reference_library import ReferenceLibrary
 from novel_flywheel.recovery_engine import FailureClass
+from novel_flywheel.route_capabilities import (
+    RouteCapabilityError,
+    RouteCapabilityRecordV1,
+    RouteCapabilityRegistryV1,
+)
 from novel_flywheel.runtime_fingerprint import collect_runtime_fingerprint_v2
 from novel_flywheel.secrets import KeyringSecretStore, MemorySecretStore
 from novel_flywheel.short_canonical_promotion import (
@@ -110,9 +115,17 @@ _OFFLINE_CONTEXT_MANIFEST_KEY_V1 = (
 _OFFLINE_CONTEXT_MANIFEST_SCHEMA_V1 = (
     "OfflineDeterministicGatewayContextCapabilityManifestV1"
 )
+_ROUTE_CAPABILITY_REGISTRY_PATH_V1 = Path(
+    "config/full_short_route_capability_registry_v1.json"
+)
 
 
-def _route_context_capability_v1(model: dict[str, Any]) -> tuple[int, str]:
+def _route_context_capability_v1(
+    model: dict[str, Any],
+    *,
+    capability_record: RouteCapabilityRecordV1 | None = None,
+    route_fingerprint: str | None = None,
+) -> tuple[int, str]:
     """Return a source-grounded route limit without inventing a fallback."""
 
     configured_context = model.get("context_window")
@@ -123,11 +136,25 @@ def _route_context_capability_v1(model: dict[str, Any]) -> tuple[int, str]:
         else None
     )
     if manifest is None:
-        if type(configured_context) is not int or configured_context <= 0:
+        if capability_record is None:
             raise CapacityAdmissionFailureV1(
-                CapacityFailureCode.CONTEXT_LIMIT_UNAVAILABLE
+                CapacityFailureCode.ROUTE_CAPABILITY_UNKNOWN
             )
-        return configured_context, "model_configuration"
+        try:
+            capability_record.require_dispatchable()
+        except RouteCapabilityError as exc:
+            raise CapacityAdmissionFailureV1(
+                CapacityFailureCode.ROUTE_CAPABILITY_UNKNOWN
+            ) from exc
+        if capability_record.route_fingerprint != route_fingerprint:
+            raise CapacityAdmissionFailureV1(
+                CapacityFailureCode.ROUTE_CAPABILITY_UNKNOWN
+            )
+        assert capability_record.context_window_tokens is not None
+        return (
+            capability_record.context_window_tokens,
+            "route_capability_registry",
+        )
     expected_manifest = {
         "schema": _OFFLINE_CONTEXT_MANIFEST_SCHEMA_V1,
         "version": 1,
@@ -148,6 +175,18 @@ def _route_context_capability_v1(model: dict[str, Any]) -> tuple[int, str]:
             CapacityFailureCode.CONTEXT_LIMIT_INCONSISTENT
         )
     return configured_context, "offline_deterministic_gateway_manifest"
+
+
+def _load_route_capability_registry_v1(
+    repo: Path,
+) -> RouteCapabilityRegistryV1 | None:
+    path = repo / _ROUTE_CAPABILITY_REGISTRY_PATH_V1
+    if not path.is_file():
+        return None
+    document = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(document, dict):
+        raise ValueError("route capability registry document invalid")
+    return RouteCapabilityRegistryV1.from_document(document)
 FULL_SHORT_REQUIRED_EXECUTION_ROLES = (
     "planning", "draft", "review", "reader_review", "polish",
     "final_review", "maintenance",
@@ -422,6 +461,7 @@ def collect_live_bindings(
     records: list[dict] = []
     destinations: set[str] = set()
     max_per_call = 0
+    capability_registry = _load_route_capability_registry_v1(repo)
     for role in FULL_SHORT_BOUND_ROLES:
         binding = db.get_role_binding(role) or {}
         if role in FULL_SHORT_REQUIRED_EXECUTION_ROLES and not (
@@ -441,14 +481,57 @@ def collect_live_bindings(
             destination = _destination(provider)
             destinations.add(destination)
             configured_max = model.get("max_output_tokens")
+            route_fingerprint = ProviderRegistry.route_fingerprint(
+                provider, model,
+            )
+            capabilities = model.get("capabilities")
+            offline_manifest = (
+                capabilities.get(_OFFLINE_CONTEXT_MANIFEST_KEY_V1)
+                if isinstance(capabilities, dict)
+                else None
+            )
+            capability_record = None
+            if offline_manifest is None:
+                if capability_registry is None:
+                    raise CapacityAdmissionFailureV1(
+                        CapacityFailureCode.ROUTE_CAPABILITY_UNKNOWN
+                    )
+                try:
+                    capability_record = capability_registry.require_record(
+                        role=role, lane=lane,
+                    )
+                except RouteCapabilityError as exc:
+                    raise CapacityAdmissionFailureV1(
+                        CapacityFailureCode.ROUTE_CAPABILITY_UNKNOWN
+                    ) from exc
             route_context_limit, route_context_source = (
-                _route_context_capability_v1(model)
+                _route_context_capability_v1(
+                    model,
+                    capability_record=capability_record,
+                    route_fingerprint=route_fingerprint,
+                )
             )
             stage_budget_role = "review" if role == "reader_review" else role
-            max_output = int(
-                configured_max
-                or WorkflowService._stage_output_budget(stage_budget_role)
+            stage_output_budget = WorkflowService._stage_output_budget(
+                stage_budget_role
             )
+            if capability_record is not None:
+                assert capability_record.max_output_tokens is not None
+                if (
+                    type(configured_max) is int
+                    and configured_max > capability_record.max_output_tokens
+                ):
+                    raise CapacityAdmissionFailureV1(
+                        CapacityFailureCode.CONTEXT_LIMIT_INCONSISTENT
+                    )
+                max_output = min(
+                    int(configured_max or stage_output_budget),
+                    capability_record.max_output_tokens,
+                )
+                max_output_source = "route_capability_registry"
+            else:
+                max_output = int(configured_max or stage_output_budget)
+                max_output_source = "offline_deterministic_gateway_manifest"
             if max_output <= 0:
                 raise ValueError("runtime stage output cap is unavailable")
             max_per_call = max(max_per_call, max_output)
@@ -472,19 +555,23 @@ def collect_live_bindings(
                 ).hexdigest(),
                 "model_name": str(model.get("model_name") or ""),
                 "protocol": str(provider["protocol"]),
-                "route_fingerprint": ProviderRegistry.route_fingerprint(
-                    provider, model,
-                ),
+                "route_fingerprint": route_fingerprint,
                 "destination": destination,
                 "max_output_tokens": max_output,
-                "max_output_token_source": (
-                    "model_configuration" if configured_max
-                    else "runtime_stage_policy"
-                ),
+                "max_output_token_source": max_output_source,
                 "route_context_capability_limit_tokens": (
                     route_context_limit
                 ),
                 "route_context_capability_source": route_context_source,
+                "route_capability_sha256": (
+                    capability_record.capability_sha256
+                    if capability_record is not None else None
+                ),
+                "route_capability_status": (
+                    capability_record.capability_status.value
+                    if capability_record is not None
+                    else "ISOLATED_OFFLINE_MANIFEST"
+                ),
             })
     records.sort(key=lambda item: (item["role"], item["lane"]))
     runtime_fingerprint = collect_runtime_fingerprint_v2(
@@ -708,6 +795,10 @@ def collect_live_bindings(
         "runtime_authority_sha256": _domain(runtime),
         "style_reference_authority_sha256": _domain(style),
         "route_manifest_sha256": route_manifest_sha256,
+        "route_capability_registry_sha256": (
+            capability_registry.registry_sha256
+            if capability_registry is not None else None
+        ),
         "destination_manifest_sha256": destination_manifest_sha256,
         "egress_policy_sha256": _domain(egress),
         "response_capture_policy_sha256": RESPONSE_CAPTURE_POLICY_SHA256,
@@ -758,6 +849,10 @@ def collect_live_bindings(
         "production_path_identity": production_path,
         "required_execution_roles": list(FULL_SHORT_REQUIRED_EXECUTION_ROLES),
         "routes": records,
+        "route_capability_registry_sha256": (
+            capability_registry.registry_sha256
+            if capability_registry is not None else None
+        ),
         "destinations": sorted(destinations),
         "destination_operators": [{
             "destination": destination,

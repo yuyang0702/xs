@@ -14,6 +14,7 @@ from novel_flywheel.contract_runtime import (
 from novel_flywheel.full_short_runtime_kernel import FullShortBoundaryFailureV1
 from novel_flywheel.stage_capacity import (
     CAPACITY_FAILURE_IDS_V1,
+    CAPACITY_FAILURE_IDS_V3,
     DEFAULT_STAGE_CAPACITY_POLICY_REGISTRY_V1,
     AdmissionStatus,
     CapacityAdmissionFailureV1,
@@ -234,7 +235,8 @@ def test_unknown_route_context_capability_source_is_typed() -> None:
 
 
 def test_every_capacity_failure_code_is_registered() -> None:
-    assert CAPACITY_FAILURE_IDS_V1 == {
+    assert CAPACITY_FAILURE_IDS_V1 < CAPACITY_FAILURE_IDS_V3
+    assert CAPACITY_FAILURE_IDS_V3 == {
         item.value for item in CapacityFailureCode
     }
 

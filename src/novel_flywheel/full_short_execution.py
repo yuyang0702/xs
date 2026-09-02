@@ -2820,9 +2820,15 @@ class FullShortDispatchLedgerObserverV1:
         return sealed
 
     def capacity_admission_context(
-        self, *, route: str, role: str, physical_attempt: int,
+        self, *, route: str, role: str, physical_attempt: int | None = None,
     ) -> dict[str, Any]:
-        """Return the canonical, sealed identities required by capacity planning."""
+        """Allocate the canonical physical ordinal for capacity planning.
+
+        ``physical_attempt`` is a compatibility assertion only.  Contract
+        Runtime schedule slots are not dispatch ordinals: skipped or locally
+        denied slots consume no physical attempt.  New callers therefore omit
+        it and accept the durable observer's allocation.
+        """
 
         _require(self.pending_ordinal is None, "PRIOR_DISPATCH_STILL_PENDING")
         expected = (
@@ -2846,14 +2852,54 @@ class FullShortDispatchLedgerObserverV1:
             <= self.policy["max_physical_attempts_per_logical_stage"],
             "CAPACITY_PHYSICAL_ATTEMPT_CAP_EXHAUSTED",
         )
-        _require(
-            physical_attempt == expected_physical_attempt,
-            "CAPACITY_PHYSICAL_ATTEMPT_DRIFT",
-        )
+        if physical_attempt is not None:
+            _require(
+                type(physical_attempt) is int and physical_attempt >= 1,
+                "CAPACITY_INVALID_ATTEMPT_DELTA",
+            )
+            _require(
+                physical_attempt == expected_physical_attempt,
+                "CAPACITY_PHYSICAL_ATTEMPT_DRIFT",
+            )
         sealed = self._sealed_route_binding(route=route, role=role)
+        logical_capacity_envelope_sha256 = domain_sha256(
+            "novel-flywheel-logical-stage-capacity-envelope-v1",
+            {
+                "execution_id": self.execution_id,
+                "policy_sha256": self.policy["policy_sha256"],
+                "workload_sha256": self.policy["workload_sha256"],
+                "runtime_authority_sha256": self.policy[
+                    "runtime_authority_sha256"
+                ],
+                "logical_stage_plan_entry": expected,
+                "logical_stage_recovery_policy_sha256": self.policy[
+                    "logical_stage_recovery_policy_sha256"
+                ],
+                "capacity_policy_registry_sha256": self.policy[
+                    "capacity_policy_registry_sha256"
+                ],
+                "route_manifest_sha256": self.policy[
+                    "route_manifest_sha256"
+                ],
+            },
+        )
+        physical_attempt_id = "physical-" + domain_sha256(
+            "novel-flywheel-full-short-physical-attempt-id-v1",
+            {
+                "execution_id": self.execution_id,
+                "logical_stage_id": logical_stage_id,
+                # Global ordinal counts durable dispatches only.  It is not a
+                # Contract Runtime recovery-schedule slot.
+                "ordinal": len(attempts) + 1,
+            },
+        )[:32]
         return {
             "logical_stage_id": logical_stage_id,
             "physical_attempt": expected_physical_attempt,
+            "physical_attempt_id": physical_attempt_id,
+            "logical_capacity_envelope_sha256": (
+                logical_capacity_envelope_sha256
+            ),
             "provider_route_identity_sha256": sealed[
                 "role_binding_sha256"
             ],
@@ -3510,14 +3556,17 @@ class FullShortDispatchLedgerObserverV1:
                     stage_role != "PLANNING_FINAL_ARTIFACT_RECOVERY",
                     "FINALIZATION_RECOVERY_WITHOUT_TYPED_REJECTION",
                 )
-        physical_attempt_id = "physical-" + domain_sha256(
-            "novel-flywheel-full-short-physical-attempt-id-v1",
-            {
-                "execution_id": self.execution_id,
-                "logical_stage_id": logical_stage_id,
-                "ordinal": ordinal,
-            },
-        )[:32]
+        expected_capacity_context = self.capacity_admission_context(
+            route=str(
+                "configured_fallback"
+                if route.get("lane") == "fallback"
+                else route.get("lane")
+            ),
+            role=str(route.get("role") or ""),
+        )
+        physical_attempt_id = str(
+            expected_capacity_context["physical_attempt_id"]
+        )
         outbound_request_bytes_sha256 = hashlib.sha256(
             request_bytes
             if request_bytes is not None

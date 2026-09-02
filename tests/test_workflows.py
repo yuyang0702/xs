@@ -12411,8 +12411,10 @@ async def test_exact_capacity_observer_keeps_route_capability_separate_from_stag
     class CapacityObserver:
         def __init__(self) -> None:
             self.bound_plans = []
+            self.admission_calls = []
 
-        def capacity_admission_context(self, **_kwargs):
+        def capacity_admission_context(self, **kwargs):
+            self.admission_calls.append(kwargs)
             return {
                 "logical_stage_id": "review:1",
                 "physical_attempt": 1,
@@ -12471,6 +12473,9 @@ async def test_exact_capacity_observer_keeps_route_capability_separate_from_stag
     assert result == '{"status":"complete"}'
     assert gateway.calls == 1
     assert len(observer.bound_plans) == 1
+    assert observer.admission_calls == [{
+        "route": "primary", "role": "review", "physical_attempt": None,
+    }]
     plan = observer.bound_plans[0]
     assert plan.route_context_capability_limit_tokens == 128_000
     assert plan.route_context_capability_source.value == (
