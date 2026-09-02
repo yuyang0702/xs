@@ -50,6 +50,8 @@ def _record(
         route_fingerprint="c" * 64,
         context_window_tokens=100_000 if verified else None,
         max_output_tokens=8_192 if verified else None,
+        reasoning_token_accounting="INCLUDED_IN_COMPLETION_CAP",
+        reasoning_output_reservation="WITHIN_COMPLETION_CAP",
         capability_status=status,
         source_evidence=(_evidence(),) if verified else (),
         blocking_reason_codes=() if verified else ("NO_TRUSTWORTHY_EVIDENCE",),
@@ -62,6 +64,56 @@ def test_verified_record_is_content_addressed_and_dispatchable() -> None:
 
     assert first == second
     assert first.require_dispatchable() is first
+    assert first.require_exact_route_identity(
+        role=first.role,
+        lane=first.lane,
+        provider=first.provider,
+        provider_id_sha256=first.provider_id_sha256,
+        operator=first.operator,
+        destination=first.destination,
+        protocol=first.protocol,
+        model=first.model,
+        model_id_sha256=first.model_id_sha256,
+        route_fingerprint=first.route_fingerprint,
+    ) is first
+
+
+@pytest.mark.parametrize(
+    ("field", "drifted"),
+    (
+        ("role", "draft"),
+        ("lane", "fallback"),
+        ("provider", "other-provider"),
+        ("provider_id_sha256", "e" * 64),
+        ("operator", "OTHER_OPERATOR"),
+        ("destination", "https://other.test:443/v1/messages"),
+        ("protocol", "openai-responses"),
+        ("model", "other-model"),
+        ("model_id_sha256", "f" * 64),
+        ("route_fingerprint", "0" * 64),
+    ),
+)
+def test_exact_route_identity_rejects_every_field_drift(
+    field: str, drifted: str,
+) -> None:
+    record = _record()
+    identity = {
+        "role": record.role,
+        "lane": record.lane,
+        "provider": record.provider,
+        "provider_id_sha256": record.provider_id_sha256,
+        "operator": record.operator,
+        "destination": record.destination,
+        "protocol": record.protocol,
+        "model": record.model,
+        "model_id_sha256": record.model_id_sha256,
+        "route_fingerprint": record.route_fingerprint,
+    }
+    identity[field] = drifted
+    with pytest.raises(
+        RouteCapabilityError, match="capacity.route_capability_identity_drift"
+    ):
+        record.require_exact_route_identity(**identity)
 
 
 def test_unknown_record_is_present_but_not_dispatchable() -> None:
@@ -116,6 +168,16 @@ def test_verified_record_requires_provenance_for_both_limits() -> None:
         )
 
 
+def test_verified_record_requires_explicit_reasoning_accounting() -> None:
+    with pytest.raises(
+        ValueError, match="verified_route_capability_evidence_incomplete"
+    ):
+        replace(
+            _record(),
+            reasoning_token_accounting="UNKNOWN",
+        )
+
+
 @pytest.mark.parametrize(
     "drift",
     ("operator", "destination", "protocol", "model", "route_fingerprint"),
@@ -148,6 +210,8 @@ def test_every_route_identity_field_changes_capability_sha(drift: str) -> None:
         ),
         context_window_tokens=first.context_window_tokens,
         max_output_tokens=first.max_output_tokens,
+        reasoning_token_accounting=first.reasoning_token_accounting,
+        reasoning_output_reservation=first.reasoning_output_reservation,
         capability_status=first.capability_status,
         source_evidence=evidence,
     )

@@ -73,13 +73,17 @@
       ]
     },
     {
-      "blocking_reason_codes": [],
-      "capability_sha256": "e20275be80632ccbdf3fec5e8e562151672096493d0e6056d0594fcfb3f2a5d3",
-      "capability_status": "VERIFIED_HISTORICAL_EVIDENCE",
-      "context_window_tokens": 1000000,
+      "blocking_reason_codes": [
+        "HISTORICAL_ASSERTION_HAS_NO_ARCHIVED_SOURCE_CONTENT",
+        "EXACT_ROUTE_CONTEXT_WINDOW_EVIDENCE_UNAVAILABLE",
+        "EXACT_ROUTE_MAX_OUTPUT_EVIDENCE_UNAVAILABLE"
+      ],
+      "capability_sha256": "9ee893d6370f7727d5cd205e807776212da23fd766a714e01c98da399b9b761c",
+      "capability_status": "UNKNOWN_BLOCKED",
+      "context_window_tokens": null,
       "destination": "https://api.deepseek.com:443/anthropic/v1/messages",
       "lane": "fallback",
-      "max_output_tokens": 384000,
+      "max_output_tokens": null,
       "model": "deepseek-v4-pro",
       "model_id_sha256": "ffaf088b15c6107032e5450965693c6d9a1e0735a6186e2957463bfa460a8937",
       "operator": "DEEPSEEK_OFFICIAL",
@@ -95,8 +99,7 @@
           "evidence_date": "2026-08-14",
           "evidence_version": 1,
           "proved_fields": [
-            "context_window_tokens",
-            "max_output_tokens"
+            "historical_unarchived_capacity_assertion"
           ],
           "provenance_available": true,
           "route_fingerprint": "04a443a6702fcc95b74906e44b7233c9370cb9b94bbbbadce4bf59c088b68c31",
@@ -155,13 +158,17 @@
       ]
     },
     {
-      "blocking_reason_codes": [],
-      "capability_sha256": "205427360f60b3ce0252107d456153581687ca139a481ab09fcf03997664adfd",
-      "capability_status": "VERIFIED_HISTORICAL_EVIDENCE",
-      "context_window_tokens": 1000000,
+      "blocking_reason_codes": [
+        "HISTORICAL_ASSERTION_HAS_NO_ARCHIVED_SOURCE_CONTENT",
+        "EXACT_ROUTE_CONTEXT_WINDOW_EVIDENCE_UNAVAILABLE",
+        "EXACT_ROUTE_MAX_OUTPUT_EVIDENCE_UNAVAILABLE"
+      ],
+      "capability_sha256": "af37c783074afcf80c2b260b3b59dfffe5eff6765942e0bfdb352c07cbd1cac9",
+      "capability_status": "UNKNOWN_BLOCKED",
+      "context_window_tokens": null,
       "destination": "https://api.deepseek.com:443/anthropic/v1/messages",
       "lane": "fallback",
-      "max_output_tokens": 384000,
+      "max_output_tokens": null,
       "model": "deepseek-v4-pro",
       "model_id_sha256": "ffaf088b15c6107032e5450965693c6d9a1e0735a6186e2957463bfa460a8937",
       "operator": "DEEPSEEK_OFFICIAL",
@@ -177,8 +184,7 @@
           "evidence_date": "2026-08-14",
           "evidence_version": 1,
           "proved_fields": [
-            "context_window_tokens",
-            "max_output_tokens"
+            "historical_unarchived_capacity_assertion"
           ],
           "provenance_available": true,
           "route_fingerprint": "04a443a6702fcc95b74906e44b7233c9370cb9b94bbbbadce4bf59c088b68c31",
@@ -237,13 +243,17 @@
       ]
     },
     {
-      "blocking_reason_codes": [],
-      "capability_sha256": "fba17097316b394f3277ed81c3ae00bc7252562577f21a544d9abe668258e77e",
-      "capability_status": "VERIFIED_HISTORICAL_EVIDENCE",
-      "context_window_tokens": 1000000,
+      "blocking_reason_codes": [
+        "HISTORICAL_ASSERTION_HAS_NO_ARCHIVED_SOURCE_CONTENT",
+        "EXACT_ROUTE_CONTEXT_WINDOW_EVIDENCE_UNAVAILABLE",
+        "EXACT_ROUTE_MAX_OUTPUT_EVIDENCE_UNAVAILABLE"
+      ],
+      "capability_sha256": "f340a6ff4bfb024914ba10ae1edfbfc19a04509cdf86132d167cf5b186d2e8fd",
+      "capability_status": "UNKNOWN_BLOCKED",
+      "context_window_tokens": null,
       "destination": "https://api.deepseek.com:443/anthropic/v1/messages",
       "lane": "fallback",
-      "max_output_tokens": 384000,
+      "max_output_tokens": null,
       "model": "deepseek-v4-pro",
       "model_id_sha256": "ffaf088b15c6107032e5450965693c6d9a1e0735a6186e2957463bfa460a8937",
       "operator": "DEEPSEEK_OFFICIAL",
@@ -259,8 +269,7 @@
           "evidence_date": "2026-08-14",
           "evidence_version": 1,
           "proved_fields": [
-            "context_window_tokens",
-            "max_output_tokens"
+            "historical_unarchived_capacity_assertion"
           ],
           "provenance_available": true,
           "route_fingerprint": "04a443a6702fcc95b74906e44b7233c9370cb9b94bbbbadce4bf59c088b68c31",
@@ -499,13 +508,17 @@
       ]
     },
     {
-      "blocking_reason_codes": [],
-      "capability_sha256": "f8c10b132dcbc5f22aedc5c5f92f6912dd0122cf31e7b37f66ce1c0599e902eb",
-      "capability_status": "VERIFIED_HISTORICAL_EVIDENCE",
-      "context_window_tokens": 1000000,
+      "blocking_reason_codes": [
+        "HISTORICAL_ASSERTION_HAS_NO_ARCHIVED_SOURCE_CONTENT",
+        "EXACT_ROUTE_CONTEXT_WINDOW_EVIDENCE_UNAVAILABLE",
+        "EXACT_ROUTE_MAX_OUTPUT_EVIDENCE_UNAVAILABLE"
+      ],
+      "capability_sha256": "2c4fdb38cdcbf6605e659cf0215df6833b83f33da5ceca8b8e7572f8e7032224",
+      "capability_status": "UNKNOWN_BLOCKED",
+      "context_window_tokens": null,
       "destination": "https://api.deepseek.com:443/anthropic/v1/messages",
       "lane": "primary",
-      "max_output_tokens": 384000,
+      "max_output_tokens": null,
       "model": "deepseek-v4-pro",
       "model_id_sha256": "ffaf088b15c6107032e5450965693c6d9a1e0735a6186e2957463bfa460a8937",
       "operator": "DEEPSEEK_OFFICIAL",
@@ -521,8 +534,7 @@
           "evidence_date": "2026-08-14",
           "evidence_version": 1,
           "proved_fields": [
-            "context_window_tokens",
-            "max_output_tokens"
+            "historical_unarchived_capacity_assertion"
           ],
           "provenance_available": true,
           "route_fingerprint": "04a443a6702fcc95b74906e44b7233c9370cb9b94bbbbadce4bf59c088b68c31",
@@ -545,7 +557,7 @@
       ]
     }
   ],
-  "registry_sha256": "e7f2ddb0853cacf54d96f92f2409384f554150f3857b5730e0617c3a566c46ef",
+  "registry_sha256": "123faeff8dde04f2421887ea300c2aa6ec5ce70ec1991076bf2144835d77ff25",
   "schema": "RouteCapabilityRegistryV1",
   "version": 1
 }

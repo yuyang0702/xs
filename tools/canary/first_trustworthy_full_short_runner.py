@@ -186,7 +186,48 @@ def _load_route_capability_registry_v1(
     document = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(document, dict):
         raise ValueError("route capability registry document invalid")
-    return RouteCapabilityRegistryV1.from_document(document)
+    registry = RouteCapabilityRegistryV1.from_document(document)
+    repo_root = repo.resolve(strict=True)
+    for record in registry.records:
+        if not record.capability_status.value.startswith("VERIFIED_"):
+            continue
+        for evidence in record.source_evidence:
+            if not evidence.provenance_available:
+                continue
+            relative = evidence.source_locator.split("#", 1)[0]
+            source = (repo_root / relative).resolve(strict=False)
+            try:
+                source.relative_to(repo_root)
+            except ValueError as exc:
+                raise ValueError(
+                    "route capability evidence escapes repository"
+                ) from exc
+            if (
+                not source.is_file()
+                or _sha256(source) != evidence.source_evidence_sha256
+            ):
+                raise ValueError("route capability evidence hash mismatch")
+    return registry
+
+
+def _route_operator_v1(
+    *, provider_id: str, provider: dict[str, Any], destination: str,
+) -> str:
+    if (
+        provider_id == "0e6a5627-5882-40df-bca5-7d98b97fdd0b"
+        and str(provider.get("name") or "").strip().casefold() == "deepseek"
+        and destination
+        == "https://api.deepseek.com:443/anthropic/v1/messages"
+        and str(provider.get("protocol")) == "anthropic"
+    ):
+        return "DEEPSEEK_OFFICIAL"
+    if (
+        destination
+        == "https://ark.cn-beijing.volces.com:443/api/v3/responses"
+        and str(provider.get("protocol")) == "openai-responses"
+    ):
+        return "VOLCENGINE_ARK_DIRECT"
+    return "THIRD_PARTY_RELAY_UNVERIFIED_UPSTREAM"
 FULL_SHORT_REQUIRED_EXECUTION_ROLES = (
     "planning", "draft", "review", "reader_review", "polish",
     "final_review", "maintenance",
@@ -462,16 +503,24 @@ def collect_live_bindings(
     destinations: set[str] = set()
     max_per_call = 0
     capability_registry = _load_route_capability_registry_v1(repo)
+    selected_routes = {
+        (
+            str(item["role"]),
+            "fallback"
+            if item["route_lane"] == "configured_fallback"
+            else str(item["route_lane"]),
+        )
+        for item in logical_stage_plan
+    }
     for role in FULL_SHORT_BOUND_ROLES:
         binding = db.get_role_binding(role) or {}
-        if role in FULL_SHORT_REQUIRED_EXECUTION_ROLES and not (
-            binding.get("primary_provider_id")
-            and binding.get("primary_model_id")
-        ):
-            raise ValueError("required Full Short primary route is missing")
         for lane in ("primary", "fallback"):
             provider_id = binding.get(f"{lane}_provider_id")
             model_id = binding.get(f"{lane}_model_id")
+            if (role, lane) in selected_routes and not (
+                provider_id and model_id
+            ):
+                raise ValueError("required Full Short plan route is missing")
             if not provider_id or not model_id:
                 continue
             provider = db.get_provider(str(provider_id))
@@ -484,6 +533,17 @@ def collect_live_bindings(
             route_fingerprint = ProviderRegistry.route_fingerprint(
                 provider, model,
             )
+            provider_id_sha256 = hashlib.sha256(
+                str(provider_id).encode("utf-8")
+            ).hexdigest()
+            model_id_sha256 = hashlib.sha256(
+                str(model_id).encode("utf-8")
+            ).hexdigest()
+            operator = _route_operator_v1(
+                provider_id=str(provider_id), provider=provider,
+                destination=destination,
+            )
+            route_selected = (role, lane) in selected_routes
             capabilities = model.get("capabilities")
             offline_manifest = (
                 capabilities.get(_OFFLINE_CONTEXT_MANIFEST_KEY_V1)
@@ -500,22 +560,45 @@ def collect_live_bindings(
                     capability_record = capability_registry.require_record(
                         role=role, lane=lane,
                     )
+                    capability_record.require_exact_route_identity(
+                        role=role,
+                        lane=lane,
+                        provider=str(provider.get("name") or ""),
+                        provider_id_sha256=provider_id_sha256,
+                        operator=operator,
+                        destination=destination,
+                        protocol=str(provider["protocol"]),
+                        model=str(model.get("model_name") or ""),
+                        model_id_sha256=model_id_sha256,
+                        route_fingerprint=route_fingerprint,
+                    )
                 except RouteCapabilityError as exc:
                     raise CapacityAdmissionFailureV1(
                         CapacityFailureCode.ROUTE_CAPABILITY_UNKNOWN
                     ) from exc
-            route_context_limit, route_context_source = (
-                _route_context_capability_v1(
-                    model,
-                    capability_record=capability_record,
-                    route_fingerprint=route_fingerprint,
-                )
-            )
             stage_budget_role = "review" if role == "reader_review" else role
             stage_output_budget = WorkflowService._stage_output_budget(
                 stage_budget_role
             )
-            if capability_record is not None:
+            if capability_record is not None and (
+                route_selected
+                or capability_record.capability_status.value.startswith(
+                    "VERIFIED_"
+                )
+            ):
+                if route_selected:
+                    route_context_limit, route_context_source = (
+                        _route_context_capability_v1(
+                            model,
+                            capability_record=capability_record,
+                            route_fingerprint=route_fingerprint,
+                        )
+                    )
+                else:
+                    route_context_limit = (
+                        capability_record.context_window_tokens
+                    )
+                    route_context_source = "route_capability_registry"
                 assert capability_record.max_output_tokens is not None
                 if (
                     type(configured_max) is int
@@ -529,30 +612,31 @@ def collect_live_bindings(
                     capability_record.max_output_tokens,
                 )
                 max_output_source = "route_capability_registry"
+            elif capability_record is not None:
+                route_context_limit = None
+                route_context_source = None
+                max_output = None
+                max_output_source = None
             else:
+                route_context_limit, route_context_source = (
+                    _route_context_capability_v1(
+                        model,
+                        capability_record=None,
+                        route_fingerprint=route_fingerprint,
+                    )
+                )
                 max_output = int(configured_max or stage_output_budget)
                 max_output_source = "offline_deterministic_gateway_manifest"
-            if max_output <= 0:
+            if max_output is not None and max_output <= 0:
                 raise ValueError("runtime stage output cap is unavailable")
-            max_per_call = max(max_per_call, max_output)
+            if route_selected and max_output is not None:
+                max_per_call = max(max_per_call, max_output)
             records.append({
                 "role": role, "lane": lane,
-                "provider_id_sha256": hashlib.sha256(
-                    str(provider_id).encode("utf-8"),
-                ).hexdigest(),
+                "provider_id_sha256": provider_id_sha256,
                 "provider_name": str(provider.get("name") or ""),
-                "provider_operator": (
-                    "DEEPSEEK_OFFICIAL"
-                    if str(provider_id)
-                    == "0e6a5627-5882-40df-bca5-7d98b97fdd0b"
-                    and destination
-                    == "https://api.deepseek.com:443/anthropic/v1/messages"
-                    and str(provider.get("protocol")) == "anthropic"
-                    else "THIRD_PARTY_ENDPOINT_LOCAL_METADATA_ONLY"
-                ),
-                "model_id_sha256": hashlib.sha256(
-                    str(model_id).encode("utf-8"),
-                ).hexdigest(),
+                "provider_operator": operator,
+                "model_id_sha256": model_id_sha256,
                 "model_name": str(model.get("model_name") or ""),
                 "protocol": str(provider["protocol"]),
                 "route_fingerprint": route_fingerprint,
@@ -572,8 +656,23 @@ def collect_live_bindings(
                     if capability_record is not None
                     else "ISOLATED_OFFLINE_MANIFEST"
                 ),
+                "reasoning_token_accounting": (
+                    capability_record.reasoning_token_accounting
+                    if capability_record is not None
+                    else "INCLUDED_IN_COMPLETION_CAP"
+                ),
+                "reasoning_output_reservation": (
+                    capability_record.reasoning_output_reservation
+                    if capability_record is not None
+                    else "WITHIN_COMPLETION_CAP"
+                ),
+                "required_by_logical_stage_plan": route_selected,
             })
     records.sort(key=lambda item: (item["role"], item["lane"]))
+    if not selected_routes <= {
+        (str(item["role"]), str(item["lane"])) for item in records
+    }:
+        raise ValueError("required Full Short plan route is missing")
     runtime_fingerprint = collect_runtime_fingerprint_v2(
         db, project_id=project_id,
     )
@@ -785,6 +884,16 @@ def collect_live_bindings(
     }
     route_manifest_sha256 = _domain(records)
     destination_manifest_sha256 = _domain(sorted(destinations))
+    selected_route_records = [
+        item for item in records
+        if item["required_by_logical_stage_plan"]
+    ]
+    authorization_eligible = bool(selected_route_records) and all(
+        item["route_context_capability_source"]
+        == "route_capability_registry"
+        and str(item["route_capability_status"]).startswith("VERIFIED_")
+        for item in selected_route_records
+    )
     actual = {
         "head": _git(repo, "rev-parse", "HEAD"),
         "branch": _git(repo, "branch", "--show-current"),
@@ -848,6 +957,11 @@ def collect_live_bindings(
         "style_reference_authority": style,
         "production_path_identity": production_path,
         "required_execution_roles": list(FULL_SHORT_REQUIRED_EXECUTION_ROLES),
+        "authorization_eligible": authorization_eligible,
+        "authorization_blocking_failure_id": (
+            None if authorization_eligible
+            else "capacity.route_capability_unknown"
+        ),
         "routes": records,
         "route_capability_registry_sha256": (
             capability_registry.registry_sha256
@@ -928,13 +1042,11 @@ def preflight_full_short_control_plane(
         logical_stage_plan=list(bindings["logical_stage_plan"]),
         store_root=args.store_root,
     )
-    if external_actions_enabled and any(
-        item.get("route_context_capability_source")
-        == "offline_deterministic_gateway_manifest"
-        for item in live_public.get("routes", ())
+    if external_actions_enabled and not live_public.get(
+        "authorization_eligible"
     ):
         raise CapacityAdmissionFailureV1(
-            CapacityFailureCode.POLICY_VIOLATION,
+            CapacityFailureCode.ROUTE_CAPABILITY_UNKNOWN,
         )
     if live_public != bindings:
         raise FullShortExecutionBoundaryError("PUBLIC_BINDINGS_DRIFT")

@@ -40,6 +40,7 @@ from novel_flywheel.workflows import WorkflowService
 from novel_flywheel.stage_capacity import (
     CAPACITY_BOUNDARY_ID_V1,
     CAPACITY_FAILURE_IDS_V1,
+    CAPACITY_FAILURE_IDS_V3,
     DEFAULT_STAGE_CAPACITY_POLICY_REGISTRY_V1,
     build_stage_capacity_plan_v1,
     enforce_stage_capacity_plan_v1,
@@ -321,7 +322,7 @@ def audit() -> dict[str, Any]:
             and "testcase" in campaign
         ),
         "capacity_failure_registry_is_closed": (
-            set(CAPACITY_FAILURE_IDS_V1)
+            set(CAPACITY_FAILURE_IDS_V3)
             == set(
                 DEFAULT_FAILURE_BOUNDARY_REGISTRY_V1.boundary(
                     CAPACITY_BOUNDARY_ID_V1
@@ -329,7 +330,7 @@ def audit() -> dict[str, Any]:
             )
             and all(
                 DEFAULT_FAILURE_BOUNDARY_REGISTRY_V1.failure(failure_id)
-                for failure_id in CAPACITY_FAILURE_IDS_V1
+                for failure_id in CAPACITY_FAILURE_IDS_V3
             )
         ),
         "capacity_recovery_policy_is_stage_bound": all(
@@ -337,7 +338,7 @@ def audit() -> dict[str, Any]:
             and policy.segmentation_policy_id
             and policy.compaction_policy_id
             and set(policy.segmentation_failure_ids)
-            <= {item for item in CAPACITY_FAILURE_IDS_V1}
+            <= {item for item in CAPACITY_FAILURE_IDS_V3}
             for policy in DEFAULT_STAGE_CAPACITY_POLICY_REGISTRY_V1.policies.values()
         ),
         "exact_dispatch_requires_capacity_token": (

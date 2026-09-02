@@ -58,6 +58,7 @@ class CapacityRecoveryDisposition(StrEnum):
 
 
 class RouteContextCapabilitySourceV1(StrEnum):
+    ROUTE_CAPABILITY_REGISTRY = "route_capability_registry"
     MODEL_CONFIGURATION = "model_configuration"
     OFFLINE_DETERMINISTIC_GATEWAY_MANIFEST = (
         "offline_deterministic_gateway_manifest"
@@ -76,6 +77,9 @@ class CapacityFailureCode(StrEnum):
     RENDERED_PROMPT_DRIFT = "capacity.rendered_prompt_drift"
     PHYSICAL_ATTEMPT_DRIFT = "capacity.physical_attempt_drift"
     INVALID_ATTEMPT_DELTA = "capacity.invalid_attempt_delta"
+    PHYSICAL_ATTEMPT_CAP_EXHAUSTED = (
+        "capacity.physical_attempt_cap_exhausted"
+    )
     ESTIMATOR_UNCERTAINTY_EXCEEDED = (
         "capacity.estimator_uncertainty_exceeded"
     )
@@ -404,6 +408,10 @@ class StageCapacityPlanV1:
     stage_id: str
     logical_stage_id: str
     physical_attempt: int
+    physical_attempt_id: str | None
+    global_physical_attempt_ordinal: int | None
+    logical_capacity_envelope_sha256: str | None
+    route_capability_snapshot_sha256: str | None
     stage: str
     contract_name: str
     contract_version: int
@@ -414,7 +422,10 @@ class StageCapacityPlanV1:
     route_context_capability_source: RouteContextCapabilitySourceV1
     model_context_limit: int
     requested_output_token_cap: int
+    route_max_output_tokens: int
     final_output_reserve: int
+    reasoning_token_reserve: int
+    reasoning_token_accounting: str
     rendered_message_tokens: int
     structured_envelope_tokens: int
     provider_envelope_tokens: int
@@ -468,6 +479,23 @@ class StageCapacityPlanV1:
                 self.parent_plan_sha256,
                 field_name="parent_plan_sha256",
             )
+        for field_name in (
+            "logical_capacity_envelope_sha256",
+            "route_capability_snapshot_sha256",
+        ):
+            value = getattr(self, field_name)
+            if value is not None:
+                _require_sha256(value, field_name=field_name)
+        if self.physical_attempt_id is not None and (
+            not self.physical_attempt_id.startswith("physical-")
+            or len(self.physical_attempt_id) > 160
+        ):
+            raise ValueError("physical_attempt_id_invalid")
+        if self.global_physical_attempt_ordinal is not None and (
+            type(self.global_physical_attempt_ordinal) is not int
+            or self.global_physical_attempt_ordinal < 1
+        ):
+            raise ValueError("global_physical_attempt_ordinal_invalid")
         if not isinstance(
             self.route_context_capability_source,
             RouteContextCapabilitySourceV1,
@@ -491,6 +519,15 @@ class StageCapacityPlanV1:
             self.route_context_capability_limit_tokens,
         ):
             raise ValueError("capacity_effective_context_limit_inconsistent")
+        if (
+            type(self.route_max_output_tokens) is not int
+            or self.route_max_output_tokens <= 0
+            or self.requested_output_token_cap > self.route_max_output_tokens
+            or type(self.reasoning_token_reserve) is not int
+            or self.reasoning_token_reserve < 0
+            or not self.reasoning_token_accounting
+        ):
+            raise ValueError("capacity_output_or_reasoning_limit_invalid")
         if _canonical_sha256(self.canonical_payload()) != self.plan_sha256:
             raise ValueError("capacity_plan_sha256_mismatch")
 
@@ -526,6 +563,13 @@ def build_stage_capacity_plan_v1(
     route_context_capability_source: (
         RouteContextCapabilitySourceV1 | str
     ) = RouteContextCapabilitySourceV1.MODEL_CONFIGURATION,
+    physical_attempt_id: str | None = None,
+    global_physical_attempt_ordinal: int | None = None,
+    logical_capacity_envelope_sha256: str | None = None,
+    route_capability_snapshot_sha256: str | None = None,
+    route_max_output_tokens: int | None = None,
+    reasoning_token_reserve: int = 0,
+    reasoning_token_accounting: str = "INCLUDED_IN_COMPLETION_CAP",
     policy_registry: StageCapacityPolicyRegistryV1 = (
         DEFAULT_STAGE_CAPACITY_POLICY_REGISTRY_V1
     ),
@@ -564,6 +608,7 @@ def build_stage_capacity_plan_v1(
         structured_envelope_tokens,
         provider_envelope_tokens,
         wrapper_and_estimator_margin_tokens,
+        reasoning_token_reserve,
     )
     if any(value < 0 for value in values):
         raise ValueError("capacity_value_negative")
@@ -571,10 +616,31 @@ def build_stage_capacity_plan_v1(
     policy = policy_registry.require_policy(stage)
     stage_context_ceiling = policy.stage_operational_context_ceiling_tokens
     effective_context_limit = min(model_context_limit, stage_context_ceiling)
+    effective_route_max_output = int(
+        route_max_output_tokens or requested_output_token_cap
+    )
+    if (
+        effective_route_max_output <= 0
+        or requested_output_token_cap > effective_route_max_output
+    ):
+        raise CapacityAdmissionFailureV1(
+            CapacityFailureCode.OUTPUT_RESERVE_UNSATISFIED,
+        )
+    if capability_source is RouteContextCapabilitySourceV1.ROUTE_CAPABILITY_REGISTRY:
+        if any(item is None for item in (
+            physical_attempt_id,
+            global_physical_attempt_ordinal,
+            logical_capacity_envelope_sha256,
+            route_capability_snapshot_sha256,
+        )):
+            raise CapacityAdmissionFailureV1(
+                CapacityFailureCode.CONTEXT_LIMIT_INCONSISTENT,
+            )
     expected_rendered_input = rendered_message_tokens + structured_envelope_tokens
     prompt_budget = (
         effective_context_limit
         - final_output_reserve
+        - reasoning_token_reserve
         - provider_envelope_tokens
         - wrapper_and_estimator_margin_tokens
     )
@@ -671,6 +737,14 @@ def build_stage_capacity_plan_v1(
         "stage_id": stage_id,
         "logical_stage_id": logical_stage_id,
         "physical_attempt": physical_attempt,
+        "physical_attempt_id": physical_attempt_id,
+        "global_physical_attempt_ordinal": global_physical_attempt_ordinal,
+        "logical_capacity_envelope_sha256": (
+            logical_capacity_envelope_sha256
+        ),
+        "route_capability_snapshot_sha256": (
+            route_capability_snapshot_sha256
+        ),
         "stage": stage,
         "contract_name": contract_name,
         "contract_version": contract_version,
@@ -681,7 +755,10 @@ def build_stage_capacity_plan_v1(
         "route_context_capability_source": capability_source,
         "model_context_limit": effective_context_limit,
         "requested_output_token_cap": requested_output_token_cap,
+        "route_max_output_tokens": effective_route_max_output,
         "final_output_reserve": final_output_reserve,
+        "reasoning_token_reserve": reasoning_token_reserve,
+        "reasoning_token_accounting": reasoning_token_accounting,
         "rendered_message_tokens": rendered_message_tokens,
         "structured_envelope_tokens": structured_envelope_tokens,
         "provider_envelope_tokens": provider_envelope_tokens,

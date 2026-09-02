@@ -139,13 +139,13 @@ def build_registry(repo: Path) -> RouteCapabilityRegistryV1:
                 raise ValueError(f"route_identity_missing:{role}:{lane}")
             destination = _destination(provider)
             fingerprint = ProviderRegistry.route_fingerprint(provider, model)
-            exact_deepseek = (
+            exact_deepseek_historical_claim = (
                 provider_id == DEEPSEEK_PROVIDER_ID
                 and model_id == DEEPSEEK_MODEL_ID
                 and fingerprint == DEEPSEEK_ROUTE_FINGERPRINT
             )
             evidence: list[CapabilityEvidenceV1] = []
-            if exact_deepseek:
+            if exact_deepseek_historical_claim:
                 evidence.append(CapabilityEvidenceV1(
                     source_kind="historical_official_documentation_matrix",
                     source_locator=(
@@ -157,7 +157,7 @@ def build_registry(repo: Path) -> RouteCapabilityRegistryV1:
                     evidence_date="2026-08-14",
                     route_fingerprint=fingerprint,
                     proved_fields=(
-                        "context_window_tokens", "max_output_tokens",
+                        "historical_unarchived_capacity_assertion",
                     ),
                     provenance_available=True,
                 ))
@@ -190,21 +190,22 @@ def build_registry(repo: Path) -> RouteCapabilityRegistryV1:
                 model=str(model["model_name"]),
                 model_id_sha256=sha_bytes(model_id.encode("utf-8")),
                 route_fingerprint=fingerprint,
-                context_window_tokens=1_000_000 if exact_deepseek else None,
-                max_output_tokens=384_000 if exact_deepseek else None,
+                context_window_tokens=None,
+                max_output_tokens=None,
                 reasoning_token_accounting=reasoning,
                 reasoning_output_reservation=(
                     "WITHIN_COMPLETION_CAP"
                     if reasoning == "INCLUDED_IN_COMPLETION_CAP"
                     else "SEPARATE_REPORTED_RESERVATION_REQUIRED"
                 ),
-                capability_status=(
-                    CapabilityStatus.VERIFIED_HISTORICAL_EVIDENCE
-                    if exact_deepseek else CapabilityStatus.UNKNOWN_BLOCKED
-                ),
+                capability_status=CapabilityStatus.UNKNOWN_BLOCKED,
                 source_evidence=evidence,
                 blocking_reason_codes=(
-                    () if exact_deepseek else (
+                    (
+                        "HISTORICAL_ASSERTION_HAS_NO_ARCHIVED_SOURCE_CONTENT",
+                        "EXACT_ROUTE_CONTEXT_WINDOW_EVIDENCE_UNAVAILABLE",
+                        "EXACT_ROUTE_MAX_OUTPUT_EVIDENCE_UNAVAILABLE",
+                    ) if exact_deepseek_historical_claim else (
                         "EXACT_ROUTE_CONTEXT_WINDOW_EVIDENCE_UNAVAILABLE",
                         "EXACT_ROUTE_MAX_OUTPUT_EVIDENCE_UNAVAILABLE",
                     )
@@ -325,7 +326,10 @@ def materialize(repo: Path, registry: RouteCapabilityRegistryV1) -> None:
             "docs/superpowers/reports/**/*capacity*",
             "data/app.db safe provider/model/role fields",
         ],
-        "verified_reusable_route_fingerprints": [DEEPSEEK_ROUTE_FINGERPRINT],
+        "verified_reusable_route_fingerprints": [],
+        "partial_unarchived_route_fingerprints": [
+            DEEPSEEK_ROUTE_FINGERPRINT
+        ],
         "partial_only_observations": [8798, 16000, 4624, 3724],
         "unproven_claims_rejected": [32768, 8328, 372000],
         "screenshots_found": 0,
@@ -399,6 +403,11 @@ def materialize(repo: Path, registry: RouteCapabilityRegistryV1) -> None:
         "physical_allocator": "FullShortDispatchLedgerObserverV1 durable ledger",
         "legal_delta": "next durable dispatched-attempt ordinal only",
         "recovery_schedule_slot_is_physical_attempt": False,
+        "restart_semantics": (
+            "FAIL_CLOSED_AFTER_PLAN_OR_REQUEST_BINDING; fresh authorization "
+            "required; no network redispatch"
+        ),
+        "read_only_capture_replay_after_restart": True,
         "unexplained_capacity_attempt_drift_count": 0,
         "illegal_capacity_attempt_delta_count": 0,
         "external_boundary": EXTERNAL_ZERO,

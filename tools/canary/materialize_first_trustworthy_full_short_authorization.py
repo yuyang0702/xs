@@ -104,6 +104,8 @@ async def _materialize(args: argparse.Namespace) -> dict:
         run_id=args.run_id, logical_stage_plan=logical_stage_plan,
         store_root=store_root,
     )
+    if public.get("authorization_eligible") is not True:
+        raise RuntimeError("AUTHORIZATION_ROUTE_CAPABILITY_NOT_VERIFIED")
     if actual["head"] != head or actual["branch"] != branch:
         raise RuntimeError("AUTHORIZATION_HEAD_OR_BRANCH_DRIFT")
     if actual["worktree_clean"] is not True:

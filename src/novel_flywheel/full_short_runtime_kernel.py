@@ -127,6 +127,9 @@ class PredispatchReadinessV1:
     capacity_policy_registry_sha256: str
     capacity_plan_sha256: str
     capacity_admission_receipt_sha256: str
+    logical_capacity_envelope_sha256: str
+    route_capability_snapshot_sha256: str
+    global_physical_attempt_ordinal: int
 
     def validate(self) -> None:
         checks = (
@@ -151,9 +154,16 @@ class PredispatchReadinessV1:
                 self.capacity_policy_registry_sha256,
                 self.capacity_plan_sha256,
                 self.capacity_admission_receipt_sha256,
+                self.logical_capacity_envelope_sha256,
+                self.route_capability_snapshot_sha256,
             )
         ):
             raise ValueError("predispatch_identity_invalid")
+        if (
+            type(self.global_physical_attempt_ordinal) is not int
+            or self.global_physical_attempt_ordinal < 1
+        ):
+            raise ValueError("predispatch_physical_ordinal_invalid")
 
 
 @dataclass(frozen=True)
@@ -546,6 +556,12 @@ _FAILURES = (
         RecoveryDecisionKind.FAIL_CLOSED, "restart.forbidden.v1",
     ),
     FailureSpecV1(
+        "capacity.physical_attempt_cap_exhausted",
+        "capacity.physical_attempt_cap_exhausted",
+        "capacity.attempt_identity", RecoveryDecisionKind.FAIL_CLOSED,
+        "restart.forbidden.v1",
+    ),
+    FailureSpecV1(
         "capacity.estimator_uncertainty_exceeded",
         "capacity.estimator_uncertainty_exceeded", "capacity.estimator",
         RecoveryDecisionKind.SEMANTIC_SPLIT,
@@ -637,6 +653,7 @@ _BOUNDARIES = (
         "capacity.context_limit_inconsistent",
         "capacity.physical_attempt_drift",
         "capacity.invalid_attempt_delta",
+        "capacity.physical_attempt_cap_exhausted",
         "capacity.estimator_uncertainty_exceeded",
         "capacity.policy_violation",
     ),
@@ -849,6 +866,9 @@ _ENVELOPE_FAILURE_CLASS_V1: dict[str, FailureClass] = {
     "capacity.rendered_prompt_drift": FailureClass.CONTEXT_CAPACITY,
     "capacity.physical_attempt_drift": FailureClass.CONTEXT_CAPACITY,
     "capacity.invalid_attempt_delta": FailureClass.CONTEXT_CAPACITY,
+    "capacity.physical_attempt_cap_exhausted": (
+        FailureClass.CONTEXT_CAPACITY
+    ),
     "capacity.estimator_uncertainty_exceeded": FailureClass.CONTEXT_CAPACITY,
     "capacity.context_limit_unavailable": FailureClass.CONTEXT_CAPACITY,
     "capacity.context_limit_inconsistent": FailureClass.CONTEXT_CAPACITY,

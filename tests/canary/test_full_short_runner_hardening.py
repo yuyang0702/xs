@@ -228,7 +228,7 @@ async def test_live_offline_context_manifest_fails_before_secret_factory(
 
     with pytest.raises(
         runner.CapacityAdmissionFailureV1,
-        match="capacity.policy_violation",
+        match="capacity.route_capability_unknown",
     ):
         await runner.execute_full_short_control_plane(
             args, authorization, external_actions_enabled=True,
@@ -405,10 +405,20 @@ def _bound_project(tmp_path: Path) -> tuple[Path, Path, str, Database]:
     model = db.get_model("model")
     assert provider is not None and model is not None
     fingerprint = ProviderRegistry.route_fingerprint(provider, model)
+    evidence_path = repo / "unit-route-capability-evidence.json"
+    evidence_path.write_text(
+        json.dumps({
+            "context_window_tokens": 32_768,
+            "max_output_tokens": 8_192,
+        }, sort_keys=True),
+        encoding="utf-8",
+    )
     evidence = CapabilityEvidenceV1(
         source_kind="unit_test_fixture",
-        source_locator="tests/canary/test_full_short_runner_hardening.py",
-        source_evidence_sha256="a" * 64,
+        source_locator=evidence_path.relative_to(repo).as_posix(),
+        source_evidence_sha256=hashlib.sha256(
+            evidence_path.read_bytes()
+        ).hexdigest(),
         evidence_version=1,
         evidence_date="2026-09-02",
         route_fingerprint=fingerprint,
@@ -421,7 +431,7 @@ def _bound_project(tmp_path: Path) -> tuple[Path, Path, str, Database]:
             lane="primary",
             provider="Provider",
             provider_id_sha256=hashlib.sha256(b"provider").hexdigest(),
-            operator="UNIT_TEST_OPERATOR",
+            operator="THIRD_PARTY_RELAY_UNVERIFIED_UPSTREAM",
             destination="https://unit.test:443/v1/messages",
             protocol="anthropic",
             model="model",
@@ -429,6 +439,8 @@ def _bound_project(tmp_path: Path) -> tuple[Path, Path, str, Database]:
             route_fingerprint=fingerprint,
             context_window_tokens=32_768,
             max_output_tokens=8_192,
+            reasoning_token_accounting="INCLUDED_IN_COMPLETION_CAP",
+            reasoning_output_reservation="WITHIN_COMPLETION_CAP",
             capability_status=CapabilityStatus.VERIFIED_LOCAL_CONFIG_WITH_PROVENANCE,
             source_evidence=(evidence,),
         )
@@ -729,6 +741,104 @@ def test_live_bindings_reject_missing_route_capability_record(
             store_root=tmp_path / "control-store",
         )
     assert caught.value.failure_id == "capacity.route_capability_unknown"
+
+
+def _add_unknown_planning_fallback(
+    *, repo: Path, db: Database,
+) -> None:
+    path = repo / runner._ROUTE_CAPABILITY_REGISTRY_PATH_V1
+    registry = RouteCapabilityRegistryV1.from_document(
+        json.loads(path.read_text(encoding="utf-8"))
+    )
+    provider = db.get_provider("provider")
+    model = db.get_model("model")
+    assert provider is not None and model is not None
+    fingerprint = ProviderRegistry.route_fingerprint(provider, model)
+    fallback = RouteCapabilityRecordV1.create(
+        role="planning",
+        lane="fallback",
+        provider="Provider",
+        provider_id_sha256=hashlib.sha256(b"provider").hexdigest(),
+        operator="THIRD_PARTY_RELAY_UNVERIFIED_UPSTREAM",
+        destination="https://unit.test:443/v1/messages",
+        protocol="anthropic",
+        model="model",
+        model_id_sha256=hashlib.sha256(b"model").hexdigest(),
+        route_fingerprint=fingerprint,
+        context_window_tokens=None,
+        max_output_tokens=None,
+        capability_status=CapabilityStatus.UNKNOWN_BLOCKED,
+        blocking_reason_codes=("NO_TRUSTWORTHY_EVIDENCE",),
+    )
+    updated = RouteCapabilityRegistryV1.create(
+        (*registry.records, fallback)
+    )
+    path.write_text(json.dumps(updated.to_document()), encoding="utf-8")
+    db.save_role_binding(
+        "planning", "provider", "model", "provider", "model"
+    )
+
+
+def test_unknown_unused_fallback_is_visible_but_does_not_block_primary_plan(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    repo, data, project_id, db = _bound_project(tmp_path)
+    _add_unknown_planning_fallback(repo=repo, db=db)
+    monkeypatch.setenv("NOVEL_SHORT_CANONICAL_V2", "1")
+    monkeypatch.setattr(runner, "_git", lambda *_args: "")
+
+    _actual, public = runner.collect_live_bindings(
+        repo=repo,
+        data_dir=data,
+        project_id=project_id,
+        run_id="hardening",
+        logical_stage_plan=_logical_plan(),
+        store_root=tmp_path / "control-store",
+    )
+
+    fallback = next(
+        item for item in public["routes"]
+        if item["role"] == "planning" and item["lane"] == "fallback"
+    )
+    assert fallback["required_by_logical_stage_plan"] is False
+    assert fallback["route_capability_status"] == "UNKNOWN_BLOCKED"
+    assert fallback["route_context_capability_limit_tokens"] is None
+    assert public["authorization_eligible"] is True
+
+
+def test_unknown_selected_fallback_blocks_before_authorization(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    repo, data, project_id, db = _bound_project(tmp_path)
+    _add_unknown_planning_fallback(repo=repo, db=db)
+    monkeypatch.setenv("NOVEL_SHORT_CANONICAL_V2", "1")
+    monkeypatch.setattr(runner, "_git", lambda *_args: "")
+    plan = _logical_plan()
+    plan[0]["route_lane"] = "configured_fallback"
+
+    with pytest.raises(CapacityAdmissionFailureV1) as caught:
+        runner.collect_live_bindings(
+            repo=repo,
+            data_dir=data,
+            project_id=project_id,
+            run_id="hardening",
+            logical_stage_plan=plan,
+            store_root=tmp_path / "control-store",
+        )
+    assert caught.value.failure_id == "capacity.route_capability_unknown"
+
+
+def test_verified_route_evidence_file_hash_is_revalidated(
+    tmp_path: Path,
+) -> None:
+    repo, _data, _project_id, _db = _bound_project(tmp_path)
+    evidence = repo / "unit-route-capability-evidence.json"
+    evidence.write_text("tampered", encoding="utf-8")
+
+    with pytest.raises(
+        ValueError, match="route capability evidence hash mismatch"
+    ):
+        runner._load_route_capability_registry_v1(repo)
 
 
 def test_completion_elapsed_is_rechecked_after_last_dispatch() -> None:

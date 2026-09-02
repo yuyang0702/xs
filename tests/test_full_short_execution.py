@@ -68,6 +68,7 @@ from novel_flywheel.structured_artifacts import StructuredArtifactContract
 from novel_flywheel.runtime_fingerprint_build import domain_sha256
 from novel_flywheel.recovery_engine import FailureClass
 from novel_flywheel.stage_capacity import (
+    CapacityAdmissionFailureV1,
     DEFAULT_STAGE_CAPACITY_POLICY_REGISTRY_V1,
     StageCapacityPolicyRegistryV1,
     build_stage_capacity_plan_v1,
@@ -304,6 +305,16 @@ def _bind_route_with_capacity(
         stage_id=expected["stage_id"],
         logical_stage_id=context["logical_stage_id"],
         physical_attempt=context["physical_attempt"],
+        physical_attempt_id=context["physical_attempt_id"],
+        global_physical_attempt_ordinal=context[
+            "global_physical_attempt_ordinal"
+        ],
+        logical_capacity_envelope_sha256=context[
+            "logical_capacity_envelope_sha256"
+        ],
+        route_capability_snapshot_sha256=context[
+            "route_capability_snapshot_sha256"
+        ],
         stage=role,
         contract_name=expected["contract_name"],
         contract_version=expected["contract_version"],
@@ -318,7 +329,10 @@ def _bind_route_with_capacity(
             "route_context_capability_source"
         ],
         requested_output_token_cap=expected["requested_output_tokens"],
+        route_max_output_tokens=context["route_max_output_tokens"],
         final_output_reserve=expected["requested_output_tokens"],
+        reasoning_token_reserve=context["reasoning_token_reserve"],
+        reasoning_token_accounting=context["reasoning_token_accounting"],
         rendered_message_tokens=0,
         structured_envelope_tokens=0,
         provider_envelope_tokens=256,
@@ -1688,14 +1702,14 @@ def test_two_rejections_exhaust_shared_logical_stage_physical_ceiling(
                 protocol="anthropic", request=_request(),
             )
 
-    with pytest.raises(FullShortExecutionBoundaryError) as rejected:
+    with pytest.raises(CapacityAdmissionFailureV1) as rejected:
         _bind_route_with_capacity(
             observer, role="planning", lane="primary",
             provider_id="provider", model_id="model-id",
             route_fingerprint="9" * 64,
         )
-    assert rejected.value.reason_code == (
-        "CAPACITY_PHYSICAL_ATTEMPT_CAP_EXHAUSTED"
+    assert rejected.value.failure_id == (
+        "capacity.physical_attempt_cap_exhausted"
     )
     ledger = store.load_ledger("two-slot-recovery-ceiling")
     assert len(ledger["attempts"]) == 2
@@ -3072,10 +3086,20 @@ def test_real_runner_collects_live_bindings_without_secret_lookup(
     model = db.get_model("public-model")
     assert provider is not None and model is not None
     fingerprint = ProviderRegistry.route_fingerprint(provider, model)
+    evidence_path = repo / "unit-route-capability-evidence.json"
+    evidence_path.write_text(
+        json.dumps({
+            "context_window_tokens": 32_768,
+            "max_output_tokens": 32_000,
+        }, sort_keys=True),
+        encoding="utf-8",
+    )
     evidence = CapabilityEvidenceV1(
         source_kind="unit_test_fixture",
-        source_locator="tests/test_full_short_execution.py",
-        source_evidence_sha256="a" * 64,
+        source_locator=evidence_path.relative_to(repo).as_posix(),
+        source_evidence_sha256=hashlib.sha256(
+            evidence_path.read_bytes()
+        ).hexdigest(),
         evidence_version=1,
         evidence_date="2026-09-02",
         route_fingerprint=fingerprint,
@@ -3090,7 +3114,7 @@ def test_real_runner_collects_live_bindings_without_secret_lookup(
             provider_id_sha256=hashlib.sha256(
                 b"public-provider"
             ).hexdigest(),
-            operator="UNIT_TEST_OPERATOR",
+            operator="THIRD_PARTY_RELAY_UNVERIFIED_UPSTREAM",
             destination="https://unit.test:443/v1/messages",
             protocol="anthropic",
             model="public-model",
@@ -3098,6 +3122,8 @@ def test_real_runner_collects_live_bindings_without_secret_lookup(
             route_fingerprint=fingerprint,
             context_window_tokens=32_768,
             max_output_tokens=32_000,
+            reasoning_token_accounting="INCLUDED_IN_COMPLETION_CAP",
+            reasoning_output_reservation="WITHIN_COMPLETION_CAP",
             capability_status=(
                 CapabilityStatus.VERIFIED_LOCAL_CONFIG_WITH_PROVENANCE
             ),
@@ -3358,9 +3384,18 @@ def test_capacity_plan_binding_drift_fails_before_route_resolution(
         layer_projections=(), parent_plan_sha256=None,
         policy_registry=registry,
     )
-    with pytest.raises(FullShortExecutionBoundaryError) as caught:
-        observer.bind_capacity_plan(plan=plan, route="primary", role="planning")
-    assert caught.value.reason_code == expected_reason
+    if drift == "physical":
+        with pytest.raises(CapacityAdmissionFailureV1) as caught:
+            observer.bind_capacity_plan(
+                plan=plan, route="primary", role="planning"
+            )
+        assert caught.value.failure_id == "capacity.physical_attempt_drift"
+    else:
+        with pytest.raises(FullShortExecutionBoundaryError) as caught:
+            observer.bind_capacity_plan(
+                plan=plan, route="primary", role="planning"
+            )
+        assert caught.value.reason_code == expected_reason
     assert observer.bound_route is None
     assert store.load_ledger(execution_id)["attempts"] == []
 
@@ -3402,16 +3437,12 @@ def test_capacity_physical_schedule_index_remains_a_drift_assertion(
     _authorize_offline(store, execution_id)
     observer = _observer(store, execution_id)
 
-    with pytest.raises(FullShortExecutionBoundaryError) as caught:
+    with pytest.raises(CapacityAdmissionFailureV1) as caught:
         observer.capacity_admission_context(
             route="primary", role="planning", physical_attempt=3,
         )
 
-    assert caught.value.reason_code == "CAPACITY_PHYSICAL_ATTEMPT_DRIFT"
-    assert caught.value.reliability_failure.code == (
-        "capacity.physical_attempt_drift"
-    )
-    assert caught.value.failure_family == "capacity.attempt_identity"
+    assert caught.value.failure_id == "capacity.physical_attempt_drift"
 
 
 def test_capacity_physical_attempt_rejects_invalid_delta_shape(
@@ -3422,15 +3453,12 @@ def test_capacity_physical_attempt_rejects_invalid_delta_shape(
     _authorize_offline(store, execution_id)
     observer = _observer(store, execution_id)
 
-    with pytest.raises(FullShortExecutionBoundaryError) as caught:
+    with pytest.raises(CapacityAdmissionFailureV1) as caught:
         observer.capacity_admission_context(
             route="primary", role="planning", physical_attempt=0,
         )
 
-    assert caught.value.reason_code == "CAPACITY_INVALID_ATTEMPT_DELTA"
-    assert caught.value.reliability_failure.code == (
-        "capacity.invalid_attempt_delta"
-    )
+    assert caught.value.failure_id == "capacity.invalid_attempt_delta"
 
 
 @pytest.mark.parametrize("fault", ["missing", "duplicate"])

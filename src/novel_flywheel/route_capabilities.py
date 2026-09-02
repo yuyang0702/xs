@@ -152,6 +152,10 @@ class RouteCapabilityRecordV1:
                 or not self.source_evidence
                 or not {"context_window_tokens", "max_output_tokens"} <= proved
                 or self.blocking_reason_codes
+                or self.reasoning_token_accounting
+                != "INCLUDED_IN_COMPLETION_CAP"
+                or self.reasoning_output_reservation
+                != "WITHIN_COMPLETION_CAP"
             ):
                 raise ValueError("verified_route_capability_evidence_incomplete")
         else:
@@ -234,6 +238,35 @@ class RouteCapabilityRecordV1:
     def require_dispatchable(self) -> RouteCapabilityRecordV1:
         if self.capability_status not in VERIFIED_CAPABILITY_STATUSES:
             raise RouteCapabilityError("capacity.route_capability_unknown")
+        return self
+
+    def require_exact_route_identity(
+        self,
+        *,
+        role: str,
+        lane: str,
+        provider: str,
+        provider_id_sha256: str,
+        operator: str,
+        destination: str,
+        protocol: str,
+        model: str,
+        model_id_sha256: str,
+        route_fingerprint: str,
+    ) -> RouteCapabilityRecordV1:
+        expected = (
+            role, lane, provider, provider_id_sha256, operator, destination,
+            protocol, model, model_id_sha256, route_fingerprint,
+        )
+        actual = (
+            self.role, self.lane, self.provider, self.provider_id_sha256,
+            self.operator, self.destination, self.protocol, self.model,
+            self.model_id_sha256, self.route_fingerprint,
+        )
+        if actual != expected:
+            raise RouteCapabilityError(
+                "capacity.route_capability_identity_drift"
+            )
         return self
 
 

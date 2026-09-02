@@ -48,8 +48,16 @@ def test_v3_campaign_covers_all_registered_failures_and_master_scenarios(
         item["failure_id"] for item in report["results"]
         if item["failure_id"] is not None
     }
+    injected.update(
+        item["failure_id"]
+        for item in report["supplemental_registered_failure_proofs"]
+    )
     assert injected == CAPACITY_FAILURE_IDS_V3
     assert report["registered_capacity_failure_coverage"] == "100_PERCENT"
+    assert report["coverage_kind"] == (
+        "REGISTERED_FAILURE_ADAPTER_INJECTION"
+    )
+    assert report["production_observer_behavior_coverage_claimed"] is False
 
 
 def test_unused_unknown_and_legal_recovery_delta_are_not_faults(

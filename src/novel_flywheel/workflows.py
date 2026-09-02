@@ -30874,6 +30874,24 @@ class WorkflowService:
                             "physical_attempt", physical_attempt,
                         )
                     ),
+                    "physical_attempt_id": (
+                        (admission_context or {}).get("physical_attempt_id")
+                    ),
+                    "global_physical_attempt_ordinal": (
+                        (admission_context or {}).get(
+                            "global_physical_attempt_ordinal"
+                        )
+                    ),
+                    "logical_capacity_envelope_sha256": (
+                        (admission_context or {}).get(
+                            "logical_capacity_envelope_sha256"
+                        )
+                    ),
+                    "route_capability_snapshot_sha256": (
+                        (admission_context or {}).get(
+                            "route_capability_snapshot_sha256"
+                        )
+                    ),
                     "stage": capacity_stage,
                     "contract_name": contract_name,
                     "contract_version": contract_version,
@@ -30898,7 +30916,23 @@ class WorkflowService:
                         route_context_capability_source
                     ),
                     "requested_output_token_cap": output_cap,
+                    "route_max_output_tokens": int(
+                        (admission_context or {}).get(
+                            "route_max_output_tokens", output_cap,
+                        )
+                    ),
                     "final_output_reserve": output_cap,
+                    "reasoning_token_reserve": int(
+                        (admission_context or {}).get(
+                            "reasoning_token_reserve", 0,
+                        )
+                    ),
+                    "reasoning_token_accounting": str(
+                        (admission_context or {}).get(
+                            "reasoning_token_accounting",
+                            "INCLUDED_IN_COMPLETION_CAP",
+                        )
+                    ),
                     "rendered_message_tokens": estimate_input_tokens(
                         actual_system + "\n" + actual_user
                     ),

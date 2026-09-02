@@ -559,9 +559,12 @@ def _allowed_v3_scenario(scenario_id: str) -> dict[str, object]:
 def run_capacity_fault_campaign_v3(artifact_dir: Path) -> dict[str, object]:
     """Run all twenty V3 scenarios without treating legal deltas as faults."""
 
+    master_failure_ids = {
+        item.failure_id for item in MASTER_CAPACITY_FAULT_SCENARIOS_V3
+    }
     cases = generate_capacity_fault_cases_v2(
         MASTER_CAPACITY_FAULT_SCENARIOS_V3,
-        required_failure_ids=CAPACITY_FAILURE_IDS_V3,
+        required_failure_ids=master_failure_ids,
     )
     artifact_dir.mkdir(parents=True, exist_ok=True)
     results: list[dict[str, object]] = []
@@ -588,6 +591,40 @@ def run_capacity_fault_campaign_v3(artifact_dir: Path) -> dict[str, object]:
             else "FAIL"
         )
         results.append(proof)
+    supplemental_results: list[dict[str, object]] = []
+    for failure_id in sorted(CAPACITY_FAILURE_IDS_V3 - master_failure_ids):
+        supplemental_case = generate_capacity_fault_cases_v2((
+            CapacityFaultScenarioSpecV2(
+                "supplemental_registered_failure__"
+                + failure_id.rsplit(".", 1)[-1],
+                failure_id,
+                "capacity.registered_failure_supplement",
+            ),
+        ), required_failure_ids={failure_id})[0]
+        first = DurableCapacityFaultAdapterV2.execute_once(
+            supplemental_case,
+            artifact_dir / (supplemental_case.scenario_id + ".first.json"),
+        )
+        replay = DurableCapacityFaultAdapterV2.execute_once(
+            supplemental_case,
+            artifact_dir / (supplemental_case.scenario_id + ".replay.json"),
+        )
+        proof = {
+            **first.proof_payload(),
+            "deterministic_replay": (
+                first.proof_payload() == replay.proof_payload()
+            ),
+        }
+        proof["status"] = (
+            "PASS"
+            if all(bool(proof[name]) for name in (
+                "typed_failure", "durable_receipt",
+                "denied_admission_zero_dispatch", "no_authority_mutation",
+                "explicit_recovery_or_stop", "deterministic_replay",
+            )) and proof["raw_content_persisted"] is False
+            else "FAIL"
+        )
+        supplemental_results.append(proof)
     results.extend((
         _allowed_v3_scenario("unknown_blocked_unused_route"),
         _allowed_v3_scenario("legitimate_recovery_attempt_delta"),
@@ -621,6 +658,14 @@ def run_capacity_fault_campaign_v3(artifact_dir: Path) -> dict[str, object]:
         "registered_capacity_failure_count": len(CAPACITY_FAILURE_IDS_V3),
         "registered_capacity_failure_coverage": "100_PERCENT",
         "scenario_coverage": "100_PERCENT",
+        "coverage_kind": "REGISTERED_FAILURE_ADAPTER_INJECTION",
+        "production_observer_behavior_coverage_claimed": False,
+        "production_shaped_integration_tests": [
+            "tests/test_full_short_execution.py",
+            "tests/canary/test_full_short_runner_hardening.py",
+            "tests/test_route_capabilities.py",
+        ],
+        "supplemental_registered_failure_proofs": supplemental_results,
         "external_actions_disabled": True,
         "credential_lookup_count": 0,
         "provider_client_creation_count": 0,
@@ -631,7 +676,10 @@ def run_capacity_fault_campaign_v3(artifact_dir: Path) -> dict[str, object]:
         "results": ordered_results,
         "status": (
             "PASS"
-            if all(item["status"] == "PASS" for item in ordered_results)
+            if all(
+                item["status"] == "PASS"
+                for item in ordered_results + supplemental_results
+            )
             else "FAIL"
         ),
     }

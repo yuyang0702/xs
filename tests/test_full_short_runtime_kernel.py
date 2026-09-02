@@ -561,6 +561,9 @@ def test_predispatch_readiness_precedes_unique_attempt_token(tmp_path: Path) -> 
         capacity_policy_registry_sha256="c" * 64,
         capacity_plan_sha256="d" * 64,
         capacity_admission_receipt_sha256="e" * 64,
+        logical_capacity_envelope_sha256="f" * 64,
+        route_capability_snapshot_sha256="1" * 64,
+        global_physical_attempt_ordinal=1,
     )
     kernel = FullShortExecutionKernel(
         registry=DEFAULT_FAILURE_BOUNDARY_REGISTRY_V1,

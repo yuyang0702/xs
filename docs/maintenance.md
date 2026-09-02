@@ -2568,5 +2568,9 @@ Each physical plan binds the immutable logical capacity-envelope hash and the
 next durable ledger ordinal. Explicit incompatible caller assertions fail as
 `capacity.physical_attempt_drift`; illegal deltas and exhausted attempt caps are
 separate typed failures. Rejected predispatch work consumes no physical attempt,
-and restart derives the next ordinal from the durable ledger rather than process
-memory.
+and an uninterrupted claimed observer derives the next ordinal from the durable
+ledger rather than process memory. A process restart after the execution has
+bound a capacity plan or request is deliberately terminal for that exact
+execution: it cannot resume or redispatch, and any later run requires fresh
+authorization. Read-only replay of an already anchored provider capture remains
+local and never authorizes network activity.

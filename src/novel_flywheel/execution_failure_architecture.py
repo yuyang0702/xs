@@ -187,30 +187,6 @@ _FULL_SHORT_BOUNDARY_TAXONOMY_V1 = {
 def _closed_literal_reason_rule(
     code: str, category: str,
 ) -> _FailureTaxonomyRuleV1:
-    if category == "capacity_identity":
-        public_code = {
-            "CAPACITY_PHYSICAL_ATTEMPT_DRIFT": (
-                "capacity.physical_attempt_drift"
-            ),
-            "CAPACITY_INVALID_ATTEMPT_DELTA": (
-                "capacity.invalid_attempt_delta"
-            ),
-            "CAPACITY_PHYSICAL_ATTEMPT_CAP_EXHAUSTED": (
-                "capacity.physical_attempt_cap_exhausted"
-            ),
-        }[code]
-        return _FailureTaxonomyRuleV1(
-            code=public_code,
-            family="capacity.attempt_identity",
-            layer=FailureLayer.EXECUTION_RUNTIME_BINDING,
-            boundary="full_short.capacity.attempt_identity",
-            failure_class=FailureClass.CONTEXT_CAPACITY,
-            retryable=False,
-            dispatch_state=DispatchState.NOT_REACHED,
-            authority_effect=AuthorityEffect.PRESERVES_LAST_ACCEPTED,
-            restart_behavior=RestartBehavior.FRESH_AUTHORIZATION_REQUIRED,
-            recovery_action="repair_capacity_attempt_identity_then_reauthorize",
-        )
     if category == "authorization":
         return _predispatch_rule(
             code, family="execution.authorization",

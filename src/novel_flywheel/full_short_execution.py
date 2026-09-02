@@ -69,6 +69,8 @@ from novel_flywheel.provider_response_capture import (
 from novel_flywheel.recovery_engine import FailureClass, ReliabilityFailure
 from novel_flywheel.stage_capacity import (
     AdmissionStatus,
+    CapacityAdmissionFailureV1,
+    CapacityFailureCode,
     DEFAULT_STAGE_CAPACITY_POLICY_REGISTRY_V1,
     MAX_CONTEXT_LIMIT_TOKENS_V1,
     RouteContextCapabilitySourceV1,
@@ -249,6 +251,9 @@ _DISPATCH_READINESS_FIELDS_V1 = frozenset({
     "logical_stage_plan_sha256", "permission_sha256",
     "signed_approval_sha256", "predispatch_ledger_sha256",
     "observer_session_sha256", "logical_stage_id", "physical_attempt_id",
+    "global_physical_attempt_ordinal",
+    "logical_capacity_envelope_sha256",
+    "route_capability_snapshot_sha256",
     "role_binding_sha256", "route_fingerprint", "destination_sha256",
     "request_shape_sha256", "provider_payload_sha256",
     "egress_intent_sha256", "requested_output_tokens",
@@ -271,6 +276,8 @@ _DISPATCH_READINESS_HASH_FIELDS_V1 = frozenset({
     "egress_intent_sha256",
     "capacity_policy_registry_sha256", "capacity_plan_sha256",
     "capacity_admission_receipt_sha256",
+    "logical_capacity_envelope_sha256",
+    "route_capability_snapshot_sha256",
 })
 _DISPATCH_READINESS_CAP_FIELDS_V1 = frozenset({
     "expected_stage_calls", "hard_max_provider_requests",
@@ -289,6 +296,9 @@ _CAPACITY_ADMISSION_RECEIPT_FIELDS_V1 = frozenset({
     "schema", "version", "execution_id", "policy_sha256",
     "capacity_policy_registry_sha256", "capacity_plan_sha256",
     "stage_id_sha256", "logical_stage_id", "physical_attempt",
+    "physical_attempt_id", "global_physical_attempt_ordinal",
+    "logical_capacity_envelope_sha256",
+    "route_capability_snapshot_sha256",
     "contract_name_sha256", "contract_version",
     "contract_schema_sha256", "provider_route_identity_sha256",
     "stage_operational_context_ceiling_tokens",
@@ -296,6 +306,8 @@ _CAPACITY_ADMISSION_RECEIPT_FIELDS_V1 = frozenset({
     "route_context_capability_source", "model_context_limit",
     "role_sha256", "route", "rendered_request_sha256",
     "requested_output_token_cap", "final_output_reserve",
+    "route_max_output_tokens", "reasoning_token_reserve",
+    "reasoning_token_accounting",
     "admission_status", "model_request_sha256",
     "provider_payload_sha256", "egress_intent_sha256",
     "outbound_request_bytes_sha256", "destination_sha256", "state",
@@ -307,6 +319,8 @@ _CAPACITY_ADMISSION_RECEIPT_HASH_FIELDS_V1 = frozenset({
     "capacity_plan_sha256", "stage_id_sha256", "contract_name_sha256",
     "contract_schema_sha256", "provider_route_identity_sha256",
     "role_sha256", "rendered_request_sha256",
+    "logical_capacity_envelope_sha256",
+    "route_capability_snapshot_sha256",
 })
 _CAPACITY_ADMISSION_REQUEST_HASH_FIELDS_V1 = frozenset({
     "model_request_sha256", "provider_payload_sha256",
@@ -350,10 +364,12 @@ def _validate_capacity_admission_receipt_v1(
         "CAPACITY_ADMISSION_RECEIPT_HASH_INVALID",
     )
     integer_fields = (
-        "physical_attempt", "contract_version",
+        "physical_attempt", "global_physical_attempt_ordinal",
+        "contract_version",
         "stage_operational_context_ceiling_tokens",
         "route_context_capability_limit_tokens", "model_context_limit",
         "requested_output_token_cap", "final_output_reserve",
+        "route_max_output_tokens",
     )
     _require(
         all(type(body.get(field)) is int and body[field] > 0
@@ -376,6 +392,17 @@ def _validate_capacity_admission_receipt_v1(
         and body.get("route_context_capability_source") in {
             item.value for item in RouteContextCapabilitySourceV1
         },
+        "CAPACITY_ADMISSION_RECEIPT_LIMIT_INVALID",
+    )
+    _require(
+        isinstance(body.get("physical_attempt_id"), str)
+        and str(body["physical_attempt_id"]).startswith("physical-")
+        and type(body.get("reasoning_token_reserve")) is int
+        and body["reasoning_token_reserve"] >= 0
+        and body.get("reasoning_token_accounting")
+        == "INCLUDED_IN_COMPLETION_CAP"
+        and body["requested_output_token_cap"]
+        <= body["route_max_output_tokens"],
         "CAPACITY_ADMISSION_RECEIPT_LIMIT_INVALID",
     )
     state = body.get("state")
@@ -515,7 +542,10 @@ def _validate_dispatch_readiness_v1(
     integer_fields = (
         _DISPATCH_READINESS_CAP_FIELDS_V1
         | _DISPATCH_READINESS_COUNTER_FIELDS_V1
-        | {"requested_output_tokens", "total_requested_output_tokens"}
+        | {
+            "requested_output_tokens", "total_requested_output_tokens",
+            "global_physical_attempt_ordinal",
+        }
     )
     _require(
         all(type(body.get(field)) is int for field in integer_fields),
@@ -586,6 +616,10 @@ def _validate_dispatch_readiness_v1(
     _require(
         body["logical_stage_id"] == expected_stage.get("logical_stage_id")
         and body["physical_attempt_id"] == expected_physical_attempt_id,
+        "DISPATCH_READINESS_STAGE_MISMATCH",
+    )
+    _require(
+        body["global_physical_attempt_ordinal"] == 1,
         "DISPATCH_READINESS_STAGE_MISMATCH",
     )
     _require(
@@ -2788,6 +2822,15 @@ class FullShortDispatchLedgerObserverV1:
         sealed = matches[0]
         route_limit = sealed.get("route_context_capability_limit_tokens")
         route_source = sealed.get("route_context_capability_source")
+        route_max_output = sealed.get("max_output_tokens")
+        reasoning_accounting = str(
+            sealed.get("reasoning_token_accounting")
+            or "INCLUDED_IN_COMPLETION_CAP"
+        )
+        reasoning_reservation = str(
+            sealed.get("reasoning_output_reservation")
+            or "WITHIN_COMPLETION_CAP"
+        )
         _require(
             type(route_limit) is int
             and route_limit > 0
@@ -2797,6 +2840,17 @@ class FullShortDispatchLedgerObserverV1:
             },
             "CAPACITY_ROUTE_CONTEXT_LIMIT_INVALID",
         )
+        _require(
+            type(route_max_output) is int and route_max_output > 0,
+            "CAPACITY_ROUTE_CONTEXT_LIMIT_INVALID",
+        )
+        _require(
+            reasoning_accounting == "INCLUDED_IN_COMPLETION_CAP"
+            and reasoning_reservation == "WITHIN_COMPLETION_CAP",
+            "CAPACITY_ROUTE_CONTEXT_LIMIT_INVALID",
+        )
+        sealed["reasoning_token_accounting"] = reasoning_accounting
+        sealed["reasoning_output_reservation"] = reasoning_reservation
         _require(
             not (
                 self.external_actions_enabled
@@ -2815,10 +2869,32 @@ class FullShortDispatchLedgerObserverV1:
                 "model_name", "protocol", "route_fingerprint", "destination",
                 "route_context_capability_limit_tokens",
                 "route_context_capability_source",
+                "max_output_tokens", "reasoning_token_accounting",
+                "reasoning_output_reservation", "route_capability_sha256",
+                "route_capability_status",
             )},
+        )
+        capability_sha = sealed.get("route_capability_sha256")
+        sealed["route_capability_snapshot_sha256"] = (
+            capability_sha
+            if isinstance(capability_sha, str)
+            and _HEX64.fullmatch(capability_sha) is not None
+            else domain_sha256(
+                "novel-flywheel-offline-route-capability-snapshot-v1",
+                {key: sealed.get(key) for key in (
+                    "role", "lane", "provider_id_sha256",
+                    "model_id_sha256", "model_name", "protocol",
+                    "route_fingerprint", "destination",
+                    "route_context_capability_limit_tokens",
+                    "route_context_capability_source", "max_output_tokens",
+                    "reasoning_token_accounting",
+                    "reasoning_output_reservation",
+                )},
+            )
         )
         return sealed
 
+    @full_short_boundary_entry("FS.CAPACITY.ADMIT")
     def capacity_admission_context(
         self, *, route: str, role: str, physical_attempt: int | None = None,
     ) -> dict[str, Any]:
@@ -2847,20 +2923,22 @@ class FullShortDispatchLedgerObserverV1:
             1 for item in attempts
             if item.get("logical_stage_id") == logical_stage_id
         )
-        _require(
+        if (
             expected_physical_attempt
-            <= self.policy["max_physical_attempts_per_logical_stage"],
-            "CAPACITY_PHYSICAL_ATTEMPT_CAP_EXHAUSTED",
-        )
+            > self.policy["max_physical_attempts_per_logical_stage"]
+        ):
+            raise CapacityAdmissionFailureV1(
+                CapacityFailureCode.PHYSICAL_ATTEMPT_CAP_EXHAUSTED
+            )
         if physical_attempt is not None:
-            _require(
-                type(physical_attempt) is int and physical_attempt >= 1,
-                "CAPACITY_INVALID_ATTEMPT_DELTA",
-            )
-            _require(
-                physical_attempt == expected_physical_attempt,
-                "CAPACITY_PHYSICAL_ATTEMPT_DRIFT",
-            )
+            if type(physical_attempt) is not int or physical_attempt < 1:
+                raise CapacityAdmissionFailureV1(
+                    CapacityFailureCode.INVALID_ATTEMPT_DELTA
+                )
+            if physical_attempt != expected_physical_attempt:
+                raise CapacityAdmissionFailureV1(
+                    CapacityFailureCode.PHYSICAL_ATTEMPT_DRIFT
+                )
         sealed = self._sealed_route_binding(route=route, role=role)
         logical_capacity_envelope_sha256 = domain_sha256(
             "novel-flywheel-logical-stage-capacity-envelope-v1",
@@ -2881,6 +2959,9 @@ class FullShortDispatchLedgerObserverV1:
                 "route_manifest_sha256": self.policy[
                     "route_manifest_sha256"
                 ],
+                "destination_manifest_sha256": self.policy[
+                    "destination_manifest_sha256"
+                ],
             },
         )
         physical_attempt_id = "physical-" + domain_sha256(
@@ -2897,6 +2978,7 @@ class FullShortDispatchLedgerObserverV1:
             "logical_stage_id": logical_stage_id,
             "physical_attempt": expected_physical_attempt,
             "physical_attempt_id": physical_attempt_id,
+            "global_physical_attempt_ordinal": len(attempts) + 1,
             "logical_capacity_envelope_sha256": (
                 logical_capacity_envelope_sha256
             ),
@@ -2909,8 +2991,17 @@ class FullShortDispatchLedgerObserverV1:
             "route_context_capability_source": sealed[
                 "route_context_capability_source"
             ],
+            "route_capability_snapshot_sha256": sealed[
+                "route_capability_snapshot_sha256"
+            ],
+            "route_max_output_tokens": sealed["max_output_tokens"],
+            "reasoning_token_accounting": sealed[
+                "reasoning_token_accounting"
+            ],
+            "reasoning_token_reserve": 0,
         }
 
+    @full_short_boundary_entry("FS.CAPACITY.ADMIT")
     def bind_capacity_plan(
         self, *, plan: StageCapacityPlanV1, route: str, role: str,
     ) -> str:
@@ -2942,6 +3033,12 @@ class FullShortDispatchLedgerObserverV1:
             == expected["contract_schema_sha256"],
             "CAPACITY_PLAN_CONTRACT_OR_STAGE_DRIFT",
         )
+        if plan.requested_output_token_cap != expected[
+            "requested_output_tokens"
+        ]:
+            raise CapacityAdmissionFailureV1(
+                CapacityFailureCode.INVALID_ATTEMPT_DELTA
+            )
         _require(
             plan.provider_route_identity_sha256
             == context["provider_route_identity_sha256"]
@@ -2951,6 +3048,86 @@ class FullShortDispatchLedgerObserverV1:
             == context["route_context_capability_source"],
             "CAPACITY_PLAN_ROUTE_DRIFT",
         )
+        if not (
+            plan.physical_attempt_id == context["physical_attempt_id"]
+            and plan.global_physical_attempt_ordinal
+            == context["global_physical_attempt_ordinal"]
+            and plan.logical_capacity_envelope_sha256
+            == context["logical_capacity_envelope_sha256"]
+            and plan.route_capability_snapshot_sha256
+            == context["route_capability_snapshot_sha256"]
+            and plan.route_max_output_tokens
+            == context["route_max_output_tokens"]
+            and plan.reasoning_token_reserve
+            == context["reasoning_token_reserve"]
+            and plan.reasoning_token_accounting
+            == context["reasoning_token_accounting"]
+        ):
+            raise CapacityAdmissionFailureV1(
+                CapacityFailureCode.INVALID_ATTEMPT_DELTA
+            )
+        ledger = self.store.load_ledger(self.execution_id)
+        prior_attempts = [
+            item for item in ledger.get("attempts", [])
+            if item.get("logical_stage_id") == plan.logical_stage_id
+        ]
+        if prior_attempts:
+            prior = prior_attempts[-1]
+            prior_receipt = self.store.load_capacity_admission_receipt(
+                execution_id=self.execution_id,
+                plan_sha256=str(prior["capacity_plan_sha256"]),
+            )
+            immutable_delta_fields = (
+                "logical_capacity_envelope_sha256",
+                "route_capability_snapshot_sha256",
+                "provider_route_identity_sha256",
+                "route_context_capability_limit_tokens",
+                "route_context_capability_source",
+                "route_max_output_tokens",
+                "reasoning_token_reserve",
+                "reasoning_token_accounting",
+                "requested_output_token_cap",
+                "final_output_reserve",
+                "role_sha256",
+                "route",
+            )
+            candidate_delta = {
+                "logical_capacity_envelope_sha256": (
+                    plan.logical_capacity_envelope_sha256
+                ),
+                "route_capability_snapshot_sha256": (
+                    plan.route_capability_snapshot_sha256
+                ),
+                "provider_route_identity_sha256": (
+                    plan.provider_route_identity_sha256
+                ),
+                "route_context_capability_limit_tokens": (
+                    plan.route_context_capability_limit_tokens
+                ),
+                "route_context_capability_source": (
+                    plan.route_context_capability_source.value
+                ),
+                "route_max_output_tokens": plan.route_max_output_tokens,
+                "reasoning_token_reserve": plan.reasoning_token_reserve,
+                "reasoning_token_accounting": (
+                    plan.reasoning_token_accounting
+                ),
+                "requested_output_token_cap": (
+                    plan.requested_output_token_cap
+                ),
+                "final_output_reserve": plan.final_output_reserve,
+                "role_sha256": hashlib.sha256(
+                    role.encode("utf-8")
+                ).hexdigest(),
+                "route": route,
+            }
+            if any(
+                prior_receipt.get(field) != candidate_delta[field]
+                for field in immutable_delta_fields
+            ):
+                raise CapacityAdmissionFailureV1(
+                    CapacityFailureCode.INVALID_ATTEMPT_DELTA
+                )
         _require(
             plan.policy_registry_sha256
             == self.policy["capacity_policy_registry_sha256"]
@@ -2969,6 +3146,16 @@ class FullShortDispatchLedgerObserverV1:
             ).hexdigest(),
             "logical_stage_id": plan.logical_stage_id,
             "physical_attempt": plan.physical_attempt,
+            "physical_attempt_id": plan.physical_attempt_id,
+            "global_physical_attempt_ordinal": (
+                plan.global_physical_attempt_ordinal
+            ),
+            "logical_capacity_envelope_sha256": (
+                plan.logical_capacity_envelope_sha256
+            ),
+            "route_capability_snapshot_sha256": (
+                plan.route_capability_snapshot_sha256
+            ),
             "contract_name_sha256": hashlib.sha256(
                 plan.contract_name.encode("utf-8")
             ).hexdigest(),
@@ -2991,7 +3178,10 @@ class FullShortDispatchLedgerObserverV1:
             "route": route,
             "rendered_request_sha256": plan.rendered_request_sha256,
             "requested_output_token_cap": plan.requested_output_token_cap,
+            "route_max_output_tokens": plan.route_max_output_tokens,
             "final_output_reserve": plan.final_output_reserve,
+            "reasoning_token_reserve": plan.reasoning_token_reserve,
+            "reasoning_token_accounting": plan.reasoning_token_accounting,
             "admission_status": "PASS",
             "model_request_sha256": None,
             "provider_payload_sha256": None,
@@ -3220,15 +3410,12 @@ class FullShortDispatchLedgerObserverV1:
             expected_stage = self._validate_pending_logical_stage_plan()
             _require(role == expected_stage["role"],
                      "LOGICAL_STAGE_PLAN_ROLE_DRIFT")
-        route = deepcopy(matches[0])
-        route["role_binding_sha256"] = domain_sha256(
-            "novel-flywheel-full-short-role-binding-v1",
-            {key: route.get(key) for key in (
-                "role", "lane", "provider_id_sha256", "model_id_sha256",
-                "model_name", "protocol", "route_fingerprint", "destination",
-                "route_context_capability_limit_tokens",
-                "route_context_capability_source",
-            )},
+        route = self._sealed_route_binding(route=lane, role=role)
+        _require(
+            route.get("provider_id_sha256") == provider_hash
+            and route.get("model_id_sha256") == model_hash
+            and route.get("route_fingerprint") == route_fingerprint,
+            "ROUTE_BINDING_DRIFT",
         )
         _require(
             route["role_binding_sha256"]
@@ -3594,6 +3781,22 @@ class FullShortDispatchLedgerObserverV1:
             and capacity_receipt.get("logical_stage_id") == logical_stage_id
             and capacity_receipt.get("physical_attempt")
             == len(prior_logical_attempts) + 1
+            and capacity_receipt.get("physical_attempt_id")
+            == expected_capacity_context["physical_attempt_id"]
+            and capacity_receipt.get("global_physical_attempt_ordinal")
+            == expected_capacity_context[
+                "global_physical_attempt_ordinal"
+            ]
+            and capacity_receipt.get(
+                "logical_capacity_envelope_sha256"
+            ) == expected_capacity_context[
+                "logical_capacity_envelope_sha256"
+            ]
+            and capacity_receipt.get(
+                "route_capability_snapshot_sha256"
+            ) == expected_capacity_context[
+                "route_capability_snapshot_sha256"
+            ]
             and capacity_receipt.get("provider_route_identity_sha256")
             == route.get("role_binding_sha256")
             and capacity_receipt.get(
@@ -3659,6 +3862,15 @@ class FullShortDispatchLedgerObserverV1:
                 capacity_admission_receipt_sha256=capacity_receipt[
                     "capacity_admission_receipt_sha256"
                 ],
+                logical_capacity_envelope_sha256=capacity_receipt[
+                    "logical_capacity_envelope_sha256"
+                ],
+                route_capability_snapshot_sha256=capacity_receipt[
+                    "route_capability_snapshot_sha256"
+                ],
+                global_physical_attempt_ordinal=capacity_receipt[
+                    "global_physical_attempt_ordinal"
+                ],
             ))
             runtime_kernel.reserve_dispatch_token(
                 logical_stage_id=logical_stage_id,
@@ -3694,6 +3906,19 @@ class FullShortDispatchLedgerObserverV1:
             ],
             "logical_stage_id": logical_stage_id,
             "physical_attempt_id": physical_attempt_id,
+            "global_physical_attempt_ordinal": expected_capacity_context[
+                "global_physical_attempt_ordinal"
+            ],
+            "logical_capacity_envelope_sha256": (
+                expected_capacity_context[
+                    "logical_capacity_envelope_sha256"
+                ]
+            ),
+            "route_capability_snapshot_sha256": (
+                expected_capacity_context[
+                    "route_capability_snapshot_sha256"
+                ]
+            ),
             "outbound_request_bytes_sha256": (
                 outbound_request_bytes_sha256
             ),
@@ -3767,6 +3992,21 @@ class FullShortDispatchLedgerObserverV1:
                     ).hexdigest(),
                     "logical_stage_id": logical_stage_id,
                     "physical_attempt_id": physical_attempt_id,
+                    "global_physical_attempt_ordinal": (
+                        expected_capacity_context[
+                            "global_physical_attempt_ordinal"
+                        ]
+                    ),
+                    "logical_capacity_envelope_sha256": (
+                        expected_capacity_context[
+                            "logical_capacity_envelope_sha256"
+                        ]
+                    ),
+                    "route_capability_snapshot_sha256": (
+                        expected_capacity_context[
+                            "route_capability_snapshot_sha256"
+                        ]
+                    ),
                     "role_binding_sha256": route["role_binding_sha256"],
                     "route_fingerprint": route["route_fingerprint"],
                     "destination_sha256": attempt["destination_sha256"],
