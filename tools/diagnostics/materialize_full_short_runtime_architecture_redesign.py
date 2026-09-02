@@ -80,7 +80,7 @@ def _junit(path: Path, classification: str, head: str) -> dict[str, Any]:
         "version": 1,
         "classification": classification,
         "status": "PASS",
-        "source_head": implementation_head,
+        "source_head": head,
         **totals,
         "testcase_name_set_sha256": _sha(
             json.dumps(sorted(names), separators=(",", ":")).encode()
@@ -427,7 +427,7 @@ def main() -> int:
     _write_json(root, "full-suite-receipt-v1.json", {
         "schema": "OfflineFullSuiteQualifiedReceiptV1",
         "version": 1,
-        "source_head": head,
+        "source_head": implementation_head,
         "status": "BASELINE_BLOCKED_NOT_CLAIMED_AS_PASS",
         "collected_tests": 4947,
         "known_unrelated_product_copy_failure": "tests/api/test_learning.py::test_outline_generation_not_ready_errors_are_fixed_chinese",
