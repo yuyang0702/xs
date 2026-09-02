@@ -2460,8 +2460,8 @@ def bind_fake_gateway_capacity(db: Database) -> None:
         max_output_tokens=8_192,
     )
     for role in (
-        "planning", "draft", "review", "reader_review", "polish",
-        "final_review", "maintenance",
+        "planning", "draft", "review", "polish", "final_review",
+        "maintenance",
     ):
         if db.get_role_binding(role) is None:
             db.save_role_binding(
@@ -3292,6 +3292,7 @@ def test_post_write_maintenance_uses_project_id_and_restores_story_title(tmp_pat
 async def test_short_flywheel_archives_all_stages_and_formal_story(tmp_path) -> None:
     db = Database(tmp_path / "app.db")
     db.migrate()
+    bind_fake_gateway_capacity(db)
     store = ProjectStore(db, tmp_path / "workspace")
     project = store.create(ProjectCreate(
         title="Night Train", mode="short", genre="suspense",
@@ -3448,6 +3449,7 @@ async def test_trace_content_never_enters_stage_prompt_and_disabled_keeps_calls_
 async def test_ir_first_canary_reaches_complete_formal_manuscript(tmp_path) -> None:
     db = Database(tmp_path / "app.db")
     db.migrate()
+    bind_fake_gateway_capacity(db)
     store = ProjectStore(db, tmp_path / "workspace")
     project = store.create(ProjectCreate(
         title="IR Canary", mode="short", genre="mystery",
@@ -3462,10 +3464,13 @@ async def test_ir_first_canary_reaches_complete_formal_manuscript(tmp_path) -> N
             self.planning_calls: list[str] = []
             self.responses = iter([
                 "# Draft\nRough story.",
-                json.dumps({"score": 86, "hard_fail": False, "issues": ["tighten prose"]}),
-                json.dumps({"score": 84, "hard_fail": False, "issues": ["strengthen paid hook"]}),
+                quality_review(issues=["tighten prose"]),
+                quality_review(
+                    commercial=84, story=84, prose=84,
+                    issues=["strengthen paid hook"],
+                ),
                 "# Final Story\nHuman, polished prose.",
-                json.dumps({"score": 92, "hard_fail": False, "issues": []}),
+                quality_review(commercial=92, story=92, prose=92),
                 json.dumps({"facts": ["The passenger was found."]}),
             ])
 
@@ -4089,6 +4094,7 @@ def test_new_short_project_uses_stable_project_brief_event_authority(tmp_path) -
 async def test_short_flywheel_extracts_causal_chain_without_replacing_outline(tmp_path) -> None:
     db = Database(tmp_path / "app.db")
     db.migrate()
+    bind_fake_gateway_capacity(db)
     store = ProjectStore(db, tmp_path / "workspace")
     project = store.create(ProjectCreate(
         title="Revive Friend", mode="short", genre="suspense",
@@ -4112,10 +4118,10 @@ async def test_short_flywheel_extracts_causal_chain_without_replacing_outline(tm
                 '{"core_goal":{"content":"复活死去的朋友"},"cycles":[{"obstacle":"缺少灵魂媒介","effort":"调查死亡现场","result":"找到残缺记忆","state_change":"确认灵魂仍在"},{"obstacle":"仪式需要交换生命","effort":"寻找规则漏洞","result":"朋友暂时复活","state_change":"目标表面达成"}],"reversal":{"content":"朋友主动死亡是为了封印","prior_evidence":["死亡记录被销毁"]},"ending":{"surface_goal":"无法永久复活","inner_goal":"主角放下愧疚"},"covered_event_ids":["EV-00000001"]}'
                 "\nSHORT_CAUSAL_CHAIN_JSON_END",
                 "正文草稿" * 1500,
-                json.dumps({"score": 86, "hard_fail": False, "issues": []}),
-                json.dumps({"score": 84, "hard_fail": False, "issues": []}),
+                quality_review(commercial=86, story=86, prose=86),
+                quality_review(commercial=84, story=84, prose=84),
                 "正文终稿",
-                json.dumps({"score": 92, "hard_fail": False, "issues": []}),
+                quality_review(commercial=92, story=92, prose=92),
                 json.dumps({"facts": ["主角放下愧疚"]}),
             ])
 
@@ -4229,6 +4235,23 @@ async def test_short_flywheel_extracts_causal_chain_without_replacing_outline(tm
                     ],
                     "summary": "全文节拍顺序和结局均已核对。",
                 }, ensure_ascii=False), {"role": role, "model_name": f"fake-{role}"})
+            if "short_maintenance_business_complete_v2" in user:
+                authority = json.loads(user)
+                manuscript_sha256 = authority[
+                    "authoritative_manuscript"
+                ]["sha256"]
+                return ModelResult(json.dumps({
+                    "facts": ["主角放下愧疚"],
+                    "state": {},
+                    "coverage": {
+                        "manuscript_sha256": manuscript_sha256,
+                        "complete": True,
+                    },
+                    "disposition": "changes",
+                    "no_change_reason": "not_applicable_changes_present",
+                }, ensure_ascii=False), {
+                    "role": role, "model_name": f"fake-{role}",
+                })
             text = next(self.responses)
             if "TARGET READER SIMULATION" in user:
                 payload = json.loads(text)
@@ -4273,6 +4296,7 @@ async def test_short_flywheel_extracts_causal_chain_without_replacing_outline(tm
 async def test_draft_uses_style_profile_only_when_project_enables_it(tmp_path) -> None:
     db = Database(tmp_path / "app.db")
     db.migrate()
+    bind_fake_gateway_capacity(db)
     store = ProjectStore(db, tmp_path / "workspace")
     project = store.create(ProjectCreate(
         title="Voice", mode="short", genre="suspense",
@@ -4323,6 +4347,7 @@ async def test_draft_uses_style_profile_only_when_project_enables_it(tmp_path) -
 async def test_short_flywheel_uses_managed_run_id_and_restores_on_cancel(tmp_path) -> None:
     db = Database(tmp_path / "app.db")
     db.migrate()
+    bind_fake_gateway_capacity(db)
     store = ProjectStore(db, tmp_path / "workspace")
     project = store.create(ProjectCreate(
         title="Cancel", mode="short", genre="suspense",
@@ -5436,16 +5461,21 @@ async def test_opening_chapter_allows_two_corrective_cycles(tmp_path) -> None:
 async def test_short_story_falls_back_to_review_when_reader_model_fails(tmp_path) -> None:
     db = Database(tmp_path / "app.db")
     db.migrate()
+    bind_fake_gateway_capacity(db)
     store = ProjectStore(db, tmp_path / "workspace")
     project = store.create(ProjectCreate(
         title="Fallback", mode="short", genre="romance",
         premise="A relationship collapses.", target_words=6000,
     ))
-    db.save_role_binding("reader_review", "reader-provider", "reader-model", None, None)
+    db.save_role_binding(
+        "reader_review", "fake-capacity-provider", "fake-capacity-model",
+        None, None,
+    )
     skill_root = tmp_path / "skills"
     make_prompt_skills(skill_root)
     gateway = ReaderFallbackGateway([
-        "# Plan", "# Draft", quality_review(), "# Polish", quality_review(),
+        "# Plan", "# Draft", quality_review(), quality_review(),
+        "# Polish", quality_review(),
         json.dumps({"facts": []}),
     ])
     service = WorkflowService(db, store, gateway, SkillGate(db, SkillScanner([skill_root])))
@@ -5454,7 +5484,7 @@ async def test_short_story_falls_back_to_review_when_reader_model_fails(tmp_path
 
     assert result["status"] == "completed"
     assert gateway.roles.count("reader_review") == 2
-    assert gateway.roles.count("review") == 6
+    assert gateway.roles.count("review") == 7
     events = db.list_run_events(result["id"])
     fallback = next(item for item in events if item["event_type"] == "reader_fallback")
     assert fallback["severity"] == "warning"
@@ -5465,12 +5495,16 @@ async def test_short_story_falls_back_to_review_when_reader_model_fails(tmp_path
 async def test_short_story_retries_reader_review_without_trusting_semantic_rewrap(tmp_path) -> None:
     db = Database(tmp_path / "app.db")
     db.migrate()
+    bind_fake_gateway_capacity(db)
     store = ProjectStore(db, tmp_path / "workspace")
     project = store.create(ProjectCreate(
         title="Reader repair", mode="short", genre="romance",
         premise="A relationship collapses.", target_words=6000,
     ))
-    db.save_role_binding("reader_review", "reader-provider", "reader-model", None, None)
+    db.save_role_binding(
+        "reader_review", "fake-capacity-provider", "fake-capacity-model",
+        None, None,
+    )
     skill_root = tmp_path / "skills"
     make_prompt_skills(skill_root)
     malformed_reader_review = """{
