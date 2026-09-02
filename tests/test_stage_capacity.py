@@ -21,6 +21,8 @@ from novel_flywheel.stage_capacity import (
     CapacityLayerClass,
     CapacityLayerProjectionV1,
     CapacityRecoveryDisposition,
+    MAX_CONTEXT_LIMIT_TOKENS_V1,
+    RouteContextCapabilitySourceV1,
     StageCapacityAdmissionEngineV1,
     StageCapacityPolicyRegistryV1,
     StageCapacityPolicyV1,
@@ -115,7 +117,46 @@ def test_exact_ready_pref_fix_shape_has_deterministic_headroom() -> None:
     assert plan.headroom == 6616
     assert plan.protected_layer_tokens == 22113
     assert plan.advisory_layer_tokens == 0
+    assert plan.stage_operational_context_ceiling_tokens == 32768
+    assert plan.route_context_capability_limit_tokens == 32768
+    assert (
+        plan.route_context_capability_source
+        is RouteContextCapabilitySourceV1.MODEL_CONFIGURATION
+    )
+    assert plan.model_context_limit == 32768
     assert plan.plan_sha256 == _plan().plan_sha256
+
+
+def test_route_capability_below_stage_ceiling_is_effective_limit() -> None:
+    plan = _plan(
+        model_context_limit=16384,
+        rendered_message_tokens=10000,
+    )
+    assert plan.route_context_capability_limit_tokens == 16384
+    assert plan.stage_operational_context_ceiling_tokens == 32768
+    assert plan.model_context_limit == 16384
+    assert plan.prompt_budget == 12788
+
+
+def test_route_capability_above_stage_ceiling_cannot_raise_runtime_policy() -> None:
+    plan = _plan(model_context_limit=128000)
+    assert plan.route_context_capability_limit_tokens == 128000
+    assert plan.stage_operational_context_ceiling_tokens == 32768
+    assert plan.model_context_limit == 32768
+    assert plan.prompt_budget == 29172
+
+
+def test_offline_manifest_context_source_is_hash_bound() -> None:
+    plan = _plan(
+        route_context_capability_source=(
+            "offline_deterministic_gateway_manifest"
+        ),
+    )
+    assert (
+        plan.route_context_capability_source
+        is RouteContextCapabilitySourceV1.OFFLINE_DETERMINISTIC_GATEWAY_MANIFEST
+    )
+    assert plan.plan_sha256 != _plan().plan_sha256
 
 
 def test_protected_layers_over_budget_require_registered_windowing() -> None:
@@ -168,10 +209,28 @@ def test_output_reserve_conflict_is_typed_and_denied() -> None:
     assert caught.value.failure_id == "capacity.output_reserve_unsatisfied"
 
 
-def test_missing_context_limit_is_typed_and_denied() -> None:
-    plan = _plan(model_context_limit=0)
-    assert plan.admission_status is AdmissionStatus.DENIED
-    assert plan.denial_failure_id == CapacityFailureCode.CONTEXT_LIMIT_UNAVAILABLE
+def test_missing_context_limit_is_typed_and_fails_closed() -> None:
+    with pytest.raises(CapacityAdmissionFailureV1) as caught:
+        _plan(model_context_limit=None)
+    assert caught.value.failure_id == "capacity.context_limit_unavailable"
+
+
+@pytest.mark.parametrize(
+    "invalid_limit",
+    (True, False, -1, 0, MAX_CONTEXT_LIMIT_TOKENS_V1 + 1),
+)
+def test_invalid_route_context_capability_is_typed(
+    invalid_limit: object,
+) -> None:
+    with pytest.raises(CapacityAdmissionFailureV1) as caught:
+        _plan(model_context_limit=invalid_limit)
+    assert caught.value.failure_id == "capacity.context_limit_inconsistent"
+
+
+def test_unknown_route_context_capability_source_is_typed() -> None:
+    with pytest.raises(CapacityAdmissionFailureV1) as caught:
+        _plan(route_context_capability_source="provider_marketing_page")
+    assert caught.value.failure_id == "capacity.context_limit_inconsistent"
 
 
 def test_every_capacity_failure_code_is_registered() -> None:
@@ -219,11 +278,10 @@ async def test_denied_attempt_never_retries_or_reaches_gateway() -> None:
         async def complete_configured_fallback(self, *_args, **_kwargs):
             self.calls += 1
 
-    denied = _plan(model_context_limit=0)
     gateway = Gateway()
 
     def deny(*_args, **_kwargs) -> None:
-        denied.require_pass()
+        _plan(model_context_limit=None)
 
     with pytest.raises(CapacityAdmissionFailureV1) as caught:
         await execute_model_route_runtime(
@@ -250,6 +308,9 @@ def _review_registry(**overrides) -> StageCapacityPolicyRegistryV1:
         "semantic_windowing_allowed": original.semantic_windowing_allowed,
         "minimum_wrapper_and_estimator_margin_tokens": (
             original.minimum_wrapper_and_estimator_margin_tokens
+        ),
+        "stage_operational_context_ceiling_tokens": (
+            original.stage_operational_context_ceiling_tokens
         ),
         "allowed_transform_policy_ids": original.allowed_transform_policy_ids,
         "allowed_semantic_scopes": original.allowed_semantic_scopes,
@@ -319,6 +380,49 @@ def test_registry_minimum_estimator_margin_is_an_admission_rule() -> None:
     plan = _plan(policy_registry=registry)
     assert plan.admission_status is AdmissionStatus.DENIED
     assert plan.denial_failure_id is CapacityFailureCode.POLICY_VIOLATION
+
+
+def test_custom_registry_stage_ceiling_controls_effective_limit() -> None:
+    registry = _review_registry(
+        stage_operational_context_ceiling_tokens=20000,
+    )
+    plan = _plan(
+        policy_registry=registry,
+        model_context_limit=128000,
+        rendered_message_tokens=10000,
+    )
+    assert plan.stage_operational_context_ceiling_tokens == 20000
+    assert plan.route_context_capability_limit_tokens == 128000
+    assert plan.model_context_limit == 20000
+    assert plan.policy_registry_sha256 == registry.identity_sha256
+    StageCapacityAdmissionEngineV1.enforce(plan, policy_registry=registry)
+
+
+@pytest.mark.parametrize("invalid_ceiling", (True, 0, -1, 2_000_001))
+def test_invalid_registry_stage_ceiling_is_policy_violation(
+    invalid_ceiling: object,
+) -> None:
+    with pytest.raises(CapacityAdmissionFailureV1) as caught:
+        _review_registry(
+            stage_operational_context_ceiling_tokens=invalid_ceiling,
+        )
+    assert caught.value.failure_id == "capacity.policy_violation"
+
+
+def test_dual_context_limits_and_source_reject_hash_or_semantic_tamper() -> None:
+    plan = _plan(model_context_limit=128000)
+    with pytest.raises(
+        ValueError,
+        match="capacity_effective_context_limit_inconsistent",
+    ):
+        replace(plan, model_context_limit=128000)
+    with pytest.raises(ValueError, match="capacity_plan_sha256_mismatch"):
+        replace(
+            plan,
+            route_context_capability_source=(
+                RouteContextCapabilitySourceV1.OFFLINE_DETERMINISTIC_GATEWAY_MANIFEST
+            ),
+        )
 
 
 @pytest.mark.parametrize(

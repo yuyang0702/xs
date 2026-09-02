@@ -115,8 +115,8 @@ def _routes() -> tuple[dict, ...]:
         "route_fingerprint": "9" * 64,
         "destination": "https://unit.test:443/v1/messages",
         "max_output_tokens": 4096,
-        "model_context_limit": 32768,
-        "model_context_limit_source": "model_configuration",
+        "route_context_capability_limit_tokens": 32768,
+        "route_context_capability_source": "model_configuration",
     },)
 
 
@@ -305,7 +305,12 @@ def _bind_route_with_capacity(
         provider_route_identity_sha256=context[
             "provider_route_identity_sha256"
         ],
-        model_context_limit=context["model_context_limit"],
+        model_context_limit=context[
+            "route_context_capability_limit_tokens"
+        ],
+        route_context_capability_source=context[
+            "route_context_capability_source"
+        ],
         requested_output_token_cap=expected["requested_output_tokens"],
         final_output_reserve=expected["requested_output_tokens"],
         rendered_message_tokens=0,
@@ -3292,8 +3297,11 @@ def test_capacity_plan_binding_drift_fails_before_route_resolution(
         ),
         model_context_limit=(
             16384 if drift == "context_limit"
-            else context["model_context_limit"]
+            else context["route_context_capability_limit_tokens"]
         ),
+        route_context_capability_source=context[
+            "route_context_capability_source"
+        ],
         requested_output_token_cap=128, final_output_reserve=128,
         rendered_message_tokens=0, structured_envelope_tokens=0,
         provider_envelope_tokens=256,
@@ -3354,3 +3362,44 @@ def test_completion_rejects_capacity_receipt_one_to_one_drift(
     assert caught.value.reason_code == (
         "COMPLETION_CAPACITY_ADMISSION_PROVENANCE_INVALID"
     )
+
+
+@pytest.mark.parametrize(
+    "tamper", ("missing_file", "missing_field", "source", "effective_limit"),
+)
+def test_terminal_capacity_receipt_audit_rejects_durable_tamper(
+    tmp_path: Path, tamper: str,
+) -> None:
+    store = _store(tmp_path)
+    execution_id = f"capacity-terminal-tamper-{tamper}"
+    _authorize_offline(store, execution_id)
+    _dispatch_and_close(store, execution_id)
+    ledger = store.load_ledger(execution_id)
+    attempt = ledger["attempts"][0]
+    plan_sha256 = attempt["capacity_plan_sha256"]
+    store.verify_completion_capacity_receipts(
+        execution_id=execution_id, policy=_policy(store), ledger=ledger,
+    )
+    path = store._capacity_path(execution_id, plan_sha256)
+    if tamper == "missing_file":
+        path.rename(path.with_suffix(".bak"))
+    else:
+        receipt = store.load_capacity_admission_receipt(
+            execution_id=execution_id, plan_sha256=plan_sha256,
+        )
+        body = dict(receipt)
+        body.pop("capacity_admission_receipt_sha256")
+        if tamper == "missing_field":
+            body.pop("route_context_capability_source")
+        elif tamper == "source":
+            body["route_context_capability_source"] = "unsealed_marketing_claim"
+        else:
+            body["model_context_limit"] = 16384
+        body["capacity_admission_receipt_sha256"] = domain_sha256(
+            "novel-flywheel-capacity-admission-receipt-v1", body,
+        )
+        store._replace(path, body)
+    with pytest.raises(FullShortExecutionBoundaryError):
+        store.verify_completion_capacity_receipts(
+            execution_id=execution_id, policy=_policy(store), ledger=ledger,
+        )

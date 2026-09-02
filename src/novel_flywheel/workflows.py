@@ -100,6 +100,7 @@ from novel_flywheel.stage_capacity import (
     CapacityAdmissionFailureV1,
     CapacityRecoveryDisposition,
     DEFAULT_STAGE_CAPACITY_POLICY_REGISTRY_V1,
+    RouteContextCapabilitySourceV1,
     StageCapacityAdmissionEngineV1,
     build_stage_capacity_plan_v1,
     capacity_failure_recovery_disposition_v1,
@@ -30797,6 +30798,12 @@ class WorkflowService:
                     (actual_system + "\n\0" + actual_user).encode("utf-8")
                 ).hexdigest()
                 admission_context: dict[str, object] | None = None
+                route_context_capability_limit_tokens = int(
+                    selected_context_window
+                )
+                route_context_capability_source: (
+                    RouteContextCapabilitySourceV1 | str
+                ) = RouteContextCapabilitySourceV1.MODEL_CONFIGURATION
                 capacity_context = getattr(
                     execution_observer, "capacity_admission_context", None,
                 )
@@ -30814,21 +30821,26 @@ class WorkflowService:
                             "capacity admission context is not a mapping"
                         )
                     admission_context = candidate
-                    sealed_context_limit = int(
-                        candidate.get("model_context_limit") or 0
+                    route_context_capability_limit_tokens = int(
+                        candidate.get(
+                            "route_context_capability_limit_tokens"
+                        ) or 0
                     )
-                    if sealed_context_limit <= 0:
+                    if route_context_capability_limit_tokens <= 0:
                         raise CapacityAdmissionFailureV1(
                             CapacityFailureCode.CONTEXT_LIMIT_UNAVAILABLE
                         )
+                    route_context_capability_source = candidate.get(
+                        "route_context_capability_source"
+                    )  # type: ignore[assignment]
                     if (
                         selected_context_window
-                        and selected_context_window != sealed_context_limit
+                        and selected_context_window
+                        != route_context_capability_limit_tokens
                     ):
                         raise CapacityAdmissionFailureV1(
                             CapacityFailureCode.CONTEXT_LIMIT_INCONSISTENT
                         )
-                    selected_context_window = sealed_context_limit
                 # Capacity policy belongs to the semantic execution contract,
                 # not to the provider route role.  In particular,
                 # ``revision_plan`` can route through ``planning`` and
@@ -30860,7 +30872,16 @@ class WorkflowService:
                             "context_window": selected_context_window,
                         })
                     ),
-                    "model_context_limit": int(selected_context_window),
+                    # ``build_stage_capacity_plan_v1`` retains this historical
+                    # parameter name for the provider/route capability.  The
+                    # returned plan derives the effective model context limit
+                    # from this value and the stage-owned ceiling.
+                    "model_context_limit": (
+                        route_context_capability_limit_tokens
+                    ),
+                    "route_context_capability_source": (
+                        route_context_capability_source
+                    ),
                     "requested_output_token_cap": output_cap,
                     "final_output_reserve": output_cap,
                     "rendered_message_tokens": estimate_input_tokens(

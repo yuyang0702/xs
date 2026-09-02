@@ -14,6 +14,7 @@ from novel_flywheel.recovery_engine import FailureClass, ReliabilityFailure
 
 
 CAPACITY_BOUNDARY_ID_V1 = "FS.CAPACITY.ADMIT"
+MAX_CONTEXT_LIMIT_TOKENS_V1 = 2_000_000
 
 
 def _canonical_sha256(value: object) -> str:
@@ -54,6 +55,13 @@ class CapacityRecoveryDisposition(StrEnum):
     COMPACT = "COMPACT"
     SEGMENT = "SEGMENT"
     STOP = "STOP"
+
+
+class RouteContextCapabilitySourceV1(StrEnum):
+    MODEL_CONFIGURATION = "model_configuration"
+    OFFLINE_DETERMINISTIC_GATEWAY_MANIFEST = (
+        "offline_deterministic_gateway_manifest"
+    )
 
 
 class CapacityFailureCode(StrEnum):
@@ -110,6 +118,15 @@ class CapacityAdmissionFailureV1(RegisteredBoundaryFailureV1):
                 "physical_attempt": plan.physical_attempt,
                 "plan_sha256": plan.plan_sha256,
                 "admission_status": plan.admission_status.value,
+                "stage_operational_context_ceiling_tokens": (
+                    plan.stage_operational_context_ceiling_tokens
+                ),
+                "route_context_capability_limit_tokens": (
+                    plan.route_context_capability_limit_tokens
+                ),
+                "route_context_capability_source": (
+                    plan.route_context_capability_source.value
+                ),
                 "model_context_limit": plan.model_context_limit,
                 "prompt_budget": plan.prompt_budget,
                 "expected_rendered_input": plan.expected_rendered_input,
@@ -128,6 +145,7 @@ class StageCapacityPolicyV1:
     compaction_allowed: bool
     semantic_windowing_allowed: bool
     minimum_wrapper_and_estimator_margin_tokens: int
+    stage_operational_context_ceiling_tokens: int = 32768
     allowed_transform_policy_ids: tuple[str, ...] = (
         "identity.v1",
         "advisory.paragraph.v1",
@@ -141,6 +159,18 @@ class StageCapacityPolicyV1:
     recovery_policy_id: str = "capacity.recovery.fail-closed.v1"
     segmentation_failure_ids: tuple[CapacityFailureCode, ...] = ()
 
+    def __post_init__(self) -> None:
+        ceiling = self.stage_operational_context_ceiling_tokens
+        if (
+            isinstance(ceiling, bool)
+            or not isinstance(ceiling, int)
+            or ceiling <= 0
+            or ceiling > MAX_CONTEXT_LIMIT_TOKENS_V1
+        ):
+            raise CapacityAdmissionFailureV1(
+                CapacityFailureCode.POLICY_VIOLATION,
+            )
+
     def canonical_payload(self) -> dict[str, object]:
         return {
             "stage": self.stage,
@@ -152,6 +182,9 @@ class StageCapacityPolicyV1:
             "semantic_windowing_allowed": self.semantic_windowing_allowed,
             "minimum_wrapper_and_estimator_margin_tokens": (
                 self.minimum_wrapper_and_estimator_margin_tokens
+            ),
+            "stage_operational_context_ceiling_tokens": (
+                self.stage_operational_context_ceiling_tokens
             ),
             "allowed_transform_policy_ids": list(
                 self.allowed_transform_policy_ids
@@ -356,6 +389,9 @@ class StageCapacityPlanV1:
     contract_version: int
     contract_schema_sha256: str
     provider_route_identity_sha256: str
+    stage_operational_context_ceiling_tokens: int
+    route_context_capability_limit_tokens: int
+    route_context_capability_source: RouteContextCapabilitySourceV1
     model_context_limit: int
     requested_output_token_cap: int
     final_output_reserve: int
@@ -386,6 +422,9 @@ class StageCapacityPlanV1:
         payload["denial_failure_id"] = (
             self.denial_failure_id.value if self.denial_failure_id else None
         )
+        payload["route_context_capability_source"] = (
+            self.route_context_capability_source.value
+        )
         payload["layer_projections"] = [
             {
                 **asdict(layer),
@@ -409,6 +448,29 @@ class StageCapacityPlanV1:
                 self.parent_plan_sha256,
                 field_name="parent_plan_sha256",
             )
+        if not isinstance(
+            self.route_context_capability_source,
+            RouteContextCapabilitySourceV1,
+        ):
+            raise ValueError("route_context_capability_source_invalid")
+        for field_name in (
+            "stage_operational_context_ceiling_tokens",
+            "route_context_capability_limit_tokens",
+            "model_context_limit",
+        ):
+            value = getattr(self, field_name)
+            if (
+                isinstance(value, bool)
+                or not isinstance(value, int)
+                or value <= 0
+                or value > MAX_CONTEXT_LIMIT_TOKENS_V1
+            ):
+                raise ValueError(f"{field_name}_invalid")
+        if self.model_context_limit != min(
+            self.stage_operational_context_ceiling_tokens,
+            self.route_context_capability_limit_tokens,
+        ):
+            raise ValueError("capacity_effective_context_limit_inconsistent")
         if _canonical_sha256(self.canonical_payload()) != self.plan_sha256:
             raise ValueError("capacity_plan_sha256_mismatch")
 
@@ -431,7 +493,7 @@ def build_stage_capacity_plan_v1(
     contract_version: int,
     contract_schema_sha256: str,
     provider_route_identity_sha256: str,
-    model_context_limit: int,
+    model_context_limit: int | None,
     requested_output_token_cap: int,
     final_output_reserve: int,
     rendered_message_tokens: int,
@@ -441,6 +503,9 @@ def build_stage_capacity_plan_v1(
     rendered_request_sha256: str,
     layer_projections: Iterable[CapacityLayerProjectionV1],
     parent_plan_sha256: str | None,
+    route_context_capability_source: (
+        RouteContextCapabilitySourceV1 | str
+    ) = RouteContextCapabilitySourceV1.MODEL_CONFIGURATION,
     policy_registry: StageCapacityPolicyRegistryV1 = (
         DEFAULT_STAGE_CAPACITY_POLICY_REGISTRY_V1
     ),
@@ -451,6 +516,27 @@ def build_stage_capacity_plan_v1(
         )
     if physical_attempt < 1:
         raise ValueError("capacity_physical_attempt_invalid")
+    if model_context_limit is None:
+        raise CapacityAdmissionFailureV1(
+            CapacityFailureCode.CONTEXT_LIMIT_UNAVAILABLE,
+        )
+    if (
+        isinstance(model_context_limit, bool)
+        or not isinstance(model_context_limit, int)
+        or model_context_limit <= 0
+        or model_context_limit > MAX_CONTEXT_LIMIT_TOKENS_V1
+    ):
+        raise CapacityAdmissionFailureV1(
+            CapacityFailureCode.CONTEXT_LIMIT_INCONSISTENT,
+        )
+    try:
+        capability_source = RouteContextCapabilitySourceV1(
+            route_context_capability_source
+        )
+    except (TypeError, ValueError) as exc:
+        raise CapacityAdmissionFailureV1(
+            CapacityFailureCode.CONTEXT_LIMIT_INCONSISTENT,
+        ) from exc
     values = (
         requested_output_token_cap,
         final_output_reserve,
@@ -462,9 +548,12 @@ def build_stage_capacity_plan_v1(
     if any(value < 0 for value in values):
         raise ValueError("capacity_value_negative")
     projections = tuple(layer_projections)
+    policy = policy_registry.require_policy(stage)
+    stage_context_ceiling = policy.stage_operational_context_ceiling_tokens
+    effective_context_limit = min(model_context_limit, stage_context_ceiling)
     expected_rendered_input = rendered_message_tokens + structured_envelope_tokens
     prompt_budget = (
-        model_context_limit
+        effective_context_limit
         - final_output_reserve
         - provider_envelope_tokens
         - wrapper_and_estimator_margin_tokens
@@ -483,7 +572,6 @@ def build_stage_capacity_plan_v1(
         for layer in projections
         if layer.classification not in protected_classes
     )
-    policy = policy_registry.policies[stage]
     unsupported_layers = any(
         layer.classification not in policy.allowed_layer_classes
         for layer in projections
@@ -530,9 +618,6 @@ def build_stage_capacity_plan_v1(
     ):
         status = AdmissionStatus.DENIED
         failure = CapacityFailureCode.POLICY_VIOLATION
-    elif model_context_limit <= 0:
-        status = AdmissionStatus.DENIED
-        failure = CapacityFailureCode.CONTEXT_LIMIT_UNAVAILABLE
     elif (
         requested_output_token_cap <= 0
         or final_output_reserve < requested_output_token_cap
@@ -565,7 +650,10 @@ def build_stage_capacity_plan_v1(
         "contract_version": contract_version,
         "contract_schema_sha256": contract_schema_sha256,
         "provider_route_identity_sha256": provider_route_identity_sha256,
-        "model_context_limit": model_context_limit,
+        "stage_operational_context_ceiling_tokens": stage_context_ceiling,
+        "route_context_capability_limit_tokens": model_context_limit,
+        "route_context_capability_source": capability_source,
+        "model_context_limit": effective_context_limit,
         "requested_output_token_cap": requested_output_token_cap,
         "final_output_reserve": final_output_reserve,
         "rendered_message_tokens": rendered_message_tokens,
@@ -591,6 +679,7 @@ def build_stage_capacity_plan_v1(
         **payload,
         "admission_status": status.value,
         "denial_failure_id": failure.value if failure else None,
+        "route_context_capability_source": capability_source.value,
         "layer_projections": [
             {
                 **asdict(layer),
@@ -677,6 +766,16 @@ def enforce_stage_capacity_plan_v1(
         or plan.compaction_policy_id != policy.compaction_policy_id
         or plan.segmentation_policy_id != policy.segmentation_policy_id
         or plan.recovery_policy_id != policy.recovery_policy_id
+        or plan.stage_operational_context_ceiling_tokens
+        != policy.stage_operational_context_ceiling_tokens
+        or not isinstance(
+            plan.route_context_capability_source,
+            RouteContextCapabilitySourceV1,
+        )
+        or plan.model_context_limit != min(
+            plan.stage_operational_context_ceiling_tokens,
+            plan.route_context_capability_limit_tokens,
+        )
     ):
         raise CapacityAdmissionFailureV1(
             CapacityFailureCode.POLICY_VIOLATION,
@@ -735,6 +834,8 @@ __all__ = [
     "CapacityLayerProjectionV1",
     "DEFAULT_STAGE_CAPACITY_POLICY_REGISTRY_V1",
     "CapacityRecoveryDisposition",
+    "MAX_CONTEXT_LIMIT_TOKENS_V1",
+    "RouteContextCapabilitySourceV1",
     "StageCapacityAdmissionEngineV1",
     "StageCapacityPlanV1",
     "StageCapacityPolicyRegistryV1",

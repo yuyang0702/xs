@@ -4,6 +4,7 @@ import asyncio
 import json
 import hashlib
 import os
+import shutil
 import sys
 from datetime import datetime, timedelta, timezone
 from difflib import SequenceMatcher
@@ -170,6 +171,70 @@ async def test_direct_execution_preflight_failure_persists_typed_receipt(
             secret_store_factory=lambda: None,
         )
     assert paths[0].read_bytes() == first_raw
+
+
+@pytest.mark.asyncio
+async def test_live_offline_context_manifest_fails_before_secret_factory(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    called = False
+
+    def secret_factory():
+        nonlocal called
+        called = True
+        raise AssertionError("secret factory must not be called")
+
+    bindings = {
+        "project_id": "project",
+        "logical_stage_plan": [],
+        "routes": [{
+            "route_context_capability_source": (
+                "offline_deterministic_gateway_manifest"
+            ),
+        }],
+    }
+    document = {
+        "policy": {
+            "run_id": "offline-source-live-forbidden",
+            "monetary_cost_cap_state": "UNKNOWN_NOT_SEALED",
+        },
+        "public_bindings": bindings,
+    }
+    raw = json.dumps(document).encode("utf-8")
+    authorization = {"validated": True}
+    monkeypatch.setattr(
+        runner, "validate_full_short_canonical_authorization_v1",
+        lambda *_args, **_kwargs: authorization,
+    )
+    monkeypatch.setattr(
+        runner, "collect_live_bindings",
+        lambda **_kwargs: ({}, bindings),
+    )
+    args = SimpleNamespace(
+        authorization_raw=raw,
+        activated_sha256=hashlib.sha256(raw).hexdigest(),
+        store_root=tmp_path / "control-store",
+        repo=tmp_path,
+        data_dir=tmp_path,
+    )
+
+    with pytest.raises(
+        runner.CapacityAdmissionFailureV1,
+        match="capacity.policy_violation",
+    ):
+        await runner.execute_full_short_control_plane(
+            args, authorization, external_actions_enabled=True,
+            secret_store_factory=secret_factory,
+        )
+
+    assert called is False
+    receipt = json.loads(next(
+        args.store_root.glob("preflight-failure-*.json")
+    ).read_text(encoding="utf-8"))
+    assert receipt["approval_created"] is False
+    assert receipt["nonce_created"] is False
+    assert receipt["credential_lookup_count"] == 0
+    assert receipt["network_calls"] == 0
 
 
 @pytest.mark.asyncio
@@ -346,6 +411,191 @@ def _bound_project(tmp_path: Path) -> tuple[Path, Path, str, Database]:
     return repo, data, project.id, db
 
 
+def _private_context_manifest_copy(
+    tmp_path: Path, *, planning_override: bool = False,
+    install_manifest: bool = True,
+) -> tuple[Database, Database, str, Path]:
+    repo, data, project_id, source_db = _bound_project(tmp_path)
+    source_model = source_db.get_model("model")
+    assert source_model is not None
+    source_db.save_model(
+        model_id="model",
+        provider_id="provider",
+        display_name=str(source_model["display_name"]),
+        model_name=str(source_model["model_name"]),
+        context_window=8_192,
+        max_output_tokens=source_model.get("max_output_tokens"),
+        capabilities={"live_source_capability": "must-survive"},
+    )
+    source_db.save_model(
+        model_id="unbound-model",
+        provider_id="provider",
+        display_name="Unbound",
+        model_name="unbound",
+        context_window=4_096,
+        max_output_tokens=1_024,
+        capabilities={"unbound": True},
+    )
+    if planning_override:
+        source_db.save_model(
+            model_id="private-planning-model",
+            provider_id="provider",
+            display_name="Private Planning",
+            model_name="private-planning",
+            context_window=None,
+            max_output_tokens=None,
+            capabilities={"planning_override_source": True},
+        )
+    live_data = repo / "data"
+    live_data.mkdir()
+    shutil.copy2(data / "app.db", live_data / "app.db")
+    live_db = Database(live_data / "app.db")
+    live_project = live_db.get_project(project_id)
+    assert live_project is not None
+    live_database_sha256 = hashlib.sha256(
+        (live_data / "app.db").read_bytes()
+    ).hexdigest()
+    private_data = dry_run._copy_private_data(
+        repo=repo,
+        source_project=Path(str(live_project["path"])),
+        project_id=project_id,
+        target=tmp_path / "private",
+        install_offline_gateway_context_manifest=install_manifest,
+        private_role_binding_overrides=((
+            "planning",
+            "provider",
+            "private-planning-model",
+            None,
+            None,
+        ),) if planning_override else (),
+    )
+    assert hashlib.sha256((live_data / "app.db").read_bytes()).hexdigest() == (
+        live_database_sha256
+    )
+    return live_db, Database(private_data / "app.db"), project_id, repo
+
+
+def test_private_copy_context_manifest_installation_is_opt_in(
+    tmp_path: Path,
+) -> None:
+    live_db, private_db, _project_id, _repo = _private_context_manifest_copy(
+        tmp_path, install_manifest=False,
+    )
+
+    live_model = live_db.get_model("model")
+    private_model = private_db.get_model("model")
+    assert live_model is not None and private_model is not None
+    assert private_model["context_window"] == live_model["context_window"] == 8_192
+    assert private_model["capabilities"] == live_model["capabilities"]
+    assert dry_run.OFFLINE_CONTEXT_MANIFEST_KEY_V1 not in (
+        private_model["capabilities"]
+    )
+
+
+def test_private_copy_context_manifest_is_exact_and_live_source_unchanged(
+    tmp_path: Path,
+) -> None:
+    live_db, private_db, _project_id, _repo = _private_context_manifest_copy(
+        tmp_path
+    )
+
+    live_model = live_db.get_model("model")
+    private_model = private_db.get_model("model")
+    assert live_model is not None and private_model is not None
+    assert live_model["context_window"] == 8_192
+    assert live_model["capabilities"] == {
+        "live_source_capability": "must-survive"
+    }
+    assert private_model["context_window"] == 32_768
+    assert private_model["capabilities"][
+        "live_source_capability"
+    ] == "must-survive"
+    marker = private_model["capabilities"][
+        dry_run.OFFLINE_CONTEXT_MANIFEST_KEY_V1
+    ]
+    assert marker == dry_run.OFFLINE_CONTEXT_MANIFEST_V1
+    assert set(marker) == {
+        "schema",
+        "version",
+        "context_limit_tokens",
+        "capacity_policy_registry_sha256",
+        "scope",
+        "external_actions_enabled",
+    }
+    assert marker["capacity_policy_registry_sha256"] == (
+        dry_run.DEFAULT_STAGE_CAPACITY_POLICY_REGISTRY_V1.identity_sha256
+    )
+    unbound = private_db.get_model("unbound-model")
+    assert unbound is not None
+    assert unbound["context_window"] == 4_096
+    assert unbound["capabilities"] == {"unbound": True}
+    dry_run._validate_offline_gateway_context_manifest_v1(private_db)
+
+
+def test_private_role_override_is_applied_before_context_manifest(
+    tmp_path: Path,
+) -> None:
+    live_db, private_db, _project_id, _repo = _private_context_manifest_copy(
+        tmp_path, planning_override=True,
+    )
+
+    live_binding = live_db.get_role_binding("planning")
+    private_binding = private_db.get_role_binding("planning")
+    assert live_binding is not None and private_binding is not None
+    assert live_binding["primary_model_id"] == "model"
+    assert private_binding["primary_model_id"] == "private-planning-model"
+    live_override = live_db.get_model("private-planning-model")
+    private_override = private_db.get_model("private-planning-model")
+    assert live_override is not None and private_override is not None
+    assert live_override["context_window"] is None
+    assert dry_run.OFFLINE_CONTEXT_MANIFEST_KEY_V1 not in (
+        live_override["capabilities"]
+    )
+    assert private_override["context_window"] == 32_768
+    assert private_override["capabilities"][
+        dry_run.OFFLINE_CONTEXT_MANIFEST_KEY_V1
+    ] == dry_run.OFFLINE_CONTEXT_MANIFEST_V1
+    dry_run._validate_offline_gateway_context_manifest_v1(private_db)
+
+
+@pytest.mark.parametrize(
+    "tamper",
+    ("schema", "registry", "extra_field", "context_limit"),
+)
+def test_private_copy_context_manifest_rejects_tampering(
+    tmp_path: Path, tamper: str,
+) -> None:
+    _live_db, private_db, _project_id, _repo = (
+        _private_context_manifest_copy(tmp_path)
+    )
+    model = private_db.get_model("model")
+    assert model is not None
+    capabilities = dict(model["capabilities"])
+    marker = dict(capabilities[dry_run.OFFLINE_CONTEXT_MANIFEST_KEY_V1])
+    context_window = 32_768
+    if tamper == "schema":
+        marker["schema"] = "OfflineDeterministicGatewayContextCapabilityManifestV2"
+    elif tamper == "registry":
+        marker["capacity_policy_registry_sha256"] = "0" * 64
+    elif tamper == "extra_field":
+        marker["source"] = "unsealed"
+    else:
+        context_window = 65_536
+    capabilities[dry_run.OFFLINE_CONTEXT_MANIFEST_KEY_V1] = marker
+    private_db.save_model(
+        model_id="model",
+        provider_id="provider",
+        display_name=str(model["display_name"]),
+        model_name=str(model["model_name"]),
+        context_window=context_window,
+        max_output_tokens=model.get("max_output_tokens"),
+        capabilities=capabilities,
+    )
+
+    with pytest.raises(ValueError, match="offline context manifest"):
+        dry_run._validate_offline_gateway_context_manifest_v1(private_db)
+
+
 def test_live_bindings_seal_v2_runtime_skill_style_and_store_source_truth(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -381,8 +631,10 @@ def test_live_bindings_seal_v2_runtime_skill_style_and_store_source_truth(
     assert public["store_root"] == str(store_root.resolve())
     assert public["routes"]
     assert all(
-        item["model_context_limit"] == 32768
-        and item["model_context_limit_source"] == "model_configuration"
+        item["route_context_capability_limit_tokens"] == 32768
+        and item["route_context_capability_source"] == "model_configuration"
+        and "model_context_limit" not in item
+        and "stage_operational_context_ceiling_tokens" not in item
         for item in public["routes"]
     )
     assert actual["store_root_sha256"] == hashlib.sha256(

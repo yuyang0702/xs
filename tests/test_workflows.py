@@ -12037,6 +12037,15 @@ async def test_nonlayered_maintenance_preflight_splits_before_small_routes(
     assert split_details[0]["trigger"] == "preflight"
     assert split_details[0]["context_window"] == 2048
     assert gateway.calls == []
+    capacity_receipt = json.loads(next(
+        (run_path / "outputs" / "capacity-plans").glob("*.json")
+    ).read_text(encoding="utf-8"))
+    assert capacity_receipt["plan"][
+        "route_context_capability_limit_tokens"
+    ] == 2048
+    assert capacity_receipt["plan"][
+        "route_context_capability_source"
+    ] == "model_configuration"
 
 
 @pytest.mark.asyncio
@@ -12385,6 +12394,82 @@ async def test_missing_context_metadata_stops_before_splitter_or_gateway(
         if item["event_type"] == "stage_capacity_admission_stopped"
     )
     assert stopped["metadata"]["recovery_disposition"] == "STOP"
+
+
+@pytest.mark.asyncio
+async def test_exact_capacity_observer_keeps_route_capability_separate_from_stage_limit(
+    tmp_path,
+) -> None:
+    class CapacityObserver:
+        def __init__(self) -> None:
+            self.bound_plans = []
+
+        def capacity_admission_context(self, **_kwargs):
+            return {
+                "logical_stage_id": "review:1",
+                "physical_attempt": 1,
+                "provider_route_identity_sha256": "a" * 64,
+                "route_context_capability_limit_tokens": 128_000,
+                "route_context_capability_source": (
+                    "offline_deterministic_gateway_manifest"
+                ),
+            }
+
+        def bind_capacity_plan(self, *, plan, **_kwargs):
+            self.bound_plans.append(plan)
+            return plan.plan_sha256
+
+    class Gateway:
+        def __init__(self, observer) -> None:
+            self.registry = SimpleNamespace(attempt_observer=observer)
+            self.calls = 0
+
+        async def complete_primary(self, *_args, **_kwargs):
+            self.calls += 1
+            return ModelResult('{"status":"complete"}', {
+                "finish_reason": "stop",
+                "input_tokens": 20,
+                "output_tokens": 5,
+            })
+
+    observer = CapacityObserver()
+    gateway = Gateway(observer)
+    db, project, service, run_path = make_polish_recovery_service(
+        tmp_path, gateway, run_id="dual-boundary-capacity",
+    )
+    db.save_provider(
+        provider_id="provider", name="Provider", protocol="anthropic",
+        base_url="https://example.test", auth_type="bearer",
+        timeout_seconds=180, extra_headers={},
+    )
+    db.save_model(
+        model_id="review-model", provider_id="provider",
+        display_name="Review", model_name="review-model",
+        context_window=128_000, max_output_tokens=8_192,
+    )
+    db.save_role_binding(
+        "review", "provider", "review-model", None, None,
+    )
+
+    result = await service._stage(
+        "dual-boundary-capacity", run_path, project, "review",
+        "Preserve every protected fact.",
+        "Return one bounded review receipt.",
+        allow_tools=False,
+        primary_only=True,
+        bounded_protocol_output=True,
+    )
+
+    assert result == '{"status":"complete"}'
+    assert gateway.calls == 1
+    assert len(observer.bound_plans) == 1
+    plan = observer.bound_plans[0]
+    assert plan.route_context_capability_limit_tokens == 128_000
+    assert plan.route_context_capability_source.value == (
+        "offline_deterministic_gateway_manifest"
+    )
+    assert plan.stage_operational_context_ceiling_tokens == 32_768
+    assert plan.model_context_limit == 32_768
 
 
 def test_ordinary_stage_budgets_use_defaults_capped_by_selected_route_ceiling(tmp_path) -> None:

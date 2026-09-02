@@ -49,6 +49,9 @@ from novel_flywheel.projects import ProjectStore
 from novel_flywheel.providers.http import SingleDispatchTransportPolicyV1
 from novel_flywheel.providers.registry import ADAPTERS, ProviderRegistry, ResolvedModel
 from novel_flywheel.secrets import MemorySecretStore
+from novel_flywheel.stage_capacity import (
+    DEFAULT_STAGE_CAPACITY_POLICY_REGISTRY_V1,
+)
 from tools.canary.fake_boundary import (
     DeterministicShortBoundary,
     _draft_semantic_receipt,
@@ -56,6 +59,7 @@ from tools.canary.fake_boundary import (
 )
 from tools.canary.short_completion import COMPLETION_GOAL
 from tools.canary.first_trustworthy_full_short_runner import (
+    FULL_SHORT_BOUND_ROLES,
     FULL_SHORT_REQUIRED_EXECUTION_ROLES,
     _execute_full_short_control_plane_offline,
     collect_live_bindings,
@@ -66,6 +70,20 @@ from tools.canary.first_trustworthy_full_short_runner import (
 EXECUTION_ID = "private-current-project-dry-run"
 DISCOVERY_ID = "private-current-project-call-plan"
 REPLAY_ID = "private-current-project-captured-response-replay"
+OFFLINE_CONTEXT_MANIFEST_KEY_V1 = (
+    "offline_deterministic_context_manifest_v1"
+)
+OFFLINE_CONTEXT_LIMIT_TOKENS_V1 = 32_768
+OFFLINE_CONTEXT_MANIFEST_V1 = {
+    "schema": "OfflineDeterministicGatewayContextCapabilityManifestV1",
+    "version": 1,
+    "context_limit_tokens": OFFLINE_CONTEXT_LIMIT_TOKENS_V1,
+    "capacity_policy_registry_sha256": (
+        DEFAULT_STAGE_CAPACITY_POLICY_REGISTRY_V1.identity_sha256
+    ),
+    "scope": "ISOLATED_PRIVATE_DATA_COPY_ONLY",
+    "external_actions_enabled": False,
+}
 
 
 def _sha256(path: Path) -> str:
@@ -1239,8 +1257,113 @@ def _registry_factory(*args: Any, **kwargs: Any) -> _LowestHttpSeamRegistry:
     return _LowestHttpSeamRegistry(*args, **kwargs)
 
 
+def _full_short_bound_models_v1(
+    db: Database,
+) -> tuple[tuple[str, str], ...]:
+    """Return the distinct provider/model pairs reachable by Full Short."""
+
+    bound: dict[str, str] = {}
+    for role in FULL_SHORT_BOUND_ROLES:
+        binding = db.get_role_binding(role) or {}
+        if role in FULL_SHORT_REQUIRED_EXECUTION_ROLES and not (
+            binding.get("primary_provider_id")
+            and binding.get("primary_model_id")
+        ):
+            raise ValueError(
+                "offline context manifest required route is missing"
+            )
+        for lane in ("primary", "fallback"):
+            provider_id = binding.get(f"{lane}_provider_id")
+            model_id = binding.get(f"{lane}_model_id")
+            if not provider_id and not model_id:
+                continue
+            if not provider_id or not model_id:
+                raise ValueError(
+                    "offline context manifest route binding is incomplete"
+                )
+            previous = bound.setdefault(str(model_id), str(provider_id))
+            if previous != str(provider_id):
+                raise ValueError(
+                    "offline context manifest model provider is ambiguous"
+                )
+    return tuple(sorted(
+        (provider_id, model_id) for model_id, provider_id in bound.items()
+    ))
+
+
+def _validate_offline_gateway_context_manifest_v1(db: Database) -> None:
+    """Fail closed unless every bound private model has the exact manifest."""
+
+    for provider_id, model_id in _full_short_bound_models_v1(db):
+        model = db.get_model(model_id)
+        if model is None or str(model.get("provider_id")) != provider_id:
+            raise ValueError(
+                "offline context manifest bound model is unavailable"
+            )
+        if model.get("context_window") != OFFLINE_CONTEXT_LIMIT_TOKENS_V1:
+            raise ValueError(
+                "offline context manifest model context limit mismatch"
+            )
+        capabilities = model.get("capabilities")
+        if not isinstance(capabilities, dict):
+            raise ValueError(
+                "offline context manifest capabilities are invalid"
+            )
+        marker = capabilities.get(OFFLINE_CONTEXT_MANIFEST_KEY_V1)
+        if marker != OFFLINE_CONTEXT_MANIFEST_V1:
+            raise ValueError(
+                "offline context manifest marker mismatch"
+            )
+
+
+def _install_offline_gateway_context_manifest_v1(db: Database) -> None:
+    """Install the deterministic gateway capacity source in a private DB."""
+
+    updates: list[tuple[str, str]] = []
+    for provider_id, model_id in _full_short_bound_models_v1(db):
+        model = db.get_model(model_id)
+        if model is None or str(model.get("provider_id")) != provider_id:
+            raise ValueError(
+                "offline context manifest bound model is unavailable"
+            )
+        capabilities = model.get("capabilities")
+        if not isinstance(capabilities, dict):
+            raise ValueError(
+                "offline context manifest capabilities are invalid"
+            )
+        private_capabilities = dict(capabilities)
+        private_capabilities[OFFLINE_CONTEXT_MANIFEST_KEY_V1] = dict(
+            OFFLINE_CONTEXT_MANIFEST_V1
+        )
+        updates.append((
+            json.dumps(
+                private_capabilities,
+                ensure_ascii=False,
+                sort_keys=True,
+                separators=(",", ":"),
+            ),
+            model_id,
+        ))
+    with db.connect() as connection:
+        for capabilities_json, model_id in updates:
+            connection.execute(
+                """UPDATE models
+                SET context_window=?, capabilities_json=? WHERE id=?""",
+                (
+                    OFFLINE_CONTEXT_LIMIT_TOKENS_V1,
+                    capabilities_json,
+                    model_id,
+                ),
+            )
+    _validate_offline_gateway_context_manifest_v1(db)
+
+
 def _copy_private_data(
     *, repo: Path, source_project: Path, project_id: str, target: Path,
+    install_offline_gateway_context_manifest: bool = False,
+    private_role_binding_overrides: tuple[
+        tuple[str, str, str, str | None, str | None], ...
+    ] = (),
 ) -> Path:
     data = target / "data"
     projects_root = data / "projects"
@@ -1287,6 +1410,10 @@ def _copy_private_data(
         "short_canonical_v2", True,
         scope_type="project", scope_id=project_id,
     )
+    for binding_override in private_role_binding_overrides:
+        db.save_role_binding(*binding_override)
+    if install_offline_gateway_context_manifest:
+        _install_offline_gateway_context_manifest_v1(db)
     return data
 
 
@@ -1515,16 +1642,15 @@ async def _replay_full_workflow_from_captured_bytes(
     replay_data = _copy_private_data(
         repo=repo, source_project=source_project, project_id=project_id,
         target=replay_target,
-    )
-    if offline_planning_deepseek_official_fixture:
-        replay_db = Database(replay_data / "app.db")
-        replay_db.save_role_binding(
+        install_offline_gateway_context_manifest=True,
+        private_role_binding_overrides=((
             "planning",
             "0e6a5627-5882-40df-bca5-7d98b97fdd0b",
             "e4b6f0b8-3c5e-412e-8d4e-8453c840a032",
             None,
             None,
-        )
+        ),) if offline_planning_deepseek_official_fixture else (),
+    )
     factory = _CapturedResponseReplayTransportFactory(
         capture_store=capture_store, ledger=ledger,
         source_call_plan=source_call_plan,
@@ -1602,32 +1728,30 @@ async def _run(
         discovery_data = _copy_private_data(
             repo=repo, source_project=source_project, project_id=project_id,
             target=private_root / "discovery",
-        )
-        if args.offline_planning_deepseek_official_fixture:
-            discovery_db = Database(discovery_data / "app.db")
-            discovery_db.save_role_binding(
+            install_offline_gateway_context_manifest=True,
+            private_role_binding_overrides=((
                 "planning",
                 "0e6a5627-5882-40df-bca5-7d98b97fdd0b",
                 "e4b6f0b8-3c5e-412e-8d4e-8453c840a032",
                 None,
                 None,
-            )
+            ),) if args.offline_planning_deepseek_official_fixture else (),
+        )
         call_plan, logical_stage_plan = await _discover_plan(
             repo=repo, data_dir=discovery_data, project_id=project_id,
         )
         execution_data = _copy_private_data(
             repo=repo, source_project=source_project, project_id=project_id,
             target=private_root / "execution",
-        )
-        if args.offline_planning_deepseek_official_fixture:
-            execution_db = Database(execution_data / "app.db")
-            execution_db.save_role_binding(
+            install_offline_gateway_context_manifest=True,
+            private_role_binding_overrides=((
                 "planning",
                 "0e6a5627-5882-40df-bca5-7d98b97fdd0b",
                 "e4b6f0b8-3c5e-412e-8d4e-8453c840a032",
                 None,
                 None,
-            )
+            ),) if args.offline_planning_deepseek_official_fixture else (),
+        )
         store_root = private_root / "control-store"
         actual, public = collect_live_bindings(
             repo=repo, data_dir=execution_data, project_id=project_id,

@@ -87,6 +87,11 @@ from novel_flywheel.skill_prompts import (
     SkillPromptCompactor,
 )
 from novel_flywheel.story_state import StoryStateStore
+from novel_flywheel.stage_capacity import (
+    CapacityAdmissionFailureV1,
+    CapacityFailureCode,
+    DEFAULT_STAGE_CAPACITY_POLICY_REGISTRY_V1,
+)
 from novel_flywheel.style_context import selected_style_reference_provenance
 from novel_flywheel.tasks import RunTaskManager
 from novel_flywheel.workflows import WorkflowService
@@ -98,6 +103,49 @@ FULL_SHORT_BOUND_ROLES = (
     "planning", "draft", "review", "reader_review", "polish",
     "final_review", "maintenance", "revision_plan",
 )
+
+_OFFLINE_CONTEXT_MANIFEST_KEY_V1 = (
+    "offline_deterministic_context_manifest_v1"
+)
+_OFFLINE_CONTEXT_MANIFEST_SCHEMA_V1 = (
+    "OfflineDeterministicGatewayContextCapabilityManifestV1"
+)
+
+
+def _route_context_capability_v1(model: dict[str, Any]) -> tuple[int, str]:
+    """Return a source-grounded route limit without inventing a fallback."""
+
+    configured_context = model.get("context_window")
+    capabilities = model.get("capabilities")
+    manifest = (
+        capabilities.get(_OFFLINE_CONTEXT_MANIFEST_KEY_V1)
+        if isinstance(capabilities, dict)
+        else None
+    )
+    if manifest is None:
+        if type(configured_context) is not int or configured_context <= 0:
+            raise ValueError("runtime route context limit is unavailable")
+        return configured_context, "model_configuration"
+    expected_manifest = {
+        "schema": _OFFLINE_CONTEXT_MANIFEST_SCHEMA_V1,
+        "version": 1,
+        "context_limit_tokens": configured_context,
+        "capacity_policy_registry_sha256": (
+            DEFAULT_STAGE_CAPACITY_POLICY_REGISTRY_V1.identity_sha256
+        ),
+        "scope": "ISOLATED_PRIVATE_DATA_COPY_ONLY",
+        "external_actions_enabled": False,
+    }
+    if (
+        type(configured_context) is not int
+        or configured_context <= 0
+        or type(manifest) is not dict
+        or manifest != expected_manifest
+    ):
+        raise ValueError(
+            "offline deterministic route context manifest is invalid"
+        )
+    return configured_context, "offline_deterministic_gateway_manifest"
 FULL_SHORT_REQUIRED_EXECUTION_ROLES = (
     "planning", "draft", "review", "reader_review", "polish",
     "final_review", "maintenance",
@@ -391,14 +439,9 @@ def collect_live_bindings(
             destination = _destination(provider)
             destinations.add(destination)
             configured_max = model.get("max_output_tokens")
-            configured_context = model.get("context_window")
-            if (
-                type(configured_context) is not int
-                or configured_context <= 0
-            ):
-                raise ValueError(
-                    "runtime route context limit is unavailable"
-                )
+            route_context_limit, route_context_source = (
+                _route_context_capability_v1(model)
+            )
             stage_budget_role = "review" if role == "reader_review" else role
             max_output = int(
                 configured_max
@@ -436,8 +479,10 @@ def collect_live_bindings(
                     "model_configuration" if configured_max
                     else "runtime_stage_policy"
                 ),
-                "model_context_limit": configured_context,
-                "model_context_limit_source": "model_configuration",
+                "route_context_capability_limit_tokens": (
+                    route_context_limit
+                ),
+                "route_context_capability_source": route_context_source,
             })
     records.sort(key=lambda item: (item["role"], item["lane"]))
     runtime_fingerprint = collect_runtime_fingerprint_v2(
@@ -780,6 +825,14 @@ def preflight_full_short_control_plane(
         logical_stage_plan=list(bindings["logical_stage_plan"]),
         store_root=args.store_root,
     )
+    if external_actions_enabled and any(
+        item.get("route_context_capability_source")
+        == "offline_deterministic_gateway_manifest"
+        for item in live_public.get("routes", ())
+    ):
+        raise CapacityAdmissionFailureV1(
+            CapacityFailureCode.POLICY_VIOLATION,
+        )
     if live_public != bindings:
         raise FullShortExecutionBoundaryError("PUBLIC_BINDINGS_DRIFT")
     preflight = validate_full_short_preflight_v1(
@@ -1272,6 +1325,9 @@ async def _execute_full_short_control_plane_with_capability(
             )
         try:
             elapsed_seconds = _completion_elapsed_recheck(policy, ledger)
+            store.verify_completion_capacity_receipts(
+                execution_id=execution_id, policy=policy, ledger=ledger,
+            )
             nonce = store.load_nonce(execution_id)
             receipt = build_full_short_completion_receipt_v1(
                 execution_id=execution_id, policy=policy,
