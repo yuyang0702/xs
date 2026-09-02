@@ -157,6 +157,7 @@ def main() -> int:
     parser.add_argument("--length-junit", type=Path, required=True)
     parser.add_argument("--production-shaped", type=Path, required=True)
     parser.add_argument("--adapter-replay", type=Path, required=True)
+    parser.add_argument("--ready-target-failure-head", required=True)
     args = parser.parse_args()
 
     repo = args.repo.resolve(strict=True)
@@ -377,8 +378,18 @@ def main() -> int:
     })
     _write_json(root, "production-shaped-full-short-rerun-v1.json", {
         "schema": "ProductionShapedFullShortRerunV1",
-        "status": "PASS",
+        "status": "FAIL",
         "source_head": implementation_head,
+        "generic_private_fixture_status": "PASS",
+        "exact_ready_target_status": "FAIL",
+        "exact_ready_target_failure_head": args.ready_target_failure_head,
+        "exact_ready_target_project_id_sha256": hashlib.sha256(
+            b"2ad716f3c0d1"
+        ).hexdigest(),
+        "exact_ready_target_failure_boundary": "fs.contract.validate",
+        "exact_ready_target_failure_code": "internal.unexpected_at_boundary",
+        "exact_ready_target_source_exception_class": "ContextCapacityPreflightError",
+        "exact_ready_target_dispatch_state": "not_reached",
         "normal_receipt_sha256": production["receipt_sha256"],
         "adapter_replay_receipt_sha256": adapter["receipt_sha256"],
         "completed_stage_count": 68,
@@ -392,6 +403,7 @@ def main() -> int:
         "final_checkpoint_created": True,
         "completion_receipt_created": True,
         "external_actions": 0,
+        "authorization_materialized": False,
     })
 
     reviewers = [
@@ -421,6 +433,7 @@ def main() -> int:
         "length_matrix_tests": length["tests"],
         "warnings": 0,
         "blockers": 0,
+        "master_overall_gate": "BLOCKED_BY_EXACT_READY_TARGET_DRY_RUN",
     })
     _write_json(root, "focused-test-receipt-v1.json", focused)
     _write_json(root, "related-test-receipt-v1.json", related)
@@ -442,7 +455,7 @@ def main() -> int:
     })
     _write_json(root, "privacy-scan-v1.json", {
         "schema": "FullShortRuntimePrivacyScanV1",
-        "status": "PASS",
+        "status": "FAIL",
         "raw_prompt_persisted": False,
         "raw_story_persisted": False,
         "raw_reference_persisted": False,
@@ -496,8 +509,9 @@ def main() -> int:
         "schema": "FullShortRuntimeArchitectureStopLossV1",
         "status": "PASS",
         **stop_loss,
+        "production_shaped_ready_target_failure_count": 1,
         "stop_loss_policy": "ACTIVE",
-        "execution_runtime_redesign": "CLOSED",
+        "execution_runtime_redesign": "NOT_CLOSED",
     })
     _write_json(root, "architecture-audit-v1.json", static_audit)
 
@@ -515,11 +529,17 @@ The repository-wide historical suite is recorded honestly as baseline-blocked:
 retired single-use approvals and successor seals correctly reject this newer
 long-lived branch.  The owning architecture suites, generated fault campaign,
 restart campaign, reviewers, 13K/20K/30K matrix and Strict L3 equivalent pass.
+
+The exact project carrying READY authority (`2ad716...`) did not complete the
+production-shaped dry run: Review capacity preflight failed closed at
+`fs.contract.validate` as `internal.unexpected_at_boundary`.  The successful
+`1a026...` private fixture is retained as engineering evidence but is not used
+to claim execution readiness or to generate an authorization.
 """
     (root / "README.md").write_text(readme, encoding="utf-8")
     report = f"""# Pre-authorization final report
 
-EXECUTION_RUNTIME_REDESIGN=CLOSED
+EXECUTION_RUNTIME_REDESIGN=NOT_CLOSED
 PROOF_DOMAIN_EXPLICIT=YES
 
 SOURCE_FAILURE_EXIT_COUNT={inventory['source_failure_exit_count']}
@@ -545,13 +565,13 @@ OBSERVER_BUSINESS_COUPLING_COUNT=0
 NORMAL_PRODUCTION_MODEL_VISIBLE_BYTES_UNCHANGED=YES
 PRODUCTION_BASELINE_SKILL_IDENTITY=PASS
 HYBRID_MODEL_VISIBLE_LEAK_COUNT=0
-FULL_SHORT_PRODUCTION_SHAPED_DRY_RUN=PASS
+FULL_SHORT_PRODUCTION_SHAPED_DRY_RUN=FAIL_EXACT_READY_TARGET
 STRICT_L3=PASS
 STOP_LOSS_POLICY=ACTIVE
 
-TRUSTWORTHY_FULL_SHORT_READINESS=YES
-FINAL_HEAD_BINDING_CLOSED=PENDING_EVIDENCE_COMMIT
-FINAL_AUTHORIZATION_READY=NO_UNTIL_FINAL_HEAD_FREEZE
+TRUSTWORTHY_FULL_SHORT_READINESS=NO
+FINAL_HEAD_BINDING_CLOSED=NO
+FINAL_AUTHORIZATION_READY=NO
 FULL_SHORT_EXECUTION_AUTHORIZED=NO
 FULL_SHORT=NOT_EXECUTED
 
@@ -561,7 +581,7 @@ NETWORK_CALLS=0
 MODEL_CALLS=0
 PAID_CALLS=0
 
-EXACT_NEXT_GATE=FINAL_EVIDENCE_COMMIT_THEN_EXTERNAL_AUTHORIZATION
+EXACT_NEXT_GATE=FULL_SHORT_EXECUTION_RUNTIME_ARCHITECTURE_REDESIGN_V2_REQUIRED
 """
     (root / "pre-authorization-final-report-v1.md").write_text(
         report, encoding="utf-8",
