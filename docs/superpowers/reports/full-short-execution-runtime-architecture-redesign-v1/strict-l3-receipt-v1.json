@@ -3,6 +3,7 @@
   "blockers": 0,
   "focused_tests": 249,
   "length_matrix_tests": 3,
+  "master_overall_gate": "BLOCKED_BY_EXACT_READY_TARGET_DRY_RUN",
   "mode": "MANUAL_EQUIVALENT_AFTER_PROJECT_SKILL_SCRIPT_ABSENCE",
   "related_tests": 572,
   "schema": "NovelDevCouncilStrictGateReceiptV1",

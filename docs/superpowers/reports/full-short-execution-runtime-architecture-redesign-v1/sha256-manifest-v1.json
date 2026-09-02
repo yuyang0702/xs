@@ -1,5 +1,5 @@
 {
-  "definition_sha256": "692ba00b7f7c7469f5a6d1bc750ae47b001fd5eca2ff6c9cd58960730db266e0",
+  "definition_sha256": "9082bb3206f96fa0c6e992491289aeca55c314bebbbe423a0b880172d4896241",
   "entries": [
     {
       "bytes": 3303,
@@ -7,9 +7,9 @@
       "sha256": "f58db6b4edcd19be5207131d98045ccf3c20575c26e5999f3abfc48b5619f372"
     },
     {
-      "bytes": 868,
+      "bytes": 926,
       "path": "architecture-stop-loss-v1.json",
-      "sha256": "cea2921b919e8537386eea68f29aae270c7655b72603932997a413ae698bbaee"
+      "sha256": "20bb263a2f93c142dd622829272ae63e0398d1204db90364dfe3d2bea62e371e"
     },
     {
       "bytes": 274,
@@ -19,7 +19,7 @@
     {
       "bytes": 718,
       "path": "baseline-binding-v1.json",
-      "sha256": "99f13c83dc60cbdb9f907ac4ecc86d6f2645a17d4ea78b3b36347bf2e13e3382"
+      "sha256": "b225fec7ce92a931ffcddda58762efff09b48cb710c5d3cec123f25245c0a25c"
     },
     {
       "bytes": 427,
@@ -112,9 +112,9 @@
       "sha256": "ea07a9020bacbdf2d7ed734386eec51e9955afad2af324e8fe6c08a8819df24e"
     },
     {
-      "bytes": 1471,
+      "bytes": 1461,
       "path": "pre-authorization-final-report-v1.md",
-      "sha256": "9ed1bcf96005897311642cbbb87ae36661281d46cd047f388522638420b50a13"
+      "sha256": "98e3b3c4cdb74ecbdba8fd69a0d9072c22cd19b1bf465a377eb31dc5a1fc0c91"
     },
     {
       "bytes": 390,
@@ -132,9 +132,9 @@
       "sha256": "b8bc51b57de7be33d013859c7a78ccc61075c3f8fced374e94fd62c22bb93d4f"
     },
     {
-      "bytes": 785,
+      "bytes": 1378,
       "path": "production-shaped-full-short-rerun-v1.json",
-      "sha256": "fa3bb371d1ef7ce85b7317761c85e395470b9f4cfe038394c885eeb88eddca11"
+      "sha256": "e32a84be32ae65b43a49e0d77ebcdb9aca3d360d865340978158679b0d23a66f"
     },
     {
       "bytes": 2486,
@@ -142,9 +142,9 @@
       "sha256": "9ec1989d5d975de591e07b7f80f012688d0118eba2b68ba9a10b5d584e73c808"
     },
     {
-      "bytes": 897,
+      "bytes": 1270,
       "path": "README.md",
-      "sha256": "ce85b78256115d1da21ab68d029bf48d3e3c35349264128bce25666f7ffcb85f"
+      "sha256": "ff55668842751fbc6037fcd3c40c5e1a8f024c70e20e7b1d754c7bb7c397e505"
     },
     {
       "bytes": 341,
@@ -207,9 +207,9 @@
       "sha256": "416113f14ce089a9e96d173e381bb028eb0bf53c47e11e11a9b6ab5cf97dd645"
     },
     {
-      "bytes": 395,
+      "bytes": 462,
       "path": "strict-l3-receipt-v1.json",
-      "sha256": "c93beb57c4f4822133540623267a9151c12cdca0a83135bdcbe1ad0dd0e82fd8"
+      "sha256": "ade7204791e2b262b1efcb525dae00050fef801160af22ea39a19b87bf8da127"
     }
   ],
   "entry_count": 42,
