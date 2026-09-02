@@ -416,9 +416,21 @@ def main() -> int:
         ]),
     ]
     for number, focus, findings in reviews:
-        write_json(root, f"reviewer-{number}-final-v1.json", reviewer(
-            number, focus, findings
-        ))
+        review_value = reviewer(number, focus, findings)
+        if number == 5:
+            review_value.update({
+                "reviewed_head": IMPLEMENTATION_HEAD,
+                "final_implementation_head_reviewed": True,
+                "findings": [
+                    "Isolated exact-target dry run fails the logical-stage "
+                    "plan cap and physical recovery reserve contract.",
+                    "Static Stop-Loss reports a false-zero exact-target "
+                    "blocker because it does not consume a successful receipt.",
+                    "Focused Runtime/Capacity suites passed 286 tests but do "
+                    "not override the decisive exact-target failure.",
+                ],
+            })
+        write_json(root, f"reviewer-{number}-final-v1.json", review_value)
 
     write_json(root, "strict-l3-receipt-v1.json", receipt(
         "StrictL3ReceiptV1", "FAIL_NOT_PROVEN",

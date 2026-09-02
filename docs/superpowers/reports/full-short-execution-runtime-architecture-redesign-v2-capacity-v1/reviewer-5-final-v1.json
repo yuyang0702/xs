@@ -1,14 +1,15 @@
 {
   "external_actions": 0,
-  "final_implementation_head_reviewed": false,
+  "final_implementation_head_reviewed": true,
   "findings": [
-    "Static audit and focused suites pass, but decisive exact run is not closed.",
-    "Required evidence and current-head final binding were absent at review time."
+    "Isolated exact-target dry run fails the logical-stage plan cap and physical recovery reserve contract.",
+    "Static Stop-Loss reports a false-zero exact-target blocker because it does not consume a successful receipt.",
+    "Focused Runtime/Capacity suites passed 286 tests but do not override the decisive exact-target failure."
   ],
   "focus": "Runtime Kernel, registry and Stop-Loss",
   "implementation_head": "a76bcda829dd197a6e4dc2d938547a27a5c63078",
   "mode": "fresh_read_only_offline",
-  "reviewed_head": "d27e1d967c8618c8303b9d0b1c8309f2ffe5754d",
+  "reviewed_head": "a76bcda829dd197a6e4dc2d938547a27a5c63078",
   "reviewer_number": 5,
   "schema": "FullShortRuntimeCapacityCleanRoomReviewV1",
   "status": "ARCHITECTURE_REJECT",
