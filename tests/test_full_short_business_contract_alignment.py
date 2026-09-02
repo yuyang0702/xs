@@ -26,9 +26,14 @@ def test_full_short_final_review_rejects_legacy_score_only_shell() -> None:
     errors = list(Draft202012Validator(schema).iter_errors(sparse))
 
     assert errors
-    assert set(schema["required"]) == {
-        "dimensions", "hard_fail", "decision", "issues",
-    }
+    # The wire layer admits the two typed Full Short score topologies:
+    # legacy dimensions and zhihu-v2 criteria/evidence. The typed verdict
+    # validator then requires exactly one complete topology.
+    assert set(schema["required"]) == {"issues"}
+    assert "score" not in schema["properties"]
+    assert {"dimensions", "criteria", "criterion_evidence"} <= set(
+        schema["properties"]
+    )
     assert schema["additionalProperties"] is False
 
 

@@ -491,7 +491,7 @@ _REGISTRATIONS = (
         # exact criterion/evidence map and Runtime derives dimensions.
         wire_required_fields=("issues",),
         wire_optional_fields=(
-            "dimensions", "score", "hard_fail", "decision",
+            "dimensions", "hard_fail", "decision",
             "reconciliations", "request_full_review",
             "criteria", "criterion_evidence",
         ),
