@@ -114,6 +114,7 @@ from novel_flywheel.skills import SkillGate, SkillScanner
 from novel_flywheel.story_state import StoryStateStore
 from novel_flywheel.storage import ProjectSnapshot, atomic_write
 from novel_flywheel.structured_artifacts import StructuredArtifactContract
+from novel_flywheel.stage_capacity import CapacityAdmissionFailureV1
 from novel_flywheel.tasks import RunTaskManager
 from novel_flywheel.workflows import (
     ContextCapacityPreflightError,
@@ -5867,6 +5868,51 @@ async def test_truncated_draft_segment_is_split_into_internal_subtasks(tmp_path)
         if item["event_type"] == "draft_task_split"
     )
     assert split["metadata"]["subtasks"] == 2
+
+
+@pytest.mark.asyncio
+async def test_capacity_denied_draft_segment_splits_before_dispatch(
+    tmp_path, monkeypatch,
+) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Capacity draft", mode="short", genre="suspense",
+        premise="A bounded segment is split before dispatch.", target_words=1000,
+    ))
+    skill_root = tmp_path / "skills"
+    make_prompt_skills(skill_root)
+    service = WorkflowService(
+        db, store, object(), SkillGate(db, SkillScanner([skill_root])),
+    )
+    db.create_run("capacity-draft", project.id, "short-story", status="running")
+    run_path = project.path / "runs" / "capacity-draft"
+    (run_path / "outputs").mkdir(parents=True)
+    (run_path / "receipts").mkdir()
+    calls: list[str] = []
+
+    async def fake_stage(*_args, **kwargs):
+        calls.append(str(kwargs.get("suffix") or ""))
+        if len(calls) == 1:
+            raise CapacityAdmissionFailureV1("capacity.windowing_required")
+        return "甲" * 500 if "sub-1" in calls[-1] else "乙" * 500
+
+    monkeypatch.setattr(service, "_stage", fake_stage)
+    text = await service._draft_short_segment_task(
+        "capacity-draft", run_path, project, "constraints", "写完本段事件",
+        suffix="-part-01", target=1000, previous_parts=[],
+        event_ids=["EV-00000001", "EV-00000002"],
+    )
+
+    assert text == "甲" * 500 + "\n\n" + "乙" * 500
+    assert len(calls) == 3
+    split = next(
+        item for item in db.list_run_events("capacity-draft")
+        if item["event_type"] == "draft_task_split"
+    )
+    assert split["metadata"]["reason"] == "capacity_windowing"
+    assert split["metadata"]["issue_codes"] == ["capacity_windowing"]
 
 
 @pytest.mark.asyncio

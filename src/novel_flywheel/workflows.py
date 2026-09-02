@@ -27021,6 +27021,19 @@ class WorkflowService:
                     authority_context=prose_authority_context,
                 ),
             )
+        except CapacityAdmissionFailureV1 as exc:
+            if exc.failure_id not in {
+                "capacity.model_context_exceeded",
+                "capacity.protected_layers_exceed_budget",
+                "capacity.compaction_insufficient",
+                "capacity.windowing_required",
+            }:
+                raise
+            if depth >= 2 or target < 800 or len(owned_event_ids) < 2:
+                raise CapacityAdmissionFailureV1(
+                    "capacity.windowing_exhausted"
+                ) from None
+            reason = "capacity_windowing"
         except IncompleteModelOutputError as exc:
             han_characters = effective_han_characters(str(exc.partial))
             if depth >= 2 or target < 800 or len(owned_event_ids) < 2:
@@ -27114,7 +27127,11 @@ class WorkflowService:
             (
                 "正文正常结束但篇幅不足，已按本段事件和因果推进自动拆分"
                 if reason == "normal_finish_underlength"
-                else "单次正文子任务无法完整返回，已按本段事件和因果推进自动拆分"
+                else (
+                    "正文子任务超出安全上下文容量，已在调用模型前按事件所有权自动拆分"
+                    if reason == "capacity_windowing"
+                    else "单次正文子任务无法完整返回，已按本段事件和因果推进自动拆分"
+                )
             ),
             stage="draft", metadata={
                 "suffix": suffix, "depth": depth + 1, "target_characters": target,
@@ -27123,7 +27140,10 @@ class WorkflowService:
                 "han_characters": han_characters,
                 "issue_codes": [
                     "underlength" if reason == "normal_finish_underlength"
-                    else "output_limit"
+                    else (
+                        "capacity_windowing"
+                        if reason == "capacity_windowing" else "output_limit"
+                    )
                 ],
                 "event_ids": owned_event_ids,
             },
