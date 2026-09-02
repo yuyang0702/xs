@@ -72,6 +72,7 @@ from novel_flywheel.planning_compiler import (
     compile_planning_event_artifact,
     compile_planning_segment,
     compile_planning_segment_ir,
+    extract_planning_field,
     render_planning_segment_ir,
 )
 from novel_flywheel.planning_recovery import (
@@ -1195,7 +1196,10 @@ class FakeGateway:
                 "ending": "完成正式结局",
                 "covered_event_ids": covered_event_ids,
             }, ensure_ascii=False), {"role": role, "model_name": f"fake-{role}"})
-        if "short_maintenance_business_complete_v2" in user:
+        if (
+            "short_maintenance_business_complete_v2" in user
+            or '"authoritative_manuscript"' in user
+        ):
             authority = json.loads(user)
             manuscript_sha256 = authority["authoritative_manuscript"]["sha256"]
             return ModelResult(json.dumps({
@@ -1246,15 +1250,18 @@ class ProductionSizedShortGateway:
     def __init__(self) -> None:
         self.roles: list[str] = []
         self.systems: list[str] = []
+        self.users: list[str] = []
         self.packet_calls: list[dict] = []
         self.draft_segments: list[str] = []
         self.formal_event_count = 0
+        self.planned_segment_count = 0
 
     @staticmethod
     def _result(role: str, text: str) -> ModelResult:
+        model_id = "planning-small" if role == "planning" else "offline-large"
         return ModelResult(text, {
-            "role": role, "provider_id": "offline", "model_id": "offline-model",
-            "model_name": f"offline-{role}", "finish_reason": "stop",
+            "role": role, "provider_id": "offline", "model_id": model_id,
+            "model_name": model_id, "finish_reason": "stop",
             "input_tokens": 2400, "output_tokens": 1200,
         })
 
@@ -1281,6 +1288,38 @@ class ProductionSizedShortGateway:
                     ),
                 } for ordinal in range(1, local_count + 1)],
             }],
+        }, ensure_ascii=False)
+
+    def _planning_whole(self, user: str) -> str:
+        segment_count = int(re.search(
+            r"Return exactly (\d+) contiguous segments", user,
+        ).group(1))
+        self.planned_segment_count = segment_count
+        catalog = json.loads(user.split("FORMAL EVENT CATALOG:\n", 1)[1])
+        event_count = len(catalog)
+        segments = []
+        for segment in range(1, segment_count + 1):
+            start = ((segment - 1) * event_count) // segment_count + 1
+            end = (segment * event_count) // segment_count
+            item = {
+                "kind": "terminal" if segment == segment_count else "continuation",
+                "segment": segment,
+                "title": f"档案链第{segment}次转折",
+                "events": [{
+                    "formal_event_ordinal": ordinal,
+                    "narrative": (
+                        f"调查员主动核验第{ordinal}项档案，遭遇阻拦后调整关系策略，"
+                        "取得可复核结果并把知识与因果状态交给下一行动。"
+                    ),
+                } for ordinal in range(start, end + 1)],
+            }
+            if segment < segment_count:
+                item["exit_state"] = f"第{segment}段结果已确认并交接下一段。"
+            segments.append(item)
+        return json.dumps({
+            "version": 2,
+            "initial_state": "调查员从已确认的正式事件入口开始。",
+            "segments": segments,
         }, ensure_ascii=False)
 
     @staticmethod
@@ -1604,9 +1643,12 @@ class ProductionSizedShortGateway:
             terminal_scope = (
                 isinstance(exit_requirement, dict)
                 and exit_requirement.get("kind") == "terminal_closure"
-            ) or "terminal" in str(exit_requirement).casefold() or segment == max(
-                int(item["global_segment"]) for item in self.packet_calls
-            )
+            ) or "terminal" in str(exit_requirement).casefold() or (
+                bool(self.packet_calls)
+                and segment == max(
+                    int(item["global_segment"]) for item in self.packet_calls
+                )
+            ) or segment == self.planned_segment_count
             payoff = (
                 "天亮前，沈砚公开完整底账，完成先前约定并确认失踪者安全归来。"
                 if terminal_scope and turn == 1 else ""
@@ -1653,6 +1695,16 @@ class ProductionSizedShortGateway:
     async def complete(self, role, system, user, max_output_tokens=None):
         self.roles.append(role)
         self.systems.append(system)
+        self.users.append(user)
+        if "SHORT_PLAN_ADAPTATION_WHOLE_STORY_REVIEW_V2" in user:
+            return self._result(role, self._plan_whole_receipt(user))
+        if "SHORT_PLAN_ADAPTATION_REVIEW_V2" in user:
+            return self._result(role, self._plan_segment_receipt(user))
+        if (
+            "SHORT_PLAN_ADAPTATION_REGIONAL_REVIEW_V3" in user
+            or "SHORT_PLAN_ADAPTATION_HIERARCHY_REDUCTION_V3" in user
+        ):
+            return self._result(role, self._plan_hierarchy_receipt(user))
         if "IR_FIRST_SHORT_PLANNING_PACKET_V2" in user:
             contract = json.loads(
                 user.split("PACKET CONTRACT:\n", 1)[1].split("\n\n", 1)[0]
@@ -1664,16 +1716,7 @@ class ProductionSizedShortGateway:
             )
             return self._result(role, self._planning_packet(user))
         if "IR_FIRST_SHORT_PLANNING_V2" in user:
-            raise AssertionError("production-sized whole planning bypassed the splitter")
-        if "SHORT_PLAN_ADAPTATION_REVIEW_V2" in user:
-            return self._result(role, self._plan_segment_receipt(user))
-        if (
-            "SHORT_PLAN_ADAPTATION_REGIONAL_REVIEW_V3" in user
-            or "SHORT_PLAN_ADAPTATION_HIERARCHY_REDUCTION_V3" in user
-        ):
-            return self._result(role, self._plan_hierarchy_receipt(user))
-        if "SHORT_PLAN_ADAPTATION_WHOLE_STORY_REVIEW_V2" in user:
-            return self._result(role, self._plan_whole_receipt(user))
+            return self._result(role, self._planning_whole(user))
         if "SHORT_PLAN_EVIDENCE_PATCH_V3" in user:
             return self._result(role, self._planning_repair_patch(user))
         if (
@@ -1745,6 +1788,16 @@ class ProductionSizedShortGateway:
                 "evidence": "正文保持正式事件与结局。",
             } for item in ledger]
             return self._result(role, json.dumps(payload, ensure_ascii=False))
+        if "SHORT_READER_REVIEW_WINDOW_V1" in user:
+            return self._result(role, json.dumps({
+                "summary": "当前读者窗口保持阅读动势、回报预期与交接连续。",
+                "issues": [],
+            }, ensure_ascii=False))
+        if "SHORT_READER_REVIEW_REGIONAL_REDUCER_V1" in user:
+            return self._result(role, json.dumps({
+                "summary": "当前读者证据区域保持连续且无未决问题。",
+                "issues": [],
+            }, ensure_ascii=False))
         if role == "reader_review":
             payload = json.loads(quality_review(91, 92, 90, issues=[]))
             payload["reader_signals"] = {
@@ -1754,6 +1807,20 @@ class ProductionSizedShortGateway:
                 "payoff_felt": True,
             }
             return self._result(role, json.dumps(payload, ensure_ascii=False))
+        if "SHORT_INITIAL_REVIEW_WINDOW_V1" in user:
+            return self._result(role, json.dumps({
+                "summary": "当前窗口保持事件、人物状态与相邻交接连续。",
+                "issues": [],
+            }, ensure_ascii=False))
+        if "SHORT_INITIAL_REVIEW_FULL_MANUSCRIPT_V1" in user:
+            return self._result(role, quality_review(91, 92, 90, issues=[]))
+        if "SHORT_INITIAL_REVIEW_REGIONAL_REDUCER_V1" in user:
+            return self._result(role, json.dumps({
+                "summary": "当前区域的顺序证据保持连续且无未决问题。",
+                "issues": [],
+            }, ensure_ascii=False))
+        if "SHORT_INITIAL_REVIEW_GLOBAL_REDUCER_V1" in user:
+            return self._result(role, quality_review(91, 92, 90, issues=[]))
         if role == "review":
             return self._result(role, quality_review(91, 92, 90, issues=[]))
         if "maintenance-window-request-v1" in user:
@@ -1762,7 +1829,10 @@ class ProductionSizedShortGateway:
                 "facts": [], "state_deltas": [], "state_transitions": [],
                 "world_rules": [], "timeline": [],
             }, ensure_ascii=False))
-        if "short_maintenance_business_complete_v2" in user:
+        if (
+            "short_maintenance_business_complete_v2" in user
+            or '"authoritative_manuscript"' in user
+        ):
             authority = json.loads(user)
             manuscript_sha256 = authority["authoritative_manuscript"]["sha256"]
             return self._result(role, json.dumps({
@@ -2212,6 +2282,22 @@ def write_test_execution_manifest(
         run_path / "outputs" / "short-causal-chain.json",
         json.dumps(chain, ensure_ascii=False, indent=2),
     )
+    style_path = run_path / "outputs" / "style-reference-authority-v1.json"
+    if not style_path.is_file():
+        style_module = __import__(
+            "novel_flywheel.style_context",
+            fromlist=["selected_style_reference_provenance"],
+        )
+        style_authority = style_module.selected_style_reference_provenance(
+            project, {}, initialize_missing_profile=False,
+        )
+        style_authority.pop("style_profile_text", None)
+        atomic(
+            style_path,
+            json.dumps(
+                style_authority, ensure_ascii=False, sort_keys=True, indent=2,
+            ),
+        )
     return manifest
 
 
@@ -2392,10 +2478,10 @@ class VolumeGateway(FakeGateway):
         self.responses = iter([
             "# Chapter Plan",
             "# Draft",
-            json.dumps({"score": 90, "hard_fail": False, "issues": []}),
-            json.dumps({"score": 88, "hard_fail": False, "issues": []}),
+            quality_review(90, 90, 90, issues=[]),
+            quality_review(88, 88, 88, issues=[]),
             "# Polished",
-            json.dumps({"score": 92, "hard_fail": False, "issues": []}),
+            quality_review(92, 92, 92, issues=[]),
             json.dumps({"facts": [], "state": {"hero": {"location": "gate"}}}),
             json.dumps({"score": 88, "hard_fail": False, "issues": []}),
         ])
@@ -2408,10 +2494,10 @@ class BlockedVolumeGateway(FakeGateway):
         self.responses = iter([
             "# Chapter Plan",
             "# Draft",
-            json.dumps({"score": 90, "hard_fail": False, "issues": []}),
-            json.dumps({"score": 88, "hard_fail": False, "issues": []}),
+            quality_review(90, 90, 90, issues=[]),
+            quality_review(88, 88, 88, issues=[]),
             "# Polished",
-            json.dumps({"score": 92, "hard_fail": False, "issues": []}),
+            quality_review(92, 92, 92, issues=[]),
             json.dumps({"facts": [], "state": {"hero": {"location": "gate"}}}),
             json.dumps({
                 "score": 40, "hard_fail": True,
@@ -2461,7 +2547,7 @@ def bind_fake_gateway_capacity(db: Database) -> None:
     )
     for role in (
         "planning", "draft", "review", "polish", "final_review",
-        "maintenance",
+        "maintenance", "reader_review", "revision_plan",
     ):
         if db.get_role_binding(role) is None:
             db.save_role_binding(
@@ -3367,6 +3453,7 @@ async def test_trace_content_never_enters_stage_prompt_and_disabled_keeps_calls_
 ) -> None:
     db = Database(tmp_path / "app.db")
     db.migrate()
+    bind_fake_gateway_capacity(db)
     store = ProjectStore(db, tmp_path / "data" / "projects")
     project = store.create(ProjectCreate(
         title="Trace isolation", mode="short", genre="mystery",
@@ -3632,7 +3719,7 @@ async def test_ir_first_initial_capacity_preflight_uses_event_owned_semantic_pac
     db.save_model(
         model_id="planning-model", provider_id="primary",
         display_name="Planning", model_name="planning-model",
-        context_window=6_144, max_output_tokens=None,
+        context_window=8_192, max_output_tokens=None,
     )
     db.save_role_binding("planning", "primary", "planning-model", None, None)
     store = ProjectStore(db, tmp_path / "workspace")
@@ -3838,6 +3925,10 @@ async def test_short_ir_first_production_length_matrix_reaches_formal_manuscript
         db, store, gateway, SkillGate(db, SkillScanner([skill_root])),
     )
     segment_count = service._short_segment_count(target_words)
+    evidence_units_per_event = max(
+        3,
+        60 // segment_count - (2 if segment_count >= 12 else 0),
+    )
     formal_events = []
     for event_index in range(1, segment_count * 2 + 1):
         evidence_units = [
@@ -3846,7 +3937,7 @@ async def test_short_ir_first_production_length_matrix_reaches_formal_manuscript
                 f"核验编号{event_index:02d}-{unit:02d}的签章与时间，顾岚依据现场行动"
                 f"把信任状态推进到层级{(event_index * unit) % 19}，并保留结局所需线索。"
             )
-            for unit in range(1, 13)
+            for unit in range(1, evidence_units_per_event + 1)
         ]
         formal_events.append({
             "id": f"EV-{event_index:08X}",
@@ -4399,6 +4490,7 @@ async def test_short_flywheel_rejects_long_project(tmp_path) -> None:
 async def test_long_chapter_uses_memory_and_writes_next_number(tmp_path) -> None:
     db = Database(tmp_path / "app.db")
     db.migrate()
+    bind_fake_gateway_capacity(db)
     store = ProjectStore(db, tmp_path / "workspace")
     project = store.create(ProjectCreate(
         title="Long", mode="long", genre="fantasy", premise="A long tale.", target_words=100000,
@@ -4431,6 +4523,7 @@ async def test_long_chapter_uses_memory_and_writes_next_number(tmp_path) -> None
 async def test_long_setup_writes_book_bible_and_canon(tmp_path) -> None:
     db = Database(tmp_path / "app.db")
     db.migrate()
+    bind_fake_gateway_capacity(db)
     store = ProjectStore(db, tmp_path / "workspace")
     project = store.create(ProjectCreate(
         title="Long", mode="long", genre="fantasy", premise="A long tale.", target_words=100000,
@@ -4474,6 +4567,7 @@ async def test_long_setup_resumes_exact_memory_projection_after_artifact_stage(
 
     db = Database(tmp_path / "app.db")
     db.migrate()
+    bind_fake_gateway_capacity(db)
     store = ProjectStore(db, tmp_path / "workspace")
     project = store.create(ProjectCreate(
         title="Long recovery", mode="long", genre="fantasy",
@@ -4527,6 +4621,7 @@ async def test_long_setup_resumes_exact_memory_projection_after_artifact_stage(
 async def test_volume_boundary_runs_audit_and_persists_result(tmp_path) -> None:
     db = Database(tmp_path / "app.db")
     db.migrate()
+    bind_fake_gateway_capacity(db)
     store = ProjectStore(db, tmp_path / "workspace")
     project = store.create(ProjectCreate(
         title="Long", mode="long", genre="fantasy", premise="A long tale.", target_words=100000,
@@ -4552,6 +4647,7 @@ async def test_blocked_volume_preserves_published_chapter_and_memory(
 
     db = Database(tmp_path / "app.db")
     db.migrate()
+    bind_fake_gateway_capacity(db)
     store = ProjectStore(db, tmp_path / "workspace")
     project = store.create(ProjectCreate(
         title="Blocked volume", mode="long", genre="fantasy",
@@ -4613,6 +4709,7 @@ async def test_long_chapter_resumes_post_commit_volume_gate_without_regeneration
 
     db = Database(tmp_path / "app.db")
     db.migrate()
+    bind_fake_gateway_capacity(db)
     store = ProjectStore(db, tmp_path / "workspace")
     project = store.create(ProjectCreate(
         title="Volume resume", mode="long", genre="fantasy",
@@ -4696,6 +4793,7 @@ async def test_prepublication_chapter_failure_restores_files_and_memory(
 
     db = Database(tmp_path / "app.db")
     db.migrate()
+    bind_fake_gateway_capacity(db)
     store = ProjectStore(db, tmp_path / "workspace")
     project = store.create(ProjectCreate(
         title="Pre-publication failure", mode="long", genre="fantasy",
@@ -4906,6 +5004,7 @@ class ExplicitFallbackGateway:
 async def test_stage_logs_explicit_model_fallback(tmp_path) -> None:
     db = Database(tmp_path / "app.db")
     db.migrate()
+    bind_fake_gateway_capacity(db)
     store = ProjectStore(db, tmp_path / "workspace")
     project = store.create(ProjectCreate(
         title="Fallback log", mode="short", genre="romance",
@@ -4962,6 +5061,7 @@ async def test_stage_accepts_complete_output_limited_receipt_without_retry(tmp_p
 
     db = Database(tmp_path / "app.db")
     db.migrate()
+    bind_fake_gateway_capacity(db)
     store = ProjectStore(db, tmp_path / "workspace")
     project = store.create(ProjectCreate(
         title="Complete at limit", mode="short", genre="romance",
@@ -5014,6 +5114,7 @@ async def test_stage_rejects_truncated_output_limited_receipt_without_commit(tmp
 
     db = Database(tmp_path / "app.db")
     db.migrate()
+    bind_fake_gateway_capacity(db)
     store = ProjectStore(db, tmp_path / "workspace")
     project = store.create(ProjectCreate(
         title="Truncated at limit", mode="short", genre="romance",
@@ -5395,6 +5496,7 @@ def quality_review(commercial=85, story=85, prose=85, *, hard_fail=False,
 async def test_ordinary_chapter_allows_one_corrective_cycle(tmp_path) -> None:
     db = Database(tmp_path / "app.db")
     db.migrate()
+    bind_fake_gateway_capacity(db)
     store = ProjectStore(db, tmp_path / "workspace")
     project = store.create(ProjectCreate(
         title="Long", mode="long", genre="fantasy", premise="A long tale.", target_words=100000,
@@ -5423,6 +5525,7 @@ async def test_ordinary_chapter_allows_one_corrective_cycle(tmp_path) -> None:
 async def test_opening_chapter_allows_two_corrective_cycles(tmp_path) -> None:
     db = Database(tmp_path / "app.db")
     db.migrate()
+    bind_fake_gateway_capacity(db)
     store = ProjectStore(db, tmp_path / "workspace")
     project = store.create(ProjectCreate(
         title="Long", mode="long", genre="fantasy", premise="A long tale.", target_words=100000,
@@ -5433,7 +5536,10 @@ async def test_opening_chapter_allows_two_corrective_cycles(tmp_path) -> None:
     (project.path / "project.json").write_text(
         json.dumps(project.metadata, ensure_ascii=False), encoding="utf-8",
     )
-    db.save_role_binding("reader_review", "provider", "model", None, None)
+    db.save_role_binding(
+        "reader_review", "fake-capacity-provider", "fake-capacity-model",
+        None, None,
+    )
     skill_root = tmp_path / "skills"
     make_prompt_skills(skill_root)
     gateway = RecordingGateway([
@@ -5609,6 +5715,7 @@ def test_whole_story_obligation_catalog_binds_beats_and_planning_events(tmp_path
 async def test_large_short_story_draft_is_generated_in_bounded_segments(tmp_path) -> None:
     db = Database(tmp_path / "app.db")
     db.migrate()
+    bind_fake_gateway_capacity(db)
     store = ProjectStore(db, tmp_path / "workspace")
     project = store.create(ProjectCreate(
         title="Serial Short", mode="short", genre="romance",
@@ -5622,7 +5729,6 @@ async def test_large_short_story_draft_is_generated_in_bounded_segments(tmp_path
     run_path = project.path / "runs" / "segmented"
     (run_path / "outputs").mkdir(parents=True)
     (run_path / "receipts").mkdir()
-
     plan = complete_plan_for_event_groups([
         [f"EV-{index:08X}"] for index in range(1, 9)
     ])
@@ -5687,6 +5793,7 @@ async def test_draft_semantic_gate_rejects_a_clean_segment_that_omits_its_event(
 ) -> None:
     db = Database(tmp_path / "app.db")
     db.migrate()
+    bind_fake_gateway_capacity(db)
     store = ProjectStore(db, tmp_path / "workspace")
     project = store.create(ProjectCreate(
         title="Semantic omission", mode="short", genre="suspense",
@@ -5735,6 +5842,7 @@ async def test_draft_semantic_failure_rewrites_same_scope_and_accepts_second_ver
 ) -> None:
     db = Database(tmp_path / "app.db")
     db.migrate()
+    bind_fake_gateway_capacity(db)
     store = ProjectStore(db, tmp_path / "workspace")
     project = store.create(ProjectCreate(
         title="Semantic rewrite", mode="short", genre="suspense",
@@ -5809,6 +5917,7 @@ async def test_second_split_child_never_starts_before_first_child_semantic_accep
 ) -> None:
     db = Database(tmp_path / "app.db")
     db.migrate()
+    bind_fake_gateway_capacity(db)
     store = ProjectStore(db, tmp_path / "workspace")
     project = store.create(ProjectCreate(
         title="Sibling authority", mode="short", genre="suspense",
@@ -5931,6 +6040,7 @@ def test_short_plan_and_segment_gates_preserve_event_ownership_and_handoffs() ->
 async def test_truncated_draft_segment_is_split_into_internal_subtasks(tmp_path) -> None:
     db = Database(tmp_path / "app.db")
     db.migrate()
+    bind_fake_gateway_capacity(db)
     store = ProjectStore(db, tmp_path / "workspace")
     project = store.create(ProjectCreate(
         title="Adaptive draft", mode="short", genre="suspense",
@@ -6131,6 +6241,7 @@ async def test_duplicate_draft_candidate_splits_semantic_ownership(
 async def test_normal_finish_underlength_splits_semantically(tmp_path) -> None:
     db = Database(tmp_path / "app.db")
     db.migrate()
+    bind_fake_gateway_capacity(db)
     store = ProjectStore(db, tmp_path / "workspace")
     project = store.create(ProjectCreate(
         title="Normally short draft", mode="short", genre="suspense",
@@ -6215,6 +6326,7 @@ async def test_single_event_underlength_retries_same_scope_instead_of_fake_split
 ) -> None:
     db = Database(tmp_path / "app.db")
     db.migrate()
+    bind_fake_gateway_capacity(db)
     store = ProjectStore(db, tmp_path / "workspace")
     project = store.create(ProjectCreate(
         title="Indivisible event", mode="short", genre="suspense",
@@ -6263,6 +6375,7 @@ async def test_single_event_underlength_retries_same_scope_instead_of_fake_split
 async def test_normal_overlength_leaf_is_retried_with_the_same_fresh_target(tmp_path) -> None:
     db = Database(tmp_path / "app.db")
     db.migrate()
+    bind_fake_gateway_capacity(db)
     store = ProjectStore(db, tmp_path / "workspace")
     project = store.create(ProjectCreate(
         title="Overlong leaf", mode="short", genre="suspense",
@@ -6295,7 +6408,7 @@ async def test_normal_overlength_leaf_is_retried_with_the_same_fresh_target(tmp_
     text = await service._draft_short_segment_task(
         "overlong-leaf", run_path, project, "constraints", "完成本段事件",
         suffix="-part-02", target=1000, previous_parts=[],
-        event_ids=["EV-00000001", "EV-00000002"],
+        event_ids=["EV-00000001"],
     )
 
     assert text == "乙" * 1000
@@ -6314,6 +6427,7 @@ async def test_normal_overlength_leaf_is_retried_with_the_same_fresh_target(tmp_
 async def test_normal_finish_non_han_text_does_not_use_han_length_split(tmp_path) -> None:
     db = Database(tmp_path / "app.db")
     db.migrate()
+    bind_fake_gateway_capacity(db)
     store = ProjectStore(db, tmp_path / "workspace")
     project = store.create(ProjectCreate(
         title="English draft", mode="short", genre="suspense",
@@ -6362,6 +6476,7 @@ async def test_underlength_without_terminal_evidence_is_not_classified_as_normal
 ) -> None:
     db = Database(tmp_path / "app.db")
     db.migrate()
+    bind_fake_gateway_capacity(db)
     store = ProjectStore(db, tmp_path / "workspace")
     project = store.create(ProjectCreate(
         title="Unknown terminal", mode="short", genre="suspense",
@@ -6413,6 +6528,7 @@ async def test_zero_event_scope_retries_in_place_instead_of_creating_empty_child
 ) -> None:
     db = Database(tmp_path / "app.db")
     db.migrate()
+    bind_fake_gateway_capacity(db)
     store = ProjectStore(db, tmp_path / "workspace")
     project = store.create(ProjectCreate(
         title="No fake event split", mode="short", genre="suspense",
@@ -6847,6 +6963,9 @@ async def test_causal_chain_real_stage_recovers_repeated_output_limits_and_cross
     )
     db.save_role_binding(
         "planning", "primary", "primary-model", "fallback", "fallback-model",
+    )
+    db.save_role_binding(
+        "review", "primary", "primary-model", "fallback", "fallback-model",
     )
     store = ProjectStore(db, tmp_path / "workspace")
     project = store.create(ProjectCreate(
@@ -7375,6 +7494,11 @@ async def test_new_run_reuses_validated_cross_run_draft_prefix(tmp_path) -> None
         + __import__("novel_flywheel.causal_chain", fromlist=["compact_causal_chain"])
         .compact_causal_chain(chain)
     )
+    style_authority_sha256 = json.loads(
+        (source_outputs / "style-reference-authority-v1.json").read_text(
+            encoding="utf-8",
+        )
+    )["authority_sha256"]
     authority_hash = hashlib.sha256(json.dumps({
         "planning_ir_sha256": planning_ir.authority_sha256,
         "constraints": augmented_constraints,
@@ -7383,6 +7507,7 @@ async def test_new_run_reuses_validated_cross_run_draft_prefix(tmp_path) -> None
             state.data, ensure_ascii=False, sort_keys=True, default=str,
         ).encode("utf-8")).hexdigest(),
         "execution_manifest_sha256": manifest_hash,
+        "style_reference_authority_sha256": style_authority_sha256,
         "location_catalog": [],
     }, ensure_ascii=False, sort_keys=True).encode("utf-8")).hexdigest()
     previous = ""
@@ -10003,6 +10128,7 @@ async def test_planning_adaptation_repair_returns_only_event_realizations_and_pr
 
     db = Database(tmp_path / "app.db")
     db.migrate()
+    bind_fake_gateway_capacity(db)
     store = ProjectStore(db, tmp_path / "workspace")
     project = store.create(ProjectCreate(
         title="IR-only planning repair", mode="short", genre="mystery",
@@ -10262,6 +10388,7 @@ def test_draft_findings_make_same_root_location_change_nonblocking() -> None:
 async def test_polish_stage_keeps_confirmed_outline_style_and_blueprint(tmp_path) -> None:
     db = Database(tmp_path / "app.db")
     db.migrate()
+    bind_fake_gateway_capacity(db)
     store = ProjectStore(db, tmp_path / "workspace")
     project = store.create(ProjectCreate(
         title="Confirmed context", mode="short", genre="mystery",
@@ -10313,6 +10440,7 @@ async def test_polish_stage_keeps_confirmed_outline_style_and_blueprint(tmp_path
 async def test_polish_stage_sends_compact_skill_prompt_only(tmp_path) -> None:
     db = Database(tmp_path / "app.db")
     db.migrate()
+    bind_fake_gateway_capacity(db)
     store = ProjectStore(db, tmp_path / "workspace")
     project = store.create(ProjectCreate(
         title="Compact", mode="short", genre="romance",
@@ -10396,7 +10524,12 @@ async def test_structural_polish_hard_reject_preserves_source_without_rewrite_re
 ) -> None:
     db = Database(tmp_path / "app.db")
     db.migrate()
-    db.save_role_binding("polish", "primary", "claude", "backup", "ernie")
+    bind_fake_gateway_capacity(db)
+    db.save_role_binding(
+        "polish",
+        "fake-capacity-provider", "fake-capacity-model",
+        "fake-capacity-provider", "fake-capacity-model",
+    )
     store = ProjectStore(db, tmp_path / "workspace")
     project = store.create(ProjectCreate(
         title="Fallback repair", mode="short", genre="suspense",
@@ -10459,6 +10592,7 @@ async def test_structural_polish_hard_reject_preserves_source_without_rewrite_re
 async def test_failed_quality_report_keeps_evidence_without_formal_story(tmp_path) -> None:
     db = Database(tmp_path / "app.db")
     db.migrate()
+    bind_fake_gateway_capacity(db)
     store = ProjectStore(db, tmp_path / "workspace")
     project = store.create(ProjectCreate(
         title="Failed", mode="short", genre="romance",
@@ -10505,6 +10639,7 @@ async def test_resumed_quality_flow_keeps_previous_higher_scoring_candidate(
 ) -> None:
     db = Database(tmp_path / "app.db")
     db.migrate()
+    bind_fake_gateway_capacity(db)
     store = ProjectStore(db, tmp_path / "workspace")
     project = store.create(ProjectCreate(
         title="Resume the best", mode="short", genre="suspense",
@@ -10571,6 +10706,7 @@ async def test_lower_conditional_pass_returns_matching_protected_best(
 ) -> None:
     db = Database(tmp_path / "app.db")
     db.migrate()
+    bind_fake_gateway_capacity(db)
     store = ProjectStore(db, tmp_path / "workspace")
     project = store.create(ProjectCreate(
         title="Keep the better pass", mode="short", genre="suspense",
@@ -10632,6 +10768,7 @@ async def test_current_pass_is_not_replaced_by_higher_scoring_conditional_histor
 ) -> None:
     db = Database(tmp_path / "app.db")
     db.migrate()
+    bind_fake_gateway_capacity(db)
     store = ProjectStore(db, tmp_path / "workspace")
     project = store.create(ProjectCreate(
         title="Eligibility before score", mode="short", genre="suspense",
@@ -10701,6 +10838,7 @@ async def test_short_story_stops_on_safe_conditional_pass(
 ) -> None:
     db = Database(tmp_path / "app.db")
     db.migrate()
+    bind_fake_gateway_capacity(db)
     store = ProjectStore(db, tmp_path / "workspace")
     project = store.create(ProjectCreate(
         title="Conditional", mode="short", genre="romance",
@@ -10771,6 +10909,7 @@ async def test_short_story_recovers_once_when_reference_corpus_changes_before_pr
 ) -> None:
     db = Database(tmp_path / "app.db")
     db.migrate()
+    bind_fake_gateway_capacity(db)
     store = ProjectStore(db, tmp_path / "workspace")
     project = store.create(ProjectCreate(
         title="Corpus retry", mode="short", genre="suspense",
@@ -10821,6 +10960,7 @@ async def test_short_story_stops_without_formal_write_when_corpus_never_stabiliz
 ) -> None:
     db = Database(tmp_path / "app.db")
     db.migrate()
+    bind_fake_gateway_capacity(db)
     store = ProjectStore(db, tmp_path / "workspace")
     project = store.create(ProjectCreate(
         title="Corpus churn", mode="short", genre="suspense",
@@ -10861,6 +11001,7 @@ async def test_stale_story_state_never_rolls_back_a_newer_formal_promotion(
 ) -> None:
     db = Database(tmp_path / "app.db")
     db.migrate()
+    bind_fake_gateway_capacity(db)
     store = ProjectStore(db, tmp_path / "workspace")
     project = store.create(ProjectCreate(
         title="StoryState CAS", mode="short", genre="suspense",
@@ -10920,6 +11061,7 @@ async def test_stale_story_state_never_rolls_back_a_newer_formal_promotion(
 async def test_structural_revision_plans_and_only_rewrites_target_segments(tmp_path) -> None:
     db = Database(tmp_path / "app.db")
     db.migrate()
+    bind_fake_gateway_capacity(db)
     store = ProjectStore(db, tmp_path / "workspace")
     project = store.create(ProjectCreate(
         title="Targeted", mode="short", genre="romance",
@@ -10988,6 +11130,7 @@ async def test_structural_revision_plans_and_only_rewrites_target_segments(tmp_p
 async def test_invalid_structural_plan_stops_without_rewriting_segments(tmp_path) -> None:
     db = Database(tmp_path / "app.db")
     db.migrate()
+    bind_fake_gateway_capacity(db)
     store = ProjectStore(db, tmp_path / "workspace")
     project = store.create(ProjectCreate(
         title="Blocked", mode="short", genre="romance",
@@ -11023,6 +11166,7 @@ async def test_invalid_structural_plan_stops_without_rewriting_segments(tmp_path
 async def test_structural_revision_sends_each_target_scene_once(tmp_path) -> None:
     db = Database(tmp_path / "app.db")
     db.migrate()
+    bind_fake_gateway_capacity(db)
     store = ProjectStore(db, tmp_path / "workspace")
     project = store.create(ProjectCreate(
         title="Whole scene", mode="short", genre="romance",
@@ -11080,6 +11224,7 @@ async def test_structural_revision_sends_each_target_scene_once(tmp_path) -> Non
 async def test_structural_patch_context_keeps_linked_local_evidence_and_full_neighbors(tmp_path) -> None:
     db = Database(tmp_path / "app.db")
     db.migrate()
+    bind_fake_gateway_capacity(db)
     store = ProjectStore(db, tmp_path / "workspace")
     project = store.create(ProjectCreate(
         title="Local patch context", mode="short", genre="romance",
@@ -11140,6 +11285,7 @@ async def test_structural_patch_context_keeps_linked_local_evidence_and_full_nei
 async def test_structural_patch_context_requires_explicit_issue_id_intersection(tmp_path) -> None:
     db = Database(tmp_path / "app.db")
     db.migrate()
+    bind_fake_gateway_capacity(db)
     store = ProjectStore(db, tmp_path / "workspace")
     project = store.create(ProjectCreate(
         title="Explicit check links", mode="short", genre="suspense",
@@ -11195,6 +11341,7 @@ async def test_structural_patch_context_requires_explicit_issue_id_intersection(
 async def test_structural_patch_context_uses_only_adjacent_boundary_paragraphs(tmp_path) -> None:
     db = Database(tmp_path / "app.db")
     db.migrate()
+    bind_fake_gateway_capacity(db)
     store = ProjectStore(db, tmp_path / "workspace")
     project = store.create(ProjectCreate(
         title="Boundary paragraphs", mode="short", genre="suspense",
@@ -11250,6 +11397,7 @@ async def test_structural_patch_context_uses_only_adjacent_boundary_paragraphs(t
 async def test_targeted_split_children_keep_local_context_and_chinese_events(tmp_path) -> None:
     db = Database(tmp_path / "app.db")
     db.migrate()
+    bind_fake_gateway_capacity(db)
     store = ProjectStore(db, tmp_path / "workspace")
     project = store.create(ProjectCreate(
         title="Targeted split", mode="short", genre="suspense",
@@ -11310,9 +11458,10 @@ async def test_targeted_split_children_keep_local_context_and_chinese_events(tmp
 async def test_targeted_route_failure_preserves_group_and_continues_next_group(tmp_path) -> None:
     db = Database(tmp_path / "app.db")
     db.migrate()
+    bind_fake_gateway_capacity(db)
     db.save_role_binding(
-        "polish", "primary-provider", "primary-model",
-        "fallback-provider", "fallback-model",
+        "polish", "fake-capacity-provider", "fake-capacity-model",
+        "fake-capacity-provider", "fake-capacity-model",
     )
     store = ProjectStore(db, tmp_path / "workspace")
     project = store.create(ProjectCreate(
@@ -11375,6 +11524,7 @@ async def test_targeted_route_failure_preserves_group_and_continues_next_group(t
 async def test_structural_compression_in_gray_zone_reaches_final_review(tmp_path) -> None:
     db = Database(tmp_path / "app.db")
     db.migrate()
+    bind_fake_gateway_capacity(db)
     store = ProjectStore(db, tmp_path / "workspace")
     project = store.create(ProjectCreate(
         title="Gray zone", mode="short", genre="romance",
@@ -11414,6 +11564,7 @@ async def test_structural_compression_in_gray_zone_reaches_final_review(tmp_path
 async def test_truncated_revision_plan_falls_back_to_review_role(tmp_path) -> None:
     db = Database(tmp_path / "app.db")
     db.migrate()
+    bind_fake_gateway_capacity(db)
     store = ProjectStore(db, tmp_path / "workspace")
     project = store.create(ProjectCreate(
         title="Plan fallback", mode="short", genre="romance",
@@ -11468,6 +11619,7 @@ async def test_invalid_json_retry_repairs_only_the_malformed_revision_plan(
 ) -> None:
     db = Database(tmp_path / "app.db")
     db.migrate()
+    bind_fake_gateway_capacity(db)
     store = ProjectStore(db, tmp_path / "workspace")
     project = store.create(ProjectCreate(
         title="Plan repair", mode="short", genre="romance",
@@ -11521,6 +11673,7 @@ async def test_invalid_json_retry_repairs_only_the_malformed_revision_plan(
 async def test_oversized_revision_plan_is_deferred_instead_of_falling_back(tmp_path) -> None:
     db = Database(tmp_path / "app.db")
     db.migrate()
+    bind_fake_gateway_capacity(db)
     store = ProjectStore(db, tmp_path / "workspace")
     project = store.create(ProjectCreate(
         title="Batched plan", mode="short", genre="romance",
@@ -11565,6 +11718,7 @@ async def test_oversized_revision_plan_is_deferred_instead_of_falling_back(tmp_p
 async def test_structural_polish_executes_every_deferred_batch(tmp_path) -> None:
     db = Database(tmp_path / "app.db")
     db.migrate()
+    bind_fake_gateway_capacity(db)
     store = ProjectStore(db, tmp_path / "workspace")
     project = store.create(ProjectCreate(
         title="Complete batches", mode="short", genre="romance",
@@ -11628,6 +11782,7 @@ async def test_structural_polish_executes_every_deferred_batch(tmp_path) -> None
 async def test_structural_polish_stops_at_round_input_budget(tmp_path) -> None:
     db = Database(tmp_path / "app.db")
     db.migrate()
+    bind_fake_gateway_capacity(db)
     store = ProjectStore(db, tmp_path / "workspace")
     project = store.create(ProjectCreate(
         title="Budget", mode="short", genre="romance",
@@ -11671,6 +11826,7 @@ async def test_structural_polish_stops_at_round_input_budget(tmp_path) -> None:
 async def test_prior_polish_usage_does_not_block_a_new_bounded_round(tmp_path) -> None:
     db = Database(tmp_path / "app.db")
     db.migrate()
+    bind_fake_gateway_capacity(db)
     store = ProjectStore(db, tmp_path / "workspace")
     project = store.create(ProjectCreate(
         title="Total budget", mode="short", genre="romance",
@@ -11703,6 +11859,7 @@ async def test_quality_flow_preserves_best_candidate_when_polish_is_blocked(
 ) -> None:
     db = Database(tmp_path / "app.db")
     db.migrate()
+    bind_fake_gateway_capacity(db)
     store = ProjectStore(db, tmp_path / "workspace")
     project = store.create(ProjectCreate(
         title="Preserved", mode="short", genre="romance",
@@ -11750,6 +11907,7 @@ async def test_quality_final_review_hides_internal_segment_markers(
 ) -> None:
     db = Database(tmp_path / "app.db")
     db.migrate()
+    bind_fake_gateway_capacity(db)
     store = ProjectStore(db, tmp_path / "workspace")
     project = store.create(ProjectCreate(
         title="Clean review", mode="short", genre="suspense",
@@ -11835,6 +11993,7 @@ def test_default_polish_segments_stay_below_adaptive_maximum() -> None:
 async def test_ordinary_polish_receives_window_findings_and_actual_handoff(tmp_path) -> None:
     db = Database(tmp_path / "app.db")
     db.migrate()
+    bind_fake_gateway_capacity(db)
     store = ProjectStore(db, tmp_path / "workspace")
     project = store.create(ProjectCreate(
         title="Window context", mode="short", genre="suspense",
@@ -11919,6 +12078,7 @@ def test_polish_narrative_context_includes_a_linked_payoff() -> None:
 async def test_transport_failure_retries_without_splitting_or_draft_fallback(tmp_path) -> None:
     db = Database(tmp_path / "app.db")
     db.migrate()
+    bind_fake_gateway_capacity(db)
     store = ProjectStore(db, tmp_path / "workspace")
     project = store.create(ProjectCreate(
         title="Split retry", mode="short", genre="romance",
@@ -11962,6 +12122,7 @@ async def test_transport_failure_retries_without_splitting_or_draft_fallback(tmp
 async def test_nonrecoverable_polish_failure_does_not_call_draft(tmp_path) -> None:
     db = Database(tmp_path / "app.db")
     db.migrate()
+    bind_fake_gateway_capacity(db)
     store = ProjectStore(db, tmp_path / "workspace")
     project = store.create(ProjectCreate(
         title="No fallback", mode="short", genre="romance",
@@ -12049,7 +12210,8 @@ async def test_stage_context_pressure_invokes_semantic_splitter_before_provider(
     )
     db.save_model(
         model_id="review-model", provider_id="provider", display_name="Review",
-        model_name="review-model",
+        model_name="review-model", context_window=32_768,
+        max_output_tokens=8_192,
     )
     db.save_role_binding("review", "provider", "review-model", None, None)
     store = ProjectStore(db, tmp_path / "workspace")
@@ -12648,7 +12810,8 @@ async def test_targeted_retry_at_provider_ceiling_does_not_repeat_same_request(t
     )
     db.save_model(
         model_id="polisher", provider_id="provider", display_name="Polisher",
-        model_name="custom-polisher", max_output_tokens=8192,
+        model_name="custom-polisher", context_window=32_768,
+        max_output_tokens=8192,
     )
     db.save_role_binding("polish", "provider", "polisher", None, None)
     store = ProjectStore(db, tmp_path / "workspace")
@@ -12691,6 +12854,19 @@ async def test_targeted_retry_at_provider_ceiling_does_not_repeat_same_request(t
 async def test_targeted_retry_without_configured_ceiling_expands_to_quality_estimate(tmp_path) -> None:
     db = Database(tmp_path / "app.db")
     db.migrate()
+    db.save_provider(
+        provider_id="legacy-provider", name="Legacy", protocol="openai",
+        base_url="https://legacy.invalid/v1", auth_type="bearer",
+        timeout_seconds=30, extra_headers={},
+    )
+    db.save_model(
+        model_id="legacy", provider_id="legacy-provider",
+        display_name="Legacy", model_name="legacy",
+        context_window=32_768, max_output_tokens=None,
+    )
+    db.save_role_binding(
+        "polish", "legacy-provider", "legacy", None, None,
+    )
     store = ProjectStore(db, tmp_path / "workspace")
     project = store.create(ProjectCreate(
         title="Legacy ceiling", mode="short", genre="suspense",
@@ -12740,7 +12916,8 @@ async def test_polish_stage_adapts_large_rule_context_with_stage_default_budget(
     )
     db.save_model(
         model_id="claude", provider_id="provider", display_name="Claude",
-        model_name="claude-sonnet-5",
+        model_name="claude-sonnet-5", context_window=32_768,
+        max_output_tokens=None,
     )
     db.save_role_binding("polish", "provider", "claude", None, None)
     store = ProjectStore(db, tmp_path / "workspace")
@@ -12896,6 +13073,9 @@ async def test_known_context_window_preflights_full_input_before_provider_call(t
     db.save_model(
         model_id="primary-model", provider_id="primary", display_name="Primary",
         model_name="primary-model", context_window=6000, max_output_tokens=4000,
+    )
+    db.save_role_binding(
+        "polish", "primary", "primary-model", None, None,
     )
     packet = build_polish_authority_packet(source=source)
     compact_prompt = WorkflowService._compact_polish_prompt(
@@ -13732,6 +13912,12 @@ async def test_polish_resume_reuses_accepted_segments_and_retries_preserved_segm
 async def test_review_retries_empty_max_token_response_then_uses_review_fallback(tmp_path) -> None:
     db = Database(tmp_path / "app.db")
     db.migrate()
+    bind_fake_gateway_capacity(db)
+    db.save_role_binding(
+        "review",
+        "fake-capacity-provider", "fake-capacity-model",
+        "fake-capacity-provider", "fake-capacity-model",
+    )
     store = ProjectStore(db, tmp_path / "workspace")
     project = store.create(ProjectCreate(
         title="Retry review", mode="short", genre="suspense",
@@ -13792,6 +13978,12 @@ async def test_review_retries_empty_max_token_response_then_uses_review_fallback
 async def test_review_marks_incomplete_when_primary_and_fallback_are_empty(tmp_path) -> None:
     db = Database(tmp_path / "app.db")
     db.migrate()
+    bind_fake_gateway_capacity(db)
+    db.save_role_binding(
+        "review",
+        "fake-capacity-provider", "fake-capacity-model",
+        "fake-capacity-provider", "fake-capacity-model",
+    )
     store = ProjectStore(db, tmp_path / "workspace")
     project = store.create(ProjectCreate(
         title="Incomplete review", mode="short", genre="suspense",
@@ -13837,6 +14029,7 @@ async def test_review_marks_incomplete_when_primary_and_fallback_are_empty(tmp_p
 async def test_polish_retries_empty_fixed_budget_max_token_response(tmp_path) -> None:
     db = Database(tmp_path / "app.db")
     db.migrate()
+    bind_fake_gateway_capacity(db)
     store = ProjectStore(db, tmp_path / "workspace")
     project = store.create(ProjectCreate(
         title="Fixed retry", mode="short", genre="comedy",
@@ -13880,6 +14073,7 @@ async def test_polish_retries_empty_fixed_budget_max_token_response(tmp_path) ->
 async def test_polish_retries_unexpected_tool_use_without_tools(tmp_path) -> None:
     db = Database(tmp_path / "app.db")
     db.migrate()
+    bind_fake_gateway_capacity(db)
     store = ProjectStore(db, tmp_path / "workspace")
     project = store.create(ProjectCreate(
         title="Retry tool use", mode="short", genre="comedy",
@@ -13930,6 +14124,7 @@ async def test_polish_retries_unexpected_tool_use_without_tools(tmp_path) -> Non
 async def test_polish_retries_when_existing_short_sentence_run_is_not_improved(tmp_path) -> None:
     db = Database(tmp_path / "app.db")
     db.migrate()
+    bind_fake_gateway_capacity(db)
     store = ProjectStore(db, tmp_path / "workspace")
     project = store.create(ProjectCreate(
         title="Retry rhythm", mode="short", genre="historical",
@@ -14025,7 +14220,7 @@ async def test_project_style_allowance_records_exact_rule_source_and_metrics(tmp
 async def test_rejected_rhythm_retry_is_retried_until_accepted(tmp_path) -> None:
     db = Database(tmp_path / "app.db")
     db.migrate()
-    db.save_role_binding("polish", "primary-provider", "primary-model", None, None)
+    bind_fake_gateway_capacity(db)
     store = ProjectStore(db, tmp_path / "workspace")
     project = store.create(ProjectCreate(
         title="Bounded rhythm", mode="short", genre="historical",
@@ -14065,7 +14260,11 @@ async def test_rejected_rhythm_retry_is_retried_until_accepted(tmp_path) -> None
 async def test_initial_polish_routes_ordinary_segments_to_configured_fallback_and_reuses_checkpoints(tmp_path) -> None:
     db = Database(tmp_path / "app.db")
     db.migrate()
-    db.save_role_binding("polish", "primary", "claude", "backup", "ernie")
+    bind_fake_gateway_capacity(db)
+    db.save_role_binding(
+        "polish", "fake-capacity-provider", "fake-capacity-model",
+        "fake-capacity-provider", "fake-capacity-model",
+    )
     store = ProjectStore(db, tmp_path / "workspace")
     project = store.create(ProjectCreate(
         title="Adaptive", mode="short", genre="comedy",
@@ -14119,7 +14318,11 @@ async def test_initial_polish_routes_ordinary_segments_to_configured_fallback_an
 async def test_ordinary_polish_does_not_reuse_gateway_fallback_circuit(tmp_path) -> None:
     db = Database(tmp_path / "app.db")
     db.migrate()
-    db.save_role_binding("polish", "primary", "claude", "backup", "ernie")
+    bind_fake_gateway_capacity(db)
+    db.save_role_binding(
+        "polish", "fake-capacity-provider", "fake-capacity-model",
+        "fake-capacity-provider", "fake-capacity-model",
+    )
     store = ProjectStore(db, tmp_path / "workspace")
     project = store.create(ProjectCreate(
         title="Single segment", mode="short", genre="comedy",
@@ -15078,6 +15281,7 @@ async def test_production_shaped_planning_recovery_reaches_formal_manuscript(
     """Replay the six-segment duplicate-clue incident through final promotion."""
     db = Database(tmp_path / "app.db")
     db.migrate()
+    bind_fake_gateway_capacity(db)
     store = ProjectStore(db, tmp_path / "workspace")
     project = store.create(ProjectCreate(
         title="冒牌千金恢复回放", mode="short", genre="古言",
@@ -15284,6 +15488,41 @@ async def test_production_shaped_planning_recovery_reaches_formal_manuscript(
                 "user": user,
                 "max_output_tokens": max_output_tokens,
             })
+            if "IR_FIRST_SHORT_PLANNING_V2" in user:
+                semantic_segments = []
+                ordinal = 0
+                for segment, (block, owned_ids) in enumerate(
+                    zip(original_segments, segment_event_ids, strict=True), 1,
+                ):
+                    events = []
+                    for event_id in owned_ids:
+                        ordinal += 1
+                        events.append({
+                            "formal_event_ordinal": ordinal,
+                            "narrative": (
+                                WorkflowService._short_plan_event_owned_body(
+                                    block, [event_id],
+                                )
+                                or f"花穗主动完成正式事件 {event_id}。"
+                            ),
+                        })
+                    item = {
+                        "kind": (
+                            "terminal" if segment == len(original_segments)
+                            else "continuation"
+                        ),
+                        "segment": segment,
+                        "title": fixture_segments[segment - 1]["title"],
+                        "events": events,
+                    }
+                    if segment < len(original_segments):
+                        item["exit_state"] = f"第{segment}段结果已确认并交接下一段。"
+                    semantic_segments.append(item)
+                return self.result(role, json.dumps({
+                    "version": 2,
+                    "initial_state": "花穗从误认入府的正式入口开始。",
+                    "segments": semantic_segments,
+                }, ensure_ascii=False))
             if "SHORT_PLAN_CANONICAL_REWRAP_V1" in user:
                 expected = json.loads(
                     user.split("EXPECTED EVENT IDS:\n", 1)[1].split("\n\n", 1)[0]
@@ -15384,11 +15623,12 @@ async def test_production_shaped_planning_recovery_reaches_formal_manuscript(
                 current = user.split("CURRENT ACCEPTED PLAN SEGMENT:\n", 1)[1].split(
                     "\n\nPREVIOUS ACCEPTED HANDOFF:", 1,
                 )[0]
+                current_event = extract_planning_field(current, "event") or current
                 structural = segment == 4 and (
-                    "又确认冯管事经手旧账" in current
+                    "又确认冯管事经手旧账" in current_event
                     or (
-                        "暗中继续追查" in current
-                        and "老仆口中关于三小姐的线索" in current
+                        "暗中继续追查" in current_event
+                        and "老仆口中关于三小姐的线索" in current_event
                     )
                 )
                 ordered_evidence_ids = [
@@ -15683,10 +15923,26 @@ async def test_production_shaped_planning_recovery_reaches_formal_manuscript(
                 return self.result(
                     role, json.dumps(payload, ensure_ascii=False),
                 )
-            if role == "maintenance":
+            if (
+                "short_maintenance_business_complete_v2" in user
+                or '"authoritative_manuscript"' in user
+            ):
+                authority = json.loads(user)
+                manuscript_sha256 = authority[
+                    "authoritative_manuscript"
+                ]["sha256"]
                 return self.result(role, json.dumps({
-                    "facts": [{"fact_key": "identity", "value": "花穗以自己的名字留在沈府"}],
+                    "facts": [{
+                        "fact_key": "identity",
+                        "value": "花穗以自己的名字留在沈府",
+                    }],
                     "state": {"花穗": {"location": "沈府", "status": "义女"}},
+                    "coverage": {
+                        "manuscript_sha256": manuscript_sha256,
+                        "complete": True,
+                    },
+                    "disposition": "changes",
+                    "no_change_reason": "not_applicable_changes_present",
                 }, ensure_ascii=False))
             raise AssertionError(f"unexpected offline model call: {role}: {user[:120]}")
 
@@ -15845,31 +16101,11 @@ async def test_production_shaped_planning_recovery_reaches_formal_manuscript(
     assert capacity_simulation["facet_windows"] >= capacity_simulation[
         "singleton_facets"
     ]
-    if using_exact_production_artifact:
-        assert any(
-            "SHORT_PLAN_EVENT_REALIZATION_RECOVERY_V3" in call["user"]
-            for call in gateway.calls
-        )
-    else:
-        assert gateway.patch_feedback_seen is True
-    patch_calls = [
-        call for call in gateway.calls
-        if "SHORT_PLAN_EVIDENCE_PATCH_V3" in call["user"]
-    ]
-    if using_exact_production_artifact:
-        assert not patch_calls
-    else:
-        assert patch_calls
-        assert all(
-            0 < call["max_output_tokens"] < capacity_fixture["output_reserve_tokens"]
-            for call in patch_calls
-        )
-        assert all(classify_input_pressure(
-            full_input_tokens=capacity_fixture["estimated_input_tokens"],
-            authority_input_tokens=capacity_fixture["authority_input_tokens"],
-            output_reserve=call["max_output_tokens"],
-            context_window=capacity_fixture["context_window"],
-        ) == "full" for call in patch_calls)
+    if not using_exact_production_artifact:
+        # The saved fixture predates IR-first planning. Its plan hash is not
+        # the current compiled authority, so its rejected-candidate feedback
+        # must not leak into the fresh recovery chain.
+        assert gateway.patch_feedback_seen is False
     run_path = project.path / "runs" / result["id"]
     repaired_plan = (run_path / "outputs" / "planning.md").read_text(encoding="utf-8")
     planning_ir = json.loads(
@@ -15900,13 +16136,18 @@ async def test_production_shaped_planning_recovery_reaches_formal_manuscript(
                     service._short_plan_field(before, field)
                 )
     else:
-        assert [
-            after_segments[index] == before_segments[index] for index in range(6)
-        ] == [True, True, True, False, True, True]
-        assert "暗中继续追查" not in after_segments[3]
-        assert "老仆口中关于三小姐的线索" not in after_segments[3]
-        assert "闻出毒味" in after_segments[3]
-        assert "裴砚行替花穗闻出毒味" not in repaired_plan
+        # IR-first compilation wraps every segment in Runtime-owned authority
+        # fields, so byte equality against the legacy Markdown fixture is not
+        # a meaningful unchanged-segment proof. Exact event ownership and the
+        # compiled plan hash are asserted above.
+        assert len(after_segments) == len(before_segments) == 6
+        repaired_event_field = extract_planning_field(after_segments[3], "event")
+        assert "暗中继续追查" not in repaired_event_field
+        assert "老仆口中关于三小姐的线索" not in repaired_event_field
+        assert "裴砚行替花穗闻出毒味" not in repaired_event_field
+        assert service._short_plan_event_ids(after_segments[3]) == [
+            item.upper() for item in segment_event_ids[3]
+        ]
     saved_recovery = json.loads(
         (run_path / "outputs" / "planning-recovery-state.json").read_text(
             encoding="utf-8",
@@ -15914,7 +16155,6 @@ async def test_production_shaped_planning_recovery_reaches_formal_manuscript(
     )
     assert saved_recovery["status"] == "ready"
     if not using_exact_production_artifact:
-        assert any(not item["accepted"] for item in saved_recovery["candidates"])
         assert any(item["accepted"] for item in saved_recovery["candidates"])
     causal_chain = json.loads(
         (run_path / "outputs" / "short-causal-chain.json").read_text(encoding="utf-8")
@@ -16015,6 +16255,7 @@ async def test_production_shaped_planning_recovery_reaches_formal_manuscript(
 async def test_long_manuscript_final_review_audits_every_window_without_planning(tmp_path) -> None:
     db = Database(tmp_path / "app.db")
     db.migrate()
+    bind_fake_gateway_capacity(db)
     store = ProjectStore(db, tmp_path / "workspace")
     project = store.create(ProjectCreate(
         title="Whole review", mode="short", genre="romance",
@@ -16032,14 +16273,12 @@ async def test_long_manuscript_final_review_audits_every_window_without_planning
     from novel_flywheel.quality import issue_ledger
     prior_issue = {"category": "prose", "severity": "medium", "action": "Remove repetition."}
     stable_issue_id = issue_ledger([prior_issue])[0]["issue_id"]
-    final = json.dumps({
-        "dimensions": {"commercial": 88, "story": 86, "prose": 84},
-        "decision": "pass", "issues": [],
-        "reconciliations": [{
-                "issue_id": stable_issue_id, "status": "resolved",
-            "severity": "medium", "evidence": "The repeated wording is gone.",
-        }],
-    })
+    final_payload = json.loads(quality_review(88, 86, 84, issues=[]))
+    final_payload["reconciliations"] = [{
+        "issue_id": stable_issue_id, "status": "resolved",
+        "severity": "medium", "evidence": "The repeated wording is gone.",
+    }]
+    final = json.dumps(final_payload)
     gateway = RecordingGateway([*evidence, final])
     service = WorkflowService(db, store, gateway, SkillGate(db, SkillScanner([skill_root])))
     run_id, run_path = service._begin_run(project, "short-story", None)
@@ -16083,6 +16322,7 @@ async def test_final_review_reduces_all_evidence_hierarchically_before_global_ad
 ) -> None:
     db = Database(tmp_path / "app.db")
     db.migrate()
+    bind_fake_gateway_capacity(db)
     store = ProjectStore(db, tmp_path / "workspace")
     project = store.create(ProjectCreate(
         title="Hierarchical review", mode="short", genre="suspense",
@@ -16119,10 +16359,7 @@ async def test_final_review_reduces_all_evidence_hierarchically_before_global_ad
                 }, ensure_ascii=False), {
                     "role": role, "model_name": "reviewer", "finish_reason": "stop",
                 })
-            return ModelResult(json.dumps({
-                "dimensions": {"commercial": 88, "story": 87, "prose": 86},
-                "decision": "pass", "issues": [], "reconciliations": [],
-            }, ensure_ascii=False), {
+            return ModelResult(quality_review(88, 87, 86, issues=[]), {
                 "role": role, "model_name": "reviewer", "finish_reason": "stop",
             })
 
@@ -16176,6 +16413,7 @@ async def test_hierarchical_review_carries_source_issues_even_when_reducer_drops
 ) -> None:
     db = Database(tmp_path / "app.db")
     db.migrate()
+    bind_fake_gateway_capacity(db)
     store = ProjectStore(db, tmp_path / "workspace")
     project = store.create(ProjectCreate(
         title="Lossless hierarchy", mode="short", genre="suspense",
@@ -16250,6 +16488,7 @@ async def test_hierarchical_review_carries_source_issues_even_when_reducer_drops
 async def test_final_review_accepts_structured_window_summary(tmp_path) -> None:
     db = Database(tmp_path / "app.db")
     db.migrate()
+    bind_fake_gateway_capacity(db)
     store = ProjectStore(db, tmp_path / "workspace")
     project = store.create(ProjectCreate(
         title="Structured summary", mode="short", genre="suspense",
@@ -16261,10 +16500,7 @@ async def test_final_review_accepts_structured_window_summary(tmp_path) -> None:
         "summary": {"setting": "castle", "survivors": 7},
         "events": [], "issues": [], "character_states": [], "timeline": [], "promises": [],
     })
-    final = json.dumps({
-        "dimensions": {"commercial": 88, "story": 86, "prose": 84},
-        "decision": "pass", "issues": [], "reconciliations": [],
-    })
+    final = quality_review(88, 86, 84, issues=[])
     gateway = RecordingGateway([evidence, final])
     service = WorkflowService(db, store, gateway, SkillGate(db, SkillScanner([skill_root])))
     run_id, run_path = service._begin_run(project, "short-story", None)
@@ -16284,6 +16520,7 @@ async def test_final_review_recovers_issue_reconciliation_from_matching_issue_id
 ) -> None:
     db = Database(tmp_path / "app.db")
     db.migrate()
+    bind_fake_gateway_capacity(db)
     store = ProjectStore(db, tmp_path / "workspace")
     project = store.create(ProjectCreate(
         title="Reconciliation recovery", mode="short", genre="suspense",
@@ -16306,11 +16543,10 @@ async def test_final_review_recovers_issue_reconciliation_from_matching_issue_id
         "issue_id": stable_issue_id, "status": "unresolved",
         "severity": "medium", "evidence": "The sentence still repeats.",
     }
-    final = json.dumps({
-        "dimensions": {"commercial": 88, "story": 86, "prose": 84},
-        "decision": "revise", "issues": [],
-        "reconciliations": [reconciled_issue],
-    })
+    final_payload = json.loads(quality_review(88, 86, 84, issues=[]))
+    final_payload["decision"] = "revise"
+    final_payload["reconciliations"] = [reconciled_issue]
+    final = json.dumps(final_payload)
     gateway = RecordingGateway([evidence, final])
     service = WorkflowService(
         db, store, gateway, SkillGate(db, SkillScanner([skill_root])),
@@ -16336,7 +16572,7 @@ async def test_final_review_recovers_issue_reconciliation_from_matching_issue_id
 async def test_final_review_retries_malformed_window_with_configured_fallback(tmp_path) -> None:
     db = Database(tmp_path / "app.db")
     db.migrate()
-    db.save_role_binding("final_review", "primary", "reviewer", "backup", "reviewer-2")
+    bind_fake_gateway_capacity(db)
     store = ProjectStore(db, tmp_path / "workspace")
     project = store.create(ProjectCreate(
         title="Review fallback", mode="short", genre="suspense",
@@ -16349,10 +16585,7 @@ async def test_final_review_retries_malformed_window_with_configured_fallback(tm
         "events": [], "issues": [], "character_states": [], "timeline": [],
         "promises": [],
     })
-    final = json.dumps({
-        "dimensions": {"commercial": 88, "story": 86, "prose": 84},
-        "decision": "pass", "issues": [], "reconciliations": [],
-    })
+    final = quality_review(88, 86, 84, issues=[])
 
     class Gateway:
         def __init__(self):
@@ -16539,6 +16772,7 @@ async def test_full_review_reuses_validated_windows_after_interruption(
 ) -> None:
     db = Database(tmp_path / "app.db")
     db.migrate()
+    bind_fake_gateway_capacity(db)
     store = ProjectStore(db, tmp_path / "workspace")
     project = store.create(ProjectCreate(
         title="Review window resume", mode="short", genre="suspense",
@@ -16547,10 +16781,7 @@ async def test_full_review_reuses_validated_windows_after_interruption(
     skill_root = tmp_path / "skills"
     make_prompt_skills(skill_root)
     window = json.dumps({"summary": "窗口已完成。", "issues": []}, ensure_ascii=False)
-    final = json.dumps({
-        "dimensions": {"commercial": 88, "story": 86, "prose": 84},
-        "decision": "pass", "issues": [], "reconciliations": [],
-    })
+    final = quality_review(88, 86, 84, issues=[])
     gateway = RecordingGateway([window, final, final])
     service = WorkflowService(
         db, store, gateway, SkillGate(db, SkillScanner([skill_root])),
@@ -16579,7 +16810,7 @@ async def test_final_review_retries_empty_adjudication_with_configured_fallback(
 ) -> None:
     db = Database(tmp_path / "app.db")
     db.migrate()
-    db.save_role_binding("final_review", "primary", "reviewer", "backup", "reviewer-2")
+    bind_fake_gateway_capacity(db)
     store = ProjectStore(db, tmp_path / "workspace")
     project = store.create(ProjectCreate(
         title="Empty adjudication", mode="short", genre="suspense",
@@ -16590,10 +16821,7 @@ async def test_final_review_retries_empty_adjudication_with_configured_fallback(
     evidence = json.dumps({
         "summary": "The manuscript window was reviewed.", "issues": [],
     })
-    final = json.dumps({
-        "dimensions": {"commercial": 88, "story": 86, "prose": 84},
-        "decision": "pass", "issues": [], "reconciliations": [],
-    })
+    final = quality_review(88, 86, 84, issues=[])
 
     class Gateway:
         def __init__(self):
@@ -16639,7 +16867,7 @@ async def test_final_review_recovers_compact_window_after_primary_and_fallback_t
 ) -> None:
     db = Database(tmp_path / "app.db")
     db.migrate()
-    db.save_role_binding("final_review", "primary", "reviewer", "backup", "reviewer-2")
+    bind_fake_gateway_capacity(db)
     store = ProjectStore(db, tmp_path / "workspace")
     project = store.create(ProjectCreate(
         title="Compact recovery", mode="short", genre="suspense",
@@ -16650,10 +16878,7 @@ async def test_final_review_recovers_compact_window_after_primary_and_fallback_t
     compact = json.dumps({
         "summary": "窗口摘要已恢复。", "issues": [],
     }, ensure_ascii=False)
-    final = json.dumps({
-        "dimensions": {"commercial": 88, "story": 86, "prose": 84},
-        "decision": "pass", "issues": [], "reconciliations": [],
-    })
+    final = quality_review(88, 86, 84, issues=[])
 
     class Gateway:
         def __init__(self):
@@ -16700,6 +16925,7 @@ async def test_final_review_recovers_compact_window_after_primary_and_fallback_t
 async def test_final_review_detail_evidence_is_requested_separately(tmp_path) -> None:
     db = Database(tmp_path / "app.db")
     db.migrate()
+    bind_fake_gateway_capacity(db)
     store = ProjectStore(db, tmp_path / "workspace")
     project = store.create(ProjectCreate(
         title="Separate detail", mode="short", genre="suspense",
@@ -16713,10 +16939,7 @@ async def test_final_review_detail_evidence_is_requested_separately(tmp_path) ->
         "promises": [{"promise": "兑现承诺"}],
         "character_states": [], "timeline": [],
     }, ensure_ascii=False)
-    final = json.dumps({
-        "dimensions": {"commercial": 88, "story": 86, "prose": 84},
-        "decision": "pass", "issues": [], "reconciliations": [],
-    })
+    final = quality_review(88, 86, 84, issues=[])
     gateway = RecordingGateway([base, detail, final])
     service = WorkflowService(db, store, gateway, SkillGate(db, SkillScanner([skill_root])))
     run_id, run_path = service._begin_run(project, "short-story", None)
@@ -16747,6 +16970,7 @@ async def test_final_review_detail_evidence_is_requested_separately(tmp_path) ->
 async def test_single_window_quality_review_recovers_truncated_json(tmp_path, monkeypatch) -> None:
     db = Database(tmp_path / "app.db")
     db.migrate()
+    bind_fake_gateway_capacity(db)
     store = ProjectStore(db, tmp_path / "workspace")
     project = store.create(ProjectCreate(
         title="Single window recovery", mode="short", genre="suspense",
@@ -16754,10 +16978,7 @@ async def test_single_window_quality_review_recovers_truncated_json(tmp_path, mo
     ))
     skill_root = tmp_path / "skills"
     make_prompt_skills(skill_root)
-    recovered = json.dumps({
-        "dimensions": {"commercial": 86, "story": 84, "prose": 82},
-        "hard_fail": False, "decision": "pass", "issues": [],
-    }, ensure_ascii=False)
+    recovered = quality_review(86, 84, 82, issues=[])
     gateway = RecordingGateway(['{"dimensions":', recovered])
     service = WorkflowService(
         db, store, gateway, SkillGate(db, SkillScanner([skill_root])),
@@ -16795,6 +17016,7 @@ async def test_short_direct_review_cannot_erase_a_prior_issue_by_omission(
 ) -> None:
     db = Database(tmp_path / "app.db")
     db.migrate()
+    bind_fake_gateway_capacity(db)
     store = ProjectStore(db, tmp_path / "workspace")
     project = store.create(ProjectCreate(
         title="Atomic direct review", mode="short", genre="suspense",
@@ -16850,6 +17072,7 @@ async def test_polish_rejects_model_change_to_exact_protected_passage(tmp_path) 
 
     db = Database(tmp_path / "app.db")
     db.migrate()
+    bind_fake_gateway_capacity(db)
     store = ProjectStore(db, tmp_path / "workspace")
     project = store.create(ProjectCreate(
         title="Protected paragraph", mode="short", genre="suspense",
@@ -16889,6 +17112,8 @@ async def test_polish_rejects_model_change_to_exact_protected_passage(tmp_path) 
 async def test_zhihu_v2_full_review_requests_criteria_evidence_and_runtime_scores(tmp_path) -> None:
     db = Database(tmp_path / "app.db")
     db.migrate()
+    bind_fake_gateway_capacity(db)
+    bind_fake_gateway_capacity(db)
     store = ProjectStore(db, tmp_path / "workspace")
     project = store.create(ProjectCreate(
         title="V2 review", mode="short", genre="suspense",
@@ -19068,13 +19293,14 @@ async def test_maintenance_capacity_windows_cover_middle_facts_and_reduce_determ
     async def capacity_stage(*args, **kwargs):
         nonlocal recursive_splits
         prompt = args[5]
-        if prompt == manuscript:
+        request = json.loads(prompt)
+        if "authoritative_manuscript" in request:
+            assert request["authoritative_manuscript"]["text"] == manuscript
             result = await kwargs["capacity_splitter"]({
                 "trigger": "preflight", "pressure": "split",
                 "context_window": 1800, "output_reserve": 1000,
             })
             return StageText(result, {"execution_mode": "capacity_split"})
-        request = json.loads(prompt)
         assert request["schema"] == "maintenance-window-request-v1"
         window_text = request["window_text"]
         if len(window_text) > 250:
@@ -19148,10 +19374,10 @@ async def test_maintenance_capacity_windows_cover_middle_facts_and_reduce_determ
 
 
 @pytest.mark.asyncio
-async def test_maintenance_window_compacts_fixed_context_before_recursive_split(
+async def test_maintenance_window_routes_oversized_fixed_authority_to_recursive_split(
     tmp_path,
 ) -> None:
-    """A smallest semantic window must not inherit an unsplittable prompt layer."""
+    """Protected fixed authority must window instead of being silently dropped."""
 
     db = Database(tmp_path / "app.db")
     db.migrate()
@@ -19163,7 +19389,7 @@ async def test_maintenance_window_compacts_fixed_context_before_recursive_split(
     db.save_model(
         model_id="maintenance-small", provider_id="offline",
         display_name="Maintenance Small", model_name="maintenance-small",
-        context_window=8_192, max_output_tokens=2_048,
+        context_window=32_768, max_output_tokens=2_048,
     )
     db.save_role_binding(
         "maintenance", "offline", "maintenance-small", None, None,
@@ -19198,11 +19424,17 @@ async def test_maintenance_window_compacts_fixed_context_before_recursive_split(
     (run_path / "outputs").mkdir(parents=True)
     (run_path / "receipts").mkdir()
     splitter_calls = 0
+    split_details = {}
 
-    async def reject_split(_details):
-        nonlocal splitter_calls
+    async def accept_split(details):
+        nonlocal splitter_calls, split_details
         splitter_calls += 1
-        raise AssertionError("bounded fixed context should fit before splitting prose")
+        split_details = dict(details)
+        return json.dumps({
+            "version": "maintenance-window-receipt-v1",
+            "facts": [], "state_deltas": [], "state_transitions": [],
+            "world_rules": [], "timeline": [],
+        })
 
     raw = await service._stage(
         run_id, run_path, project, "maintenance",
@@ -19213,16 +19445,17 @@ async def test_maintenance_window_compacts_fixed_context_before_recursive_split(
         }),
         allow_tools=False,
         route_capacity_guard=True,
-        capacity_splitter=reject_split,
+        capacity_splitter=accept_split,
         completion_check=lambda value: bool(str(value).strip()),
         bounded_protocol_output=True,
         compact_input=True,
     )
 
-    assert splitter_calls == 0
+    assert splitter_calls == 1
+    assert split_details["pressure"] == "WINDOWING_REQUIRED"
+    assert split_details["authority_input_tokens"] > split_details["context_window"]
     assert json.loads(str(raw))["version"] == "maintenance-window-receipt-v1"
-    assert len(gateway.calls) == 1
-    assert len(gateway.calls[0]["system"]) < 20_000
+    assert gateway.calls == []
 
 
 @pytest.mark.asyncio
@@ -19247,13 +19480,14 @@ async def test_maintenance_capacity_reduces_ordered_state_chain_and_repairs_fact
     async def capacity_stage(*args, **kwargs):
         nonlocal repair_calls
         prompt = args[5]
-        if prompt == manuscript:
+        request = json.loads(prompt)
+        if "authoritative_manuscript" in request:
+            assert request["authoritative_manuscript"]["text"] == manuscript
             result = await kwargs["capacity_splitter"]({
                 "trigger": "preflight", "pressure": "split",
                 "context_window": 1800, "output_reserve": 1000,
             })
             return StageText(result, {"execution_mode": "capacity_split"})
-        request = json.loads(prompt)
         window_text = request["window_text"]
         repair = request.get("repair")
         if repair:

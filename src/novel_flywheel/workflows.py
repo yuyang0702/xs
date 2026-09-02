@@ -23996,6 +23996,17 @@ class WorkflowService:
     ) -> tuple[str, bool, bool, bool, int]:
         consumed_input_tokens = 0
 
+        def recovery_failure_kind(exc: BaseException) -> str:
+            if isinstance(exc, CapacityAdmissionFailureV1) and exc.failure_code in {
+                CapacityFailureCode.CONTEXT_WINDOW_EXCEEDED.value,
+                CapacityFailureCode.MODEL_CONTEXT_EXCEEDED.value,
+                CapacityFailureCode.PROTECTED_LAYERS_EXCEED_BUDGET.value,
+                CapacityFailureCode.COMPACTION_INSUFFICIENT.value,
+                CapacityFailureCode.WINDOWING_REQUIRED.value,
+            }:
+                return "input_context_overflow"
+            return classify_model_failure(exc)
+
         async def request(*, prompt: str, fallback: bool, compact: bool,
                           attempt_suffix: str) -> str:
             nonlocal consumed_input_tokens
@@ -24036,7 +24047,7 @@ class WorkflowService:
             except asyncio.CancelledError:
                 raise
             except Exception as exc:
-                kind = classify_model_failure(exc)
+                kind = recovery_failure_kind(exc)
                 if kind == "provider_rejection":
                     raise
                 if kind == "input_context_overflow" and not compact_used:
@@ -24091,7 +24102,7 @@ class WorkflowService:
                             code="polish.primary_failed",
                         ),
                         "compact_input": fallback_compact,
-                        "failure_class": classify_model_failure(primary_error),
+                            "failure_class": recovery_failure_kind(primary_error),
                     },
                 )
                 try:
@@ -24104,7 +24115,7 @@ class WorkflowService:
                 except asyncio.CancelledError:
                     raise
                 except Exception as exc:
-                    kind = classify_model_failure(exc)
+                    kind = recovery_failure_kind(exc)
                     if kind == "provider_rejection":
                         raise
                     if kind == "input_context_overflow" and not fallback_compact:
@@ -32024,9 +32035,29 @@ class WorkflowService:
                         context_window=actual_model.get("context_window"),
                         declared_output_ceiling=actual_model.get("max_output_tokens"),
                     )
+                    fixed_empty_polish_retry = bool(
+                        stage == "polish"
+                        and gateway_role == "polish"
+                        and retry_polish_output_limit
+                        and not targeted_retry
+                        and not allow_tools
+                        and not result.text.strip()
+                        and (
+                            not retry_budget
+                            or retry_budget <= previous_budget
+                        )
+                    )
+                    retry_request_budget = (
+                        previous_budget
+                        if fixed_empty_polish_retry else retry_budget
+                    )
                     if (not self._exact_full_short_execution()
                             and not output_limit_expanded_once
-                            and retry_budget and retry_budget > previous_budget):
+                            and retry_request_budget
+                            and (
+                                retry_request_budget > previous_budget
+                                or fixed_empty_polish_retry
+                            )):
                         self.db.add_run_event(
                             run_id, "warning", (
                                 "polish_output_limit_retry"
@@ -32035,16 +32066,25 @@ class WorkflowService:
                             f"{stage} output may be truncated; retrying the same route with more headroom",
                             stage=stage, metadata={
                                 "previous_budget": previous_budget,
-                                "retry_budget": retry_budget,
+                                "retry_budget": retry_request_budget,
                                 "model_name": result.receipt.get("model_name"),
                                 "failure_class": "output_limit",
                             },
                         )
+                        retry_system = (
+                            system + (
+                                "\n\nReturn only the complete polished prose. Be "
+                                "concise enough to finish within the current "
+                                "output limit."
+                            )
+                            if fixed_empty_polish_retry else system
+                        )
                         result = await execute_route(
-                            selected_route, system, user, retry_budget,
+                            selected_route, retry_system, user,
+                            retry_request_budget,
                         )
                         result.receipt.setdefault(
-                            "requested_max_output_tokens", retry_budget,
+                            "requested_max_output_tokens", retry_request_budget,
                         )
                     retry_complete = not output_limited(result.receipt)
                     if (not retry_complete and execution_spec is not None):

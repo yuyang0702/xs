@@ -484,12 +484,17 @@ _REGISTRATIONS = (
     ArtifactContractRegistration(
         name="full_short_final_review", phase="quality",
         semantic_authority=(
-            "Full Short typed chief-editor dimensions and explicit control verdict"
+            "Full Short typed chief-editor score topology and explicit control verdict"
         ),
-        wire_required_fields=(
-            "dimensions", "hard_fail", "decision", "issues",
+        # The typed verdict union enforces exactly one score topology.  Legacy
+        # short profiles author dimensions, while zhihu-short-v2 authors the
+        # exact criterion/evidence map and Runtime derives dimensions.
+        wire_required_fields=("issues",),
+        wire_optional_fields=(
+            "dimensions", "score", "hard_fail", "decision",
+            "reconciliations", "request_full_review",
+            "criteria", "criterion_evidence",
         ),
-        wire_optional_fields=("reconciliations", "request_full_review"),
         wire_closed=True,
         minimum_business_characters=160,
     ),

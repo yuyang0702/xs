@@ -632,6 +632,7 @@ def test_p0_every_structured_business_boundary_uses_a_registered_contract() -> N
                         function.name in {
                             "_convert_generated_object",
                             "_convert_draft_receipt_object",
+                            "_final_review_json",
                         }
                         and node in ast.walk(function)
                         for function in ast.walk(tree)
