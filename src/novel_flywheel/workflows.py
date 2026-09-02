@@ -27168,6 +27168,7 @@ class WorkflowService:
         beat_catalog: Mapping[str, AtomicBeat] | None = None,
         prose_authority_context: DraftProseAuthorityContextV1 | None = None,
         retry_findings: tuple[DraftRetryFindingV1, ...] = (),
+        forced_split_reason: str | None = None,
     ) -> str:
         """Generate one owned segment and split when one response cannot own it."""
         owned_event_ids = list(event_ids or [])
@@ -27807,20 +27808,64 @@ class WorkflowService:
                     {**item, "semantic": True} for item in exc.issues
                 ])
 
-        reason = "output_limit"
+        async def split_for_capacity(details: Mapping[str, object]) -> str:
+            if depth >= 2 or target < 800 or len(owned_event_ids) < 2:
+                raise CapacityAdmissionFailureV1(
+                    "capacity.windowing_exhausted"
+                )
+            trigger = str(details.get("trigger") or "preflight")
+            return await self._draft_short_segment_task(
+                run_id, run_path, project, constraints, prompt,
+                suffix=suffix, target=target,
+                previous_parts=previous_parts,
+                event_ids=owned_event_ids,
+                location_catalog=location_catalog,
+                depth=depth,
+                contract=contract,
+                retry_count=retry_count,
+                node_sink=node_sink,
+                semantic_all_event_ids=semantic_all_event_ids,
+                semantic_receipt_sink=semantic_receipt_sink,
+                beat_catalog=beat_catalog,
+                prose_authority_context=prose_authority_context,
+                retry_findings=retry_findings,
+                forced_split_reason=(
+                    "output_limit"
+                    if trigger == "output_limit"
+                    else "capacity_windowing"
+                ),
+            )
+
+        if forced_split_reason not in {
+            None, "capacity_windowing", "output_limit",
+        }:
+            raise ValueError("unsupported Draft split reason")
+        reason = forced_split_reason or "output_limit"
         han_characters = 0
         split_issue_codes: list[str] = []
+        class ForcedDraftOwnershipSplit(Exception):
+            pass
+
         try:
+            if forced_split_reason is not None:
+                raise ForcedDraftOwnershipSplit
             part = await self._stage(
                 run_id, run_path, project, "draft", constraints, rendered_prompt,
                 suffix=suffix, allow_tools=False,
                 expected_output_characters=target,
                 scoped_creative_output=True,
+                route_capacity_guard=True,
+                capacity_splitter=split_for_capacity,
                 completion_check=lambda value: not self._draft_segment_issues(
                     value, target, previous_parts, location_catalog,
                     authority_context=prose_authority_context,
                 ),
             )
+        except ForcedDraftOwnershipSplit:
+            if depth >= 2 or target < 800 or len(owned_event_ids) < 2:
+                raise CapacityAdmissionFailureV1(
+                    "capacity.windowing_exhausted"
+                ) from None
         except CapacityAdmissionFailureV1 as exc:
             if exc.failure_id not in {
                 "capacity.model_context_exceeded",
@@ -27845,6 +27890,14 @@ class WorkflowService:
                 raise
         else:
             receipt = getattr(part, "receipt", {})
+            if (
+                isinstance(receipt, dict)
+                and receipt.get("execution_mode") == "capacity_split"
+            ):
+                # The ownership splitter validates every child and the parent
+                # before returning.  Re-accepting here would duplicate semantic
+                # sink receipts and make restart reconciliation ambiguous.
+                return str(part)
             finish_reason = normalize_finish_reason(
                 receipt.get("finish_reason") if isinstance(receipt, dict) else None
             )

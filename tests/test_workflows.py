@@ -5916,6 +5916,61 @@ async def test_capacity_denied_draft_segment_splits_before_dispatch(
 
 
 @pytest.mark.asyncio
+async def test_capacity_admission_uses_draft_ownership_splitter_once(
+    tmp_path, monkeypatch,
+) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Capacity topology", mode="short", genre="suspense",
+        premise="Admission changes topology before dispatch.", target_words=1000,
+    ))
+    skill_root = tmp_path / "skills"
+    make_prompt_skills(skill_root)
+    service = WorkflowService(
+        db, store, object(), SkillGate(db, SkillScanner([skill_root])),
+    )
+    db.create_run("capacity-topology", project.id, "short-story", status="running")
+    run_path = project.path / "runs" / "capacity-topology"
+    (run_path / "outputs").mkdir(parents=True)
+    (run_path / "receipts").mkdir()
+    calls: list[str] = []
+
+    async def capacity_stage(*_args, **kwargs):
+        suffix = str(kwargs.get("suffix") or "")
+        calls.append(suffix)
+        if suffix == "-part-01":
+            result = await kwargs["capacity_splitter"]({
+                "trigger": "preflight",
+                "pressure": "WINDOWING_REQUIRED",
+                "context_window": 32768,
+                "output_reserve": 5900,
+            })
+            return StageText(result, {"execution_mode": "capacity_split"})
+        return "甲" * 500 if suffix.endswith("sub-1") else "乙" * 500
+
+    monkeypatch.setattr(service, "_stage", capacity_stage)
+    accepted_nodes: list[tuple[DraftTaskContract, str]] = []
+    text = await service._draft_short_segment_task(
+        "capacity-topology", run_path, project, "constraints", "写完本段事件",
+        suffix="-part-01", target=1000, previous_parts=[],
+        event_ids=["EV-00000001", "EV-00000002"],
+        node_sink=accepted_nodes,
+    )
+
+    assert text == "甲" * 500 + "\n\n" + "乙" * 500
+    assert calls == ["-part-01", "-part-01-sub-1", "-part-01-sub-2"]
+    assert [contract.task_id for contract, _text in accepted_nodes] == [
+        "part-01/sub-1", "part-01/sub-2", "part-01",
+    ]
+    assert sum(
+        item["event_type"] == "draft_task_split_completed"
+        for item in db.list_run_events("capacity-topology")
+    ) == 1
+
+
+@pytest.mark.asyncio
 async def test_duplicate_draft_candidate_splits_semantic_ownership(
     tmp_path, monkeypatch,
 ) -> None:
