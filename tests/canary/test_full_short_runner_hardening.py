@@ -1686,3 +1686,87 @@ def test_real_runner_fail_closes_orphaned_and_prelaunch_reservations() -> None:
     assert "FULL_SHORT_PRELAUNCH_FAILURE_GRAPH_" in source
     assert "FULL_SHORT_STORE_BINDING_FAILED_BEFORE_LAUNCH" not in source
     assert "FULL_SHORT_PERMISSION_FAILED_BEFORE_LAUNCH" not in source
+
+
+def test_v3_historical_search_covers_mandated_sources_and_nonpreset_values(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from tools.diagnostics import (
+        materialize_full_short_runtime_architecture_redesign_v3 as materializer,
+    )
+
+    files = {
+        "config/provider.json": '{"context_window_tokens": 32768}',
+        "tests/fixtures/capacity.json": '{"max_output_tokens": 4096}',
+        "src/runtime_notes.py": "# manually recorded output cap 11,524 tokens",
+        "docs/route-manifest.md": "declared completion token limit: 20K",
+        "docs/superpowers/reports/empty-capability.md": "no numeric claim",
+        (
+            "docs/superpowers/reports/"
+            "full-short-execution-runtime-architecture-redesign-v3-"
+            "evidence-migration-v1/generated.json"
+        ): '{"max_tokens": 999999}',
+    }
+    for relative, body in files.items():
+        path = tmp_path / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(body, encoding="utf-8")
+    screenshot = tmp_path / "docs" / "old-provider-capability.png"
+    screenshot.write_bytes(b"not-a-real-image")
+    tracked = [*files, "docs/old-provider-capability.png"]
+    monkeypatch.setattr(
+        materializer,
+        "git",
+        lambda _repo, *args: "\n".join(tracked)
+        if args == ("ls-files",) else "",
+    )
+
+    result = materializer._historical_search_inventory(tmp_path)
+
+    values = {item["value"] for item in result["discovered_value_records"]}
+    assert {32768, 4096, 11524, 20000} <= values
+    assert 999999 not in values
+    assert result["category_summary"]["test_fixtures"][
+        "candidate_occurrence_count"
+    ] >= 1
+    assert result["category_summary"]["tracked_screenshots_images"] == {
+        "tracked_file_count": 1,
+        "text_scanned_file_count": 0,
+        "binary_inventory_file_count": 1,
+        "candidate_occurrence_count": 0,
+    }
+    assert result["category_summary"]["capability_budget_reports"][
+        "tracked_file_count"
+    ] >= 1
+    assert all(
+        item["classification_code"] == "B"
+        and item["eligible_for_verified_registry"] is False
+        and item["provenance_available"] is False
+        for item in result["discovered_value_records"]
+    )
+
+
+def test_v3_historical_value_classification_and_external_stop_loss_contract() -> None:
+    from tools.diagnostics import (
+        materialize_full_short_runtime_architecture_redesign_v3 as materializer,
+    )
+
+    records = materializer._historical_value_records(Path.cwd())
+
+    assert len(records) == 9
+    assert {item["classification_code"] for item in records} == {"B", "D"}
+    assert not any(item["eligible_for_verified_registry"] for item in records)
+    assert {
+        "real_credential_lookup_count",
+        "real_secret_read_count",
+        "real_provider_client_creation_count",
+        "real_provider_request_attempts",
+        "http_post_attempts",
+        "http_calls",
+        "network_calls",
+        "model_calls",
+        "paid_calls",
+        "full_short_execution_count",
+        "real_full_short_runs",
+    } <= materializer.EXTERNAL_ZERO.keys()
+    assert set(materializer.EXTERNAL_ZERO.values()) == {0}

@@ -7,6 +7,7 @@ from dataclasses import asdict
 import hashlib
 import json
 from pathlib import Path
+import re
 import shutil
 import subprocess
 from typing import Any
@@ -234,41 +235,233 @@ def _record_document(record: RouteCapabilityRecordV1) -> dict[str, Any]:
     return value
 
 
-_HISTORICAL_CAPACITY_SEARCH_TERMS = (
-    "1000000", "384000", "8798", "16000", "4624", "3724",
-    "32768", "8328", "372000",
+_HISTORICAL_TEXT_SUFFIXES = (
+    ".cfg", ".css", ".html", ".ini", ".js", ".json", ".md",
+    ".py", ".rst", ".sql", ".toml", ".ts", ".tsx", ".txt",
+    ".yaml", ".yml",
+)
+_HISTORICAL_IMAGE_SUFFIXES = (
+    ".bmp", ".gif", ".jpeg", ".jpg", ".png", ".tif", ".tiff",
+    ".webp",
+)
+_HISTORICAL_SEARCH_CATEGORIES = (
+    "provider_model_config",
+    "previous_approval_canary_packets",
+    "capability_budget_reports",
+    "reports_tree",
+    "runtime_fingerprints",
+    "route_manifests_provider_matrices",
+    "tracked_screenshots_images",
+    "manually_recorded_limits",
+    "test_fixtures",
+    "comments_docs",
+)
+_CAPACITY_FIELD_FRAGMENT = (
+    r"(?:context[_ -]?(?:window|limit)(?:[_ -]?tokens?)?"
+    r"|max(?:imum)?[_ -]?(?:output|completion)(?:[_ -]?tokens?)?"
+    r"|max[_ -]?tokens?"
+    r"|(?:requested|effective|declared|configured|observed|per[_ -]?call)"
+    r"[_ -]?(?:output[_ -]?)?(?:token[_ -]?)?(?:limit|cap|budget|tokens?)"
+    r"|(?:output|completion)[_ -]?(?:token[_ -]?)?(?:limit|cap|budget)"
+    r"|token[_ -]?(?:limit|cap|budget|ceiling|headroom))"
+)
+_FIELD_THEN_VALUE_RE = re.compile(
+    rf"(?P<field>{_CAPACITY_FIELD_FRAGMENT})[^0-9\n]{{0,80}}"
+    r"(?P<value>[0-9][0-9,_.]*(?:\.[0-9]+)?)\s*(?P<unit>[kKmM])?\b",
+    re.IGNORECASE,
+)
+_VALUE_WITH_TOKEN_UNIT_RE = re.compile(
+    r"(?P<value>[0-9][0-9,_.]*(?:\.[0-9]+)?)\s*(?P<unit>[kKmM])?"
+    r"\s*(?:[- ]?tokens?)\b",
+    re.IGNORECASE,
 )
 
 
-def _historical_search_inventory(repo: Path) -> list[dict[str, Any]]:
-    """Hash every tracked historical report that contains a candidate value."""
+def _historical_source_categories(normalized: str) -> tuple[str, ...]:
+    """Return every Master-task search category applicable to a tracked path."""
+
+    lower = normalized.lower()
+    name = Path(lower).name
+    suffix = Path(lower).suffix
+    text_like = suffix in _HISTORICAL_TEXT_SUFFIXES
+    categories: set[str] = set()
+    if lower.startswith("config/") or (
+        text_like and any(term in name for term in ("provider", "model"))
+    ):
+        categories.add("provider_model_config")
+    if any(term in lower for term in ("approval", "canary")):
+        categories.add("previous_approval_canary_packets")
+    if any(term in lower for term in ("capability", "capacity", "budget")):
+        categories.add("capability_budget_reports")
+    if lower.startswith("docs/superpowers/reports/"):
+        categories.add("reports_tree")
+    if any(term in lower for term in ("runtime", "fingerprint")):
+        categories.add("runtime_fingerprints")
+    if any(term in lower for term in (
+        "route", "manifest", "provider-matrix", "provider_matrix",
+    )):
+        categories.add("route_manifests_provider_matrices")
+    if suffix in _HISTORICAL_IMAGE_SUFFIXES:
+        categories.add("tracked_screenshots_images")
+    if lower.startswith("tests/fixtures/") or "fixture" in lower:
+        categories.add("test_fixtures")
+    if text_like and lower.startswith(("docs/", "src/", "tests/", "tools/")):
+        categories.add("comments_docs")
+    return tuple(sorted(categories))
+
+
+def _normalized_token_value(raw: str, unit: str | None) -> int | None:
+    cleaned = raw.replace(",", "").replace("_", "")
+    try:
+        number = float(cleaned)
+    except ValueError:
+        return None
+    multiplier = {"k": 1_000, "m": 1_000_000}.get(
+        (unit or "").lower(), 1,
+    )
+    normalized = number * multiplier
+    if normalized < 1 or not normalized.is_integer():
+        return None
+    return int(normalized)
+
+
+def _capacity_values_in_text(text: str) -> list[dict[str, Any]]:
+    """Extract capacity-like values by field or token-unit syntax, without prose."""
+
+    values: list[dict[str, Any]] = []
+    seen: set[tuple[int, int, str]] = set()
+    for line_number, line in enumerate(text.splitlines(), start=1):
+        for pattern, default_field in (
+            (_FIELD_THEN_VALUE_RE, None),
+            (_VALUE_WITH_TOKEN_UNIT_RE, "token_quantity_near_capacity_language"),
+        ):
+            for match in pattern.finditer(line):
+                value = _normalized_token_value(
+                    match.group("value"), match.group("unit"),
+                )
+                if value is None:
+                    continue
+                field = default_field or re.sub(
+                    r"[ -]+", "_", match.group("field").lower(),
+                )
+                identity = (line_number, value, field)
+                if identity in seen:
+                    continue
+                seen.add(identity)
+                values.append({
+                    "line_number": line_number,
+                    "capability_field": field,
+                    "value": value,
+                    "raw_unit": match.group("unit") or "tokens",
+                })
+    return values
+
+
+def _historical_search_inventory(repo: Path) -> dict[str, Any]:
+    """Inventory all mandated tracked sources and every capacity-like value."""
 
     tracked = git(repo, "ls-files").splitlines()
     inventory: list[dict[str, Any]] = []
+    discovered: list[dict[str, Any]] = []
+    category_summary = {
+        category: {
+            "tracked_file_count": 0,
+            "text_scanned_file_count": 0,
+            "binary_inventory_file_count": 0,
+            "candidate_occurrence_count": 0,
+        }
+        for category in _HISTORICAL_SEARCH_CATEGORIES
+    }
+    excluded_generated_file_count = 0
     for relative in tracked:
         normalized = relative.replace("\\", "/")
-        if (
-            not normalized.startswith("docs/superpowers/reports/")
-            or normalized.startswith(ROOT.as_posix() + "/")
-            or not normalized.endswith((".json", ".md"))
-        ):
+        if normalized.startswith(ROOT.as_posix() + "/"):
+            excluded_generated_file_count += 1
+            continue
+        categories = _historical_source_categories(normalized)
+        if not categories:
             continue
         path = repo / normalized
-        try:
-            text = path.read_text(encoding="utf-8")
-        except (OSError, UnicodeDecodeError):
-            continue
-        matched = [
-            int(term) for term in _HISTORICAL_CAPACITY_SEARCH_TERMS
-            if term in text
-        ]
-        if matched:
-            inventory.append({
-                "path": normalized,
-                "sha256": sha_file(path),
-                "matched_candidate_values": matched,
+        suffix = path.suffix.lower()
+        for category in categories:
+            category_summary[category]["tracked_file_count"] += 1
+        candidates: list[dict[str, Any]] = []
+        if suffix in _HISTORICAL_TEXT_SUFFIXES:
+            try:
+                text = path.read_text(encoding="utf-8")
+            except (OSError, UnicodeDecodeError) as error:
+                inventory.append({
+                    "path": normalized,
+                    "categories": list(categories),
+                    "scan_method": "UTF8_TEXT_READ_FAILED",
+                    "error_class": type(error).__name__,
+                    "candidate_occurrence_count": 0,
+                    "sha256": sha_file(path),
+                })
+                continue
+            candidates = _capacity_values_in_text(text)
+            scan_method = "UTF8_CAPACITY_FIELD_AND_TOKEN_UNIT_SCAN"
+            for category in categories:
+                category_summary[category]["text_scanned_file_count"] += 1
+                category_summary[category]["candidate_occurrence_count"] += len(
+                    candidates
+                )
+        else:
+            scan_method = "BINARY_HASH_INVENTORY_NO_TEXT_EXTRACTION"
+            for category in categories:
+                category_summary[category]["binary_inventory_file_count"] += 1
+        digest = sha_file(path)
+        inventory.append({
+            "path": normalized,
+            "categories": list(categories),
+            "scan_method": scan_method,
+            "candidate_occurrence_count": len(candidates),
+            "sha256": digest,
+        })
+        if candidates:
+            category_summary["manually_recorded_limits"][
+                "candidate_occurrence_count"
+            ] += len(candidates)
+        for candidate in candidates:
+            discovered.append({
+                "route_identity": None,
+                "capability_field": candidate["capability_field"],
+                "value": candidate["value"],
+                "original_source_path": normalized,
+                "original_source_type": list(categories),
+                "original_evidence_date": None,
+                "source_evidence_sha256": digest,
+                "source_line_number": candidate["line_number"],
+                "raw_unit": candidate["raw_unit"],
+                "local_artifact_provenance_available": True,
+                "provenance_available": False,
+                "used_by_historical_runtime": False,
+                "trust_level": "LOCAL_OCCURRENCE_NOT_PROVIDER_CAPABILITY_PROOF",
+                "classification_code": "B",
+                "classification": "HISTORICAL_BUT_UNPROVEN",
+                "eligible_for_verified_registry": False,
+                "disposition": "REJECT_AS_ROUTE_CAPABILITY_UNLESS_SEPARATELY_PROVEN",
             })
-    return inventory
+    category_summary["manually_recorded_limits"]["tracked_file_count"] = len({
+        item["original_source_path"] for item in discovered
+    })
+    category_summary["manually_recorded_limits"][
+        "text_scanned_file_count"
+    ] = category_summary["manually_recorded_limits"]["tracked_file_count"]
+    return {
+        "tracked_repository_file_count": len(tracked),
+        "excluded_current_generated_evidence_file_count": (
+            excluded_generated_file_count
+        ),
+        "searched_file_count": len(inventory),
+        "searched_file_inventory_sha256": sha_json(inventory),
+        "searched_file_inventory": inventory,
+        "category_summary": category_summary,
+        "candidate_occurrence_count": len(discovered),
+        "candidate_value_count": len({item["value"] for item in discovered}),
+        "discovered_value_records_sha256": sha_json(discovered),
+        "discovered_value_records": discovered,
+    }
 
 
 def _historical_value_records(repo: Path) -> list[dict[str, Any]]:
@@ -541,7 +734,7 @@ def materialize(
             mode="fresh_read_only_offline", old_authority_reused=False,
         ))
 
-    historical_search_inventory = _historical_search_inventory(repo)
+    historical_search = _historical_search_inventory(repo)
     historical_values = _historical_value_records(repo)
     historical = {
         "schema": "HistoricalRouteCapabilityEvidenceV1",
@@ -549,16 +742,41 @@ def materialize(
         "status": "SEARCH_COMPLETE_NO_VERIFIED_REUSE",
         "historical_evidence_search_complete": True,
         "search_scope": (
-            "all Git-tracked JSON/Markdown under docs/superpowers/reports, "
-            "excluding this generated evidence directory; plus the safe local "
-            "provider/model/role projection already sealed in the historical matrix"
+            "all Git-tracked UTF-8 config, approval/canary, capability/budget, "
+            "reports, runtime/fingerprint, route/manifest/provider-matrix, "
+            "test-fixture, source-comment, and documentation files selected by "
+            "path category; all tracked screenshot/image formats are hash-"
+            "inventoried. The current generated V3 evidence directory is excluded."
         ),
-        "search_terms": [
-            int(value) for value in _HISTORICAL_CAPACITY_SEARCH_TERMS
+        "search_method": (
+            "capacity-field and token-unit pattern extraction; no fixed list of "
+            "candidate decimal values and no raw surrounding prose persisted"
+        ),
+        "search_category_contract": list(_HISTORICAL_SEARCH_CATEGORIES),
+        "search_inventory_file_count": historical_search["searched_file_count"],
+        "search_inventory_sha256": historical_search[
+            "searched_file_inventory_sha256"
         ],
-        "search_inventory_file_count": len(historical_search_inventory),
-        "search_inventory_sha256": sha_json(historical_search_inventory),
-        "search_inventory": historical_search_inventory,
+        "search_inventory": historical_search["searched_file_inventory"],
+        "search_category_summary": historical_search["category_summary"],
+        "tracked_repository_file_count": historical_search[
+            "tracked_repository_file_count"
+        ],
+        "excluded_current_generated_evidence_file_count": historical_search[
+            "excluded_current_generated_evidence_file_count"
+        ],
+        "discovered_candidate_occurrence_count": historical_search[
+            "candidate_occurrence_count"
+        ],
+        "discovered_candidate_value_count": historical_search[
+            "candidate_value_count"
+        ],
+        "discovered_value_records_sha256": historical_search[
+            "discovered_value_records_sha256"
+        ],
+        "discovered_value_records": historical_search[
+            "discovered_value_records"
+        ],
         "searched_sources": [
             HISTORICAL_MATRIX.as_posix(),
             HISTORICAL_PRICE_PACKET.as_posix(),
@@ -573,7 +791,21 @@ def materialize(
         "partial_only_observations": [8798, 16000, 4624, 3724],
         "unproven_claims_rejected": [32768, 8328, 372000],
         "value_records": historical_values,
-        "screenshots_found": 0,
+        "recoverable_verified_capability_count": 0,
+        "historical_value_without_provenance_count": (
+            len([
+                item for item in historical_values
+                if item["classification_code"] in {"B", "C"}
+                and not item["provenance_available"]
+            ])
+            + len([
+                item for item in historical_search["discovered_value_records"]
+                if not item["provenance_available"]
+            ])
+        ),
+        "screenshots_found": historical_search["category_summary"][
+            "tracked_screenshots_images"
+        ]["tracked_file_count"],
         "external_boundary": EXTERNAL_ZERO,
     }
     write_json(root / "historical-route-capability-evidence-v1.json", historical)
@@ -634,6 +866,12 @@ def materialize(
             "D": "NO_EVIDENCE",
         },
         value_records=historical_values,
+        mechanically_discovered_value_records=(
+            historical_search["discovered_value_records"]
+        ),
+        mechanically_discovered_value_records_sha256=(
+            historical_search["discovered_value_records_sha256"]
+        ),
         route_capability_field_records=route_field_records,
     ))
     write_json(root / "exact-ready-required-route-set-v1.json", receipt(
