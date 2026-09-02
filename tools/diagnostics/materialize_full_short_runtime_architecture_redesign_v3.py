@@ -736,6 +736,23 @@ def materialize(
 
     historical_search = _historical_search_inventory(repo)
     historical_values = _historical_value_records(repo)
+    search_inventory_path = root / "historical-capacity-search-inventory-v1.json"
+    write_json(search_inventory_path, receipt(
+        "HistoricalCapacitySearchInventoryV1", "SEARCH_COMPLETE",
+        tracked_repository_file_count=historical_search[
+            "tracked_repository_file_count"
+        ],
+        excluded_current_generated_evidence_file_count=historical_search[
+            "excluded_current_generated_evidence_file_count"
+        ],
+        searched_file_count=historical_search["searched_file_count"],
+        search_category_contract=list(_HISTORICAL_SEARCH_CATEGORIES),
+        search_category_summary=historical_search["category_summary"],
+        searched_file_inventory_sha256=historical_search[
+            "searched_file_inventory_sha256"
+        ],
+        searched_file_inventory=historical_search["searched_file_inventory"],
+    ))
     historical = {
         "schema": "HistoricalRouteCapabilityEvidenceV1",
         "version": 1,
@@ -757,7 +774,10 @@ def materialize(
         "search_inventory_sha256": historical_search[
             "searched_file_inventory_sha256"
         ],
-        "search_inventory": historical_search["searched_file_inventory"],
+        "search_inventory_artifact": (
+            "historical-capacity-search-inventory-v1.json"
+        ),
+        "search_inventory_artifact_sha256": sha_file(search_inventory_path),
         "search_category_summary": historical_search["category_summary"],
         "tracked_repository_file_count": historical_search[
             "tracked_repository_file_count"
@@ -866,11 +886,14 @@ def materialize(
             "D": "NO_EVIDENCE",
         },
         value_records=historical_values,
-        mechanically_discovered_value_records=(
-            historical_search["discovered_value_records"]
-        ),
+        mechanically_discovered_value_record_count=historical_search[
+            "candidate_occurrence_count"
+        ],
         mechanically_discovered_value_records_sha256=(
             historical_search["discovered_value_records_sha256"]
+        ),
+        mechanically_discovered_value_records_source_artifact=(
+            "historical-route-capability-evidence-v1.json"
         ),
         route_capability_field_records=route_field_records,
     ))
