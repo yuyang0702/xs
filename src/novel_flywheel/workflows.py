@@ -27015,6 +27015,7 @@ class WorkflowService:
                 run_id, run_path, project, "draft", constraints, rendered_prompt,
                 suffix=suffix, allow_tools=False,
                 expected_output_characters=target,
+                scoped_creative_output=True,
                 completion_check=lambda value: not self._draft_segment_issues(
                     value, target, previous_parts, location_catalog,
                     authority_context=prose_authority_context,
