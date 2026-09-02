@@ -447,6 +447,22 @@ class _PrivateDryRunOracle:
             return self._result(role, _execution_manifest_receipt(user))
         if "DRAFT_WHOLE_SEMANTIC_VALIDATION" in user:
             return self._result(role, self._whole_draft_receipt(user))
+        if "SHORT_INITIAL_REVIEW_WINDOW_V1" in user:
+            return self._result(role, json.dumps({
+                "summary": (
+                    "This complete bounded window preserves ordered action, "
+                    "knowledge changes, relationship movement, and its handoff."
+                ),
+                "issues": [],
+            }))
+        if "SHORT_INITIAL_REVIEW_REGIONAL_REDUCER_V1" in user:
+            return self._result(role, json.dumps({
+                "summary": (
+                    "All covered initial-review windows remain ordered and "
+                    "their source issue ledger is preserved."
+                ),
+                "issues": [],
+            }))
         if "DRAFT_SEMANTIC_VALIDATION" in user:
             contract_match = re.search(r"TASK CONTRACT: (\{[^\n]+\})", user)
             if contract_match is None or "PROSE:\n" not in user:

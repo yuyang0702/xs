@@ -1400,6 +1400,79 @@ async def test_whole_semantic_capacity_uses_adjacent_windows_and_reducer(
 
 
 @pytest.mark.asyncio
+async def test_short_initial_review_capacity_split_covers_complete_manuscript(
+    tmp_path,
+) -> None:
+    service, project, run_path, _state = make_service(tmp_path)
+    paragraphs = [
+        f"窗口独有证据{index}。" + (f"第{index}段行动推进并改变知情状态。" * 260)
+        for index in range(1, 5)
+    ]
+    draft = "\n\n".join(paragraphs)
+    calls: list[tuple[str, str]] = []
+
+    async def fake_stage(*args, **_kwargs):
+        stage = args[3]
+        prompt = args[5]
+        calls.append((stage, prompt))
+        if prompt.startswith("SHORT_INITIAL_REVIEW_WINDOW_V1"):
+            window = int(re.search(r"WINDOW: (\d+)/", prompt).group(1))
+            return json.dumps({
+                "summary": f"窗口{window}的动作与交接已核对。",
+                "issues": [{
+                    "category": f"window-{window}",
+                    "severity": "medium",
+                    "evidence": f"窗口独有证据{window}",
+                    "location": f"window-{window}",
+                    "action": f"保留窗口{window}的独有发现",
+                }],
+            }, ensure_ascii=False)
+        if prompt.startswith("SHORT_INITIAL_REVIEW_REGIONAL_REDUCER_V1"):
+            return json.dumps({
+                "summary": "区域证据保持完整。", "issues": [],
+            }, ensure_ascii=False)
+        assert prompt.startswith("SHORT_INITIAL_REVIEW_GLOBAL_REDUCER_V1")
+        return json.dumps({
+            "dimensions": {"commercial": 82, "story": 84, "prose": 81},
+            "hard_fail": False,
+            "decision": "revise",
+            "issues": [],
+        }, ensure_ascii=False)
+
+    service._stage = fake_stage
+    result = json.loads(await service._review_short_initial_capacity_split(
+        "manifest-run", run_path, project, "constraints", draft, {},
+        details={"trigger": "preflight"},
+    ))
+
+    window_prompts = [
+        prompt for _stage, prompt in calls
+        if prompt.startswith("SHORT_INITIAL_REVIEW_WINDOW_V1")
+    ]
+    spans = [
+        tuple(map(int, re.search(r"SPAN: (\d+)-(\d+)", prompt).groups()))
+        for prompt in window_prompts
+    ]
+    assert spans[0][0] == 0
+    assert spans[-1][1] == len(draft)
+    assert all(
+        any(start <= offset < end for start, end in spans)
+        for offset in range(len(draft))
+    )
+    assert all(stage == "review" for stage, _prompt in calls)
+    assert {issue["category"] for issue in result["issues"]} == {
+        f"window-{index}" for index in range(1, len(window_prompts) + 1)
+    }
+    receipt = json.loads((
+        run_path / "outputs" / "initial-review-capacity-v1.json"
+    ).read_text(encoding="utf-8"))
+    assert receipt["covered_windows"] == list(
+        range(1, receipt["window_count"] + 1)
+    )
+    assert receipt["raw_manuscript_persisted"] is False
+
+
+@pytest.mark.asyncio
 async def test_whole_semantic_capacity_carries_typed_obligation_to_payoff(
     tmp_path,
 ) -> None:

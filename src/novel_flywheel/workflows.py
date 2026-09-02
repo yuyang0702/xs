@@ -5335,14 +5335,28 @@ class WorkflowService:
                     )
             if review is None:
                 review_input = (
-                    f"MANUSCRIPT LENGTH: {len(draft)} characters.\n\nLABELED EXCERPTS:\n"
-                    f"{reader_sample(draft, project.mode, limit=6000)}\n\n"
+                    "SHORT_INITIAL_REVIEW_FULL_MANUSCRIPT_V1. Review the complete "
+                    "immutable manuscript below. Do not sample or rewrite.\n\n"
+                    f"MANUSCRIPT SHA256: {hashlib.sha256(draft.encode('utf-8')).hexdigest()}\n"
+                    f"MANUSCRIPT LENGTH: {len(draft)} characters.\n\n"
+                    f"FULL MANUSCRIPT:\n{draft}\n\n"
                     "LOCAL FULL MANUSCRIPT SUMMARY:\n"
                     f"{json.dumps(compact_analysis(draft_analysis), ensure_ascii=False)}"
                 )
                 review_text = await self._stage(
                     run_id, run_path, project, "review", constraints, review_input,
                     allow_tools=False,
+                    primary_only=True,
+                    protocol_system_contract=IMMUTABLE_RECEIPT_SYSTEM,
+                    route_capacity_guard=True,
+                    capacity_splitter=lambda details: (
+                        self._review_short_initial_capacity_split(
+                            run_id, run_path, project, constraints,
+                            draft, draft_analysis, details=details,
+                        )
+                    ),
+                    bounded_protocol_output=True,
+                    compact_input=True,
                     execution_spec=self._structured_stage_spec(
                         "final_review",
                         completion_check=lambda value: bool(self._review(value)),
@@ -22164,6 +22178,384 @@ class WorkflowService:
         if not isinstance(value, dict) or value != expected:
             raise ValueError("reusable Short review authority binding is stale")
         return value
+
+    async def _review_short_initial_capacity_split(
+        self,
+        run_id: str,
+        run_path: Path,
+        project: Project,
+        constraints: str,
+        draft: str,
+        draft_analysis: Mapping[str, object],
+        *,
+        details: Mapping[str, object],
+    ) -> str:
+        """Review every manuscript byte in bounded windows, then adjudicate once."""
+
+        windows = review_windows(draft, target=4200, overlap=400)
+        if not windows:
+            raise CapacityAdmissionFailureV1("capacity.windowing_exhausted")
+        draft_sha256 = hashlib.sha256(draft.encode("utf-8")).hexdigest()
+        analysis_projection = compact_analysis(dict(draft_analysis))
+        authority_sha256 = canonical_sha256({
+            "schema": "ShortInitialReviewWindowAuthorityV1",
+            "draft_sha256": draft_sha256,
+            "constraints_sha256": hashlib.sha256(
+                constraints.encode("utf-8")
+            ).hexdigest(),
+            "analysis_sha256": canonical_sha256(analysis_projection),
+            "windows": [{
+                "index": item["index"],
+                "start": item["start"],
+                "end": item["end"],
+                "sha256": hashlib.sha256(
+                    item["text"].encode("utf-8")
+                ).hexdigest(),
+            } for item in windows],
+        })
+        evidence: list[dict[str, Any]] = []
+        previous_summary = ""
+        for window in windows:
+            window_sha256 = hashlib.sha256(
+                window["text"].encode("utf-8")
+            ).hexdigest()
+            checkpoint_key = (
+                f"short-initial-review-window-{window['index']:03d}-"
+                f"{authority_sha256[:12]}"
+            )
+            checkpoint_input = canonical_sha256({
+                "window": window["index"],
+                "start": window["start"],
+                "end": window["end"],
+                "window_sha256": window_sha256,
+                "previous_summary_sha256": hashlib.sha256(
+                    previous_summary.encode("utf-8")
+                ).hexdigest(),
+            })
+            cached = self.db.load_workflow_node_checkpoint(
+                run_id=run_id,
+                node_key=checkpoint_key,
+                authority_sha256=authority_sha256,
+                input_sha256=checkpoint_input,
+                statuses=("validated",),
+                min_validation_stage="local_semantics",
+            )
+            cached_item = (
+                (cached.get("payload") or {}).get("item")
+                if isinstance(cached, dict) else None
+            )
+            cached_valid = (
+                isinstance(cached_item, dict)
+                and cached_item.get("window") == window["index"]
+                and cached_item.get("start") == window["start"]
+                and cached_item.get("end") == window["end"]
+                and cached_item.get("window_sha256") == window_sha256
+                and bool(str(cached_item.get("summary") or "").strip())
+                and isinstance(cached_item.get("issues"), list)
+                and cached.get("output_sha256") == canonical_sha256(cached_item)
+            )
+            if cached_valid:
+                item = dict(cached_item)
+                event_type = "short_initial_review_window_reused"
+            else:
+                prompt = (
+                    "SHORT_INITIAL_REVIEW_WINDOW_V1. Audit only this exact "
+                    "manuscript window without rewriting or scoring. Return one "
+                    "JSON object with summary and issues. Summary must describe "
+                    "state changes and handoff in at most 240 Chinese characters. "
+                    "Return at most four issues, each with category, severity, "
+                    "evidence, location, and action. Evidence must be an exact "
+                    "excerpt from this window. Do not sample or claim whole-story "
+                    "coverage.\n\n"
+                    f"MANUSCRIPT SHA256: {draft_sha256}\n"
+                    f"WINDOW: {window['index']}/{len(windows)}\n"
+                    f"SPAN: {window['start']}-{window['end']}\n"
+                    f"WINDOW SHA256: {window_sha256}\n"
+                    f"PREVIOUS WINDOW SUMMARY: {previous_summary or 'None'}\n"
+                    "LOCAL FULL-MANUSCRIPT ANALYSIS HASH: "
+                    f"{canonical_sha256(analysis_projection)}\n"
+                    f"MANUSCRIPT WINDOW:\n{window['text']}"
+                )
+
+                def window_complete(value: str) -> bool:
+                    payload = self._convert_generated_object(
+                        value, run_path,
+                        contract_name="final_review_window",
+                    )
+                    validate_final_review_window_receipt(payload)
+                    return True
+
+                raw = await self._stage(
+                    run_id, run_path, project, "review", constraints, prompt,
+                    suffix=f"-initial-window-{window['index']:03d}",
+                    allow_tools=False,
+                    primary_only=True,
+                    protocol_system_contract=IMMUTABLE_RECEIPT_SYSTEM,
+                    route_capacity_guard=True,
+                    bounded_protocol_output=True,
+                    compact_input=True,
+                    story_skeleton_override=json.dumps({
+                        "schema": "ShortInitialReviewWindowIndexV1",
+                        "authority_sha256": authority_sha256,
+                        "draft_sha256": draft_sha256,
+                        "window": window["index"],
+                        "start": window["start"],
+                        "end": window["end"],
+                        "window_sha256": window_sha256,
+                    }, ensure_ascii=False, sort_keys=True),
+                    execution_spec=self._structured_stage_spec(
+                        "final_review_window",
+                        completion_check=window_complete,
+                        runtime_authority={
+                            "authority_sha256": authority_sha256,
+                            "draft_sha256": draft_sha256,
+                            "window": window["index"],
+                            "start": window["start"],
+                            "end": window["end"],
+                            "window_sha256": window_sha256,
+                        },
+                    ),
+                )
+                payload = self._convert_generated_object(
+                    raw, run_path,
+                    contract_name="final_review_window",
+                )
+                payload = validate_final_review_window_receipt(payload)
+                item = {
+                    "window": window["index"],
+                    "start": window["start"],
+                    "end": window["end"],
+                    "window_sha256": window_sha256,
+                    "summary": str(payload["summary"]).strip(),
+                    "issues": runtime_issue_ledger(
+                        payload.get("issues", []),
+                        source=f"short-initial-review-window-{window['index']}",
+                    ),
+                }
+                self.db.save_workflow_node_checkpoint(
+                    run_id=run_id,
+                    node_key=checkpoint_key,
+                    authority_sha256=authority_sha256,
+                    input_sha256=checkpoint_input,
+                    output_sha256=canonical_sha256(item),
+                    status="validated",
+                    validation_stage="local_semantics",
+                    payload={"item": item},
+                )
+                event_type = "short_initial_review_window_ready"
+            evidence.append(item)
+            previous_summary = str(item["summary"])
+            self.db.add_run_event(
+                run_id, "success", event_type,
+                "Short initial Review window is hash-bound and complete.",
+                stage="review", metadata={
+                    "window": window["index"],
+                    "start": window["start"],
+                    "end": window["end"],
+                    "window_sha256": window_sha256,
+                },
+            )
+
+        if (
+            evidence[0]["start"] != 0
+            or evidence[-1]["end"] != len(draft)
+            or any(
+                right["start"] > left["end"]
+                for left, right in zip(evidence, evidence[1:])
+            )
+            or [item["window"] for item in evidence]
+            != list(range(1, len(windows) + 1))
+        ):
+            raise CapacityAdmissionFailureV1("capacity.windowing_exhausted")
+
+        level = 0
+        while estimate_input_tokens(json.dumps(
+            evidence, ensure_ascii=False, separators=(",", ":"),
+        )) > 6000:
+            level += 1
+            if level > 5:
+                raise CapacityAdmissionFailureV1(
+                    "capacity.windowing_exhausted"
+                )
+            batches = review_evidence_batches(
+                evidence, token_limit=4500, overlap=0,
+            )
+            if len(batches) >= len(evidence):
+                raise CapacityAdmissionFailureV1(
+                    "capacity.windowing_exhausted"
+                )
+            reduced: list[dict[str, Any]] = []
+            for batch_index, batch in enumerate(batches, 1):
+                covered_windows = [
+                    int(window)
+                    for item in batch
+                    for window in (
+                        item.get("covered_windows")
+                        if isinstance(item.get("covered_windows"), list)
+                        else [item.get("window")]
+                    )
+                    if isinstance(window, int)
+                ]
+                source_sha256 = canonical_sha256(batch)
+                prompt = (
+                    "SHORT_INITIAL_REVIEW_REGIONAL_REDUCER_V1. Reduce the "
+                    "ordered window evidence without scoring or rewriting. "
+                    "Return one JSON object with summary and issues. Preserve "
+                    "every unresolved source issue and add only concrete "
+                    "cross-window continuity findings.\n\n"
+                    f"LEVEL: {level}\nBATCH: {batch_index}/{len(batches)}\n"
+                    f"COVERED WINDOWS: {json.dumps(covered_windows)}\n"
+                    f"SOURCE SHA256: {source_sha256}\n"
+                    "ORDERED EVIDENCE: "
+                    + json.dumps(batch, ensure_ascii=False, separators=(",", ":"))
+                )
+                raw = await self._stage(
+                    run_id, run_path, project, "review", constraints, prompt,
+                    suffix=f"-initial-regional-{level}-{batch_index}",
+                    allow_tools=False,
+                    primary_only=True,
+                    protocol_system_contract=IMMUTABLE_RECEIPT_SYSTEM,
+                    route_capacity_guard=True,
+                    bounded_protocol_output=True,
+                    compact_input=True,
+                    execution_spec=self._structured_stage_spec(
+                        "final_review_regional",
+                        completion_check=lambda value: bool(
+                            validate_final_review_regional_semantic_body(
+                                self._convert_generated_object(
+                                    value, run_path,
+                                    contract_name="final_review_regional",
+                                )
+                            ).get("summary")
+                        ),
+                        runtime_authority={
+                            "authority_sha256": authority_sha256,
+                            "level": level,
+                            "batch": batch_index,
+                            "covered_windows": covered_windows,
+                            "source_sha256": source_sha256,
+                        },
+                    ),
+                )
+                payload = validate_final_review_regional_semantic_body(
+                    self._convert_generated_object(
+                        raw, run_path,
+                        contract_name="final_review_regional",
+                    )
+                )
+                source_issues = [
+                    issue for item in batch
+                    for issue in item.get("issues", [])
+                    if isinstance(issue, dict)
+                ]
+                reduced.append({
+                    "covered_windows": covered_windows,
+                    "source_sha256": source_sha256,
+                    "summary": str(payload["summary"]).strip(),
+                    "issues": merge_authoritative_issue_ledgers(
+                        source_issues,
+                        runtime_issue_ledger(
+                            payload.get("issues", []),
+                            source=(
+                                "short-initial-review-regional-"
+                                f"{level}-{batch_index}"
+                            ),
+                        ),
+                    ),
+                })
+            evidence = reduced
+
+        covered_windows = sorted({
+            int(window)
+            for item in evidence
+            for window in (
+                item.get("covered_windows")
+                if isinstance(item.get("covered_windows"), list)
+                else [item.get("window")]
+            )
+            if isinstance(window, int)
+        })
+        if covered_windows != list(range(1, len(windows) + 1)):
+            raise CapacityAdmissionFailureV1("capacity.windowing_exhausted")
+        reducer_prompt = (
+            "SHORT_INITIAL_REVIEW_GLOBAL_REDUCER_V1. Adjudicate the complete "
+            "ordered window evidence as one manuscript. Return strict final_review "
+            "JSON with dimensions commercial/story/prose, hard_fail, decision, "
+            "and issues. Do not rewrite. Omission never means resolved.\n\n"
+            f"MANUSCRIPT SHA256: {draft_sha256}\n"
+            f"WINDOW COVERAGE: {json.dumps(covered_windows)}\n"
+            "LOCAL FULL-MANUSCRIPT ANALYSIS: "
+            + json.dumps(analysis_projection, ensure_ascii=False, separators=(",", ":"))
+            + "\nORDERED WINDOW EVIDENCE: "
+            + json.dumps(evidence, ensure_ascii=False, separators=(",", ":"))
+        )
+        raw = await self._stage(
+            run_id, run_path, project, "review", constraints, reducer_prompt,
+            suffix="-initial-global-reducer",
+            allow_tools=False,
+            primary_only=True,
+            protocol_system_contract=IMMUTABLE_RECEIPT_SYSTEM,
+            route_capacity_guard=True,
+            bounded_protocol_output=True,
+            compact_input=True,
+            execution_spec=self._structured_stage_spec(
+                "final_review",
+                completion_check=lambda value: bool(self._review(value)),
+                runtime_authority={
+                    "authority_sha256": authority_sha256,
+                    "draft_sha256": draft_sha256,
+                    "covered_windows": covered_windows,
+                    "evidence_sha256": canonical_sha256(evidence),
+                },
+            ),
+        )
+        final_payload = self._convert_generated_object(
+            raw, run_path, contract_name="final_review",
+        )
+        source_issues = [
+            issue for item in evidence
+            for issue in item.get("issues", [])
+            if isinstance(issue, dict)
+        ]
+        final_payload["issues"] = merge_authoritative_issue_ledgers(
+            source_issues,
+            runtime_issue_ledger(
+                final_payload.get("issues", []),
+                source="short-initial-review-global-reducer",
+            ),
+        )
+        review = normalize_review(final_payload)
+        receipt = {
+            "schema": "ShortInitialReviewCapacityReceiptV1",
+            "version": 1,
+            "authority_sha256": authority_sha256,
+            "draft_sha256": draft_sha256,
+            "window_count": len(windows),
+            "covered_windows": covered_windows,
+            "window_sha256": [
+                hashlib.sha256(item["text"].encode("utf-8")).hexdigest()
+                for item in windows
+            ],
+            "evidence_sha256": canonical_sha256(evidence),
+            "review_sha256": canonical_sha256(review),
+            "trigger": str(details.get("trigger") or "preflight"),
+            "raw_manuscript_persisted": False,
+        }
+        receipt["receipt_sha256"] = canonical_sha256(receipt)
+        atomic_write(
+            run_path / "outputs" / "initial-review-capacity-v1.json",
+            json.dumps(receipt, ensure_ascii=False, sort_keys=True, indent=2),
+        )
+        self.db.add_run_event(
+            run_id, "success", "short_initial_review_capacity_reduced",
+            "Short initial Review covered every manuscript window and produced one verdict.",
+            stage="review", metadata={
+                "window_count": len(windows),
+                "covered_windows": covered_windows,
+                "receipt_sha256": receipt["receipt_sha256"],
+            },
+        )
+        return json.dumps(final_payload, ensure_ascii=False)
 
     @staticmethod
     def _checkpoint_segment_events(
