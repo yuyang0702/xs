@@ -1,7 +1,7 @@
 {
   "completed_stage_count": 89,
   "completion_goal_outcome": "SHORT_WORKFLOW_COMPLETED_AND_FINAL_REVIEW_ACCEPTED",
-  "completion_receipt_sha256": "30dbe35d7177bf239471d2a2bbf69182f97e40730453d94260060c599fbe2c60",
+  "completion_receipt_sha256": "208395c6efc6bd079de29158403627950d0dc0ef073aefb50bc89eeb583aff0e",
   "deterministic_replay": true,
   "exact_ready_unknown_required_route_count": 8,
   "external_boundary": {
@@ -14,7 +14,7 @@
     "real_provider_request_attempts": 0
   },
   "final_artifact_sha256": "4a5735f3610198bd833bb6a4cd62db489177dfa8e9736cbe1926ee29fcb5deb1",
-  "logical_stage_plan_sha256": "9f1b95a04dadab6588ff22bf57ea7d85bc099f0c88c12a907981770ee8b5f42f",
+  "logical_stage_plan_sha256": "690b515b0116b592f1edb59dcd00d1862296279b2323cabcf75e162a7392a04e",
   "lowest_external_provider_seam_stubbed": true,
   "paid_calls": 0,
   "project_id_prefix": "2ad716",
@@ -28,7 +28,7 @@
   "replay_call_count": 89,
   "route_capability_closure_proved": false,
   "schema": "ExactReadyTargetFullShortRerunV1",
-  "source_head": "7931dfed9e20608c4bbe746173e3f0675bfc1016",
+  "source_head": "000da5594a5ed9bacf799a443c2003ace2b1fdd0",
   "source_receipt": {
     "adapter_failure_after_exact_capture_injected": false,
     "adapter_failure_recovered_by_exact_local_replay": false,
@@ -49,7 +49,7 @@
       "review"
     ],
     "completion_goal_outcome": "SHORT_WORKFLOW_COMPLETED_AND_FINAL_REVIEW_ACCEPTED",
-    "completion_receipt_sha256": "30dbe35d7177bf239471d2a2bbf69182f97e40730453d94260060c599fbe2c60",
+    "completion_receipt_sha256": "208395c6efc6bd079de29158403627950d0dc0ef073aefb50bc89eeb583aff0e",
     "contract_runtime_capture_count": 51,
     "contract_runtime_capture_required_count": 51,
     "destination_manifest_sha256": "57c73c65a361bb0301e22af36b1390c3084e48277c08100944cc0f29087b7884",
@@ -58,7 +58,7 @@
     "dry_run_artifacts_cannot_be_mistaken_for_real_output": true,
     "dry_run_namespace": "two_isolated_temporary_copies",
     "egress_policy_sha256": "a632322b0c498e7be87f812cdb78638a333b8e1e9c71f9fa665ffd6888ab1c85",
-    "elapsed_seconds_at_completion_recheck": 697,
+    "elapsed_seconds_at_completion_recheck": 1438,
     "executed_call_plan_sha256": "c78347ddced31d8bbb2baa59d19fc436a3bf2f71de3cde89924409599e4fb6ce",
     "expected_stage_calls": 89,
     "final_artifact_sha256": "4a5735f3610198bd833bb6a4cd62db489177dfa8e9736cbe1926ee29fcb5deb1",
@@ -954,7 +954,7 @@
       {
         "contract_name": "full_short_final_review",
         "contract_runtime_input_required": true,
-        "contract_schema_sha256": "2aaa68d609dbd94dea7390e04b2cce8165d6476c83c5ab986b892769df0465ae",
+        "contract_schema_sha256": "2f8528166a32c118be08d015f11b29e53858f700830a46ae6841176b20adf6a1",
         "contract_version": 1,
         "logical_stage_base_id": "final_review-adjudication",
         "logical_stage_id": "final_review-adjudication",
@@ -1225,7 +1225,7 @@
         "stage_id": "maintenance-map-003-mw-8370aead41839915-mw-11135db5de126364-mw-21d94634abca5cc6-window"
       }
     ],
-    "logical_stage_plan_sha256": "9f1b95a04dadab6588ff22bf57ea7d85bc099f0c88c12a907981770ee8b5f42f",
+    "logical_stage_plan_sha256": "690b515b0116b592f1edb59dcd00d1862296279b2323cabcf75e162a7392a04e",
     "logical_stage_recovery_policy_identity": "TWO_SLOT_MUTUALLY_EXCLUSIVE_TYPED_RECOVERY",
     "logical_stage_recovery_policy_sha256": "7521551b7d169cfc017da80a8002179dbe45bc387795fd46640ee19cd3ff3674",
     "max_physical_attempts_per_logical_stage": 2,
@@ -1273,11 +1273,11 @@
     "response_capture_policy_sha256": "378bb649094ea4793bef2b96006dbe2291afd0c88cfc574fb87022b7c66aec8a",
     "response_capture_receipts_created_for_all_synthetic_provider_calls": true,
     "route_manifest_sha256": "7c788b04c5410f21f53c33c73ea2892c85238a281521f05922418b1d22661520",
-    "runtime_authority_sha256": "8e689a2b14b4154590b16838e777a6fe938abcd1384953307596824de6ce3704",
+    "runtime_authority_sha256": "fe342bc259ece9ca7aefb6aed5777c95a221ade02d024aa0e242704c3bd5b7a7",
     "schema": "FirstTrustworthyFullShortPrivateDryRunV2",
-    "source_head": "7931dfed9e20608c4bbe746173e3f0675bfc1016",
+    "source_head": "000da5594a5ed9bacf799a443c2003ace2b1fdd0",
     "status": "PASS",
-    "store_root_sha256": "abf32edba2f98cbdd63879368cbb6dd6422b5d5c375d774375875ac3008ae261",
+    "store_root_sha256": "880e56c6b09690597eaeeb31c3512f2b096db89923d1131ef006da61fc7b198c",
     "style_reference_authority_sha256": "aaa5cb9770f11d8021309d3d130b998281dd239d962320dcf6295be54729e783",
     "total_output_token_hard_cap": 169914,
     "transport_recovery_policy_identity": "EXACT_REPLAY_ONLY",
@@ -1286,7 +1286,7 @@
     "workflow_status": "completed",
     "workload_sha256": "da96465f6bad2392dcc5dcfe2cbb4776f690a621360af3fa3678fc8005de0b29"
   },
-  "source_receipt_sha256": "d83a1708a29b74c3110180404d446c8c774bbdce72caa426f8cf6fc6c7f25a8d",
+  "source_receipt_sha256": "298132be433b820683b34ba182ab4dcf3f33cda3bb485b62f19eb859ed27fee6",
   "status": "PASS_PRODUCTION_SHAPED_OFFLINE_STUB",
   "version": 1
 }
