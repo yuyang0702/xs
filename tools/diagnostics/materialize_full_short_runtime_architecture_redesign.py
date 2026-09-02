@@ -161,8 +161,14 @@ def main() -> int:
     args = parser.parse_args()
 
     repo = args.repo.resolve(strict=True)
-    if _git(repo, "status", "--porcelain"):
-        raise ValueError("evidence_requires_clean_worktree")
+    dirty = [
+        line[3:].replace("\\", "/")
+        for line in _git(repo, "status", "--porcelain").splitlines()
+        if line
+    ]
+    evidence_prefix = ROOT.as_posix() + "/"
+    if any(not path.startswith(evidence_prefix) for path in dirty):
+        raise ValueError("evidence_requires_clean_or_own_output_only_worktree")
     head = _git(repo, "rev-parse", "HEAD")
     implementation_head = args.implementation_head
     subprocess.check_call(
