@@ -19264,6 +19264,11 @@ class WorkflowService:
                 )
             except asyncio.CancelledError:
                 raise
+            except CapacityAdmissionFailureV1:
+                # Capacity is an input-shape admission decision, not evidence
+                # that the sealed reader route failed.  Never turn it into a
+                # reader -> review route switch.
+                raise
             except Exception as exc:
                 if reader_role == "review":
                     raise
@@ -21003,8 +21008,10 @@ class WorkflowService:
             or "target genre readers",
             "mode": project.mode,
         }
+        manuscript_sha256 = hashlib.sha256(text.encode("utf-8")).hexdigest()
         prompt = (
-            "TARGET READER SIMULATION. Do not rewrite the story. Read only the labeled excerpts and "
+            "TARGET READER SIMULATION. Do not rewrite the story. Read the complete immutable "
+            "manuscript and "
             "judge whether this target reader would continue, pay, and feel the promised payoff. "
             "Identify abandonment points, weak hooks, fake suspense, unearned emotion,套路化表达, and "
             "AI-like prose. Return the same strict quality-review JSON schema plus reader_signals with "
@@ -21012,7 +21019,9 @@ class WorkflowService:
             "(boolean). Use double quotes for every JSON key and string. Return one JSON object only, "
             "without Markdown fences or commentary.\n\n"
             f"READER PROFILE:\n{json.dumps(profile, ensure_ascii=False)}\n\n"
-            f"LABELED EXCERPTS:\n{reader_sample(text, project.mode, limit=6000)}"
+            f"MANUSCRIPT SHA256: {manuscript_sha256}\n"
+            f"MANUSCRIPT LENGTH: {len(text)} characters.\n\n"
+            f"FULL MANUSCRIPT:\n{text}"
         )
         reader_schema = {
             "type": "object",
@@ -21059,16 +21068,21 @@ class WorkflowService:
         output = await self._stage(
             run_id, run_path, project, "review", constraints, prompt,
             suffix=f"-reader{suffix}", model_role=model_role or "review", allow_tools=False,
+            route_capacity_guard=True,
+            capacity_splitter=lambda details: self._reader_review_capacity_split(
+                run_id, run_path, project, constraints, text, profile,
+                model_role=model_role or "review", reader_schema=reader_schema,
+                details=details,
+            ),
+            bounded_protocol_output=True,
+            compact_input=True,
             execution_spec=self._structured_stage_spec(
                 "reader_review",
                 completion_check=reader_payload_is_complete,
                 runtime_authority={
                     "profile_sha256": canonical_sha256(profile),
-                    "sample_sha256": hashlib.sha256(
-                        reader_sample(
-                            text, project.mode, limit=6000,
-                        ).encode("utf-8"),
-                    ).hexdigest(),
+                    "manuscript_sha256": manuscript_sha256,
+                    "coverage": "complete_manuscript",
                 },
                 schema=reader_schema,
             ),
@@ -21091,6 +21105,399 @@ class WorkflowService:
             output, run_path, contract_name="reader_review",
         )
         return normalize_review(payload)
+
+    async def _reader_review_capacity_split(
+        self,
+        run_id: str,
+        run_path: Path,
+        project: Project,
+        constraints: str,
+        manuscript: str,
+        profile: Mapping[str, object],
+        *,
+        model_role: str,
+        reader_schema: Mapping[str, object],
+        details: Mapping[str, object],
+    ) -> str:
+        """Simulate the target reader over every byte in bounded windows."""
+
+        windows = review_windows(manuscript, target=4200, overlap=400)
+        if not windows:
+            raise CapacityAdmissionFailureV1("capacity.windowing_exhausted")
+        manuscript_sha256 = hashlib.sha256(
+            manuscript.encode("utf-8")
+        ).hexdigest()
+        authority_sha256 = canonical_sha256({
+            "schema": "ShortReaderReviewWindowAuthorityV1",
+            "manuscript_sha256": manuscript_sha256,
+            "constraints_sha256": hashlib.sha256(
+                constraints.encode("utf-8")
+            ).hexdigest(),
+            "profile_sha256": canonical_sha256(profile),
+            "model_role": model_role,
+            "windows": [{
+                "index": item["index"],
+                "start": item["start"],
+                "end": item["end"],
+                "sha256": hashlib.sha256(
+                    item["text"].encode("utf-8")
+                ).hexdigest(),
+            } for item in windows],
+        })
+        evidence: list[dict[str, Any]] = []
+        previous_summary = ""
+        for window in windows:
+            window_sha256 = hashlib.sha256(
+                window["text"].encode("utf-8")
+            ).hexdigest()
+            checkpoint_key = (
+                f"short-reader-review-window-{window['index']:03d}-"
+                f"{authority_sha256[:12]}"
+            )
+            checkpoint_input = canonical_sha256({
+                "window": window["index"],
+                "start": window["start"],
+                "end": window["end"],
+                "window_sha256": window_sha256,
+                "previous_summary_sha256": hashlib.sha256(
+                    previous_summary.encode("utf-8")
+                ).hexdigest(),
+            })
+            cached = self.db.load_workflow_node_checkpoint(
+                run_id=run_id,
+                node_key=checkpoint_key,
+                authority_sha256=authority_sha256,
+                input_sha256=checkpoint_input,
+                statuses=("validated",),
+                min_validation_stage="local_semantics",
+            )
+            cached_item = (
+                (cached.get("payload") or {}).get("item")
+                if isinstance(cached, dict) else None
+            )
+            cached_valid = (
+                isinstance(cached_item, dict)
+                and cached_item.get("window") == window["index"]
+                and cached_item.get("start") == window["start"]
+                and cached_item.get("end") == window["end"]
+                and cached_item.get("window_sha256") == window_sha256
+                and bool(str(cached_item.get("summary") or "").strip())
+                and isinstance(cached_item.get("issues"), list)
+                and cached.get("output_sha256") == canonical_sha256(cached_item)
+            )
+            if cached_valid:
+                item = dict(cached_item)
+                event_type = "short_reader_review_window_reused"
+            else:
+                prompt = (
+                    "SHORT_READER_REVIEW_WINDOW_V1. Simulate the exact target "
+                    "reader over only this complete bounded manuscript window. "
+                    "Do not rewrite or score the whole story. Return one JSON "
+                    "object with summary and issues. Summary must capture reading "
+                    "momentum, payoff expectation, and handoff in at most 240 "
+                    "Chinese characters. Return at most four issues with category, "
+                    "severity, evidence, location, and action. Evidence must be an "
+                    "exact excerpt from this window. Do not sample or claim "
+                    "whole-story coverage.\n\n"
+                    f"READER PROFILE: {json.dumps(profile, ensure_ascii=False)}\n"
+                    f"MANUSCRIPT SHA256: {manuscript_sha256}\n"
+                    f"WINDOW: {window['index']}/{len(windows)}\n"
+                    f"SPAN: {window['start']}-{window['end']}\n"
+                    f"WINDOW SHA256: {window_sha256}\n"
+                    f"PREVIOUS WINDOW SUMMARY: {previous_summary or 'None'}\n"
+                    f"MANUSCRIPT WINDOW:\n{window['text']}"
+                )
+
+                def window_complete(value: str) -> bool:
+                    payload = self._convert_generated_object(
+                        value, run_path, contract_name="final_review_window",
+                    )
+                    validate_final_review_window_receipt(payload)
+                    return True
+
+                raw = await self._stage(
+                    run_id, run_path, project, "review", constraints, prompt,
+                    suffix=f"-reader-window-{window['index']:03d}",
+                    model_role=model_role,
+                    allow_tools=False,
+                    primary_only=True,
+                    protocol_system_contract=IMMUTABLE_RECEIPT_SYSTEM,
+                    route_capacity_guard=True,
+                    bounded_protocol_output=True,
+                    compact_input=True,
+                    story_skeleton_override=json.dumps({
+                        "schema": "ShortReaderReviewWindowIndexV1",
+                        "authority_sha256": authority_sha256,
+                        "manuscript_sha256": manuscript_sha256,
+                        "window": window["index"],
+                        "start": window["start"],
+                        "end": window["end"],
+                        "window_sha256": window_sha256,
+                    }, ensure_ascii=False, sort_keys=True),
+                    execution_spec=self._structured_stage_spec(
+                        "final_review_window",
+                        completion_check=window_complete,
+                        runtime_authority={
+                            "authority_sha256": authority_sha256,
+                            "manuscript_sha256": manuscript_sha256,
+                            "window": window["index"],
+                            "start": window["start"],
+                            "end": window["end"],
+                            "window_sha256": window_sha256,
+                            "reader_profile_sha256": canonical_sha256(profile),
+                        },
+                    ),
+                )
+                payload = validate_final_review_window_receipt(
+                    self._convert_generated_object(
+                        raw, run_path, contract_name="final_review_window",
+                    )
+                )
+                item = {
+                    "window": window["index"],
+                    "start": window["start"],
+                    "end": window["end"],
+                    "window_sha256": window_sha256,
+                    "summary": str(payload["summary"]).strip(),
+                    "issues": runtime_issue_ledger(
+                        payload.get("issues", []),
+                        source=f"short-reader-review-window-{window['index']}",
+                    ),
+                }
+                self.db.save_workflow_node_checkpoint(
+                    run_id=run_id,
+                    node_key=checkpoint_key,
+                    authority_sha256=authority_sha256,
+                    input_sha256=checkpoint_input,
+                    output_sha256=canonical_sha256(item),
+                    status="validated",
+                    validation_stage="local_semantics",
+                    payload={"item": item},
+                )
+                event_type = "short_reader_review_window_ready"
+            evidence.append(item)
+            previous_summary = str(item["summary"])
+            self.db.add_run_event(
+                run_id, "success", event_type,
+                "Target-reader window is hash-bound and complete.",
+                stage="review", metadata={
+                    "model_role": model_role,
+                    "window": window["index"],
+                    "start": window["start"],
+                    "end": window["end"],
+                    "window_sha256": window_sha256,
+                },
+            )
+
+        if (
+            evidence[0]["start"] != 0
+            or evidence[-1]["end"] != len(manuscript)
+            or any(
+                right["start"] > left["end"]
+                for left, right in zip(evidence, evidence[1:])
+            )
+            or [item["window"] for item in evidence]
+            != list(range(1, len(windows) + 1))
+        ):
+            raise CapacityAdmissionFailureV1("capacity.windowing_exhausted")
+
+        level = 0
+        while estimate_input_tokens(json.dumps(
+            evidence, ensure_ascii=False, separators=(",", ":"),
+        )) > 6000:
+            level += 1
+            if level > 5:
+                raise CapacityAdmissionFailureV1("capacity.windowing_exhausted")
+            batches = review_evidence_batches(
+                evidence, token_limit=4500, overlap=0,
+            )
+            if len(batches) >= len(evidence):
+                raise CapacityAdmissionFailureV1("capacity.windowing_exhausted")
+            reduced: list[dict[str, Any]] = []
+            for batch_index, batch in enumerate(batches, 1):
+                covered = [
+                    int(window)
+                    for item in batch
+                    for window in (
+                        item.get("covered_windows")
+                        if isinstance(item.get("covered_windows"), list)
+                        else [item.get("window")]
+                    )
+                    if isinstance(window, int)
+                ]
+                source_sha256 = canonical_sha256(batch)
+                prompt = (
+                    "SHORT_READER_REVIEW_REGIONAL_REDUCER_V1. Reduce ordered "
+                    "target-reader evidence without scoring or rewriting. Preserve "
+                    "every unresolved issue and reading-state handoff. Return one "
+                    "JSON object with summary and issues.\n\n"
+                    f"LEVEL: {level}\nBATCH: {batch_index}/{len(batches)}\n"
+                    f"COVERED WINDOWS: {json.dumps(covered)}\n"
+                    f"SOURCE SHA256: {source_sha256}\n"
+                    "ORDERED EVIDENCE: "
+                    + json.dumps(batch, ensure_ascii=False, separators=(",", ":"))
+                )
+                raw = await self._stage(
+                    run_id, run_path, project, "review", constraints, prompt,
+                    suffix=f"-reader-regional-{level}-{batch_index}",
+                    model_role=model_role,
+                    allow_tools=False,
+                    primary_only=True,
+                    protocol_system_contract=IMMUTABLE_RECEIPT_SYSTEM,
+                    route_capacity_guard=True,
+                    bounded_protocol_output=True,
+                    compact_input=True,
+                    execution_spec=self._structured_stage_spec(
+                        "final_review_regional",
+                        completion_check=lambda value: bool(
+                            validate_final_review_regional_semantic_body(
+                                self._convert_generated_object(
+                                    value, run_path,
+                                    contract_name="final_review_regional",
+                                )
+                            ).get("summary")
+                        ),
+                        runtime_authority={
+                            "authority_sha256": authority_sha256,
+                            "level": level,
+                            "batch": batch_index,
+                            "covered_windows": covered,
+                            "source_sha256": source_sha256,
+                            "reader_profile_sha256": canonical_sha256(profile),
+                        },
+                    ),
+                )
+                payload = validate_final_review_regional_semantic_body(
+                    self._convert_generated_object(
+                        raw, run_path, contract_name="final_review_regional",
+                    )
+                )
+                source_issues = [
+                    issue for item in batch
+                    for issue in item.get("issues", [])
+                    if isinstance(issue, dict)
+                ]
+                reduced.append({
+                    "covered_windows": covered,
+                    "source_sha256": source_sha256,
+                    "summary": str(payload["summary"]).strip(),
+                    "issues": merge_authoritative_issue_ledgers(
+                        source_issues,
+                        runtime_issue_ledger(
+                            payload.get("issues", []),
+                            source=(
+                                "short-reader-review-regional-"
+                                f"{level}-{batch_index}"
+                            ),
+                        ),
+                    ),
+                })
+            evidence = reduced
+
+        covered_windows = sorted({
+            int(window)
+            for item in evidence
+            for window in (
+                item.get("covered_windows")
+                if isinstance(item.get("covered_windows"), list)
+                else [item.get("window")]
+            )
+            if isinstance(window, int)
+        })
+        if covered_windows != list(range(1, len(windows) + 1)):
+            raise CapacityAdmissionFailureV1("capacity.windowing_exhausted")
+        reducer_prompt = (
+            "SHORT_READER_REVIEW_GLOBAL_REDUCER_V1. Adjudicate the complete "
+            "ordered target-reader evidence as one manuscript. Return strict "
+            "reader_review JSON with dimensions commercial/story/prose, hard_fail, "
+            "decision, issues, and reader_signals. Omission never means resolved. "
+            "Do not rewrite.\n\n"
+            f"READER PROFILE: {json.dumps(profile, ensure_ascii=False)}\n"
+            f"MANUSCRIPT SHA256: {manuscript_sha256}\n"
+            f"WINDOW COVERAGE: {json.dumps(covered_windows)}\n"
+            "ORDERED WINDOW EVIDENCE: "
+            + json.dumps(evidence, ensure_ascii=False, separators=(",", ":"))
+        )
+        raw = await self._stage(
+            run_id, run_path, project, "review", constraints, reducer_prompt,
+            suffix="-reader-global-reducer",
+            model_role=model_role,
+            allow_tools=False,
+            primary_only=True,
+            protocol_system_contract=IMMUTABLE_RECEIPT_SYSTEM,
+            route_capacity_guard=True,
+            bounded_protocol_output=True,
+            compact_input=True,
+            execution_spec=self._structured_stage_spec(
+                "reader_review",
+                completion_check=lambda value: bool(
+                    validate_reader_review_business_complete_v1(
+                        self._convert_generated_object(
+                            value, run_path, contract_name="reader_review",
+                        )
+                    )
+                ),
+                runtime_authority={
+                    "authority_sha256": authority_sha256,
+                    "manuscript_sha256": manuscript_sha256,
+                    "covered_windows": covered_windows,
+                    "evidence_sha256": canonical_sha256(evidence),
+                    "reader_profile_sha256": canonical_sha256(profile),
+                },
+                schema=dict(reader_schema),
+            ),
+        )
+        final_payload = self._convert_generated_object(
+            raw, run_path, contract_name="reader_review",
+        )
+        validate_reader_review_business_complete_v1(final_payload)
+        source_issues = [
+            issue for item in evidence
+            for issue in item.get("issues", [])
+            if isinstance(issue, dict)
+        ]
+        final_payload["issues"] = merge_authoritative_issue_ledgers(
+            source_issues,
+            runtime_issue_ledger(
+                final_payload.get("issues", []),
+                source="short-reader-review-global-reducer",
+            ),
+        )
+        review = normalize_review(final_payload)
+        receipt = {
+            "schema": "ShortReaderReviewCapacityReceiptV1",
+            "version": 1,
+            "authority_sha256": authority_sha256,
+            "manuscript_sha256": manuscript_sha256,
+            "reader_profile_sha256": canonical_sha256(profile),
+            "model_role": model_role,
+            "window_count": len(windows),
+            "covered_windows": covered_windows,
+            "window_sha256": [
+                hashlib.sha256(item["text"].encode("utf-8")).hexdigest()
+                for item in windows
+            ],
+            "evidence_sha256": canonical_sha256(evidence),
+            "review_sha256": canonical_sha256(review),
+            "trigger": str(details.get("trigger") or "preflight"),
+            "raw_manuscript_persisted": False,
+        }
+        receipt["receipt_sha256"] = canonical_sha256(receipt)
+        atomic_write(
+            run_path / "outputs" / "reader-review-capacity-v1.json",
+            json.dumps(receipt, ensure_ascii=False, sort_keys=True, indent=2),
+        )
+        self.db.add_run_event(
+            run_id, "success", "short_reader_review_capacity_reduced",
+            "Target-reader review covered every manuscript window and produced one verdict.",
+            stage="review", metadata={
+                "model_role": model_role,
+                "window_count": len(windows),
+                "covered_windows": covered_windows,
+                "receipt_sha256": receipt["receipt_sha256"],
+            },
+        )
+        return json.dumps(final_payload, ensure_ascii=False)
 
     async def _incremental_manuscript_review(
         self, run_id: str, run_path: Path, project: Project, constraints: str,

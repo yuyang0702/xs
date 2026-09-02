@@ -463,6 +463,31 @@ class _PrivateDryRunOracle:
                 ),
                 "issues": [],
             }))
+        if "SHORT_READER_REVIEW_WINDOW_V1" in user:
+            return self._result(role, json.dumps({
+                "summary": (
+                    "This complete target-reader window sustains reading "
+                    "momentum, payoff expectation, and an explicit handoff."
+                ),
+                "issues": [],
+            }))
+        if "SHORT_READER_REVIEW_REGIONAL_REDUCER_V1" in user:
+            return self._result(role, json.dumps({
+                "summary": (
+                    "All covered reader windows preserve their reading-state "
+                    "handoffs and unresolved issue ledger."
+                ),
+                "issues": [],
+            }))
+        if "SHORT_READER_REVIEW_GLOBAL_REDUCER_V1" in user:
+            payload = json.loads(_quality_review())
+            payload["reader_signals"] = {
+                "would_continue": True, "would_pay": True,
+                "abandonment_point": "none", "payoff_felt": True,
+            }
+            return self._result(
+                role, json.dumps(payload, ensure_ascii=False),
+            )
         if "DRAFT_SEMANTIC_VALIDATION" in user:
             contract_match = re.search(r"TASK CONTRACT: (\{[^\n]+\})", user)
             if contract_match is None or "PROSE:\n" not in user:

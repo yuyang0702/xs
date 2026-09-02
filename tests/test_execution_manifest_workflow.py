@@ -1473,6 +1473,91 @@ async def test_short_initial_review_capacity_split_covers_complete_manuscript(
 
 
 @pytest.mark.asyncio
+async def test_short_reader_review_capacity_split_covers_complete_manuscript(
+    tmp_path,
+) -> None:
+    service, project, run_path, _state = make_service(tmp_path)
+    paragraphs = [
+        f"读者窗口独有证据{index}。" + (f"第{index}段期待、行动与回报连续推进。" * 260)
+        for index in range(1, 5)
+    ]
+    manuscript = "\n\n".join(paragraphs)
+    calls: list[tuple[str, str, str | None]] = []
+
+    async def fake_stage(*args, **kwargs):
+        stage = args[3]
+        prompt = args[5]
+        calls.append((stage, prompt, kwargs.get("model_role")))
+        if prompt.startswith("SHORT_READER_REVIEW_WINDOW_V1"):
+            window = int(re.search(r"WINDOW: (\d+)/", prompt).group(1))
+            return json.dumps({
+                "summary": f"窗口{window}的阅读期待与交接已核对。",
+                "issues": [{
+                    "category": f"reader-window-{window}",
+                    "severity": "medium",
+                    "evidence": f"读者窗口独有证据{window}",
+                    "location": f"window-{window}",
+                    "action": f"保留窗口{window}的读者发现",
+                }],
+            }, ensure_ascii=False)
+        if prompt.startswith("SHORT_READER_REVIEW_REGIONAL_REDUCER_V1"):
+            return json.dumps({
+                "summary": "区域读者证据保持完整。", "issues": [],
+            }, ensure_ascii=False)
+        assert prompt.startswith("SHORT_READER_REVIEW_GLOBAL_REDUCER_V1")
+        return json.dumps({
+            "dimensions": {"commercial": 82, "story": 84, "prose": 81},
+            "hard_fail": False,
+            "decision": "revise",
+            "issues": [],
+            "reader_signals": {
+                "would_continue": True,
+                "would_pay": True,
+                "abandonment_point": "none",
+                "payoff_felt": True,
+            },
+        }, ensure_ascii=False)
+
+    service._stage = fake_stage
+    result = json.loads(await service._reader_review_capacity_split(
+        "manifest-run", run_path, project, "constraints", manuscript,
+        {"audience": "target readers", "mode": "short"},
+        model_role="reader_review", reader_schema={},
+        details={"trigger": "preflight"},
+    ))
+
+    window_prompts = [
+        prompt for _stage, prompt, _role in calls
+        if prompt.startswith("SHORT_READER_REVIEW_WINDOW_V1")
+    ]
+    spans = [
+        tuple(map(int, re.search(r"SPAN: (\d+)-(\d+)", prompt).groups()))
+        for prompt in window_prompts
+    ]
+    assert spans[0][0] == 0
+    assert spans[-1][1] == len(manuscript)
+    assert all(
+        any(start <= offset < end for start, end in spans)
+        for offset in range(len(manuscript))
+    )
+    assert all(stage == "review" for stage, _prompt, _role in calls)
+    assert all(role == "reader_review" for _stage, _prompt, role in calls)
+    assert result["reader_signals"]["would_continue"] is True
+    assert {issue["category"] for issue in result["issues"]} == {
+        f"reader-window-{index}"
+        for index in range(1, len(window_prompts) + 1)
+    }
+    receipt = json.loads((
+        run_path / "outputs" / "reader-review-capacity-v1.json"
+    ).read_text(encoding="utf-8"))
+    assert receipt["covered_windows"] == list(
+        range(1, receipt["window_count"] + 1)
+    )
+    assert receipt["model_role"] == "reader_review"
+    assert receipt["raw_manuscript_persisted"] is False
+
+
+@pytest.mark.asyncio
 async def test_whole_semantic_capacity_carries_typed_obligation_to_payoff(
     tmp_path,
 ) -> None:
