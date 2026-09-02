@@ -412,6 +412,14 @@ def _bound_project(tmp_path: Path) -> tuple[Path, Path, str, Database]:
             "max_output_tokens": 8_192,
             "reasoning_token_accounting": "INCLUDED_IN_COMPLETION_CAP",
             "reasoning_output_reservation": "WITHIN_COMPLETION_CAP",
+            "route_fingerprint": fingerprint,
+            "provider": "Provider",
+            "provider_id_sha256": hashlib.sha256(b"provider").hexdigest(),
+            "operator": "THIRD_PARTY_RELAY_UNVERIFIED_UPSTREAM",
+            "destination": "https://unit.test:443/v1/messages",
+            "protocol": "anthropic",
+            "model": "model",
+            "model_id_sha256": hashlib.sha256(b"model").hexdigest(),
         }, sort_keys=True),
         encoding="utf-8",
     )
@@ -427,6 +435,9 @@ def _bound_project(tmp_path: Path) -> tuple[Path, Path, str, Database]:
         proved_fields=(
             "context_window_tokens", "max_output_tokens",
             "reasoning_token_accounting", "reasoning_output_reservation",
+            "route_fingerprint",
+            "provider", "provider_id_sha256", "operator", "destination",
+            "protocol", "model", "model_id_sha256",
         ),
         provenance_available=True,
     )
@@ -748,20 +759,40 @@ def test_live_bindings_reject_missing_route_capability_record(
     assert caught.value.failure_id == "capacity.route_capability_unknown"
 
 
+@pytest.mark.parametrize(
+    ("field", "wrong_value"),
+    (
+        ("context_window_tokens", 1),
+        ("route_fingerprint", "f" * 64),
+        ("operator", "DEEPSEEK_OFFICIAL"),
+    ),
+)
 def test_verified_capability_rejects_hash_valid_but_wrong_semantic_value(
-    tmp_path: Path,
+    tmp_path: Path, field: str, wrong_value: object,
 ) -> None:
     repo, _data, _project_id, _db = _bound_project(tmp_path)
-    evidence_path = repo / "unit-route-capability-evidence.json"
-    evidence_path.write_text(json.dumps({
-        "context_window_tokens": 1,
-        "max_output_tokens": 8_192,
-        "reasoning_token_accounting": "INCLUDED_IN_COMPLETION_CAP",
-        "reasoning_output_reservation": "WITHIN_COMPLETION_CAP",
-    }, sort_keys=True), encoding="utf-8")
     path = repo / runner._ROUTE_CAPABILITY_REGISTRY_PATH_V1
     original = RouteCapabilityRegistryV1.from_document(
         json.loads(path.read_text(encoding="utf-8"))
+    )
+    evidence_path = repo / "unit-route-capability-evidence.json"
+    evidence_document = {
+        "context_window_tokens": original.records[0].context_window_tokens,
+        "max_output_tokens": 8_192,
+        "reasoning_token_accounting": "INCLUDED_IN_COMPLETION_CAP",
+        "reasoning_output_reservation": "WITHIN_COMPLETION_CAP",
+        "route_fingerprint": original.records[0].route_fingerprint,
+        "provider": original.records[0].provider,
+        "provider_id_sha256": original.records[0].provider_id_sha256,
+        "operator": original.records[0].operator,
+        "destination": original.records[0].destination,
+        "protocol": original.records[0].protocol,
+        "model": original.records[0].model,
+        "model_id_sha256": original.records[0].model_id_sha256,
+    }
+    evidence_document[field] = wrong_value
+    evidence_path.write_text(
+        json.dumps(evidence_document, sort_keys=True), encoding="utf-8",
     )
     rebuilt = []
     for record in original.records:
@@ -778,6 +809,9 @@ def test_verified_capability_rejects_hash_valid_but_wrong_semantic_value(
                 "context_window_tokens", "max_output_tokens",
                 "reasoning_token_accounting",
                 "reasoning_output_reservation",
+                "route_fingerprint",
+                "provider", "provider_id_sha256", "operator",
+                "destination", "protocol", "model", "model_id_sha256",
             ),
             provenance_available=True,
         )

@@ -467,6 +467,93 @@ def _validate_capacity_admission_receipt_v1(
     return body
 
 
+def _capacity_recovery_source_identity_v1(
+    attempt: Mapping[str, Any],
+) -> str | None:
+    capture = (
+        attempt.get("contract_runtime_capture_receipt_sha256")
+        or attempt.get("provider_protocol_capture_receipt_sha256")
+    )
+    if capture is None and not attempt.get("capture_enforcement_required"):
+        capture = domain_sha256(
+            "novel-flywheel-local-response-identity-v1",
+            {key: attempt.get(key) for key in (
+                "physical_attempt_id",
+                "response_status_sha256",
+                "local_stage_receipt_sha256",
+                "state",
+            )},
+        )
+    return str(capture) if capture is not None else None
+
+
+def _validate_capacity_recovery_chain_v1(
+    *, attempts: Iterable[Mapping[str, Any]],
+    receipts_by_plan: Mapping[str, Mapping[str, Any]],
+) -> None:
+    prior_by_logical_stage: dict[
+        str, tuple[Mapping[str, Any], Mapping[str, Any]]
+    ] = {}
+    consumed_recovery_sources: set[str] = set()
+    for attempt in attempts:
+        plan_sha = str(attempt.get("capacity_plan_sha256") or "")
+        receipt = receipts_by_plan.get(plan_sha)
+        _require(
+            receipt is not None,
+            "COMPLETION_CAPACITY_ADMISSION_PROVENANCE_INVALID",
+        )
+        logical_stage_id = str(attempt.get("logical_stage_id") or "")
+        prior = prior_by_logical_stage.get(logical_stage_id)
+        if prior is None:
+            expected_role = "NORMAL"
+            expected_reasoning_policy = "DEFAULT"
+            expected_prior_rendered = None
+            expected_source = None
+        else:
+            prior_attempt, prior_receipt = prior
+            expected_role = str(attempt.get("stage_role") or "NORMAL")
+            expected_reasoning_policy = (
+                "DISABLE_REASONING"
+                if expected_role == "PLANNING_FINAL_ARTIFACT_RECOVERY"
+                else "PRESERVE_REASONING_POLICY"
+            )
+            expected_prior_rendered = prior_receipt.get(
+                "rendered_request_sha256"
+            )
+            expected_source = _capacity_recovery_source_identity_v1(
+                prior_attempt
+            )
+            _require(
+                isinstance(expected_source, str)
+                and _HEX64.fullmatch(expected_source) is not None
+                and expected_source not in consumed_recovery_sources,
+                "COMPLETION_CAPACITY_RECOVERY_PROVENANCE_INVALID",
+            )
+            consumed_recovery_sources.add(expected_source)
+        expected_delta = capacity_recovery_prompt_delta_sha256_v1(
+            prior_rendered_request_sha256=expected_prior_rendered,
+            rendered_request_sha256=str(
+                receipt.get("rendered_request_sha256") or ""
+            ),
+            recovery_stage_role=expected_role,
+            reasoning_policy=expected_reasoning_policy,
+            recovery_source_capture_receipt_sha256=expected_source,
+        )
+        _require(
+            receipt.get("recovery_stage_role") == expected_role
+            and receipt.get("reasoning_policy")
+            == expected_reasoning_policy
+            and receipt.get("prior_rendered_request_sha256")
+            == expected_prior_rendered
+            and receipt.get("recovery_source_capture_receipt_sha256")
+            == expected_source
+            and receipt.get("recovery_prompt_delta_sha256")
+            == expected_delta,
+            "COMPLETION_CAPACITY_RECOVERY_PROVENANCE_INVALID",
+        )
+        prior_by_logical_stage[logical_stage_id] = (attempt, receipt)
+
+
 class FullShortExecutionBoundaryError(RuntimeError):
     def __init__(self, reason_code: str) -> None:
         self.reason_code = reason_code
@@ -2213,6 +2300,12 @@ class FullShortDurableExecutionStoreV1:
                 "COMPLETION_CAPACITY_ADMISSION_PROVENANCE_INVALID",
             )
             receipts.append(receipt)
+        _validate_capacity_recovery_chain_v1(
+            attempts=attempts,
+            receipts_by_plan={
+                item["capacity_plan_sha256"]: item for item in receipts
+            },
+        )
         _require(
             len(receipts) == len(attempts)
             and len({
@@ -3036,24 +3129,8 @@ class FullShortDispatchLedgerObserverV1:
                 prior_capacity_receipt["rendered_request_sha256"]
             )
             recovery_source_capture_receipt_sha256 = (
-                prior_attempt.get("contract_runtime_capture_receipt_sha256")
-                or prior_attempt.get(
-                    "provider_protocol_capture_receipt_sha256"
-                )
+                _capacity_recovery_source_identity_v1(prior_attempt)
             )
-            if (
-                recovery_source_capture_receipt_sha256 is None
-                and not prior_attempt.get("capture_enforcement_required")
-            ):
-                recovery_source_capture_receipt_sha256 = domain_sha256(
-                    "novel-flywheel-local-response-identity-v1",
-                    {key: prior_attempt.get(key) for key in (
-                        "physical_attempt_id",
-                        "response_status_sha256",
-                        "local_stage_receipt_sha256",
-                        "state",
-                    )},
-                )
             if not isinstance(
                 recovery_source_capture_receipt_sha256, str
             ) or _HEX64.fullmatch(
@@ -5116,6 +5193,10 @@ def build_full_short_completion_receipt_v1(
             item.get("capacity_admission_receipt_sha256") for item in attempts
         }) == len(attempts),
         "COMPLETION_CAPACITY_ADMISSION_PROVENANCE_INVALID",
+    )
+    _validate_capacity_recovery_chain_v1(
+        attempts=attempts,
+        receipts_by_plan=receipts_by_plan,
     )
     _require(
         [item.get("ordinal") for item in attempts]

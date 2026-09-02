@@ -28,6 +28,9 @@ def _evidence(route_fingerprint: str = "c" * 64) -> CapabilityEvidenceV1:
         proved_fields=(
             "context_window_tokens", "max_output_tokens",
             "reasoning_token_accounting", "reasoning_output_reservation",
+            "route_fingerprint",
+            "provider", "provider_id_sha256", "operator", "destination",
+            "protocol", "model", "model_id_sha256",
         ),
         provenance_available=True,
     )

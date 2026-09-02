@@ -2463,7 +2463,23 @@ def make_polish_recovery_service(tmp_path, gateway, run_id="polish-recovery"):
         display_name="Backup", model_name="backup-model",
         context_window=32_768, max_output_tokens=8_192,
     )
-    db.save_role_binding("polish", "primary", "primary-model", "backup", "backup-model")
+    db.save_model(
+        model_id="review-model", provider_id="primary",
+        display_name="Review", model_name="review-model",
+        context_window=32_768, max_output_tokens=8_192,
+    )
+    db.save_model(
+        model_id="backup-review-model", provider_id="backup",
+        display_name="Backup Review", model_name="backup-review-model",
+        context_window=32_768, max_output_tokens=8_192,
+    )
+    for role in (
+        "planning", "draft", "review", "reader_review", "polish",
+        "final_review", "maintenance",
+    ):
+        db.save_role_binding(
+            role, "primary", "primary-model", "backup", "backup-model",
+        )
     store = ProjectStore(db, tmp_path / "workspace")
     project = store.create(ProjectCreate(
         title="Polish recovery", mode="short", genre="suspense",

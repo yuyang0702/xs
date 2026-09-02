@@ -72,6 +72,7 @@ from novel_flywheel.stage_capacity import (
     DEFAULT_STAGE_CAPACITY_POLICY_REGISTRY_V1,
     StageCapacityPolicyRegistryV1,
     build_stage_capacity_plan_v1,
+    capacity_recovery_prompt_delta_sha256_v1,
 )
 from tools.canary import first_trustworthy_full_short_runner as real_runner
 
@@ -3126,6 +3127,16 @@ def test_real_runner_collects_live_bindings_without_secret_lookup(
             "max_output_tokens": 32_000,
             "reasoning_token_accounting": "INCLUDED_IN_COMPLETION_CAP",
             "reasoning_output_reservation": "WITHIN_COMPLETION_CAP",
+            "route_fingerprint": fingerprint,
+            "provider": "Public",
+            "provider_id_sha256": hashlib.sha256(
+                b"public-provider"
+            ).hexdigest(),
+            "operator": "THIRD_PARTY_RELAY_UNVERIFIED_UPSTREAM",
+            "destination": "https://unit.test:443/v1/messages",
+            "protocol": "anthropic",
+            "model": "public-model",
+            "model_id_sha256": hashlib.sha256(b"public-model").hexdigest(),
         }, sort_keys=True),
         encoding="utf-8",
     )
@@ -3141,6 +3152,9 @@ def test_real_runner_collects_live_bindings_without_secret_lookup(
         proved_fields=(
             "context_window_tokens", "max_output_tokens",
             "reasoning_token_accounting", "reasoning_output_reservation",
+            "route_fingerprint",
+            "provider", "provider_id_sha256", "operator", "destination",
+            "protocol", "model", "model_id_sha256",
         ),
         provenance_available=True,
     )
@@ -3602,6 +3616,84 @@ def test_completion_rejects_resealed_attempt_identity_forgery(
 
     assert caught.value.reason_code == (
         "COMPLETION_CAPACITY_ADMISSION_PROVENANCE_INVALID"
+    )
+
+
+def test_completion_rejects_coherently_resealed_recovery_source_forgery(
+    tmp_path: Path,
+) -> None:
+    store = _store(tmp_path)
+    execution_id = "completion-recovery-source-forgery"
+    permission, approval, nonce = _authorize_offline(store, execution_id)
+    _dispatch_reasoning_recovery_and_close(store, execution_id)
+    ledger = store.load_ledger(execution_id)
+    receipts = list(_capacity_receipts(store, execution_id, ledger))
+    forged_source = "f" * 64
+    receipt_body = dict(receipts[1])
+    receipt_body.pop("capacity_admission_receipt_sha256")
+    receipt_body["recovery_source_capture_receipt_sha256"] = forged_source
+    receipt_body["recovery_prompt_delta_sha256"] = (
+        capacity_recovery_prompt_delta_sha256_v1(
+            prior_rendered_request_sha256=receipt_body[
+                "prior_rendered_request_sha256"
+            ],
+            rendered_request_sha256=receipt_body[
+                "rendered_request_sha256"
+            ],
+            recovery_stage_role=receipt_body["recovery_stage_role"],
+            reasoning_policy=receipt_body["reasoning_policy"],
+            recovery_source_capture_receipt_sha256=forged_source,
+        )
+    )
+    receipts[1] = {
+        **receipt_body,
+        "capacity_admission_receipt_sha256": domain_sha256(
+            "novel-flywheel-capacity-admission-receipt-v1",
+            receipt_body,
+        ),
+    }
+    ledger_body = dict(ledger)
+    ledger_body.pop("ledger_sha256")
+    attempts = [dict(item) for item in ledger_body["attempts"]]
+    attempts[1]["recovery_source_capture_receipt_sha256"] = forged_source
+    attempts[1]["recovery_prompt_delta_sha256"] = receipts[1][
+        "recovery_prompt_delta_sha256"
+    ]
+    attempts[1]["capacity_admission_receipt_sha256"] = receipts[1][
+        "capacity_admission_receipt_sha256"
+    ]
+    ledger_body["attempts"] = attempts
+    forged_ledger = {
+        **ledger_body,
+        "ledger_sha256": domain_sha256(
+            "novel-flywheel-full-short-dispatch-ledger-v1", ledger_body,
+        ),
+    }
+
+    with pytest.raises(FullShortExecutionBoundaryError) as caught:
+        build_full_short_completion_receipt_v1(
+            execution_id=execution_id,
+            policy=_policy(store),
+            permission_sha256=permission["permission_sha256"],
+            signed_approval_sha256=approval["signed_approval_sha256"],
+            nonce_sha256=nonce["nonce_sha256"],
+            ledger=forged_ledger,
+            final_bindings={
+                "manuscript_sha256": "4" * 64,
+                "chapter_sha256": "5" * 64,
+                "canon_sha256": "6" * 64,
+                "story_state_sha256": "7" * 64,
+                "quality_checkpoint_sha256": "8" * 64,
+                "terminal_verification_sha256": _terminal()[
+                    "verification_receipt_sha256"
+                ],
+            },
+            terminal_verification=_terminal(),
+            capacity_admission_receipts=receipts,
+        )
+
+    assert caught.value.reason_code == (
+        "COMPLETION_CAPACITY_RECOVERY_PROVENANCE_INVALID"
     )
 
 

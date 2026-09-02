@@ -224,8 +224,7 @@ def _load_route_capability_registry_v1(
         return False
 
     for record in registry.records:
-        if not record.capability_status.value.startswith("VERIFIED_"):
-            continue
+        verified = record.capability_status.value.startswith("VERIFIED_")
         expected_values = {
             "context_window_tokens": record.context_window_tokens,
             "max_output_tokens": record.max_output_tokens,
@@ -235,6 +234,14 @@ def _load_route_capability_registry_v1(
             "reasoning_output_reservation": (
                 record.reasoning_output_reservation
             ),
+            "route_fingerprint": record.route_fingerprint,
+            "provider": record.provider,
+            "provider_id_sha256": record.provider_id_sha256,
+            "operator": record.operator,
+            "destination": record.destination,
+            "protocol": record.protocol,
+            "model": record.model,
+            "model_id_sha256": record.model_id_sha256,
         }
         semantically_proved: set[str] = set()
         for evidence in record.source_evidence:
@@ -264,6 +271,8 @@ def _load_route_capability_registry_v1(
                     "verified route capability evidence must be JSON"
                 ) from exc
             located = resolve_locator(source_document, fragment)
+            if not verified:
+                continue
             for field in evidence.proved_fields:
                 if (
                     field in expected_values
@@ -272,7 +281,7 @@ def _load_route_capability_registry_v1(
                     )
                 ):
                     semantically_proved.add(field)
-        if semantically_proved != set(expected_values):
+        if verified and semantically_proved != set(expected_values):
             raise ValueError(
                 "verified route capability evidence values not proven"
             )

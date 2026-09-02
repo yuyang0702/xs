@@ -153,8 +153,7 @@ def build_registry(repo: Path) -> RouteCapabilityRegistryV1:
                 evidence.append(CapabilityEvidenceV1(
                     source_kind="historical_official_documentation_matrix",
                     source_locator=(
-                        f"{HISTORICAL_MATRIX.as_posix()}#models/"
-                        "deepseek-v4-pro"
+                        HISTORICAL_MATRIX.as_posix()
                     ),
                     source_evidence_sha256=history_sha,
                     evidence_version=1,
@@ -168,8 +167,7 @@ def build_registry(repo: Path) -> RouteCapabilityRegistryV1:
             evidence.append(CapabilityEvidenceV1(
                 source_kind="historical_route_token_accounting_packet",
                 source_locator=(
-                    f"{HISTORICAL_PRICE_PACKET.as_posix()}#price_catalog/"
-                    f"{provider['name']}/{model['model_name']}"
+                    HISTORICAL_PRICE_PACKET.as_posix()
                 ),
                 source_evidence_sha256=price_sha,
                 evidence_version=1,
@@ -244,6 +242,37 @@ def materialize(
     logical_stage_plan = validate_full_short_logical_stage_plan_v1(
         logical_stage_plan
     )
+    exact_target_source = json.loads(
+        (repo / V2_ROOT / "exact-ready-target-binding-v1.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    if (
+        dry_run_receipt.get("schema")
+        != "FirstTrustworthyFullShortPrivateDryRunV2"
+        or dry_run_receipt.get("version") != 2
+        or dry_run_receipt.get("status") != "PASS"
+        or dry_run_receipt.get("pass") is not True
+        or dry_run_receipt.get("project_id_sha256")
+        != exact_target_source.get("project_id_sha256")
+        or dry_run_receipt.get("completed_stage_count")
+        != len(logical_stage_plan)
+        or dry_run_receipt.get("all_required_stage_roles_completed") is not True
+        or any(dry_run_receipt.get(field) != 0 for field in (
+            "real_credential_lookup_count",
+            "real_provider_client_creation_count",
+            "real_provider_request_attempts",
+            "real_http_post_attempts",
+            "real_network_calls",
+            "real_model_calls",
+            "paid_calls",
+        ))
+        or git(
+            repo, "cat-file", "-t", str(dry_run_receipt.get("source_head"))
+        ) != "commit"
+    ):
+        raise ValueError("exact_ready_dry_run_receipt_binding_invalid")
+    source_dry_run_receipt_sha256 = sha_json(dry_run_receipt)
     required_routes = tuple(sorted({
         (
             str(item["role"]),
@@ -374,6 +403,15 @@ def materialize(
     write_json(root / "exact-ready-required-route-set-v1.json", receipt(
         "ExactReadyRequiredRouteSetV1", "MATERIALIZED",
         derivation="SEALED_EXACT_READY_LOGICAL_STAGE_PLAN",
+        source_plan_receipt_artifact=(
+            "exact-ready-target-full-short-rerun-v1.json#source_receipt"
+        ),
+        source_plan_receipt_sha256=source_dry_run_receipt_sha256,
+        source_runtime_head=dry_run_receipt["source_head"],
+        project_id_sha256=dry_run_receipt["project_id_sha256"],
+        completion_receipt_sha256=dry_run_receipt[
+            "completion_receipt_sha256"
+        ],
         logical_stage_plan=logical_stage_plan,
         logical_stage_plan_sha256=(
             full_short_logical_stage_plan_sha256_v1(logical_stage_plan)
@@ -550,6 +588,8 @@ def materialize(
         real_network_calls=dry_run_receipt["real_network_calls"],
         real_model_calls=dry_run_receipt["real_model_calls"],
         paid_calls=dry_run_receipt["paid_calls"],
+        source_receipt_sha256=source_dry_run_receipt_sha256,
+        source_receipt=dry_run_receipt,
     ))
 
     # Final reviewer files are replaced with the fresh review findings before
@@ -664,9 +704,12 @@ def materialize(
         encoding="utf-8",
     )
     manifest = {}
-    for path in sorted(root.iterdir(), key=lambda item: item.name):
-        if path.is_file() and path.name != "sha256-manifest-v1.json":
-            manifest[path.name] = {
+    for path in sorted(
+        root.rglob("*"), key=lambda item: item.relative_to(root).as_posix()
+    ):
+        relative = path.relative_to(root).as_posix()
+        if path.is_file() and relative != "sha256-manifest-v1.json":
+            manifest[relative] = {
                 "bytes": len(path.read_bytes()),
                 "sha256": sha_file(path),
             }

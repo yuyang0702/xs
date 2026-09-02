@@ -155,6 +155,14 @@ class RouteCapabilityRecordV1:
                     "max_output_tokens",
                     "reasoning_token_accounting",
                     "reasoning_output_reservation",
+                    "route_fingerprint",
+                    "provider",
+                    "provider_id_sha256",
+                    "operator",
+                    "destination",
+                    "protocol",
+                    "model",
+                    "model_id_sha256",
                 } <= proved
                 or self.blocking_reason_codes
                 or self.reasoning_token_accounting
