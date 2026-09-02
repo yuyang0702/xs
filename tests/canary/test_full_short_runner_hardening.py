@@ -640,6 +640,11 @@ def test_live_bindings_seal_v2_runtime_skill_style_and_store_source_truth(
     assert actual["store_root_sha256"] == hashlib.sha256(
         str(store_root.resolve()).encode("utf-8")
     ).hexdigest()
+    assert (
+        actual["capacity_policy_registry_sha256"]
+        == public["capacity_policy_registry_sha256"]
+        == dry_run.DEFAULT_STAGE_CAPACITY_POLICY_REGISTRY_V1.identity_sha256
+    )
 
 
 def test_live_bindings_reject_missing_ready_authority(

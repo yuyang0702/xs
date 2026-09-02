@@ -720,6 +720,9 @@ def collect_live_bindings(
         "logical_stage_recovery_policy_identity": (
             "TWO_SLOT_MUTUALLY_EXCLUSIVE_TYPED_RECOVERY"
         ),
+        "capacity_policy_registry_sha256": (
+            DEFAULT_STAGE_CAPACITY_POLICY_REGISTRY_V1.identity_sha256
+        ),
         "failure_architecture_identity": FAILURE_ARCHITECTURE_IDENTITY,
         "recovery_policy_registry_sha256": (
             FULL_SHORT_EXACT_RECOVERY_REGISTRY_SHA256
@@ -778,6 +781,9 @@ def collect_live_bindings(
         ),
         "logical_stage_recovery_policy_identity": (
             "TWO_SLOT_MUTUALLY_EXCLUSIVE_TYPED_RECOVERY"
+        ),
+        "capacity_policy_registry_sha256": (
+            DEFAULT_STAGE_CAPACITY_POLICY_REGISTRY_V1.identity_sha256
         ),
         "failure_architecture_identity": FAILURE_ARCHITECTURE_IDENTITY,
         "recovery_policy_registry": FULL_SHORT_EXACT_RECOVERY_REGISTRY_V1,
