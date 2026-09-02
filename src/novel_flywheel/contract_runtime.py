@@ -1507,6 +1507,11 @@ async def execute_contract_runtime(
                     last_receipt,
                 )
             attempt_ptr12_decision = current_ptr12_guard_decision()
+        except CapacityAdmissionFailureV1:
+            # A finalized-attempt capacity denial is pre-dispatch evidence,
+            # not a provider failure. It cannot consume the shared retry slot
+            # or be aggregated into route exhaustion.
+            raise
         except Exception as exc:
             provider_id, model_id = route_identities[attempt.route]
             route_errors.append((provider_id, model_id, exc))
