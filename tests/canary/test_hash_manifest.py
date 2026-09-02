@@ -61,6 +61,10 @@ def test_real_launcher_dependency_closure_is_closed() -> None:
     assert manifest["approved_third_party"] == []
     assert manifest["import_scope_id"] == GENERIC_CANARY_IMPORT_SCOPE_ID
     assert manifest["excluded_probe_entrypoints"] == [
+        "first_trustworthy_full_short_dry_run.py",
+        "first_trustworthy_full_short_runner.py",
+        "full_short_transport_failure_dry_run.py",
+        "materialize_first_trustworthy_full_short_authorization.py",
         "provider_capability_probe_real.py",
         "provider_reasoning_capability_probe_real.py",
     ]
@@ -93,6 +97,12 @@ def test_explicit_probe_profile_closure_keeps_its_executable_and_dependencies(
     paths = {item["path"] for item in manifest["files"]}
     assert included in paths
     assert excluded not in paths
+    assert {
+        "first_trustworthy_full_short_dry_run.py",
+        "first_trustworthy_full_short_runner.py",
+        "full_short_transport_failure_dry_run.py",
+        "materialize_first_trustworthy_full_short_authorization.py",
+    }.isdisjoint(paths)
     assert manifest["approved_third_party"] == approved
     assert manifest["import_scope_id"] == profile_id
 

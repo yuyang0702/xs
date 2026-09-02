@@ -29,6 +29,12 @@ _PROBE_ONLY_ENTRYPOINTS = {
         "provider_reasoning_capability_probe_real.py"
     ),
 }
+_SPECIALIZED_OFFLINE_ENTRYPOINTS = frozenset({
+    "first_trustworthy_full_short_dry_run.py",
+    "first_trustworthy_full_short_runner.py",
+    "full_short_transport_failure_dry_run.py",
+    "materialize_first_trustworthy_full_short_authorization.py",
+})
 _PROFILE_APPROVED_THIRD_PARTY = {
     PTR4_PROVIDER_PROBE_IMPORT_SCOPE_ID: (),
     PTR7_REASONING_PROBE_IMPORT_SCOPE_ID: ("httpx",),
@@ -67,13 +73,19 @@ def _files(
 def canary_import_scope_definition(profile_id: str) -> dict:
     if profile_id == GENERIC_CANARY_IMPORT_SCOPE_ID:
         included_probe_entrypoint = None
-        excluded = sorted(_PROBE_ONLY_ENTRYPOINTS.values())
+        excluded = sorted(
+            set(_PROBE_ONLY_ENTRYPOINTS.values())
+            | set(_SPECIALIZED_OFFLINE_ENTRYPOINTS)
+        )
         approved = []
     elif profile_id in _PROBE_ONLY_ENTRYPOINTS:
         included_probe_entrypoint = _PROBE_ONLY_ENTRYPOINTS[profile_id]
         excluded = sorted(
-            value for key, value in _PROBE_ONLY_ENTRYPOINTS.items()
-            if key != profile_id
+            {
+                value for key, value in _PROBE_ONLY_ENTRYPOINTS.items()
+                if key != profile_id
+            }
+            | set(_SPECIALIZED_OFFLINE_ENTRYPOINTS)
         )
         approved = list(_PROFILE_APPROVED_THIRD_PARTY[profile_id])
     else:
