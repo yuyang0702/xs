@@ -1667,7 +1667,8 @@ class FullShortExecutionKernel:
         candidate_reason_code = getattr(exc, "reason_code", None)
         source_reason_code = (
             str(candidate_reason_code)
-            if isinstance(candidate_reason_code, str)
+            if is_registered
+            and isinstance(candidate_reason_code, str)
             and re.fullmatch(r"[A-Za-z0-9_.:-]{1,160}", candidate_reason_code)
             else None
         )

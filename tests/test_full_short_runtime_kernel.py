@@ -213,6 +213,37 @@ async def test_every_boundary_maps_unexpected_to_durable_fail_closed(
 
 
 @pytest.mark.asyncio
+async def test_unexpected_reason_code_cannot_persist_secretlike_content(
+    tmp_path: Path,
+) -> None:
+    marker = "AKIA1234567890ABCDEF"
+
+    class UntrustedProviderError(RuntimeError):
+        reason_code = marker
+
+    journal = DurableExecutionJournalV1.create(
+        tmp_path / "unexpected-reason-code.json",
+        execution_id="offline-execution",
+        initial_state=ExecutionState.TEMPLATE_READY,
+    )
+    kernel = FullShortExecutionKernel(
+        registry=DEFAULT_FAILURE_BOUNDARY_REGISTRY_V1,
+        journal=journal,
+    )
+
+    async def fail() -> None:
+        raise UntrustedProviderError("safe-message")
+
+    with pytest.raises(FullShortBoundaryFailureV1) as caught:
+        await kernel.execute_boundary("FS.DISPATCH.MODEL", fail)
+
+    envelope = caught.value.envelope
+    assert envelope.classification == FailureClassification.UNEXPECTED
+    assert envelope.source_reason_code is None
+    assert marker.encode("ascii") not in journal.path.read_bytes()
+
+
+@pytest.mark.asyncio
 async def test_dispatch_reasoning_only_is_known_durable_recoverable(
     tmp_path: Path,
 ) -> None:
