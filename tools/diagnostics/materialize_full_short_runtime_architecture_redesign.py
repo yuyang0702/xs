@@ -162,9 +162,14 @@ def main() -> int:
 
     repo = args.repo.resolve(strict=True)
     dirty = [
-        line[3:].replace("\\", "/")
-        for line in _git(repo, "status", "--porcelain").splitlines()
-        if line
+        path.replace("\\", "/")
+        for command in (
+            ("diff", "--name-only"),
+            ("diff", "--cached", "--name-only"),
+            ("ls-files", "--others", "--exclude-standard"),
+        )
+        for path in _git(repo, *command).splitlines()
+        if path
     ]
     evidence_prefix = ROOT.as_posix() + "/"
     if any(not path.startswith(evidence_prefix) for path in dirty):
