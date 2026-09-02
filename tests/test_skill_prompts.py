@@ -149,7 +149,33 @@ def test_stage_constraint_compactor_does_not_let_long_outline_hide_style() -> No
     assert "The long outline continues" in compact
     assert "Keep the confirmed sentence rhythm" in compact
     assert "Delay the confirmed answer until the ending" in compact
-    assert len(compact) <= 4000
+    assert compact == constraints
+
+
+def test_skill_hard_rule_wins_over_example_skip_marker() -> None:
+    prompt = """# Rules
+## Examples
+- Example output must preserve the confirmed ending.
+- Optional example description.
+"""
+
+    compact = SkillPromptCompactor(max_chars=200).compact(
+        prompt, [Receipt("hard-before-skip")],
+    )
+
+    assert "must preserve the confirmed ending" in compact
+    assert "Optional example description" not in compact
+
+
+def test_skill_compactor_returns_source_if_hard_rules_exceed_budget() -> None:
+    prompt = "\n".join(
+        f"- Rule {index} must preserve confirmed fact {index}."
+        for index in range(20)
+    )
+
+    assert SkillPromptCompactor(max_chars=80).compact(
+        prompt, [Receipt("hard-over-budget")],
+    ) == prompt
 
 
 def test_stage_constraint_compactor_keeps_rules_before_first_heading() -> None:

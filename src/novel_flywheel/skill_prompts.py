@@ -6,7 +6,8 @@ from collections.abc import Iterable
 class ConstraintPromptCompactor:
     _HARD = (
         "必须", "不能", "不得", "禁止", "避免", "不可", "至少", "只允许",
-        "must", "never", "do not", "cannot", "required", "forbidden", "avoid",
+        "保持", "应当", "must", "never", "do not", "cannot", "required",
+        "forbidden", "avoid", "preserve",
     )
 
     def __init__(self, max_chars: int = 7000) -> None:
@@ -69,6 +70,13 @@ class ConstraintPromptCompactor:
                     selected.append((index, line))
                     used += cost
         compact = prefix + "\n".join(line for _, line in sorted(selected))
+        hard_lines = [
+            line.strip() for line in text.splitlines()
+            if line.strip()
+            and any(marker in line.strip().lower() for marker in self._HARD)
+        ]
+        if any(line not in compact for line in hard_lines):
+            compact = text
         if not selected or len(compact) >= len(text):
             compact = text
         self._cache[key] = compact
@@ -99,7 +107,9 @@ class ConstraintPromptCompactor:
         generic_budget = min(1200, max(400, self.max_chars // 5))
         generic = ConstraintPromptCompactor(generic_budget).compact(general)
         if generic == general and len(generic) > generic_budget:
-            generic = generic[:generic_budget]
+            # Generic material may be omitted; it may never be cut mid-line or
+            # mid-paragraph. Any hard rule below is caught by final coverage.
+            generic = ""
 
         prefix = f"CONFIRMED CONTEXT FOR {stage.upper()}:\n"
         chunks = [prefix]
@@ -109,23 +119,30 @@ class ConstraintPromptCompactor:
         for position, (_priority, _index, title, body) in enumerate(ordered):
             remaining = self.max_chars - used
             if remaining <= len(title) + 6:
-                break
-            future_minimum = sum(
-                len(future_title) + minimum_body + 4
-                for _, _, future_title, _ in ordered[position + 1:]
-            )
-            available = max(len(title) + minimum_body + 4, remaining - future_minimum)
-            section_budget = min(self._section_budget(title, stage), available, remaining)
-            excerpt = self._focused_excerpt(body, focus, max(80, section_budget - len(title) - 4))
-            chunk = f"# {title}\n{excerpt.strip()}\n"
-            if len(chunk) <= remaining:
-                chunks.append(chunk)
-                used += len(chunk)
+                return text
+            # Confirmed sections are protected authority, including unmarked
+            # facts. If they do not fit, return the source and let central
+            # capacity admission choose semantic windowing.
+            chunk = f"# {title}\n{body.strip()}\n"
+            if len(chunk) > remaining:
+                return text
+            chunks.append(chunk)
+            used += len(chunk)
 
         if generic.strip() and used < self.max_chars:
             remaining = self.max_chars - used
-            chunks.append("\n" + generic[:remaining])
-        compact = "".join(chunks)[:self.max_chars]
+            if len(generic) + 1 <= remaining:
+                chunks.append("\n" + generic)
+        compact = "".join(chunks)
+        hard_lines = [
+            line.strip() for line in text.splitlines()
+            if line.strip()
+            and any(marker in line.strip().lower() for marker in self._HARD)
+        ]
+        if len(compact) > self.max_chars or any(
+            line not in compact for line in hard_lines
+        ):
+            compact = text
         self._cache[key] = compact
         return compact
 
@@ -182,7 +199,7 @@ class ConstraintPromptCompactor:
             if len(result) + len(addition) > limit:
                 continue
             result += addition
-        return result or body[:limit]
+        return result
 
 
 class SkillPromptCompactor:
@@ -230,10 +247,10 @@ class SkillPromptCompactor:
             if in_fence or not stripped or stripped.startswith(">"):
                 continue
             lowered = stripped.lower()
-            if any(marker in lowered for marker in self._SKIP):
-                continue
             if any(marker in lowered for marker in self._HARD):
                 priority = 0
+            elif any(marker in lowered for marker in self._SKIP):
+                continue
             elif stripped.startswith("#"):
                 priority = 1
             elif re.match(r"^(?:[-*+] |\d+[.)] )", stripped):
@@ -251,4 +268,11 @@ class SkillPromptCompactor:
             selected.append((index, line))
             used += cost
         body = "\n".join(line for _, line in sorted(selected))
+        hard_lines = [
+            line.strip() for line in text.splitlines()
+            if line.strip()
+            and any(marker in line.strip().lower() for marker in self._HARD)
+        ]
+        if any(line not in body for line in hard_lines):
+            raise ValueError("skill hard rules exceed compaction budget")
         return "COMPACT SKILL EXECUTION RULES:\n" + body
