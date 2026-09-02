@@ -80,7 +80,7 @@ def _junit(path: Path, classification: str, head: str) -> dict[str, Any]:
         "version": 1,
         "classification": classification,
         "status": "PASS",
-        "source_head": head,
+        "source_head": implementation_head,
         **totals,
         "testcase_name_set_sha256": _sha(
             json.dumps(sorted(names), separators=(",", ":")).encode()
@@ -148,6 +148,7 @@ def _reviewer(
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--repo", type=Path, required=True)
+    parser.add_argument("--implementation-head", required=True)
     parser.add_argument("--source-inventory", type=Path, required=True)
     parser.add_argument("--source-inventory-repeat", type=Path, required=True)
     parser.add_argument("--architecture-audit", type=Path, required=True)
@@ -162,6 +163,11 @@ def main() -> int:
     if _git(repo, "status", "--porcelain"):
         raise ValueError("evidence_requires_clean_worktree")
     head = _git(repo, "rev-parse", "HEAD")
+    implementation_head = args.implementation_head
+    subprocess.check_call(
+        ["git", "merge-base", "--is-ancestor", implementation_head, head],
+        cwd=repo,
+    )
     branch = _git(repo, "branch", "--show-current")
     if branch != BRANCH:
         raise ValueError("branch_mismatch")
@@ -179,11 +185,11 @@ def main() -> int:
     static_audit = _read_json(args.architecture_audit)
     if static_audit != audit() or static_audit.get("status") != "PASS":
         raise ValueError("architecture_audit_not_current_pass")
-    focused = _junit(args.focused_junit, "FOCUSED", head)
-    related = _junit(args.related_junit, "RELATED", head)
-    length = _junit(args.length_junit, "13K_20K_30K", head)
-    production = _dry(args.production_shaped, head)
-    adapter = _dry(args.adapter_replay, head)
+    focused = _junit(args.focused_junit, "FOCUSED", implementation_head)
+    related = _junit(args.related_junit, "RELATED", implementation_head)
+    length = _junit(args.length_junit, "13K_20K_30K", implementation_head)
+    production = _dry(args.production_shaped, implementation_head)
+    adapter = _dry(args.adapter_replay, implementation_head)
     if not (
         production.get("completed_stage_count") == 68
         and production.get("provider_request_count") == 70
@@ -207,7 +213,8 @@ def main() -> int:
     _write_json(root, "baseline-binding-v1.json", {
         "schema": "FullShortRuntimeRedesignBaselineV1",
         "start_head": START_HEAD,
-        "implementation_head_before_evidence": head,
+        "implementation_head_before_evidence": implementation_head,
+        "evidence_materializer_head": head,
         "branch": branch,
         "initial_worktree": "CLEAN",
         "hard_external_boundary": {
@@ -371,7 +378,7 @@ def main() -> int:
     _write_json(root, "production-shaped-full-short-rerun-v1.json", {
         "schema": "ProductionShapedFullShortRerunV1",
         "status": "PASS",
-        "source_head": head,
+        "source_head": implementation_head,
         "normal_receipt_sha256": production["receipt_sha256"],
         "adapter_replay_receipt_sha256": adapter["receipt_sha256"],
         "completed_stage_count": 68,
@@ -406,7 +413,7 @@ def main() -> int:
         "schema": "NovelDevCouncilStrictGateReceiptV1",
         "version": 1,
         "status": "PASS",
-        "source_head": head,
+        "source_head": implementation_head,
         "mode": "MANUAL_EQUIVALENT_AFTER_PROJECT_SKILL_SCRIPT_ABSENCE",
         "all_five_clean_room_reviewers": "ARCHITECTURE_PASS",
         "focused_tests": focused["tests"],
