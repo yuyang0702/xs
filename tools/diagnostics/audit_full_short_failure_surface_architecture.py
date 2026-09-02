@@ -27,6 +27,9 @@ from novel_flywheel.full_short_execution import (
     FullShortExecutionBoundaryError,
     _validate_ledger_mutation_v1,
 )
+from novel_flywheel.full_short_runtime_kernel import (
+    DEFAULT_FAILURE_BOUNDARY_REGISTRY_V1,
+)
 from novel_flywheel.full_short_reason_catalog import (
     FULL_SHORT_LITERAL_REASON_CATEGORY_V1,
 )
@@ -34,6 +37,17 @@ from novel_flywheel.models import ModelGateway, ModelRoutesExhaustedError
 from novel_flywheel.providers.http import HttpProvider
 from novel_flywheel.tasks import RunTaskManager
 from novel_flywheel.workflows import WorkflowService
+from novel_flywheel.stage_capacity import (
+    CAPACITY_BOUNDARY_ID_V1,
+    CAPACITY_FAILURE_IDS_V1,
+    DEFAULT_STAGE_CAPACITY_POLICY_REGISTRY_V1,
+    build_stage_capacity_plan_v1,
+    enforce_stage_capacity_plan_v1,
+)
+from novel_flywheel.contract_runtime import (
+    dispatch_explicit_model_route,
+    execute_model_route_runtime,
+)
 from tools.canary.first_trustworthy_full_short_runner import (
     _execute_full_short_control_plane_with_capability,
     execute_full_short_control_plane,
@@ -79,6 +93,29 @@ _METRIC_CHECKS: dict[str, tuple[str, ...]] = {
     "authority_mutation_before_accepted_receipt_count": (
         "control_stage_receipt_precedes_diagnostics",
         "durable_ledger_rejects_unregistered_transitions",
+    ),
+    "CONTEXT_CAPACITY_GENERIC_UNEXPECTED_MAPPING_COUNT": (
+        "capacity_failure_registry_is_closed",
+    ),
+    "CAPACITY_FAILURE_WITHOUT_TYPED_POLICY_COUNT": (
+        "capacity_failure_registry_is_closed",
+        "capacity_recovery_policy_is_stage_bound",
+    ),
+    "MODEL_DISPATCH_WITHOUT_CAPACITY_ADMISSION_COUNT": (
+        "exact_dispatch_requires_capacity_token",
+        "workflow_binds_capacity_plan_before_dispatch",
+    ),
+    "PROTECTED_LAYER_SILENT_TRUNCATION_COUNT": (
+        "protected_layers_reject_compaction_or_shedding",
+    ),
+    "UNRECEIPTED_CONTEXT_SHEDDING_COUNT": (
+        "capacity_transform_identity_is_receipt_bound",
+    ),
+    "UNREGISTERED_STAGE_CAPACITY_POLICY_COUNT": (
+        "full_short_stage_capacity_registry_is_closed",
+    ),
+    "EXACT_READY_TARGET_CAPACITY_BLOCKER_COUNT": (
+        "exact_ready_target_gate_is_source_bound",
     ),
 }
 
@@ -151,6 +188,12 @@ def audit() -> dict[str, Any]:
         "NONCE_NOT_FOUND_OR_CORRUPT",
         "PERMISSION_NOT_FOUND_OR_CORRUPT",
     })
+    reason_catalog_missing = sorted(
+        literal_reasons - set(FULL_SHORT_LITERAL_REASON_CATEGORY_V1)
+    )
+    reason_catalog_unused = sorted(
+        set(FULL_SHORT_LITERAL_REASON_CATEGORY_V1) - literal_reasons
+    )
     dispatch = _source(FullShortDispatchLedgerObserverV1.before_http_dispatch)
     registry_boundary = _source(
         FullShortDurableExecutionStoreV1.reserve_nonce_from_dispatch_readiness
@@ -160,6 +203,16 @@ def audit() -> dict[str, Any]:
     gateway_complete = _source(ModelGateway.complete)
     gateway_tools = _source(ModelGateway.complete_with_tools)
     stage = _source(WorkflowService._stage)
+    capacity_builder = _source(build_stage_capacity_plan_v1)
+    capacity_enforcer = _source(enforce_stage_capacity_plan_v1)
+    capacity_dispatch = _source(dispatch_explicit_model_route)
+    capacity_route_runtime = _source(execute_model_route_runtime)
+    capacity_bind = _source(
+        FullShortDispatchLedgerObserverV1.bind_capacity_plan
+    )
+    dry_run_source = Path(
+        "tools/canary/first_trustworthy_full_short_dry_run.py"
+    ).read_text(encoding="utf-8")
     protocol_plan = _source(WorkflowService._protocol_receipt_attempt_plan)
     failure_record = _source(RunTaskManager._safe_failure_record)
     campaign_path = Path("tests/test_full_short_failure_surface_campaign.py")
@@ -267,6 +320,69 @@ def audit() -> dict[str, Any]:
             and "source_head" in campaign
             and "testcase" in campaign
         ),
+        "capacity_failure_registry_is_closed": (
+            set(CAPACITY_FAILURE_IDS_V1)
+            == set(
+                DEFAULT_FAILURE_BOUNDARY_REGISTRY_V1.boundary(
+                    CAPACITY_BOUNDARY_ID_V1
+                ).allowed_typed_failures
+            )
+            and all(
+                DEFAULT_FAILURE_BOUNDARY_REGISTRY_V1.failure(failure_id)
+                for failure_id in CAPACITY_FAILURE_IDS_V1
+            )
+        ),
+        "capacity_recovery_policy_is_stage_bound": all(
+            policy.recovery_policy_id
+            and policy.segmentation_policy_id
+            and policy.compaction_policy_id
+            and set(policy.segmentation_failure_ids)
+            <= {item for item in CAPACITY_FAILURE_IDS_V1}
+            for policy in DEFAULT_STAGE_CAPACITY_POLICY_REGISTRY_V1.policies.values()
+        ),
+        "exact_dispatch_requires_capacity_token": (
+            "capacity_admission_token" in capacity_dispatch
+            and "authorize_capacity_dispatch_token" in capacity_dispatch
+            and capacity_dispatch.index("authorize_capacity_dispatch_token")
+            < capacity_dispatch.index('getattr(gateway, "complete_route"')
+            and "_is_predispatch_capacity_boundary_failure" in capacity_route_runtime
+        ),
+        "workflow_binds_capacity_plan_before_dispatch": (
+            "build_stage_capacity_plan_v1" in stage
+            and "bind_capacity_plan" in stage
+            and "capacity_admission_token" in capacity_route_runtime
+            and capacity_route_runtime.index("attempt_admitter")
+            < capacity_route_runtime.index("dispatch_explicit_model_route")
+        ),
+        "protected_layers_reject_compaction_or_shedding": (
+            "protected_content_transformed" in capacity_builder
+            and 'layer.action in {"COMPACT", "SHED"}' in capacity_builder
+            and 'layer.action in {"COMPACT", "SHED"}' in capacity_enforcer
+        ),
+        "capacity_transform_identity_is_receipt_bound": (
+            "allowed_transform_policy_ids" in capacity_builder
+            and "layer_projections" in capacity_builder
+            and '"capacity_plan_sha256": plan.plan_sha256' in capacity_bind
+            and "create_capacity_admission_receipt" in capacity_bind
+        ),
+        "full_short_stage_capacity_registry_is_closed": (
+            set(DEFAULT_STAGE_CAPACITY_POLICY_REGISTRY_V1.policies)
+            == {
+                "planning", "draft", "review", "reader_review", "polish",
+                "final_review", "maintenance", "revision_plan",
+            }
+            and len({
+                policy.segmentation_policy_id
+                for policy in DEFAULT_STAGE_CAPACITY_POLICY_REGISTRY_V1.policies.values()
+            })
+            == len(DEFAULT_STAGE_CAPACITY_POLICY_REGISTRY_V1.policies)
+        ),
+        "exact_ready_target_gate_is_source_bound": (
+            'required=True' in dry_run_source
+            and 'project_id = args.project_id' in dry_run_source
+            and 'if str(row["id"]) == project_id' in dry_run_source
+            and '"project_id_sha256"' in dry_run_source
+        ),
     }
     failures = sorted(key for key, passed in checks.items() if not passed)
     metrics = {
@@ -279,6 +395,8 @@ def audit() -> dict[str, Any]:
         "status": "PASS" if not failures else "FAIL",
         "checks": checks,
         "failed_checks": failures,
+        "literal_reason_catalog_missing": reason_catalog_missing,
+        "literal_reason_catalog_unused": reason_catalog_unused,
         "metrics": metrics,
         "identities": {
             "failure_architecture_identity": FAILURE_ARCHITECTURE_IDENTITY,
@@ -307,6 +425,15 @@ def audit() -> dict[str, Any]:
                 sort_keys=True, separators=(",", ":"),
             )),
             "phase9_campaign": _sha(campaign),
+            "capacity_builder": _sha(capacity_builder),
+            "capacity_enforcer": _sha(capacity_enforcer),
+            "capacity_dispatch": _sha(capacity_dispatch),
+            "capacity_route_runtime": _sha(capacity_route_runtime),
+            "capacity_bind": _sha(capacity_bind),
+            "capacity_policy_registry": (
+                DEFAULT_STAGE_CAPACITY_POLICY_REGISTRY_V1.identity_sha256
+            ),
+            "exact_dry_run": _sha(dry_run_source),
         },
     }
 
