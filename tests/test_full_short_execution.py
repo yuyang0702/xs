@@ -386,6 +386,16 @@ def _bind_route_with_capacity(
             execution_id=observer.execution_id,
             plan_sha256=prior_attempt["capacity_plan_sha256"],
         )
+    rendered_request_sha256 = hashlib.sha256(
+        (system_content + "\n\0" + user_content).encode("utf-8")
+    ).hexdigest()
+    recovery_overlay_kind = (
+        "FINAL_ARTIFACT_COMPLETION"
+        if prior_capacity_receipt is not None
+        and rendered_request_sha256
+        != prior_capacity_receipt["base_rendered_request_sha256"]
+        else "NONE"
+    )
     plan = build_stage_capacity_plan_v1(
         stage_id=expected["stage_id"],
         logical_stage_id=context["logical_stage_id"],
@@ -428,8 +438,7 @@ def _bind_route_with_capacity(
             if prior_capacity_receipt is not None else None
         ),
         recovery_overlay_kind=(
-            "FINAL_ARTIFACT_COMPLETION"
-            if prior_capacity_receipt is not None else "NONE"
+            recovery_overlay_kind
         ),
         prior_rendered_request_sha256=context[
             "prior_rendered_request_sha256"
@@ -441,9 +450,7 @@ def _bind_route_with_capacity(
         structured_envelope_tokens=0,
         provider_envelope_tokens=256,
         wrapper_and_estimator_margin_tokens=1024,
-        rendered_request_sha256=hashlib.sha256(
-            (system_content + "\n\0" + user_content).encode("utf-8")
-        ).hexdigest(),
+        rendered_request_sha256=rendered_request_sha256,
         layer_projections=(), parent_plan_sha256=None,
     )
     token = observer.bind_capacity_plan(plan=plan, route=route, role=role)
@@ -4537,7 +4544,7 @@ def test_completion_rejects_transitively_resealed_capture_forgery(
         )
 
     assert caught.value.reason_code == (
-        "COMPLETION_CAPTURE_PROVENANCE_INVALID"
+        "COMPLETION_CAPACITY_RECOVERY_PROVENANCE_INVALID"
     )
 
 

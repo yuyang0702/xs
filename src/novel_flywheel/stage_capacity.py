@@ -1132,7 +1132,6 @@ def validate_capacity_attempt_delta_v1(
         candidate.prior_rendered_request_sha256
         != prior_value("rendered_request_sha256")
         or candidate.recovery_source_capture_receipt_sha256 is None
-        or candidate.recovery_overlay_kind == "NONE"
     ):
         raise CapacityAdmissionFailureV1(
             CapacityFailureCode.INVALID_ATTEMPT_DELTA
