@@ -23,14 +23,24 @@ from novel_flywheel.provider_response_capture import (
 
 
 def _output_text(body: dict) -> str:
-    if body.get("output_text"):
-        return body["output_text"]
     parts: list[str] = []
     for item in body.get("output", []):
         for content in item.get("content", []):
             if content.get("type") in {"output_text", "text"}:
                 parts.append(content.get("text", ""))
     return "".join(parts)
+
+
+def _resolved_visible_text(body: dict, streamed_text: str) -> str:
+    """Require every exposed Responses text projection to agree exactly."""
+
+    top_level = body.get("output_text")
+    top_level = top_level if isinstance(top_level, str) else ""
+    nested = _output_text(body)
+    candidates = [value for value in (top_level, nested, streamed_text) if value]
+    if candidates and any(value != candidates[0] for value in candidates[1:]):
+        raise ValueError("openai_responses_visible_text_projection_mismatch")
+    return candidates[0] if candidates else ""
 
 
 class OpenAIResponsesAdapter(HttpProvider):
@@ -70,6 +80,7 @@ class OpenAIResponsesAdapter(HttpProvider):
         streamed_text = ""
         if body is None:
             body, streamed_text = self._aggregate_stream(events)
+        resolved_text = _resolved_visible_text(body, streamed_text)
         usage = body.get("usage", {})
         output = body.get("output", [])
         raw_finish_reason = body.get("status")
@@ -86,6 +97,25 @@ class OpenAIResponsesAdapter(HttpProvider):
             for item in output if isinstance(item, dict)
             for part in (item.get("content") or []) if isinstance(part, dict)
         ]
+        nested_text_values = [
+            part.get("text")
+            for part in nested_content
+            if part.get("type") in {"output_text", "text"}
+        ]
+        top_level_text = body.get("output_text")
+        top_level_text = (
+            top_level_text if isinstance(top_level_text, str) else ""
+        )
+        projected_text_values = (
+            nested_text_values
+            or ([top_level_text] if top_level_text else [])
+            or ([streamed_text] if streamed_text else [])
+        )
+        projected_text_block_types = (
+            []
+            if nested_text_values
+            else ["output_text"] if projected_text_values else []
+        )
         content_snapshot = safe_capture_provider_content_block_snapshot(
             adapter_id=self.DIAGNOSTIC_ADAPTER_ID,
             adapter_version=self.DIAGNOSTIC_ADAPTER_VERSION,
@@ -99,13 +129,9 @@ class OpenAIResponsesAdapter(HttpProvider):
                     item.get("type") for item in output if isinstance(item, dict)
                 ]
                 + [part.get("type") for part in nested_content]
-                + (["output_text"] if streamed_text else [])
+                + projected_text_block_types
             ),
-            text_values=([streamed_text] if streamed_text else []) + [
-                part.get("text")
-                for part in nested_content
-                if part.get("type") in {"output_text", "text"}
-            ],
+            text_values=projected_text_values,
             tool_arguments=[
                 item.get("arguments") for item in output
                 if isinstance(item, dict) and item.get("type") == "function_call"
@@ -144,7 +170,7 @@ class OpenAIResponsesAdapter(HttpProvider):
                 provider_body=body,
                 provider_request_id=body.get("id"),
                 content_block_count=len(output),
-                text_present=bool(_output_text(body) or streamed_text),
+                text_present=bool(resolved_text),
                 tool_use_present=bool(call_inputs),
                 finish_reason=finish_reason,
                 calls=call_inputs,
@@ -152,7 +178,7 @@ class OpenAIResponsesAdapter(HttpProvider):
             )
         try:
             response = ModelResponse(
-                text=_output_text(body) or streamed_text,
+                text=resolved_text,
                 tool_calls=[ToolCall(
                     id=item.get("call_id") or item.get("id"), name=item["name"],
                     arguments=json.loads(item.get("arguments") or "{}"),
@@ -163,6 +189,7 @@ class OpenAIResponsesAdapter(HttpProvider):
                 raw_request_id=body.get("id"),
                 provider_state={
                     "output": output,
+                    "output_text": top_level_text,
                     "streamed_text": streamed_text,
                     "transport_complete": raw_finish_reason in {
                         "completed", "incomplete", "failed", "cancelled",
@@ -232,6 +259,7 @@ class OpenAIResponsesAdapter(HttpProvider):
         streamed_text = ""
         if body is None:
             body, streamed_text = cls._aggregate_stream(events)
+        resolved_text = _resolved_visible_text(body, streamed_text)
         usage = body.get("usage", {})
         output = body.get("output", [])
         raw_finish_reason = body.get("status")
@@ -246,7 +274,7 @@ class OpenAIResponsesAdapter(HttpProvider):
                 else incomplete_reason or "incomplete"
             )
         response = ModelResponse(
-            text=_output_text(body) or streamed_text,
+            text=resolved_text,
             tool_calls=[ToolCall(
                 id=item.get("call_id") or item.get("id"),
                 name=item["name"],
@@ -258,6 +286,10 @@ class OpenAIResponsesAdapter(HttpProvider):
             raw_request_id=body.get("id"),
             provider_state={
                 "output": output,
+                "output_text": (
+                    body.get("output_text")
+                    if isinstance(body.get("output_text"), str) else ""
+                ),
                 "streamed_text": streamed_text,
                 "transport_complete": raw_finish_reason in {
                     "completed", "incomplete", "failed", "cancelled",

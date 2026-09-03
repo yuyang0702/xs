@@ -1,8 +1,9 @@
 """Materialize one canonical Full Short authorization outside Git.
 
-This command is offline-only. It discovers the deterministic call plan with
-the existing in-memory provider boundary, binds current live public identity,
-writes canonical authorization bytes with exclusive create, and runs the real
+This command is offline-only. Before deterministic plan discovery it requires
+every initial route to have a verified exact capability record. It then uses
+the in-memory provider boundary, binds current live public identity, writes
+canonical authorization bytes with exclusive create, and runs the real
 preflight with external actions disabled. It never creates a permission,
 signed approval, nonce, credential store, Provider client, or network request.
 """
@@ -33,6 +34,7 @@ from tools.canary.first_trustworthy_full_short_dry_run import (
 )
 from tools.canary.first_trustworthy_full_short_runner import (
     FULL_SHORT_REQUIRED_EXECUTION_ROLES,
+    _load_route_capability_registry_v1,
     collect_live_bindings,
     preflight_full_short_control_plane,
 )
@@ -71,6 +73,22 @@ def _write_exclusive(path: Path, data: bytes) -> None:
         os.close(descriptor)
 
 
+def _require_discovery_routes_verified_v1(repo: Path) -> str:
+    """Stop before synthetic plan discovery when any initial route is unknown."""
+
+    registry = _load_route_capability_registry_v1(repo)
+    if registry is None:
+        raise RuntimeError("AUTHORIZATION_ROUTE_CAPABILITY_NOT_VERIFIED")
+    try:
+        for role in FULL_SHORT_REQUIRED_EXECUTION_ROLES:
+            registry.require_dispatchable(role=role, lane="primary")
+    except (ValueError, KeyError) as exc:
+        raise RuntimeError(
+            "AUTHORIZATION_ROUTE_CAPABILITY_NOT_VERIFIED"
+        ) from exc
+    return registry.registry_sha256
+
+
 async def _materialize(args: argparse.Namespace) -> dict:
     repo = args.repo.resolve(strict=True)
     data_dir = (repo / "data").resolve(strict=True)
@@ -89,6 +107,8 @@ async def _materialize(args: argparse.Namespace) -> dict:
     if row is None:
         raise RuntimeError("AUTHORIZATION_PROJECT_NOT_FOUND")
     source_project = Path(str(row["path"])).resolve(strict=True)
+
+    _require_discovery_routes_verified_v1(repo)
 
     with tempfile.TemporaryDirectory(prefix="full-short-auth-discovery-") as name:
         discovery_data = _copy_private_data(

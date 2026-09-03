@@ -30669,6 +30669,7 @@ class WorkflowService:
                 include_configured_fallback=(
                     not prefer_configured_fallback and not primary_only
                 ),
+                require_declared=route_capacity_guard,
             )
             capacity_plan_head_sha256: str | None = None
 
@@ -33294,6 +33295,7 @@ class WorkflowService:
     def _route_safe_context_window(
         self, gateway_role: str, *, prefer_configured_fallback: bool = False,
         include_configured_fallback: bool = False,
+        require_declared: bool = False,
     ) -> int:
         """Return the conservative context capacity for every possible route.
 
@@ -33306,7 +33308,7 @@ class WorkflowService:
             gateway_role, prefer_configured_fallback,
         )
         if selected is None:
-            if self._exact_full_short_execution():
+            if require_declared or self._exact_full_short_execution():
                 raise CapacityAdmissionFailureV1(
                     CapacityFailureCode.CONTEXT_LIMIT_UNAVAILABLE
                 )
@@ -33322,7 +33324,7 @@ class WorkflowService:
                     gateway_role, True
                 )
                 if fallback_window is None:
-                    if self._exact_full_short_execution():
+                    if require_declared or self._exact_full_short_execution():
                         raise CapacityAdmissionFailureV1(
                             CapacityFailureCode.CONTEXT_LIMIT_UNAVAILABLE
                         )

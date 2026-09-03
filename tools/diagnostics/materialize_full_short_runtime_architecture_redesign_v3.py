@@ -729,6 +729,7 @@ def materialize(
             encoding="utf-8"
         )
     )
+    current_head = git(repo, "rev-parse", "HEAD")
     if (
         dry_run_receipt.get("schema")
         != "FirstTrustworthyFullShortPrivateDryRunV2"
@@ -749,9 +750,7 @@ def materialize(
             "real_model_calls",
             "paid_calls",
         ))
-        or git(
-            repo, "cat-file", "-t", str(dry_run_receipt.get("source_head"))
-        ) != "commit"
+        or dry_run_receipt.get("source_head") != current_head
     ):
         raise ValueError("exact_ready_dry_run_receipt_binding_invalid")
     source_dry_run_receipt_sha256 = sha_json(dry_run_receipt)
@@ -781,7 +780,7 @@ def materialize(
         item for item in unused
         if item["capability_status"] == "UNKNOWN_BLOCKED"
     ]
-    head = git(repo, "rev-parse", "HEAD")
+    head = current_head
 
     write_json(root / "baseline-binding-v1.json", receipt(
         "FullShortRuntimeCapacityV3BaselineBindingV1", "PASS",
@@ -1188,7 +1187,7 @@ def materialize(
     write_json(root / "exact-ready-target-full-short-rerun-v1.json", receipt(
         "ExactReadyTargetFullShortRerunV1",
         "PASS_PRODUCTION_SHAPED_OFFLINE_STUB",
-        project_id_prefix="2ad716",
+        project_id_sha256=dry_run_receipt["project_id_sha256"],
         source_head=dry_run_receipt["source_head"],
         logical_stage_plan_sha256=dry_run_receipt[
             "logical_stage_plan_sha256"

@@ -323,10 +323,18 @@ def capture_provider_raw_shape_v1(
                 output = body.get("output")
                 output = _exact_sequence(output)
                 if output is None:
-                    capture_completeness = "unavailable"
-                    visible_chars = None
+                    top_level_text = body.get("output_text")
+                    if type(top_level_text) is str:
+                        capture.observe("output_text")
+                        visible_chars = len(top_level_text)
+                    else:
+                        capture_completeness = "unavailable"
+                        visible_chars = None
                     output = ()
-                capture.raw_count = len(output)
+                elif type(body.get("output_text")) is str and not output:
+                    capture.observe("output_text")
+                    visible_chars = len(body.get("output_text"))
+                capture.raw_count += len(output)
                 for output_index in range(len(output)):
                     if capture.exhausted or not capture.touch():
                         break
@@ -729,6 +737,10 @@ def provider_output_shape_from_response(
         output = output if isinstance(output, list) else []
         streamed_text = state.get("streamed_text")
         streamed_text = streamed_text if isinstance(streamed_text, str) else ""
+        top_level_text = state.get("output_text")
+        top_level_text = (
+            top_level_text if isinstance(top_level_text, str) else ""
+        )
         nested_content = [
             part
             for item in output if isinstance(item, dict)
@@ -743,7 +755,12 @@ def provider_output_shape_from_response(
             for part in nested_content
             if part.get("type") in TEXT_BLOCK_TYPES
         ]
-        if streamed_text and not any(
+        if top_level_text and not any(
+            isinstance(value, str) and value for value in text_values
+        ):
+            block_types.append("output_text")
+            text_values.append(top_level_text)
+        elif streamed_text and not any(
             isinstance(value, str) and value for value in text_values
         ):
             block_types.append("output_text")

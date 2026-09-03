@@ -31,6 +31,19 @@ from tools.canary import first_trustworthy_full_short_dry_run as dry_run
 from tools.canary import first_trustworthy_full_short_runner as runner
 
 
+def test_authorization_stops_before_plan_discovery_for_unknown_primary_routes(
+) -> None:
+    from tools.canary import (
+        materialize_first_trustworthy_full_short_authorization as authorization,
+    )
+
+    repo = Path(__file__).parents[2]
+    with pytest.raises(
+        RuntimeError, match="AUTHORIZATION_ROUTE_CAPABILITY_NOT_VERIFIED",
+    ):
+        authorization._require_discovery_routes_verified_v1(repo)
+
+
 @pytest.mark.asyncio
 async def test_disabled_actions_reject_non_offline_factories_before_secret_lookup() -> None:
     called = False

@@ -493,6 +493,82 @@ def test_openai_responses_exact_replay_does_not_double_count_terminal_text() -> 
 
 @pytest.mark.asyncio
 @respx.mock
+async def test_openai_responses_diagnostics_do_not_double_count_stream_text(
+    monkeypatch,
+) -> None:
+    observed = {}
+
+    def capture(**kwargs):
+        observed.update(kwargs)
+        return None
+
+    monkeypatch.setattr(
+        "novel_flywheel.providers.openai_responses."
+        "safe_capture_provider_content_block_snapshot",
+        capture,
+    )
+    respx.post("https://relay.test/v1/responses").mock(
+        return_value=httpx.Response(
+            200,
+            headers={"content-type": "text/event-stream"},
+            text=(
+                'data: {"type":"response.output_text.delta",'
+                '"delta":"Review passed"}\n\n'
+                'data: {"type":"response.completed","response":{'
+                '"id":"resp-stream","status":"completed","output":['
+                '{"type":"message","content":[{"type":"output_text",'
+                '"text":"Review passed"}]}]}}\n\n'
+            ),
+        ),
+    )
+
+    result = await OpenAIResponsesAdapter(
+        "https://relay.test/v1", "secret",
+    ).complete(REQUEST)
+
+    assert result.text == "Review passed"
+    assert observed["text_values"] == ["Review passed"]
+    assert observed["block_types"].count("output_text") == 1
+
+
+def test_openai_responses_replay_rejects_conflicting_delta_and_terminal_text() -> None:
+    payload = (
+        'data: {"type":"response.output_text.delta","delta":"draft"}\n\n'
+        'data: {"type":"response.completed","response":{"id":"resp-stream",'
+        '"status":"completed","output":[{"type":"message","content":['
+        '{"type":"output_text","text":"final"}]}]}}\n\n'
+    ).encode("utf-8")
+
+    with pytest.raises(
+        ValueError, match="openai_responses_visible_text_projection_mismatch",
+    ):
+        OpenAIResponsesAdapter.replay_protocol_input_bytes_v1(
+            payload, content_type="text/event-stream",
+        )
+
+
+def test_openai_responses_top_level_output_text_has_exact_replay_shape() -> None:
+    payload = json.dumps({
+        "id": "resp-body",
+        "status": "completed",
+        "output_text": "fallback",
+        "output": [],
+    }).encode("utf-8")
+
+    result = OpenAIResponsesAdapter.replay_protocol_input_bytes_v1(
+        payload, content_type="application/json",
+    )
+
+    assert result.text == "fallback"
+    assert result.output_shape is not None
+    assert result.output_shape.text_block_count == 1
+    assert result.output_shape.provider_visible_text_chars == len("fallback")
+    assert result.output_shape.normalized_visible_text_chars == len("fallback")
+    assert result.output_shape.adapter_projection_status == "exact"
+
+
+@pytest.mark.asyncio
+@respx.mock
 async def test_openai_chat_stream_aggregates_fragmented_tool_arguments() -> None:
     respx.post("https://relay.test/v1/chat/completions").mock(
         return_value=httpx.Response(200, headers={"content-type": "text/event-stream"}, text=(
@@ -539,5 +615,9 @@ async def test_stream_falls_back_to_non_streaming_when_relay_rejects_stream() ->
     result = await OpenAIResponsesAdapter("https://relay.test/v1", "secret").complete(REQUEST)
 
     assert result.text == "fallback"
+    shape = provider_output_shape_from_response(OpenAIResponsesAdapter, result)
+    assert shape is not None
+    assert shape.provider_visible_text_chars == len("fallback")
+    assert shape.adapter_projection_status == "exact"
     assert route.call_count == 2
     assert json.loads(route.calls.last.request.content)["stream"] is False
