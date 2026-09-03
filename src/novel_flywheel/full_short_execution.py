@@ -88,6 +88,7 @@ from novel_flywheel.stage_capacity import (
     StageCapacityPlanV1,
     capacity_recovery_overlay_sha256_v1,
     capacity_recovery_prompt_delta_sha256_v1,
+    validate_capacity_attempt_delta_v1,
 )
 
 
@@ -4014,8 +4015,8 @@ class FullShortDispatchLedgerObserverV1:
                 execution_id=self.execution_id,
                 plan_sha256=str(prior["capacity_plan_sha256"]),
             )
+            validate_capacity_attempt_delta_v1(prior_receipt, plan)
             immutable_delta_fields = (
-                "logical_capacity_envelope_sha256",
                 "route_capability_snapshot_sha256",
                 "provider_route_identity_sha256",
                 "route_context_capability_limit_tokens",

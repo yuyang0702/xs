@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import argparse
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 import hashlib
 import json
 from pathlib import Path
@@ -21,10 +21,30 @@ from novel_flywheel.full_short_runtime_kernel import (
     RecoveryDecisionKind,
 )
 from novel_flywheel.stage_capacity import (
+    AdmissionStatus,
     CAPACITY_BOUNDARY_ID_V1,
     CAPACITY_FAILURE_IDS_V1,
     CAPACITY_FAILURE_IDS_V3,
+    CapacityAdmissionFailureV1,
+    CapacityFailureCode,
+    CapacityLayerClass,
+    CapacityLayerProjectionV1,
     DEFAULT_STAGE_CAPACITY_POLICY_REGISTRY_V1,
+    RouteContextCapabilitySourceV1,
+    StageCapacityAdmissionEngineV1,
+    StageCapacityPolicyRegistryV1,
+    build_stage_capacity_plan_v1,
+    capacity_failure_recovery_disposition_v1,
+    require_route_capability_v1,
+    validate_capacity_attempt_delta_v1,
+    verify_rendered_request_v1,
+)
+from novel_flywheel.route_capabilities import (
+    CapabilityEvidenceV1,
+    CapabilityStatus,
+    RouteCapabilityError,
+    RouteCapabilityRecordV1,
+    RouteCapabilityRegistryV1,
 )
 
 
@@ -462,188 +482,289 @@ def run_capacity_fault_campaign_v2(artifact_dir: Path) -> dict[str, object]:
     }
 
 
-MASTER_CAPACITY_FAULT_SCENARIOS_V3 = (
-    CapacityFaultScenarioSpecV2(
-        "missing_capability_record", "capacity.context_limit_unavailable",
-        "capacity.registry_lookup",
-    ),
-    CapacityFaultScenarioSpecV2(
-        "unknown_blocked_required_route", "capacity.route_capability_unknown",
-        "capacity.required_route_admission",
-    ),
-    CapacityFaultScenarioSpecV2(
-        "stale_evidence", "capacity.context_limit_inconsistent",
-        "capacity.evidence_validation",
-    ),
-    CapacityFaultScenarioSpecV2(
-        "evidence_wrong_operator", "capacity.route_capability_unknown",
-        "capacity.route_identity",
-    ),
-    CapacityFaultScenarioSpecV2(
-        "relay_inherits_upstream", "capacity.route_capability_unknown",
-        "capacity.relay_identity",
-    ),
-    CapacityFaultScenarioSpecV2(
-        "capability_registry_version_drift", "capacity.policy_violation",
-        "capacity.registry_reconciliation",
-    ),
-    CapacityFaultScenarioSpecV2(
-        "route_fingerprint_drift", "capacity.rendered_prompt_drift",
-        "capacity.route_fingerprint",
-    ),
-    CapacityFaultScenarioSpecV2(
-        "context_window_exceeded", "capacity.context_window_exceeded",
-        "capacity.final_admission",
-    ),
-    CapacityFaultScenarioSpecV2(
-        "output_limit_mismatch", "capacity.output_reserve_unsatisfied",
-        "capacity.output_reserve",
-    ),
-    CapacityFaultScenarioSpecV2(
-        "estimator_uncertainty", "capacity.estimator_uncertainty_exceeded",
-        "capacity.estimator",
-    ),
-    CapacityFaultScenarioSpecV2(
-        "illegal_route_delta", "capacity.invalid_attempt_delta",
-        "capacity.attempt_delta",
-    ),
-    CapacityFaultScenarioSpecV2(
-        "illegal_authority_delta", "capacity.physical_attempt_drift",
-        "capacity.attempt_identity",
-    ),
-    CapacityFaultScenarioSpecV2(
-        "illegal_output_cap_delta", "capacity.invalid_attempt_delta",
-        "capacity.attempt_delta",
-    ),
-    CapacityFaultScenarioSpecV2(
-        "exact_ready_review_capacity_edge",
-        "capacity.protected_layers_exceed_budget",
-        "review.capacity_admission",
-    ),
-    CapacityFaultScenarioSpecV2(
-        "20k_edge", "capacity.compaction_insufficient",
-        "capacity.semantic_compaction",
-    ),
-    CapacityFaultScenarioSpecV2(
-        "30k_edge", "capacity.windowing_exhausted",
-        "capacity.semantic_windowing",
-    ),
-    CapacityFaultScenarioSpecV2(
-        "restart_after_logical_envelope", "capacity.model_context_exceeded",
-        "restart.logical_capacity_envelope",
-    ),
-    CapacityFaultScenarioSpecV2(
-        "restart_after_physical_plan", "capacity.windowing_required",
-        "restart.physical_capacity_plan",
-    ),
+MASTER_V3_SCENARIO_IDS = (
+    "missing_capability_record", "unknown_blocked_required_route",
+    "unknown_blocked_unused_route", "stale_evidence",
+    "evidence_wrong_operator", "relay_inherits_upstream",
+    "capability_registry_version_drift", "route_fingerprint_drift",
+    "context_window_exceeded", "output_limit_mismatch",
+    "estimator_uncertainty", "legitimate_recovery_attempt_delta",
+    "illegal_route_delta", "illegal_authority_delta",
+    "illegal_output_cap_delta", "exact_ready_review_capacity_edge",
+    "20k_edge", "30k_edge", "restart_after_logical_envelope",
+    "restart_after_physical_plan",
 )
 
 
-def _allowed_v3_scenario(scenario_id: str) -> dict[str, object]:
-    payload: dict[str, object] = {
-        "scenario_id": scenario_id,
-        "classification": "POLICY_ASSERTION_COVERED_BY_INTEGRATION_TEST",
-        "execution_mode": "STATIC_POLICY_ASSERTION",
-        "failure_id": None,
-        "dispatch_attempt_count": 0,
-        "dispatch_token_receipt_count": 0,
-        "authority_gate_receipt_count": 0,
-        "no_authority_mutation": True,
-        "raw_content_persisted": False,
-        "deterministic_replay": True,
-        "status": "PASS",
+def _evidence_v3(route_fingerprint: str = "c" * 64) -> CapabilityEvidenceV1:
+    return CapabilityEvidenceV1(
+        source_kind="historical_official_documentation",
+        source_locator="docs/evidence.json#route",
+        source_evidence_sha256="d" * 64,
+        evidence_version=1,
+        evidence_date="2026-08-14",
+        route_fingerprint=route_fingerprint,
+        proved_fields=(
+            "context_window_tokens", "max_output_tokens",
+            "reasoning_token_accounting", "reasoning_output_reservation",
+            "route_fingerprint", "provider", "provider_id_sha256",
+            "operator", "destination", "protocol", "model",
+            "model_id_sha256",
+        ),
+        provenance_available=True,
+    )
+
+
+def _record_v3(*, lane: str = "primary", unknown: bool = False) -> RouteCapabilityRecordV1:
+    return RouteCapabilityRecordV1.create(
+        role="planning", lane=lane, provider="provider",
+        provider_id_sha256="a" * 64, operator="EXACT_OPERATOR",
+        destination="https://unit.test:443/v1/messages",
+        protocol="anthropic", model="model", model_id_sha256="b" * 64,
+        route_fingerprint="c" * 64,
+        context_window_tokens=None if unknown else 100_000,
+        max_output_tokens=None if unknown else 8_192,
+        reasoning_token_accounting=(
+            "UNKNOWN" if unknown else "INCLUDED_IN_COMPLETION_CAP"
+        ),
+        reasoning_output_reservation=(
+            "UNKNOWN" if unknown else "WITHIN_COMPLETION_CAP"
+        ),
+        capability_status=(
+            CapabilityStatus.UNKNOWN_BLOCKED if unknown
+            else CapabilityStatus.VERIFIED_HISTORICAL_EVIDENCE
+        ),
+        source_evidence=() if unknown else (_evidence_v3(),),
+        blocking_reason_codes=("NO_TRUSTWORTHY_EVIDENCE",) if unknown else (),
+    )
+
+
+def _layer_v3(layer_id: str, tokens: int) -> CapacityLayerProjectionV1:
+    return CapacityLayerProjectionV1.create(
+        layer_id=layer_id, classification=CapacityLayerClass.HARD_PROTECTED,
+        owner="capacity-campaign", source_sha256=_sha256("source:" + layer_id),
+        semantic_scope="complete", coverage=(layer_id,),
+        pre_transform_characters=tokens * 2, pre_transform_tokens=tokens,
+        post_transform_characters=tokens * 2, post_transform_tokens=tokens,
+        transform_policy_id="identity.v1", action="PRESERVE",
+        rendered_sha256=_sha256("rendered:" + layer_id),
+    )
+
+
+def _plan_v3(**overrides: object):
+    values: dict[str, object] = {
+        "stage_id": "review-capacity-campaign",
+        "logical_stage_id": "review-capacity-campaign",
+        "physical_attempt": 1,
+        "stage": "review",
+        "contract_name": "planning_adaptation_segment",
+        "contract_version": 2,
+        "contract_schema_sha256": "a" * 64,
+        "provider_route_identity_sha256": "b" * 64,
+        "model_context_limit": 32_768,
+        "requested_output_token_cap": 2_316,
+        "route_max_output_tokens": 8_192,
+        "final_output_reserve": 2_316,
+        "rendered_message_tokens": 22_379,
+        "structured_envelope_tokens": 177,
+        "provider_envelope_tokens": 256,
+        "wrapper_and_estimator_margin_tokens": 1_024,
+        "rendered_request_sha256": "c" * 64,
+        "layer_projections": (
+            _layer_v3("contract", 25), _layer_v3("rules", 9_685),
+            _layer_v3("context", 4_601), _layer_v3("skeleton", 7_802),
+        ),
+        "parent_plan_sha256": None,
+    }
+    values.update(overrides)
+    return build_stage_capacity_plan_v1(**values)  # type: ignore[arg-type]
+
+
+def _recovery_pair_v3(**candidate_overrides: object):
+    common = {
+        "route_context_capability_source": (
+            RouteContextCapabilitySourceV1.ROUTE_CAPABILITY_REGISTRY
+        ),
+        "logical_capacity_envelope_sha256": "1" * 64,
+        "route_capability_snapshot_sha256": "2" * 64,
+        "physical_attempt_id": "physical-first",
+        "global_physical_attempt_ordinal": 1,
+    }
+    prior = _plan_v3(**common)
+    candidate = {
+        **common,
+        "physical_attempt": 2,
+        "physical_attempt_id": "physical-second",
+        "global_physical_attempt_ordinal": 2,
+        "rendered_request_sha256": "e" * 64,
+        "base_rendered_request_sha256": prior.base_rendered_request_sha256,
+        "recovery_overlay_kind": "FINAL_ARTIFACT_COMPLETION",
+        "prior_rendered_request_sha256": prior.rendered_request_sha256,
+        "recovery_source_capture_receipt_sha256": "f" * 64,
+        "recovery_stage_role": "PLANNING_FINAL_ARTIFACT_RECOVERY",
+        "reasoning_policy": "DISABLE_REASONING",
+    }
+    candidate.update(candidate_overrides)
+    return prior, _plan_v3(**candidate)
+
+
+def _pass_v3(scenario_id: str, primitive: str, scope: str, **evidence: object) -> dict[str, object]:
+    payload = {
+        "scenario_id": scenario_id, "primitive": primitive, "probe_scope": scope,
+        "execution_mode": "PRODUCTION_PRIMITIVE", "failure_id": None,
+        "production_behavior_exercised": True, "dispatch_attempt_count": 0,
+        "raw_content_persisted": False, "status": "PASS", **evidence,
     }
     payload["projection_sha256"] = _sha256(payload)
     return payload
 
 
-def run_capacity_fault_campaign_v3(artifact_dir: Path) -> dict[str, object]:
-    """Run all twenty V3 scenarios without treating legal deltas as faults."""
+def _capacity_failure_v3(
+    scenario_id: str, primitive: str, expected: str, operation, journal_path: Path,
+) -> dict[str, object]:
+    journal = DurableExecutionJournalV1.create(
+        journal_path, execution_id="capacity-v3:" + scenario_id,
+        initial_state=ExecutionState.TEMPLATE_READY,
+    )
+    kernel = FullShortExecutionKernel(
+        registry=DEFAULT_FAILURE_BOUNDARY_REGISTRY_V1, journal=journal,
+    )
+    try:
+        kernel.execute_boundary_sync(
+            CAPACITY_BOUNDARY_ID_V1, operation,
+            logical_stage_id="review:capacity-v3", physical_attempt=1,
+        )
+    except FullShortBoundaryFailureV1 as exc:
+        envelope = exc.envelope
+    else:
+        raise AssertionError(scenario_id + ":expected_capacity_failure")
+    reopened = DurableExecutionJournalV1.open(journal_path)
+    passed = (
+        envelope.failure_code == expected
+        and envelope.classification is FailureClassification.KNOWN
+        and len(reopened.failure_receipts) == 1
+        and not reopened.dispatch_token_receipts
+        and envelope.raw_content_persisted is False
+    )
+    return _pass_v3(
+        scenario_id, primitive, "DURABLE_CAPACITY_BOUNDARY",
+        failure_id=envelope.failure_code, typed_failure=True,
+        durable_receipt=True, expected_failure_id=expected,
+        status="PASS" if passed else "FAIL",
+    )
 
-    master_failure_ids = {
-        item.failure_id for item in MASTER_CAPACITY_FAULT_SCENARIOS_V3
-    }
-    cases = generate_capacity_fault_cases_v2(
-        MASTER_CAPACITY_FAULT_SCENARIOS_V3,
-        required_failure_ids=master_failure_ids,
+
+def _contract_rejection_v3(
+    scenario_id: str, primitive: str, expected: str, operation,
+) -> dict[str, object]:
+    try:
+        operation()
+    except (ValueError, RouteCapabilityError) as exc:
+        observed = getattr(exc, "failure_id", str(exc))
+    else:
+        raise AssertionError(scenario_id + ":expected_contract_rejection")
+    return _pass_v3(
+        scenario_id, primitive, "PRODUCTION_CONTRACT_VALIDATION",
+        contract_rejection=observed, expected_contract_rejection=expected,
+        status="PASS" if observed == expected else "FAIL",
     )
+
+
+def _run_v3_probe(scenario_id: str, artifact_dir: Path) -> dict[str, object]:
+    journal_path = artifact_dir / (scenario_id + ".json")
+    if scenario_id == "missing_capability_record":
+        return _capacity_failure_v3(scenario_id, "require_route_capability_v1", "capacity.route_capability_unknown", lambda: require_route_capability_v1(None), journal_path)
+    if scenario_id == "unknown_blocked_required_route":
+        return _capacity_failure_v3(scenario_id, "require_route_capability_v1", "capacity.route_capability_unknown", lambda: require_route_capability_v1(_record_v3(unknown=True)), journal_path)
+    if scenario_id == "unknown_blocked_unused_route":
+        registry = RouteCapabilityRegistryV1.create((_record_v3(), _record_v3(lane="fallback", unknown=True)))
+        assert registry.unknown_required_count((("planning", "primary"),)) == 0
+        registry.require_dispatchable(role="planning", lane="primary")
+        return _pass_v3(scenario_id, "RouteCapabilityRegistryV1.unknown_required_count", "REQUIRED_ROUTE_SELECTION", unused_unknown_allowed=True)
+    if scenario_id == "stale_evidence":
+        return _contract_rejection_v3(scenario_id, "RouteCapabilityRecordV1.create", "capability_evidence_route_fingerprint_drift", lambda: replace(_record_v3(), source_evidence=(_evidence_v3("e" * 64),)))
+    if scenario_id == "evidence_wrong_operator":
+        record = _record_v3()
+        identity = {key: getattr(record, key) for key in ("role", "lane", "provider", "provider_id_sha256", "operator", "destination", "protocol", "model", "model_id_sha256", "route_fingerprint")}
+        identity["operator"] = "OTHER_OPERATOR"
+        return _contract_rejection_v3(scenario_id, "RouteCapabilityRecordV1.require_exact_route_identity", "capacity.route_capability_identity_drift", lambda: record.require_exact_route_identity(**identity))
+    if scenario_id == "relay_inherits_upstream":
+        record = _record_v3()
+        identity = {key: getattr(record, key) for key in ("role", "lane", "provider", "provider_id_sha256", "operator", "destination", "protocol", "model", "model_id_sha256", "route_fingerprint")}
+        identity.update(operator="UPSTREAM_OPERATOR", destination="https://upstream.test/v1/messages")
+        return _contract_rejection_v3(scenario_id, "RouteCapabilityRecordV1.require_exact_route_identity", "capacity.route_capability_identity_drift", lambda: record.require_exact_route_identity(**identity))
+    if scenario_id == "capability_registry_version_drift":
+        document = RouteCapabilityRegistryV1.create((_record_v3(),)).to_document()
+        document["version"] = 2
+        return _contract_rejection_v3(scenario_id, "RouteCapabilityRegistryV1.from_document", "route_capability_registry_document_invalid", lambda: RouteCapabilityRegistryV1.from_document(document))
+    if scenario_id == "route_fingerprint_drift":
+        record = _record_v3()
+        identity = {key: getattr(record, key) for key in ("role", "lane", "provider", "provider_id_sha256", "operator", "destination", "protocol", "model", "model_id_sha256", "route_fingerprint")}
+        identity["route_fingerprint"] = "0" * 64
+        return _contract_rejection_v3(scenario_id, "RouteCapabilityRecordV1.require_exact_route_identity", "capacity.route_capability_identity_drift", lambda: record.require_exact_route_identity(**identity))
+    if scenario_id == "context_window_exceeded":
+        return _capacity_failure_v3(scenario_id, "StageCapacityPlanV1.require_pass", "capacity.context_window_exceeded", lambda: _plan_v3(rendered_message_tokens=30_000, structured_envelope_tokens=0, layer_projections=()).require_pass(), journal_path)
+    if scenario_id == "output_limit_mismatch":
+        return _capacity_failure_v3(scenario_id, "build_stage_capacity_plan_v1", "capacity.output_reserve_unsatisfied", lambda: _plan_v3(route_max_output_tokens=2_315), journal_path)
+    if scenario_id == "estimator_uncertainty":
+        policies = dict(DEFAULT_STAGE_CAPACITY_POLICY_REGISTRY_V1.policies)
+        policies["review"] = replace(policies["review"], minimum_wrapper_and_estimator_margin_tokens=2_048)
+        registry = StageCapacityPolicyRegistryV1(policies=policies)
+        return _capacity_failure_v3(scenario_id, "StageCapacityAdmissionEngineV1.admit", "capacity.estimator_uncertainty_exceeded", lambda: _plan_v3(policy_registry=registry).require_pass(), journal_path)
+    if scenario_id in {"legitimate_recovery_attempt_delta", "illegal_route_delta", "illegal_authority_delta", "illegal_output_cap_delta"}:
+        changes = {
+            "legitimate_recovery_attempt_delta": {},
+            "illegal_route_delta": {"provider_route_identity_sha256": "9" * 64},
+            "illegal_authority_delta": {"logical_capacity_envelope_sha256": "8" * 64},
+            "illegal_output_cap_delta": {"requested_output_token_cap": 2_315},
+        }[scenario_id]
+        prior, candidate = _recovery_pair_v3(**changes)
+        if scenario_id == "legitimate_recovery_attempt_delta":
+            validate_capacity_attempt_delta_v1(prior, candidate)
+            return _pass_v3(scenario_id, "validate_capacity_attempt_delta_v1", "PHYSICAL_ATTEMPT_IDENTITY", allowed_delta_accepted=True)
+        expected = "capacity.physical_attempt_drift" if scenario_id == "illegal_authority_delta" else "capacity.invalid_attempt_delta"
+        return _capacity_failure_v3(scenario_id, "validate_capacity_attempt_delta_v1", expected, lambda: validate_capacity_attempt_delta_v1(prior, candidate), journal_path)
+    if scenario_id == "exact_ready_review_capacity_edge":
+        plan = _plan_v3()
+        StageCapacityAdmissionEngineV1.enforce(plan)
+        return _pass_v3(scenario_id, "StageCapacityAdmissionEngineV1.enforce", "SANITIZED_EXACT_READY_REVIEW_SHAPE", admission_status=plan.admission_status.value, headroom=plan.headroom)
+    if scenario_id == "20k_edge":
+        plan = _plan_v3(rendered_message_tokens=20_000, structured_envelope_tokens=0, layer_projections=(_layer_v3("20k-window", 20_000),))
+        StageCapacityAdmissionEngineV1.enforce(plan)
+        return _pass_v3(scenario_id, "StageCapacityAdmissionEngineV1.enforce", "PRODUCTION_STAGE_CAPACITY_ONLY_NOT_FULL_SHORT", admission_status=plan.admission_status.value)
+    if scenario_id == "30k_edge":
+        parent = _plan_v3(rendered_message_tokens=30_000, structured_envelope_tokens=0, layer_projections=(_layer_v3("30k-parent", 30_000),))
+        assert parent.admission_status is AdmissionStatus.WINDOWING_REQUIRED
+        assert capacity_failure_recovery_disposition_v1(stage="review", failure_id=parent.denial_failure_id) .value == "SEGMENT"
+        children = tuple(_plan_v3(stage_id=f"review-30k-{index}", logical_stage_id=f"review-30k-{index}", rendered_message_tokens=15_000, structured_envelope_tokens=0, layer_projections=(_layer_v3(f"30k-{index}", 15_000),)) for index in (1, 2))
+        assert all(item.admission_status is AdmissionStatus.PASS for item in children)
+        return _pass_v3(scenario_id, "build_stage_capacity_plan_v1+capacity_failure_recovery_disposition_v1", "PRODUCTION_STAGE_CAPACITY_ONLY_NOT_FULL_SHORT", parent_status=parent.admission_status.value, child_count=len(children), complete_token_coverage=sum(item.rendered_message_tokens for item in children))
+    if scenario_id == "restart_after_logical_envelope":
+        first = _plan_v3(logical_capacity_envelope_sha256="1" * 64, route_capability_snapshot_sha256="2" * 64, physical_attempt_id="physical-first", global_physical_attempt_ordinal=1, route_context_capability_source=RouteContextCapabilitySourceV1.ROUTE_CAPABILITY_REGISTRY)
+        rebuilt = _plan_v3(logical_capacity_envelope_sha256="1" * 64, route_capability_snapshot_sha256="2" * 64, physical_attempt_id="physical-first", global_physical_attempt_ordinal=1, route_context_capability_source=RouteContextCapabilitySourceV1.ROUTE_CAPABILITY_REGISTRY)
+        assert first == rebuilt
+        return _pass_v3(scenario_id, "build_stage_capacity_plan_v1", "DETERMINISTIC_PLAN_REBUILD_NOT_DURABLE_OBSERVER_RESTART", envelope_stable=True)
+    if scenario_id == "restart_after_physical_plan":
+        plan = _plan_v3(logical_capacity_envelope_sha256="1" * 64, route_capability_snapshot_sha256="2" * 64, physical_attempt_id="physical-first", global_physical_attempt_ordinal=1, route_context_capability_source=RouteContextCapabilitySourceV1.ROUTE_CAPABILITY_REGISTRY)
+        StageCapacityAdmissionEngineV1.enforce(plan)
+        try:
+            replace(plan, physical_attempt_id="physical-tampered")
+        except ValueError as exc:
+            assert str(exc) == "capacity_plan_sha256_mismatch"
+        else:
+            raise AssertionError("tampered_physical_plan_was_accepted")
+        return _pass_v3(scenario_id, "StageCapacityAdmissionEngineV1.enforce", "HASH_REVALIDATION_NOT_DURABLE_OBSERVER_RESTART", physical_plan_revalidated=True, tamper_rejected=True)
+    raise AssertionError("unknown_v3_scenario:" + scenario_id)
+
+
+def run_capacity_fault_campaign_v3(artifact_dir: Path) -> dict[str, object]:
+    """Exercise each named V3 case through its production capacity contract."""
+
     artifact_dir.mkdir(parents=True, exist_ok=True)
-    results: list[dict[str, object]] = []
-    for case in cases:
-        first = DurableCapacityFaultAdapterV2.execute_once(
-            case, artifact_dir / (case.scenario_id + ".first.json"),
-        )
-        replay = DurableCapacityFaultAdapterV2.execute_once(
-            case, artifact_dir / (case.scenario_id + ".replay.json"),
-        )
-        proof = {
-            **first.proof_payload(),
-            "deterministic_replay": (
-                first.proof_payload() == replay.proof_payload()
-            ),
-        }
-        proof["status"] = (
-            "PASS"
-            if all(bool(proof[name]) for name in (
-                "typed_failure", "durable_receipt",
-                "denied_admission_zero_dispatch", "no_authority_mutation",
-                "explicit_recovery_or_stop", "deterministic_replay",
-            )) and proof["raw_content_persisted"] is False
-            else "FAIL"
-        )
-        results.append(proof)
-    supplemental_results: list[dict[str, object]] = []
-    for failure_id in sorted(CAPACITY_FAILURE_IDS_V3 - master_failure_ids):
-        supplemental_case = generate_capacity_fault_cases_v2((
-            CapacityFaultScenarioSpecV2(
-                "supplemental_registered_failure__"
-                + failure_id.rsplit(".", 1)[-1],
-                failure_id,
-                "capacity.registered_failure_supplement",
-            ),
-        ), required_failure_ids={failure_id})[0]
-        first = DurableCapacityFaultAdapterV2.execute_once(
-            supplemental_case,
-            artifact_dir / (supplemental_case.scenario_id + ".first.json"),
-        )
-        replay = DurableCapacityFaultAdapterV2.execute_once(
-            supplemental_case,
-            artifact_dir / (supplemental_case.scenario_id + ".replay.json"),
-        )
-        proof = {
-            **first.proof_payload(),
-            "deterministic_replay": (
-                first.proof_payload() == replay.proof_payload()
-            ),
-        }
-        proof["status"] = (
-            "PASS"
-            if all(bool(proof[name]) for name in (
-                "typed_failure", "durable_receipt",
-                "denied_admission_zero_dispatch", "no_authority_mutation",
-                "explicit_recovery_or_stop", "deterministic_replay",
-            )) and proof["raw_content_persisted"] is False
-            else "FAIL"
-        )
-        supplemental_results.append(proof)
-    results.extend((
-        _allowed_v3_scenario("unknown_blocked_unused_route"),
-        _allowed_v3_scenario("legitimate_recovery_attempt_delta"),
-    ))
-    order = (
-        "missing_capability_record", "unknown_blocked_required_route",
-        "unknown_blocked_unused_route", "stale_evidence",
-        "evidence_wrong_operator", "relay_inherits_upstream",
-        "capability_registry_version_drift", "route_fingerprint_drift",
-        "context_window_exceeded", "output_limit_mismatch",
-        "estimator_uncertainty", "legitimate_recovery_attempt_delta",
-        "illegal_route_delta", "illegal_authority_delta",
-        "illegal_output_cap_delta", "exact_ready_review_capacity_edge",
-        "20k_edge", "30k_edge", "restart_after_logical_envelope",
-        "restart_after_physical_plan",
-    )
-    by_id = {str(item["scenario_id"]): item for item in results}
-    ordered_results = [by_id[scenario_id] for scenario_id in order]
+    ordered_results = [
+        _run_v3_probe(scenario_id, artifact_dir)
+        for scenario_id in MASTER_V3_SCENARIO_IDS
+    ]
     report_without_sha: dict[str, object] = {
         "schema_version": "FullShortCapacityFaultCampaignV3",
         "source_boundary_registry_sha256": (
@@ -657,19 +778,22 @@ def run_capacity_fault_campaign_v3(artifact_dir: Path) -> dict[str, object]:
         ),
         "master_enumerated_scenario_count": 20,
         "registered_capacity_failure_count": len(CAPACITY_FAILURE_IDS_V3),
-        "registered_capacity_failure_coverage": "100_PERCENT",
-        "scenario_coverage": "18_INJECTED_PLUS_2_POLICY_ASSERTIONS",
-        "injected_fault_scenario_count": 18,
-        "policy_assertion_scenario_count": 2,
-        "v3_capacity_fault_injection_coverage": "90_PERCENT",
-        "coverage_kind": "REGISTERED_FAILURE_ADAPTER_INJECTION",
+        "registered_capacity_failure_coverage": "REGISTRY_MEMBERSHIP_ONLY",
+        "scenario_coverage": "20_PRODUCTION_PRIMITIVE_PROBES",
+        "production_primitive_scenario_count": 20,
+        "static_policy_assertion_count": 0,
+        "v3_capacity_fault_injection_coverage": "100_PERCENT",
+        "coverage_kind": "NAMED_PRODUCTION_PRIMITIVE_BEHAVIOR",
         "production_observer_behavior_coverage_claimed": False,
         "production_shaped_integration_tests": [
             "tests/test_full_short_execution.py",
             "tests/canary/test_full_short_runner_hardening.py",
             "tests/test_route_capabilities.py",
         ],
-        "supplemental_registered_failure_proofs": supplemental_results,
+        "narrow_scope_scenarios": {
+            "17_18": "stage capacity and semantic split only; not Full Short",
+            "19_20": "deterministic plan rebuild/hash validation only; not durable observer restart",
+        },
         "external_actions_disabled": True,
         "credential_lookup_count": 0,
         "provider_client_creation_count": 0,
@@ -682,7 +806,7 @@ def run_capacity_fault_campaign_v3(artifact_dir: Path) -> dict[str, object]:
             "PASS"
             if all(
                 item["status"] == "PASS"
-                for item in ordered_results + supplemental_results
+                for item in ordered_results
             )
             else "FAIL"
         ),

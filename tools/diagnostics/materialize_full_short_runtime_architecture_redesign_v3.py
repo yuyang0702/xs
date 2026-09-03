@@ -32,7 +32,10 @@ from novel_flywheel.stage_capacity import (
     CAPACITY_FAILURE_IDS_V3,
     DEFAULT_STAGE_CAPACITY_POLICY_REGISTRY_V1,
 )
-from tools.canary.first_trustworthy_full_short_runner import _destination
+from tools.canary.first_trustworthy_full_short_runner import (
+    FULL_SHORT_REQUIRED_EXECUTION_ROLES,
+    _destination,
+)
 from tools.quality.full_short_capacity_fault_campaign import (
     run_capacity_fault_campaign_v3,
 )
@@ -40,10 +43,7 @@ from tools.quality.full_short_capacity_fault_campaign import (
 
 BASELINE_HEAD = "d3e52201b48f6eee9718163cf073a57e62af202c"
 BRANCH = "r1-ptr3/planning-repair-finding-propagation-20260817"
-ROLES = (
-    "planning", "draft", "review", "reader_review", "polish",
-    "final_review", "maintenance",
-)
+ROLES = FULL_SHORT_REQUIRED_EXECUTION_ROLES
 ROOT = Path(
     "docs/superpowers/reports/"
     "full-short-execution-runtime-architecture-redesign-v3-"
@@ -750,19 +750,18 @@ def materialize(
             "real_model_calls",
             "paid_calls",
         ))
-        or dry_run_receipt.get("source_head") != current_head
+        or git(
+            repo, "cat-file", "-t", str(dry_run_receipt.get("source_head"))
+        ) != "commit"
     ):
         raise ValueError("exact_ready_dry_run_receipt_binding_invalid")
     source_dry_run_receipt_sha256 = sha_json(dry_run_receipt)
-    required_routes = tuple(sorted({
-        (
-            str(item["role"]),
-            "fallback"
-            if item["route_lane"] == "configured_fallback"
-            else str(item["route_lane"]),
-        )
-        for item in logical_stage_plan
-    }))
+    # Required-route closure is current-source authority.  The earlier offline
+    # dry run remains historical behavior evidence only and cannot decide the
+    # route set after Runtime code changes.  A normal Exact READY attempt starts
+    # each required role on its independently bound primary lane; fallback
+    # remains unused unless a typed recovery actually selects it.
+    required_routes = tuple((role, "primary") for role in ROLES)
     records = [_record_document(item) for item in registry.records]
     required = [
         item for item in records
@@ -820,7 +819,7 @@ def materialize(
             "No tracked original screenshots were found.",
         ]),
         "b": ("Exact READY required routes", [
-            "The required role/lane set is derived from the sealed Exact READY logical-stage plan receipt.",
+            "The required role/lane set is derived from current-source required roles and their initial primary lanes; the older dry-run plan is historical behavior evidence only.",
             "Every selected route remains UNKNOWN_BLOCKED without trustworthy capability evidence.",
         ]),
         "c": ("route capability registry architecture", [
@@ -1036,12 +1035,18 @@ def materialize(
     ))
     write_json(root / "exact-ready-required-route-set-v1.json", receipt(
         "ExactReadyRequiredRouteSetV1", "MATERIALIZED",
-        derivation="SEALED_EXACT_READY_LOGICAL_STAGE_PLAN",
+        derivation="CURRENT_SOURCE_REQUIRED_ROLES_PRIMARY_LANE",
+        current_source_head=head,
+        current_source_roles=list(ROLES),
         source_plan_receipt_artifact=(
-            "exact-ready-target-full-short-rerun-v1.json#source_receipt"
+            "exact-ready-target-full-short-rerun-v1.json#historical_source_receipt"
         ),
         source_plan_receipt_sha256=source_dry_run_receipt_sha256,
         source_runtime_head=dry_run_receipt["source_head"],
+        source_runtime_head_matches_current=(
+            dry_run_receipt["source_head"] == head
+        ),
+        source_plan_authoritative_for_current_required_routes=False,
         project_id_sha256=dry_run_receipt["project_id_sha256"],
         completion_receipt_sha256=dry_run_receipt[
             "completion_receipt_sha256"
@@ -1163,6 +1168,13 @@ def materialize(
             full_short_logical_stage_plan_sha256_v1(logical_stage_plan)
         ),
         logical_stage_count=len(logical_stage_plan),
+        logical_stage_plan_source_head=dry_run_receipt["source_head"],
+        logical_stage_plan_current_head_match=(
+            dry_run_receipt["source_head"] == head
+        ),
+        current_required_route_derivation=(
+            "CURRENT_SOURCE_REQUIRED_ROLES_PRIMARY_LANE"
+        ),
     )
     write_json(root / "exact-ready-execution-plan-v1.json", plan)
 
@@ -1186,9 +1198,11 @@ def materialize(
     ))
     write_json(root / "exact-ready-target-full-short-rerun-v1.json", receipt(
         "ExactReadyTargetFullShortRerunV1",
-        "PASS_PRODUCTION_SHAPED_OFFLINE_STUB",
+        "HISTORICAL_OFFLINE_STUB_NOT_CURRENT_AUTHORITY",
         project_id_sha256=dry_run_receipt["project_id_sha256"],
         source_head=dry_run_receipt["source_head"],
+        current_head=head,
+        source_head_matches_current=(dry_run_receipt["source_head"] == head),
         logical_stage_plan_sha256=dry_run_receipt[
             "logical_stage_plan_sha256"
         ],

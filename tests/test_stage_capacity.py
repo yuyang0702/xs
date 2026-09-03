@@ -33,6 +33,7 @@ from novel_flywheel.stage_capacity import (
     StageCapacityPolicyV1,
     build_stage_capacity_plan_v1,
     capacity_failure_recovery_disposition_v1,
+    validate_capacity_attempt_delta_v1,
     verify_rendered_request_v1,
 )
 
@@ -161,6 +162,75 @@ def test_recovery_overlay_cannot_replace_frozen_base_request() -> None:
             rendered_request_sha256="e" * 64,
             recovery_overlay_kind="NONE",
         )
+
+
+def _physical_recovery_pair(**candidate_overrides):
+    common = {
+        "route_context_capability_source": (
+            RouteContextCapabilitySourceV1.ROUTE_CAPABILITY_REGISTRY
+        ),
+        "logical_capacity_envelope_sha256": "1" * 64,
+        "route_capability_snapshot_sha256": "2" * 64,
+        "physical_attempt_id": "physical-first",
+        "global_physical_attempt_ordinal": 1,
+    }
+    prior = _plan(**common)
+    candidate = {
+        **common,
+        "physical_attempt": 2,
+        "physical_attempt_id": "physical-second",
+        "global_physical_attempt_ordinal": 2,
+        "rendered_request_sha256": "e" * 64,
+        "base_rendered_request_sha256": prior.base_rendered_request_sha256,
+        "recovery_overlay_kind": "FINAL_ARTIFACT_COMPLETION",
+        "prior_rendered_request_sha256": prior.rendered_request_sha256,
+        "recovery_source_capture_receipt_sha256": "f" * 64,
+        "recovery_stage_role": "PLANNING_FINAL_ARTIFACT_RECOVERY",
+        "reasoning_policy": "DISABLE_REASONING",
+    }
+    candidate.update(candidate_overrides)
+    return prior, _plan(**candidate)
+
+
+def test_capacity_attempt_delta_accepts_only_explicit_recovery_fields() -> None:
+    prior, candidate = _physical_recovery_pair()
+    assert validate_capacity_attempt_delta_v1(prior, candidate) is candidate
+    assert validate_capacity_attempt_delta_v1(
+        prior.canonical_payload(), candidate,
+    ) is candidate
+
+
+@pytest.mark.parametrize(
+    ("overrides", "failure_id"),
+    (
+        ({"provider_route_identity_sha256": "9" * 64},
+         "capacity.invalid_attempt_delta"),
+        ({"requested_output_token_cap": 2_315},
+         "capacity.invalid_attempt_delta"),
+        ({"logical_capacity_envelope_sha256": "8" * 64},
+         "capacity.physical_attempt_drift"),
+    ),
+)
+def test_capacity_attempt_delta_rejects_route_output_or_authority_drift(
+    overrides, failure_id,
+) -> None:
+    prior, candidate = _physical_recovery_pair(**overrides)
+    with pytest.raises(CapacityAdmissionFailureV1) as caught:
+        validate_capacity_attempt_delta_v1(prior, candidate)
+    assert caught.value.failure_id == failure_id
+
+
+def test_bare_route_context_overflow_uses_exact_v3_taxonomy() -> None:
+    plan = _plan(
+        rendered_message_tokens=30_000,
+        structured_envelope_tokens=0,
+        layer_projections=(),
+    )
+    assert plan.admission_status is AdmissionStatus.DENIED
+    assert plan.denial_failure_id is CapacityFailureCode.CONTEXT_WINDOW_EXCEEDED
+    with pytest.raises(CapacityAdmissionFailureV1) as caught:
+        plan.require_pass()
+    assert caught.value.failure_id == "capacity.context_window_exceeded"
 
 
 def test_route_capability_below_stage_ceiling_is_effective_limit() -> None:
@@ -416,7 +486,10 @@ def test_registry_minimum_estimator_margin_is_an_admission_rule() -> None:
     )
     plan = _plan(policy_registry=registry)
     assert plan.admission_status is AdmissionStatus.DENIED
-    assert plan.denial_failure_id is CapacityFailureCode.POLICY_VIOLATION
+    assert (
+        plan.denial_failure_id
+        is CapacityFailureCode.ESTIMATOR_UNCERTAINTY_EXCEEDED
+    )
 
 
 def test_custom_registry_stage_ceiling_controls_effective_limit() -> None:

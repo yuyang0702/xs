@@ -4,7 +4,7 @@ import hashlib
 import json
 from dataclasses import asdict, dataclass
 from enum import StrEnum
-from typing import Iterable
+from typing import Iterable, Mapping
 
 from novel_flywheel.full_short_runtime_kernel import (
     RegisteredBoundaryFailureV1,
@@ -922,11 +922,15 @@ def build_stage_capacity_plan_v1(
         or protected_content_transformed
         or compaction_requested and not policy.compaction_allowed
         or windowing_requested and not policy.semantic_windowing_allowed
-        or wrapper_and_estimator_margin_tokens
-        < policy.minimum_wrapper_and_estimator_margin_tokens
     ):
         status = AdmissionStatus.DENIED
         failure = CapacityFailureCode.POLICY_VIOLATION
+    elif (
+        wrapper_and_estimator_margin_tokens
+        < policy.minimum_wrapper_and_estimator_margin_tokens
+    ):
+        status = AdmissionStatus.DENIED
+        failure = CapacityFailureCode.ESTIMATOR_UNCERTAINTY_EXCEEDED
     elif (
         requested_output_token_cap <= 0
         or final_output_reserve < requested_output_token_cap
@@ -949,7 +953,7 @@ def build_stage_capacity_plan_v1(
         )
     else:
         status = AdmissionStatus.DENIED
-        failure = CapacityFailureCode.MODEL_CONTEXT_EXCEEDED
+        failure = CapacityFailureCode.CONTEXT_WINDOW_EXCEEDED
     payload = {
         "stage_id": stage_id,
         "logical_stage_id": logical_stage_id,
@@ -1040,6 +1044,100 @@ def verify_rendered_request_v1(
         raise CapacityAdmissionFailureV1(
             CapacityFailureCode.RENDERED_PROMPT_DRIFT
         )
+
+
+def validate_capacity_attempt_delta_v1(
+    prior: StageCapacityPlanV1 | Mapping[str, object],
+    candidate: StageCapacityPlanV1,
+) -> StageCapacityPlanV1:
+    """Validate the immutable identity between physical recovery attempts.
+
+    Recovery may change only its physical identity, rendered recovery overlay,
+    and the explicitly hash-bound recovery provenance.  Route, authority,
+    output, and base-request changes are never implicit recovery policy.
+    """
+
+    def prior_value(field_name: str) -> object:
+        if isinstance(prior, StageCapacityPlanV1):
+            return getattr(prior, field_name)
+        if field_name == "policy_registry_sha256":
+            return prior.get(
+                "policy_registry_sha256",
+                prior.get("capacity_policy_registry_sha256"),
+            )
+        return prior.get(field_name)
+
+    if (
+        prior_value("logical_capacity_envelope_sha256") is None
+        or candidate.logical_capacity_envelope_sha256 is None
+        or candidate.logical_capacity_envelope_sha256
+        != prior_value("logical_capacity_envelope_sha256")
+    ):
+        raise CapacityAdmissionFailureV1(
+            CapacityFailureCode.PHYSICAL_ATTEMPT_DRIFT
+        )
+    if (
+        type(prior_value("physical_attempt")) is not int
+        or candidate.physical_attempt != prior_value("physical_attempt") + 1
+        or type(prior_value("global_physical_attempt_ordinal")) is not int
+        or candidate.global_physical_attempt_ordinal
+        != prior_value("global_physical_attempt_ordinal") + 1
+    ):
+        raise CapacityAdmissionFailureV1(
+            CapacityFailureCode.INVALID_ATTEMPT_DELTA
+        )
+    immutable_fields = (
+        (
+            "stage_id", "logical_stage_id", "stage", "contract_name",
+            "contract_version", "contract_schema_sha256",
+            "provider_route_identity_sha256",
+            "stage_operational_context_ceiling_tokens",
+            "route_context_capability_limit_tokens",
+            "route_context_capability_source",
+            "route_capability_snapshot_sha256", "model_context_limit",
+            "requested_output_token_cap", "route_max_output_tokens",
+            "final_output_reserve", "reasoning_token_reserve",
+            "reasoning_token_accounting", "reasoning_output_reservation",
+            "base_rendered_request_sha256", "compaction_policy_id",
+            "segmentation_policy_id", "recovery_policy_id",
+            "policy_registry_sha256",
+        )
+        if isinstance(prior, StageCapacityPlanV1)
+        else (
+            "logical_stage_id", "contract_version",
+            "contract_schema_sha256", "provider_route_identity_sha256",
+            "stage_operational_context_ceiling_tokens",
+            "route_context_capability_limit_tokens",
+            "route_context_capability_source",
+            "route_capability_snapshot_sha256", "model_context_limit",
+            "requested_output_token_cap", "route_max_output_tokens",
+            "final_output_reserve", "reasoning_token_reserve",
+            "reasoning_token_accounting", "reasoning_output_reservation",
+            "base_rendered_request_sha256", "policy_registry_sha256",
+        )
+    )
+
+    def candidate_value(field_name: str) -> object:
+        value = getattr(candidate, field_name)
+        return value.value if isinstance(value, StrEnum) else value
+
+    if any(
+        prior_value(field_name) != candidate_value(field_name)
+        for field_name in immutable_fields
+    ):
+        raise CapacityAdmissionFailureV1(
+            CapacityFailureCode.INVALID_ATTEMPT_DELTA
+        )
+    if (
+        candidate.prior_rendered_request_sha256
+        != prior_value("rendered_request_sha256")
+        or candidate.recovery_source_capture_receipt_sha256 is None
+        or candidate.recovery_overlay_kind == "NONE"
+    ):
+        raise CapacityAdmissionFailureV1(
+            CapacityFailureCode.INVALID_ATTEMPT_DELTA
+        )
+    return candidate
 
 
 @full_short_boundary_entry("FS.CAPACITY.ADMIT")
@@ -1205,4 +1303,5 @@ __all__ = [
     "enforce_stage_capacity_plan_v1",
     "verify_rendered_request_v1",
     "require_route_capability_v1",
+    "validate_capacity_attempt_delta_v1",
 ]

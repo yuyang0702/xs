@@ -375,6 +375,17 @@ def _bind_route_with_capacity(
     context = observer.capacity_admission_context(
         route=route, role=role, physical_attempt=physical_attempt,
     )
+    prior_capacity_receipt = None
+    prior_logical_attempts = [
+        item for item in attempts
+        if item.get("logical_stage_id") == logical_stage_id
+    ]
+    if prior_logical_attempts:
+        prior_attempt = prior_logical_attempts[-1]
+        prior_capacity_receipt = observer.store.load_capacity_admission_receipt(
+            execution_id=observer.execution_id,
+            plan_sha256=prior_attempt["capacity_plan_sha256"],
+        )
     plan = build_stage_capacity_plan_v1(
         stage_id=expected["stage_id"],
         logical_stage_id=context["logical_stage_id"],
@@ -412,6 +423,14 @@ def _bind_route_with_capacity(
         ],
         recovery_stage_role=context["recovery_stage_role"],
         reasoning_policy=context["reasoning_policy"],
+        base_rendered_request_sha256=(
+            prior_capacity_receipt["base_rendered_request_sha256"]
+            if prior_capacity_receipt is not None else None
+        ),
+        recovery_overlay_kind=(
+            "FINAL_ARTIFACT_COMPLETION"
+            if prior_capacity_receipt is not None else "NONE"
+        ),
         prior_rendered_request_sha256=context[
             "prior_rendered_request_sha256"
         ],
@@ -948,8 +967,13 @@ def _dispatch_reasoning_recovery_and_close(
     _bind_route_with_capacity(observer,
         role="planning", lane="primary", provider_id="provider",
         model_id="model-id", route_fingerprint="9" * 64,
+        system_content="\n\nFINAL ARTIFACT RECOVERY",
     )
     recovery_request = _request().model_copy(update={
+        "messages": [
+            Message(role="system", content="\n\nFINAL ARTIFACT RECOVERY"),
+            Message(role="user", content=""),
+        ],
         "reasoning_directive": "disable_reasoning",
         "stage_role": "PLANNING_FINAL_ARTIFACT_RECOVERY",
     })
@@ -958,7 +982,11 @@ def _dispatch_reasoning_recovery_and_close(
     )
     observer.before_http_dispatch(
         method="POST", url="https://unit.test/v1/messages",
-        payload={**_payload(), "reasoning": {"effort": "none"}},
+        payload={
+            **_payload(),
+            "system": "\n\nFINAL ARTIFACT RECOVERY",
+            "reasoning": {"effort": "none"},
+        },
     )
     observer.capture_provider_protocol_input(
         data=b'{"complete":true}', status_code=200,
