@@ -1264,17 +1264,21 @@ def materialize(
             command=command, implementation_head=head,
         ))
     write_json(root / "privacy-scan-v1.json", receipt(
-        "FullShortRuntimeCapacityV3VerificationReceiptV1", "PASS",
-        command="offline dry-run raw-content assertions",
+        "FullShortRuntimeCapacityV3VerificationReceiptV1",
+        "PASS_HISTORICAL_OFFLINE_STUB_NOT_CURRENT_AUTHORITY",
+        command="historical offline dry-run raw-content assertions",
         implementation_head=head,
+        dry_run_source_head=dry_run_receipt["source_head"],
         raw_prompt_persisted=dry_run_receipt["raw_prompt_persisted"],
         raw_story_persisted=dry_run_receipt["raw_story_persisted"],
         raw_reference_persisted=dry_run_receipt["raw_reference_persisted"],
     ))
     write_json(root / "determinism-v1.json", receipt(
-        "FullShortRuntimeCapacityV3VerificationReceiptV1", "PASS",
-        command="production-shaped dry-run exact capture replay",
+        "FullShortRuntimeCapacityV3VerificationReceiptV1",
+        "PASS_HISTORICAL_OFFLINE_STUB_NOT_CURRENT_AUTHORITY",
+        command="historical production-shaped dry-run exact capture replay",
         implementation_head=head,
+        dry_run_source_head=dry_run_receipt["source_head"],
         final_artifact_sha256=dry_run_receipt["final_artifact_sha256"],
         replay_final_artifact_sha256=dry_run_receipt[
             "replay_final_artifact_sha256"
@@ -1304,7 +1308,7 @@ def materialize(
         execution_runtime_redesign_v3="NOT_CLOSED",
         exact_ready_plan_unknown_required_route_count=len(unknown_required),
         full_short_production_shaped_dry_run=(
-            "PASS_EXACT_READY_TARGET_OFFLINE_STUB"
+            "HISTORICAL_OFFLINE_STUB_NOT_CURRENT_AUTHORITY"
         ),
         strict_l3="PENDING",
         trustworthy_full_short_readiness="NO",
@@ -1324,10 +1328,11 @@ def materialize(
         f"The Exact READY plan has {len(unknown_required)} unresolved required "
         "routes. Stop-loss therefore blocks the size matrix, exact-target run, "
         "authorization, credential access, and dispatch. Unknown unused routes "
-        "do not globally block readiness. The actual READY-authority target "
+        "do not globally block readiness. A prior-source READY-authority target "
         "completed a deterministic production-shaped run with only the "
-        "lowest external provider seam stubbed; that proves workflow shape, "
-        "not real-route capacity closure.\n\n"
+        "lowest external provider seam stubbed. It is retained as historical "
+        "workflow-shape evidence and is not current-head authority or "
+        "real-route capacity closure.\n\n"
         "No credential, provider, HTTP/network, model, paid, or real Full Short "
         "action occurred.\n",
         encoding="utf-8",
