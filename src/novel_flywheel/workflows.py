@@ -504,6 +504,43 @@ from novel_flywheel.planning_closure import (
 )
 
 
+_REVIEW_COMPACT_RETRY_SUFFIX = (
+    "\n\nDo not expose reasoning. Return only the compact review JSON. "
+    "Keep at most five highest-severity issues per category."
+)
+_POLISH_NO_TOOLS_RETRY_SUFFIXES = frozenset({
+    (
+        "\n\nNo tools are available for this request. Return only the "
+        "polished prose."
+    ),
+    (
+        "\n\nReturn only the complete polished prose. Be concise enough "
+        "to finish within the current output limit."
+    ),
+})
+
+
+def _closed_recovery_overlay_kind(
+    *, base_system: str, rendered_system: str,
+) -> str:
+    """Classify only exact, append-only retry overlays over frozen authority."""
+
+    if rendered_system == base_system:
+        return "NONE"
+    if not rendered_system.startswith(base_system):
+        raise CapacityAdmissionFailureV1(
+            CapacityFailureCode.INVALID_ATTEMPT_DELTA
+        )
+    suffix = rendered_system[len(base_system):]
+    if suffix == _REVIEW_COMPACT_RETRY_SUFFIX:
+        return "REVIEW_COMPACT_RETRY"
+    if suffix in _POLISH_NO_TOOLS_RETRY_SUFFIXES:
+        return "POLISH_NO_TOOLS_RETRY"
+    raise CapacityAdmissionFailureV1(
+        CapacityFailureCode.INVALID_ATTEMPT_DELTA
+    )
+
+
 class StageText(str):
     def __new__(cls, value: str, receipt: dict):
         instance = super().__new__(cls, value)
@@ -31594,24 +31631,10 @@ class WorkflowService:
                         raise CapacityAdmissionFailureV1(
                             CapacityFailureCode.INVALID_ATTEMPT_DELTA
                         )
-                    overlay_kind = "NONE"
-                    if route_system != capacity_base_system:
-                        suffix = route_system[len(capacity_base_system):]
-                        if suffix == (
-                            "\n\nDo not expose reasoning. Return only the "
-                            "compact review JSON. Keep at most five "
-                            "highest-severity issues per category."
-                        ):
-                            overlay_kind = "REVIEW_COMPACT_RETRY"
-                        elif suffix == (
-                            "\n\nNo tools are available for this request. "
-                            "Return only the polished prose."
-                        ):
-                            overlay_kind = "POLISH_NO_TOOLS_RETRY"
-                        else:
-                            raise CapacityAdmissionFailureV1(
-                                CapacityFailureCode.INVALID_ATTEMPT_DELTA
-                            )
+                    overlay_kind = _closed_recovery_overlay_kind(
+                        base_system=capacity_base_system,
+                        rendered_system=route_system,
+                    )
                     if route_user != capacity_base_user:
                         raise CapacityAdmissionFailureV1(
                             CapacityFailureCode.INVALID_ATTEMPT_DELTA

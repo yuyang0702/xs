@@ -129,6 +129,7 @@ from novel_flywheel.workflows import (
     StageText,
     TargetedGroupError,
     WorkflowService,
+    _closed_recovery_overlay_kind,
 )
 from novel_flywheel.draft_split import DraftTaskContract
 from tools.canary.short_completion import COMPLETION_GOAL
@@ -140,6 +141,33 @@ REQUIRED_SKILLS = {
     "chapter-writing", "novel-writing", "dialogue", "revision-continuity",
     "humanizer-zh", "story-maintenance",
 }
+
+
+def test_closed_recovery_overlay_rejects_replaced_prefix() -> None:
+    suffix = (
+        "\n\nDo not expose reasoning. Return only the compact review JSON. "
+        "Keep at most five highest-severity issues per category."
+    )
+
+    with pytest.raises(CapacityAdmissionFailureV1) as caught:
+        _closed_recovery_overlay_kind(
+            base_system="FROZEN AUTHORITY",
+            rendered_system="REPLACED AUTHOR" + suffix,
+        )
+
+    assert caught.value.failure_id == "capacity.invalid_attempt_delta"
+
+
+def test_closed_recovery_overlay_accepts_fixed_empty_polish_retry() -> None:
+    suffix = (
+        "\n\nReturn only the complete polished prose. Be concise enough "
+        "to finish within the current output limit."
+    )
+
+    assert _closed_recovery_overlay_kind(
+        base_system="FROZEN AUTHORITY",
+        rendered_system="FROZEN AUTHORITY" + suffix,
+    ) == "POLISH_NO_TOOLS_RETRY"
 
 
 def planning_semantic_body_from_prompt(prompt: str) -> dict:
