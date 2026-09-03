@@ -13,7 +13,7 @@
     "real_provider_request_attempts": 0,
     "real_secret_read_count": 0
   },
-  "implementation_head": "1259fc1e4baf9a86c8bc399ce1b22b569edd00ec",
+  "implementation_head": "ad45b1f01f9604f09a4b26b863be4156c48c47a8",
   "lowest_external_provider_seam_stubbed": true,
   "model_calls": 0,
   "network_calls": 0,

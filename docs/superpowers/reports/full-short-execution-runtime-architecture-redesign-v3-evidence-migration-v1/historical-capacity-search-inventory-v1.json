@@ -33577,7 +33577,7 @@
       ],
       "path": "pyproject.toml",
       "scan_method": "UTF8_CAPACITY_FIELD_AND_TOKEN_UNIT_SCAN",
-      "sha256": "f05942fcc154507ba01cab79c51fca016bcd00ee2aa671f9f32ab2e2e24c912e"
+      "sha256": "b849a73865c7ec7908f72d369c07f673fc6320e2568b17f941cec621c3cbe2d4"
     },
     {
       "candidate_occurrence_count": 0,
@@ -33987,7 +33987,7 @@
       ],
       "path": "src/novel_flywheel/full_short_execution.py",
       "scan_method": "UTF8_CAPACITY_FIELD_AND_TOKEN_UNIT_SCAN",
-      "sha256": "1f5e6be460d381f6babc09ff8b70a9f684ffb6caa216324624c305ce7d810a68"
+      "sha256": "53a06838f04b16df24d1825594b5c53f116a033113b26e63fdcc0ef1664a1d93"
     },
     {
       "candidate_occurrence_count": 0,
@@ -33996,7 +33996,7 @@
       ],
       "path": "src/novel_flywheel/full_short_reason_catalog.py",
       "scan_method": "UTF8_CAPACITY_FIELD_AND_TOKEN_UNIT_SCAN",
-      "sha256": "17d4a958b0c292ac5387c8ebebaf69900652b468e246b32d8af229ec10a3507c"
+      "sha256": "2bcbd56fbbb944af05f150757e4ecf80bd38fc0d504585dccdc7c0717c537b17"
     },
     {
       "candidate_occurrence_count": 0,
@@ -34499,7 +34499,7 @@
       ],
       "path": "src/novel_flywheel/provider_response_capture.py",
       "scan_method": "UTF8_CAPACITY_FIELD_AND_TOKEN_UNIT_SCAN",
-      "sha256": "87415b683d933077518d0d77a6644fdfaef4c68ff4cda04db1746eb5fd1dc9fd"
+      "sha256": "0686b4030125cbf41fcb1ef5e33d00eacdbbec9f3687415686f662b3cc34e8b9"
     },
     {
       "candidate_occurrence_count": 0,
@@ -36912,7 +36912,7 @@
       ],
       "path": "tests/test_full_short_execution.py",
       "scan_method": "UTF8_CAPACITY_FIELD_AND_TOKEN_UNIT_SCAN",
-      "sha256": "041f70dae0276b43b51ba00f15d2b97d76a3466516e2d1b8b7704377768cdfb7"
+      "sha256": "d041a11b73bf1c624b915bc95e1f1bd8e38191a484fdecffbd7032725ffb33c5"
     },
     {
       "candidate_occurrence_count": 0,
@@ -38549,7 +38549,7 @@
       ],
       "path": "tools/canary/first_trustworthy_full_short_dry_run.py",
       "scan_method": "UTF8_CAPACITY_FIELD_AND_TOKEN_UNIT_SCAN",
-      "sha256": "4f8c5c904329e86779047c5602a4de4b653c56db0ca84ad9a4b246f2ac526b52"
+      "sha256": "9aaad8d122e147d3f21316b83e23f2d331fd83e87cc7f094ea9acde8050455e8"
     },
     {
       "candidate_occurrence_count": 0,
@@ -38559,7 +38559,7 @@
       ],
       "path": "tools/canary/first_trustworthy_full_short_runner.py",
       "scan_method": "UTF8_CAPACITY_FIELD_AND_TOKEN_UNIT_SCAN",
-      "sha256": "09eb0f3d79e3bd51d1dc9ca2b6fc9dd9aa11401433817e903ba3f2ebfbd1ac63"
+      "sha256": "54bcbd08604cadc3c0e80d6d891ef212bff212f95da4fbb24f08ef76f8d31073"
     },
     {
       "candidate_occurrence_count": 0,
@@ -38569,7 +38569,7 @@
       ],
       "path": "tools/canary/full_short_transport_failure_dry_run.py",
       "scan_method": "UTF8_CAPACITY_FIELD_AND_TOKEN_UNIT_SCAN",
-      "sha256": "c2c6d825d037bc7d05cd626d8f259de5ba8e82a109b07c5250829a2e19b85ada"
+      "sha256": "c88ce589c46862ebdf82658a5cf2c12da1118adcbab58a8a3df0d5b2b7b7f64a"
     },
     {
       "candidate_occurrence_count": 1,
@@ -38640,7 +38640,7 @@
       ],
       "path": "tools/canary/materialize_first_trustworthy_full_short_authorization.py",
       "scan_method": "UTF8_CAPACITY_FIELD_AND_TOKEN_UNIT_SCAN",
-      "sha256": "43ddf911e618166b17cab7f69a9e2be8d85f743b5830259770cbc63474fa8e70"
+      "sha256": "cdb7a52bf1eea076fb2ae8c5b1def220287c8110e812fff74f11efaf7adcf203"
     },
     {
       "candidate_occurrence_count": 0,
@@ -40306,7 +40306,7 @@
       "sha256": "fe747c7e1a156d1c0204ab865a26e8f82ec0588c7b3772481b36861896bcf783"
     }
   ],
-  "searched_file_inventory_sha256": "b80cd79ab3d87addfa028b1eb69a63d944fc8c8d5ce97c758d42106aa66c39ce",
+  "searched_file_inventory_sha256": "4d4aa830572a29a35c9d8e4aa24a3d4e9fbbf4a504849b017144508de972238d",
   "source_truth_boundary": "ALL_GIT_TRACKED_REPOSITORY_FILES",
   "status": "SEARCH_COMPLETE",
   "tracked_repository_file_count": 4044,

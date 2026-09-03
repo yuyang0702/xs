@@ -1,6 +1,6 @@
 {
-  "exact_ready_plan_unknown_required_route_count": 8,
-  "exact_ready_required_route_count": 8,
+  "exact_ready_plan_unknown_required_route_count": 7,
+  "exact_ready_required_route_count": 7,
   "external_boundary": {
     "full_short_execution_count": 0,
     "http_calls": 0,
@@ -577,7 +577,7 @@
   "route_without_capability_record_count": 0,
   "schema": "LiveRouteCapabilityMatrixV1",
   "status": "PARTIAL_REQUIRED_ROUTES_BLOCKED",
-  "unused_unknown_blocked_route_count": 6,
+  "unused_unknown_blocked_route_count": 7,
   "unused_unknown_blocked_routes_allowed": true,
   "version": 1
 }
