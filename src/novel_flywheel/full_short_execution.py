@@ -28,6 +28,13 @@ import secrets
 from typing import Any, Callable, Iterator, Mapping
 from urllib.parse import urlsplit
 
+from cryptography.exceptions import InvalidSignature
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric.ed25519 import (
+    Ed25519PrivateKey,
+    Ed25519PublicKey,
+)
+
 from novel_flywheel.domain.models import ModelRequest
 from novel_flywheel.execution_failure_architecture import (
     AuthorityEffect,
@@ -1205,6 +1212,8 @@ class FullShortExecutionPolicyV1:
     destination_manifest_sha256: str
     egress_policy_sha256: str
     store_root_sha256: str
+    capture_attestation_public_key: str
+    capture_attestation_public_key_sha256: str
     required_stage_roles: tuple[str, ...]
     logical_stage_plan: tuple[Mapping[str, Any], ...]
     expected_stage_calls: int
@@ -1249,6 +1258,13 @@ class FullShortExecutionPolicyV1:
                 DEFAULT_STAGE_CAPACITY_POLICY_REGISTRY_V1.identity_sha256
             ),
             "store_root_sha256": self.store_root_sha256,
+            "capture_attestation_scheme": "ED25519_CAPTURE_ANCHOR_V1",
+            "capture_attestation_public_key": (
+                self.capture_attestation_public_key
+            ),
+            "capture_attestation_public_key_sha256": (
+                self.capture_attestation_public_key_sha256
+            ),
             "required_stage_roles": list(self.required_stage_roles),
             "logical_stage_plan": logical_stage_plan,
             "logical_stage_plan_sha256": (
@@ -1356,6 +1372,15 @@ def render_full_short_canonical_authorization_v1(
     _require(
         _canonical_sha256(public_bindings.get("response_capture_policy"))
         == validated["response_capture_policy_sha256"],
+        "AUTHORIZATION_RESPONSE_CAPTURE_POLICY_MISMATCH",
+    )
+    _require(
+        public_bindings.get("capture_attestation_scheme")
+        == validated["capture_attestation_scheme"]
+        and public_bindings.get("capture_attestation_public_key")
+        == validated["capture_attestation_public_key"]
+        and public_bindings.get("capture_attestation_public_key_sha256")
+        == validated["capture_attestation_public_key_sha256"],
         "AUTHORIZATION_RESPONSE_CAPTURE_POLICY_MISMATCH",
     )
     _require(
@@ -1470,6 +1495,15 @@ def validate_full_short_preflight_v1(
         "response_capture_policy_sha256": validated[
             "response_capture_policy_sha256"
         ],
+        "capture_attestation_scheme": validated[
+            "capture_attestation_scheme"
+        ],
+        "capture_attestation_public_key": validated[
+            "capture_attestation_public_key"
+        ],
+        "capture_attestation_public_key_sha256": validated[
+            "capture_attestation_public_key_sha256"
+        ],
         "capacity_policy_registry_sha256": validated[
             "capacity_policy_registry_sha256"
         ],
@@ -1579,12 +1613,27 @@ def validate_policy_v1(value: Mapping[str, Any]) -> dict[str, Any]:
         "observer_isolation_policy_sha256",
         "durable_failure_evidence_policy_sha256",
         "store_root_sha256",
+        "capture_attestation_public_key_sha256",
     ):
         _require(_HEX64.fullmatch(str(body.get(field))) is not None, f"{field.upper()}_INVALID")
     _require(
         body["response_capture_policy_sha256"]
         == RESPONSE_CAPTURE_POLICY_SHA256,
         "RESPONSE_CAPTURE_POLICY_NOT_ENFORCED",
+    )
+    capture_attestation_public_key = str(
+        body.get("capture_attestation_public_key") or ""
+    )
+    _require(
+        body.get("capture_attestation_scheme")
+        == "ED25519_CAPTURE_ANCHOR_V1"
+        and len(capture_attestation_public_key) == 64
+        and _HEX64.fullmatch(capture_attestation_public_key) is not None
+        and hashlib.sha256(
+            bytes.fromhex(capture_attestation_public_key)
+        ).hexdigest()
+        == body["capture_attestation_public_key_sha256"],
+        "RESPONSE_CAPTURE_ATTESTATION_AUTHORITY_INVALID",
     )
     _require(
         body["capacity_policy_registry_sha256"]
@@ -1740,6 +1789,79 @@ class FullShortDurableExecutionStoreV1:
         self.store_root_sha256 = hashlib.sha256(
             str(self.root).encode("utf-8"),
         ).hexdigest()
+        self.capture_attestation_authority_path = (
+            self.root / "capture-attestation-authority-v1.json"
+        )
+        self._load_or_create_capture_attestation_authority()
+
+    def _load_or_create_capture_attestation_authority(self) -> None:
+        with self._locked():
+            if not self.capture_attestation_authority_path.exists():
+                private_key = Ed25519PrivateKey.generate()
+                private_bytes = private_key.private_bytes(
+                    encoding=serialization.Encoding.Raw,
+                    format=serialization.PrivateFormat.Raw,
+                    encryption_algorithm=serialization.NoEncryption(),
+                )
+                public_bytes = private_key.public_key().public_bytes(
+                    encoding=serialization.Encoding.Raw,
+                    format=serialization.PublicFormat.Raw,
+                )
+                self._exclusive_write(
+                    self.capture_attestation_authority_path,
+                    {
+                        "schema": "FullShortCaptureAttestationAuthorityV1",
+                        "version": 1,
+                        "scheme": "ED25519_CAPTURE_ANCHOR_V1",
+                        "private_key": private_bytes.hex(),
+                        "public_key": public_bytes.hex(),
+                        "public_key_sha256": hashlib.sha256(
+                            public_bytes
+                        ).hexdigest(),
+                        "created_at": _now(),
+                    },
+                )
+            try:
+                authority = json.loads(
+                    self.capture_attestation_authority_path.read_text(
+                        encoding="utf-8"
+                    )
+                )
+                private_bytes = bytes.fromhex(
+                    str(authority.get("private_key") or "")
+                )
+                private_key = Ed25519PrivateKey.from_private_bytes(
+                    private_bytes
+                )
+                public_bytes = private_key.public_key().public_bytes(
+                    encoding=serialization.Encoding.Raw,
+                    format=serialization.PublicFormat.Raw,
+                )
+            except (OSError, ValueError, TypeError, AttributeError) as exc:
+                raise FullShortExecutionBoundaryError(
+                    "CAPTURE_ATTESTATION_AUTHORITY_INVALID"
+                ) from exc
+            _require(
+                isinstance(authority, dict)
+                and set(authority) == {
+                    "schema", "version", "scheme", "private_key",
+                    "public_key", "public_key_sha256", "created_at",
+                }
+                and authority.get("schema")
+                == "FullShortCaptureAttestationAuthorityV1"
+                and authority.get("version") == 1
+                and authority.get("scheme")
+                == "ED25519_CAPTURE_ANCHOR_V1"
+                and authority.get("public_key") == public_bytes.hex()
+                and authority.get("public_key_sha256")
+                == hashlib.sha256(public_bytes).hexdigest(),
+                "CAPTURE_ATTESTATION_AUTHORITY_INVALID",
+            )
+            self._capture_attestation_private_key = private_key
+            self.capture_attestation_public_key = public_bytes.hex()
+            self.capture_attestation_public_key_sha256 = hashlib.sha256(
+                public_bytes
+            ).hexdigest()
 
     def _verify_store_binding(self, policy: Mapping[str, Any]) -> dict[str, Any]:
         validated = validate_policy_v1(policy)
@@ -1756,21 +1878,42 @@ class FullShortDurableExecutionStoreV1:
 
     @staticmethod
     def _exclusive_write(path: Path, value: Mapping[str, Any]) -> None:
+        temporary = path.with_name(f".{path.name}.{secrets.token_hex(8)}.tmp")
         flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_BINARY", 0)
+        descriptor = os.open(temporary, flags, 0o600)
         try:
-            descriptor = os.open(path, flags, 0o600)
-        except FileExistsError as exc:
-            raise FullShortExecutionBoundaryError("SINGLE_USE_REPLAY") from exc
-        try:
-            os.write(descriptor, canonical_json_bytes(value) + b"\n")
+            payload = canonical_json_bytes(value) + b"\n"
+            offset = 0
+            while offset < len(payload):
+                offset += os.write(descriptor, payload[offset:])
             os.fsync(descriptor)
         finally:
             os.close(descriptor)
+        try:
+            os.link(temporary, path)
+        except FileExistsError as exc:
+            raise FullShortExecutionBoundaryError("SINGLE_USE_REPLAY") from exc
+        finally:
+            try:
+                temporary.unlink()
+            except FileNotFoundError:
+                pass
 
     @classmethod
     def _replace(cls, path: Path, value: Mapping[str, Any]) -> None:
         temporary = path.with_name(f".{path.name}.{secrets.token_hex(8)}.tmp")
-        cls._exclusive_write(temporary, value)
+        flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(
+            os, "O_BINARY", 0,
+        )
+        descriptor = os.open(temporary, flags, 0o600)
+        try:
+            payload = canonical_json_bytes(value) + b"\n"
+            offset = 0
+            while offset < len(payload):
+                offset += os.write(descriptor, payload[offset:])
+            os.fsync(descriptor)
+        finally:
+            os.close(descriptor)
         os.replace(temporary, path)
 
     def _key(self, execution_id: str) -> str:
@@ -1849,8 +1992,16 @@ class FullShortDurableExecutionStoreV1:
                 "provider_response_capture_receipt_sha256": (
                     provider_response_capture_receipt_sha256
                 ),
+                "capture_attestation_public_key_sha256": (
+                    self.capture_attestation_public_key_sha256
+                ),
                 "created_at": _now(),
             }
+            body["capture_attestation_signature"] = (
+                self._capture_attestation_private_key.sign(
+                    canonical_json_bytes(body)
+                ).hex()
+            )
             value = _seal(
                 "novel-flywheel-provider-response-capture-anchor-v1",
                 body, "capture_anchor_sha256",
@@ -1888,7 +2039,7 @@ class FullShortDurableExecutionStoreV1:
             return value
 
     def audit_provider_response_capture_anchors(
-        self,
+        self, *, policy: Mapping[str, Any],
     ) -> tuple[dict[str, Any], ...]:
         """Audit every exclusive capture anchor and its storage identity."""
 
@@ -1913,6 +2064,8 @@ class FullShortDurableExecutionStoreV1:
                         "capacity_plan_sha256",
                         "capacity_admission_receipt_sha256",
                         "provider_response_capture_receipt_sha256",
+                        "capture_attestation_public_key_sha256",
+                        "capture_attestation_signature",
                         "created_at", "capture_anchor_sha256",
                     }
                     and sealed.get("schema")
@@ -1925,12 +2078,35 @@ class FullShortDurableExecutionStoreV1:
                             "capacity_plan_sha256",
                             "capacity_admission_receipt_sha256",
                             "provider_response_capture_receipt_sha256",
+                            "capture_attestation_public_key_sha256",
                             "capture_anchor_sha256",
                         }
                     )
-                    and isinstance(sealed.get("physical_attempt_id"), str),
+                    and isinstance(sealed.get("physical_attempt_id"), str)
+                    and isinstance(
+                        sealed.get("capture_attestation_signature"), str
+                    )
+                    and len(sealed["capture_attestation_signature"]) == 128,
                     "COMPLETION_CAPTURE_PROVENANCE_INVALID",
                 )
+                _require(
+                    sealed["capture_attestation_public_key_sha256"]
+                    == policy["capture_attestation_public_key_sha256"],
+                    "COMPLETION_CAPTURE_PROVENANCE_INVALID",
+                )
+                signed_body = dict(sealed)
+                signed_body.pop("capture_anchor_sha256", None)
+                signature = bytes.fromhex(
+                    str(signed_body.pop("capture_attestation_signature"))
+                )
+                try:
+                    Ed25519PublicKey.from_public_bytes(bytes.fromhex(
+                        str(policy["capture_attestation_public_key"])
+                    )).verify(signature, canonical_json_bytes(signed_body))
+                except (InvalidSignature, ValueError, TypeError) as exc:
+                    raise FullShortExecutionBoundaryError(
+                        "COMPLETION_CAPTURE_PROVENANCE_INVALID"
+                    ) from exc
                 expected_path = self._capture_anchor_path(
                     str(sealed.get("execution_id") or ""),
                     int(sealed.get("ordinal") or 0),
@@ -2625,12 +2801,13 @@ class FullShortDurableExecutionStoreV1:
             "COMPLETION_CAPACITY_ADMISSION_PROVENANCE_INVALID",
         )
         self.verify_completion_capture_receipts(
-            execution_id=execution_id, ledger=ledger,
+            execution_id=execution_id, policy=validated, ledger=ledger,
         )
         return tuple(receipts)
 
     def verify_completion_capture_receipts(
-        self, *, execution_id: str, ledger: Mapping[str, Any],
+        self, *, execution_id: str, policy: Mapping[str, Any],
+        ledger: Mapping[str, Any],
     ) -> tuple[dict[str, Any], ...]:
         """Anchor every ledger capture hash to the immutable capture store."""
 
@@ -2653,7 +2830,9 @@ class FullShortDurableExecutionStoreV1:
             if item.get("execution_id") == execution_id
         ]
         anchors = [
-            item for item in self.audit_provider_response_capture_anchors()
+            item for item in self.audit_provider_response_capture_anchors(
+                policy=policy,
+            )
             if item.get("execution_id") == execution_id
         ]
         expected: list[tuple[int, str, str]] = []

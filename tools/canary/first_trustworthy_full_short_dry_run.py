@@ -1861,6 +1861,12 @@ async def _run(
             destination_manifest_sha256=actual["destination_manifest_sha256"],
             egress_policy_sha256=actual["egress_policy_sha256"],
             store_root_sha256=actual["store_root_sha256"],
+            capture_attestation_public_key=actual[
+                "capture_attestation_public_key"
+            ],
+            capture_attestation_public_key_sha256=actual[
+                "capture_attestation_public_key_sha256"
+            ],
             required_stage_roles=discovered_roles,
             logical_stage_plan=tuple(logical_stage_plan),
             expected_stage_calls=expected_calls,

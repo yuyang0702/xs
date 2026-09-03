@@ -201,6 +201,15 @@ def _policy(
         })),
         egress_policy_sha256=_hash(_egress()),
         store_root_sha256=store_hash,
+        capture_attestation_public_key=(
+            store.capture_attestation_public_key
+            if store is not None else "1" * 64
+        ),
+        capture_attestation_public_key_sha256=(
+            store.capture_attestation_public_key_sha256
+            if store is not None
+            else hashlib.sha256(bytes.fromhex("1" * 64)).hexdigest()
+        ),
         required_stage_roles=("planning",),
         logical_stage_plan=bound_plan,
         expected_stage_calls=expected_stage_calls,
@@ -2288,6 +2297,15 @@ def _preflight_actual() -> dict:
         "response_capture_policy_sha256": (
             policy["response_capture_policy_sha256"]
         ),
+        "capture_attestation_scheme": policy[
+            "capture_attestation_scheme"
+        ],
+        "capture_attestation_public_key": policy[
+            "capture_attestation_public_key"
+        ],
+        "capture_attestation_public_key_sha256": policy[
+            "capture_attestation_public_key_sha256"
+        ],
         "logical_stage_plan_sha256": policy["logical_stage_plan_sha256"],
         "transport_recovery_policy_sha256": policy[
             "transport_recovery_policy_sha256"
@@ -2319,6 +2337,15 @@ def test_canonical_authorization_and_disabled_preflight_are_exact() -> None:
         "destinations": ["https://unit.test:443/v1/messages"],
         "egress_policy": _egress(),
         "response_capture_policy": RESPONSE_CAPTURE_POLICY_V1,
+        "capture_attestation_scheme": policy[
+            "capture_attestation_scheme"
+        ],
+        "capture_attestation_public_key": policy[
+            "capture_attestation_public_key"
+        ],
+        "capture_attestation_public_key_sha256": policy[
+            "capture_attestation_public_key_sha256"
+        ],
         "logical_stage_plan": policy["logical_stage_plan"],
         "logical_stage_plan_sha256": policy["logical_stage_plan_sha256"],
         "transport_recovery_policy": TRANSPORT_RECOVERY_POLICY_V1,
@@ -2426,6 +2453,15 @@ def test_authorization_candidate_rejects_same_count_role_plan_reordering() -> No
         "destinations": ["https://unit.test:443/v1/messages"],
         "egress_policy": _egress(),
         "response_capture_policy": RESPONSE_CAPTURE_POLICY_V1,
+        "capture_attestation_scheme": policy[
+            "capture_attestation_scheme"
+        ],
+        "capture_attestation_public_key": policy[
+            "capture_attestation_public_key"
+        ],
+        "capture_attestation_public_key_sha256": policy[
+            "capture_attestation_public_key_sha256"
+        ],
         "logical_stage_plan": list(reversed(policy["logical_stage_plan"])),
         "logical_stage_plan_sha256": policy["logical_stage_plan_sha256"],
         "transport_recovery_policy": TRANSPORT_RECOVERY_POLICY_V1,
@@ -3845,7 +3881,6 @@ def test_completion_rejects_durably_resealed_global_ordinal_forgery(
         ),
     }
     store._replace(store._path(execution_id, "ledger"), forged_ledger)
-
     with pytest.raises(FullShortExecutionBoundaryError) as caught:
         build_full_short_completion_receipt_v1(
             execution_id=execution_id, policy=_policy(store),
@@ -4016,6 +4051,27 @@ def test_completion_rejects_resealed_capture_against_write_once_anchor(
         ),
     }
     store._replace(store._path(execution_id, "ledger"), forged_ledger)
+    anchor = store.audit_provider_response_capture_anchors(
+        policy=_policy(store),
+    )[0]
+    anchor_body = dict(anchor)
+    anchor_body.pop("capture_anchor_sha256")
+    anchor_body["provider_response_capture_receipt_sha256"] = (
+        forged_capture["ledger_receipt_sha256"]
+    )
+    forged_anchor = {
+        **anchor_body,
+        "capture_anchor_sha256": domain_sha256(
+            "novel-flywheel-provider-response-capture-anchor-v1",
+            anchor_body,
+        ),
+    }
+    store._replace(
+        store._capture_anchor_path(
+            execution_id, 1, PROVIDER_PROTOCOL_INPUT_BYTES,
+        ),
+        forged_anchor,
+    )
 
     with pytest.raises(FullShortExecutionBoundaryError) as caught:
         _build_completion(
@@ -4023,6 +4079,55 @@ def test_completion_rejects_resealed_capture_against_write_once_anchor(
         )
 
     assert caught.value.reason_code == "COMPLETION_CAPTURE_PROVENANCE_INVALID"
+
+
+def test_completed_execution_rejects_late_capture_publication(
+    tmp_path: Path,
+) -> None:
+    store = _store(tmp_path)
+    execution_id = "completion-late-capture-publication"
+    permission, approval, nonce = _authorize_offline(store, execution_id)
+    _dispatch_and_close(store, execution_id)
+    ledger = store.load_ledger(execution_id)
+    completion = _build_completion(
+        store, execution_id, permission, approval, nonce, ledger,
+    )
+    store.commit_completion(
+        execution_id=execution_id,
+        policy=_policy(store),
+        receipt=completion,
+    )
+    attempt = ledger["attempts"][0]
+    capture_store = ProviderResponseCaptureStoreV1(
+        repo_root=store.repo_root,
+        store_root=store.root / "provider-response-captures-v1",
+    )
+
+    with pytest.raises(
+        ProviderResponseCaptureError,
+        match="PROVIDER_RESPONSE_CAPTURE_EXECUTION_ALREADY_COMPLETED",
+    ):
+        capture_store.capture(
+            byte_domain=PROVIDER_PROTOCOL_INPUT_BYTES,
+            data=b"late",
+            metadata={
+                "execution_id": execution_id,
+                "call_id": f"{execution_id}:999",
+                "stage_id": attempt["stage"],
+                "provider_id_sha256": attempt["provider_id_sha256"],
+                "model_id_sha256": attempt["model_id_sha256"],
+                "route_fingerprint": attempt["route_fingerprint"],
+                "protocol": "anthropic",
+                "contract_name": attempt["contract_name"],
+                "contract_version": attempt["contract_version"],
+                "contract_schema_sha256": attempt[
+                    "contract_schema_sha256"
+                ],
+                "adapter_id": "anthropic", "adapter_version": 1,
+                "content_type": "application/json", "encoding": "utf-8",
+                "transport_complete": True,
+            },
+        )
 
 
 def test_completion_commit_reaudits_capture_after_receipt_build(

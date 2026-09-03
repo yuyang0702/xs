@@ -558,6 +558,9 @@ def collect_live_bindings(
     exact_store_root = _canonical_store_root(
         repo=repo, data_dir=data_dir, store_root=store_root,
     )
+    attestation_store = FullShortDurableExecutionStoreV1(
+        repo_root=repo, store_root=exact_store_root,
+    )
     db = Database(data_dir / "app.db")
     project_row = db.get_project(project_id)
     if project_row is None:
@@ -996,6 +999,13 @@ def collect_live_bindings(
         "destination_manifest_sha256": destination_manifest_sha256,
         "egress_policy_sha256": _domain(egress),
         "response_capture_policy_sha256": RESPONSE_CAPTURE_POLICY_SHA256,
+        "capture_attestation_scheme": "ED25519_CAPTURE_ANCHOR_V1",
+        "capture_attestation_public_key": (
+            attestation_store.capture_attestation_public_key
+        ),
+        "capture_attestation_public_key_sha256": (
+            attestation_store.capture_attestation_public_key_sha256
+        ),
         "logical_stage_plan_sha256": logical_stage_plan_sha256,
         "transport_recovery_policy_sha256": (
             TRANSPORT_RECOVERY_POLICY_SHA256
@@ -1064,6 +1074,13 @@ def collect_live_bindings(
         } for destination in sorted(destinations)],
         "egress_policy": egress,
         "response_capture_policy": RESPONSE_CAPTURE_POLICY_V1,
+        "capture_attestation_scheme": "ED25519_CAPTURE_ANCHOR_V1",
+        "capture_attestation_public_key": (
+            attestation_store.capture_attestation_public_key
+        ),
+        "capture_attestation_public_key_sha256": (
+            attestation_store.capture_attestation_public_key_sha256
+        ),
         "logical_stage_plan": logical_stage_plan,
         "logical_stage_plan_sha256": logical_stage_plan_sha256,
         "transport_recovery_policy": TRANSPORT_RECOVERY_POLICY_V1,

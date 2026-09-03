@@ -8,6 +8,7 @@ inside the Git worktree.
 
 from __future__ import annotations
 
+from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from enum import StrEnum
@@ -16,7 +17,7 @@ import json
 import os
 from pathlib import Path
 import secrets
-from typing import Any, Mapping
+from typing import Any, Iterator, Mapping
 
 from novel_flywheel.runtime_fingerprint_build import domain_sha256
 from novel_flywheel.recovery_engine import FailureClass, ReliabilityFailure
@@ -217,6 +218,52 @@ class ProviderResponseCaptureStoreV1:
             raise ProviderResponseCaptureError(
                 "PROVIDER_RESPONSE_CAPTURE_STORE_PATH_NOT_EXACT"
             )
+        self.execution_store_root = (
+            self.root.parent
+            if self.root.name == "provider-response-captures-v1"
+            else None
+        )
+
+    @contextmanager
+    def _execution_store_locked(self) -> Iterator[None]:
+        if self.execution_store_root is None:
+            yield
+            return
+        lock_path = self.execution_store_root / ".full-short-execution.lock"
+        lock_path.parent.mkdir(parents=True, exist_ok=True)
+        handle = open(lock_path, "a+b")
+        try:
+            handle.seek(0)
+            if os.name == "nt":
+                import msvcrt
+                msvcrt.locking(handle.fileno(), msvcrt.LK_NBLCK, 1)
+            else:
+                import fcntl
+                fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except (OSError, BlockingIOError) as exc:
+            handle.close()
+            raise ProviderResponseCaptureError(
+                "PROVIDER_RESPONSE_CAPTURE_EXECUTION_STORE_BUSY"
+            ) from exc
+        try:
+            yield
+        finally:
+            handle.seek(0)
+            if os.name == "nt":
+                import msvcrt
+                msvcrt.locking(handle.fileno(), msvcrt.LK_UNLCK, 1)
+            else:
+                import fcntl
+                fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
+            handle.close()
+
+    def _completion_exists(self, execution_id: str) -> bool:
+        if self.execution_store_root is None:
+            return False
+        key = domain_sha256(
+            "full-short-execution-storage-key-v1", execution_id,
+        )
+        return (self.execution_store_root / f"{key}.completion.json").exists()
 
     @staticmethod
     def _capture_key(metadata: Mapping[str, Any], byte_domain: str) -> str:
@@ -273,26 +320,31 @@ class ProviderResponseCaptureStoreV1:
                 "PROVIDER_RESPONSE_CAPTURE_BYTES_REQUIRED"
             )
         public = _validate_public_metadata(metadata)
-        header = {
-            "schema": CAPTURE_SCHEMA,
-            "version": 1,
-            "byte_domain": byte_domain,
-            **public,
-            "byte_sha256": _sha256(data),
-            "byte_length": len(data),
-            "privacy_classification": PRIVACY_CLASSIFICATION,
-            "request_headers_persisted": False,
-            "credentials_persisted": False,
-            "request_prompt_persisted": False,
-            "created_at": datetime.now(timezone.utc).replace(
-                microsecond=0,
-            ).isoformat().replace("+00:00", "Z"),
-        }
-        header_bytes = _canonical_json_bytes(header)
-        path = self._path(public, byte_domain)
-        self._write_exclusive_crash_safe(
-            path, CAPTURE_MAGIC + header_bytes + b"\n" + data,
-        )
+        with self._execution_store_locked():
+            if self._completion_exists(str(public["execution_id"])):
+                raise ProviderResponseCaptureError(
+                    "PROVIDER_RESPONSE_CAPTURE_EXECUTION_ALREADY_COMPLETED"
+                )
+            header = {
+                "schema": CAPTURE_SCHEMA,
+                "version": 1,
+                "byte_domain": byte_domain,
+                **public,
+                "byte_sha256": _sha256(data),
+                "byte_length": len(data),
+                "privacy_classification": PRIVACY_CLASSIFICATION,
+                "request_headers_persisted": False,
+                "credentials_persisted": False,
+                "request_prompt_persisted": False,
+                "created_at": datetime.now(timezone.utc).replace(
+                    microsecond=0,
+                ).isoformat().replace("+00:00", "Z"),
+            }
+            header_bytes = _canonical_json_bytes(header)
+            path = self._path(public, byte_domain)
+            self._write_exclusive_crash_safe(
+                path, CAPTURE_MAGIC + header_bytes + b"\n" + data,
+            )
         return ProviderResponseCaptureReceiptV1(
             byte_domain=byte_domain,
             byte_sha256=header["byte_sha256"],
