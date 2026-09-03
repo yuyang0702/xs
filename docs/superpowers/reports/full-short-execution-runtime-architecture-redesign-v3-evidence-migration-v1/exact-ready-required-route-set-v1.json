@@ -1,5 +1,5 @@
 {
-  "completion_receipt_sha256": "0772f9232feedcd58d1fba92e3075cfd7fc154ed58551742720c4cbb8d9b0a95",
+  "completion_receipt_sha256": "10ec9d16af6d38f48903e62f64cb6865be00b1df235c9d0b1d69998899752f9b",
   "derivation": "SEALED_EXACT_READY_LOGICAL_STAGE_PLAN",
   "exact_ready_required_route_count": 7,
   "external_boundary": {
@@ -1307,8 +1307,8 @@
   ],
   "schema": "ExactReadyRequiredRouteSetV1",
   "source_plan_receipt_artifact": "exact-ready-target-full-short-rerun-v1.json#source_receipt",
-  "source_plan_receipt_sha256": "e65a897964d653678810bdf8ac6185ec80307c5c3f83e748fc3421e518bcf51d",
-  "source_runtime_head": "ad45b1f01f9604f09a4b26b863be4156c48c47a8",
+  "source_plan_receipt_sha256": "0e5341db4d6c6667a77a6393ce56b4ac520293619a0a034b9f8c450a64f3db3c",
+  "source_runtime_head": "06e8a2868c145e5db9f71bab9acef94bea5bf64a",
   "status": "MATERIALIZED",
   "unused_live_routes": [
     {
