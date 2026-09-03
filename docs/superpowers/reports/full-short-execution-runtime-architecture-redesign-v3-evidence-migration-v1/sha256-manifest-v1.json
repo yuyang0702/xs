@@ -218,12 +218,12 @@
       "sha256": "12ee50ee94979269bf759e4dd4bc7e415bb5579cb49b1052b303a0432be62f94"
     },
     "focused-test-receipt-v1.json": {
-      "bytes": 606,
-      "sha256": "367dabe6622d3b705a5de2832e692af4c4b9f77432132edd472858802d0d7614"
+      "bytes": 1060,
+      "sha256": "f39c4a253472ae8152a38b0f6bcbdfa0f67a46e09c54c6944f6143168f3de9da"
     },
     "full-suite-receipt-v1.json": {
-      "bytes": 603,
-      "sha256": "847768149c71a9a45bcaba9bc35766c726350690823c0de6500d835e127c229d"
+      "bytes": 1720,
+      "sha256": "b222702d98db20230f2f70f5966dd494807f99f9729153a91f0c1d538d7a7624"
     },
     "historical-capability-evidence-matrix-v1.json": {
       "bytes": 35976,
@@ -254,8 +254,8 @@
       "sha256": "2b8e641536f268280ab07130982859ee24a9f671caa6fa097d887bf1baea33ef"
     },
     "related-test-receipt-v1.json": {
-      "bytes": 606,
-      "sha256": "7f2d02b0276c11d24fdb85cb3f602c579dac8fd8e4b14540c4e2c5e955a3e699"
+      "bytes": 1522,
+      "sha256": "d36517cc52d2a754bc56a64f891a3f8a96908b3ac9b7af5dba3c459121b91ef0"
     },
     "reviewer-1-final-v1.json": {
       "bytes": 624,
@@ -286,8 +286,8 @@
       "sha256": "323d29d5b362d8038e1752c9a681da6d9990aff6151c925a8420ed768173f04c"
     },
     "strict-l3-receipt-v1.json": {
-      "bytes": 609,
-      "sha256": "910c1f9c37d4548aa1cb7c2278a48e4d35379bf37d6c27ef4e23d99bd8b1eb36"
+      "bytes": 1599,
+      "sha256": "94f43a220a6c9bcdf65c83935210c774222c402732e78d1833ea0e6ed0ecf63a"
     },
     "token-accounting-contract-v1.json": {
       "bytes": 1018,
@@ -302,8 +302,8 @@
       "sha256": "bd764d6cd7adc2fe0df9f5e3a2438f311524ab2c111ec8c46412b83209b98ef5"
     },
     "v3-stop-loss-v1.json": {
-      "bytes": 960,
-      "sha256": "864be1d42e5400c0219b805b8ae22681403a59bcc433877429c62ff4af83b1d6"
+      "bytes": 1124,
+      "sha256": "2f58155df1be5a9f43704c9435f358b9e24e226529edf7bcda7e2f00f7449761"
     }
   },
   "external_boundary": {
