@@ -275,6 +275,15 @@ _VALUE_WITH_TOKEN_UNIT_RE = re.compile(
     r"\s*(?:[- ]?tokens?)\b",
     re.IGNORECASE,
 )
+_CAPACITY_CONTEXT_NUMBER_RE = re.compile(
+    r"(?P<value>[0-9][0-9,_.]*(?:\.[0-9]+)?)\s*(?P<unit>[kKmM])?"
+    r"(?!\s*%)\b",
+    re.IGNORECASE,
+)
+_CAPACITY_CONTEXT_TERMS = (
+    "capacity limits", "capacity values", "circuit breaker", "token limits",
+    "容量值", "容量限制",
+)
 
 
 def _historical_source_categories(normalized: str) -> tuple[str, ...]:
@@ -305,7 +314,7 @@ def _historical_source_categories(normalized: str) -> tuple[str, ...]:
         categories.add("tracked_screenshots_images")
     if lower.startswith("tests/fixtures/") or "fixture" in lower:
         categories.add("test_fixtures")
-    if text_like and lower.startswith(("docs/", "src/", "tests/", "tools/")):
+    if text_like:
         categories.add("comments_docs")
     return tuple(sorted(categories))
 
@@ -329,7 +338,7 @@ def _capacity_values_in_text(text: str) -> list[dict[str, Any]]:
     """Extract capacity-like values by field or token-unit syntax, without prose."""
 
     values: list[dict[str, Any]] = []
-    seen: set[tuple[int, int, str]] = set()
+    seen: set[tuple[int, int]] = set()
     for line_number, line in enumerate(text.splitlines(), start=1):
         for pattern, default_field in (
             (_FIELD_THEN_VALUE_RE, None),
@@ -344,13 +353,27 @@ def _capacity_values_in_text(text: str) -> list[dict[str, Any]]:
                 field = default_field or re.sub(
                     r"[ -]+", "_", match.group("field").lower(),
                 )
-                identity = (line_number, value, field)
+                identity = (line_number, value)
                 if identity in seen:
                     continue
                 seen.add(identity)
                 values.append({
                     "line_number": line_number,
                     "capability_field": field,
+                    "value": value,
+                    "raw_unit": match.group("unit") or "tokens",
+                })
+        if any(term in line.lower() for term in _CAPACITY_CONTEXT_TERMS):
+            for match in _CAPACITY_CONTEXT_NUMBER_RE.finditer(line):
+                value = _normalized_token_value(
+                    match.group("value"), match.group("unit"),
+                )
+                if value is None or (line_number, value) in seen:
+                    continue
+                seen.add((line_number, value))
+                values.append({
+                    "line_number": line_number,
+                    "capability_field": "token_quantity_in_capacity_context",
                     "value": value,
                     "raw_unit": match.group("unit") or "tokens",
                 })
@@ -739,6 +762,12 @@ def materialize(
     search_inventory_path = root / "historical-capacity-search-inventory-v1.json"
     write_json(search_inventory_path, receipt(
         "HistoricalCapacitySearchInventoryV1", "SEARCH_COMPLETE",
+        source_truth_boundary="ALL_GIT_TRACKED_REPOSITORY_FILES",
+        committed_source_truth_search_complete=True,
+        untracked_or_ignored_project_local_search_performed=False,
+        untracked_or_ignored_project_local_disposition=(
+            "EXCLUDED_NOT_REPOSITORY_SOURCE_TRUTH_AND_MAY_CONTAIN_SECRETS"
+        ),
         tracked_repository_file_count=historical_search[
             "tracked_repository_file_count"
         ],
@@ -758,6 +787,14 @@ def materialize(
         "version": 1,
         "status": "SEARCH_COMPLETE_NO_VERIFIED_REUSE",
         "historical_evidence_search_complete": True,
+        "historical_evidence_search_complete_boundary": (
+            "ALL_GIT_TRACKED_REPOSITORY_SOURCE_TRUTH"
+        ),
+        "committed_source_truth_search_complete": True,
+        "untracked_or_ignored_project_local_search_performed": False,
+        "untracked_or_ignored_project_local_disposition": (
+            "EXCLUDED_NOT_REPOSITORY_SOURCE_TRUTH_AND_MAY_CONTAIN_SECRETS"
+        ),
         "search_scope": (
             "all Git-tracked UTF-8 config, approval/canary, capability/budget, "
             "reports, runtime/fingerprint, route/manifest/provider-matrix, "

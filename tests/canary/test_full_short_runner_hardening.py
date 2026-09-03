@@ -1700,6 +1700,10 @@ def test_v3_historical_search_covers_mandated_sources_and_nonpreset_values(
         "tests/fixtures/capacity.json": '{"max_output_tokens": 4096}',
         "src/runtime_notes.py": "# manually recorded output cap 11,524 tokens",
         "docs/route-manifest.md": "declared completion token limit: 20K",
+        "README.md": (
+            "circuit breakers: 120,000 tokens, 60,000 per pass, "
+            "and 220,000 across the run"
+        ),
         "docs/superpowers/reports/empty-capability.md": "no numeric claim",
         (
             "docs/superpowers/reports/"
@@ -1724,8 +1728,24 @@ def test_v3_historical_search_covers_mandated_sources_and_nonpreset_values(
     result = materializer._historical_search_inventory(tmp_path)
 
     values = {item["value"] for item in result["discovered_value_records"]}
-    assert {32768, 4096, 11524, 20000} <= values
+    assert {32768, 4096, 11524, 20000, 220000} <= values
     assert 999999 not in values
+    readme_records = [
+        item for item in result["discovered_value_records"]
+        if item["original_source_path"] == "README.md"
+    ]
+    assert {item["value"] for item in readme_records} == {
+        60000, 120000, 220000,
+    }
+    assert all(item["source_line_number"] == 1 for item in readme_records)
+    assert all(
+        item["source_evidence_sha256"] == hashlib.sha256(
+            files["README.md"].encode("utf-8")
+        ).hexdigest()
+        and item["classification_code"] == "B"
+        and item["eligible_for_verified_registry"] is False
+        for item in readme_records
+    )
     assert result["category_summary"]["test_fixtures"][
         "candidate_occurrence_count"
     ] >= 1

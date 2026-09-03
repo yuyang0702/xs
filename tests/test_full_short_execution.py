@@ -3569,6 +3569,68 @@ def test_completion_rejects_capacity_receipt_one_to_one_drift(
 
 
 @pytest.mark.parametrize(
+    "orphan_state",
+    ("PLAN_BOUND_UNCONSUMED", "REQUEST_BOUND_UNCONSUMED", "CONSUMED"),
+)
+def test_completion_rejects_orphaned_durable_capacity_receipt(
+    tmp_path: Path, orphan_state: str,
+) -> None:
+    store = _store(tmp_path)
+    execution_id = f"completion-orphan-capacity-{orphan_state.lower()}"
+    permission, approval, nonce = _authorize_offline(store, execution_id)
+    _dispatch_and_close(store, execution_id)
+    ledger = store.load_ledger(execution_id)
+    receipts = _capacity_receipts(store, execution_id, ledger)
+    orphan_plan_sha256 = hashlib.sha256(
+        f"orphan:{orphan_state}".encode("utf-8")
+    ).hexdigest()
+    orphan_body = dict(receipts[0])
+    orphan_body.pop("capacity_admission_receipt_sha256")
+    orphan_body["capacity_plan_sha256"] = orphan_plan_sha256
+    if orphan_state != "CONSUMED":
+        orphan_body.pop("consumed_at", None)
+        orphan_body["outbound_request_bytes_sha256"] = None
+        orphan_body["destination_sha256"] = None
+    if orphan_state == "PLAN_BOUND_UNCONSUMED":
+        orphan_body["model_request_sha256"] = None
+        orphan_body["provider_payload_sha256"] = None
+        orphan_body["egress_intent_sha256"] = None
+    orphan_body["state"] = orphan_state
+    store.create_capacity_admission_receipt(
+        execution_id=execution_id,
+        plan_sha256=orphan_plan_sha256,
+        body=orphan_body,
+    )
+
+    with pytest.raises(FullShortExecutionBoundaryError) as caught:
+        build_full_short_completion_receipt_v1(
+            execution_id=execution_id,
+            policy=_policy(store),
+            durable_store=store,
+            permission_sha256=permission["permission_sha256"],
+            signed_approval_sha256=approval["signed_approval_sha256"],
+            nonce_sha256=nonce["nonce_sha256"],
+            ledger=ledger,
+            final_bindings={
+                "manuscript_sha256": "4" * 64,
+                "chapter_sha256": "5" * 64,
+                "canon_sha256": "6" * 64,
+                "story_state_sha256": "7" * 64,
+                "quality_checkpoint_sha256": "8" * 64,
+                "terminal_verification_sha256": _terminal()[
+                    "verification_receipt_sha256"
+                ],
+            },
+            terminal_verification=_terminal(),
+            capacity_admission_receipts=receipts,
+        )
+
+    assert caught.value.reason_code == (
+        "COMPLETION_CAPACITY_ADMISSION_PROVENANCE_INVALID"
+    )
+
+
+@pytest.mark.parametrize(
     "field",
     (
         "global_physical_attempt_ordinal",

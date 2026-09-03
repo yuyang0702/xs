@@ -2276,6 +2276,55 @@ class FullShortDurableExecutionStoreV1:
             )
             return value
 
+    def audit_capacity_admission_receipts(self) -> tuple[dict[str, Any], ...]:
+        """Validate every durable capacity receipt and its storage identity."""
+
+        audited: list[dict[str, Any]] = []
+        try:
+            paths = sorted(self.capacity_receipt_root.iterdir())
+            for path in paths:
+                _require(
+                    path.is_file() and path.suffix == ".json",
+                    "COMPLETION_CAPACITY_ADMISSION_PROVENANCE_INVALID",
+                )
+                value = json.loads(path.read_text(encoding="utf-8"))
+                _require(
+                    isinstance(value, dict),
+                    "COMPLETION_CAPACITY_ADMISSION_PROVENANCE_INVALID",
+                )
+                execution_id = str(value.get("execution_id") or "")
+                plan_sha256 = str(value.get("capacity_plan_sha256") or "")
+                expected_path = self._capacity_path(
+                    execution_id, plan_sha256,
+                )
+                _require(
+                    os.path.normcase(str(path.resolve(strict=True)))
+                    == os.path.normcase(str(expected_path.resolve(strict=True))),
+                    "COMPLETION_CAPACITY_ADMISSION_PROVENANCE_INVALID",
+                )
+                sealed = self._verify_seal(
+                    value,
+                    domain="novel-flywheel-capacity-admission-receipt-v1",
+                    field="capacity_admission_receipt_sha256",
+                    reason="COMPLETION_CAPACITY_ADMISSION_PROVENANCE_INVALID",
+                )
+                audited.append(_validate_capacity_admission_receipt_v1(
+                    sealed,
+                    execution_id=execution_id,
+                    plan_sha256=plan_sha256,
+                ))
+        except Exception as exc:
+            if (
+                isinstance(exc, FullShortExecutionBoundaryError)
+                and exc.reason_code
+                == "COMPLETION_CAPACITY_ADMISSION_PROVENANCE_INVALID"
+            ):
+                raise
+            raise FullShortExecutionBoundaryError(
+                "COMPLETION_CAPACITY_ADMISSION_PROVENANCE_INVALID"
+            ) from exc
+        return tuple(audited)
+
     def verify_completion_capacity_receipts(
         self, *, execution_id: str, policy: Mapping[str, Any],
         ledger: Mapping[str, Any],
@@ -2290,6 +2339,25 @@ class FullShortDurableExecutionStoreV1:
         self.verify_completion_capture_receipts(
             execution_id=execution_id, ledger=ledger,
         )
+        audited = self.audit_capacity_admission_receipts()
+        actual = [
+            item for item in audited
+            if item.get("execution_id") == execution_id
+        ]
+        expected_plans = [
+            str(item.get("capacity_plan_sha256") or "")
+            for item in attempts
+        ]
+        _require(
+            len(expected_plans) == len(set(expected_plans))
+            and len(actual) == len(expected_plans)
+            and {item["capacity_plan_sha256"] for item in actual}
+            == set(expected_plans),
+            "COMPLETION_CAPACITY_ADMISSION_PROVENANCE_INVALID",
+        )
+        actual_by_plan = {
+            item["capacity_plan_sha256"]: item for item in actual
+        }
         receipts: list[dict[str, Any]] = []
         logical_attempt_counts: dict[str, int] = {}
         for attempt in attempts:
@@ -2298,9 +2366,7 @@ class FullShortDurableExecutionStoreV1:
                 logical_attempt_counts.get(logical_stage_id, 0) + 1
             )
             plan_sha256 = str(attempt.get("capacity_plan_sha256") or "")
-            receipt = self.load_capacity_admission_receipt(
-                execution_id=execution_id, plan_sha256=plan_sha256,
-            )
+            receipt = actual_by_plan[plan_sha256]
             _require(
                 receipt.get("state") == "CONSUMED"
                 and receipt.get("capacity_admission_receipt_sha256")
