@@ -1,5 +1,6 @@
 {
-  "excluded_current_generated_evidence_file_count": 76,
+  "committed_source_truth_search_complete": true,
+  "excluded_current_generated_evidence_file_count": 77,
   "external_boundary": {
     "full_short_execution_count": 0,
     "http_calls": 0,
@@ -35,19 +36,19 @@
     },
     "comments_docs": {
       "binary_inventory_file_count": 0,
-      "candidate_occurrence_count": 1698,
-      "text_scanned_file_count": 3830,
-      "tracked_file_count": 3830
+      "candidate_occurrence_count": 1686,
+      "text_scanned_file_count": 3930,
+      "tracked_file_count": 3930
     },
     "manually_recorded_limits": {
       "binary_inventory_file_count": 0,
-      "candidate_occurrence_count": 1698,
-      "text_scanned_file_count": 537,
-      "tracked_file_count": 537
+      "candidate_occurrence_count": 1686,
+      "text_scanned_file_count": 538,
+      "tracked_file_count": 538
     },
     "previous_approval_canary_packets": {
       "binary_inventory_file_count": 7,
-      "candidate_occurrence_count": 437,
+      "candidate_occurrence_count": 435,
       "text_scanned_file_count": 693,
       "tracked_file_count": 700
     },
@@ -59,7 +60,7 @@
     },
     "reports_tree": {
       "binary_inventory_file_count": 27,
-      "candidate_occurrence_count": 907,
+      "candidate_occurrence_count": 893,
       "text_scanned_file_count": 3073,
       "tracked_file_count": 3100
     },
@@ -88,12 +89,157 @@
       "tracked_file_count": 0
     }
   },
-  "searched_file_count": 3873,
+  "searched_file_count": 3957,
   "searched_file_inventory": [
     {
       "candidate_occurrence_count": 0,
       "categories": [
+        "comments_docs"
+      ],
+      "path": ".agents/skills/novel-dev-council/SKILL.md",
+      "scan_method": "UTF8_CAPACITY_FIELD_AND_TOKEN_UNIT_SCAN",
+      "sha256": "99d8ab1e8222823e575eeb7e650d670acec16432574d20a2efb0b296518482b6"
+    },
+    {
+      "candidate_occurrence_count": 0,
+      "categories": [
+        "comments_docs"
+      ],
+      "path": ".agents/skills/novel-dev-council/agents/openai.yaml",
+      "scan_method": "UTF8_CAPACITY_FIELD_AND_TOKEN_UNIT_SCAN",
+      "sha256": "00484f2857b8b797e159c9911773186c0f06720c51595715d288ad9a3375b123"
+    },
+    {
+      "candidate_occurrence_count": 0,
+      "categories": [
+        "comments_docs"
+      ],
+      "path": ".agents/skills/novel-dev-council/references/decision-contract.md",
+      "scan_method": "UTF8_CAPACITY_FIELD_AND_TOKEN_UNIT_SCAN",
+      "sha256": "84a8bbb6bfc0b4d93ac03c6397d9399717c24b5791637b16a0fb78fea89200d0"
+    },
+    {
+      "candidate_occurrence_count": 0,
+      "categories": [
+        "comments_docs"
+      ],
+      "path": ".agents/skills/novel-dev-council/references/forward-test-cases.md",
+      "scan_method": "UTF8_CAPACITY_FIELD_AND_TOKEN_UNIT_SCAN",
+      "sha256": "3cb8f474580cd701c1f9c81da9028f38441cf18a37c69881a9599cdc9a18b255"
+    },
+    {
+      "candidate_occurrence_count": 0,
+      "categories": [
+        "comments_docs"
+      ],
+      "path": ".agents/skills/novel-dev-council/references/project-guardrails.md",
+      "scan_method": "UTF8_CAPACITY_FIELD_AND_TOKEN_UNIT_SCAN",
+      "sha256": "7221d301806b6004e87bc891727e19cdb193a6de7c5a60d41807f97c327cf1a1"
+    },
+    {
+      "candidate_occurrence_count": 0,
+      "categories": [
+        "comments_docs"
+      ],
+      "path": ".agents/skills/novel-dev-council/references/regression-shield.md",
+      "scan_method": "UTF8_CAPACITY_FIELD_AND_TOKEN_UNIT_SCAN",
+      "sha256": "29165b7ebdc2fe4d3c143b57a60e81271cf7185c7e70cb6f5ade3c1756f997aa"
+    },
+    {
+      "candidate_occurrence_count": 0,
+      "categories": [
+        "comments_docs"
+      ],
+      "path": ".agents/skills/novel-dev-council/references/review-protocol.md",
+      "scan_method": "UTF8_CAPACITY_FIELD_AND_TOKEN_UNIT_SCAN",
+      "sha256": "9efb05d5f548396e8de0b13e095868328c7533ff557e2c237b94b7801ff41403"
+    },
+    {
+      "candidate_occurrence_count": 0,
+      "categories": [
+        "comments_docs"
+      ],
+      "path": ".agents/skills/novel-dev-council/references/roles.md",
+      "scan_method": "UTF8_CAPACITY_FIELD_AND_TOKEN_UNIT_SCAN",
+      "sha256": "95c69973e171bdcb3d3a72832857af7d68526a14a1e93a50d258f24fa159c9c2"
+    },
+    {
+      "candidate_occurrence_count": 0,
+      "categories": [
+        "comments_docs"
+      ],
+      "path": ".agents/skills/novel-dev-council/scripts/check_project_scope.py",
+      "scan_method": "UTF8_CAPACITY_FIELD_AND_TOKEN_UNIT_SCAN",
+      "sha256": "51b95fb8fdb5a30514557e9be8d218ae944e90361e98bfced2e9887d4862647a"
+    },
+    {
+      "candidate_occurrence_count": 0,
+      "categories": [
+        "comments_docs"
+      ],
+      "path": ".agents/skills/novel-dev-council/scripts/inspect_change_gate.py",
+      "scan_method": "UTF8_CAPACITY_FIELD_AND_TOKEN_UNIT_SCAN",
+      "sha256": "d93815dcc946df31cd5a0437a5a47da089cea69f7627a9e804351ca6a3c93a85"
+    },
+    {
+      "candidate_occurrence_count": 0,
+      "categories": [
+        "comments_docs"
+      ],
+      "path": ".superpowers/sdd/2026-07-28-safe-targeted-revision/task-11-fix-1-report.md",
+      "scan_method": "UTF8_CAPACITY_FIELD_AND_TOKEN_UNIT_SCAN",
+      "sha256": "f0c39d97afaa403cbd81221addc86f03b019683836546da6cc2baf8b7af24ed7"
+    },
+    {
+      "candidate_occurrence_count": 0,
+      "categories": [
+        "comments_docs"
+      ],
+      "path": ".superpowers/sdd/2026-07-28-safe-targeted-revision/task-11-fix-2-report.md",
+      "scan_method": "UTF8_CAPACITY_FIELD_AND_TOKEN_UNIT_SCAN",
+      "sha256": "aacd7dafcb1b7b90378eb2b20353bbe22e4825b3f1c0bd98fcc917daa2579250"
+    },
+    {
+      "candidate_occurrence_count": 0,
+      "categories": [
+        "comments_docs"
+      ],
+      "path": ".superpowers/sdd/2026-07-28-safe-targeted-revision/task-11-fix-3-report.md",
+      "scan_method": "UTF8_CAPACITY_FIELD_AND_TOKEN_UNIT_SCAN",
+      "sha256": "539ce61e37f3f3a97ddc5e992e0522f0dd6de336e54df3f901ab2ceb7f421298"
+    },
+    {
+      "candidate_occurrence_count": 0,
+      "categories": [
+        "comments_docs"
+      ],
+      "path": ".superpowers/sdd/2026-07-28-safe-targeted-revision/task-11-report.md",
+      "scan_method": "UTF8_CAPACITY_FIELD_AND_TOKEN_UNIT_SCAN",
+      "sha256": "2b93d28d07613ec07dc846a9d99810c66d4e5aeeae878b1c72a1eb124219f96e"
+    },
+    {
+      "candidate_occurrence_count": 0,
+      "categories": [
+        "comments_docs"
+      ],
+      "path": "AGENTS.md",
+      "scan_method": "UTF8_CAPACITY_FIELD_AND_TOKEN_UNIT_SCAN",
+      "sha256": "6d3fc98f4c2df3aa9e6a15b827ec1ac8614a388efb307d0f1040a23cf7ed55a1"
+    },
+    {
+      "candidate_occurrence_count": 3,
+      "categories": [
+        "comments_docs"
+      ],
+      "path": "README.md",
+      "scan_method": "UTF8_CAPACITY_FIELD_AND_TOKEN_UNIT_SCAN",
+      "sha256": "6c576cb2ee9b3470fd7830dd861f670216db031f5489c02c3501d1a30006b52d"
+    },
+    {
+      "candidate_occurrence_count": 0,
+      "categories": [
         "capability_budget_reports",
+        "comments_docs",
         "provider_model_config",
         "route_manifests_provider_matrices"
       ],
@@ -102,7 +248,7 @@
       "sha256": "1e2a268d8b82f53e1b71a2e1ea6a7dbf564a258f4ec745ddc6dca5707493738d"
     },
     {
-      "candidate_occurrence_count": 16,
+      "candidate_occurrence_count": 18,
       "categories": [
         "comments_docs"
       ],
@@ -5137,7 +5283,7 @@
       "sha256": "4e0be48184896404e9775b7c6cca11e9c9f1dd5c44e002b7d99585b2395084fd"
     },
     {
-      "candidate_occurrence_count": 25,
+      "candidate_occurrence_count": 13,
       "categories": [
         "comments_docs",
         "reports_tree"
@@ -7270,7 +7416,7 @@
       "sha256": "bc258a72b0ecb732307ced36ef2316fd2e5918d3d06a90f8e9b48ede0e7ecc57"
     },
     {
-      "candidate_occurrence_count": 7,
+      "candidate_occurrence_count": 6,
       "categories": [
         "comments_docs",
         "reports_tree"
@@ -7301,7 +7447,7 @@
       "sha256": "1a0d794bb4342c7529835b622eb54516616a42c4588fd39de9ceb6c1a36c0623"
     },
     {
-      "candidate_occurrence_count": 6,
+      "candidate_occurrence_count": 5,
       "categories": [
         "comments_docs",
         "reports_tree"
@@ -33088,7 +33234,7 @@
       "sha256": "448df1186aa7ddb8a026895dd287c1693d2a539c6796330222ee33efb997f188"
     },
     {
-      "candidate_occurrence_count": 8,
+      "candidate_occurrence_count": 7,
       "categories": [
         "comments_docs"
       ],
@@ -33414,6 +33560,24 @@
       "path": "docs/superpowers/specs/r1-pa1-diagnostic-human-readable-fields-v1.json",
       "scan_method": "UTF8_CAPACITY_FIELD_AND_TOKEN_UNIT_SCAN",
       "sha256": "7e20ee4c22ba9c14452c6d58701d76952c46c98c08a8785d99026c77a4f444d8"
+    },
+    {
+      "candidate_occurrence_count": 0,
+      "categories": [
+        "comments_docs"
+      ],
+      "path": "hatch_build.py",
+      "scan_method": "UTF8_CAPACITY_FIELD_AND_TOKEN_UNIT_SCAN",
+      "sha256": "c5ff0fbbb5787f1b2cedc820815212512941c43485749dcc3188549527261311"
+    },
+    {
+      "candidate_occurrence_count": 0,
+      "categories": [
+        "comments_docs"
+      ],
+      "path": "pyproject.toml",
+      "scan_method": "UTF8_CAPACITY_FIELD_AND_TOKEN_UNIT_SCAN",
+      "sha256": "f05942fcc154507ba01cab79c51fca016bcd00ee2aa671f9f32ab2e2e24c912e"
     },
     {
       "candidate_occurrence_count": 0,
@@ -33823,7 +33987,7 @@
       ],
       "path": "src/novel_flywheel/full_short_execution.py",
       "scan_method": "UTF8_CAPACITY_FIELD_AND_TOKEN_UNIT_SCAN",
-      "sha256": "63c10a94b51bcc6c5fbb194f559a4232bbdb6b9a63d616773c6b585eb5255c12"
+      "sha256": "1f5e6be460d381f6babc09ff8b70a9f684ffb6caa216324624c305ce7d810a68"
     },
     {
       "candidate_occurrence_count": 0,
@@ -33832,7 +33996,7 @@
       ],
       "path": "src/novel_flywheel/full_short_reason_catalog.py",
       "scan_method": "UTF8_CAPACITY_FIELD_AND_TOKEN_UNIT_SCAN",
-      "sha256": "f1d648267487aa192db1d22842236f604216af2d846c632a0010f4e183060cef"
+      "sha256": "17d4a958b0c292ac5387c8ebebaf69900652b468e246b32d8af229ec10a3507c"
     },
     {
       "candidate_occurrence_count": 0,
@@ -35034,14 +35198,14 @@
       "sha256": "30aaadaa5aa2eb8365fa4ab503b3e654638732341b1f9881b7b1ec99e2d82792"
     },
     {
-      "candidate_occurrence_count": 31,
+      "candidate_occurrence_count": 32,
       "categories": [
         "comments_docs",
         "previous_approval_canary_packets"
       ],
       "path": "tests/canary/test_full_short_runner_hardening.py",
       "scan_method": "UTF8_CAPACITY_FIELD_AND_TOKEN_UNIT_SCAN",
-      "sha256": "e0e35e6413bd2004db3a4da7b58d6f4691b6f2d46a28d4741b0c1832d2c7a016"
+      "sha256": "2e454334f306bb51cf36e88b55382cef6f39c4d21116740a5350c4714e16faf7"
     },
     {
       "candidate_occurrence_count": 7,
@@ -36748,7 +36912,7 @@
       ],
       "path": "tests/test_full_short_execution.py",
       "scan_method": "UTF8_CAPACITY_FIELD_AND_TOKEN_UNIT_SCAN",
-      "sha256": "c189cdef5533854b5ff8cd3cf57c848fcc388331012e2dc13cd90dda5654fd13"
+      "sha256": "041f70dae0276b43b51ba00f15d2b97d76a3466516e2d1b8b7704377768cdfb7"
     },
     {
       "candidate_occurrence_count": 0,
@@ -38357,7 +38521,7 @@
       "sha256": "6ee5929393a29a829789adc9a42604c2f8ac31f881bc027126007db1a69cd62f"
     },
     {
-      "candidate_occurrence_count": 13,
+      "candidate_occurrence_count": 12,
       "categories": [
         "comments_docs",
         "previous_approval_canary_packets"
@@ -38529,7 +38693,7 @@
       "sha256": "aa099ca02530ba8bc4a5b61a79bfccf70de7c7464e86e868423a66802eb29d0c"
     },
     {
-      "candidate_occurrence_count": 14,
+      "candidate_occurrence_count": 13,
       "categories": [
         "comments_docs",
         "previous_approval_canary_packets"
@@ -38589,7 +38753,7 @@
       "sha256": "77a84f3899d163aa3c69a831a0a79a80ea0e6d83049e73b795663d11dad9746d"
     },
     {
-      "candidate_occurrence_count": 4,
+      "candidate_occurrence_count": 3,
       "categories": [
         "comments_docs",
         "previous_approval_canary_packets"
@@ -39132,7 +39296,7 @@
       ],
       "path": "tools/diagnostics/materialize_full_short_runtime_architecture_redesign_v3.py",
       "scan_method": "UTF8_CAPACITY_FIELD_AND_TOKEN_UNIT_SCAN",
-      "sha256": "ef3cac5d9116fe8527691ba26ea7a9f0042773d31cb71d3c46c85eb00e8d6ceb"
+      "sha256": "f0b143bb033200118b3fbaaa017f82215d9cb461cc1ca05b0cf0d1247cd07589"
     },
     {
       "candidate_occurrence_count": 0,
@@ -39400,6 +39564,151 @@
     {
       "candidate_occurrence_count": 0,
       "categories": [
+        "comments_docs"
+      ],
+      "path": "vendor/novel-skills/README.md",
+      "scan_method": "UTF8_CAPACITY_FIELD_AND_TOKEN_UNIT_SCAN",
+      "sha256": "ce070641a10eb057ea46688e3fa077a7e6b676aeb995f0ec546c02b3d53bbfad"
+    },
+    {
+      "candidate_occurrence_count": 0,
+      "categories": [
+        "comments_docs"
+      ],
+      "path": "vendor/novel-skills/skill-section-index-v1.json",
+      "scan_method": "UTF8_CAPACITY_FIELD_AND_TOKEN_UNIT_SCAN",
+      "sha256": "06d341862bf644f5aaed6624ccc47dd0ea93a5a2bb62c83a464acde21d31ac6c"
+    },
+    {
+      "candidate_occurrence_count": 0,
+      "categories": [
+        "comments_docs"
+      ],
+      "path": "vendor/novel-skills/skill-section-index-v2.json",
+      "scan_method": "UTF8_CAPACITY_FIELD_AND_TOKEN_UNIT_SCAN",
+      "sha256": "b9c7c9c3cf9eccae3b7886d7e7dca93e60ade62c5d014b5defedc692371ae2d2"
+    },
+    {
+      "candidate_occurrence_count": 0,
+      "categories": [
+        "comments_docs"
+      ],
+      "path": "vendor/novel-skills/source/better-writing/.github/workflows/ci.yml",
+      "scan_method": "UTF8_CAPACITY_FIELD_AND_TOKEN_UNIT_SCAN",
+      "sha256": "27833473426e6ce358991b5a7b983ffaf7ede0a1f126b423297b28c76ff46a89"
+    },
+    {
+      "candidate_occurrence_count": 0,
+      "categories": [
+        "comments_docs"
+      ],
+      "path": "vendor/novel-skills/source/better-writing/CHANGELOG.md",
+      "scan_method": "UTF8_CAPACITY_FIELD_AND_TOKEN_UNIT_SCAN",
+      "sha256": "5c33018390fab90088e53aa4ef72f4b967df77e6f7a1ecaa2b363db5be068b6d"
+    },
+    {
+      "candidate_occurrence_count": 0,
+      "categories": [
+        "comments_docs"
+      ],
+      "path": "vendor/novel-skills/source/better-writing/README.md",
+      "scan_method": "UTF8_CAPACITY_FIELD_AND_TOKEN_UNIT_SCAN",
+      "sha256": "f3e02b2dc0ba4720fa10eb5aebe4e333b0f9018c11be02370c6cb2979fd38fed"
+    },
+    {
+      "candidate_occurrence_count": 0,
+      "categories": [
+        "comments_docs"
+      ],
+      "path": "vendor/novel-skills/source/better-writing/SKILL.md",
+      "scan_method": "UTF8_CAPACITY_FIELD_AND_TOKEN_UNIT_SCAN",
+      "sha256": "a7af6d2ca2c0ec53c237e755a6e5b908a5244210a74cf1a9b75c5e54c97e2d2b"
+    },
+    {
+      "candidate_occurrence_count": 0,
+      "categories": [
+        "comments_docs"
+      ],
+      "path": "vendor/novel-skills/source/better-writing/agents/openai.yaml",
+      "scan_method": "UTF8_CAPACITY_FIELD_AND_TOKEN_UNIT_SCAN",
+      "sha256": "1cb74602cb6cbd5382501e2abc7608816902e89228225c4d50a16e931c8ed14b"
+    },
+    {
+      "candidate_occurrence_count": 0,
+      "categories": [
+        "comments_docs"
+      ],
+      "path": "vendor/novel-skills/source/better-writing/evals/README.md",
+      "scan_method": "UTF8_CAPACITY_FIELD_AND_TOKEN_UNIT_SCAN",
+      "sha256": "8aa5989f130127f140a8402cc872c251ad6fd6ce38be48897103cbd4f0b3fd8c"
+    },
+    {
+      "candidate_occurrence_count": 0,
+      "categories": [
+        "comments_docs"
+      ],
+      "path": "vendor/novel-skills/source/better-writing/evals/examples/chatbot-artefacts.md",
+      "scan_method": "UTF8_CAPACITY_FIELD_AND_TOKEN_UNIT_SCAN",
+      "sha256": "bfb99cc5f28150a1f54900960bab96306ac225d8de08e1c411918ef8feaba571"
+    },
+    {
+      "candidate_occurrence_count": 0,
+      "categories": [
+        "comments_docs"
+      ],
+      "path": "vendor/novel-skills/source/better-writing/evals/examples/launch-email.md",
+      "scan_method": "UTF8_CAPACITY_FIELD_AND_TOKEN_UNIT_SCAN",
+      "sha256": "2277988b88e6d11b68244de8fcc1a563a75c2c0b6f6fb28433ab32a7b57434cb"
+    },
+    {
+      "candidate_occurrence_count": 0,
+      "categories": [
+        "comments_docs"
+      ],
+      "path": "vendor/novel-skills/source/better-writing/evals/examples/over-signposting.md",
+      "scan_method": "UTF8_CAPACITY_FIELD_AND_TOKEN_UNIT_SCAN",
+      "sha256": "19f1c7801914b59a90522a6edf5efe1a6dd97983fd4ad918ddd54b2b22778edd"
+    },
+    {
+      "candidate_occurrence_count": 0,
+      "categories": [
+        "comments_docs"
+      ],
+      "path": "vendor/novel-skills/source/better-writing/evals/examples/plain-human.md",
+      "scan_method": "UTF8_CAPACITY_FIELD_AND_TOKEN_UNIT_SCAN",
+      "sha256": "66c15df98ef660ff83a0dc6563255c2a9e4a9c368d80ac120914c0931d73fa24"
+    },
+    {
+      "candidate_occurrence_count": 0,
+      "categories": [
+        "comments_docs"
+      ],
+      "path": "vendor/novel-skills/source/better-writing/evals/examples/quarterly-report.md",
+      "scan_method": "UTF8_CAPACITY_FIELD_AND_TOKEN_UNIT_SCAN",
+      "sha256": "4292812a348221012d6e2142290a8c759b941d7d7f05a0a7776544bafb5c704f"
+    },
+    {
+      "candidate_occurrence_count": 0,
+      "categories": [
+        "comments_docs"
+      ],
+      "path": "vendor/novel-skills/source/better-writing/evals/examples/release-notes.md",
+      "scan_method": "UTF8_CAPACITY_FIELD_AND_TOKEN_UNIT_SCAN",
+      "sha256": "89917a2ad4a7d5fd1340235e911f70db4a7127773e1f53f547376e298ca2b25c"
+    },
+    {
+      "candidate_occurrence_count": 0,
+      "categories": [
+        "comments_docs"
+      ],
+      "path": "vendor/novel-skills/source/better-writing/evals/examples/voice-preservation.md",
+      "scan_method": "UTF8_CAPACITY_FIELD_AND_TOKEN_UNIT_SCAN",
+      "sha256": "b4c8e1ba72b115d8b43b42dc59b3526708d0bccf1cb0e842a09018895f86bc18"
+    },
+    {
+      "candidate_occurrence_count": 0,
+      "categories": [
+        "comments_docs",
         "test_fixtures"
       ],
       "path": "vendor/novel-skills/source/better-writing/evals/fixtures/chatbot-artefacts/checks.json",
@@ -39409,6 +39718,7 @@
     {
       "candidate_occurrence_count": 0,
       "categories": [
+        "comments_docs",
         "test_fixtures"
       ],
       "path": "vendor/novel-skills/source/better-writing/evals/fixtures/chatbot-artefacts/input.md",
@@ -39418,6 +39728,7 @@
     {
       "candidate_occurrence_count": 0,
       "categories": [
+        "comments_docs",
         "test_fixtures"
       ],
       "path": "vendor/novel-skills/source/better-writing/evals/fixtures/launch-email/checks.json",
@@ -39427,6 +39738,7 @@
     {
       "candidate_occurrence_count": 0,
       "categories": [
+        "comments_docs",
         "test_fixtures"
       ],
       "path": "vendor/novel-skills/source/better-writing/evals/fixtures/launch-email/input.md",
@@ -39436,6 +39748,7 @@
     {
       "candidate_occurrence_count": 0,
       "categories": [
+        "comments_docs",
         "test_fixtures"
       ],
       "path": "vendor/novel-skills/source/better-writing/evals/fixtures/over-signposting/checks.json",
@@ -39445,6 +39758,7 @@
     {
       "candidate_occurrence_count": 0,
       "categories": [
+        "comments_docs",
         "test_fixtures"
       ],
       "path": "vendor/novel-skills/source/better-writing/evals/fixtures/over-signposting/input.md",
@@ -39454,6 +39768,7 @@
     {
       "candidate_occurrence_count": 0,
       "categories": [
+        "comments_docs",
         "test_fixtures"
       ],
       "path": "vendor/novel-skills/source/better-writing/evals/fixtures/plain-human/checks.json",
@@ -39463,6 +39778,7 @@
     {
       "candidate_occurrence_count": 0,
       "categories": [
+        "comments_docs",
         "test_fixtures"
       ],
       "path": "vendor/novel-skills/source/better-writing/evals/fixtures/plain-human/input.md",
@@ -39472,6 +39788,7 @@
     {
       "candidate_occurrence_count": 0,
       "categories": [
+        "comments_docs",
         "test_fixtures"
       ],
       "path": "vendor/novel-skills/source/better-writing/evals/fixtures/quarterly-report/checks.json",
@@ -39481,6 +39798,7 @@
     {
       "candidate_occurrence_count": 0,
       "categories": [
+        "comments_docs",
         "test_fixtures"
       ],
       "path": "vendor/novel-skills/source/better-writing/evals/fixtures/quarterly-report/input.md",
@@ -39490,6 +39808,7 @@
     {
       "candidate_occurrence_count": 0,
       "categories": [
+        "comments_docs",
         "test_fixtures"
       ],
       "path": "vendor/novel-skills/source/better-writing/evals/fixtures/release-notes/checks.json",
@@ -39499,6 +39818,7 @@
     {
       "candidate_occurrence_count": 0,
       "categories": [
+        "comments_docs",
         "test_fixtures"
       ],
       "path": "vendor/novel-skills/source/better-writing/evals/fixtures/release-notes/input.md",
@@ -39508,6 +39828,7 @@
     {
       "candidate_occurrence_count": 0,
       "categories": [
+        "comments_docs",
         "test_fixtures"
       ],
       "path": "vendor/novel-skills/source/better-writing/evals/fixtures/voice-preservation/checks.json",
@@ -39517,6 +39838,7 @@
     {
       "candidate_occurrence_count": 0,
       "categories": [
+        "comments_docs",
         "test_fixtures"
       ],
       "path": "vendor/novel-skills/source/better-writing/evals/fixtures/voice-preservation/input.md",
@@ -39526,15 +39848,469 @@
     {
       "candidate_occurrence_count": 0,
       "categories": [
+        "comments_docs"
+      ],
+      "path": "vendor/novel-skills/source/better-writing/evals/run_evals.py",
+      "scan_method": "UTF8_CAPACITY_FIELD_AND_TOKEN_UNIT_SCAN",
+      "sha256": "4cb2e3ca0e9eac4c771a863ccc55cd8bfc01d5141b52d155ffaaf521e74dec47"
+    },
+    {
+      "candidate_occurrence_count": 0,
+      "categories": [
+        "comments_docs"
+      ],
+      "path": "vendor/novel-skills/source/better-writing/references/ai-writing-patterns.md",
+      "scan_method": "UTF8_CAPACITY_FIELD_AND_TOKEN_UNIT_SCAN",
+      "sha256": "7e6c85c8135668192b40f70a8bda79562d91a130b896284ff150bf05d44fa67d"
+    },
+    {
+      "candidate_occurrence_count": 0,
+      "categories": [
+        "comments_docs"
+      ],
+      "path": "vendor/novel-skills/source/better-writing/references/genre-tells.md",
+      "scan_method": "UTF8_CAPACITY_FIELD_AND_TOKEN_UNIT_SCAN",
+      "sha256": "b9ed9d1341859f2ea54eefbf1301e9f0e865cecf885aa58707032ad1794faab3"
+    },
+    {
+      "candidate_occurrence_count": 0,
+      "categories": [
+        "comments_docs"
+      ],
+      "path": "vendor/novel-skills/source/better-writing/references/preflight.md",
+      "scan_method": "UTF8_CAPACITY_FIELD_AND_TOKEN_UNIT_SCAN",
+      "sha256": "488f39ebd18dc92c8c20614f266c5c84bf59be124d6336764353c0504953eb36"
+    },
+    {
+      "candidate_occurrence_count": 0,
+      "categories": [
+        "comments_docs"
+      ],
+      "path": "vendor/novel-skills/source/better-writing/references/sources.md",
+      "scan_method": "UTF8_CAPACITY_FIELD_AND_TOKEN_UNIT_SCAN",
+      "sha256": "1e7866e7dd6ed5786ade5ee642d18f69aeda5ca835a36db68022893c2e3bb59d"
+    },
+    {
+      "candidate_occurrence_count": 0,
+      "categories": [
+        "comments_docs"
+      ],
+      "path": "vendor/novel-skills/source/better-writing/references/structures-and-phrases.md",
+      "scan_method": "UTF8_CAPACITY_FIELD_AND_TOKEN_UNIT_SCAN",
+      "sha256": "085b697bf7160bfc7e1cd0b4845bdfafed4101b31aa7046a0792919e7cfa6e1f"
+    },
+    {
+      "candidate_occurrence_count": 0,
+      "categories": [
+        "comments_docs"
+      ],
+      "path": "vendor/novel-skills/source/better-writing/references/voice-and-context.md",
+      "scan_method": "UTF8_CAPACITY_FIELD_AND_TOKEN_UNIT_SCAN",
+      "sha256": "cc3c0a7f3abd494ec9f4428edfd5cd5dd03b3f235b58bc1eb6199662a1c7a51e"
+    },
+    {
+      "candidate_occurrence_count": 0,
+      "categories": [
+        "comments_docs"
+      ],
+      "path": "vendor/novel-skills/source/better-writing/scripts/validate.py",
+      "scan_method": "UTF8_CAPACITY_FIELD_AND_TOKEN_UNIT_SCAN",
+      "sha256": "ad3e9226921eb22ef97bf33e27bb2f4ae4a817949aa500c57f4e5febfd43ca6e"
+    },
+    {
+      "candidate_occurrence_count": 0,
+      "categories": [
+        "comments_docs"
+      ],
+      "path": "vendor/novel-skills/source/better-writing/skills/better-writing/CHANGELOG.md",
+      "scan_method": "UTF8_CAPACITY_FIELD_AND_TOKEN_UNIT_SCAN",
+      "sha256": "1fd710a35393616a7f8416fb6fea2d9ee31fae4d309e820f9212a9a83885339e"
+    },
+    {
+      "candidate_occurrence_count": 0,
+      "categories": [
+        "comments_docs"
+      ],
+      "path": "vendor/novel-skills/source/better-writing/skills/better-writing/README.md",
+      "scan_method": "UTF8_CAPACITY_FIELD_AND_TOKEN_UNIT_SCAN",
+      "sha256": "4cc4e4c8a5120617ab0800cd8f722a9797f7a9c04d4a159fd42a4419f82c7c30"
+    },
+    {
+      "candidate_occurrence_count": 0,
+      "categories": [
+        "comments_docs"
+      ],
+      "path": "vendor/novel-skills/source/better-writing/skills/better-writing/SKILL.md",
+      "scan_method": "UTF8_CAPACITY_FIELD_AND_TOKEN_UNIT_SCAN",
+      "sha256": "51e5cba874c5a2ce71c3adf50602abec67bd6e4231d0c666d98eb27a219af837"
+    },
+    {
+      "candidate_occurrence_count": 0,
+      "categories": [
+        "comments_docs"
+      ],
+      "path": "vendor/novel-skills/source/better-writing/skills/better-writing/agents/openai.yaml",
+      "scan_method": "UTF8_CAPACITY_FIELD_AND_TOKEN_UNIT_SCAN",
+      "sha256": "215bd39c9d480b4dc0c5f317c668eed2b3c3c9a56fe359d05f6ac0d2e4b8759a"
+    },
+    {
+      "candidate_occurrence_count": 0,
+      "categories": [
+        "comments_docs"
+      ],
+      "path": "vendor/novel-skills/source/better-writing/skills/better-writing/references/ai-writing-patterns.md",
+      "scan_method": "UTF8_CAPACITY_FIELD_AND_TOKEN_UNIT_SCAN",
+      "sha256": "3cc6190898dfad9ce5424f44022dfc67f17df1c6ba20d05f71664a478691b229"
+    },
+    {
+      "candidate_occurrence_count": 0,
+      "categories": [
+        "comments_docs"
+      ],
+      "path": "vendor/novel-skills/source/better-writing/skills/better-writing/references/genre-tells.md",
+      "scan_method": "UTF8_CAPACITY_FIELD_AND_TOKEN_UNIT_SCAN",
+      "sha256": "e6af8f849996a51128aabc0746f53ccde585e16373496561789a2bb58f2455bc"
+    },
+    {
+      "candidate_occurrence_count": 0,
+      "categories": [
+        "comments_docs"
+      ],
+      "path": "vendor/novel-skills/source/better-writing/skills/better-writing/references/preflight.md",
+      "scan_method": "UTF8_CAPACITY_FIELD_AND_TOKEN_UNIT_SCAN",
+      "sha256": "e1d132fbf07bfde7e6616063016cb02edcc39b086f27dc7507ec55f74deafa7f"
+    },
+    {
+      "candidate_occurrence_count": 0,
+      "categories": [
+        "comments_docs"
+      ],
+      "path": "vendor/novel-skills/source/better-writing/skills/better-writing/references/sources.md",
+      "scan_method": "UTF8_CAPACITY_FIELD_AND_TOKEN_UNIT_SCAN",
+      "sha256": "4a058ed868d8f1d93727e378834aa308c404e5def88dc5dbedbd3628cccad7d0"
+    },
+    {
+      "candidate_occurrence_count": 0,
+      "categories": [
+        "comments_docs"
+      ],
+      "path": "vendor/novel-skills/source/better-writing/skills/better-writing/references/structures-and-phrases.md",
+      "scan_method": "UTF8_CAPACITY_FIELD_AND_TOKEN_UNIT_SCAN",
+      "sha256": "885b0b844c19c98aa51ef39ad346cabce51fbe3aaf1325d1ed93768c182ada9a"
+    },
+    {
+      "candidate_occurrence_count": 0,
+      "categories": [
+        "comments_docs"
+      ],
+      "path": "vendor/novel-skills/source/better-writing/skills/better-writing/references/voice-and-context.md",
+      "scan_method": "UTF8_CAPACITY_FIELD_AND_TOKEN_UNIT_SCAN",
+      "sha256": "b95ea183dbdb5cb9897da277a27dfa64bdcdebd38ee6122b4ecaef80be14231e"
+    },
+    {
+      "candidate_occurrence_count": 0,
+      "categories": [
+        "comments_docs"
+      ],
+      "path": "vendor/novel-skills/source/chapter-writing/SKILL.md",
+      "scan_method": "UTF8_CAPACITY_FIELD_AND_TOKEN_UNIT_SCAN",
+      "sha256": "f302204d7fd1b61e99db81bdaff19cb45a5859635f6173404ddd2b985a1df346"
+    },
+    {
+      "candidate_occurrence_count": 0,
+      "categories": [
+        "comments_docs"
+      ],
+      "path": "vendor/novel-skills/source/chapter-writing/references/chapter-template.md",
+      "scan_method": "UTF8_CAPACITY_FIELD_AND_TOKEN_UNIT_SCAN",
+      "sha256": "1ad1896e09ad84f3fee3e97177c9217c55088bdc7c41e08e2250fc1bcc773739"
+    },
+    {
+      "candidate_occurrence_count": 0,
+      "categories": [
+        "comments_docs"
+      ],
+      "path": "vendor/novel-skills/source/chapter-writing/references/scene-template.md",
+      "scan_method": "UTF8_CAPACITY_FIELD_AND_TOKEN_UNIT_SCAN",
+      "sha256": "0da3cdd511c97c851ef6e8ecfbb91fe48ed85349ce80b4008944df2aa1c84f46"
+    },
+    {
+      "candidate_occurrence_count": 0,
+      "categories": [
+        "comments_docs"
+      ],
+      "path": "vendor/novel-skills/source/chapter-writing/references/writing-guidelines.md",
+      "scan_method": "UTF8_CAPACITY_FIELD_AND_TOKEN_UNIT_SCAN",
+      "sha256": "86467e6b843b1ac2c72312a081f87ddde23870d875f9c97ada57d2bf4108b893"
+    },
+    {
+      "candidate_occurrence_count": 0,
+      "categories": [
+        "comments_docs"
+      ],
+      "path": "vendor/novel-skills/source/character-management/SKILL.md",
+      "scan_method": "UTF8_CAPACITY_FIELD_AND_TOKEN_UNIT_SCAN",
+      "sha256": "bc21410cc846d00b766a8c465c30e48af859083c83d2f731bd7eb415c76c578a"
+    },
+    {
+      "candidate_occurrence_count": 0,
+      "categories": [
+        "comments_docs"
+      ],
+      "path": "vendor/novel-skills/source/character-management/references/character-template.md",
+      "scan_method": "UTF8_CAPACITY_FIELD_AND_TOKEN_UNIT_SCAN",
+      "sha256": "522739455fe7dfbc2bfc60e364e3106cd100d422898dbf53c67f4a62e5c42746"
+    },
+    {
+      "candidate_occurrence_count": 0,
+      "categories": [
+        "comments_docs"
+      ],
+      "path": "vendor/novel-skills/source/character-management/references/relationship-types.md",
+      "scan_method": "UTF8_CAPACITY_FIELD_AND_TOKEN_UNIT_SCAN",
+      "sha256": "c43761d100598a4651999fccd078c499b6df9aae05786250c02e31a40493ad56"
+    },
+    {
+      "candidate_occurrence_count": 0,
+      "categories": [
+        "comments_docs"
+      ],
+      "path": "vendor/novel-skills/source/dialogue/SKILL.md",
+      "scan_method": "UTF8_CAPACITY_FIELD_AND_TOKEN_UNIT_SCAN",
+      "sha256": "54c9e2bc11aafd14f40081ee1bbee748dfe0c263ff8b810d6cb193dad6edd9f6"
+    },
+    {
+      "candidate_occurrence_count": 0,
+      "categories": [
+        "comments_docs"
+      ],
+      "path": "vendor/novel-skills/source/humanizer-zh/README.md",
+      "scan_method": "UTF8_CAPACITY_FIELD_AND_TOKEN_UNIT_SCAN",
+      "sha256": "60cd3ed8b4753837ca8f8fcebf6076a38591a269d91ea1791aa7448e5a1b1b58"
+    },
+    {
+      "candidate_occurrence_count": 0,
+      "categories": [
+        "comments_docs"
+      ],
+      "path": "vendor/novel-skills/source/humanizer-zh/SKILL.md",
+      "scan_method": "UTF8_CAPACITY_FIELD_AND_TOKEN_UNIT_SCAN",
+      "sha256": "e0edbdbc9008644263d5573fb59beac95794e188fd99c35012bfd79e9ae4beeb"
+    },
+    {
+      "candidate_occurrence_count": 0,
+      "categories": [
+        "comments_docs"
+      ],
+      "path": "vendor/novel-skills/source/novel-writing/SKILL.md",
+      "scan_method": "UTF8_CAPACITY_FIELD_AND_TOKEN_UNIT_SCAN",
+      "sha256": "59d2cb7f75731989ea9b24c062fb29194773eb62eb980659c55d377467a3cc0f"
+    },
+    {
+      "candidate_occurrence_count": 0,
+      "categories": [
+        "comments_docs"
+      ],
+      "path": "vendor/novel-skills/source/novel-writing/agents/openai.yaml",
+      "scan_method": "UTF8_CAPACITY_FIELD_AND_TOKEN_UNIT_SCAN",
+      "sha256": "f67dda290258884429b86361708bc4acc12edb8b72dcfc283434b09cbe9ba070"
+    },
+    {
+      "candidate_occurrence_count": 0,
+      "categories": [
+        "comments_docs"
+      ],
+      "path": "vendor/novel-skills/source/novel-writing/references/character-introductions.md",
+      "scan_method": "UTF8_CAPACITY_FIELD_AND_TOKEN_UNIT_SCAN",
+      "sha256": "626a4f440458c5a8e7787c401e44f513cf8d2920b284846f50a68ff37093e9f0"
+    },
+    {
+      "candidate_occurrence_count": 0,
+      "categories": [
+        "comments_docs"
+      ],
+      "path": "vendor/novel-skills/source/novel-writing/references/planning.md",
+      "scan_method": "UTF8_CAPACITY_FIELD_AND_TOKEN_UNIT_SCAN",
+      "sha256": "c9a7b1198b07cb3efbb031f276fa21444bd43afbfd8c486331ed182652a55d7c"
+    },
+    {
+      "candidate_occurrence_count": 0,
+      "categories": [
+        "comments_docs"
+      ],
+      "path": "vendor/novel-skills/source/novel-writing/references/realism-constraints.md",
+      "scan_method": "UTF8_CAPACITY_FIELD_AND_TOKEN_UNIT_SCAN",
+      "sha256": "04ef603caf4c575dec694290f7f1cf9c87c203454cd0f5dab43593be715fc8e2"
+    },
+    {
+      "candidate_occurrence_count": 0,
+      "categories": [
+        "comments_docs"
+      ],
+      "path": "vendor/novel-skills/source/novel-writing/references/revision-checklist.md",
+      "scan_method": "UTF8_CAPACITY_FIELD_AND_TOKEN_UNIT_SCAN",
+      "sha256": "85479c284655991300a8262c27855dab9d0f36aab342cf160afbfbaac90f4f67"
+    },
+    {
+      "candidate_occurrence_count": 0,
+      "categories": [
+        "comments_docs"
+      ],
+      "path": "vendor/novel-skills/source/novel-writing/references/scene-and-structure.md",
+      "scan_method": "UTF8_CAPACITY_FIELD_AND_TOKEN_UNIT_SCAN",
+      "sha256": "7f3b935335e5d97dbecca123b5b5ad70beb14e7d3e48427c14d86057e6e07fa4"
+    },
+    {
+      "candidate_occurrence_count": 0,
+      "categories": [
+        "comments_docs"
+      ],
+      "path": "vendor/novel-skills/source/novel-writing/references/style-fidelity.md",
+      "scan_method": "UTF8_CAPACITY_FIELD_AND_TOKEN_UNIT_SCAN",
+      "sha256": "8034fe900cc17d5b9856bcbd53b5f1df3edb3d43e0cd13b55286a91aa9a2e6b3"
+    },
+    {
+      "candidate_occurrence_count": 0,
+      "categories": [
+        "comments_docs"
+      ],
+      "path": "vendor/novel-skills/source/plot-structure/SKILL.md",
+      "scan_method": "UTF8_CAPACITY_FIELD_AND_TOKEN_UNIT_SCAN",
+      "sha256": "54a38f07a5d0106c66e30058a7e375867f3ca1924aef8208a4428c205d73146c"
+    },
+    {
+      "candidate_occurrence_count": 0,
+      "categories": [
+        "comments_docs"
+      ],
+      "path": "vendor/novel-skills/source/plot-structure/references/arc-template.md",
+      "scan_method": "UTF8_CAPACITY_FIELD_AND_TOKEN_UNIT_SCAN",
+      "sha256": "c7d5922c3a39eda28ac1e6c027e1cf9fe79e47ede850fcd6610cf1dd127c2560"
+    },
+    {
+      "candidate_occurrence_count": 0,
+      "categories": [
+        "comments_docs"
+      ],
+      "path": "vendor/novel-skills/source/plot-structure/references/promise-template.md",
+      "scan_method": "UTF8_CAPACITY_FIELD_AND_TOKEN_UNIT_SCAN",
+      "sha256": "ca34c4eba78e253cd0f6b315999c596750bbe872279e52007cc8d078caec98d1"
+    },
+    {
+      "candidate_occurrence_count": 0,
+      "categories": [
+        "comments_docs"
+      ],
+      "path": "vendor/novel-skills/source/plot-structure/references/question-template.md",
+      "scan_method": "UTF8_CAPACITY_FIELD_AND_TOKEN_UNIT_SCAN",
+      "sha256": "a432d5f68ea0475faa07fa4fec80f1486a833adf68cbeb174de0948377c313f2"
+    },
+    {
+      "candidate_occurrence_count": 0,
+      "categories": [
+        "comments_docs",
         "provider_model_config"
       ],
       "path": "vendor/novel-skills/source/plot-structure/references/structure-models.md",
       "scan_method": "UTF8_CAPACITY_FIELD_AND_TOKEN_UNIT_SCAN",
       "sha256": "c1c42fa42e5d37f749c326c0451dd0b123ddbebf7e91b19d0c0fd360c33f8e5f"
+    },
+    {
+      "candidate_occurrence_count": 0,
+      "categories": [
+        "comments_docs"
+      ],
+      "path": "vendor/novel-skills/source/revision-continuity/SKILL.md",
+      "scan_method": "UTF8_CAPACITY_FIELD_AND_TOKEN_UNIT_SCAN",
+      "sha256": "c6a39a9c03d43ea6ac345f5fa428d11005c1e9cf430b1edff8b824b8b6273da1"
+    },
+    {
+      "candidate_occurrence_count": 0,
+      "categories": [
+        "comments_docs"
+      ],
+      "path": "vendor/novel-skills/source/story-init/SKILL.md",
+      "scan_method": "UTF8_CAPACITY_FIELD_AND_TOKEN_UNIT_SCAN",
+      "sha256": "9ace3dec9fd2ca22e9f6a96a9cf54ea4f498ee6d4522301fd775bc87bd2511d6"
+    },
+    {
+      "candidate_occurrence_count": 0,
+      "categories": [
+        "comments_docs"
+      ],
+      "path": "vendor/novel-skills/source/story-maintenance/SKILL.md",
+      "scan_method": "UTF8_CAPACITY_FIELD_AND_TOKEN_UNIT_SCAN",
+      "sha256": "c9343be1365417b7323eaf98e97c2d9ac413d510bda549a30cd1d2c709b8500e"
+    },
+    {
+      "candidate_occurrence_count": 0,
+      "categories": [
+        "comments_docs"
+      ],
+      "path": "vendor/novel-skills/source/story-maintenance/scripts/story.js",
+      "scan_method": "UTF8_CAPACITY_FIELD_AND_TOKEN_UNIT_SCAN",
+      "sha256": "823a24d92af3d0f89618611dad0a65587a0c806ec22c4727f6dd7aac818f69d6"
+    },
+    {
+      "candidate_occurrence_count": 0,
+      "categories": [
+        "comments_docs"
+      ],
+      "path": "vendor/novel-skills/source/worldbuilding/SKILL.md",
+      "scan_method": "UTF8_CAPACITY_FIELD_AND_TOKEN_UNIT_SCAN",
+      "sha256": "6085390c930309c1e9f3182c50c30e9d746d0f054000f2808147a80807b2b279"
+    },
+    {
+      "candidate_occurrence_count": 0,
+      "categories": [
+        "comments_docs"
+      ],
+      "path": "vendor/novel-skills/source/worldbuilding/references/artifact-template.md",
+      "scan_method": "UTF8_CAPACITY_FIELD_AND_TOKEN_UNIT_SCAN",
+      "sha256": "7471681d588ad288480ae9f7fe10acbeeaa38f0ed0948e7a8e697cdd17b18766"
+    },
+    {
+      "candidate_occurrence_count": 0,
+      "categories": [
+        "comments_docs"
+      ],
+      "path": "vendor/novel-skills/source/worldbuilding/references/faction-template.md",
+      "scan_method": "UTF8_CAPACITY_FIELD_AND_TOKEN_UNIT_SCAN",
+      "sha256": "a3bb6fe51de4e4116642992d379582dadc5895fa791e802308723c99bc6d01ce"
+    },
+    {
+      "candidate_occurrence_count": 0,
+      "categories": [
+        "comments_docs"
+      ],
+      "path": "vendor/novel-skills/source/worldbuilding/references/location-template.md",
+      "scan_method": "UTF8_CAPACITY_FIELD_AND_TOKEN_UNIT_SCAN",
+      "sha256": "46114544c3b7ca01b101ee7f859684bb1ab3cc7b552b1e709c4f405262dd61d5"
+    },
+    {
+      "candidate_occurrence_count": 0,
+      "categories": [
+        "comments_docs"
+      ],
+      "path": "vendor/novel-skills/source/worldbuilding/references/system-template.md",
+      "scan_method": "UTF8_CAPACITY_FIELD_AND_TOKEN_UNIT_SCAN",
+      "sha256": "39086414c53352a10661f7554d21c362df1a5e7d1aa205ad8548ae932f99474b"
+    },
+    {
+      "candidate_occurrence_count": 0,
+      "categories": [
+        "comments_docs"
+      ],
+      "path": "vendor/novel-skills/source/worldbuilding/references/world-element-types.md",
+      "scan_method": "UTF8_CAPACITY_FIELD_AND_TOKEN_UNIT_SCAN",
+      "sha256": "fe747c7e1a156d1c0204ab865a26e8f82ec0588c7b3772481b36861896bcf783"
     }
   ],
-  "searched_file_inventory_sha256": "cf77c567d0a10f8162402523d786143d951a539e2f1be777e61a09acf25f8089",
+  "searched_file_inventory_sha256": "b80cd79ab3d87addfa028b1eb69a63d944fc8c8d5ce97c758d42106aa66c39ce",
+  "source_truth_boundary": "ALL_GIT_TRACKED_REPOSITORY_FILES",
   "status": "SEARCH_COMPLETE",
-  "tracked_repository_file_count": 4043,
+  "tracked_repository_file_count": 4044,
+  "untracked_or_ignored_project_local_disposition": "EXCLUDED_NOT_REPOSITORY_SOURCE_TRUTH_AND_MAY_CONTAIN_SECRETS",
+  "untracked_or_ignored_project_local_search_performed": false,
   "version": 1
 }
