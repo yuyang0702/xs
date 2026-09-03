@@ -1,5 +1,5 @@
 {
-  "command": "full pytest pending",
+  "command": "$env:PYTHONDONTWRITEBYTECODE='1'; $env:NOVEL_FLYWHEEL_EXTERNAL_ACTIONS_DISABLED='1'; $env:NO_PROXY='*'; .\\.venv\\Scripts\\python.exe -m pytest -q -p no:cacheprovider --tb=short",
   "external_boundary": {
     "full_short_execution_count": 0,
     "http_calls": 0,
@@ -15,6 +15,21 @@
   },
   "implementation_head": "1259fc1e4baf9a86c8bc399ce1b22b569edd00ec",
   "schema": "FullShortRuntimeCapacityV3VerificationReceiptV1",
-  "status": "PENDING",
+  "tested_head": "755139407dbbd45a03b1f6e0569913fbb87f02cd",
+  "status": "INCOMPLETE_NON_GREEN",
+  "full_suite_green": false,
+  "initial_run_disposition": "STOPPED_AS_NOT_PRACTICAL_AFTER_WIDESPREAD_FAILURE_ERROR_CASCADE_AT_16_PERCENT",
+  "initial_run_complete_summary_available": false,
+  "diagnostic_fail_fast_command": "$env:PYTHONDONTWRITEBYTECODE='1'; $env:NOVEL_FLYWHEEL_EXTERNAL_ACTIONS_DISABLED='1'; $env:NO_PROXY='*'; .\\.venv\\Scripts\\python.exe -m pytest -q -p no:cacheprovider -x --tb=short",
+  "diagnostic_fail_fast_result": {
+    "passed": 20,
+    "failed": 1,
+    "elapsed_seconds": 26.49,
+    "first_failure": "tests/api/test_learning.py::test_outline_generation_not_ready_errors_are_fixed_chinese",
+    "failure_summary": "Expected Chinese comma in fixed Chinese error text; implementation returned ASCII comma.",
+    "path_changed_since_baseline": false
+  },
+  "v3_related_suite_status": "PASS_643",
+  "unclassified_later_failure_cascade_not_claimed_as_pass": true,
   "version": 1
 }

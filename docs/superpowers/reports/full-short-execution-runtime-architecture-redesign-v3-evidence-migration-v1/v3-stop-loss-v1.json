@@ -21,7 +21,10 @@
   "full_short_production_shaped_dry_run": "PASS_EXACT_READY_TARGET_OFFLINE_STUB",
   "schema": "FullShortRuntimeCapacityV3StopLossV1",
   "status": "ACTIVE_NOT_CLOSED",
-  "strict_l3": "PENDING",
+  "focused_tests": "PASS_255",
+  "related_tests": "PASS_643",
+  "full_suite": "INCOMPLETE_NON_GREEN_FIRST_FAILURE_OUTSIDE_V3_CHANGE_SCOPE",
+  "strict_l3": "PASS_ZERO_WARNINGS_ZERO_BLOCKERS",
   "trustworthy_full_short_readiness": "NO",
   "version": 1
 }
