@@ -2,6 +2,7 @@
   "completed_stage_count": 95,
   "completion_goal_outcome": "SHORT_WORKFLOW_COMPLETED_AND_FINAL_REVIEW_ACCEPTED",
   "completion_receipt_sha256": "10ec9d16af6d38f48903e62f64cb6865be00b1df235c9d0b1d69998899752f9b",
+  "current_head": "b59468b2042059d35cac830760c77bda37cf6c64",
   "deterministic_replay": true,
   "exact_ready_unknown_required_route_count": 7,
   "external_boundary": {
@@ -21,7 +22,7 @@
   "logical_stage_plan_sha256": "b6333e9da439706da1c27a1020adccfde0119f86e61960b891d2f5c48ae4cf09",
   "lowest_external_provider_seam_stubbed": true,
   "paid_calls": 0,
-  "project_id_prefix": "2ad716",
+  "project_id_sha256": "a69d9140943781ee24b78ff87d8ef408d29c281c6e993981dc2ef4a8eb82f720",
   "provider_request_count": 95,
   "real_credential_lookup_count": 0,
   "real_dispatch_authorized": false,
@@ -33,6 +34,7 @@
   "route_capability_closure_proved": false,
   "schema": "ExactReadyTargetFullShortRerunV1",
   "source_head": "06e8a2868c145e5db9f71bab9acef94bea5bf64a",
+  "source_head_matches_current": false,
   "source_receipt": {
     "adapter_failure_after_exact_capture_injected": false,
     "adapter_failure_recovered_by_exact_local_replay": false,
@@ -1369,6 +1371,6 @@
     "workload_sha256": "da96465f6bad2392dcc5dcfe2cbb4776f690a621360af3fa3678fc8005de0b29"
   },
   "source_receipt_sha256": "0e5341db4d6c6667a77a6393ce56b4ac520293619a0a034b9f8c450a64f3db3c",
-  "status": "PASS_PRODUCTION_SHAPED_OFFLINE_STUB",
+  "status": "HISTORICAL_OFFLINE_STUB_NOT_CURRENT_AUTHORITY",
   "version": 1
 }

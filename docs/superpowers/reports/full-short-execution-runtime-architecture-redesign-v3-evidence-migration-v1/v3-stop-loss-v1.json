@@ -18,7 +18,7 @@
   "final_authorization_ready": "NO",
   "full_short": "NOT_EXECUTED",
   "full_short_execution_authorized": "NO",
-  "full_short_production_shaped_dry_run": "PASS_EXACT_READY_TARGET_OFFLINE_STUB",
+  "full_short_production_shaped_dry_run": "HISTORICAL_OFFLINE_STUB_NOT_CURRENT_AUTHORITY",
   "schema": "FullShortRuntimeCapacityV3StopLossV1",
   "status": "ACTIVE_NOT_CLOSED",
   "strict_l3": "PENDING",

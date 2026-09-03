@@ -13,7 +13,7 @@
     "real_secret_read_count": 0
   },
   "findings": [
-    "The required role/lane set is derived from the sealed Exact READY logical-stage plan receipt.",
+    "The required role/lane set is derived from current-source required roles and their initial primary lanes; the older dry-run plan is historical behavior evidence only.",
     "Every selected route remains UNKNOWN_BLOCKED without trustworthy capability evidence."
   ],
   "focus": "Exact READY required routes",

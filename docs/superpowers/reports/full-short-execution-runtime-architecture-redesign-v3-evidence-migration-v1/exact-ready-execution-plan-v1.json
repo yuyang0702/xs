@@ -1,5 +1,6 @@
 {
   "blocker_failure_id": "capacity.route_capability_unknown",
+  "current_required_route_derivation": "CURRENT_SOURCE_REQUIRED_ROLES_PRIMARY_LANE",
   "exact_ready_execution_plan_complete": false,
   "exact_ready_plan_capacity_blocker_count": 7,
   "exact_ready_plan_unknown_required_route_count": 7,
@@ -18,7 +19,9 @@
     "real_secret_read_count": 0
   },
   "logical_stage_count": 95,
+  "logical_stage_plan_current_head_match": false,
   "logical_stage_plan_sha256": "b6333e9da439706da1c27a1020adccfde0119f86e61960b891d2f5c48ae4cf09",
+  "logical_stage_plan_source_head": "06e8a2868c145e5db9f71bab9acef94bea5bf64a",
   "physical_attempt_policy_sha256": "bc5449a91a347b0193f332a21c1ffe38e203295f12a8363c889572609a38d09f",
   "required_route_capability_snapshots": [
     {

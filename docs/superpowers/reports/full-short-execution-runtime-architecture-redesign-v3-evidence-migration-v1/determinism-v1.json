@@ -1,5 +1,6 @@
 {
-  "command": "production-shaped dry-run exact capture replay",
+  "command": "historical production-shaped dry-run exact capture replay",
+  "dry_run_source_head": "06e8a2868c145e5db9f71bab9acef94bea5bf64a",
   "external_boundary": {
     "full_short_execution_count": 0,
     "http_calls": 0,
@@ -14,11 +15,11 @@
     "real_secret_read_count": 0
   },
   "final_artifact_sha256": "7ff795c16c13596e23cef15c1efb7a98604f723c5d09f145f4e12cc5b4bd862b",
-  "implementation_head": "b4e0b2056a5e6431b7508577b1f550a92e3a0f51",
+  "implementation_head": "b59468b2042059d35cac830760c77bda37cf6c64",
   "logical_stage_plan_sha256": "b6333e9da439706da1c27a1020adccfde0119f86e61960b891d2f5c48ae4cf09",
   "replay_final_artifact_sha256": "7ff795c16c13596e23cef15c1efb7a98604f723c5d09f145f4e12cc5b4bd862b",
   "same_final_artifact": true,
   "schema": "FullShortRuntimeCapacityV3VerificationReceiptV1",
-  "status": "PASS",
+  "status": "PASS_HISTORICAL_OFFLINE_STUB_NOT_CURRENT_AUTHORITY",
   "version": 1
 }
