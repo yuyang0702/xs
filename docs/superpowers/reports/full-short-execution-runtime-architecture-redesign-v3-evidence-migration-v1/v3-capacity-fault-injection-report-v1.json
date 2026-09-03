@@ -18,7 +18,7 @@
   "provider_client_creation_count": 0,
   "registered_capacity_failure_count": 16,
   "registered_capacity_failure_coverage": "100_PERCENT",
-  "report_sha256": "2d02a80167c803340a77da401c39d4f1b71f1ad1571877a8f800e5c601d0def1",
+  "report_sha256": "2e3c5ff0bf9853855437c71a39e8b93ae55597f0f495813e47ecd939c71174ec",
   "results": [
     {
       "authority_gate_receipt_count": 0,
@@ -520,7 +520,7 @@
   "scenario_coverage": "18_INJECTED_PLUS_2_POLICY_ASSERTIONS",
   "schema_version": "FullShortCapacityFaultCampaignV3",
   "source_boundary_registry_sha256": "251f409cef60408c51e4ae8322a44f812e8beb437926251010602dfb56f6f117",
-  "source_capacity_policy_registry_sha256": "336c6a46b6671a8507bd5199b1bd7d275197117d9812fff591eba68353d80834",
+  "source_capacity_policy_registry_sha256": "97c152c2d4a93067ee5425359c1dc2a6eeee16a9280c79ef0dd63c3809138685",
   "source_fault_registry_sha256": "f96c522eb2b0a6be58f9a175eaf84fe6c1e38c515e40af15f48d832fcd6a3c4c",
   "status": "PASS",
   "supplemental_registered_failure_proofs": [

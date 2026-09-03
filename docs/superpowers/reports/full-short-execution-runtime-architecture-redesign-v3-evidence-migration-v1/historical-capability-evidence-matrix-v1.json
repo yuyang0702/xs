@@ -18,8 +18,8 @@
     "real_provider_request_attempts": 0,
     "real_secret_read_count": 0
   },
-  "mechanically_discovered_value_record_count": 1686,
-  "mechanically_discovered_value_records_sha256": "d8dbb018dd9643c28332cd55d8ecaedefc77f61938daee191616df6b64fe11f2",
+  "mechanically_discovered_value_record_count": 951,
+  "mechanically_discovered_value_records_sha256": "dcdf8838cb290e145822bbcf9403dc1e68a761932fffee04aca8bd49a9e59731",
   "mechanically_discovered_value_records_source_artifact": "historical-route-capability-evidence-v1.json",
   "route_capability_field_records": [
     {

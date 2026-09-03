@@ -21,7 +21,7 @@
         "EXACT_ROUTE_CONTEXT_WINDOW_EVIDENCE_UNAVAILABLE",
         "EXACT_ROUTE_MAX_OUTPUT_EVIDENCE_UNAVAILABLE"
       ],
-      "capability_sha256": "44adace8a7fed2991592cf957989541203d93081c187e62832627eb127f3dc51",
+      "capability_sha256": "bc3ef8f874d8a3a2ad68c47bf86c7c9efc10a74fd9f460be4cc064d02486f648",
       "capability_status": "UNKNOWN_BLOCKED",
       "context_window_tokens": null,
       "destination": "https://happyapi.org:443/v1/messages",
@@ -35,6 +35,7 @@
       "provider_id_sha256": "2ce3843fbf98768e57b7e0f38239da7d63a60637990bb80c51231ef7b67b4c84",
       "reasoning_output_reservation": "SEPARATE_REPORTED_RESERVATION_REQUIRED",
       "reasoning_token_accounting": "SEPARATE_IF_REPORTED",
+      "reasoning_token_reserve": null,
       "role": "draft",
       "route_fingerprint": "eb1676db66669efb33b72997a2c4b59e44b786e505b693f5aac88097e4454fee",
       "source_evidence": [
@@ -57,7 +58,7 @@
         "EXACT_ROUTE_CONTEXT_WINDOW_EVIDENCE_UNAVAILABLE",
         "EXACT_ROUTE_MAX_OUTPUT_EVIDENCE_UNAVAILABLE"
       ],
-      "capability_sha256": "e67eb6d104bf4c47fa18a8440adfa8c6938cedf98b9936c61281e96b1cf0a1cd",
+      "capability_sha256": "ef43df5c0862a02dc36b75c59ef428efd4e6de3e7211e78ad36839c5b36a5e13",
       "capability_status": "UNKNOWN_BLOCKED",
       "context_window_tokens": null,
       "destination": "https://happyapi.org:443/v1/messages",
@@ -71,6 +72,7 @@
       "provider_id_sha256": "2ce3843fbf98768e57b7e0f38239da7d63a60637990bb80c51231ef7b67b4c84",
       "reasoning_output_reservation": "WITHIN_COMPLETION_CAP",
       "reasoning_token_accounting": "INCLUDED_IN_COMPLETION_CAP",
+      "reasoning_token_reserve": 0,
       "role": "draft",
       "route_fingerprint": "099e358eae5fd0ff5e3d1b8cda34cd90c73c735c001ed44334ade3e3b667bf4e",
       "source_evidence": [
@@ -94,7 +96,7 @@
         "EXACT_ROUTE_CONTEXT_WINDOW_EVIDENCE_UNAVAILABLE",
         "EXACT_ROUTE_MAX_OUTPUT_EVIDENCE_UNAVAILABLE"
       ],
-      "capability_sha256": "072237aa7bde7a5f54d3c2a9c4967f700aa6583ae16dd80755f08defeb6ad792",
+      "capability_sha256": "14d7b9d9c9445b677159a65083842df093ccd7544601c7b5176c470fa5d81242",
       "capability_status": "UNKNOWN_BLOCKED",
       "context_window_tokens": null,
       "destination": "https://api.deepseek.com:443/anthropic/v1/messages",
@@ -108,6 +110,7 @@
       "provider_id_sha256": "4555bcd38d06ac2e82d7b92da7d4fdbc31122db1636254cfaefc40aa20ac3b82",
       "reasoning_output_reservation": "WITHIN_COMPLETION_CAP",
       "reasoning_token_accounting": "INCLUDED_IN_COMPLETION_CAP",
+      "reasoning_token_reserve": 0,
       "role": "final_review",
       "route_fingerprint": "04a443a6702fcc95b74906e44b7233c9370cb9b94bbbbadce4bf59c088b68c31",
       "source_evidence": [
@@ -142,7 +145,7 @@
         "EXACT_ROUTE_CONTEXT_WINDOW_EVIDENCE_UNAVAILABLE",
         "EXACT_ROUTE_MAX_OUTPUT_EVIDENCE_UNAVAILABLE"
       ],
-      "capability_sha256": "cc5762e95c946e5072327c388a267e0cbf6a5e41c22725cdec57885bb99e921b",
+      "capability_sha256": "e840ffefdbbda7d1fa755011d8f1113f584517f6311553a8d342e33fa263566b",
       "capability_status": "UNKNOWN_BLOCKED",
       "context_window_tokens": null,
       "destination": "https://lingsuan.org:443/v1/messages",
@@ -156,6 +159,7 @@
       "provider_id_sha256": "482d8aa5ef40b74b95750f8c4d105c29c0c561d4c604809d85324b5b019a0a4f",
       "reasoning_output_reservation": "WITHIN_COMPLETION_CAP",
       "reasoning_token_accounting": "INCLUDED_IN_COMPLETION_CAP",
+      "reasoning_token_reserve": 0,
       "role": "final_review",
       "route_fingerprint": "30e9cbaf86fbb4b89b43614d71cc11b359ad41e7411e8ebda5d3ce4199879bf0",
       "source_evidence": [
@@ -179,7 +183,7 @@
         "EXACT_ROUTE_CONTEXT_WINDOW_EVIDENCE_UNAVAILABLE",
         "EXACT_ROUTE_MAX_OUTPUT_EVIDENCE_UNAVAILABLE"
       ],
-      "capability_sha256": "b78914656ecdfed4d18bd0e2c5dcad57a2a5ddce32cb05e78ccb12481e13f98d",
+      "capability_sha256": "9b948fd8a8ee79d91aac1e0ba48a58088af2a7be7677755f67c5d2927253d225",
       "capability_status": "UNKNOWN_BLOCKED",
       "context_window_tokens": null,
       "destination": "https://api.deepseek.com:443/anthropic/v1/messages",
@@ -193,6 +197,7 @@
       "provider_id_sha256": "4555bcd38d06ac2e82d7b92da7d4fdbc31122db1636254cfaefc40aa20ac3b82",
       "reasoning_output_reservation": "WITHIN_COMPLETION_CAP",
       "reasoning_token_accounting": "INCLUDED_IN_COMPLETION_CAP",
+      "reasoning_token_reserve": 0,
       "role": "maintenance",
       "route_fingerprint": "04a443a6702fcc95b74906e44b7233c9370cb9b94bbbbadce4bf59c088b68c31",
       "source_evidence": [
@@ -227,7 +232,7 @@
         "EXACT_ROUTE_CONTEXT_WINDOW_EVIDENCE_UNAVAILABLE",
         "EXACT_ROUTE_MAX_OUTPUT_EVIDENCE_UNAVAILABLE"
       ],
-      "capability_sha256": "cfecf22e8439564c5c48d12ad5b0cfb2936d73a77a96c3a5b2cacaedfea4b5b4",
+      "capability_sha256": "2e272da8b61d66eeda61b056f715bcb2c3478477b14c9f062e2cb07e69071f8b",
       "capability_status": "UNKNOWN_BLOCKED",
       "context_window_tokens": null,
       "destination": "https://lingsuan.org:443/v1/messages",
@@ -241,6 +246,7 @@
       "provider_id_sha256": "482d8aa5ef40b74b95750f8c4d105c29c0c561d4c604809d85324b5b019a0a4f",
       "reasoning_output_reservation": "WITHIN_COMPLETION_CAP",
       "reasoning_token_accounting": "INCLUDED_IN_COMPLETION_CAP",
+      "reasoning_token_reserve": 0,
       "role": "maintenance",
       "route_fingerprint": "30e9cbaf86fbb4b89b43614d71cc11b359ad41e7411e8ebda5d3ce4199879bf0",
       "source_evidence": [
@@ -264,7 +270,7 @@
         "EXACT_ROUTE_CONTEXT_WINDOW_EVIDENCE_UNAVAILABLE",
         "EXACT_ROUTE_MAX_OUTPUT_EVIDENCE_UNAVAILABLE"
       ],
-      "capability_sha256": "2f7f5f597cba5caf5d28253b9da04ba6ab2411a8bc1c09fc9cca36ac87fa100c",
+      "capability_sha256": "dbe917aa8e278d594f5ed84f3246a95b005a21d8a7294f5d5f2b287abffbe4e7",
       "capability_status": "UNKNOWN_BLOCKED",
       "context_window_tokens": null,
       "destination": "https://api.deepseek.com:443/anthropic/v1/messages",
@@ -278,6 +284,7 @@
       "provider_id_sha256": "4555bcd38d06ac2e82d7b92da7d4fdbc31122db1636254cfaefc40aa20ac3b82",
       "reasoning_output_reservation": "WITHIN_COMPLETION_CAP",
       "reasoning_token_accounting": "INCLUDED_IN_COMPLETION_CAP",
+      "reasoning_token_reserve": 0,
       "role": "planning",
       "route_fingerprint": "04a443a6702fcc95b74906e44b7233c9370cb9b94bbbbadce4bf59c088b68c31",
       "source_evidence": [
@@ -312,7 +319,7 @@
         "EXACT_ROUTE_CONTEXT_WINDOW_EVIDENCE_UNAVAILABLE",
         "EXACT_ROUTE_MAX_OUTPUT_EVIDENCE_UNAVAILABLE"
       ],
-      "capability_sha256": "cc45126f76d5502e96bad4a9ac487004347f1018507d6c362d763b57bdeaa17a",
+      "capability_sha256": "b51942f1f0a63efa85504b8d1c13e40915f2b8cc97ff0c806f3c961aea0c2495",
       "capability_status": "UNKNOWN_BLOCKED",
       "context_window_tokens": null,
       "destination": "https://lingsuan.org:443/v1/messages",
@@ -326,6 +333,7 @@
       "provider_id_sha256": "482d8aa5ef40b74b95750f8c4d105c29c0c561d4c604809d85324b5b019a0a4f",
       "reasoning_output_reservation": "WITHIN_COMPLETION_CAP",
       "reasoning_token_accounting": "INCLUDED_IN_COMPLETION_CAP",
+      "reasoning_token_reserve": 0,
       "role": "planning",
       "route_fingerprint": "30e9cbaf86fbb4b89b43614d71cc11b359ad41e7411e8ebda5d3ce4199879bf0",
       "source_evidence": [
@@ -348,7 +356,7 @@
         "EXACT_ROUTE_CONTEXT_WINDOW_EVIDENCE_UNAVAILABLE",
         "EXACT_ROUTE_MAX_OUTPUT_EVIDENCE_UNAVAILABLE"
       ],
-      "capability_sha256": "1e3bf89815dc1a55dda0f49c43088bd8b5fa8ccd740e6e647e089e436fd94f84",
+      "capability_sha256": "94390d64edc086e7233dec27b47fa09d0f844cb8f3f38793bb24ec06259f01a7",
       "capability_status": "UNKNOWN_BLOCKED",
       "context_window_tokens": null,
       "destination": "https://happyapi.org:443/v1/messages",
@@ -362,6 +370,7 @@
       "provider_id_sha256": "2ce3843fbf98768e57b7e0f38239da7d63a60637990bb80c51231ef7b67b4c84",
       "reasoning_output_reservation": "WITHIN_COMPLETION_CAP",
       "reasoning_token_accounting": "INCLUDED_IN_COMPLETION_CAP",
+      "reasoning_token_reserve": 0,
       "role": "polish",
       "route_fingerprint": "66ed2f039f6532193f7fcc0ce3dc459a4e4f53528bb1eda13007ee85e314677f",
       "source_evidence": [
@@ -384,7 +393,7 @@
         "EXACT_ROUTE_CONTEXT_WINDOW_EVIDENCE_UNAVAILABLE",
         "EXACT_ROUTE_MAX_OUTPUT_EVIDENCE_UNAVAILABLE"
       ],
-      "capability_sha256": "373228455655e4e34e0f9b2fe7ee2ce09f2b26c0053f15e3f977401df678d87a",
+      "capability_sha256": "a023ecbb6f34bce579543b395ba1593edda175ce4689ad7eaaed821bb18c3a9c",
       "capability_status": "UNKNOWN_BLOCKED",
       "context_window_tokens": null,
       "destination": "https://lingsuan.org:443/v1/messages",
@@ -398,6 +407,7 @@
       "provider_id_sha256": "22398ce7621e3265da16e55e18753e574e0d691ef51f486fefed1977ef9a9f40",
       "reasoning_output_reservation": "WITHIN_COMPLETION_CAP",
       "reasoning_token_accounting": "INCLUDED_IN_COMPLETION_CAP",
+      "reasoning_token_reserve": 0,
       "role": "polish",
       "route_fingerprint": "4a9f19e78d8101d0bc82aa664582c775741b59d5d9953c73a5624de03b2a539c",
       "source_evidence": [
@@ -420,7 +430,7 @@
         "EXACT_ROUTE_CONTEXT_WINDOW_EVIDENCE_UNAVAILABLE",
         "EXACT_ROUTE_MAX_OUTPUT_EVIDENCE_UNAVAILABLE"
       ],
-      "capability_sha256": "cf87e2c9b2efe4d1aa37e7f04f6d64652d3f17f5b1a58b1ab617abc50e5217c7",
+      "capability_sha256": "74c10e85dc5e9ce0e27a091b69e845ddb46b010b6c28288429b54529a5129dbe",
       "capability_status": "UNKNOWN_BLOCKED",
       "context_window_tokens": null,
       "destination": "https://ark.cn-beijing.volces.com:443/api/v3/responses",
@@ -434,6 +444,7 @@
       "provider_id_sha256": "17f329a8acc07b5517b19b951b87d069ecd89d0c62bd15da2bed9b443849f27e",
       "reasoning_output_reservation": "WITHIN_COMPLETION_CAP",
       "reasoning_token_accounting": "INCLUDED_IN_COMPLETION_CAP",
+      "reasoning_token_reserve": 0,
       "role": "reader_review",
       "route_fingerprint": "ddc0178083370d3f590fabfdeeff0967cf5897be57b8b06b22a17c5db184b197",
       "source_evidence": [
@@ -456,7 +467,7 @@
         "EXACT_ROUTE_CONTEXT_WINDOW_EVIDENCE_UNAVAILABLE",
         "EXACT_ROUTE_MAX_OUTPUT_EVIDENCE_UNAVAILABLE"
       ],
-      "capability_sha256": "1b831b4ac52245071a1f4aa818992d48aed4f147f4f3a81f0cc927b4f39e3600",
+      "capability_sha256": "d079dd24905e2e6ec0cfa73cc4c6f8e039432078637049d9940c9b2925c30d52",
       "capability_status": "UNKNOWN_BLOCKED",
       "context_window_tokens": null,
       "destination": "https://ark.cn-beijing.volces.com:443/api/v3/responses",
@@ -470,6 +481,7 @@
       "provider_id_sha256": "17f329a8acc07b5517b19b951b87d069ecd89d0c62bd15da2bed9b443849f27e",
       "reasoning_output_reservation": "WITHIN_COMPLETION_CAP",
       "reasoning_token_accounting": "INCLUDED_IN_COMPLETION_CAP",
+      "reasoning_token_reserve": 0,
       "role": "reader_review",
       "route_fingerprint": "026d0b3206ad50c89b4eca81b4730ebfa3370815cac98078149c6438e705bfe1",
       "source_evidence": [
@@ -492,7 +504,7 @@
         "EXACT_ROUTE_CONTEXT_WINDOW_EVIDENCE_UNAVAILABLE",
         "EXACT_ROUTE_MAX_OUTPUT_EVIDENCE_UNAVAILABLE"
       ],
-      "capability_sha256": "250d256b6fef3a23e722c59b7f105d0c8bfed5b003f99ed2434b08491a4144af",
+      "capability_sha256": "fd1f630673f81fd543241f858ceb118c28906bb584166595e059fbcea6d19242",
       "capability_status": "UNKNOWN_BLOCKED",
       "context_window_tokens": null,
       "destination": "https://lingsuan.org:443/v1/messages",
@@ -506,6 +518,7 @@
       "provider_id_sha256": "482d8aa5ef40b74b95750f8c4d105c29c0c561d4c604809d85324b5b019a0a4f",
       "reasoning_output_reservation": "WITHIN_COMPLETION_CAP",
       "reasoning_token_accounting": "INCLUDED_IN_COMPLETION_CAP",
+      "reasoning_token_reserve": 0,
       "role": "review",
       "route_fingerprint": "30e9cbaf86fbb4b89b43614d71cc11b359ad41e7411e8ebda5d3ce4199879bf0",
       "source_evidence": [
@@ -529,7 +542,7 @@
         "EXACT_ROUTE_CONTEXT_WINDOW_EVIDENCE_UNAVAILABLE",
         "EXACT_ROUTE_MAX_OUTPUT_EVIDENCE_UNAVAILABLE"
       ],
-      "capability_sha256": "e6f70f867888cfcffefaa8e6b7efd25de83f76a4eb5372e9db05a9b953c87e0a",
+      "capability_sha256": "9ccc9735fb4a4623611fb54c585773e5532474195a2afe731b452e0e7d54e781",
       "capability_status": "UNKNOWN_BLOCKED",
       "context_window_tokens": null,
       "destination": "https://api.deepseek.com:443/anthropic/v1/messages",
@@ -543,6 +556,7 @@
       "provider_id_sha256": "4555bcd38d06ac2e82d7b92da7d4fdbc31122db1636254cfaefc40aa20ac3b82",
       "reasoning_output_reservation": "WITHIN_COMPLETION_CAP",
       "reasoning_token_accounting": "INCLUDED_IN_COMPLETION_CAP",
+      "reasoning_token_reserve": 0,
       "role": "review",
       "route_fingerprint": "04a443a6702fcc95b74906e44b7233c9370cb9b94bbbbadce4bf59c088b68c31",
       "source_evidence": [
