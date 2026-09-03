@@ -184,6 +184,56 @@ def test_verified_record_requires_explicit_reasoning_accounting() -> None:
         )
 
 
+def test_verified_separate_reasoning_requires_and_binds_exact_reserve() -> None:
+    evidence = replace(
+        _evidence(),
+        proved_fields=(*_evidence().proved_fields, "reasoning_token_reserve"),
+    )
+    record = RouteCapabilityRecordV1.create(
+        role="draft", lane="fallback", provider="provider",
+        provider_id_sha256="a" * 64, operator="EXACT_OPERATOR",
+        destination="https://unit.test:443/v1/messages",
+        protocol="anthropic", model="thinking-model",
+        model_id_sha256="b" * 64, route_fingerprint="c" * 64,
+        context_window_tokens=100_000, max_output_tokens=8_192,
+        reasoning_token_accounting="SEPARATE_IF_REPORTED",
+        reasoning_output_reservation=(
+            "SEPARATE_REPORTED_RESERVATION_REQUIRED"
+        ),
+        reasoning_token_reserve=4_096,
+        capability_status=CapabilityStatus.VERIFIED_HISTORICAL_EVIDENCE,
+        source_evidence=(evidence,),
+    )
+
+    assert record.require_dispatchable() is record
+    assert record.reasoning_token_reserve == 4_096
+    assert RouteCapabilityRegistryV1.from_document(
+        RouteCapabilityRegistryV1.create((record,)).to_document()
+    ).records == (record,)
+
+
+@pytest.mark.parametrize("reserve", (None, 0))
+def test_verified_separate_reasoning_rejects_missing_exact_reserve(
+    reserve: int | None,
+) -> None:
+    with pytest.raises(ValueError, match="reasoning_capacity_reserve_invalid"):
+        RouteCapabilityRecordV1.create(
+            role="draft", lane="fallback", provider="provider",
+            provider_id_sha256="a" * 64, operator="EXACT_OPERATOR",
+            destination="https://unit.test:443/v1/messages",
+            protocol="anthropic", model="thinking-model",
+            model_id_sha256="b" * 64, route_fingerprint="c" * 64,
+            context_window_tokens=100_000, max_output_tokens=8_192,
+            reasoning_token_accounting="SEPARATE_IF_REPORTED",
+            reasoning_output_reservation=(
+                "SEPARATE_REPORTED_RESERVATION_REQUIRED"
+            ),
+            reasoning_token_reserve=reserve,
+            capability_status=CapabilityStatus.VERIFIED_HISTORICAL_EVIDENCE,
+            source_evidence=(_evidence(),),
+        )
+
+
 @pytest.mark.parametrize(
     "drift",
     ("operator", "destination", "protocol", "model", "route_fingerprint"),

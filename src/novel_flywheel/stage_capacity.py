@@ -127,6 +127,7 @@ class CapacityAdmissionFailureV1(RegisteredBoundaryFailureV1):
                 CapacityFailureCode.PROTECTED_LAYERS_EXCEED_BUDGET,
                 CapacityFailureCode.COMPACTION_INSUFFICIENT,
                 CapacityFailureCode.WINDOWING_REQUIRED,
+                CapacityFailureCode.ESTIMATOR_UNCERTAINTY_EXCEEDED,
             },
         )
         if plan is not None:
@@ -260,10 +261,12 @@ class StageCapacityPolicyRegistryV1:
 
 _ALL_LAYER_CLASSES = tuple(CapacityLayerClass)
 _SEGMENTABLE_CAPACITY_FAILURES = (
+    CapacityFailureCode.CONTEXT_WINDOW_EXCEEDED,
     CapacityFailureCode.MODEL_CONTEXT_EXCEEDED,
     CapacityFailureCode.PROTECTED_LAYERS_EXCEED_BUDGET,
     CapacityFailureCode.COMPACTION_INSUFFICIENT,
     CapacityFailureCode.WINDOWING_REQUIRED,
+    CapacityFailureCode.ESTIMATOR_UNCERTAINTY_EXCEEDED,
 )
 _SEGMENTATION_POLICY_IDS = {
     "planning": "capacity.segment.planning.semantic.v1",
@@ -426,6 +429,7 @@ class StageCapacityPlanV1:
     final_output_reserve: int
     reasoning_token_reserve: int
     reasoning_token_accounting: str
+    reasoning_output_reservation: str
     recovery_stage_role: str
     reasoning_policy: str
     prior_rendered_request_sha256: str | None
@@ -541,6 +545,20 @@ class StageCapacityPlanV1:
             or not self.reasoning_token_accounting
         ):
             raise ValueError("capacity_output_or_reasoning_limit_invalid")
+        reasoning_pair = (
+            self.reasoning_token_accounting,
+            self.reasoning_output_reservation,
+        )
+        if not (
+            reasoning_pair == (
+                "INCLUDED_IN_COMPLETION_CAP", "WITHIN_COMPLETION_CAP",
+            ) and self.reasoning_token_reserve == 0
+            or reasoning_pair == (
+                "SEPARATE_IF_REPORTED",
+                "SEPARATE_REPORTED_RESERVATION_REQUIRED",
+            ) and self.reasoning_token_reserve > 0
+        ):
+            raise ValueError("capacity_reasoning_reservation_invalid")
         if not self.recovery_stage_role or not self.reasoning_policy:
             raise ValueError("capacity_recovery_delta_identity_invalid")
         expected_delta = capacity_recovery_prompt_delta_sha256_v1(
@@ -631,6 +649,7 @@ def build_stage_capacity_plan_v1(
     route_max_output_tokens: int | None = None,
     reasoning_token_reserve: int = 0,
     reasoning_token_accounting: str = "INCLUDED_IN_COMPLETION_CAP",
+    reasoning_output_reservation: str = "WITHIN_COMPLETION_CAP",
     recovery_stage_role: str = "NORMAL",
     reasoning_policy: str = "DEFAULT",
     prior_rendered_request_sha256: str | None = None,
@@ -856,6 +875,7 @@ def build_stage_capacity_plan_v1(
         "final_output_reserve": final_output_reserve,
         "reasoning_token_reserve": reasoning_token_reserve,
         "reasoning_token_accounting": reasoning_token_accounting,
+        "reasoning_output_reservation": reasoning_output_reservation,
         "recovery_stage_role": recovery_stage_role,
         "reasoning_policy": reasoning_policy,
         "prior_rendered_request_sha256": prior_rendered_request_sha256,

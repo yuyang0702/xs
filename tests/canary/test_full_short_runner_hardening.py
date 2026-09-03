@@ -1700,9 +1700,13 @@ def test_v3_historical_search_covers_mandated_sources_and_nonpreset_values(
         "tests/fixtures/capacity.json": '{"max_output_tokens": 4096}',
         "src/runtime_notes.py": "# manually recorded output cap 11,524 tokens",
         "docs/route-manifest.md": "declared completion token limit: 20K",
+        "baml_src/artifact_parser.baml": "provider model 1M context",
+        "docs/old-provider-observation.jsonl": (
+            '{"note":"384K max output"}\n'
+        ),
         "README.md": (
             "circuit breakers: 120,000 tokens, 60,000 per pass, "
-            "and 220,000 across the run"
+            "and 220,000 across the run; 8,192 output limit"
         ),
         "docs/superpowers/reports/empty-capability.md": "no numeric claim",
         (
@@ -1715,27 +1719,49 @@ def test_v3_historical_search_covers_mandated_sources_and_nonpreset_values(
         path = tmp_path / relative
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(body, encoding="utf-8")
+    binary_files = {
+        "docs/nul-marked.md": b"binary\x00max output 999998",
+        "docs/non-utf8.txt": b"\xffmax output 999997",
+    }
+    for relative, body in binary_files.items():
+        path = tmp_path / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(body)
     screenshot = tmp_path / "docs" / "old-provider-capability.png"
     screenshot.write_bytes(b"not-a-real-image")
-    tracked = [*files, "docs/old-provider-capability.png"]
+    tracked = [
+        relative for relative in files
+        if "full-short-execution-runtime-architecture-redesign-v3-" not in relative
+    ] + [*binary_files, "docs/old-provider-capability.png"]
+    monkeypatch.setattr(materializer, "_baseline_tree_entries", lambda repo: [
+        {
+            "path": relative,
+            "object_type": "blob",
+            "object_id": "0" * 40,
+            "blob": (repo / relative).read_bytes(),
+        }
+        for relative in tracked
+    ])
     monkeypatch.setattr(
-        materializer,
-        "git",
-        lambda _repo, *args: "\n".join(tracked)
-        if args == ("ls-files",) else "",
+        materializer, "git", lambda _repo, *args: "0" * 40
+        if args == ("rev-parse", f"{materializer.BASELINE_HEAD}^{{tree}}")
+        else "",
     )
 
     result = materializer._historical_search_inventory(tmp_path)
 
     values = {item["value"] for item in result["discovered_value_records"]}
-    assert {32768, 4096, 11524, 20000, 220000} <= values
+    assert {
+        4096, 8192, 11524, 20000, 32768, 220000, 384000, 1000000,
+    } <= values
     assert 999999 not in values
+    assert {999997, 999998}.isdisjoint(values)
     readme_records = [
         item for item in result["discovered_value_records"]
         if item["original_source_path"] == "README.md"
     ]
     assert {item["value"] for item in readme_records} == {
-        60000, 120000, 220000,
+        8192, 60000, 120000, 220000,
     }
     assert all(item["source_line_number"] == 1 for item in readme_records)
     assert all(
@@ -1751,13 +1777,28 @@ def test_v3_historical_search_covers_mandated_sources_and_nonpreset_values(
     ] >= 1
     assert result["category_summary"]["tracked_screenshots_images"] == {
         "tracked_file_count": 1,
-        "text_scanned_file_count": 0,
-        "binary_inventory_file_count": 1,
+        "text_scanned_file_count": 1,
+        "binary_inventory_file_count": 0,
         "candidate_occurrence_count": 0,
     }
     assert result["category_summary"]["capability_budget_reports"][
         "tracked_file_count"
     ] >= 1
+    assert result["searched_file_count"] == len(tracked)
+    assert result["tracked_repository_file_count"] == len(tracked)
+    assert result["historical_source_commit"] == materializer.BASELINE_HEAD
+    methods = {
+        item["path"]: item["scan_method"]
+        for item in result["searched_file_inventory"]
+    }
+    assert methods["baml_src/artifact_parser.baml"] == (
+        "BASELINE_UTF8_CAPACITY_BIDIRECTIONAL_SCAN"
+    )
+    assert methods["docs/old-provider-observation.jsonl"] == (
+        "BASELINE_UTF8_CAPACITY_BIDIRECTIONAL_SCAN"
+    )
+    assert methods["docs/nul-marked.md"] == "NON_UTF8_OR_NUL_HASH_INVENTORY"
+    assert methods["docs/non-utf8.txt"] == "NON_UTF8_OR_NUL_HASH_INVENTORY"
     assert all(
         item["classification_code"] == "B"
         and item["eligible_for_verified_registry"] is False
@@ -1776,6 +1817,31 @@ def test_v3_historical_value_classification_and_external_stop_loss_contract() ->
     assert len(records) == 9
     assert {item["classification_code"] for item in records} == {"B", "D"}
     assert not any(item["eligible_for_verified_registry"] for item in records)
+
+
+def test_v3_historical_capacity_parser_uses_nearest_unambiguous_field() -> None:
+    from tools.diagnostics import (
+        materialize_full_short_runtime_architecture_redesign_v3 as materializer,
+    )
+
+    records = materializer._capacity_values_in_text(
+        "1M context, 384K max output\n"
+        "context 2026 roadmap says 8,192 output limit\n"
+        "version 1 max output 384K\n"
+        "context window 8,192; max output 8,192\n"
+    )
+    by_line = {
+        line: [(item["value"], item["capability_field"]) for item in records
+               if item["line_number"] == line]
+        for line in (1, 2, 3, 4)
+    }
+
+    assert by_line[1] == [(384000, "max_output"), (1000000, "context")]
+    assert by_line[2] == [(8192, "output_limit")]
+    assert by_line[3] == [(384000, "max_output")]
+    assert by_line[4] == [
+        (8192, "context_window"), (8192, "max_output"),
+    ]
     assert {
         "real_credential_lookup_count",
         "real_secret_read_count",

@@ -13,7 +13,13 @@ from novel_flywheel.planning_repair_diagnostics import (
     safe_capture_provider_content_block_snapshot,
 )
 from novel_flywheel.providers.http import HttpProvider
-from novel_flywheel.provider_output import capture_provider_raw_shape_v1
+from novel_flywheel.provider_output import (
+    capture_provider_raw_shape_v1,
+    provider_output_shape_from_response,
+)
+from novel_flywheel.provider_response_capture import (
+    parse_provider_protocol_input_bytes_v1,
+)
 
 
 def _output_text(body: dict) -> str:
@@ -212,3 +218,51 @@ class OpenAIResponsesAdapter(HttpProvider):
             elif event.get("type") == "response.created":
                 response = {**(event.get("response") or {}), **response}
         return response, "".join(text)
+
+    @classmethod
+    def replay_protocol_input_bytes_v1(
+        cls, data: bytes, *, content_type: str, encoding: str = "utf-8",
+    ) -> ModelResponse:
+        """Project immutable response bytes through the production adapter."""
+
+        events, body = parse_provider_protocol_input_bytes_v1(
+            data, content_type=content_type, encoding=encoding,
+        )
+        streamed_text = ""
+        if body is None:
+            body, streamed_text = cls._aggregate_stream(events)
+        usage = body.get("usage", {})
+        output = body.get("output", [])
+        raw_finish_reason = body.get("status")
+        incomplete_reason = (body.get("incomplete_details") or {}).get(
+            "reason"
+        )
+        finish_reason = raw_finish_reason
+        if raw_finish_reason == "incomplete":
+            finish_reason = (
+                "max_tokens"
+                if incomplete_reason in {"max_output_tokens", "max_tokens"}
+                else incomplete_reason or "incomplete"
+            )
+        response = ModelResponse(
+            text=_output_text(body) or streamed_text,
+            tool_calls=[ToolCall(
+                id=item.get("call_id") or item.get("id"),
+                name=item["name"],
+                arguments=json.loads(item.get("arguments") or "{}"),
+            ) for item in output if item.get("type") == "function_call"],
+            finish_reason=finish_reason,
+            input_tokens=usage.get("input_tokens", 0),
+            output_tokens=usage.get("output_tokens", 0),
+            raw_request_id=body.get("id"),
+            provider_state={
+                "output": output,
+                "transport_complete": raw_finish_reason in {
+                    "completed", "incomplete", "failed", "cancelled",
+                },
+                "raw_finish_reason": raw_finish_reason,
+                "incomplete_reason": incomplete_reason,
+            },
+        )
+        shape = provider_output_shape_from_response(cls, response)
+        return response.model_copy(update={"output_shape": shape})

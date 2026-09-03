@@ -14,7 +14,13 @@ from novel_flywheel.planning_repair_diagnostics import (
     safe_capture_provider_content_block_snapshot,
 )
 from novel_flywheel.providers.http import HttpProvider
-from novel_flywheel.provider_output import capture_provider_raw_shape_v1
+from novel_flywheel.provider_output import (
+    capture_provider_raw_shape_v1,
+    provider_output_shape_from_response,
+)
+from novel_flywheel.provider_response_capture import (
+    parse_provider_protocol_input_bytes_v1,
+)
 
 
 class OpenAIChatAdapter(HttpProvider):
@@ -225,3 +231,38 @@ class OpenAIChatAdapter(HttpProvider):
                          "finish_reason": finish_reason}],
             "usage": usage,
         }
+
+    @classmethod
+    def replay_protocol_input_bytes_v1(
+        cls, data: bytes, *, content_type: str, encoding: str = "utf-8",
+    ) -> ModelResponse:
+        """Project immutable response bytes through the production adapter."""
+
+        events, body = parse_provider_protocol_input_bytes_v1(
+            data, content_type=content_type, encoding=encoding,
+        )
+        if body is None:
+            body = cls._aggregate_stream(events)
+        choice = body["choices"][0]
+        usage = body.get("usage", {})
+        message = choice["message"]
+        response = ModelResponse(
+            text=message.get("content") or "",
+            tool_calls=[ToolCall(
+                id=call["id"], name=call["function"]["name"],
+                arguments=json.loads(
+                    call["function"].get("arguments") or "{}"
+                ),
+            ) for call in message.get("tool_calls", [])],
+            finish_reason=choice.get("finish_reason"),
+            input_tokens=usage.get("prompt_tokens", 0),
+            output_tokens=usage.get("completion_tokens", 0),
+            raw_request_id=body.get("id"),
+            provider_state={
+                "assistant": message,
+                "transport_complete": choice.get("finish_reason") is not None,
+                "raw_finish_reason": choice.get("finish_reason"),
+            },
+        )
+        shape = provider_output_shape_from_response(cls, response)
+        return response.model_copy(update={"output_shape": shape})

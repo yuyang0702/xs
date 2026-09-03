@@ -189,7 +189,10 @@ def test_cli_writes_only_hash_safe_campaign_report(tmp_path: Path) -> None:
     artifact_dir = tmp_path / "journals"
     output = tmp_path / "report.json"
     assert CAMPAIGN.main(
-        ["--artifact-dir", str(artifact_dir), "--output", str(output)]
+        [
+            "--campaign-version", "v2", "--artifact-dir",
+            str(artifact_dir), "--output", str(output),
+        ]
     ) == 0
     payload = json.loads(output.read_text(encoding="utf-8"))
     serialized = json.dumps(payload, ensure_ascii=False, sort_keys=True)

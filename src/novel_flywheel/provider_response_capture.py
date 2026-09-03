@@ -41,6 +41,7 @@ PUBLIC_METADATA_FIELDS = frozenset({
     "model_id_sha256", "route_fingerprint", "protocol", "contract_name",
     "contract_version", "contract_schema_sha256", "adapter_id",
     "adapter_version", "content_type", "encoding", "transport_complete",
+    "status_code", "http_success", "response_status_sha256",
 })
 
 
@@ -173,6 +174,36 @@ def _validate_public_metadata(metadata: Mapping[str, Any]) -> dict[str, Any]:
         raise ProviderResponseCaptureError(
             "PROVIDER_RESPONSE_CAPTURE_METADATA_INVALID:transport_complete"
         )
+    status_code = value.get("status_code")
+    http_success = value.get("http_success")
+    status_sha256 = value.get("response_status_sha256")
+    if status_code is None or http_success is None or status_sha256 is None:
+        if not (
+            status_code is None
+            and http_success is None
+            and status_sha256 is None
+        ):
+            raise ProviderResponseCaptureError(
+                "PROVIDER_RESPONSE_CAPTURE_HTTP_CLASSIFICATION_INCOMPLETE"
+            )
+    else:
+        if type(status_code) is not int or not 100 <= status_code <= 599:
+            raise ProviderResponseCaptureError(
+                "PROVIDER_RESPONSE_CAPTURE_METADATA_INVALID:status_code"
+            )
+        if type(http_success) is not bool:
+            raise ProviderResponseCaptureError(
+                "PROVIDER_RESPONSE_CAPTURE_METADATA_INVALID:http_success"
+            )
+        if http_success is not (200 <= status_code < 300):
+            raise ProviderResponseCaptureError(
+                "PROVIDER_RESPONSE_CAPTURE_HTTP_CLASSIFICATION_MISMATCH"
+            )
+        expected_status_sha256 = _sha256(str(status_code).encode("ascii"))
+        if status_sha256 != expected_status_sha256:
+            raise ProviderResponseCaptureError(
+                "PROVIDER_RESPONSE_CAPTURE_STATUS_SHA256_MISMATCH"
+            )
     return value
 
 
@@ -289,7 +320,12 @@ class ProviderResponseCaptureStoreV1:
         try:
             offset = 0
             while offset < len(payload):
-                offset += os.write(descriptor, payload[offset:])
+                written = os.write(descriptor, payload[offset:])
+                if written <= 0:
+                    raise ProviderResponseCaptureError(
+                        "PROVIDER_RESPONSE_CAPTURE_DURABLE_WRITE_NO_PROGRESS"
+                    )
+                offset += written
             os.fsync(descriptor)
         finally:
             os.close(descriptor)
@@ -320,6 +356,12 @@ class ProviderResponseCaptureStoreV1:
                 "PROVIDER_RESPONSE_CAPTURE_BYTES_REQUIRED"
             )
         public = _validate_public_metadata(metadata)
+        if byte_domain == PROVIDER_PROTOCOL_INPUT_BYTES and (
+            public["status_code"] is None
+        ):
+            raise ProviderResponseCaptureError(
+                "PROVIDER_RESPONSE_CAPTURE_HTTP_CLASSIFICATION_REQUIRED"
+            )
         with self._execution_store_locked():
             if self._completion_exists(str(public["execution_id"])):
                 raise ProviderResponseCaptureError(
@@ -362,6 +404,12 @@ class ProviderResponseCaptureStoreV1:
                 "PROVIDER_RESPONSE_REPLAY_DOMAIN_INVALID"
             )
         expected = _validate_public_metadata(expected_metadata)
+        if byte_domain == PROVIDER_PROTOCOL_INPUT_BYTES and (
+            expected["status_code"] is None
+        ):
+            raise ProviderResponseCaptureError(
+                "PROVIDER_RESPONSE_REPLAY_HTTP_CLASSIFICATION_REQUIRED"
+            )
         path = self._path(expected, byte_domain)
         try:
             payload = path.read_bytes()
@@ -444,16 +492,23 @@ class ProviderResponseCaptureStoreV1:
                 )
             domain = str(header.get("byte_domain") or "")
             metadata = {
-                key: header[key] for key in (
+                key: header.get(key) for key in (
                     "execution_id", "call_id", "stage_id",
                     "provider_id_sha256", "model_id_sha256",
                     "route_fingerprint", "protocol", "contract_name",
                     "contract_version", "contract_schema_sha256",
                     "adapter_id", "adapter_version", "content_type",
-                    "encoding", "transport_complete",
+                    "encoding", "transport_complete", "status_code",
+                    "http_success", "response_status_sha256",
                 )
             }
             _validate_public_metadata(metadata)
+            if domain == PROVIDER_PROTOCOL_INPUT_BYTES and (
+                metadata["status_code"] is None
+            ):
+                raise ProviderResponseCaptureError(
+                    "PROVIDER_RESPONSE_CAPTURE_AUDIT_HTTP_CLASSIFICATION_REQUIRED"
+                )
             if domain not in CAPTURE_DOMAINS:
                 raise ProviderResponseCaptureError(
                     "PROVIDER_RESPONSE_CAPTURE_AUDIT_DOMAIN_INVALID"

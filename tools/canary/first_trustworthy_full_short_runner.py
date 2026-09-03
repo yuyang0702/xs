@@ -228,6 +228,10 @@ def _load_route_capability_registry_v1(
             "model": record.model,
             "model_id_sha256": record.model_id_sha256,
         }
+        if record.reasoning_token_accounting == "SEPARATE_IF_REPORTED":
+            expected_values["reasoning_token_reserve"] = (
+                record.reasoning_token_reserve
+            )
         route_identity_fields = {
             "route_fingerprint", "provider", "provider_id_sha256",
             "operator", "destination", "protocol", "model",
@@ -753,6 +757,10 @@ def collect_live_bindings(
                     capability_record.reasoning_output_reservation
                     if capability_record is not None
                     else "WITHIN_COMPLETION_CAP"
+                ),
+                "reasoning_token_reserve": (
+                    capability_record.reasoning_token_reserve
+                    if capability_record is not None else 0
                 ),
                 "required_by_logical_stage_plan": route_selected,
             })

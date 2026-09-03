@@ -30944,6 +30944,12 @@ class WorkflowService:
                             "INCLUDED_IN_COMPLETION_CAP",
                         )
                     ),
+                    "reasoning_output_reservation": str(
+                        (admission_context or {}).get(
+                            "reasoning_output_reservation",
+                            "WITHIN_COMPLETION_CAP",
+                        )
+                    ),
                     "recovery_stage_role": str(
                         (admission_context or {}).get(
                             "recovery_stage_role", "NORMAL",

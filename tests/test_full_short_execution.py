@@ -9,6 +9,7 @@ from types import SimpleNamespace
 import httpx
 import pytest
 
+import novel_flywheel.full_short_execution as full_short_execution_module
 from novel_flywheel.db import Database
 from novel_flywheel.domain.models import Message, ModelRequest
 from novel_flywheel.execution_failure_architecture import (
@@ -81,6 +82,63 @@ from novel_flywheel.stage_capacity import (
     capacity_recovery_prompt_delta_sha256_v1,
 )
 from tools.canary import first_trustworthy_full_short_runner as real_runner
+
+
+@pytest.mark.parametrize("writer", ["exclusive", "replace"])
+def test_durable_json_write_zero_progress_fails_closed(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, writer: str,
+) -> None:
+    target = tmp_path / "durable.json"
+    if writer == "replace":
+        target.write_text('{"original":true}\n', encoding="utf-8")
+    monkeypatch.setattr(
+        "novel_flywheel.full_short_execution.os.write",
+        lambda _descriptor, _payload: 0,
+    )
+
+    with pytest.raises(
+        FullShortExecutionBoundaryError, match="DURABLE_WRITE_NO_PROGRESS",
+    ):
+        if writer == "exclusive":
+            FullShortDurableExecutionStoreV1._exclusive_write(
+                target, {"replacement": True},
+            )
+        else:
+            FullShortDurableExecutionStoreV1._replace(
+                target, {"replacement": True},
+            )
+
+    if writer == "exclusive":
+        assert not target.exists()
+    else:
+        assert json.loads(target.read_text(encoding="utf-8")) == {
+            "original": True,
+        }
+
+
+def test_capture_attestation_private_key_is_process_confined(
+    tmp_path: Path,
+) -> None:
+    store = _store(tmp_path / "process-confined-signer")
+    policy = _policy(store)
+    signer_key = str(store.root).casefold()
+
+    assert not any(
+        b"private_key" in path.read_bytes()
+        for path in store.root.rglob("*") if path.is_file()
+    )
+    full_short_execution_module._PROCESS_CAPTURE_ATTESTATION_SIGNERS_V1.pop(
+        signer_key, None,
+    )
+    reopened = FullShortDurableExecutionStoreV1(
+        repo_root=store.repo_root, store_root=store.root,
+    )
+
+    reopened._verify_store_binding(policy)
+    assert reopened._capture_attestation_private_key is None
+    assert reopened.capture_attestation_public_key == policy[
+        "capture_attestation_public_key"
+    ]
 
 
 def _hash(value: object) -> str:
@@ -349,6 +407,9 @@ def _bind_route_with_capacity(
         final_output_reserve=expected["requested_output_tokens"],
         reasoning_token_reserve=context["reasoning_token_reserve"],
         reasoning_token_accounting=context["reasoning_token_accounting"],
+        reasoning_output_reservation=context[
+            "reasoning_output_reservation"
+        ],
         recovery_stage_role=context["recovery_stage_role"],
         reasoning_policy=context["reasoning_policy"],
         prior_rendered_request_sha256=context[
@@ -387,6 +448,55 @@ def _predispatch_observer(
         model_id="model-id", route_fingerprint="9" * 64,
     )
     return observer
+
+
+def test_separate_reasoning_route_reserve_reaches_durable_capacity_receipt(
+    tmp_path: Path,
+) -> None:
+    store = _store(tmp_path / "separate-reasoning")
+    execution_id = "separate-reasoning"
+    route = {
+        **_routes()[0],
+        "reasoning_token_accounting": "SEPARATE_IF_REPORTED",
+        "reasoning_output_reservation": (
+            "SEPARATE_REPORTED_RESERVATION_REQUIRED"
+        ),
+        "reasoning_token_reserve": 2_048,
+    }
+    routes = (route,)
+    policy = _policy(store, routes=routes)
+    permission = store.create_permission(
+        execution_id=execution_id, authorization_text_sha256="3" * 64,
+        policy=policy, external_actions_enabled=False,
+    )
+    approval = store.create_jit_approval(
+        execution_id=execution_id, policy=policy, permission=permission,
+        external_actions_enabled=False,
+    )
+    store.prepare_predispatch_ledger(
+        execution_id=execution_id, policy=policy, permission=permission,
+        approval=approval, external_actions_enabled=False,
+    )
+    observer = FullShortDispatchLedgerObserverV1(
+        store=store, execution_id=execution_id, policy=policy,
+        authorized_routes=routes, egress_policy=_egress(),
+    )
+
+    _bind_route_with_capacity(
+        observer, role="planning", lane="primary", provider_id="provider",
+        model_id="model-id", route_fingerprint="9" * 64,
+        resolve_route=False,
+    )
+
+    receipt = store.load_capacity_admission_receipt(
+        execution_id=execution_id,
+        plan_sha256=str(observer.pending_capacity_plan_sha256),
+    )
+    assert receipt["reasoning_token_reserve"] == 2_048
+    assert receipt["reasoning_token_accounting"] == "SEPARATE_IF_REPORTED"
+    assert receipt["reasoning_output_reservation"] == (
+        "SEPARATE_REPORTED_RESERVATION_REQUIRED"
+    )
 
 
 def test_predispatch_local_failure_leaves_nonce_absent(tmp_path: Path) -> None:
@@ -1411,6 +1521,137 @@ def test_capture_publication_crash_reconciles_exactly_without_network(
     assert replay_full_short_provider_attempt_v1(
         store=store, execution_id=execution_id, ordinal=1,
     ).text == "reconciled"
+
+
+def test_capture_publication_crash_restores_5xx_classification_and_blocks_replay(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    store = _store(tmp_path)
+    execution_id = "capture-anchor-5xx-crash"
+    _authorize_offline(store, execution_id)
+    observer = _observer(store, execution_id)
+    observer.before_http_dispatch(
+        method="POST", url="https://unit.test/v1/messages", payload=_payload(),
+    )
+    with monkeypatch.context() as crash:
+        crash.setattr(
+            store, "update_ledger",
+            lambda *_args, **_kwargs: (_ for _ in ()).throw(
+                RuntimeError("injected capture-to-ledger crash")
+            ),
+        )
+        with pytest.raises(RuntimeError, match="capture-to-ledger crash"):
+            observer.capture_provider_protocol_input(
+                data=b'{"error":{"type":"overloaded_error"}}',
+                status_code=503, content_type="application/json",
+                encoding="utf-8", transport_complete=True,
+            )
+
+    reconciled = reconcile_full_short_capture_anchor_v1(
+        store=store, execution_id=execution_id, ordinal=1,
+    )
+    attempt = reconciled["attempts"][0]
+    assert attempt["state"] == "HTTP_RESPONSE_FAILED_CLOSED"
+    assert attempt["provider_protocol_capture_http_success"] is False
+    assert attempt["response_status_sha256"] == hashlib.sha256(
+        b"503"
+    ).hexdigest()
+    assert reconciled["state"] == "RECONCILIATION_REQUIRED_NO_REDISPATCH"
+    with pytest.raises(FullShortExecutionBoundaryError) as caught:
+        replay_full_short_provider_attempt_v1(
+            store=store, execution_id=execution_id, ordinal=1,
+        )
+    assert caught.value.reason_code == "REPLAY_HTTP_RESPONSE_NOT_SUCCESSFUL"
+    assert len(store.load_ledger(execution_id)["attempts"]) == 1
+
+
+@pytest.mark.parametrize(
+    "protocol,path,entity,expected_text",
+    [
+        (
+            "anthropic", "messages",
+            {
+                "id": "msg-offline", "content": [
+                    {"type": "text", "text": "replayed anthropic"},
+                ],
+                "stop_reason": "end_turn",
+                "usage": {"input_tokens": 2, "output_tokens": 3},
+            },
+            "replayed anthropic",
+        ),
+        (
+            "openai-chat", "chat/completions",
+            {
+                "id": "chat-offline", "choices": [{
+                    "message": {
+                        "content": "replayed openai-chat", "tool_calls": [],
+                    },
+                    "finish_reason": "stop",
+                }],
+                "usage": {"prompt_tokens": 2, "completion_tokens": 3},
+            },
+            "replayed openai-chat",
+        ),
+        (
+            "openai-responses", "responses",
+            {
+                "id": "response-offline", "status": "completed",
+                "output": [{
+                    "type": "message", "content": [{
+                        "type": "output_text",
+                        "text": "replayed openai-responses",
+                    }],
+                }],
+                "usage": {"input_tokens": 2, "output_tokens": 3},
+            },
+            "replayed openai-responses",
+        ),
+    ],
+)
+def test_exact_local_replay_uses_runtime_protocol_production_adapter(
+    tmp_path: Path, protocol: str, path: str, entity: dict,
+    expected_text: str,
+) -> None:
+    store = _store(tmp_path)
+    execution_id = f"exact-replay-{protocol}"
+    route = ({
+        **_routes()[0],
+        "protocol": protocol,
+        "destination": f"https://unit.test:443/v1/{path}",
+    },)
+    _authorize_offline(store, execution_id, routes=route)
+    observer = FullShortDispatchLedgerObserverV1(
+        store=store, execution_id=execution_id,
+        policy=_policy(store, routes=route),
+        authorized_routes=route, egress_policy=_egress(),
+    )
+    _bind_route_with_capacity(
+        observer, role="planning", lane="primary", provider_id="provider",
+        model_id="model-id", route_fingerprint="9" * 64,
+    )
+    request = _request()
+    observer.bind_model_request(protocol=protocol, request=request)
+    observer.before_http_dispatch(
+        method="POST", url=route[0]["destination"],
+        payload=_expected_provider_payload_v1(
+            protocol, request, destination=route[0]["destination"],
+        ),
+    )
+    observer.capture_provider_protocol_input(
+        data=json.dumps(entity, separators=(",", ":")).encode("utf-8"),
+        status_code=200, content_type="application/json",
+        encoding="utf-8", transport_complete=True,
+    )
+    observer.after_http_response(status_code=200)
+
+    replayed = replay_full_short_provider_attempt_v1(
+        store=store, execution_id=execution_id, ordinal=1,
+    )
+
+    assert replayed.text == expected_text
+    assert replayed.output_shape is not None
+    assert replayed.output_shape.protocol == protocol
+    assert len(store.load_ledger(execution_id)["attempts"]) == 1
 
 
 def test_capture_reconciliation_rejects_tampered_published_bytes(
@@ -4126,6 +4367,8 @@ def test_completed_execution_rejects_late_capture_publication(
                 "adapter_id": "anthropic", "adapter_version": 1,
                 "content_type": "application/json", "encoding": "utf-8",
                 "transport_complete": True,
+                "status_code": 200, "http_success": True,
+                "response_status_sha256": hashlib.sha256(b"200").hexdigest(),
             },
         )
 
@@ -4163,6 +4406,8 @@ def test_completion_commit_reaudits_capture_after_receipt_build(
             "adapter_id": "anthropic", "adapter_version": 1,
             "content_type": "application/json", "encoding": "utf-8",
             "transport_complete": True,
+            "status_code": 200, "http_success": True,
+            "response_status_sha256": hashlib.sha256(b"200").hexdigest(),
         },
     )
 

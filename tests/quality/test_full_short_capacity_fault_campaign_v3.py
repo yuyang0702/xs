@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib.util
+import json
 from pathlib import Path
 import sys
 
@@ -93,3 +94,13 @@ def test_v3_campaign_is_hash_deterministic(tmp_path: Path) -> None:
     assert first["network_call_count"] == 0
     assert first["model_call_count"] == 0
     assert first["full_short_execution_count"] == 0
+
+
+def test_cli_defaults_to_v3_campaign(tmp_path: Path) -> None:
+    output = tmp_path / "v3-report.json"
+
+    assert CAMPAIGN.main(["--output", str(output)]) == 0
+
+    payload = json.loads(output.read_text(encoding="utf-8"))
+    assert payload["schema_version"] == "FullShortCapacityFaultCampaignV3"
+    assert payload["master_enumerated_scenario_count"] == 20

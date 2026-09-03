@@ -96,6 +96,7 @@ class RouteCapabilityRecordV1:
     max_output_tokens: int | None
     reasoning_token_accounting: str
     reasoning_output_reservation: str
+    reasoning_token_reserve: int | None
     capability_status: CapabilityStatus
     source_evidence: tuple[CapabilityEvidenceV1, ...]
     blocking_reason_codes: tuple[str, ...]
@@ -139,6 +140,37 @@ class RouteCapabilityRecordV1:
             for evidence in self.source_evidence
         ):
             raise ValueError("capability_evidence_route_fingerprint_drift")
+        reasoning_pair = (
+            self.reasoning_token_accounting,
+            self.reasoning_output_reservation,
+        )
+        included_reasoning = reasoning_pair == (
+            "INCLUDED_IN_COMPLETION_CAP", "WITHIN_COMPLETION_CAP",
+        )
+        separate_reasoning = reasoning_pair == (
+            "SEPARATE_IF_REPORTED",
+            "SEPARATE_REPORTED_RESERVATION_REQUIRED",
+        )
+        unknown_reasoning = reasoning_pair == ("UNKNOWN", "UNKNOWN")
+        if not (included_reasoning or separate_reasoning) and not (
+            self.capability_status is CapabilityStatus.UNKNOWN_BLOCKED
+            and unknown_reasoning
+            and self.reasoning_token_reserve is None
+        ):
+            raise ValueError(
+                "verified_route_capability_evidence_incomplete"
+                if self.capability_status in VERIFIED_CAPABILITY_STATUSES
+                else "reasoning_capacity_semantics_invalid"
+            )
+        if included_reasoning and self.reasoning_token_reserve != 0:
+            raise ValueError("reasoning_capacity_reserve_invalid")
+        if separate_reasoning and self.capability_status in (
+            VERIFIED_CAPABILITY_STATUSES
+        ) and (
+            type(self.reasoning_token_reserve) is not int
+            or self.reasoning_token_reserve <= 0
+        ):
+            raise ValueError("reasoning_capacity_reserve_invalid")
         if self.capability_status in VERIFIED_CAPABILITY_STATUSES:
             proved = {
                 field
@@ -165,10 +197,10 @@ class RouteCapabilityRecordV1:
                     "model_id_sha256",
                 } <= proved
                 or self.blocking_reason_codes
-                or self.reasoning_token_accounting
-                != "INCLUDED_IN_COMPLETION_CAP"
-                or self.reasoning_output_reservation
-                != "WITHIN_COMPLETION_CAP"
+                or (
+                    separate_reasoning
+                    and "reasoning_token_reserve" not in proved
+                )
             ):
                 raise ValueError("verified_route_capability_evidence_incomplete")
         else:
@@ -179,6 +211,8 @@ class RouteCapabilityRecordV1:
             if (
                 self.context_window_tokens is not None
                 or self.max_output_tokens is not None
+                or separate_reasoning
+                and self.reasoning_token_reserve is not None
             ):
                 raise ValueError("unknown_route_capability_must_not_guess_limits")
         if _canonical_sha256(self.canonical_payload()) != self.capability_sha256:
@@ -202,10 +236,17 @@ class RouteCapabilityRecordV1:
         max_output_tokens: int | None,
         reasoning_token_accounting: str = "UNKNOWN",
         reasoning_output_reservation: str = "UNKNOWN",
+        reasoning_token_reserve: int | None = None,
         capability_status: CapabilityStatus,
         source_evidence: Iterable[CapabilityEvidenceV1] = (),
         blocking_reason_codes: Iterable[str] = (),
     ) -> RouteCapabilityRecordV1:
+        if (
+            reasoning_token_reserve is None
+            and reasoning_token_accounting == "INCLUDED_IN_COMPLETION_CAP"
+            and reasoning_output_reservation == "WITHIN_COMPLETION_CAP"
+        ):
+            reasoning_token_reserve = 0
         evidence = tuple(source_evidence)
         reasons = tuple(blocking_reason_codes)
         payload = {
@@ -223,6 +264,7 @@ class RouteCapabilityRecordV1:
             "max_output_tokens": max_output_tokens,
             "reasoning_token_accounting": reasoning_token_accounting,
             "reasoning_output_reservation": reasoning_output_reservation,
+            "reasoning_token_reserve": reasoning_token_reserve,
             "capability_status": capability_status.value,
             "source_evidence": [asdict(item) for item in evidence],
             "blocking_reason_codes": list(reasons),
@@ -242,6 +284,7 @@ class RouteCapabilityRecordV1:
             max_output_tokens=max_output_tokens,
             reasoning_token_accounting=reasoning_token_accounting,
             reasoning_output_reservation=reasoning_output_reservation,
+            reasoning_token_reserve=reasoning_token_reserve,
             capability_status=capability_status,
             source_evidence=evidence,
             blocking_reason_codes=reasons,
@@ -379,6 +422,15 @@ class RouteCapabilityRegistryV1:
             if len(evidence) != len(evidence_raw):
                 raise ValueError("route_capability_evidence_document_invalid")
             item["source_evidence"] = evidence
+            if "reasoning_token_reserve" not in item:
+                item["reasoning_token_reserve"] = (
+                    0
+                    if item.get("reasoning_token_accounting")
+                    == "INCLUDED_IN_COMPLETION_CAP"
+                    and item.get("reasoning_output_reservation")
+                    == "WITHIN_COMPLETION_CAP"
+                    else None
+                )
             item["blocking_reason_codes"] = tuple(
                 item.get("blocking_reason_codes", ())
             )

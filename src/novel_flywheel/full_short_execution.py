@@ -35,6 +35,9 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import (
     Ed25519PublicKey,
 )
 
+
+_PROCESS_CAPTURE_ATTESTATION_SIGNERS_V1: dict[str, Ed25519PrivateKey] = {}
+
 from novel_flywheel.domain.models import ModelRequest
 from novel_flywheel.execution_failure_architecture import (
     AuthorityEffect,
@@ -315,7 +318,7 @@ _CAPACITY_ADMISSION_RECEIPT_FIELDS_V1 = frozenset({
     "role_sha256", "route", "rendered_request_sha256",
     "requested_output_token_cap", "final_output_reserve",
     "route_max_output_tokens", "reasoning_token_reserve",
-    "reasoning_token_accounting",
+    "reasoning_token_accounting", "reasoning_output_reservation",
     "recovery_stage_role", "reasoning_policy",
     "prior_rendered_request_sha256", "recovery_prompt_delta_sha256",
     "recovery_source_capture_receipt_sha256",
@@ -426,13 +429,24 @@ def _validate_capacity_admission_receipt_v1(
         },
         "CAPACITY_ADMISSION_RECEIPT_LIMIT_INVALID",
     )
+    reasoning_pair = (
+        body.get("reasoning_token_accounting"),
+        body.get("reasoning_output_reservation"),
+    )
+    reasoning_reserve = body.get("reasoning_token_reserve")
     _require(
         isinstance(body.get("physical_attempt_id"), str)
         and str(body["physical_attempt_id"]).startswith("physical-")
-        and type(body.get("reasoning_token_reserve")) is int
-        and body["reasoning_token_reserve"] >= 0
-        and body.get("reasoning_token_accounting")
-        == "INCLUDED_IN_COMPLETION_CAP"
+        and type(reasoning_reserve) is int
+        and (
+            reasoning_pair == (
+                "INCLUDED_IN_COMPLETION_CAP", "WITHIN_COMPLETION_CAP",
+            ) and reasoning_reserve == 0
+            or reasoning_pair == (
+                "SEPARATE_IF_REPORTED",
+                "SEPARATE_REPORTED_RESERVATION_REQUIRED",
+            ) and reasoning_reserve > 0
+        )
         and body["requested_output_token_cap"]
         <= body["route_max_output_tokens"],
         "CAPACITY_ADMISSION_RECEIPT_LIMIT_INVALID",
@@ -975,8 +989,7 @@ def _validate_ledger_mutation_v1(
         )
     if mutation_kind == "CAPTURE_RECEIPT_RECONCILIATION":
         _require(
-            before_state == after_state
-            and before_receipts == after_receipts
+            before_receipts == after_receipts
             and len(changed_attempts) == 1,
             "CAPTURE_RECONCILIATION_NOT_NARROW",
         )
@@ -985,19 +998,83 @@ def _validate_ledger_mutation_v1(
             key for key in set(previous) | set(current)
             if previous.get(key) != current.get(key)
         }
-        allowed = False
+        provider_fields = {
+            "provider_protocol_capture_receipt_sha256",
+            "provider_protocol_capture_transport_complete",
+            "provider_protocol_capture_http_success",
+            "response_status_sha256",
+            "state",
+        }
+        if current.get("provider_protocol_capture_http_success") is True:
+            provider_fields.add("response_received_at")
+        allowed_provider = bool(
+            changed_fields == provider_fields
+            and before_state == "DISPATCH_IN_FLIGHT"
+            and after_state == (
+                "RESPONSE_RECEIVED_AWAITING_LOCAL_RECEIPT"
+                if current.get("provider_protocol_capture_http_success") is True
+                else "RECONCILIATION_REQUIRED_NO_REDISPATCH"
+            )
+            and previous.get("state") == "DISPATCH_ATTEMPTED"
+            and current.get("state") == (
+                "RESPONSE_RECEIVED"
+                if current.get("provider_protocol_capture_http_success") is True
+                else "HTTP_RESPONSE_FAILED_CLOSED"
+            )
+            and previous.get("provider_protocol_capture_receipt_sha256") is None
+            and previous.get("provider_protocol_capture_transport_complete") is None
+            and previous.get("provider_protocol_capture_http_success") is None
+            and previous.get("response_status_sha256") is None
+            and isinstance(
+                current.get("provider_protocol_capture_receipt_sha256"), str,
+            )
+            and _HEX64.fullmatch(
+                current["provider_protocol_capture_receipt_sha256"]
+            ) is not None
+            and current.get("provider_protocol_capture_transport_complete") is True
+            and type(current.get("provider_protocol_capture_http_success")) is bool
+            and _HEX64.fullmatch(
+                str(current.get("response_status_sha256") or "")
+            ) is not None
+            and (
+                current.get("provider_protocol_capture_http_success") is False
+                or isinstance(current.get("response_received_at"), str)
+            )
+        )
+        allowed_contract = bool(
+            before_state == after_state
+            and changed_fields == {
+                "contract_runtime_capture_receipt_sha256",
+                "contract_runtime_capture_transport_complete",
+            }
+            and previous.get("contract_runtime_capture_receipt_sha256") is None
+            and previous.get("contract_runtime_capture_transport_complete") is None
+            and isinstance(
+                current.get("contract_runtime_capture_receipt_sha256"), str,
+            )
+            and _HEX64.fullmatch(
+                current["contract_runtime_capture_receipt_sha256"]
+            ) is not None
+            and current.get("contract_runtime_capture_transport_complete") is True
+        )
+        allowed_closed_receipt = False
         for receipt_field, complete_field in (
             _CAPTURE_RECONCILIATION_FIELD_PAIRS_V1
         ):
-            if changed_fields != {receipt_field, complete_field}:
-                continue
-            allowed = bool(
-                previous.get(receipt_field) is None
+            allowed_closed_receipt = allowed_closed_receipt or bool(
+                before_state == after_state
+                and previous.get("state") in _CLOSED_ATTEMPT_STATES_V1
+                and current.get("state") == previous.get("state")
+                and changed_fields == {receipt_field, complete_field}
+                and previous.get(receipt_field) is None
                 and previous.get(complete_field) is None
                 and isinstance(current.get(receipt_field), str)
                 and _HEX64.fullmatch(current[receipt_field]) is not None
                 and current.get(complete_field) is True
             )
+        allowed = (
+            allowed_provider or allowed_contract or allowed_closed_receipt
+        )
         _require(allowed, "CAPTURE_RECONCILIATION_NOT_NARROW")
 
 
@@ -1769,7 +1846,7 @@ def validate_policy_v1(value: Mapping[str, Any]) -> dict[str, Any]:
 
 
 class FullShortDurableExecutionStoreV1:
-    """External, exclusive, hash-only permission/approval/nonce/dispatch store."""
+    """External receipts with a process-confined capture attestation signer."""
 
     def __init__(self, *, repo_root: Path, store_root: Path) -> None:
         self.repo_root = repo_root.resolve(strict=True)
@@ -1789,79 +1866,27 @@ class FullShortDurableExecutionStoreV1:
         self.store_root_sha256 = hashlib.sha256(
             str(self.root).encode("utf-8"),
         ).hexdigest()
-        self.capture_attestation_authority_path = (
-            self.root / "capture-attestation-authority-v1.json"
+        signer_key = os.path.normcase(str(self.root))
+        private_key = _PROCESS_CAPTURE_ATTESTATION_SIGNERS_V1.get(signer_key)
+        if private_key is None:
+            private_key = Ed25519PrivateKey.generate()
+            _PROCESS_CAPTURE_ATTESTATION_SIGNERS_V1[signer_key] = private_key
+        self._capture_attestation_private_key: Ed25519PrivateKey | None = (
+            private_key
         )
-        self._load_or_create_capture_attestation_authority()
+        self._set_capture_attestation_public_key(private_key.public_key())
 
-    def _load_or_create_capture_attestation_authority(self) -> None:
-        with self._locked():
-            if not self.capture_attestation_authority_path.exists():
-                private_key = Ed25519PrivateKey.generate()
-                private_bytes = private_key.private_bytes(
-                    encoding=serialization.Encoding.Raw,
-                    format=serialization.PrivateFormat.Raw,
-                    encryption_algorithm=serialization.NoEncryption(),
-                )
-                public_bytes = private_key.public_key().public_bytes(
-                    encoding=serialization.Encoding.Raw,
-                    format=serialization.PublicFormat.Raw,
-                )
-                self._exclusive_write(
-                    self.capture_attestation_authority_path,
-                    {
-                        "schema": "FullShortCaptureAttestationAuthorityV1",
-                        "version": 1,
-                        "scheme": "ED25519_CAPTURE_ANCHOR_V1",
-                        "private_key": private_bytes.hex(),
-                        "public_key": public_bytes.hex(),
-                        "public_key_sha256": hashlib.sha256(
-                            public_bytes
-                        ).hexdigest(),
-                        "created_at": _now(),
-                    },
-                )
-            try:
-                authority = json.loads(
-                    self.capture_attestation_authority_path.read_text(
-                        encoding="utf-8"
-                    )
-                )
-                private_bytes = bytes.fromhex(
-                    str(authority.get("private_key") or "")
-                )
-                private_key = Ed25519PrivateKey.from_private_bytes(
-                    private_bytes
-                )
-                public_bytes = private_key.public_key().public_bytes(
-                    encoding=serialization.Encoding.Raw,
-                    format=serialization.PublicFormat.Raw,
-                )
-            except (OSError, ValueError, TypeError, AttributeError) as exc:
-                raise FullShortExecutionBoundaryError(
-                    "CAPTURE_ATTESTATION_AUTHORITY_INVALID"
-                ) from exc
-            _require(
-                isinstance(authority, dict)
-                and set(authority) == {
-                    "schema", "version", "scheme", "private_key",
-                    "public_key", "public_key_sha256", "created_at",
-                }
-                and authority.get("schema")
-                == "FullShortCaptureAttestationAuthorityV1"
-                and authority.get("version") == 1
-                and authority.get("scheme")
-                == "ED25519_CAPTURE_ANCHOR_V1"
-                and authority.get("public_key") == public_bytes.hex()
-                and authority.get("public_key_sha256")
-                == hashlib.sha256(public_bytes).hexdigest(),
-                "CAPTURE_ATTESTATION_AUTHORITY_INVALID",
-            )
-            self._capture_attestation_private_key = private_key
-            self.capture_attestation_public_key = public_bytes.hex()
-            self.capture_attestation_public_key_sha256 = hashlib.sha256(
-                public_bytes
-            ).hexdigest()
+    def _set_capture_attestation_public_key(
+        self, public_key: Ed25519PublicKey,
+    ) -> None:
+        public_bytes = public_key.public_bytes(
+            encoding=serialization.Encoding.Raw,
+            format=serialization.PublicFormat.Raw,
+        )
+        self.capture_attestation_public_key = public_bytes.hex()
+        self.capture_attestation_public_key_sha256 = hashlib.sha256(
+            public_bytes
+        ).hexdigest()
 
     def _verify_store_binding(self, policy: Mapping[str, Any]) -> dict[str, Any]:
         validated = validate_policy_v1(policy)
@@ -1869,6 +1894,18 @@ class FullShortDurableExecutionStoreV1:
             validated["store_root_sha256"] == self.store_root_sha256,
             "STORE_ROOT_POLICY_MISMATCH",
         )
+        if (
+            self.capture_attestation_public_key
+            != validated["capture_attestation_public_key"]
+        ):
+            # A restarted process may verify and replay prior signed captures,
+            # but cannot mint new anchors for the old single-use authority.
+            self._capture_attestation_private_key = None
+            self._set_capture_attestation_public_key(
+                Ed25519PublicKey.from_public_bytes(bytes.fromhex(
+                    str(validated["capture_attestation_public_key"])
+                ))
+            )
         return validated
 
     @contextmanager
@@ -1885,7 +1922,9 @@ class FullShortDurableExecutionStoreV1:
             payload = canonical_json_bytes(value) + b"\n"
             offset = 0
             while offset < len(payload):
-                offset += os.write(descriptor, payload[offset:])
+                written = os.write(descriptor, payload[offset:])
+                _require(written > 0, "DURABLE_WRITE_NO_PROGRESS")
+                offset += written
             os.fsync(descriptor)
         finally:
             os.close(descriptor)
@@ -1910,7 +1949,9 @@ class FullShortDurableExecutionStoreV1:
             payload = canonical_json_bytes(value) + b"\n"
             offset = 0
             while offset < len(payload):
-                offset += os.write(descriptor, payload[offset:])
+                written = os.write(descriptor, payload[offset:])
+                _require(written > 0, "DURABLE_WRITE_NO_PROGRESS")
+                offset += written
             os.fsync(descriptor)
         finally:
             os.close(descriptor)
@@ -1997,6 +2038,10 @@ class FullShortDurableExecutionStoreV1:
                 ),
                 "created_at": _now(),
             }
+            _require(
+                self._capture_attestation_private_key is not None,
+                "CAPTURE_ATTESTATION_SIGNER_UNAVAILABLE_AFTER_RESTART",
+            )
             body["capture_attestation_signature"] = (
                 self._capture_attestation_private_key.sign(
                     canonical_json_bytes(body)
@@ -2892,7 +2937,18 @@ class FullShortDurableExecutionStoreV1:
                     == attempt.get("contract_version")
                     and metadata.get("contract_schema_sha256")
                     == attempt.get("contract_schema_sha256")
-                    and metadata.get("transport_complete") is True,
+                    and metadata.get("transport_complete") is True
+                    and (
+                        byte_domain != PROVIDER_PROTOCOL_INPUT_BYTES
+                        or (
+                            metadata.get("http_success")
+                            == attempt.get(
+                                "provider_protocol_capture_http_success"
+                            )
+                            and metadata.get("response_status_sha256")
+                            == attempt.get("response_status_sha256")
+                        )
+                    ),
                     "COMPLETION_CAPTURE_PROVENANCE_INVALID",
                 )
                 protocol = str(metadata.get("protocol") or "")
@@ -3596,6 +3652,10 @@ class FullShortDispatchLedgerObserverV1:
             sealed.get("reasoning_output_reservation")
             or "WITHIN_COMPLETION_CAP"
         )
+        reasoning_reserve = sealed.get(
+            "reasoning_token_reserve",
+            0 if reasoning_accounting == "INCLUDED_IN_COMPLETION_CAP" else None,
+        )
         _require(
             type(route_limit) is int
             and route_limit > 0
@@ -3610,12 +3670,21 @@ class FullShortDispatchLedgerObserverV1:
             "CAPACITY_ROUTE_CONTEXT_LIMIT_INVALID",
         )
         _require(
-            reasoning_accounting == "INCLUDED_IN_COMPLETION_CAP"
-            and reasoning_reservation == "WITHIN_COMPLETION_CAP",
+            type(reasoning_reserve) is int
+            and (
+                reasoning_accounting == "INCLUDED_IN_COMPLETION_CAP"
+                and reasoning_reservation == "WITHIN_COMPLETION_CAP"
+                and reasoning_reserve == 0
+                or reasoning_accounting == "SEPARATE_IF_REPORTED"
+                and reasoning_reservation
+                == "SEPARATE_REPORTED_RESERVATION_REQUIRED"
+                and reasoning_reserve > 0
+            ),
             "CAPACITY_ROUTE_CONTEXT_LIMIT_INVALID",
         )
         sealed["reasoning_token_accounting"] = reasoning_accounting
         sealed["reasoning_output_reservation"] = reasoning_reservation
+        sealed["reasoning_token_reserve"] = reasoning_reserve
         _require(
             not (
                 self.external_actions_enabled
@@ -3635,7 +3704,8 @@ class FullShortDispatchLedgerObserverV1:
                 "route_context_capability_limit_tokens",
                 "route_context_capability_source",
                 "max_output_tokens", "reasoning_token_accounting",
-                "reasoning_output_reservation", "route_capability_sha256",
+                "reasoning_output_reservation", "reasoning_token_reserve",
+                "route_capability_sha256",
                 "route_capability_status",
             )},
         )
@@ -3653,7 +3723,7 @@ class FullShortDispatchLedgerObserverV1:
                     "route_context_capability_limit_tokens",
                     "route_context_capability_source", "max_output_tokens",
                     "reasoning_token_accounting",
-                    "reasoning_output_reservation",
+                    "reasoning_output_reservation", "reasoning_token_reserve",
                 )},
             )
         )
@@ -3783,8 +3853,11 @@ class FullShortDispatchLedgerObserverV1:
             "reasoning_token_accounting": sealed[
                 "reasoning_token_accounting"
             ],
-            "reasoning_token_reserve": 0,
+            "reasoning_token_reserve": sealed["reasoning_token_reserve"],
             "recovery_stage_role": recovery_stage_role,
+            "reasoning_output_reservation": sealed[
+                "reasoning_output_reservation"
+            ],
             "reasoning_policy": reasoning_policy,
             "prior_rendered_request_sha256": (
                 prior_rendered_request_sha256
@@ -3855,6 +3928,8 @@ class FullShortDispatchLedgerObserverV1:
             == context["reasoning_token_reserve"]
             and plan.reasoning_token_accounting
             == context["reasoning_token_accounting"]
+            and plan.reasoning_output_reservation
+            == context["reasoning_output_reservation"]
             and plan.recovery_stage_role == context["recovery_stage_role"]
             and plan.reasoning_policy == context["reasoning_policy"]
             and plan.prior_rendered_request_sha256
@@ -3897,6 +3972,7 @@ class FullShortDispatchLedgerObserverV1:
                 "route_max_output_tokens",
                 "reasoning_token_reserve",
                 "reasoning_token_accounting",
+                "reasoning_output_reservation",
                 "requested_output_token_cap",
                 "final_output_reserve",
                 "role_sha256",
@@ -3922,6 +3998,9 @@ class FullShortDispatchLedgerObserverV1:
                 "reasoning_token_reserve": plan.reasoning_token_reserve,
                 "reasoning_token_accounting": (
                     plan.reasoning_token_accounting
+                ),
+                "reasoning_output_reservation": (
+                    plan.reasoning_output_reservation
                 ),
                 "requested_output_token_cap": (
                     plan.requested_output_token_cap
@@ -3993,6 +4072,9 @@ class FullShortDispatchLedgerObserverV1:
             "final_output_reserve": plan.final_output_reserve,
             "reasoning_token_reserve": plan.reasoning_token_reserve,
             "reasoning_token_accounting": plan.reasoning_token_accounting,
+            "reasoning_output_reservation": (
+                plan.reasoning_output_reservation
+            ),
             "recovery_stage_role": plan.recovery_stage_role,
             "reasoning_policy": plan.reasoning_policy,
             "prior_rendered_request_sha256": (
@@ -4933,6 +5015,8 @@ class FullShortDispatchLedgerObserverV1:
     def _capture_metadata(
         self, *, adapter_id: str, adapter_version: int,
         content_type: str, encoding: str, transport_complete: bool,
+        status_code: int | None = None,
+        http_success: bool | None = None,
     ) -> dict[str, Any]:
         ordinal = self.pending_ordinal
         route = self.bound_route
@@ -4956,6 +5040,12 @@ class FullShortDispatchLedgerObserverV1:
             "content_type": content_type,
             "encoding": encoding,
             "transport_complete": transport_complete,
+            "status_code": status_code,
+            "http_success": http_success,
+            "response_status_sha256": (
+                hashlib.sha256(str(status_code).encode("ascii")).hexdigest()
+                if status_code is not None else None
+            ),
         }
 
     def _record_capture_receipt(
@@ -5010,6 +5100,8 @@ class FullShortDispatchLedgerObserverV1:
             adapter_id=str(route["protocol"]), adapter_version=1,
             content_type=content_type, encoding=encoding,
             transport_complete=transport_complete,
+            status_code=status_code,
+            http_success=200 <= status_code < 300,
         )
         receipt = self.capture_store.capture(
             byte_domain=PROVIDER_PROTOCOL_INPUT_BYTES,
@@ -6245,6 +6337,9 @@ def reconcile_full_short_capture_anchor_v1(
     complete_field = field.replace(
         "_receipt_sha256", "_transport_complete",
     )
+    capture_metadata = capture["metadata"]
+    capture_http_success = capture_metadata.get("http_success")
+    capture_status_sha256 = capture_metadata.get("response_status_sha256")
 
     def mutate(body: dict[str, Any]) -> dict[str, Any]:
         current_attempts = list(body.get("attempts") or [])
@@ -6274,6 +6369,27 @@ def reconcile_full_short_capture_anchor_v1(
         )
         current[field] = receipt_sha256
         current[complete_field] = True
+        if (
+            byte_domain == PROVIDER_PROTOCOL_INPUT_BYTES
+            and current.get("state") == "DISPATCH_ATTEMPTED"
+        ):
+            _require(
+                type(capture_http_success) is bool
+                and _HEX64.fullmatch(str(capture_status_sha256 or ""))
+                is not None,
+                "CAPTURE_RECONCILIATION_HTTP_CLASSIFICATION_INVALID",
+            )
+            current["provider_protocol_capture_http_success"] = (
+                capture_http_success
+            )
+            current["response_status_sha256"] = capture_status_sha256
+            if capture_http_success:
+                current["state"] = "RESPONSE_RECEIVED"
+                current["response_received_at"] = _now()
+                body["state"] = "RESPONSE_RECEIVED_AWAITING_LOCAL_RECEIPT"
+            else:
+                current["state"] = "HTTP_RESPONSE_FAILED_CLOSED"
+                body["state"] = "RECONCILIATION_REQUIRED_NO_REDISPATCH"
         current_attempts[ordinal - 1] = current
         body["attempts"] = current_attempts
         return body
@@ -6371,10 +6487,43 @@ def replay_full_short_provider_attempt_v1(
         expected_metadata=capture["metadata"],
         expected_receipt_sha256=receipt_sha256,
     )
-    _require(metadata["protocol"] == "anthropic", "REPLAY_PROTOCOL_UNSUPPORTED")
-    from novel_flywheel.providers.anthropic import AnthropicAdapter
+    _require(
+        metadata.get("transport_complete") is True,
+        "REPLAY_CAPTURE_TRANSPORT_INCOMPLETE",
+    )
+    _require(
+        metadata.get("http_success") is True
+        and type(metadata.get("status_code")) is int
+        and 200 <= metadata["status_code"] < 300,
+        "REPLAY_HTTP_RESPONSE_NOT_SUCCESSFUL",
+    )
+    _require(
+        attempt.get("provider_protocol_capture_http_success") is True
+        and attempt.get("response_status_sha256")
+        == metadata.get("response_status_sha256"),
+        "REPLAY_LEDGER_HTTP_CLASSIFICATION_MISMATCH",
+    )
+    protocol = str(metadata.get("protocol") or "")
+    _require(
+        metadata.get("adapter_id")
+        in _PROVIDER_PROTOCOL_ADAPTER_IDS.get(protocol, frozenset()),
+        "REPLAY_ADAPTER_IDENTITY_INVALID",
+    )
+    if protocol == "anthropic":
+        from novel_flywheel.providers.anthropic import AnthropicAdapter
+        adapter = AnthropicAdapter
+    elif protocol == "openai-chat":
+        from novel_flywheel.providers.openai_chat import OpenAIChatAdapter
+        adapter = OpenAIChatAdapter
+    elif protocol == "openai-responses":
+        from novel_flywheel.providers.openai_responses import (
+            OpenAIResponsesAdapter,
+        )
+        adapter = OpenAIResponsesAdapter
+    else:
+        raise FullShortExecutionBoundaryError("REPLAY_PROTOCOL_UNSUPPORTED")
 
-    return AnthropicAdapter.replay_protocol_input_bytes_v1(
+    return adapter.replay_protocol_input_bytes_v1(
         data, content_type=metadata["content_type"],
         encoding=metadata["encoding"],
     )

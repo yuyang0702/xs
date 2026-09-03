@@ -49,6 +49,9 @@ def _metadata(**updates):
         "content_type": "application/json",
         "encoding": "utf-8",
         "transport_complete": True,
+        "status_code": 200,
+        "http_success": True,
+        "response_status_sha256": hashlib.sha256(b"200").hexdigest(),
     }
     value.update(updates)
     return value
@@ -152,6 +155,65 @@ def test_exact_capture_replay_preserves_every_byte(tmp_path: Path, data: bytes) 
     assert replayed == data
     assert header["byte_sha256"] == hashlib.sha256(data).hexdigest()
     assert receipt.byte_length == len(data)
+
+
+@pytest.mark.parametrize("status_code", [200, 503])
+def test_capture_envelope_binds_normalized_http_classification(
+    tmp_path: Path, status_code: int,
+) -> None:
+    store = _store(tmp_path)
+    metadata = _metadata(
+        status_code=status_code,
+        http_success=200 <= status_code < 300,
+        response_status_sha256=hashlib.sha256(
+            str(status_code).encode("ascii")
+        ).hexdigest(),
+    )
+    store.capture(
+        byte_domain=PROVIDER_PROTOCOL_INPUT_BYTES,
+        data=b'{"error":"offline"}', metadata=metadata,
+    )
+
+    _, header = store.replay(
+        byte_domain=PROVIDER_PROTOCOL_INPUT_BYTES,
+        expected_metadata=metadata,
+    )
+
+    assert header["status_code"] == status_code
+    assert header["http_success"] is (200 <= status_code < 300)
+    assert header["response_status_sha256"] == hashlib.sha256(
+        str(status_code).encode("ascii")
+    ).hexdigest()
+
+
+def test_capture_rejects_inconsistent_http_classification(tmp_path: Path) -> None:
+    store = _store(tmp_path)
+    with pytest.raises(
+        ProviderResponseCaptureError, match="HTTP_CLASSIFICATION_MISMATCH",
+    ):
+        store.capture(
+            byte_domain=PROVIDER_PROTOCOL_INPUT_BYTES,
+            data=b"{}", metadata=_metadata(status_code=503),
+        )
+
+
+def test_capture_durable_write_zero_progress_fails_closed(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    store = _store(tmp_path)
+    monkeypatch.setattr(
+        "novel_flywheel.provider_response_capture.os.write",
+        lambda _descriptor, _payload: 0,
+    )
+
+    with pytest.raises(
+        ProviderResponseCaptureError, match="DURABLE_WRITE_NO_PROGRESS",
+    ):
+        store.capture(
+            byte_domain=PROVIDER_PROTOCOL_INPUT_BYTES,
+            data=b"{}", metadata=_metadata(),
+        )
+    assert list(store.root.glob("*.capture")) == []
 
 
 def test_sse_parser_replays_unicode_newline_and_escaping_exactly() -> None:

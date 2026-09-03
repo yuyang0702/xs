@@ -11,7 +11,11 @@ from novel_flywheel.contract_runtime import (
     dispatch_explicit_model_route,
     execute_model_route_runtime,
 )
-from novel_flywheel.full_short_runtime_kernel import FullShortBoundaryFailureV1
+from novel_flywheel.full_short_runtime_kernel import (
+    DEFAULT_FAILURE_BOUNDARY_REGISTRY_V1,
+    FullShortBoundaryFailureV1,
+    RecoveryDecisionKind,
+)
 from novel_flywheel.stage_capacity import (
     CAPACITY_FAILURE_IDS_V1,
     CAPACITY_FAILURE_IDS_V3,
@@ -126,6 +130,25 @@ def test_exact_ready_pref_fix_shape_has_deterministic_headroom() -> None:
     )
     assert plan.model_context_limit == 32768
     assert plan.plan_sha256 == _plan().plan_sha256
+
+
+def test_separate_reasoning_reserve_is_included_in_capacity_equation() -> None:
+    plan = _plan(
+        reasoning_token_accounting="SEPARATE_IF_REPORTED",
+        reasoning_output_reservation=(
+            "SEPARATE_REPORTED_RESERVATION_REQUIRED"
+        ),
+        reasoning_token_reserve=4_096,
+    )
+
+    assert plan.admission_status is AdmissionStatus.PASS
+    assert plan.prompt_budget == 25_076
+    assert plan.headroom == 2_520
+
+
+def test_reasoning_accounting_and_reserve_must_be_consistent() -> None:
+    with pytest.raises(ValueError, match="capacity_reasoning_reservation_invalid"):
+        _plan(reasoning_token_reserve=1)
 
 
 def test_route_capability_below_stage_ceiling_is_effective_limit() -> None:
@@ -504,6 +527,36 @@ def test_stage_specific_segmentation_and_recovery_are_registry_bound() -> None:
         stage="review",
         failure_id=CapacityFailureCode.RENDERED_PROMPT_DRIFT,
     ) is CapacityRecoveryDisposition.STOP
+
+
+def test_stage_recovery_matches_runtime_capacity_semantic_split_taxonomy() -> None:
+    semantic_split_failures = {
+        failure_id
+        for failure_id in CAPACITY_FAILURE_IDS_V3
+        if DEFAULT_FAILURE_BOUNDARY_REGISTRY_V1.failure(
+            failure_id
+        ).recovery_decision is RecoveryDecisionKind.SEMANTIC_SPLIT
+    }
+
+    assert {
+        CapacityFailureCode.CONTEXT_WINDOW_EXCEEDED.value,
+        CapacityFailureCode.ESTIMATOR_UNCERTAINTY_EXCEEDED.value,
+    } <= semantic_split_failures
+    for stage in DEFAULT_STAGE_CAPACITY_POLICY_REGISTRY_V1.policies:
+        assert all(
+            capacity_failure_recovery_disposition_v1(
+                stage=stage, failure_id=failure_id,
+            ) is CapacityRecoveryDisposition.SEGMENT
+            for failure_id in semantic_split_failures
+        )
+
+
+def test_estimator_uncertainty_failure_is_retryable_by_semantic_split() -> None:
+    failure = CapacityAdmissionFailureV1(
+        CapacityFailureCode.ESTIMATOR_UNCERTAINTY_EXCEEDED,
+    )
+
+    assert failure.reliability_failure.retryable is True
 
 
 @pytest.mark.asyncio

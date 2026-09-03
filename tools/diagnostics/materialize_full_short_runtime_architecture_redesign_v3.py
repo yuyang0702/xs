@@ -100,6 +100,57 @@ def git(repo: Path, *args: str) -> str:
     ).strip()
 
 
+def git_raw(repo: Path, *args: str) -> bytes:
+    return subprocess.check_output(["git", *args], cwd=repo)
+
+
+def _baseline_tree_entries(repo: Path) -> list[dict[str, Any]]:
+    """Return every baseline tree entry with immutable blob bytes when present."""
+
+    raw_tree = git_raw(
+        repo, "ls-tree", "-rz", "--full-tree", BASELINE_HEAD,
+    )
+    entries: list[dict[str, Any]] = []
+    for raw_entry in raw_tree.split(b"\x00"):
+        if not raw_entry:
+            continue
+        metadata, raw_path = raw_entry.split(b"\t", 1)
+        _mode, object_type, object_id = metadata.decode("ascii").split()
+        relative = raw_path.decode("utf-8")
+        entries.append({
+            "path": relative,
+            "object_type": object_type,
+            "object_id": object_id,
+            "blob": None,
+        })
+    blob_entries = [
+        entry for entry in entries if entry["object_type"] == "blob"
+    ]
+    request = b"".join(
+        str(entry["object_id"]).encode("ascii") + b"\n"
+        for entry in blob_entries
+    )
+    response = subprocess.check_output(
+        ["git", "cat-file", "--batch"], cwd=repo, input=request,
+    )
+    offset = 0
+    for entry in blob_entries:
+        header_end = response.index(b"\n", offset)
+        header = response[offset:header_end].decode("ascii").split()
+        if len(header) != 3 or header[1] != "blob":
+            raise ValueError("baseline_git_blob_batch_invalid")
+        size = int(header[2])
+        blob_start = header_end + 1
+        blob_end = blob_start + size
+        if response[blob_end:blob_end + 1] != b"\n":
+            raise ValueError("baseline_git_blob_batch_truncated")
+        entry["blob"] = response[blob_start:blob_end]
+        offset = blob_end + 1
+    if offset != len(response):
+        raise ValueError("baseline_git_blob_batch_trailing_bytes")
+    return entries
+
+
 def write_json(path: Path, value: object) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(
@@ -265,9 +316,18 @@ _CAPACITY_FIELD_FRAGMENT = (
     r"|(?:output|completion)[_ -]?(?:token[_ -]?)?(?:limit|cap|budget)"
     r"|token[_ -]?(?:limit|cap|budget|ceiling|headroom))"
 )
-_FIELD_THEN_VALUE_RE = re.compile(
-    rf"(?P<field>{_CAPACITY_FIELD_FRAGMENT})[^0-9\n]{{0,80}}"
-    r"(?P<value>[0-9][0-9,_.]*(?:\.[0-9]+)?)\s*(?P<unit>[kKmM])?\b",
+_CAPACITY_FIELD_RE = re.compile(
+    rf"(?P<field>{_CAPACITY_FIELD_FRAGMENT})\b",
+    re.IGNORECASE,
+)
+_CAPACITY_NUMBER_RE = re.compile(
+    r"(?P<value>[0-9][0-9,_.]*(?:\.[0-9]+)?)\s*(?P<unit>[kKmM])?"
+    r"\b",
+    re.IGNORECASE,
+)
+_VALUE_THEN_BARE_CONTEXT_RE = re.compile(
+    r"(?P<value>[0-9][0-9,_.]*(?:\.[0-9]+)?)\s*(?P<unit>[kKmM])"
+    r"\s+context\b",
     re.IGNORECASE,
 )
 _VALUE_WITH_TOKEN_UNIT_RE = re.compile(
@@ -286,13 +346,14 @@ _CAPACITY_CONTEXT_TERMS = (
 )
 
 
-def _historical_source_categories(normalized: str) -> tuple[str, ...]:
+def _historical_source_categories(
+    normalized: str, *, text_like: bool,
+) -> tuple[str, ...]:
     """Return every Master-task search category applicable to a tracked path."""
 
     lower = normalized.lower()
     name = Path(lower).name
     suffix = Path(lower).suffix
-    text_like = suffix in _HISTORICAL_TEXT_SUFFIXES
     categories: set[str] = set()
     if lower.startswith("config/") or (
         text_like and any(term in name for term in ("provider", "model"))
@@ -338,39 +399,68 @@ def _capacity_values_in_text(text: str) -> list[dict[str, Any]]:
     """Extract capacity-like values by field or token-unit syntax, without prose."""
 
     values: list[dict[str, Any]] = []
-    seen: set[tuple[int, int]] = set()
+    seen: set[tuple[int, int, int]] = set()
     for line_number, line in enumerate(text.splitlines(), start=1):
-        for pattern, default_field in (
-            (_FIELD_THEN_VALUE_RE, None),
-            (_VALUE_WITH_TOKEN_UNIT_RE, "token_quantity_near_capacity_language"),
-        ):
-            for match in pattern.finditer(line):
-                value = _normalized_token_value(
-                    match.group("value"), match.group("unit"),
+        number_matches = list(_CAPACITY_NUMBER_RE.finditer(line))
+
+        def append_match(match: re.Match[str], field: str) -> None:
+            value = _normalized_token_value(
+                match.group("value"), match.group("unit"),
+            )
+            identity = (
+                line_number, match.start("value"), match.end("value"),
+            )
+            if value is None or identity in seen:
+                return
+            seen.add(identity)
+            values.append({
+                "line_number": line_number,
+                "capability_field": field,
+                "value": value,
+                "raw_unit": match.group("unit") or "tokens",
+            })
+
+        for field_match in _CAPACITY_FIELD_RE.finditer(line):
+            after = [
+                match for match in number_matches
+                if match.start() >= field_match.end()
+                and re.fullmatch(
+                    r"[\s:=\"'`_\-]{0,24}",
+                    line[field_match.end():match.start()],
                 )
-                if value is None:
-                    continue
-                field = default_field or re.sub(
-                    r"[ -]+", "_", match.group("field").lower(),
+            ]
+            before = [
+                match for match in number_matches
+                if match.end() <= field_match.start()
+                and re.fullmatch(
+                    r"[\s:=\"'`_\-]{0,24}",
+                    line[match.end():field_match.start()],
                 )
-                identity = (line_number, value)
-                if identity in seen:
-                    continue
-                seen.add(identity)
-                values.append({
-                    "line_number": line_number,
-                    "capability_field": field,
-                    "value": value,
-                    "raw_unit": match.group("unit") or "tokens",
-                })
+            ]
+            selected = after[0] if after else (before[-1] if before else None)
+            if selected is not None:
+                append_match(
+                    selected,
+                    re.sub(
+                        r"[ -]+", "_",
+                        field_match.group("field").lower(),
+                    ),
+                )
+        for match in _VALUE_THEN_BARE_CONTEXT_RE.finditer(line):
+            append_match(match, "context")
+        for match in _VALUE_WITH_TOKEN_UNIT_RE.finditer(line):
+            append_match(match, "token_quantity_near_capacity_language")
         if any(term in line.lower() for term in _CAPACITY_CONTEXT_TERMS):
             for match in _CAPACITY_CONTEXT_NUMBER_RE.finditer(line):
                 value = _normalized_token_value(
                     match.group("value"), match.group("unit"),
                 )
-                if value is None or (line_number, value) in seen:
+                identity = (
+                    line_number, match.start("value"), match.end("value"),
+                )
+                if value is None or identity in seen:
                     continue
-                seen.add((line_number, value))
+                seen.add(identity)
                 values.append({
                     "line_number": line_number,
                     "capability_field": "token_quantity_in_capacity_context",
@@ -383,7 +473,7 @@ def _capacity_values_in_text(text: str) -> list[dict[str, Any]]:
 def _historical_search_inventory(repo: Path) -> dict[str, Any]:
     """Inventory all mandated tracked sources and every capacity-like value."""
 
-    tracked = git(repo, "ls-files").splitlines()
+    tracked = _baseline_tree_entries(repo)
     inventory: list[dict[str, Any]] = []
     discovered: list[dict[str, Any]] = []
     category_summary = {
@@ -395,47 +485,45 @@ def _historical_search_inventory(repo: Path) -> dict[str, Any]:
         }
         for category in _HISTORICAL_SEARCH_CATEGORIES
     }
-    excluded_generated_file_count = 0
-    for relative in tracked:
+    for tree_entry in tracked:
+        relative = str(tree_entry["path"])
         normalized = relative.replace("\\", "/")
-        if normalized.startswith(ROOT.as_posix() + "/"):
-            excluded_generated_file_count += 1
-            continue
-        categories = _historical_source_categories(normalized)
-        if not categories:
-            continue
-        path = repo / normalized
-        suffix = path.suffix.lower()
+        raw = tree_entry["blob"]
+        suffix = Path(normalized).suffix.lower()
+        text: str | None = None
+        if raw is not None and b"\x00" not in raw:
+            try:
+                text = raw.decode("utf-8-sig")
+            except UnicodeDecodeError:
+                text = None
+        categories = _historical_source_categories(
+            normalized, text_like=text is not None,
+        )
         for category in categories:
             category_summary[category]["tracked_file_count"] += 1
         candidates: list[dict[str, Any]] = []
-        if suffix in _HISTORICAL_TEXT_SUFFIXES:
-            try:
-                text = path.read_text(encoding="utf-8")
-            except (OSError, UnicodeDecodeError) as error:
-                inventory.append({
-                    "path": normalized,
-                    "categories": list(categories),
-                    "scan_method": "UTF8_TEXT_READ_FAILED",
-                    "error_class": type(error).__name__,
-                    "candidate_occurrence_count": 0,
-                    "sha256": sha_file(path),
-                })
-                continue
+        if text is not None:
             candidates = _capacity_values_in_text(text)
-            scan_method = "UTF8_CAPACITY_FIELD_AND_TOKEN_UNIT_SCAN"
+            scan_method = "BASELINE_UTF8_CAPACITY_BIDIRECTIONAL_SCAN"
             for category in categories:
                 category_summary[category]["text_scanned_file_count"] += 1
                 category_summary[category]["candidate_occurrence_count"] += len(
                     candidates
                 )
         else:
-            scan_method = "BINARY_HASH_INVENTORY_NO_TEXT_EXTRACTION"
+            scan_method = (
+                "GITLINK_OID_INVENTORY_NO_BLOB"
+                if raw is None else "NON_UTF8_OR_NUL_HASH_INVENTORY"
+            )
             for category in categories:
                 category_summary[category]["binary_inventory_file_count"] += 1
-        digest = sha_file(path)
+        digest = (
+            sha_bytes(raw) if raw is not None
+            else sha_bytes(str(tree_entry["object_id"]).encode("ascii"))
+        )
         inventory.append({
             "path": normalized,
+            "git_object_type": tree_entry["object_type"],
             "categories": list(categories),
             "scan_method": scan_method,
             "candidate_occurrence_count": len(candidates),
@@ -473,9 +561,11 @@ def _historical_search_inventory(repo: Path) -> dict[str, Any]:
     ] = category_summary["manually_recorded_limits"]["tracked_file_count"]
     return {
         "tracked_repository_file_count": len(tracked),
-        "excluded_current_generated_evidence_file_count": (
-            excluded_generated_file_count
+        "historical_source_commit": BASELINE_HEAD,
+        "historical_source_tree_sha256": sha_bytes(
+            git(repo, "rev-parse", f"{BASELINE_HEAD}^{{tree}}").encode("ascii")
         ),
+        "excluded_current_generated_evidence_file_count": 0,
         "searched_file_count": len(inventory),
         "searched_file_inventory_sha256": sha_json(inventory),
         "searched_file_inventory": inventory,
@@ -762,7 +852,13 @@ def materialize(
     search_inventory_path = root / "historical-capacity-search-inventory-v1.json"
     write_json(search_inventory_path, receipt(
         "HistoricalCapacitySearchInventoryV1", "SEARCH_COMPLETE",
-        source_truth_boundary="ALL_GIT_TRACKED_REPOSITORY_FILES",
+        source_truth_boundary="BASELINE_GIT_TREE_ALL_TRACKED_BLOBS",
+        historical_source_commit=historical_search[
+            "historical_source_commit"
+        ],
+        historical_source_tree_sha256=historical_search[
+            "historical_source_tree_sha256"
+        ],
         committed_source_truth_search_complete=True,
         untracked_or_ignored_project_local_search_performed=False,
         untracked_or_ignored_project_local_disposition=(
@@ -788,23 +884,28 @@ def materialize(
         "status": "SEARCH_COMPLETE_NO_VERIFIED_REUSE",
         "historical_evidence_search_complete": True,
         "historical_evidence_search_complete_boundary": (
-            "ALL_GIT_TRACKED_REPOSITORY_SOURCE_TRUTH"
+            "BASELINE_GIT_TREE_ALL_TRACKED_BLOBS"
         ),
+        "historical_source_commit": historical_search[
+            "historical_source_commit"
+        ],
+        "historical_source_tree_sha256": historical_search[
+            "historical_source_tree_sha256"
+        ],
         "committed_source_truth_search_complete": True,
         "untracked_or_ignored_project_local_search_performed": False,
         "untracked_or_ignored_project_local_disposition": (
             "EXCLUDED_NOT_REPOSITORY_SOURCE_TRUTH_AND_MAY_CONTAIN_SECRETS"
         ),
         "search_scope": (
-            "all Git-tracked UTF-8 config, approval/canary, capability/budget, "
-            "reports, runtime/fingerprint, route/manifest/provider-matrix, "
-            "test-fixture, source-comment, and documentation files selected by "
-            "path category; all tracked screenshot/image formats are hash-"
-            "inventoried. The current generated V3 evidence directory is excluded."
+            "every blob tracked by the immutable baseline Git tree; every blob "
+            "that is valid UTF-8 and contains no NUL is scanned independent of "
+            "filename suffix, while images and non-text blobs are hash-inventoried"
         ),
         "search_method": (
-            "capacity-field and token-unit pattern extraction; no fixed list of "
-            "candidate decimal values and no raw surrounding prose persisted"
+            "bidirectional capacity-field/value and token-unit extraction with "
+            "K/M normalization; no fixed list of candidate values and no raw "
+            "surrounding prose persisted"
         ),
         "search_category_contract": list(_HISTORICAL_SEARCH_CATEGORIES),
         "search_inventory_file_count": historical_search["searched_file_count"],

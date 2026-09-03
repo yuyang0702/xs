@@ -695,7 +695,10 @@ def run_capacity_fault_campaign_v3(artifact_dir: Path) -> dict[str, object]:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
-        description="Run the offline V2 Full Short capacity fault campaign."
+        description="Run an offline Full Short capacity fault campaign."
+    )
+    parser.add_argument(
+        "--campaign-version", choices=("v2", "v3"), default="v3",
     )
     parser.add_argument("--artifact-dir", type=Path)
     parser.add_argument("--output", type=Path)
@@ -704,9 +707,17 @@ def main(argv: list[str] | None = None) -> int:
         with tempfile.TemporaryDirectory(
             prefix="full-short-capacity-fault-campaign-"
         ) as temp_dir:
-            report = run_capacity_fault_campaign_v2(Path(temp_dir))
+            report = (
+                run_capacity_fault_campaign_v3(Path(temp_dir))
+                if args.campaign_version == "v3"
+                else run_capacity_fault_campaign_v2(Path(temp_dir))
+            )
     else:
-        report = run_capacity_fault_campaign_v2(args.artifact_dir)
+        report = (
+            run_capacity_fault_campaign_v3(args.artifact_dir)
+            if args.campaign_version == "v3"
+            else run_capacity_fault_campaign_v2(args.artifact_dir)
+        )
     rendered = json.dumps(
         report,
         ensure_ascii=False,
