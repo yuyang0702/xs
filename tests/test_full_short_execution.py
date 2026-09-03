@@ -48,7 +48,10 @@ from novel_flywheel.contract_runtime import (
     execute_contract_runtime,
 )
 from novel_flywheel.provider_response_capture import (
+    CAPTURE_MAGIC,
+    PROVIDER_PROTOCOL_INPUT_BYTES,
     ProviderResponseCaptureError,
+    ProviderResponseCaptureStoreV1,
 )
 from novel_flywheel.providers.http import (
     HttpProvider,
@@ -65,7 +68,10 @@ from novel_flywheel.route_capabilities import (
 from novel_flywheel.projects import ProjectCreate, ProjectStore
 from novel_flywheel.story_state import StoryStateStore
 from novel_flywheel.structured_artifacts import StructuredArtifactContract
-from novel_flywheel.runtime_fingerprint_build import domain_sha256
+from novel_flywheel.runtime_fingerprint_build import (
+    canonical_json_bytes,
+    domain_sha256,
+)
 from novel_flywheel.recovery_engine import FailureClass
 from novel_flywheel.stage_capacity import (
     CapacityAdmissionFailureV1,
@@ -683,6 +689,35 @@ def _capacity_receipts(
             plan_sha256=str(attempt["capacity_plan_sha256"]),
         )
         for attempt in ledger["attempts"]
+    )
+
+
+def _build_completion(
+    store: FullShortDurableExecutionStoreV1, execution_id: str,
+    permission: dict, approval: dict, nonce: dict, ledger: dict,
+) -> dict:
+    return build_full_short_completion_receipt_v1(
+        execution_id=execution_id,
+        policy=_policy(store),
+        durable_store=store,
+        permission_sha256=permission["permission_sha256"],
+        signed_approval_sha256=approval["signed_approval_sha256"],
+        nonce_sha256=nonce["nonce_sha256"],
+        ledger=ledger,
+        final_bindings={
+            "manuscript_sha256": "4" * 64,
+            "chapter_sha256": "5" * 64,
+            "canon_sha256": "6" * 64,
+            "story_state_sha256": "7" * 64,
+            "quality_checkpoint_sha256": "8" * 64,
+            "terminal_verification_sha256": _terminal()[
+                "verification_receipt_sha256"
+            ],
+        },
+        terminal_verification=_terminal(),
+        capacity_admission_receipts=_capacity_receipts(
+            store, execution_id, ledger,
+        ),
     )
 
 
@@ -3835,6 +3870,206 @@ def test_completion_rejects_durably_resealed_global_ordinal_forgery(
     assert caught.value.reason_code == (
         "COMPLETION_PHYSICAL_ATTEMPT_IDENTITY_INVALID"
     )
+
+
+def test_completion_recomputes_logical_capacity_envelope_from_policy(
+    tmp_path: Path,
+) -> None:
+    store = _store(tmp_path)
+    execution_id = "completion-durable-capacity-envelope-forgery"
+    permission, approval, nonce = _authorize_offline(store, execution_id)
+    _dispatch_and_close(store, execution_id)
+    ledger = store.load_ledger(execution_id)
+    receipt = store.load_capacity_admission_receipt(
+        execution_id=execution_id,
+        plan_sha256=ledger["attempts"][0]["capacity_plan_sha256"],
+    )
+    receipt_body = dict(receipt)
+    receipt_body.pop("capacity_admission_receipt_sha256")
+    receipt_body["logical_capacity_envelope_sha256"] = "f" * 64
+    forged_receipt = {
+        **receipt_body,
+        "capacity_admission_receipt_sha256": domain_sha256(
+            "novel-flywheel-capacity-admission-receipt-v1", receipt_body,
+        ),
+    }
+    store._replace(
+        store._capacity_path(
+            execution_id, receipt["capacity_plan_sha256"],
+        ),
+        forged_receipt,
+    )
+    ledger_body = dict(ledger)
+    ledger_body.pop("ledger_sha256")
+    attempts = [dict(item) for item in ledger_body["attempts"]]
+    attempts[0]["logical_capacity_envelope_sha256"] = "f" * 64
+    attempts[0]["capacity_admission_receipt_sha256"] = forged_receipt[
+        "capacity_admission_receipt_sha256"
+    ]
+    ledger_body["attempts"] = attempts
+    forged_ledger = {
+        **ledger_body,
+        "ledger_sha256": domain_sha256(
+            "novel-flywheel-full-short-dispatch-ledger-v1", ledger_body,
+        ),
+    }
+    store._replace(store._path(execution_id, "ledger"), forged_ledger)
+
+    with pytest.raises(FullShortExecutionBoundaryError) as caught:
+        _build_completion(
+            store, execution_id, permission, approval, nonce, forged_ledger,
+        )
+
+    assert caught.value.reason_code == (
+        "COMPLETION_CAPACITY_ADMISSION_PROVENANCE_INVALID"
+    )
+
+
+def test_completion_commit_reaudits_capacity_after_receipt_build(
+    tmp_path: Path,
+) -> None:
+    store = _store(tmp_path)
+    execution_id = "completion-commit-capacity-reaudit"
+    permission, approval, nonce = _authorize_offline(store, execution_id)
+    _dispatch_and_close(store, execution_id)
+    ledger = store.load_ledger(execution_id)
+    completion = _build_completion(
+        store, execution_id, permission, approval, nonce, ledger,
+    )
+    receipt = _capacity_receipts(store, execution_id, ledger)[0]
+    orphan_plan_sha256 = hashlib.sha256(b"post-build-orphan").hexdigest()
+    orphan_body = dict(receipt)
+    orphan_body.pop("capacity_admission_receipt_sha256")
+    orphan_body["capacity_plan_sha256"] = orphan_plan_sha256
+    store.create_capacity_admission_receipt(
+        execution_id=execution_id,
+        plan_sha256=orphan_plan_sha256,
+        body=orphan_body,
+    )
+
+    with pytest.raises(FullShortExecutionBoundaryError) as caught:
+        store.commit_completion(
+            execution_id=execution_id,
+            policy=_policy(store),
+            receipt=completion,
+        )
+
+    assert caught.value.reason_code == (
+        "COMPLETION_CAPACITY_ADMISSION_PROVENANCE_INVALID"
+    )
+    assert not store.completion_exists(execution_id)
+
+
+def test_completion_rejects_resealed_capture_against_write_once_anchor(
+    tmp_path: Path,
+) -> None:
+    store = _store(tmp_path)
+    execution_id = "completion-capture-write-once-anchor"
+    permission, approval, nonce = _authorize_offline(store, execution_id)
+    observer = _observer(store, execution_id)
+    observer.before_http_dispatch(
+        method="POST", url="https://unit.test/v1/messages",
+        payload=_payload(),
+    )
+    observer.capture_provider_protocol_input(
+        data=b"original", status_code=200,
+        content_type="application/json", encoding="utf-8",
+        transport_complete=True,
+    )
+    observer.after_http_response(status_code=200)
+    role_binding_sha256 = observer.bound_route["role_binding_sha256"]
+    observer.mark_local_stage_complete(
+        stage="planning", role="planning",
+        role_binding_sha256=role_binding_sha256,
+        output_sha256="a" * 64, receipt_sha256="b" * 64,
+    )
+    ledger = store.load_ledger(execution_id)
+    capture_store = ProviderResponseCaptureStoreV1(
+        repo_root=store.repo_root,
+        store_root=store.root / "provider-response-captures-v1",
+    )
+    capture = capture_store.audit_all()[0]
+    path = capture_store._path(
+        capture["metadata"], PROVIDER_PROTOCOL_INPUT_BYTES,
+    )
+    payload = path.read_bytes()
+    header_bytes, _data = payload[len(CAPTURE_MAGIC):].split(b"\n", 1)
+    header = json.loads(header_bytes.decode("utf-8"))
+    forged_data = b"coherently-resealed"
+    header["byte_sha256"] = hashlib.sha256(forged_data).hexdigest()
+    header["byte_length"] = len(forged_data)
+    path.write_bytes(
+        CAPTURE_MAGIC + canonical_json_bytes(header) + b"\n" + forged_data,
+    )
+    forged_capture = capture_store.audit_all()[0]
+    ledger_body = dict(ledger)
+    ledger_body.pop("ledger_sha256")
+    attempts = [dict(item) for item in ledger_body["attempts"]]
+    attempts[0]["provider_protocol_capture_receipt_sha256"] = (
+        forged_capture["ledger_receipt_sha256"]
+    )
+    ledger_body["attempts"] = attempts
+    forged_ledger = {
+        **ledger_body,
+        "ledger_sha256": domain_sha256(
+            "novel-flywheel-full-short-dispatch-ledger-v1", ledger_body,
+        ),
+    }
+    store._replace(store._path(execution_id, "ledger"), forged_ledger)
+
+    with pytest.raises(FullShortExecutionBoundaryError) as caught:
+        _build_completion(
+            store, execution_id, permission, approval, nonce, forged_ledger,
+        )
+
+    assert caught.value.reason_code == "COMPLETION_CAPTURE_PROVENANCE_INVALID"
+
+
+def test_completion_commit_reaudits_capture_after_receipt_build(
+    tmp_path: Path,
+) -> None:
+    store = _store(tmp_path)
+    execution_id = "completion-commit-capture-reaudit"
+    permission, approval, nonce = _authorize_offline(store, execution_id)
+    _dispatch_and_close(store, execution_id)
+    ledger = store.load_ledger(execution_id)
+    completion = _build_completion(
+        store, execution_id, permission, approval, nonce, ledger,
+    )
+    attempt = ledger["attempts"][0]
+    capture_store = ProviderResponseCaptureStoreV1(
+        repo_root=store.repo_root,
+        store_root=store.root / "provider-response-captures-v1",
+    )
+    capture_store.capture(
+        byte_domain=PROVIDER_PROTOCOL_INPUT_BYTES,
+        data=b"post-build-orphan",
+        metadata={
+            "execution_id": execution_id,
+            "call_id": f"{execution_id}:999",
+            "stage_id": attempt["stage"],
+            "provider_id_sha256": attempt["provider_id_sha256"],
+            "model_id_sha256": attempt["model_id_sha256"],
+            "route_fingerprint": attempt["route_fingerprint"],
+            "protocol": "anthropic",
+            "contract_name": attempt["contract_name"],
+            "contract_version": attempt["contract_version"],
+            "contract_schema_sha256": attempt["contract_schema_sha256"],
+            "adapter_id": "anthropic", "adapter_version": 1,
+            "content_type": "application/json", "encoding": "utf-8",
+            "transport_complete": True,
+        },
+    )
+
+    with pytest.raises(FullShortExecutionBoundaryError) as caught:
+        store.commit_completion(
+            execution_id=execution_id,
+            policy=_policy(store),
+            receipt=completion,
+        )
+
+    assert caught.value.reason_code == "COMPLETION_CAPTURE_PROVENANCE_INVALID"
+    assert not store.completion_exists(execution_id)
 
 
 def test_completion_rejects_transitively_resealed_capture_forgery(

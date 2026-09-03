@@ -487,6 +487,36 @@ def _capacity_recovery_source_identity_v1(
     return str(capture) if capture is not None else None
 
 
+def _logical_capacity_envelope_sha256_v1(
+    *, execution_id: str, policy: Mapping[str, Any],
+    logical_stage_plan_entry: Mapping[str, Any],
+) -> str:
+    """Derive the capacity envelope from frozen policy source truth."""
+
+    return domain_sha256(
+        "novel-flywheel-logical-stage-capacity-envelope-v1",
+        {
+            "execution_id": execution_id,
+            "policy_sha256": policy["policy_sha256"],
+            "workload_sha256": policy["workload_sha256"],
+            "runtime_authority_sha256": policy[
+                "runtime_authority_sha256"
+            ],
+            "logical_stage_plan_entry": dict(logical_stage_plan_entry),
+            "logical_stage_recovery_policy_sha256": policy[
+                "logical_stage_recovery_policy_sha256"
+            ],
+            "capacity_policy_registry_sha256": policy[
+                "capacity_policy_registry_sha256"
+            ],
+            "route_manifest_sha256": policy["route_manifest_sha256"],
+            "destination_manifest_sha256": policy[
+                "destination_manifest_sha256"
+            ],
+        },
+    )
+
+
 def _validate_capacity_recovery_chain_v1(
     *, attempts: Iterable[Mapping[str, Any]],
     receipts_by_plan: Mapping[str, Mapping[str, Any]],
@@ -1705,6 +1735,8 @@ class FullShortDurableExecutionStoreV1:
         self.lock_path = self.root / ".full-short-execution.lock"
         self.capacity_receipt_root = self.root / "capacity-v1"
         self.capacity_receipt_root.mkdir(parents=False, exist_ok=True)
+        self.capture_anchor_root = self.root / "capture-anchor-v1"
+        self.capture_anchor_root.mkdir(parents=False, exist_ok=True)
         self.store_root_sha256 = hashlib.sha256(
             str(self.root).encode("utf-8"),
         ).hexdigest()
@@ -1756,6 +1788,171 @@ class FullShortDurableExecutionStoreV1:
             {"execution_id": execution_id, "plan_sha256": plan_sha256},
         )
         return self.capacity_receipt_root / f"{key}.json"
+
+    def _capture_anchor_path(
+        self, execution_id: str, ordinal: int, byte_domain: str,
+    ) -> Path:
+        _require(type(ordinal) is int and ordinal > 0,
+                 "CAPTURE_ANCHOR_IDENTITY_INVALID")
+        _require(byte_domain in {
+            PROVIDER_PROTOCOL_INPUT_BYTES, CONTRACT_RUNTIME_INPUT_BYTES,
+        }, "CAPTURE_ANCHOR_IDENTITY_INVALID")
+        key = domain_sha256(
+            "full-short-provider-response-capture-anchor-storage-key-v1",
+            {
+                "execution_id": execution_id,
+                "ordinal": ordinal,
+                "byte_domain": byte_domain,
+            },
+        )
+        return self.capture_anchor_root / f"{key}.json"
+
+    def create_provider_response_capture_anchor(
+        self, *, execution_id: str, ordinal: int, byte_domain: str,
+        provider_response_capture_receipt_sha256: str,
+    ) -> dict[str, Any]:
+        """Bind a published capture to its immutable pre-response attempt."""
+
+        _require(
+            isinstance(provider_response_capture_receipt_sha256, str)
+            and _HEX64.fullmatch(
+                provider_response_capture_receipt_sha256
+            ) is not None,
+            "CAPTURE_ANCHOR_IDENTITY_INVALID",
+        )
+        with self._locked():
+            ledger = self._verify_seal(
+                self._read(execution_id, "ledger"),
+                domain="novel-flywheel-full-short-dispatch-ledger-v1",
+                field="ledger_sha256", reason="LEDGER_SHA256_MISMATCH",
+            )
+            attempts = list(ledger.get("attempts") or [])
+            _require(
+                ordinal <= len(attempts)
+                and attempts[ordinal - 1].get("ordinal") == ordinal,
+                "CAPTURE_ANCHOR_IDENTITY_INVALID",
+            )
+            attempt = attempts[ordinal - 1]
+            body = {
+                "schema": "FullShortProviderResponseCaptureAnchorV1",
+                "version": 1,
+                "execution_id": execution_id,
+                "ordinal": ordinal,
+                "byte_domain": byte_domain,
+                "physical_attempt_id": attempt.get("physical_attempt_id"),
+                "capacity_plan_sha256": attempt.get(
+                    "capacity_plan_sha256"
+                ),
+                "capacity_admission_receipt_sha256": attempt.get(
+                    "capacity_admission_receipt_sha256"
+                ),
+                "provider_response_capture_receipt_sha256": (
+                    provider_response_capture_receipt_sha256
+                ),
+                "created_at": _now(),
+            }
+            value = _seal(
+                "novel-flywheel-provider-response-capture-anchor-v1",
+                body, "capture_anchor_sha256",
+            )
+            path = self._capture_anchor_path(
+                execution_id, ordinal, byte_domain,
+            )
+            if path.exists():
+                try:
+                    existing = json.loads(path.read_text(encoding="utf-8"))
+                except (OSError, ValueError) as exc:
+                    raise FullShortExecutionBoundaryError(
+                        "CAPTURE_ANCHOR_IDENTITY_INVALID"
+                    ) from exc
+                verified = self._verify_seal(
+                    existing,
+                    domain=(
+                        "novel-flywheel-provider-response-capture-anchor-v1"
+                    ),
+                    field="capture_anchor_sha256",
+                    reason="CAPTURE_ANCHOR_IDENTITY_INVALID",
+                )
+                _require(
+                    {
+                        key: verified.get(key) for key in body
+                        if key != "created_at"
+                    } == {
+                        key: body.get(key) for key in body
+                        if key != "created_at"
+                    },
+                    "CAPTURE_ANCHOR_IDENTITY_INVALID",
+                )
+                return verified
+            self._exclusive_write(path, value)
+            return value
+
+    def audit_provider_response_capture_anchors(
+        self,
+    ) -> tuple[dict[str, Any], ...]:
+        """Audit every exclusive capture anchor and its storage identity."""
+
+        audited: list[dict[str, Any]] = []
+        try:
+            for path in sorted(self.capture_anchor_root.glob("*.json")):
+                value = json.loads(path.read_text(encoding="utf-8"))
+                _require(isinstance(value, dict),
+                         "COMPLETION_CAPTURE_PROVENANCE_INVALID")
+                sealed = self._verify_seal(
+                    value,
+                    domain=(
+                        "novel-flywheel-provider-response-capture-anchor-v1"
+                    ),
+                    field="capture_anchor_sha256",
+                    reason="COMPLETION_CAPTURE_PROVENANCE_INVALID",
+                )
+                _require(
+                    set(sealed) == {
+                        "schema", "version", "execution_id", "ordinal",
+                        "byte_domain", "physical_attempt_id",
+                        "capacity_plan_sha256",
+                        "capacity_admission_receipt_sha256",
+                        "provider_response_capture_receipt_sha256",
+                        "created_at", "capture_anchor_sha256",
+                    }
+                    and sealed.get("schema")
+                    == "FullShortProviderResponseCaptureAnchorV1"
+                    and sealed.get("version") == 1
+                    and all(
+                        isinstance(sealed.get(field), str)
+                        and _HEX64.fullmatch(str(sealed[field])) is not None
+                        for field in {
+                            "capacity_plan_sha256",
+                            "capacity_admission_receipt_sha256",
+                            "provider_response_capture_receipt_sha256",
+                            "capture_anchor_sha256",
+                        }
+                    )
+                    and isinstance(sealed.get("physical_attempt_id"), str),
+                    "COMPLETION_CAPTURE_PROVENANCE_INVALID",
+                )
+                expected_path = self._capture_anchor_path(
+                    str(sealed.get("execution_id") or ""),
+                    int(sealed.get("ordinal") or 0),
+                    str(sealed.get("byte_domain") or ""),
+                )
+                _require(
+                    os.path.normcase(str(path.resolve(strict=True)))
+                    == os.path.normcase(str(expected_path.resolve(strict=True))),
+                    "COMPLETION_CAPTURE_PROVENANCE_INVALID",
+                )
+                audited.append(sealed)
+        except Exception as exc:
+            if (
+                isinstance(exc, FullShortExecutionBoundaryError)
+                and exc.reason_code
+                == "COMPLETION_CAPTURE_PROVENANCE_INVALID"
+            ):
+                raise
+            raise FullShortExecutionBoundaryError(
+                "COMPLETION_CAPTURE_PROVENANCE_INVALID"
+            ) from exc
+        return tuple(audited)
 
     def _read(self, execution_id: str, kind: str) -> dict[str, Any]:
         try:
@@ -2336,9 +2533,6 @@ class FullShortDurableExecutionStoreV1:
         _validate_completion_physical_attempt_chain_v1(
             execution_id=execution_id, attempts=attempts,
         )
-        self.verify_completion_capture_receipts(
-            execution_id=execution_id, ledger=ledger,
-        )
         audited = self.audit_capacity_admission_receipts()
         actual = [
             item for item in audited
@@ -2358,10 +2552,26 @@ class FullShortDurableExecutionStoreV1:
         actual_by_plan = {
             item["capacity_plan_sha256"]: item for item in actual
         }
+        plan_by_logical_stage = {
+            str(item["logical_stage_id"]): item
+            for item in validated["logical_stage_plan"]
+        }
         receipts: list[dict[str, Any]] = []
         logical_attempt_counts: dict[str, int] = {}
         for attempt in attempts:
             logical_stage_id = str(attempt.get("logical_stage_id") or "")
+            expected_plan_entry = plan_by_logical_stage.get(logical_stage_id)
+            _require(
+                expected_plan_entry is not None,
+                "COMPLETION_CAPACITY_ADMISSION_PROVENANCE_INVALID",
+            )
+            expected_capacity_envelope_sha256 = (
+                _logical_capacity_envelope_sha256_v1(
+                    execution_id=execution_id,
+                    policy=validated,
+                    logical_stage_plan_entry=expected_plan_entry,
+                )
+            )
             logical_attempt_counts[logical_stage_id] = (
                 logical_attempt_counts.get(logical_stage_id, 0) + 1
             )
@@ -2383,6 +2593,7 @@ class FullShortDurableExecutionStoreV1:
                 == attempt.get("global_physical_attempt_ordinal")
                 and receipt.get("logical_capacity_envelope_sha256")
                 == attempt.get("logical_capacity_envelope_sha256")
+                == expected_capacity_envelope_sha256
                 and receipt.get("route_capability_snapshot_sha256")
                 == attempt.get("route_capability_snapshot_sha256")
                 and receipt.get("provider_route_identity_sha256")
@@ -2413,6 +2624,9 @@ class FullShortDurableExecutionStoreV1:
             }) == len(receipts),
             "COMPLETION_CAPACITY_ADMISSION_PROVENANCE_INVALID",
         )
+        self.verify_completion_capture_receipts(
+            execution_id=execution_id, ledger=ledger,
+        )
         return tuple(receipts)
 
     def verify_completion_capture_receipts(
@@ -2436,6 +2650,10 @@ class FullShortDurableExecutionStoreV1:
             ) from exc
         actual = [
             item for item in audited
+            if item.get("execution_id") == execution_id
+        ]
+        anchors = [
+            item for item in self.audit_provider_response_capture_anchors()
             if item.get("execution_id") == execution_id
         ]
         expected: list[tuple[int, str, str]] = []
@@ -2498,9 +2716,40 @@ class FullShortDurableExecutionStoreV1:
                     and metadata.get("transport_complete") is True,
                     "COMPLETION_CAPTURE_PROVENANCE_INVALID",
                 )
+                protocol = str(metadata.get("protocol") or "")
+                _require(
+                    (
+                        byte_domain == CONTRACT_RUNTIME_INPUT_BYTES
+                        or metadata.get("adapter_id")
+                        in _PROVIDER_PROTOCOL_ADAPTER_IDS.get(
+                            protocol, frozenset(),
+                        )
+                    )
+                    and type(metadata.get("adapter_version")) is int
+                    and int(metadata["adapter_version"]) > 0,
+                    "COMPLETION_CAPTURE_PROVENANCE_INVALID",
+                )
+                anchor_matches = [
+                    item for item in anchors
+                    if item.get("ordinal") == ordinal
+                    and item.get("byte_domain") == byte_domain
+                    and item.get("physical_attempt_id")
+                    == attempt.get("physical_attempt_id")
+                    and item.get("capacity_plan_sha256")
+                    == attempt.get("capacity_plan_sha256")
+                    and item.get("capacity_admission_receipt_sha256")
+                    == attempt.get("capacity_admission_receipt_sha256")
+                    and item.get(
+                        "provider_response_capture_receipt_sha256"
+                    ) == receipt_sha256
+                ]
+                _require(
+                    len(anchor_matches) == 1,
+                    "COMPLETION_CAPTURE_PROVENANCE_INVALID",
+                )
                 expected.append((ordinal, byte_domain, receipt_sha256))
         _require(
-            len(actual) == len(expected),
+            len(actual) == len(expected) == len(anchors),
             "COMPLETION_CAPTURE_PROVENANCE_INVALID",
         )
         return tuple(actual)
@@ -3022,6 +3271,17 @@ class FullShortDurableExecutionStoreV1:
                 and value.get("dispatch_ledger_sha256") == ledger.get("ledger_sha256"),
                 "COMPLETION_CHAIN_MISMATCH",
             )
+            capacity_receipts = self.verify_completion_capacity_receipts(
+                execution_id=execution_id, policy=validated, ledger=ledger,
+            )
+            _require(
+                value.get("capacity_admission_receipt_sha256s")
+                == [
+                    item["capacity_admission_receipt_sha256"]
+                    for item in capacity_receipts
+                ],
+                "COMPLETION_CAPACITY_ADMISSION_PROVENANCE_INVALID",
+            )
             attempts = ledger.get("attempts")
             _require(
                 ledger.get("state") == "READY_FOR_NEXT_STAGE"
@@ -3266,29 +3526,12 @@ class FullShortDispatchLedgerObserverV1:
                     CapacityFailureCode.PHYSICAL_ATTEMPT_DRIFT
                 )
         sealed = self._sealed_route_binding(route=route, role=role)
-        logical_capacity_envelope_sha256 = domain_sha256(
-            "novel-flywheel-logical-stage-capacity-envelope-v1",
-            {
-                "execution_id": self.execution_id,
-                "policy_sha256": self.policy["policy_sha256"],
-                "workload_sha256": self.policy["workload_sha256"],
-                "runtime_authority_sha256": self.policy[
-                    "runtime_authority_sha256"
-                ],
-                "logical_stage_plan_entry": expected,
-                "logical_stage_recovery_policy_sha256": self.policy[
-                    "logical_stage_recovery_policy_sha256"
-                ],
-                "capacity_policy_registry_sha256": self.policy[
-                    "capacity_policy_registry_sha256"
-                ],
-                "route_manifest_sha256": self.policy[
-                    "route_manifest_sha256"
-                ],
-                "destination_manifest_sha256": self.policy[
-                    "destination_manifest_sha256"
-                ],
-            },
+        logical_capacity_envelope_sha256 = (
+            _logical_capacity_envelope_sha256_v1(
+                execution_id=self.execution_id,
+                policy=self.policy,
+                logical_stage_plan_entry=expected,
+            )
         )
         physical_attempt_id = "physical-" + domain_sha256(
             "novel-flywheel-full-short-physical-attempt-id-v1",
@@ -4584,21 +4827,29 @@ class FullShortDispatchLedgerObserverV1:
         _require(100 <= status_code <= 599, "CAPTURE_HTTP_STATUS_INVALID")
         route = self.bound_route
         _require(isinstance(route, dict), "CAPTURE_ROUTE_NOT_BOUND")
+        metadata = self._capture_metadata(
+            adapter_id=str(route["protocol"]), adapter_version=1,
+            content_type=content_type, encoding=encoding,
+            transport_complete=transport_complete,
+        )
         receipt = self.capture_store.capture(
             byte_domain=PROVIDER_PROTOCOL_INPUT_BYTES,
             data=data,
-            metadata=self._capture_metadata(
-                adapter_id=str(route["protocol"]), adapter_version=1,
-                content_type=content_type, encoding=encoding,
-                transport_complete=transport_complete,
-            ),
+            metadata=metadata,
+        )
+        receipt_sha256 = domain_sha256(
+            "novel-flywheel-provider-response-capture-receipt-v1",
+            receipt.document(),
+        )
+        self.store.create_provider_response_capture_anchor(
+            execution_id=self.execution_id,
+            ordinal=int(self.pending_ordinal or 0),
+            byte_domain=PROVIDER_PROTOCOL_INPUT_BYTES,
+            provider_response_capture_receipt_sha256=receipt_sha256,
         )
         self._record_capture_receipt(
             field="provider_protocol_capture_receipt_sha256",
-            receipt_sha256=domain_sha256(
-                "novel-flywheel-provider-response-capture-receipt-v1",
-                receipt.document(),
-            ),
+            receipt_sha256=receipt_sha256,
             transport_complete=transport_complete,
             http_success=200 <= status_code < 300,
             status_code=status_code,
@@ -4622,21 +4873,29 @@ class FullShortDispatchLedgerObserverV1:
         self, *, data: bytes, adapter_id: str, adapter_version: int,
         finish_reason: str | None, transport_complete: bool,
     ) -> None:
+        metadata = self._capture_metadata(
+            adapter_id=adapter_id, adapter_version=adapter_version,
+            content_type="text/plain; purpose=contract-runtime-input",
+            encoding="utf-8", transport_complete=transport_complete,
+        )
         receipt = self.capture_store.capture(
             byte_domain=CONTRACT_RUNTIME_INPUT_BYTES,
             data=data,
-            metadata=self._capture_metadata(
-                adapter_id=adapter_id, adapter_version=adapter_version,
-                content_type="text/plain; purpose=contract-runtime-input",
-                encoding="utf-8", transport_complete=transport_complete,
-            ),
+            metadata=metadata,
+        )
+        receipt_sha256 = domain_sha256(
+            "novel-flywheel-provider-response-capture-receipt-v1",
+            receipt.document(),
+        )
+        self.store.create_provider_response_capture_anchor(
+            execution_id=self.execution_id,
+            ordinal=int(self.pending_ordinal or 0),
+            byte_domain=CONTRACT_RUNTIME_INPUT_BYTES,
+            provider_response_capture_receipt_sha256=receipt_sha256,
         )
         self._record_capture_receipt(
             field="contract_runtime_capture_receipt_sha256",
-            receipt_sha256=domain_sha256(
-                "novel-flywheel-provider-response-capture-receipt-v1",
-                receipt.document(),
-            ),
+            receipt_sha256=receipt_sha256,
             transport_complete=transport_complete,
         )
 
@@ -5792,6 +6051,12 @@ def reconcile_full_short_capture_anchor_v1(
         byte_domain=byte_domain,
         expected_metadata=capture["metadata"],
         expected_receipt_sha256=receipt_sha256,
+    )
+    store.create_provider_response_capture_anchor(
+        execution_id=execution_id,
+        ordinal=ordinal,
+        byte_domain=byte_domain,
+        provider_response_capture_receipt_sha256=receipt_sha256,
     )
     field = (
         "provider_protocol_capture_receipt_sha256"
