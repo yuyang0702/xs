@@ -204,6 +204,9 @@ class OpenAIChatAdapter(HttpProvider):
     @staticmethod
     def _aggregate_stream(events: list[dict]) -> dict:
         text: list[str] = []
+        reasoning: dict[str, list[str]] = {
+            key: [] for key in ("reasoning", "reasoning_content", "thinking")
+        }
         tools: dict[int, dict] = {}
         request_id = None
         finish_reason = None
@@ -216,6 +219,9 @@ class OpenAIChatAdapter(HttpProvider):
                 delta = choice.get("delta") or {}
                 if isinstance(delta.get("content"), str):
                     text.append(delta["content"])
+                for key, fragments in reasoning.items():
+                    if isinstance(delta.get(key), str):
+                        fragments.append(delta[key])
                 for call in delta.get("tool_calls") or []:
                     item = tools.setdefault(call.get("index", len(tools)), {
                         "id": "", "type": "function",
@@ -225,9 +231,17 @@ class OpenAIChatAdapter(HttpProvider):
                     function = call.get("function") or {}
                     item["function"]["name"] += function.get("name") or ""
                     item["function"]["arguments"] += function.get("arguments") or ""
+        message = {
+            "content": "".join(text),
+            "tool_calls": list(tools.values()),
+            **{
+                key: "".join(fragments)
+                for key, fragments in reasoning.items() if fragments
+            },
+        }
         return {
             "id": request_id,
-            "choices": [{"message": {"content": "".join(text), "tool_calls": list(tools.values())},
+            "choices": [{"message": message,
                          "finish_reason": finish_reason}],
             "usage": usage,
         }

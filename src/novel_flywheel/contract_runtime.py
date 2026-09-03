@@ -90,6 +90,67 @@ ContractAttemptExecutor = Callable[
     Awaitable[Any],
 ]
 
+_FINAL_ARTIFACT_COMPLETION_SYSTEM_SUFFIX_V1 = (
+    "\n\nThis is final-artifact completion for the same frozen "
+    "Planning logical stage. Produce the complete required "
+    "structured artifact directly. Do not expose reasoning, "
+    "expand authority, replan the task, change scope, or omit any "
+    "schema or business-required field."
+)
+
+
+def contract_recovery_prompt_proof_v1(
+    *, base_system: str, base_user: str, rendered_system: str,
+    rendered_user: str, recovery_overlay_kind: str,
+    source_identity_sha256: str | None = None,
+    propagated_receipt_sha256: str | None = None,
+) -> dict[str, Any]:
+    """Bind a typed Runtime retry rendering to its immutable base request."""
+
+    payload = {
+        "schema": "ContractRecoveryPromptProofV1",
+        "version": 1,
+        "base_system_sha256": hashlib.sha256(
+            base_system.encode("utf-8")
+        ).hexdigest(),
+        "base_user_sha256": hashlib.sha256(
+            base_user.encode("utf-8")
+        ).hexdigest(),
+        "rendered_system_sha256": hashlib.sha256(
+            rendered_system.encode("utf-8")
+        ).hexdigest(),
+        "rendered_user_sha256": hashlib.sha256(
+            rendered_user.encode("utf-8")
+        ).hexdigest(),
+        "recovery_overlay_kind": recovery_overlay_kind,
+        "source_identity_sha256": source_identity_sha256,
+        "propagated_receipt_sha256": propagated_receipt_sha256,
+    }
+    payload["proof_sha256"] = domain_sha256(
+        "contract-recovery-prompt-proof-v1", payload,
+    )
+    return payload
+
+
+def validate_contract_recovery_prompt_proof_v1(
+    proof: Mapping[str, Any], *, base_system: str, base_user: str,
+    rendered_system: str, rendered_user: str,
+) -> dict[str, Any]:
+    body = dict(proof)
+    proof_sha256 = body.pop("proof_sha256", None)
+    expected = contract_recovery_prompt_proof_v1(
+        base_system=base_system,
+        base_user=base_user,
+        rendered_system=rendered_system,
+        rendered_user=rendered_user,
+        recovery_overlay_kind=str(body.get("recovery_overlay_kind") or ""),
+        source_identity_sha256=body.get("source_identity_sha256"),
+        propagated_receipt_sha256=body.get("propagated_receipt_sha256"),
+    )
+    if proof_sha256 != expected["proof_sha256"] or dict(proof) != expected:
+        raise CapacityAdmissionFailureV1("capacity.invalid_attempt_delta")
+    return expected
+
 
 def _is_predispatch_capacity_boundary_failure(exc: BaseException) -> bool:
     """Recognize capacity integrity failures through the boundary wrapper.
@@ -1443,12 +1504,8 @@ async def execute_contract_runtime(
         if is_finalization_recovery:
             attempt_reasoning_policy = ReasoningPolicy.FINALIZATION_FIRST
             attempt_stage_role = PLANNING_FINAL_ARTIFACT_RECOVERY
-            route_system = route_system + (
-                "\n\nThis is final-artifact completion for the same frozen "
-                "Planning logical stage. Produce the complete required "
-                "structured artifact directly. Do not expose reasoning, "
-                "expand authority, replan the task, change scope, or omit any "
-                "schema or business-required field."
+            route_system = (
+                route_system + _FINAL_ARTIFACT_COMPLETION_SYSTEM_SUFFIX_V1
             )
         if isinstance(
             last_error,
@@ -1475,6 +1532,37 @@ async def execute_contract_runtime(
             )
             pending_domain_findings = ()
             pending_source_identity = None
+        overlay_kinds: list[str] = []
+        if route_system != system:
+            if route_system == _protocol_regeneration_system(system):
+                overlay_kinds.append("PROTOCOL_REGENERATION")
+            elif route_system == (
+                system + _FINAL_ARTIFACT_COMPLETION_SYSTEM_SUFFIX_V1
+            ):
+                overlay_kinds.append("FINAL_ARTIFACT_COMPLETION")
+            else:
+                raise CapacityAdmissionFailureV1(
+                    "capacity.invalid_attempt_delta"
+                )
+        if route_user != user:
+            if not propagated_findings:
+                raise CapacityAdmissionFailureV1(
+                    "capacity.invalid_attempt_delta"
+                )
+            overlay_kinds.append("DOMAIN_FINDINGS")
+        recovery_prompt_proof = contract_recovery_prompt_proof_v1(
+            base_system=system,
+            base_user=user,
+            rendered_system=route_system,
+            rendered_user=route_user,
+            recovery_overlay_kind=("+".join(overlay_kinds) or "NONE"),
+            source_identity_sha256=(
+                str(last_domain_snapshot.normalized_payload_sha256)
+                if propagated_findings and last_domain_snapshot is not None
+                else None
+            ),
+            propagated_receipt_sha256=propagated_receipt,
+        )
         observe_finding_propagation(
             source=last_domain_snapshot,
             target_context=attempt_context,
@@ -1503,6 +1591,10 @@ async def execute_contract_runtime(
                 elif is_finalization_recovery:
                     raise ReasoningPolicyCapabilityError(
                         "contract attempt executor cannot bind recovery role"
+                    )
+                if "recovery_prompt_proof" in executor_parameters:
+                    executor_kwargs["recovery_prompt_proof"] = (
+                        recovery_prompt_proof
                     )
                 response = await attempt_executor(
                     attempt, role, route_system, route_user,

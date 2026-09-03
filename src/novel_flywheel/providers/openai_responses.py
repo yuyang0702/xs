@@ -163,6 +163,7 @@ class OpenAIResponsesAdapter(HttpProvider):
                 raw_request_id=body.get("id"),
                 provider_state={
                     "output": output,
+                    "streamed_text": streamed_text,
                     "transport_complete": raw_finish_reason in {
                         "completed", "incomplete", "failed", "cancelled",
                     },
@@ -257,6 +258,7 @@ class OpenAIResponsesAdapter(HttpProvider):
             raw_request_id=body.get("id"),
             provider_state={
                 "output": output,
+                "streamed_text": streamed_text,
                 "transport_complete": raw_finish_reason in {
                     "completed", "incomplete", "failed", "cancelled",
                 },

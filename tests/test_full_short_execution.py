@@ -3178,9 +3178,18 @@ def test_closed_attempt_reconciliation_only_fills_exact_capture_receipt(
             )
     observer.after_http_failure(failure_kind="ReadTimeout")
     before = store.load_ledger(execution_id)["attempts"][0]
+    signer_key = str(store.root).casefold()
+    full_short_execution_module._PROCESS_CAPTURE_ATTESTATION_SIGNERS_V1.pop(
+        signer_key, None,
+    )
+    reopened = FullShortDurableExecutionStoreV1(
+        repo_root=store.repo_root, store_root=store.root,
+    )
+    reopened._verify_store_binding(observer.policy)
+    assert reopened._capture_attestation_private_key is None
 
     reconciled = reconcile_full_short_capture_anchor_v1(
-        store=store, execution_id=execution_id, ordinal=1,
+        store=reopened, execution_id=execution_id, ordinal=1,
     )
     after = reconciled["attempts"][0]
     assert after["state"] == before["state"] == "OUTCOME_UNKNOWN_FAIL_CLOSED"
@@ -3200,11 +3209,11 @@ def test_closed_attempt_reconciliation_only_fills_exact_capture_receipt(
         return body
 
     with pytest.raises(TypeError, match="mutation_kind"):
-        original_update(
+        reopened.update_ledger(
             execution_id, smuggle_failure_rewrite,
             mutation_kind="CAPTURE_RECEIPT_RECONCILIATION",
         )
-    assert store.load_ledger(execution_id)["attempts"][0] == after
+    assert reopened.load_ledger(execution_id)["attempts"][0] == after
 
 
 def test_mark_local_stage_complete_cannot_replace_authorized_stage_id(

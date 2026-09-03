@@ -11,6 +11,7 @@ from novel_flywheel.contract_runtime import (
     FinalArtifactCapabilityExhaustedError,
     ReasoningOnlyFinalizationRecoveryPolicyV1,
     execute_contract_runtime,
+    validate_contract_recovery_prompt_proof_v1,
 )
 from novel_flywheel.db import Database
 from novel_flywheel.domain.models import Message, ModelRequest, ModelResponse
@@ -30,6 +31,7 @@ from novel_flywheel.provider_reasoning_policy import (
     resolve_provider_reasoning_directive_v1,
 )
 from novel_flywheel.structured_artifacts import StructuredArtifactContract
+from novel_flywheel.stage_capacity import CapacityAdmissionFailureV1
 from novel_flywheel.providers.registry import ResolvedModel
 
 
@@ -316,7 +318,7 @@ async def test_normal_success_does_not_dispatch_recovery(tmp_path) -> None:
 
     async def execute(
         attempt, role, system, user, budget, contract,
-        *, reasoning_policy, stage_role,
+        *, reasoning_policy, stage_role, recovery_prompt_proof,
     ):
         calls.append((attempt.attempt_index, reasoning_policy, stage_role, budget))
         return ModelResult(
@@ -387,7 +389,7 @@ async def test_reasoning_only_recovery_is_same_route_fresh_attempt_and_validated
 
     async def execute(
         attempt, role, system, user, budget, contract,
-        *, reasoning_policy, stage_role,
+        *, reasoning_policy, stage_role, recovery_prompt_proof,
     ):
         calls.append({
             "attempt": attempt,
@@ -398,6 +400,7 @@ async def test_reasoning_only_recovery_is_same_route_fresh_attempt_and_validated
             "contract": contract,
             "reasoning_policy": reasoning_policy,
             "stage_role": stage_role,
+            "recovery_prompt_proof": recovery_prompt_proof,
         })
         if len(calls) == 1:
             raise _reasoning_error()
@@ -431,6 +434,26 @@ async def test_reasoning_only_recovery_is_same_route_fresh_attempt_and_validated
     assert calls[1]["budget"] == 3724
     assert calls[0]["user"] == calls[1]["user"] == "USER"
     assert "same frozen Planning logical stage" in calls[1]["system"]
+    assert calls[0]["recovery_prompt_proof"]["recovery_overlay_kind"] == "NONE"
+    recovery_proof = calls[1]["recovery_prompt_proof"]
+    assert recovery_proof["recovery_overlay_kind"] == (
+        "FINAL_ARTIFACT_COMPLETION"
+    )
+    validate_contract_recovery_prompt_proof_v1(
+        recovery_proof,
+        base_system="SYSTEM",
+        base_user="USER",
+        rendered_system=calls[1]["system"],
+        rendered_user=calls[1]["user"],
+    )
+    with pytest.raises(CapacityAdmissionFailureV1):
+        validate_contract_recovery_prompt_proof_v1(
+            recovery_proof,
+            base_system="SYSTEM",
+            base_user="USER",
+            rendered_system="MUTATED FROZEN AUTHORITY",
+            rendered_user="UNRELATED NEW TASK",
+        )
     assert result.attempt.attempt_index == 2
     assert result.domain_value["message"].startswith("同一冻结权威")
     assert len(rejections) == 1

@@ -151,6 +151,18 @@ def test_reasoning_accounting_and_reserve_must_be_consistent() -> None:
         _plan(reasoning_token_reserve=1)
 
 
+def test_recovery_overlay_cannot_replace_frozen_base_request() -> None:
+    with pytest.raises(
+        CapacityAdmissionFailureV1, match="capacity.invalid_attempt_delta",
+    ):
+        _plan(
+            physical_attempt=2,
+            base_rendered_request_sha256="d" * 64,
+            rendered_request_sha256="e" * 64,
+            recovery_overlay_kind="NONE",
+        )
+
+
 def test_route_capability_below_stage_ceiling_is_effective_limit() -> None:
     plan = _plan(
         model_context_limit=16384,

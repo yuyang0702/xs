@@ -6,6 +6,7 @@ import respx
 
 from novel_flywheel.domain.models import Message, ModelRequest, ToolDefinition
 from novel_flywheel.full_short_execution import _expected_provider_payload_v1
+from novel_flywheel.provider_output import provider_output_shape_from_response
 from novel_flywheel.providers.anthropic import AnthropicAdapter
 from novel_flywheel.providers.http import ProviderResponseError
 from novel_flywheel.providers.openai_chat import OpenAIChatAdapter
@@ -390,6 +391,39 @@ async def test_openai_chat_adapter_aggregates_stream() -> None:
     assert (result.text, result.finish_reason, result.total_tokens) == ("Hello", "stop", 5)
 
 
+@pytest.mark.parametrize("reasoning_key", [
+    "reasoning", "reasoning_content", "thinking",
+])
+def test_openai_chat_exact_replay_preserves_reasoning_only_stream(
+    reasoning_key: str,
+) -> None:
+    payload = (
+        'data: {"id":"chat-reason","choices":[{"delta":{"'
+        f'{reasoning_key}":"pri"}},"finish_reason":null}}]}}\n\n'
+        'data: {"id":"chat-reason","choices":[{"delta":{"'
+        f'{reasoning_key}":"vate"}},"finish_reason":null}}]}}\n\n'
+        'data: {"id":"chat-reason","choices":[{"delta":{},'
+        '"finish_reason":"stop"}],"usage":{"prompt_tokens":1,'
+        '"completion_tokens":3}}\n\n'
+        'data: [DONE]\n\n'
+    ).encode("utf-8")
+
+    result = OpenAIChatAdapter.replay_protocol_input_bytes_v1(
+        payload, content_type="text/event-stream",
+    )
+
+    assert result.text == ""
+    assert result.finish_reason == "stop"
+    assert result.provider_state["assistant"][reasoning_key] == "private"
+    assert result.output_shape is not None
+    assert result.output_shape.reasoning_block_count == 1
+    assert result.output_shape.content_block_count == 1
+    assert result.output_shape.text_block_count == 0
+    assert result.output_shape.provider_visible_text_chars == 0
+    assert result.output_shape.adapter_projection_status == "exact"
+    assert result.output_shape.transport_complete is True
+
+
 @pytest.mark.asyncio
 @respx.mock
 async def test_anthropic_adapter_aggregates_streamed_tool_call() -> None:
@@ -428,6 +462,33 @@ async def test_openai_responses_adapter_aggregates_stream() -> None:
 
     assert json.loads(route.calls.last.request.content)["stream"] is True
     assert (result.text, result.finish_reason, result.total_tokens) == ("Review passed", "completed", 9)
+    shape = provider_output_shape_from_response(OpenAIResponsesAdapter, result)
+    assert shape is not None
+    assert shape.text_block_count == 1
+    assert shape.provider_visible_text_chars == len("Review passed")
+    assert shape.normalized_visible_text_chars == len("Review passed")
+    assert shape.adapter_projection_status == "exact"
+
+
+def test_openai_responses_exact_replay_does_not_double_count_terminal_text() -> None:
+    payload = (
+        'data: {"type":"response.output_text.delta","delta":"Review "}\n\n'
+        'data: {"type":"response.output_text.delta","delta":"passed"}\n\n'
+        'data: {"type":"response.completed","response":{"id":"resp-stream",'
+        '"status":"completed","output":[{"type":"message","content":['
+        '{"type":"output_text","text":"Review passed"}]}]}}\n\n'
+    ).encode("utf-8")
+
+    result = OpenAIResponsesAdapter.replay_protocol_input_bytes_v1(
+        payload, content_type="text/event-stream",
+    )
+
+    assert result.text == "Review passed"
+    assert result.output_shape is not None
+    assert result.output_shape.text_block_count == 1
+    assert result.output_shape.provider_visible_text_chars == len("Review passed")
+    assert result.output_shape.normalized_visible_text_chars == len("Review passed")
+    assert result.output_shape.adapter_projection_status == "exact"
 
 
 @pytest.mark.asyncio

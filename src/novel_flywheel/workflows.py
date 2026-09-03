@@ -109,6 +109,8 @@ from novel_flywheel.contract_runtime import (
     ContractOutputLimitExhaustedError,
     ExecutableContractSpec,
     ReasoningOnlyFinalizationRecoveryPolicyV1,
+    contract_recovery_prompt_proof_v1,
+    validate_contract_recovery_prompt_proof_v1,
     dispatch_explicit_model_route,
     execute_contract_runtime,
     execute_model_route_runtime,
@@ -30794,6 +30796,8 @@ class WorkflowService:
                 getattr(self.gateway, "registry", None),
                 "attempt_observer", None,
             )
+            capacity_base_system: str | None = None
+            capacity_base_user: str | None = None
 
             def stage_capacity_plan(
                 actual_system: str,
@@ -30804,8 +30808,10 @@ class WorkflowService:
                 route: str,
                 actual_contract: object | None = None,
                 enforce: bool = True,
+                recovery_prompt_proof: Mapping[str, Any] | None = None,
             ):
                 nonlocal capacity_plan_head_sha256
+                nonlocal capacity_base_system, capacity_base_user
                 contract_name, contract_version, schema_sha, schema_tokens = (
                     capacity_contract_identity(actual_contract)
                 )
@@ -30820,6 +30826,51 @@ class WorkflowService:
                 rendered_request_sha = hashlib.sha256(
                     (actual_system + "\n\0" + actual_user).encode("utf-8")
                 ).hexdigest()
+                if route == "route_plan":
+                    effective_base_system = actual_system
+                    effective_base_user = actual_user
+                else:
+                    if capacity_base_system is None:
+                        capacity_base_system = actual_system
+                        capacity_base_user = actual_user
+                    if capacity_base_user is None:
+                        raise CapacityAdmissionFailureV1(
+                            CapacityFailureCode.INVALID_ATTEMPT_DELTA
+                        )
+                    effective_base_system = capacity_base_system
+                    effective_base_user = capacity_base_user
+                base_rendered_request_sha = hashlib.sha256(
+                    (
+                        effective_base_system
+                        + "\n\0"
+                        + effective_base_user
+                    ).encode("utf-8")
+                ).hexdigest()
+                if recovery_prompt_proof is None:
+                    if rendered_request_sha != base_rendered_request_sha:
+                        raise CapacityAdmissionFailureV1(
+                            CapacityFailureCode.INVALID_ATTEMPT_DELTA
+                        )
+                    recovery_overlay_kind = "NONE"
+                else:
+                    proof = validate_contract_recovery_prompt_proof_v1(
+                        recovery_prompt_proof,
+                        base_system=effective_base_system,
+                        base_user=effective_base_user,
+                        rendered_system=actual_system,
+                        rendered_user=actual_user,
+                    )
+                    recovery_overlay_kind = str(
+                        proof["recovery_overlay_kind"]
+                    )
+                recovery_overlay_sha = canonical_sha256({
+                    "domain": "novel-flywheel-capacity-recovery-overlay-v1",
+                    "base_rendered_request_sha256": (
+                        base_rendered_request_sha
+                    ),
+                    "rendered_request_sha256": rendered_request_sha,
+                    "recovery_overlay_kind": recovery_overlay_kind,
+                })
                 admission_context: dict[str, object] | None = None
                 route_context_capability_limit_tokens = int(
                     selected_context_window
@@ -30960,6 +31011,11 @@ class WorkflowService:
                             "reasoning_policy", "DEFAULT",
                         )
                     ),
+                    "base_rendered_request_sha256": (
+                        base_rendered_request_sha
+                    ),
+                    "recovery_overlay_kind": recovery_overlay_kind,
+                    "recovery_overlay_sha256": recovery_overlay_sha,
                     "prior_rendered_request_sha256": (
                         (admission_context or {}).get(
                             "prior_rendered_request_sha256"
@@ -31532,6 +31588,43 @@ class WorkflowService:
                     raise RuntimeError(f"unknown model route: {route}")
                 direct_route_attempt += 1
                 bind_response_capture_stage()
+                recovery_prompt_proof = None
+                if capacity_base_system is not None:
+                    if capacity_base_user is None:
+                        raise CapacityAdmissionFailureV1(
+                            CapacityFailureCode.INVALID_ATTEMPT_DELTA
+                        )
+                    overlay_kind = "NONE"
+                    if route_system != capacity_base_system:
+                        suffix = route_system[len(capacity_base_system):]
+                        if suffix == (
+                            "\n\nDo not expose reasoning. Return only the "
+                            "compact review JSON. Keep at most five "
+                            "highest-severity issues per category."
+                        ):
+                            overlay_kind = "REVIEW_COMPACT_RETRY"
+                        elif suffix == (
+                            "\n\nNo tools are available for this request. "
+                            "Return only the polished prose."
+                        ):
+                            overlay_kind = "POLISH_NO_TOOLS_RETRY"
+                        else:
+                            raise CapacityAdmissionFailureV1(
+                                CapacityFailureCode.INVALID_ATTEMPT_DELTA
+                            )
+                    if route_user != capacity_base_user:
+                        raise CapacityAdmissionFailureV1(
+                            CapacityFailureCode.INVALID_ATTEMPT_DELTA
+                        )
+                    recovery_prompt_proof = (
+                        contract_recovery_prompt_proof_v1(
+                            base_system=capacity_base_system,
+                            base_user=capacity_base_user,
+                            rendered_system=route_system,
+                            rendered_user=route_user,
+                            recovery_overlay_kind=overlay_kind,
+                        )
+                    )
                 capacity_plan = stage_capacity_plan(
                     route_system,
                     route_user,
@@ -31539,6 +31632,7 @@ class WorkflowService:
                     physical_attempt=direct_route_attempt,
                     route=route,
                     actual_contract=structured_contract,
+                    recovery_prompt_proof=recovery_prompt_proof,
                 )
                 return await dispatch_explicit_model_route(
                     self.gateway,
@@ -31566,6 +31660,7 @@ class WorkflowService:
                         attempt, attempt_role, attempt_system, attempt_user,
                         _attempt_budget, attempt_contract,
                         *, reasoning_policy=None, stage_role="NORMAL",
+                        recovery_prompt_proof=None,
                     ):
                         nonlocal contract_output_expanded
                         route_baseline = (
@@ -31687,6 +31782,7 @@ class WorkflowService:
                             physical_attempt=attempt.attempt_index,
                             route=attempt.route,
                             actual_contract=attempt_contract,
+                            recovery_prompt_proof=recovery_prompt_proof,
                         )
                         bind_style_dispatch_input(
                             attempt_system,
@@ -33187,9 +33283,14 @@ class WorkflowService:
             gateway_role, prefer_configured_fallback,
         )
         if selected is None:
-            raise CapacityAdmissionFailureV1(
-                CapacityFailureCode.CONTEXT_LIMIT_UNAVAILABLE
-            )
+            if self._exact_full_short_execution():
+                raise CapacityAdmissionFailureV1(
+                    CapacityFailureCode.CONTEXT_LIMIT_UNAVAILABLE
+                )
+            # Preserve the pre-V3 ordinary workflow policy.  Exact Full Short
+            # never reaches this compatibility ceiling: its selected route is
+            # admitted only from a VERIFIED capability record.
+            selected = 32_768
         windows = [selected]
         if include_configured_fallback:
             binding = self.db.get_role_binding(gateway_role) or {}
@@ -33198,9 +33299,11 @@ class WorkflowService:
                     gateway_role, True
                 )
                 if fallback_window is None:
-                    raise CapacityAdmissionFailureV1(
-                        CapacityFailureCode.CONTEXT_LIMIT_UNAVAILABLE
-                    )
+                    if self._exact_full_short_execution():
+                        raise CapacityAdmissionFailureV1(
+                            CapacityFailureCode.CONTEXT_LIMIT_UNAVAILABLE
+                        )
+                    fallback_window = 32_768
                 windows.append(fallback_window)
         return min(windows)
 

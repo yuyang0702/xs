@@ -432,6 +432,9 @@ class StageCapacityPlanV1:
     reasoning_output_reservation: str
     recovery_stage_role: str
     reasoning_policy: str
+    base_rendered_request_sha256: str
+    recovery_overlay_kind: str
+    recovery_overlay_sha256: str
     prior_rendered_request_sha256: str | None
     recovery_prompt_delta_sha256: str
     recovery_source_capture_receipt_sha256: str | None
@@ -479,6 +482,8 @@ class StageCapacityPlanV1:
             "contract_schema_sha256",
             "provider_route_identity_sha256",
             "rendered_request_sha256",
+            "base_rendered_request_sha256",
+            "recovery_overlay_sha256",
             "recovery_prompt_delta_sha256",
             "policy_registry_sha256",
             "plan_sha256",
@@ -561,6 +566,31 @@ class StageCapacityPlanV1:
             raise ValueError("capacity_reasoning_reservation_invalid")
         if not self.recovery_stage_role or not self.reasoning_policy:
             raise ValueError("capacity_recovery_delta_identity_invalid")
+        if self.recovery_overlay_kind not in {
+            "NONE",
+            "FINAL_ARTIFACT_COMPLETION",
+            "PROTOCOL_REGENERATION",
+            "DOMAIN_FINDINGS",
+            "FINAL_ARTIFACT_COMPLETION+DOMAIN_FINDINGS",
+            "PROTOCOL_REGENERATION+DOMAIN_FINDINGS",
+            "REVIEW_COMPACT_RETRY",
+            "POLISH_NO_TOOLS_RETRY",
+        }:
+            raise ValueError("capacity_recovery_overlay_kind_invalid")
+        expected_overlay = capacity_recovery_overlay_sha256_v1(
+            base_rendered_request_sha256=self.base_rendered_request_sha256,
+            rendered_request_sha256=self.rendered_request_sha256,
+            recovery_overlay_kind=self.recovery_overlay_kind,
+        )
+        if self.recovery_overlay_sha256 != expected_overlay:
+            raise ValueError("capacity_recovery_overlay_sha256_mismatch")
+        if (
+            self.recovery_overlay_kind == "NONE"
+            and self.rendered_request_sha256 != self.base_rendered_request_sha256
+            or self.recovery_overlay_kind != "NONE"
+            and self.rendered_request_sha256 == self.base_rendered_request_sha256
+        ):
+            raise ValueError("capacity_recovery_overlay_identity_invalid")
         expected_delta = capacity_recovery_prompt_delta_sha256_v1(
             prior_rendered_request_sha256=(
                 self.prior_rendered_request_sha256
@@ -571,6 +601,9 @@ class StageCapacityPlanV1:
             recovery_source_capture_receipt_sha256=(
                 self.recovery_source_capture_receipt_sha256
             ),
+            base_rendered_request_sha256=self.base_rendered_request_sha256,
+            recovery_overlay_kind=self.recovery_overlay_kind,
+            recovery_overlay_sha256=self.recovery_overlay_sha256,
         )
         if self.recovery_prompt_delta_sha256 != expected_delta:
             raise ValueError("capacity_recovery_prompt_delta_sha256_mismatch")
@@ -586,12 +619,36 @@ class StageCapacityPlanV1:
         raise CapacityAdmissionFailureV1(failure_id, plan=self)
 
 
+def capacity_recovery_overlay_sha256_v1(
+    *, base_rendered_request_sha256: str, rendered_request_sha256: str,
+    recovery_overlay_kind: str,
+) -> str:
+    _require_sha256(
+        base_rendered_request_sha256,
+        field_name="base_rendered_request_sha256",
+    )
+    _require_sha256(
+        rendered_request_sha256, field_name="rendered_request_sha256",
+    )
+    if not recovery_overlay_kind:
+        raise ValueError("capacity_recovery_overlay_kind_invalid")
+    return _canonical_sha256({
+        "domain": "novel-flywheel-capacity-recovery-overlay-v1",
+        "base_rendered_request_sha256": base_rendered_request_sha256,
+        "rendered_request_sha256": rendered_request_sha256,
+        "recovery_overlay_kind": recovery_overlay_kind,
+    })
+
+
 def capacity_recovery_prompt_delta_sha256_v1(
     *, prior_rendered_request_sha256: str | None,
     rendered_request_sha256: str,
     recovery_stage_role: str,
     reasoning_policy: str,
     recovery_source_capture_receipt_sha256: str | None,
+    base_rendered_request_sha256: str | None = None,
+    recovery_overlay_kind: str = "NONE",
+    recovery_overlay_sha256: str | None = None,
 ) -> str:
     _require_sha256(
         rendered_request_sha256, field_name="rendered_request_sha256",
@@ -607,12 +664,26 @@ def capacity_recovery_prompt_delta_sha256_v1(
             _require_sha256(value, field_name=field_name)
     if not recovery_stage_role or not reasoning_policy:
         raise ValueError("capacity_recovery_delta_identity_invalid")
+    base_sha256 = base_rendered_request_sha256 or rendered_request_sha256
+    overlay_sha256 = recovery_overlay_sha256 or (
+        capacity_recovery_overlay_sha256_v1(
+            base_rendered_request_sha256=base_sha256,
+            rendered_request_sha256=rendered_request_sha256,
+            recovery_overlay_kind=recovery_overlay_kind,
+        )
+    )
+    _require_sha256(
+        overlay_sha256, field_name="recovery_overlay_sha256",
+    )
     return _canonical_sha256({
         "domain": "novel-flywheel-capacity-recovery-prompt-delta-v1",
         "prior_rendered_request_sha256": prior_rendered_request_sha256,
         "rendered_request_sha256": rendered_request_sha256,
         "recovery_stage_role": recovery_stage_role,
         "reasoning_policy": reasoning_policy,
+        "base_rendered_request_sha256": base_sha256,
+        "recovery_overlay_kind": recovery_overlay_kind,
+        "recovery_overlay_sha256": overlay_sha256,
         "recovery_source_capture_receipt_sha256": (
             recovery_source_capture_receipt_sha256
         ),
@@ -652,6 +723,9 @@ def build_stage_capacity_plan_v1(
     reasoning_output_reservation: str = "WITHIN_COMPLETION_CAP",
     recovery_stage_role: str = "NORMAL",
     reasoning_policy: str = "DEFAULT",
+    base_rendered_request_sha256: str | None = None,
+    recovery_overlay_kind: str = "NONE",
+    recovery_overlay_sha256: str | None = None,
     prior_rendered_request_sha256: str | None = None,
     recovery_source_capture_receipt_sha256: str | None = None,
     policy_registry: StageCapacityPolicyRegistryV1 = (
@@ -741,6 +815,28 @@ def build_stage_capacity_plan_v1(
             raise CapacityAdmissionFailureV1(
                 CapacityFailureCode.INVALID_ATTEMPT_DELTA,
             )
+    effective_base_rendered_request_sha256 = (
+        base_rendered_request_sha256 or rendered_request_sha256
+    )
+    effective_recovery_overlay_sha256 = (
+        recovery_overlay_sha256
+        or capacity_recovery_overlay_sha256_v1(
+            base_rendered_request_sha256=(
+                effective_base_rendered_request_sha256
+            ),
+            rendered_request_sha256=rendered_request_sha256,
+            recovery_overlay_kind=recovery_overlay_kind,
+        )
+    )
+    if (
+        recovery_overlay_kind == "NONE"
+        and rendered_request_sha256 != effective_base_rendered_request_sha256
+        or recovery_overlay_kind != "NONE"
+        and rendered_request_sha256 == effective_base_rendered_request_sha256
+    ):
+        raise CapacityAdmissionFailureV1(
+            CapacityFailureCode.INVALID_ATTEMPT_DELTA,
+        )
     recovery_prompt_delta_sha256 = (
         capacity_recovery_prompt_delta_sha256_v1(
             prior_rendered_request_sha256=prior_rendered_request_sha256,
@@ -750,6 +846,11 @@ def build_stage_capacity_plan_v1(
             recovery_source_capture_receipt_sha256=(
                 recovery_source_capture_receipt_sha256
             ),
+            base_rendered_request_sha256=(
+                effective_base_rendered_request_sha256
+            ),
+            recovery_overlay_kind=recovery_overlay_kind,
+            recovery_overlay_sha256=effective_recovery_overlay_sha256,
         )
     )
     expected_rendered_input = rendered_message_tokens + structured_envelope_tokens
@@ -878,6 +979,11 @@ def build_stage_capacity_plan_v1(
         "reasoning_output_reservation": reasoning_output_reservation,
         "recovery_stage_role": recovery_stage_role,
         "reasoning_policy": reasoning_policy,
+        "base_rendered_request_sha256": (
+            effective_base_rendered_request_sha256
+        ),
+        "recovery_overlay_kind": recovery_overlay_kind,
+        "recovery_overlay_sha256": effective_recovery_overlay_sha256,
         "prior_rendered_request_sha256": prior_rendered_request_sha256,
         "recovery_prompt_delta_sha256": recovery_prompt_delta_sha256,
         "recovery_source_capture_receipt_sha256": (

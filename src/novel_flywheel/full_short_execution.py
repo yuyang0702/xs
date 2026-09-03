@@ -86,6 +86,7 @@ from novel_flywheel.stage_capacity import (
     RouteContextCapabilitySourceV1,
     StageCapacityAdmissionEngineV1,
     StageCapacityPlanV1,
+    capacity_recovery_overlay_sha256_v1,
     capacity_recovery_prompt_delta_sha256_v1,
 )
 
@@ -320,6 +321,8 @@ _CAPACITY_ADMISSION_RECEIPT_FIELDS_V1 = frozenset({
     "route_max_output_tokens", "reasoning_token_reserve",
     "reasoning_token_accounting", "reasoning_output_reservation",
     "recovery_stage_role", "reasoning_policy",
+    "base_rendered_request_sha256", "recovery_overlay_kind",
+    "recovery_overlay_sha256",
     "prior_rendered_request_sha256", "recovery_prompt_delta_sha256",
     "recovery_source_capture_receipt_sha256",
     "admission_status", "model_request_sha256",
@@ -335,6 +338,7 @@ _CAPACITY_ADMISSION_RECEIPT_HASH_FIELDS_V1 = frozenset({
     "role_sha256", "rendered_request_sha256",
     "logical_capacity_envelope_sha256",
     "route_capability_snapshot_sha256",
+    "base_rendered_request_sha256", "recovery_overlay_sha256",
     "recovery_prompt_delta_sha256",
 })
 _CAPACITY_ADMISSION_REQUEST_HASH_FIELDS_V1 = frozenset({
@@ -408,7 +412,23 @@ def _validate_capacity_admission_receipt_v1(
         isinstance(body.get("recovery_stage_role"), str)
         and bool(body["recovery_stage_role"])
         and isinstance(body.get("reasoning_policy"), str)
-        and bool(body["reasoning_policy"]),
+        and bool(body["reasoning_policy"])
+        and body.get("recovery_overlay_kind") in {
+            "NONE",
+            "FINAL_ARTIFACT_COMPLETION",
+            "PROTOCOL_REGENERATION",
+            "DOMAIN_FINDINGS",
+            "FINAL_ARTIFACT_COMPLETION+DOMAIN_FINDINGS",
+            "PROTOCOL_REGENERATION+DOMAIN_FINDINGS",
+            "REVIEW_COMPACT_RETRY",
+            "POLISH_NO_TOOLS_RETRY",
+        }
+        and body.get("recovery_overlay_sha256")
+        == capacity_recovery_overlay_sha256_v1(
+            base_rendered_request_sha256=body["base_rendered_request_sha256"],
+            rendered_request_sha256=body["rendered_request_sha256"],
+            recovery_overlay_kind=body["recovery_overlay_kind"],
+        ),
         "CAPACITY_ADMISSION_RECEIPT_SCHEMA_INVALID",
     )
     _require(
@@ -589,6 +609,15 @@ def _validate_capacity_recovery_chain_v1(
             recovery_stage_role=expected_role,
             reasoning_policy=expected_reasoning_policy,
             recovery_source_capture_receipt_sha256=expected_source,
+            base_rendered_request_sha256=str(
+                receipt.get("base_rendered_request_sha256") or ""
+            ),
+            recovery_overlay_kind=str(
+                receipt.get("recovery_overlay_kind") or ""
+            ),
+            recovery_overlay_sha256=str(
+                receipt.get("recovery_overlay_sha256") or ""
+            ),
         )
         _require(
             receipt.get("recovery_stage_role") == expected_role
@@ -2017,7 +2046,7 @@ class FullShortDurableExecutionStoreV1:
                 "CAPTURE_ANCHOR_IDENTITY_INVALID",
             )
             attempt = attempts[ordinal - 1]
-            body = {
+            identity = {
                 "schema": "FullShortProviderResponseCaptureAnchorV1",
                 "version": 1,
                 "execution_id": execution_id,
@@ -2036,21 +2065,7 @@ class FullShortDurableExecutionStoreV1:
                 "capture_attestation_public_key_sha256": (
                     self.capture_attestation_public_key_sha256
                 ),
-                "created_at": _now(),
             }
-            _require(
-                self._capture_attestation_private_key is not None,
-                "CAPTURE_ATTESTATION_SIGNER_UNAVAILABLE_AFTER_RESTART",
-            )
-            body["capture_attestation_signature"] = (
-                self._capture_attestation_private_key.sign(
-                    canonical_json_bytes(body)
-                ).hex()
-            )
-            value = _seal(
-                "novel-flywheel-provider-response-capture-anchor-v1",
-                body, "capture_anchor_sha256",
-            )
             path = self._capture_anchor_path(
                 execution_id, ordinal, byte_domain,
             )
@@ -2070,16 +2085,41 @@ class FullShortDurableExecutionStoreV1:
                     reason="CAPTURE_ANCHOR_IDENTITY_INVALID",
                 )
                 _require(
-                    {
-                        key: verified.get(key) for key in body
-                        if key != "created_at"
-                    } == {
-                        key: body.get(key) for key in body
-                        if key != "created_at"
-                    },
+                    all(verified.get(key) == value for key, value in identity.items())
+                    and isinstance(verified.get("created_at"), str)
+                    and isinstance(
+                        verified.get("capture_attestation_signature"), str
+                    ),
                     "CAPTURE_ANCHOR_IDENTITY_INVALID",
                 )
+                signed_body = dict(verified)
+                signed_body.pop("capture_anchor_sha256", None)
+                try:
+                    signature = bytes.fromhex(str(
+                        signed_body.pop("capture_attestation_signature")
+                    ))
+                    Ed25519PublicKey.from_public_bytes(bytes.fromhex(
+                        self.capture_attestation_public_key
+                    )).verify(signature, canonical_json_bytes(signed_body))
+                except (InvalidSignature, ValueError, TypeError) as exc:
+                    raise FullShortExecutionBoundaryError(
+                        "CAPTURE_ANCHOR_IDENTITY_INVALID"
+                    ) from exc
                 return verified
+            _require(
+                self._capture_attestation_private_key is not None,
+                "CAPTURE_ATTESTATION_SIGNER_UNAVAILABLE_AFTER_RESTART",
+            )
+            body = {**identity, "created_at": _now()}
+            body["capture_attestation_signature"] = (
+                self._capture_attestation_private_key.sign(
+                    canonical_json_bytes(body)
+                ).hex()
+            )
+            value = _seal(
+                "novel-flywheel-provider-response-capture-anchor-v1",
+                body, "capture_anchor_sha256",
+            )
             self._exclusive_write(path, value)
             return value
 
@@ -2825,6 +2865,12 @@ class FullShortDurableExecutionStoreV1:
                 == attempt.get("recovery_stage_role")
                 and receipt.get("reasoning_policy")
                 == attempt.get("reasoning_policy")
+                and receipt.get("base_rendered_request_sha256")
+                == attempt.get("base_rendered_request_sha256")
+                and receipt.get("recovery_overlay_kind")
+                == attempt.get("recovery_overlay_kind")
+                and receipt.get("recovery_overlay_sha256")
+                == attempt.get("recovery_overlay_sha256")
                 and receipt.get("recovery_prompt_delta_sha256")
                 == attempt.get("recovery_prompt_delta_sha256")
                 and receipt.get("recovery_source_capture_receipt_sha256")
@@ -3947,6 +3993,11 @@ class FullShortDispatchLedgerObserverV1:
                 recovery_source_capture_receipt_sha256=context[
                     "recovery_source_capture_receipt_sha256"
                 ],
+                base_rendered_request_sha256=(
+                    plan.base_rendered_request_sha256
+                ),
+                recovery_overlay_kind=plan.recovery_overlay_kind,
+                recovery_overlay_sha256=plan.recovery_overlay_sha256,
             )
         ):
             raise CapacityAdmissionFailureV1(
@@ -3975,6 +4026,7 @@ class FullShortDispatchLedgerObserverV1:
                 "reasoning_output_reservation",
                 "requested_output_token_cap",
                 "final_output_reserve",
+                "base_rendered_request_sha256",
                 "role_sha256",
                 "route",
             )
@@ -4006,6 +4058,9 @@ class FullShortDispatchLedgerObserverV1:
                     plan.requested_output_token_cap
                 ),
                 "final_output_reserve": plan.final_output_reserve,
+                "base_rendered_request_sha256": (
+                    plan.base_rendered_request_sha256
+                ),
                 "role_sha256": hashlib.sha256(
                     role.encode("utf-8")
                 ).hexdigest(),
@@ -4077,6 +4132,11 @@ class FullShortDispatchLedgerObserverV1:
             ),
             "recovery_stage_role": plan.recovery_stage_role,
             "reasoning_policy": plan.reasoning_policy,
+            "base_rendered_request_sha256": (
+                plan.base_rendered_request_sha256
+            ),
+            "recovery_overlay_kind": plan.recovery_overlay_kind,
+            "recovery_overlay_sha256": plan.recovery_overlay_sha256,
             "prior_rendered_request_sha256": (
                 plan.prior_rendered_request_sha256
             ),
@@ -4843,6 +4903,15 @@ class FullShortDispatchLedgerObserverV1:
                 "recovery_stage_role"
             ],
             "reasoning_policy": capacity_receipt["reasoning_policy"],
+            "base_rendered_request_sha256": capacity_receipt[
+                "base_rendered_request_sha256"
+            ],
+            "recovery_overlay_kind": capacity_receipt[
+                "recovery_overlay_kind"
+            ],
+            "recovery_overlay_sha256": capacity_receipt[
+                "recovery_overlay_sha256"
+            ],
             "prior_rendered_request_sha256": capacity_receipt[
                 "prior_rendered_request_sha256"
             ],
@@ -5925,6 +5994,12 @@ def build_full_short_completion_receipt_v1(
             == item.get("route_capability_snapshot_sha256")
             and receipt.get("rendered_request_sha256")
             == item.get("rendered_request_sha256")
+            and receipt.get("base_rendered_request_sha256")
+            == item.get("base_rendered_request_sha256")
+            and receipt.get("recovery_overlay_kind")
+            == item.get("recovery_overlay_kind")
+            and receipt.get("recovery_overlay_sha256")
+            == item.get("recovery_overlay_sha256")
             and receipt.get("recovery_prompt_delta_sha256")
             == item.get("recovery_prompt_delta_sha256")
             and receipt.get("recovery_source_capture_receipt_sha256")

@@ -727,6 +727,8 @@ def provider_output_shape_from_response(
         protocol = "openai-responses"
         output = state.get("output")
         output = output if isinstance(output, list) else []
+        streamed_text = state.get("streamed_text")
+        streamed_text = streamed_text if isinstance(streamed_text, str) else ""
         nested_content = [
             part
             for item in output if isinstance(item, dict)
@@ -741,6 +743,11 @@ def provider_output_shape_from_response(
             for part in nested_content
             if part.get("type") in TEXT_BLOCK_TYPES
         ]
+        if streamed_text and not any(
+            isinstance(value, str) and value for value in text_values
+        ):
+            block_types.append("output_text")
+            text_values.append(streamed_text)
         reasoning_count = sum(
             item.get("type") in REASONING_BLOCK_TYPES
             for item in output if isinstance(item, dict)
