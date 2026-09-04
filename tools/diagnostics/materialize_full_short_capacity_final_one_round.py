@@ -140,7 +140,6 @@ def discover(
                 == int(call.get("provider_wire_requested_output_tokens") or 0)
                 and plan.get("stage_id") == stage.get("stage_id")
                 and plan.get("_receipt_route") == stage.get("route_lane")
-                and plan.get("_receipt_role") == call.get("role")
                 and plan.get("plan_sha256") not in used_plan_shas
             ]
             if len(candidates) != 1:
@@ -230,6 +229,7 @@ def envelope(
             "global_physical_attempt_ordinal"
         ),
         "capacity_plan_sha256": plan.get("plan_sha256"),
+        "capacity_receipt_role": plan.get("_receipt_role"),
         "recovery_overlay_kind": recovery_overlay_kind,
         "runtime_capacity_plan_headroom_tokens": plan.get("headroom"),
         "route": call["route_lane"],
