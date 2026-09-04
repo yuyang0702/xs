@@ -135,7 +135,13 @@ def discover(
                 and int(plan.get("requested_output_token_cap") or 0)
                 == int(call.get("provider_wire_requested_output_tokens") or 0)
                 and plan.get("stage_id") == stage.get("stage_id")
-                and plan.get("route") == stage.get("route_lane")
+                and plan.get("provider_route_identity_sha256") == sha_json({
+                    "role": call.get("role"),
+                    "route": stage.get("route_lane"),
+                    "context_window": plan.get(
+                        "route_context_capability_limit_tokens"
+                    ),
+                })
                 and plan.get("plan_sha256") not in used_plan_shas
             ]
             if len(candidates) != 1:
