@@ -2,16 +2,26 @@
   "schema": "FullShortRuntimeCapacityV3VerificationReceiptV1",
   "version": 1,
   "status": "PASS",
-  "implementation_head": "11aa5e994dc089869062ca9ea641d62658a57b94",
-  "command": ".venv\\Scripts\\python.exe -X utf8 .agents\\skills\\novel-dev-council\\scripts\\inspect_change_gate.py --baseline C:\\小说\\.codex-task-baselines\\v3-revised-11aa5e9-baseline.json --declared-level L3 --forward-risk-report docs\\superpowers\\reports\\full-short-execution-runtime-architecture-redesign-v3-evidence-migration-v1\\forward-risk-report-v2.json --related-test tools/diagnostics/materialize_full_short_runtime_architecture_redesign_v3.py=tests/canary/test_full_short_runner_hardening.py --related-test config/full_short_route_capability_registry_v1.json=tests/test_route_capabilities.py --strict",
-  "exit_code": 0,
-  "ok": true,
+  "implementation_head": "6be6e10c8e0e1383578d44e6755b10c4d64a698b",
+  "implementation_diff_gate": {
+    "timing": "before implementation commit",
+    "command": ".venv\\Scripts\\python.exe -X utf8 .agents\\skills\\novel-dev-council\\scripts\\inspect_change_gate.py --baseline C:\\小说\\.codex-task-baselines\\v3-revised-11aa5e9-baseline.json --declared-level L3 --forward-risk-report docs\\superpowers\\reports\\full-short-execution-runtime-architecture-redesign-v3-evidence-migration-v1\\forward-risk-report-v2.json --related-test tools/diagnostics/materialize_full_short_runtime_architecture_redesign_v3.py=tests/canary/test_full_short_runner_hardening.py --related-test config/full_short_route_capability_registry_v1.json=tests/test_route_capabilities.py --strict",
+    "exit_code": 0,
+    "ok": true,
+    "warnings": [],
+    "blockers": []
+  },
+  "evidence_seal_gate": {
+    "timing": "after implementation commit and rematerialization",
+    "command": ".venv\\Scripts\\python.exe -X utf8 .agents\\skills\\novel-dev-council\\scripts\\inspect_change_gate.py --baseline C:\\小说\\.codex-task-baselines\\v3-revised-11aa5e9-baseline.json --declared-level L3 --forward-risk-report docs\\superpowers\\reports\\full-short-execution-runtime-architecture-redesign-v3-evidence-migration-v1\\forward-risk-report-v2.json --strict",
+    "exit_code": 0,
+    "ok": true,
+    "warnings": [],
+    "blockers": []
+  },
   "recommended_level": "L3",
-  "automatic_level": "L1",
   "declared_level": "L3",
   "baseline_used": true,
-  "warnings": [],
-  "blockers": [],
   "review_mode": "single_agent_clean_room_no_independence_claim",
   "external_boundary": {
     "real_credential_lookup_count": 0,

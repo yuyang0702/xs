@@ -2,7 +2,7 @@
   "schema": "FullShortRuntimeCapacityV3VerificationReceiptV1",
   "version": 1,
   "status": "COMPLETED_WITH_INHERITED_BASELINE_FAILURES",
-  "implementation_head": "11aa5e994dc089869062ca9ea641d62658a57b94",
+  "implementation_head": "6be6e10c8e0e1383578d44e6755b10c4d64a698b",
   "full_suite_attempt": {
     "command": ".venv\\Scripts\\python.exe -X utf8 -m pytest -q",
     "status": "STOPPED_AFTER_BASELINE_CANARY_CASCADE_BECAME_NON_DIAGNOSTIC",

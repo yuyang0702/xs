@@ -2,7 +2,7 @@
   "schema": "FullShortRuntimeCapacityV3VerificationReceiptV1",
   "version": 1,
   "status": "PASS_WITH_SEPARATELY_RECORDED_BASELINE_RESIDUAL",
-  "implementation_head": "11aa5e994dc089869062ca9ea641d62658a57b94",
+  "implementation_head": "6be6e10c8e0e1383578d44e6755b10c4d64a698b",
   "passing_commands": [
     {
       "command": ".venv\\Scripts\\python.exe -X utf8 -m pytest -q tests/test_full_short_execution.py tests/test_full_short_runtime_kernel.py tests/test_contract_runtime.py tests/test_provider_response_capture.py tests/providers/test_protocols.py",
@@ -17,7 +17,7 @@
     "test": "tests/test_phase05_evidence_closure.py::test_phase05_production_shaped_evidence_closure",
     "result": "1 failed in 19.17s",
     "failure": "Formal promotion requires a hash-bound passing quality review",
-    "baseline_identity_check": "git diff --quiet 11aa5e994dc089869062ca9ea641d62658a57b94 -- src/novel_flywheel/workflows.py tests/test_phase05_evidence_closure.py => BASELINE_IDENTICAL=YES",
+    "baseline_identity_check": "git diff --quiet 6be6e10c8e0e1383578d44e6755b10c4d64a698b -- src/novel_flywheel/workflows.py tests/test_phase05_evidence_closure.py => BASELINE_IDENTICAL=YES",
     "disposition": "INHERITED_UNRELATED_NOT_REOPENED"
   },
   "external_boundary": {

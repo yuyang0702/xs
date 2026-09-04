@@ -51,7 +51,7 @@
     },
     "determinism-v1.json": {
       "bytes": 1060,
-      "sha256": "69cbc7c1ada96169d36e3e92212e4f52e30bbe31b1cb6c9286a9f724ad13aa87"
+      "sha256": "4df1b8c143b19672b41cd50441c6808c4bd0accbb93c541c39d0e29733a396ba"
     },
     "exact-ready-execution-plan-v1.json": {
       "bytes": 3435,
@@ -59,7 +59,7 @@
     },
     "exact-ready-required-route-set-v1.json": {
       "bytes": 60533,
-      "sha256": "94958ede5135cda2c42782e3b518af7f010fa519f531d089d0eb4cf95f61e72a"
+      "sha256": "f3f9c5f3546751998ebb57e8452862f33fd472699803853cdcd8e57f6af87fa6"
     },
     "exact-ready-target-binding-v1.json": {
       "bytes": 879,
@@ -67,7 +67,7 @@
     },
     "exact-ready-target-full-short-rerun-v1.json": {
       "bytes": 64523,
-      "sha256": "40efb371f172dacef178fa6d33a8dea5782de6887b2ccacd4cfb3700f8c216ee"
+      "sha256": "c8166a227590a8cbdd412b74e9ccc762d26fc2f87df68c38cea32ec19522ec29"
     },
     "existing-capacity-logic-reuse-v1.json": {
       "bytes": 934,
@@ -107,7 +107,7 @@
     },
     "focused-test-receipt-v1.json": {
       "bytes": 1629,
-      "sha256": "3623c7e220ab654675c2334784f937cbf83ec7838664a807e8f96851c78c6978"
+      "sha256": "5137263ab90e07a43005c115863660ba0b9630b2693555c4c4b3e1c852168a49"
     },
     "forward-risk-report-v2.json": {
       "bytes": 8667,
@@ -115,7 +115,7 @@
     },
     "full-suite-receipt-v1.json": {
       "bytes": 2079,
-      "sha256": "f955dc0cd654d2ff22bb4f7cd18f3232a41237b6ebdf7c18a512aba80b20662f"
+      "sha256": "b9fd7b9d1fc1ae6a3aa3cee75b4dea1ca4cb594101cbb1d77dcfc9663852cbce"
     },
     "historical-capability-evidence-matrix-v1.json": {
       "bytes": 37420,
@@ -163,15 +163,15 @@
     },
     "privacy-scan-v1.json": {
       "bytes": 945,
-      "sha256": "b20a8bfb733637a7c607d7ce0fd82f5fb5e3e72ddb3648c11dad98c1fad25af2"
+      "sha256": "cfe52acf42b61a83a28d3d69ad94c44fd52218fb423947b6f3815c3019ca96ec"
     },
     "production-isolation-v1.json": {
       "bytes": 834,
-      "sha256": "75d844d9f9f04b29ee8101bd4fc4d2c167656ca9a599af3762f365a15f8fd7df"
+      "sha256": "a8306bbe0bfbd3b3059f1dc9ed5df41698a1082b1b7c11f283b73e86ce673954"
     },
     "related-test-receipt-v1.json": {
       "bytes": 1696,
-      "sha256": "7ba170e38f75d9e5a33805dc1832bb1bf451d9a682c8c3fe02c11baa249ac3f0"
+      "sha256": "70067a1f52c195944d6ec5a9295cf379d8bb1935dc67f964cd8f9472f16d64e9"
     },
     "required-route-missing-fields-v1.json": {
       "bytes": 5478,
@@ -218,8 +218,8 @@
       "sha256": "f717a1c4359a1af7dc037a1f21c06521b5385ecc64f1ad4b15494fae798c0002"
     },
     "strict-l3-receipt-v1.json": {
-      "bytes": 1408,
-      "sha256": "4cb6f2a795a78cbda9d1639bdd0f3c84e6cefe92788ba6879c83c7ae577f740a"
+      "bytes": 2030,
+      "sha256": "f045fe4370ac4c130b80254b5a30b8b7aa89db112855d4165b71a1d8dfa29d8f"
     },
     "token-accounting-contract-v1.json": {
       "bytes": 991,
@@ -252,6 +252,7 @@
     "real_secret_read_count": 0
   },
   "final_head_binding_closed": false,
+  "implementation_head": "6be6e10c8e0e1383578d44e6755b10c4d64a698b",
   "schema": "FullShortRuntimeCapacityV3Sha256ManifestV1",
   "self_excluded": "sha256-manifest-v1.json",
   "status": "PASS",
