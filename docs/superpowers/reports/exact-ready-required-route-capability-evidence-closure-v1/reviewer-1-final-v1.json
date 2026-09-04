@@ -1,0 +1,20 @@
+{
+  "architecture_pass": false,
+  "external_boundary": {
+    "full_short_real_execution_count": 0,
+    "http_post_attempts": 0,
+    "model_calls": 0,
+    "network_model_api_calls": 0,
+    "paid_calls": 0,
+    "real_credential_lookup_count": 0,
+    "real_provider_client_creation_count": 0,
+    "real_provider_request_attempts": 0,
+    "real_secret_read_count": 0
+  },
+  "phase_9_not_reached": true,
+  "reviewer_number": 1,
+  "schema": "ExactReadyRouteCapabilityFinalReviewV1",
+  "scope": "capability evidence provenance and route identity",
+  "status": "NOT_RUN_REQUIRED_ROUTE_CAPABILITY_BLOCKER",
+  "version": 1
+}

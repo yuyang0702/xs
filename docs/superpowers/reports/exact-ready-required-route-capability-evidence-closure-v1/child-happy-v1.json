@@ -1,0 +1,50 @@
+{
+  "external_boundary": {
+    "full_short_real_execution_count": 0,
+    "http_post_attempts": 0,
+    "model_calls": 0,
+    "network_model_api_calls": 0,
+    "paid_calls": 0,
+    "real_credential_lookup_count": 0,
+    "real_provider_client_creation_count": 0,
+    "real_provider_request_attempts": 0,
+    "real_secret_read_count": 0
+  },
+  "findings": [
+    {
+      "destination": "https://happyapi.org:443/v1/messages",
+      "field_results": [
+        {
+          "field": "context_window_tokens",
+          "search_result": "NOT_FOUND"
+        },
+        {
+          "field": "max_output_tokens",
+          "search_result": "NOT_FOUND"
+        }
+      ],
+      "lower_bound_only": {
+        "reason": "The Happy screenshot proves qwen-3.7-plus identity and pricing, not capacity. Its visible endpoint example is cn.happyapi.org/v1/chat/completions rather than the exact configured happyapi.org/v1/messages route."
+      },
+      "model": "qwen-3.7-plus",
+      "provider": "happy",
+      "route_fingerprint": "099e358eae5fd0ff5e3d1b8cda34cd90c73c735c001ed44334ade3e3b667bf4e",
+      "sources_searched": [
+        "docs/superpowers/reports/full-short-execution-runtime-architecture-redesign-v3-evidence-migration-v1/historical-capability-evidence-matrix-v1.json",
+        "docs/superpowers/reports/full-short-execution-runtime-architecture-redesign-v3-evidence-migration-v1/historical-provider-screenshot-evidence-v1.json",
+        "docs/superpowers/reports/full-short-execution-runtime-architecture-redesign-v3-evidence-migration-v1/historical-route-capability-evidence-v1.json",
+        "docs/superpowers/reports/c0b-p0-provider-model-evidence-matrix.json",
+        "docs/superpowers/reports/c0b-smoke-1-approval-packet-v1.json",
+        "tools/canary/provider_matrix.py",
+        "data/app.db (current route bindings; identifiers only)"
+      ]
+    }
+  ],
+  "fresh_child_agent": true,
+  "guessed_value_count": 0,
+  "independent_read_only_research": true,
+  "schema": "FreshChildRouteCapabilityReviewV1",
+  "scope": "HAPPY",
+  "status": "UNKNOWN_BLOCKED",
+  "version": 1
+}

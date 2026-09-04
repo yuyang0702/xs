@@ -1,0 +1,83 @@
+{
+  "external_boundary": {
+    "full_short_real_execution_count": 0,
+    "http_post_attempts": 0,
+    "model_calls": 0,
+    "network_model_api_calls": 0,
+    "paid_calls": 0,
+    "real_credential_lookup_count": 0,
+    "real_provider_client_creation_count": 0,
+    "real_provider_request_attempts": 0,
+    "real_secret_read_count": 0
+  },
+  "findings": [
+    {
+      "destination": "https://lingsuan.org:443/v1/messages",
+      "field_results": [
+        {
+          "field": "max_output_tokens",
+          "search_result": "NOT_FOUND"
+        },
+        {
+          "field": "relay_console_to_exact_destination_identity_proof",
+          "search_result": "FOUND_PARTIAL_ONLY"
+        }
+      ],
+      "lower_bound_only": {
+        "context_window_tokens": 372000,
+        "reason": "The supplied lingsuan.top relay-console screenshot visibly states 372K for gpt-5.6-sol, but no maximum output is shown and the console-to-lingsuan.org API operator link is not independently archived."
+      },
+      "model": "gpt-5.6-sol",
+      "provider": "lingsuan_gpt",
+      "route_fingerprint": "30e9cbaf86fbb4b89b43614d71cc11b359ad41e7411e8ebda5d3ce4199879bf0",
+      "sources_searched": [
+        "docs/superpowers/reports/full-short-execution-runtime-architecture-redesign-v3-evidence-migration-v1/historical-capability-evidence-matrix-v1.json",
+        "docs/superpowers/reports/full-short-execution-runtime-architecture-redesign-v3-evidence-migration-v1/historical-provider-screenshot-evidence-v1.json",
+        "docs/superpowers/reports/full-short-execution-runtime-architecture-redesign-v3-evidence-migration-v1/historical-route-capability-evidence-v1.json",
+        "docs/superpowers/reports/c0b-p0-provider-model-evidence-matrix.json",
+        "docs/superpowers/reports/c0b-smoke-1-approval-packet-v1.json",
+        "tools/canary/provider_matrix.py",
+        "data/app.db (current route bindings; identifiers only)"
+      ]
+    },
+    {
+      "destination": "https://lingsuan.org:443/v1/messages",
+      "field_results": [
+        {
+          "field": "context_window_tokens",
+          "search_result": "NOT_FOUND"
+        },
+        {
+          "field": "max_output_tokens",
+          "search_result": "NOT_FOUND"
+        },
+        {
+          "field": "relay_console_to_exact_destination_identity_proof",
+          "search_result": "NOT_FOUND"
+        }
+      ],
+      "lower_bound_only": {
+        "reason": "The LingSuan screenshot proves claude-sonnet-5 relay catalog identity and pricing only."
+      },
+      "model": "claude-sonnet-5",
+      "provider": "lingsuan_sonnet",
+      "route_fingerprint": "4a9f19e78d8101d0bc82aa664582c775741b59d5d9953c73a5624de03b2a539c",
+      "sources_searched": [
+        "docs/superpowers/reports/full-short-execution-runtime-architecture-redesign-v3-evidence-migration-v1/historical-capability-evidence-matrix-v1.json",
+        "docs/superpowers/reports/full-short-execution-runtime-architecture-redesign-v3-evidence-migration-v1/historical-provider-screenshot-evidence-v1.json",
+        "docs/superpowers/reports/full-short-execution-runtime-architecture-redesign-v3-evidence-migration-v1/historical-route-capability-evidence-v1.json",
+        "docs/superpowers/reports/c0b-p0-provider-model-evidence-matrix.json",
+        "docs/superpowers/reports/c0b-smoke-1-approval-packet-v1.json",
+        "tools/canary/provider_matrix.py",
+        "data/app.db (current route bindings; identifiers only)"
+      ]
+    }
+  ],
+  "fresh_child_agent": true,
+  "guessed_value_count": 0,
+  "independent_read_only_research": true,
+  "schema": "FreshChildRouteCapabilityReviewV1",
+  "scope": "LINGSUAN",
+  "status": "UNKNOWN_BLOCKED",
+  "version": 1
+}

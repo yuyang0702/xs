@@ -1,0 +1,23 @@
+{
+  "authorized_start_head": "897ed45473046f9c70054b31694eb76e9b416a0d",
+  "baseline_receipt_outside_git": "C:/小说/.codex-task-baselines/exact-ready-route-capability-closure-897ed45.json",
+  "branch": "r1-ptr3/planning-repair-finding-propagation-20260817",
+  "current_model_route_scheduling_changed": false,
+  "external_boundary": {
+    "full_short_real_execution_count": 0,
+    "http_post_attempts": 0,
+    "model_calls": 0,
+    "network_model_api_calls": 0,
+    "paid_calls": 0,
+    "real_credential_lookup_count": 0,
+    "real_provider_client_creation_count": 0,
+    "real_provider_request_attempts": 0,
+    "real_secret_read_count": 0
+  },
+  "initial_worktree_clean": true,
+  "materialization_head": "897ed45473046f9c70054b31694eb76e9b416a0d",
+  "schema": "ExactReadyRouteCapabilityClosureBaselineV1",
+  "start_head_is_ancestor": true,
+  "status": "PASS",
+  "version": 1
+}

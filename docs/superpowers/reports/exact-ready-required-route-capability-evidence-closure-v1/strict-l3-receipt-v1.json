@@ -1,0 +1,19 @@
+{
+  "actual_command": ".venv/Scripts/python.exe -X utf8 .agents/skills/novel-dev-council/scripts/inspect_change_gate.py --baseline <external-baseline> --declared-level L3 --forward-risk-report <report> --strict",
+  "command": "python scripts/validate_repo.py --strict --level 3",
+  "external_boundary": {
+    "full_short_real_execution_count": 0,
+    "http_post_attempts": 0,
+    "model_calls": 0,
+    "network_model_api_calls": 0,
+    "paid_calls": 0,
+    "real_credential_lookup_count": 0,
+    "real_provider_client_creation_count": 0,
+    "real_provider_request_attempts": 0,
+    "real_secret_read_count": 0
+  },
+  "result": "ok=true; warnings=[]; blockers=[]",
+  "schema": "ExactReadyRouteCapabilityValidationReceiptV1",
+  "status": "PASS",
+  "version": 1
+}

@@ -564,16 +564,13 @@
       ]
     },
     {
-      "blocking_reason_codes": [
-        "EXACT_ROUTE_CONTEXT_WINDOW_EVIDENCE_UNAVAILABLE",
-        "EXACT_ROUTE_MAX_OUTPUT_EVIDENCE_UNAVAILABLE"
-      ],
-      "capability_sha256": "d079dd24905e2e6ec0cfa73cc4c6f8e039432078637049d9940c9b2925c30d52",
-      "capability_status": "UNKNOWN_BLOCKED",
-      "context_window_tokens": null,
+      "blocking_reason_codes": [],
+      "capability_sha256": "d26567c044e8f3f8dbea3f8e765ea9bcb77a03c89fc6da943270fe6201efa304",
+      "capability_status": "VERIFIED_PUBLIC_DOCUMENTATION",
+      "context_window_tokens": 128000,
       "destination": "https://ark.cn-beijing.volces.com:443/api/v3/responses",
       "lane": "primary",
-      "max_output_tokens": null,
+      "max_output_tokens": 32000,
       "model": "doubao-seed-character-260628",
       "model_id_sha256": "c1f03f8c3ed8fdbb9aae3b2e6711970a78da4236291e1865fd3466b078f66c28",
       "operator": "VOLCENGINE_ARK_DIRECT",
@@ -597,6 +594,29 @@
           "source_evidence_sha256": "49e257c42d29b1898b36808fa685ef5954a6fbf5cac4e59c1450aae1919540ba",
           "source_kind": "historical_route_token_accounting_packet",
           "source_locator": "docs/superpowers/reports/c0b-smoke-1-approval-packet-v1.json"
+        },
+        {
+          "evidence_date": "2026-09-04",
+          "evidence_version": 1,
+          "proved_fields": [
+            "context_window_tokens",
+            "max_output_tokens",
+            "reasoning_token_accounting",
+            "reasoning_output_reservation",
+            "route_fingerprint",
+            "provider",
+            "provider_id_sha256",
+            "operator",
+            "destination",
+            "protocol",
+            "model",
+            "model_id_sha256"
+          ],
+          "provenance_available": true,
+          "route_fingerprint": "026d0b3206ad50c89b4eca81b4730ebfa3370815cac98078149c6438e705bfe1",
+          "source_evidence_sha256": "180c299cb2baff957456beb5ee83583ab99af03d1186310588e2126fa91e7208",
+          "source_kind": "official_direct_provider_documentation_composite",
+          "source_locator": "https://docs.volcengine.com/docs/82379/1330310?lang=zh"
         }
       ]
     },
@@ -708,7 +728,7 @@
       ]
     }
   ],
-  "registry_sha256": "ba9e8085b9b37d1321b79b8ec978ffcc0f3016f3305742e76602df96af71ac1f",
+  "registry_sha256": "0399b64cdb730b82af5e9983fa70b08626eceb3604ed92244a07794893190177",
   "schema": "RouteCapabilityRegistryV1",
   "version": 1
 }

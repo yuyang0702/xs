@@ -1,0 +1,31 @@
+{
+  "external_boundary": {
+    "full_short_real_execution_count": 0,
+    "http_post_attempts": 0,
+    "model_calls": 0,
+    "network_model_api_calls": 0,
+    "paid_calls": 0,
+    "real_credential_lookup_count": 0,
+    "real_provider_client_creation_count": 0,
+    "real_provider_request_attempts": 0,
+    "real_secret_read_count": 0
+  },
+  "in_scope": [
+    "seven Exact READY primary route records",
+    "official direct-route evidence",
+    "route-bound lower-bound/workload-shape admission",
+    "offline deterministic evidence and tests"
+  ],
+  "level": "L3",
+  "objective": "Apply historical-first route evidence plus the workload-sufficiency supplement without guessing capability or changing scheduling.",
+  "out_of_scope": [
+    "provider/model/route/workload changes",
+    "credentials, provider clients, network model calls, paid calls",
+    "real Full Short execution",
+    "historical authorization/nonce/run/store reuse"
+  ],
+  "schema": "ExactReadyRouteCapabilityChangeContractV1",
+  "scope_classification": "closed_world",
+  "status": "BOUND",
+  "version": 1
+}

@@ -1,0 +1,2306 @@
+{
+  "exact_ready_required_route_count": 7,
+  "exact_ready_workload_capacity_verified_count": 0,
+  "external_boundary": {
+    "full_short_real_execution_count": 0,
+    "http_post_attempts": 0,
+    "model_calls": 0,
+    "network_model_api_calls": 0,
+    "paid_calls": 0,
+    "real_credential_lookup_count": 0,
+    "real_provider_client_creation_count": 0,
+    "real_provider_request_attempts": 0,
+    "real_secret_read_count": 0
+  },
+  "note": "Unknown theoretical maxima are not blockers by themselves. These routes remain blocked because neither a sufficient route-bound lower bound nor a mechanically comparable historical workload shape exists.",
+  "required_route_max_context_unknown_count": 5,
+  "required_route_max_output_unknown_count": 5,
+  "required_route_with_insufficient_capacity_evidence_count": 7,
+  "route_with_guessed_capability_count": 0,
+  "schema": "ExactReadyWorkloadCapacityAdmissionV1",
+  "stage_admissions": [
+    {
+      "admission_margin": null,
+      "admission_result": "UNKNOWN_BLOCKED",
+      "context_capacity_evidence_kind": "UNKNOWN_BLOCKED",
+      "evidence_kind": "UNKNOWN_BLOCKED",
+      "evidence_sha": null,
+      "maximum_known": {
+        "context": false,
+        "output": false
+      },
+      "output_capacity_evidence_kind": "VERIFIED_SAFE_OUTPUT_LOWER_BOUND",
+      "output_request_cap": 3724,
+      "planned_input": null,
+      "planned_input_status": "NOT_MATERIALIZED_CURRENT_HEAD",
+      "protocol_overhead": null,
+      "role": "planning",
+      "route_identity": "30e9cbaf86fbb4b89b43614d71cc11b359ad41e7411e8ebda5d3ce4199879bf0",
+      "safety_headroom": null,
+      "stage": "planning-semantic-v2-segment-01-packet-000001",
+      "verified_bound": {
+        "context_capacity_tokens": null,
+        "output_capacity_tokens": null
+      }
+    },
+    {
+      "admission_margin": null,
+      "admission_result": "UNKNOWN_BLOCKED",
+      "context_capacity_evidence_kind": "UNKNOWN_BLOCKED",
+      "evidence_kind": "UNKNOWN_BLOCKED",
+      "evidence_sha": null,
+      "maximum_known": {
+        "context": false,
+        "output": false
+      },
+      "output_capacity_evidence_kind": "VERIFIED_SAFE_OUTPUT_LOWER_BOUND",
+      "output_request_cap": 3724,
+      "planned_input": null,
+      "planned_input_status": "NOT_MATERIALIZED_CURRENT_HEAD",
+      "protocol_overhead": null,
+      "role": "planning",
+      "route_identity": "30e9cbaf86fbb4b89b43614d71cc11b359ad41e7411e8ebda5d3ce4199879bf0",
+      "safety_headroom": null,
+      "stage": "planning-semantic-v2-segment-02-packet-000002",
+      "verified_bound": {
+        "context_capacity_tokens": null,
+        "output_capacity_tokens": null
+      }
+    },
+    {
+      "admission_margin": null,
+      "admission_result": "UNKNOWN_BLOCKED",
+      "context_capacity_evidence_kind": "UNKNOWN_BLOCKED",
+      "evidence_kind": "UNKNOWN_BLOCKED",
+      "evidence_sha": null,
+      "maximum_known": {
+        "context": false,
+        "output": false
+      },
+      "output_capacity_evidence_kind": "VERIFIED_SAFE_OUTPUT_LOWER_BOUND",
+      "output_request_cap": 3724,
+      "planned_input": null,
+      "planned_input_status": "NOT_MATERIALIZED_CURRENT_HEAD",
+      "protocol_overhead": null,
+      "role": "planning",
+      "route_identity": "30e9cbaf86fbb4b89b43614d71cc11b359ad41e7411e8ebda5d3ce4199879bf0",
+      "safety_headroom": null,
+      "stage": "planning-semantic-v2-segment-03-packet-000003",
+      "verified_bound": {
+        "context_capacity_tokens": null,
+        "output_capacity_tokens": null
+      }
+    },
+    {
+      "admission_margin": null,
+      "admission_result": "UNKNOWN_BLOCKED",
+      "context_capacity_evidence_kind": "UNKNOWN_BLOCKED",
+      "evidence_kind": "UNKNOWN_BLOCKED",
+      "evidence_sha": null,
+      "maximum_known": {
+        "context": false,
+        "output": false
+      },
+      "output_capacity_evidence_kind": "VERIFIED_SAFE_OUTPUT_LOWER_BOUND",
+      "output_request_cap": 3724,
+      "planned_input": null,
+      "planned_input_status": "NOT_MATERIALIZED_CURRENT_HEAD",
+      "protocol_overhead": null,
+      "role": "planning",
+      "route_identity": "30e9cbaf86fbb4b89b43614d71cc11b359ad41e7411e8ebda5d3ce4199879bf0",
+      "safety_headroom": null,
+      "stage": "planning-semantic-v2-segment-04-packet-000004",
+      "verified_bound": {
+        "context_capacity_tokens": null,
+        "output_capacity_tokens": null
+      }
+    },
+    {
+      "admission_margin": null,
+      "admission_result": "UNKNOWN_BLOCKED",
+      "context_capacity_evidence_kind": "UNKNOWN_BLOCKED",
+      "evidence_kind": "UNKNOWN_BLOCKED",
+      "evidence_sha": null,
+      "maximum_known": {
+        "context": false,
+        "output": false
+      },
+      "output_capacity_evidence_kind": "VERIFIED_SAFE_OUTPUT_LOWER_BOUND",
+      "output_request_cap": 3724,
+      "planned_input": null,
+      "planned_input_status": "NOT_MATERIALIZED_CURRENT_HEAD",
+      "protocol_overhead": null,
+      "role": "planning",
+      "route_identity": "30e9cbaf86fbb4b89b43614d71cc11b359ad41e7411e8ebda5d3ce4199879bf0",
+      "safety_headroom": null,
+      "stage": "planning-semantic-v2-segment-05-packet-000005",
+      "verified_bound": {
+        "context_capacity_tokens": null,
+        "output_capacity_tokens": null
+      }
+    },
+    {
+      "admission_margin": null,
+      "admission_result": "UNKNOWN_BLOCKED",
+      "context_capacity_evidence_kind": "UNKNOWN_BLOCKED",
+      "evidence_kind": "UNKNOWN_BLOCKED",
+      "evidence_sha": null,
+      "maximum_known": {
+        "context": false,
+        "output": false
+      },
+      "output_capacity_evidence_kind": "VERIFIED_SAFE_OUTPUT_LOWER_BOUND",
+      "output_request_cap": 3724,
+      "planned_input": null,
+      "planned_input_status": "NOT_MATERIALIZED_CURRENT_HEAD",
+      "protocol_overhead": null,
+      "role": "planning",
+      "route_identity": "30e9cbaf86fbb4b89b43614d71cc11b359ad41e7411e8ebda5d3ce4199879bf0",
+      "safety_headroom": null,
+      "stage": "planning-semantic-v2-segment-06-packet-000006",
+      "verified_bound": {
+        "context_capacity_tokens": null,
+        "output_capacity_tokens": null
+      }
+    },
+    {
+      "admission_margin": null,
+      "admission_result": "UNKNOWN_BLOCKED",
+      "context_capacity_evidence_kind": "UNKNOWN_BLOCKED",
+      "evidence_kind": "UNKNOWN_BLOCKED",
+      "evidence_sha": null,
+      "maximum_known": {
+        "context": false,
+        "output": false
+      },
+      "output_capacity_evidence_kind": "VERIFIED_SAFE_OUTPUT_LOWER_BOUND",
+      "output_request_cap": 8204,
+      "planned_input": null,
+      "planned_input_status": "NOT_MATERIALIZED_CURRENT_HEAD",
+      "protocol_overhead": null,
+      "role": "planning",
+      "route_identity": "30e9cbaf86fbb4b89b43614d71cc11b359ad41e7411e8ebda5d3ce4199879bf0",
+      "safety_headroom": null,
+      "stage": "planning-adaptation-segment-rebuild-03-attempt-1",
+      "verified_bound": {
+        "context_capacity_tokens": null,
+        "output_capacity_tokens": null
+      }
+    },
+    {
+      "admission_margin": null,
+      "admission_result": "UNKNOWN_BLOCKED",
+      "context_capacity_evidence_kind": "UNKNOWN_BLOCKED",
+      "evidence_kind": "UNKNOWN_BLOCKED",
+      "evidence_sha": null,
+      "maximum_known": {
+        "context": false,
+        "output": false
+      },
+      "output_capacity_evidence_kind": "VERIFIED_SAFE_OUTPUT_LOWER_BOUND",
+      "output_request_cap": 8002,
+      "planned_input": null,
+      "planned_input_status": "NOT_MATERIALIZED_CURRENT_HEAD",
+      "protocol_overhead": null,
+      "role": "planning",
+      "route_identity": "30e9cbaf86fbb4b89b43614d71cc11b359ad41e7411e8ebda5d3ce4199879bf0",
+      "safety_headroom": null,
+      "stage": "planning-adaptation-segment-rebuild-04-attempt-1",
+      "verified_bound": {
+        "context_capacity_tokens": null,
+        "output_capacity_tokens": null
+      }
+    },
+    {
+      "admission_margin": null,
+      "admission_result": "UNKNOWN_BLOCKED",
+      "context_capacity_evidence_kind": "UNKNOWN_BLOCKED",
+      "evidence_kind": "UNKNOWN_BLOCKED",
+      "evidence_sha": null,
+      "maximum_known": {
+        "context": false,
+        "output": false
+      },
+      "output_capacity_evidence_kind": "VERIFIED_SAFE_OUTPUT_LOWER_BOUND",
+      "output_request_cap": 8326,
+      "planned_input": null,
+      "planned_input_status": "NOT_MATERIALIZED_CURRENT_HEAD",
+      "protocol_overhead": null,
+      "role": "planning",
+      "route_identity": "30e9cbaf86fbb4b89b43614d71cc11b359ad41e7411e8ebda5d3ce4199879bf0",
+      "safety_headroom": null,
+      "stage": "planning-adaptation-segment-rebuild-05-attempt-1",
+      "verified_bound": {
+        "context_capacity_tokens": null,
+        "output_capacity_tokens": null
+      }
+    },
+    {
+      "admission_margin": null,
+      "admission_result": "UNKNOWN_BLOCKED",
+      "context_capacity_evidence_kind": "UNKNOWN_BLOCKED",
+      "evidence_kind": "UNKNOWN_BLOCKED",
+      "evidence_sha": null,
+      "maximum_known": {
+        "context": false,
+        "output": false
+      },
+      "output_capacity_evidence_kind": "VERIFIED_SAFE_OUTPUT_LOWER_BOUND",
+      "output_request_cap": 8328,
+      "planned_input": null,
+      "planned_input_status": "NOT_MATERIALIZED_CURRENT_HEAD",
+      "protocol_overhead": null,
+      "role": "planning",
+      "route_identity": "30e9cbaf86fbb4b89b43614d71cc11b359ad41e7411e8ebda5d3ce4199879bf0",
+      "safety_headroom": null,
+      "stage": "planning-adaptation-segment-rebuild-06-attempt-1",
+      "verified_bound": {
+        "context_capacity_tokens": null,
+        "output_capacity_tokens": null
+      }
+    },
+    {
+      "admission_margin": 382071,
+      "admission_result": "UNKNOWN_BLOCKED",
+      "context_capacity_evidence_kind": "VERIFIED_EXACT_LIMIT",
+      "evidence_kind": "VERIFIED_EXACT_LIMIT",
+      "evidence_sha": "ffccf7d96e6d5490284819dd960be178a83cf4cc8c470aada874b038ad5e98e8",
+      "maximum_known": {
+        "context": true,
+        "output": true
+      },
+      "output_capacity_evidence_kind": "VERIFIED_EXACT_LIMIT",
+      "output_request_cap": 1929,
+      "planned_input": null,
+      "planned_input_status": "NOT_MATERIALIZED_CURRENT_HEAD",
+      "protocol_overhead": null,
+      "role": "review",
+      "route_identity": "04a443a6702fcc95b74906e44b7233c9370cb9b94bbbbadce4bf59c088b68c31",
+      "safety_headroom": null,
+      "stage": "review-plan-adaptation-segment-01-rebuild-1-1",
+      "verified_bound": {
+        "context_capacity_tokens": 1000000,
+        "output_capacity_tokens": 384000
+      }
+    },
+    {
+      "admission_margin": 381684,
+      "admission_result": "UNKNOWN_BLOCKED",
+      "context_capacity_evidence_kind": "VERIFIED_EXACT_LIMIT",
+      "evidence_kind": "VERIFIED_EXACT_LIMIT",
+      "evidence_sha": "ffccf7d96e6d5490284819dd960be178a83cf4cc8c470aada874b038ad5e98e8",
+      "maximum_known": {
+        "context": true,
+        "output": true
+      },
+      "output_capacity_evidence_kind": "VERIFIED_EXACT_LIMIT",
+      "output_request_cap": 2316,
+      "planned_input": null,
+      "planned_input_status": "NOT_MATERIALIZED_CURRENT_HEAD",
+      "protocol_overhead": null,
+      "role": "review",
+      "route_identity": "04a443a6702fcc95b74906e44b7233c9370cb9b94bbbbadce4bf59c088b68c31",
+      "safety_headroom": null,
+      "stage": "review-plan-adaptation-segment-02-rebuild-1-1",
+      "verified_bound": {
+        "context_capacity_tokens": 1000000,
+        "output_capacity_tokens": 384000
+      }
+    },
+    {
+      "admission_margin": 381684,
+      "admission_result": "UNKNOWN_BLOCKED",
+      "context_capacity_evidence_kind": "VERIFIED_EXACT_LIMIT",
+      "evidence_kind": "VERIFIED_EXACT_LIMIT",
+      "evidence_sha": "ffccf7d96e6d5490284819dd960be178a83cf4cc8c470aada874b038ad5e98e8",
+      "maximum_known": {
+        "context": true,
+        "output": true
+      },
+      "output_capacity_evidence_kind": "VERIFIED_EXACT_LIMIT",
+      "output_request_cap": 2316,
+      "planned_input": null,
+      "planned_input_status": "NOT_MATERIALIZED_CURRENT_HEAD",
+      "protocol_overhead": null,
+      "role": "review",
+      "route_identity": "04a443a6702fcc95b74906e44b7233c9370cb9b94bbbbadce4bf59c088b68c31",
+      "safety_headroom": null,
+      "stage": "review-plan-adaptation-segment-03-rebuild-1-1",
+      "verified_bound": {
+        "context_capacity_tokens": 1000000,
+        "output_capacity_tokens": 384000
+      }
+    },
+    {
+      "admission_margin": 381684,
+      "admission_result": "UNKNOWN_BLOCKED",
+      "context_capacity_evidence_kind": "VERIFIED_EXACT_LIMIT",
+      "evidence_kind": "VERIFIED_EXACT_LIMIT",
+      "evidence_sha": "ffccf7d96e6d5490284819dd960be178a83cf4cc8c470aada874b038ad5e98e8",
+      "maximum_known": {
+        "context": true,
+        "output": true
+      },
+      "output_capacity_evidence_kind": "VERIFIED_EXACT_LIMIT",
+      "output_request_cap": 2316,
+      "planned_input": null,
+      "planned_input_status": "NOT_MATERIALIZED_CURRENT_HEAD",
+      "protocol_overhead": null,
+      "role": "review",
+      "route_identity": "04a443a6702fcc95b74906e44b7233c9370cb9b94bbbbadce4bf59c088b68c31",
+      "safety_headroom": null,
+      "stage": "review-plan-adaptation-segment-04-rebuild-1-1",
+      "verified_bound": {
+        "context_capacity_tokens": 1000000,
+        "output_capacity_tokens": 384000
+      }
+    },
+    {
+      "admission_margin": 381684,
+      "admission_result": "UNKNOWN_BLOCKED",
+      "context_capacity_evidence_kind": "VERIFIED_EXACT_LIMIT",
+      "evidence_kind": "VERIFIED_EXACT_LIMIT",
+      "evidence_sha": "ffccf7d96e6d5490284819dd960be178a83cf4cc8c470aada874b038ad5e98e8",
+      "maximum_known": {
+        "context": true,
+        "output": true
+      },
+      "output_capacity_evidence_kind": "VERIFIED_EXACT_LIMIT",
+      "output_request_cap": 2316,
+      "planned_input": null,
+      "planned_input_status": "NOT_MATERIALIZED_CURRENT_HEAD",
+      "protocol_overhead": null,
+      "role": "review",
+      "route_identity": "04a443a6702fcc95b74906e44b7233c9370cb9b94bbbbadce4bf59c088b68c31",
+      "safety_headroom": null,
+      "stage": "review-plan-adaptation-segment-05-rebuild-1-1",
+      "verified_bound": {
+        "context_capacity_tokens": 1000000,
+        "output_capacity_tokens": 384000
+      }
+    },
+    {
+      "admission_margin": 381684,
+      "admission_result": "UNKNOWN_BLOCKED",
+      "context_capacity_evidence_kind": "VERIFIED_EXACT_LIMIT",
+      "evidence_kind": "VERIFIED_EXACT_LIMIT",
+      "evidence_sha": "ffccf7d96e6d5490284819dd960be178a83cf4cc8c470aada874b038ad5e98e8",
+      "maximum_known": {
+        "context": true,
+        "output": true
+      },
+      "output_capacity_evidence_kind": "VERIFIED_EXACT_LIMIT",
+      "output_request_cap": 2316,
+      "planned_input": null,
+      "planned_input_status": "NOT_MATERIALIZED_CURRENT_HEAD",
+      "protocol_overhead": null,
+      "role": "review",
+      "route_identity": "04a443a6702fcc95b74906e44b7233c9370cb9b94bbbbadce4bf59c088b68c31",
+      "safety_headroom": null,
+      "stage": "review-plan-adaptation-segment-06-rebuild-1-1",
+      "verified_bound": {
+        "context_capacity_tokens": 1000000,
+        "output_capacity_tokens": 384000
+      }
+    },
+    {
+      "admission_margin": 380408,
+      "admission_result": "UNKNOWN_BLOCKED",
+      "context_capacity_evidence_kind": "VERIFIED_EXACT_LIMIT",
+      "evidence_kind": "VERIFIED_EXACT_LIMIT",
+      "evidence_sha": "ffccf7d96e6d5490284819dd960be178a83cf4cc8c470aada874b038ad5e98e8",
+      "maximum_known": {
+        "context": true,
+        "output": true
+      },
+      "output_capacity_evidence_kind": "VERIFIED_EXACT_LIMIT",
+      "output_request_cap": 3592,
+      "planned_input": null,
+      "planned_input_status": "NOT_MATERIALIZED_CURRENT_HEAD",
+      "protocol_overhead": null,
+      "role": "review",
+      "route_identity": "04a443a6702fcc95b74906e44b7233c9370cb9b94bbbbadce4bf59c088b68c31",
+      "safety_headroom": null,
+      "stage": "review-plan-adaptation-hierarchy-rebuild-1-regional-01-1",
+      "verified_bound": {
+        "context_capacity_tokens": 1000000,
+        "output_capacity_tokens": 384000
+      }
+    },
+    {
+      "admission_margin": 382278,
+      "admission_result": "UNKNOWN_BLOCKED",
+      "context_capacity_evidence_kind": "VERIFIED_EXACT_LIMIT",
+      "evidence_kind": "VERIFIED_EXACT_LIMIT",
+      "evidence_sha": "ffccf7d96e6d5490284819dd960be178a83cf4cc8c470aada874b038ad5e98e8",
+      "maximum_known": {
+        "context": true,
+        "output": true
+      },
+      "output_capacity_evidence_kind": "VERIFIED_EXACT_LIMIT",
+      "output_request_cap": 1722,
+      "planned_input": null,
+      "planned_input_status": "NOT_MATERIALIZED_CURRENT_HEAD",
+      "protocol_overhead": null,
+      "role": "review",
+      "route_identity": "04a443a6702fcc95b74906e44b7233c9370cb9b94bbbbadce4bf59c088b68c31",
+      "safety_headroom": null,
+      "stage": "review-plan-adaptation-hierarchy-rebuild-1-regional-02-1",
+      "verified_bound": {
+        "context_capacity_tokens": 1000000,
+        "output_capacity_tokens": 384000
+      }
+    },
+    {
+      "admission_margin": 381246,
+      "admission_result": "UNKNOWN_BLOCKED",
+      "context_capacity_evidence_kind": "VERIFIED_EXACT_LIMIT",
+      "evidence_kind": "VERIFIED_EXACT_LIMIT",
+      "evidence_sha": "ffccf7d96e6d5490284819dd960be178a83cf4cc8c470aada874b038ad5e98e8",
+      "maximum_known": {
+        "context": true,
+        "output": true
+      },
+      "output_capacity_evidence_kind": "VERIFIED_EXACT_LIMIT",
+      "output_request_cap": 2754,
+      "planned_input": null,
+      "planned_input_status": "NOT_MATERIALIZED_CURRENT_HEAD",
+      "protocol_overhead": null,
+      "role": "review",
+      "route_identity": "04a443a6702fcc95b74906e44b7233c9370cb9b94bbbbadce4bf59c088b68c31",
+      "safety_headroom": null,
+      "stage": "review-plan-adaptation-whole-rebuild-1-1",
+      "verified_bound": {
+        "context_capacity_tokens": 1000000,
+        "output_capacity_tokens": 384000
+      }
+    },
+    {
+      "admission_margin": null,
+      "admission_result": "UNKNOWN_BLOCKED",
+      "context_capacity_evidence_kind": "UNKNOWN_BLOCKED",
+      "evidence_kind": "UNKNOWN_BLOCKED",
+      "evidence_sha": null,
+      "maximum_known": {
+        "context": false,
+        "output": false
+      },
+      "output_capacity_evidence_kind": "VERIFIED_SAFE_OUTPUT_LOWER_BOUND",
+      "output_request_cap": 7141,
+      "planned_input": null,
+      "planned_input_status": "NOT_MATERIALIZED_CURRENT_HEAD",
+      "protocol_overhead": null,
+      "role": "planning",
+      "route_identity": "30e9cbaf86fbb4b89b43614d71cc11b359ad41e7411e8ebda5d3ce4199879bf0",
+      "safety_headroom": null,
+      "stage": "planning-causal-chain-packet-9373a94b2a8019ec",
+      "verified_bound": {
+        "context_capacity_tokens": null,
+        "output_capacity_tokens": null
+      }
+    },
+    {
+      "admission_margin": null,
+      "admission_result": "UNKNOWN_BLOCKED",
+      "context_capacity_evidence_kind": "UNKNOWN_BLOCKED",
+      "evidence_kind": "UNKNOWN_BLOCKED",
+      "evidence_sha": null,
+      "maximum_known": {
+        "context": false,
+        "output": false
+      },
+      "output_capacity_evidence_kind": "VERIFIED_SAFE_OUTPUT_LOWER_BOUND",
+      "output_request_cap": 7625,
+      "planned_input": null,
+      "planned_input_status": "NOT_MATERIALIZED_CURRENT_HEAD",
+      "protocol_overhead": null,
+      "role": "planning",
+      "route_identity": "30e9cbaf86fbb4b89b43614d71cc11b359ad41e7411e8ebda5d3ce4199879bf0",
+      "safety_headroom": null,
+      "stage": "planning-causal-chain-packet-ddabaa48d8116f76",
+      "verified_bound": {
+        "context_capacity_tokens": null,
+        "output_capacity_tokens": null
+      }
+    },
+    {
+      "admission_margin": null,
+      "admission_result": "UNKNOWN_BLOCKED",
+      "context_capacity_evidence_kind": "UNKNOWN_BLOCKED",
+      "evidence_kind": "UNKNOWN_BLOCKED",
+      "evidence_sha": null,
+      "maximum_known": {
+        "context": false,
+        "output": false
+      },
+      "output_capacity_evidence_kind": "VERIFIED_SAFE_OUTPUT_LOWER_BOUND",
+      "output_request_cap": 2910,
+      "planned_input": null,
+      "planned_input_status": "NOT_MATERIALIZED_CURRENT_HEAD",
+      "protocol_overhead": null,
+      "role": "planning",
+      "route_identity": "30e9cbaf86fbb4b89b43614d71cc11b359ad41e7411e8ebda5d3ce4199879bf0",
+      "safety_headroom": null,
+      "stage": "planning-execution-segment-01-initial-1",
+      "verified_bound": {
+        "context_capacity_tokens": null,
+        "output_capacity_tokens": null
+      }
+    },
+    {
+      "admission_margin": 381810,
+      "admission_result": "UNKNOWN_BLOCKED",
+      "context_capacity_evidence_kind": "VERIFIED_EXACT_LIMIT",
+      "evidence_kind": "VERIFIED_EXACT_LIMIT",
+      "evidence_sha": "ffccf7d96e6d5490284819dd960be178a83cf4cc8c470aada874b038ad5e98e8",
+      "maximum_known": {
+        "context": true,
+        "output": true
+      },
+      "output_capacity_evidence_kind": "VERIFIED_EXACT_LIMIT",
+      "output_request_cap": 2190,
+      "planned_input": null,
+      "planned_input_status": "NOT_MATERIALIZED_CURRENT_HEAD",
+      "protocol_overhead": null,
+      "role": "review",
+      "route_identity": "04a443a6702fcc95b74906e44b7233c9370cb9b94bbbbadce4bf59c088b68c31",
+      "safety_headroom": null,
+      "stage": "review-execution-segment-01-initial-1",
+      "verified_bound": {
+        "context_capacity_tokens": 1000000,
+        "output_capacity_tokens": 384000
+      }
+    },
+    {
+      "admission_margin": null,
+      "admission_result": "UNKNOWN_BLOCKED",
+      "context_capacity_evidence_kind": "UNKNOWN_BLOCKED",
+      "evidence_kind": "UNKNOWN_BLOCKED",
+      "evidence_sha": null,
+      "maximum_known": {
+        "context": false,
+        "output": false
+      },
+      "output_capacity_evidence_kind": "VERIFIED_SAFE_OUTPUT_LOWER_BOUND",
+      "output_request_cap": 3541,
+      "planned_input": null,
+      "planned_input_status": "NOT_MATERIALIZED_CURRENT_HEAD",
+      "protocol_overhead": null,
+      "role": "planning",
+      "route_identity": "30e9cbaf86fbb4b89b43614d71cc11b359ad41e7411e8ebda5d3ce4199879bf0",
+      "safety_headroom": null,
+      "stage": "planning-execution-segment-02-initial-1",
+      "verified_bound": {
+        "context_capacity_tokens": null,
+        "output_capacity_tokens": null
+      }
+    },
+    {
+      "admission_margin": 382808,
+      "admission_result": "UNKNOWN_BLOCKED",
+      "context_capacity_evidence_kind": "VERIFIED_EXACT_LIMIT",
+      "evidence_kind": "VERIFIED_EXACT_LIMIT",
+      "evidence_sha": "ffccf7d96e6d5490284819dd960be178a83cf4cc8c470aada874b038ad5e98e8",
+      "maximum_known": {
+        "context": true,
+        "output": true
+      },
+      "output_capacity_evidence_kind": "VERIFIED_EXACT_LIMIT",
+      "output_request_cap": 1192,
+      "planned_input": null,
+      "planned_input_status": "NOT_MATERIALIZED_CURRENT_HEAD",
+      "protocol_overhead": null,
+      "role": "review",
+      "route_identity": "04a443a6702fcc95b74906e44b7233c9370cb9b94bbbbadce4bf59c088b68c31",
+      "safety_headroom": null,
+      "stage": "review-execution-segment-02-initial-1",
+      "verified_bound": {
+        "context_capacity_tokens": 1000000,
+        "output_capacity_tokens": 384000
+      }
+    },
+    {
+      "admission_margin": null,
+      "admission_result": "UNKNOWN_BLOCKED",
+      "context_capacity_evidence_kind": "UNKNOWN_BLOCKED",
+      "evidence_kind": "UNKNOWN_BLOCKED",
+      "evidence_sha": null,
+      "maximum_known": {
+        "context": false,
+        "output": false
+      },
+      "output_capacity_evidence_kind": "VERIFIED_SAFE_OUTPUT_LOWER_BOUND",
+      "output_request_cap": 3541,
+      "planned_input": null,
+      "planned_input_status": "NOT_MATERIALIZED_CURRENT_HEAD",
+      "protocol_overhead": null,
+      "role": "planning",
+      "route_identity": "30e9cbaf86fbb4b89b43614d71cc11b359ad41e7411e8ebda5d3ce4199879bf0",
+      "safety_headroom": null,
+      "stage": "planning-execution-segment-03-initial-1",
+      "verified_bound": {
+        "context_capacity_tokens": null,
+        "output_capacity_tokens": null
+      }
+    },
+    {
+      "admission_margin": 383839,
+      "admission_result": "UNKNOWN_BLOCKED",
+      "context_capacity_evidence_kind": "VERIFIED_EXACT_LIMIT",
+      "evidence_kind": "VERIFIED_EXACT_LIMIT",
+      "evidence_sha": "ffccf7d96e6d5490284819dd960be178a83cf4cc8c470aada874b038ad5e98e8",
+      "maximum_known": {
+        "context": true,
+        "output": true
+      },
+      "output_capacity_evidence_kind": "VERIFIED_EXACT_LIMIT",
+      "output_request_cap": 161,
+      "planned_input": null,
+      "planned_input_status": "NOT_MATERIALIZED_CURRENT_HEAD",
+      "protocol_overhead": null,
+      "role": "review",
+      "route_identity": "04a443a6702fcc95b74906e44b7233c9370cb9b94bbbbadce4bf59c088b68c31",
+      "safety_headroom": null,
+      "stage": "review-execution-segment-03-initial-1",
+      "verified_bound": {
+        "context_capacity_tokens": 1000000,
+        "output_capacity_tokens": 384000
+      }
+    },
+    {
+      "admission_margin": null,
+      "admission_result": "UNKNOWN_BLOCKED",
+      "context_capacity_evidence_kind": "UNKNOWN_BLOCKED",
+      "evidence_kind": "UNKNOWN_BLOCKED",
+      "evidence_sha": null,
+      "maximum_known": {
+        "context": false,
+        "output": false
+      },
+      "output_capacity_evidence_kind": "VERIFIED_SAFE_OUTPUT_LOWER_BOUND",
+      "output_request_cap": 3541,
+      "planned_input": null,
+      "planned_input_status": "NOT_MATERIALIZED_CURRENT_HEAD",
+      "protocol_overhead": null,
+      "role": "planning",
+      "route_identity": "30e9cbaf86fbb4b89b43614d71cc11b359ad41e7411e8ebda5d3ce4199879bf0",
+      "safety_headroom": null,
+      "stage": "planning-execution-segment-04-initial-1",
+      "verified_bound": {
+        "context_capacity_tokens": null,
+        "output_capacity_tokens": null
+      }
+    },
+    {
+      "admission_margin": 383433,
+      "admission_result": "UNKNOWN_BLOCKED",
+      "context_capacity_evidence_kind": "VERIFIED_EXACT_LIMIT",
+      "evidence_kind": "VERIFIED_EXACT_LIMIT",
+      "evidence_sha": "ffccf7d96e6d5490284819dd960be178a83cf4cc8c470aada874b038ad5e98e8",
+      "maximum_known": {
+        "context": true,
+        "output": true
+      },
+      "output_capacity_evidence_kind": "VERIFIED_EXACT_LIMIT",
+      "output_request_cap": 567,
+      "planned_input": null,
+      "planned_input_status": "NOT_MATERIALIZED_CURRENT_HEAD",
+      "protocol_overhead": null,
+      "role": "review",
+      "route_identity": "04a443a6702fcc95b74906e44b7233c9370cb9b94bbbbadce4bf59c088b68c31",
+      "safety_headroom": null,
+      "stage": "review-execution-segment-04-initial-1",
+      "verified_bound": {
+        "context_capacity_tokens": 1000000,
+        "output_capacity_tokens": 384000
+      }
+    },
+    {
+      "admission_margin": null,
+      "admission_result": "UNKNOWN_BLOCKED",
+      "context_capacity_evidence_kind": "UNKNOWN_BLOCKED",
+      "evidence_kind": "UNKNOWN_BLOCKED",
+      "evidence_sha": null,
+      "maximum_known": {
+        "context": false,
+        "output": false
+      },
+      "output_capacity_evidence_kind": "VERIFIED_SAFE_OUTPUT_LOWER_BOUND",
+      "output_request_cap": 3541,
+      "planned_input": null,
+      "planned_input_status": "NOT_MATERIALIZED_CURRENT_HEAD",
+      "protocol_overhead": null,
+      "role": "planning",
+      "route_identity": "30e9cbaf86fbb4b89b43614d71cc11b359ad41e7411e8ebda5d3ce4199879bf0",
+      "safety_headroom": null,
+      "stage": "planning-execution-segment-05-initial-1",
+      "verified_bound": {
+        "context_capacity_tokens": null,
+        "output_capacity_tokens": null
+      }
+    },
+    {
+      "admission_margin": 383811,
+      "admission_result": "UNKNOWN_BLOCKED",
+      "context_capacity_evidence_kind": "VERIFIED_EXACT_LIMIT",
+      "evidence_kind": "VERIFIED_EXACT_LIMIT",
+      "evidence_sha": "ffccf7d96e6d5490284819dd960be178a83cf4cc8c470aada874b038ad5e98e8",
+      "maximum_known": {
+        "context": true,
+        "output": true
+      },
+      "output_capacity_evidence_kind": "VERIFIED_EXACT_LIMIT",
+      "output_request_cap": 189,
+      "planned_input": null,
+      "planned_input_status": "NOT_MATERIALIZED_CURRENT_HEAD",
+      "protocol_overhead": null,
+      "role": "review",
+      "route_identity": "04a443a6702fcc95b74906e44b7233c9370cb9b94bbbbadce4bf59c088b68c31",
+      "safety_headroom": null,
+      "stage": "review-execution-segment-05-initial-1",
+      "verified_bound": {
+        "context_capacity_tokens": 1000000,
+        "output_capacity_tokens": 384000
+      }
+    },
+    {
+      "admission_margin": null,
+      "admission_result": "UNKNOWN_BLOCKED",
+      "context_capacity_evidence_kind": "UNKNOWN_BLOCKED",
+      "evidence_kind": "UNKNOWN_BLOCKED",
+      "evidence_sha": null,
+      "maximum_known": {
+        "context": false,
+        "output": false
+      },
+      "output_capacity_evidence_kind": "VERIFIED_SAFE_OUTPUT_LOWER_BOUND",
+      "output_request_cap": 3541,
+      "planned_input": null,
+      "planned_input_status": "NOT_MATERIALIZED_CURRENT_HEAD",
+      "protocol_overhead": null,
+      "role": "planning",
+      "route_identity": "30e9cbaf86fbb4b89b43614d71cc11b359ad41e7411e8ebda5d3ce4199879bf0",
+      "safety_headroom": null,
+      "stage": "planning-execution-segment-06-initial-1",
+      "verified_bound": {
+        "context_capacity_tokens": null,
+        "output_capacity_tokens": null
+      }
+    },
+    {
+      "admission_margin": 383895,
+      "admission_result": "UNKNOWN_BLOCKED",
+      "context_capacity_evidence_kind": "VERIFIED_EXACT_LIMIT",
+      "evidence_kind": "VERIFIED_EXACT_LIMIT",
+      "evidence_sha": "ffccf7d96e6d5490284819dd960be178a83cf4cc8c470aada874b038ad5e98e8",
+      "maximum_known": {
+        "context": true,
+        "output": true
+      },
+      "output_capacity_evidence_kind": "VERIFIED_EXACT_LIMIT",
+      "output_request_cap": 105,
+      "planned_input": null,
+      "planned_input_status": "NOT_MATERIALIZED_CURRENT_HEAD",
+      "protocol_overhead": null,
+      "role": "review",
+      "route_identity": "04a443a6702fcc95b74906e44b7233c9370cb9b94bbbbadce4bf59c088b68c31",
+      "safety_headroom": null,
+      "stage": "review-execution-segment-06-initial-1",
+      "verified_bound": {
+        "context_capacity_tokens": 1000000,
+        "output_capacity_tokens": 384000
+      }
+    },
+    {
+      "admission_margin": null,
+      "admission_result": "UNKNOWN_BLOCKED",
+      "context_capacity_evidence_kind": "UNKNOWN_BLOCKED",
+      "evidence_kind": "UNKNOWN_BLOCKED",
+      "evidence_sha": null,
+      "maximum_known": {
+        "context": false,
+        "output": false
+      },
+      "output_capacity_evidence_kind": "VERIFIED_SAFE_OUTPUT_LOWER_BOUND",
+      "output_request_cap": 1475,
+      "planned_input": null,
+      "planned_input_status": "NOT_MATERIALIZED_CURRENT_HEAD",
+      "protocol_overhead": null,
+      "role": "draft",
+      "route_identity": "099e358eae5fd0ff5e3d1b8cda34cd90c73c735c001ed44334ade3e3b667bf4e",
+      "safety_headroom": null,
+      "stage": "draft-part-01",
+      "verified_bound": {
+        "context_capacity_tokens": null,
+        "output_capacity_tokens": null
+      }
+    },
+    {
+      "admission_margin": 382665,
+      "admission_result": "UNKNOWN_BLOCKED",
+      "context_capacity_evidence_kind": "VERIFIED_EXACT_LIMIT",
+      "evidence_kind": "VERIFIED_EXACT_LIMIT",
+      "evidence_sha": "ffccf7d96e6d5490284819dd960be178a83cf4cc8c470aada874b038ad5e98e8",
+      "maximum_known": {
+        "context": true,
+        "output": true
+      },
+      "output_capacity_evidence_kind": "VERIFIED_EXACT_LIMIT",
+      "output_request_cap": 1335,
+      "planned_input": null,
+      "planned_input_status": "NOT_MATERIALIZED_CURRENT_HEAD",
+      "protocol_overhead": null,
+      "role": "review",
+      "route_identity": "04a443a6702fcc95b74906e44b7233c9370cb9b94bbbbadce4bf59c088b68c31",
+      "safety_headroom": null,
+      "stage": "review-part-01-segment-01-semantic",
+      "verified_bound": {
+        "context_capacity_tokens": 1000000,
+        "output_capacity_tokens": 384000
+      }
+    },
+    {
+      "admission_margin": null,
+      "admission_result": "UNKNOWN_BLOCKED",
+      "context_capacity_evidence_kind": "UNKNOWN_BLOCKED",
+      "evidence_kind": "UNKNOWN_BLOCKED",
+      "evidence_sha": null,
+      "maximum_known": {
+        "context": false,
+        "output": false
+      },
+      "output_capacity_evidence_kind": "VERIFIED_SAFE_OUTPUT_LOWER_BOUND",
+      "output_request_cap": 2974,
+      "planned_input": null,
+      "planned_input_status": "NOT_MATERIALIZED_CURRENT_HEAD",
+      "protocol_overhead": null,
+      "role": "draft",
+      "route_identity": "099e358eae5fd0ff5e3d1b8cda34cd90c73c735c001ed44334ade3e3b667bf4e",
+      "safety_headroom": null,
+      "stage": "draft-part-02",
+      "verified_bound": {
+        "context_capacity_tokens": null,
+        "output_capacity_tokens": null
+      }
+    },
+    {
+      "admission_margin": 382426,
+      "admission_result": "UNKNOWN_BLOCKED",
+      "context_capacity_evidence_kind": "VERIFIED_EXACT_LIMIT",
+      "evidence_kind": "VERIFIED_EXACT_LIMIT",
+      "evidence_sha": "ffccf7d96e6d5490284819dd960be178a83cf4cc8c470aada874b038ad5e98e8",
+      "maximum_known": {
+        "context": true,
+        "output": true
+      },
+      "output_capacity_evidence_kind": "VERIFIED_EXACT_LIMIT",
+      "output_request_cap": 1574,
+      "planned_input": null,
+      "planned_input_status": "NOT_MATERIALIZED_CURRENT_HEAD",
+      "protocol_overhead": null,
+      "role": "review",
+      "route_identity": "04a443a6702fcc95b74906e44b7233c9370cb9b94bbbbadce4bf59c088b68c31",
+      "safety_headroom": null,
+      "stage": "review-part-02-segment-02-semantic",
+      "verified_bound": {
+        "context_capacity_tokens": 1000000,
+        "output_capacity_tokens": 384000
+      }
+    },
+    {
+      "admission_margin": null,
+      "admission_result": "UNKNOWN_BLOCKED",
+      "context_capacity_evidence_kind": "UNKNOWN_BLOCKED",
+      "evidence_kind": "UNKNOWN_BLOCKED",
+      "evidence_sha": null,
+      "maximum_known": {
+        "context": false,
+        "output": false
+      },
+      "output_capacity_evidence_kind": "VERIFIED_SAFE_OUTPUT_LOWER_BOUND",
+      "output_request_cap": 2431,
+      "planned_input": null,
+      "planned_input_status": "NOT_MATERIALIZED_CURRENT_HEAD",
+      "protocol_overhead": null,
+      "role": "draft",
+      "route_identity": "099e358eae5fd0ff5e3d1b8cda34cd90c73c735c001ed44334ade3e3b667bf4e",
+      "safety_headroom": null,
+      "stage": "draft-part-03",
+      "verified_bound": {
+        "context_capacity_tokens": null,
+        "output_capacity_tokens": null
+      }
+    },
+    {
+      "admission_margin": 382426,
+      "admission_result": "UNKNOWN_BLOCKED",
+      "context_capacity_evidence_kind": "VERIFIED_EXACT_LIMIT",
+      "evidence_kind": "VERIFIED_EXACT_LIMIT",
+      "evidence_sha": "ffccf7d96e6d5490284819dd960be178a83cf4cc8c470aada874b038ad5e98e8",
+      "maximum_known": {
+        "context": true,
+        "output": true
+      },
+      "output_capacity_evidence_kind": "VERIFIED_EXACT_LIMIT",
+      "output_request_cap": 1574,
+      "planned_input": null,
+      "planned_input_status": "NOT_MATERIALIZED_CURRENT_HEAD",
+      "protocol_overhead": null,
+      "role": "review",
+      "route_identity": "04a443a6702fcc95b74906e44b7233c9370cb9b94bbbbadce4bf59c088b68c31",
+      "safety_headroom": null,
+      "stage": "review-part-03-segment-03-semantic",
+      "verified_bound": {
+        "context_capacity_tokens": 1000000,
+        "output_capacity_tokens": 384000
+      }
+    },
+    {
+      "admission_margin": null,
+      "admission_result": "UNKNOWN_BLOCKED",
+      "context_capacity_evidence_kind": "UNKNOWN_BLOCKED",
+      "evidence_kind": "UNKNOWN_BLOCKED",
+      "evidence_sha": null,
+      "maximum_known": {
+        "context": false,
+        "output": false
+      },
+      "output_capacity_evidence_kind": "VERIFIED_SAFE_OUTPUT_LOWER_BOUND",
+      "output_request_cap": 2593,
+      "planned_input": null,
+      "planned_input_status": "NOT_MATERIALIZED_CURRENT_HEAD",
+      "protocol_overhead": null,
+      "role": "draft",
+      "route_identity": "099e358eae5fd0ff5e3d1b8cda34cd90c73c735c001ed44334ade3e3b667bf4e",
+      "safety_headroom": null,
+      "stage": "draft-part-04",
+      "verified_bound": {
+        "context_capacity_tokens": null,
+        "output_capacity_tokens": null
+      }
+    },
+    {
+      "admission_margin": 382426,
+      "admission_result": "UNKNOWN_BLOCKED",
+      "context_capacity_evidence_kind": "VERIFIED_EXACT_LIMIT",
+      "evidence_kind": "VERIFIED_EXACT_LIMIT",
+      "evidence_sha": "ffccf7d96e6d5490284819dd960be178a83cf4cc8c470aada874b038ad5e98e8",
+      "maximum_known": {
+        "context": true,
+        "output": true
+      },
+      "output_capacity_evidence_kind": "VERIFIED_EXACT_LIMIT",
+      "output_request_cap": 1574,
+      "planned_input": null,
+      "planned_input_status": "NOT_MATERIALIZED_CURRENT_HEAD",
+      "protocol_overhead": null,
+      "role": "review",
+      "route_identity": "04a443a6702fcc95b74906e44b7233c9370cb9b94bbbbadce4bf59c088b68c31",
+      "safety_headroom": null,
+      "stage": "review-part-04-segment-04-semantic",
+      "verified_bound": {
+        "context_capacity_tokens": 1000000,
+        "output_capacity_tokens": 384000
+      }
+    },
+    {
+      "admission_margin": null,
+      "admission_result": "UNKNOWN_BLOCKED",
+      "context_capacity_evidence_kind": "UNKNOWN_BLOCKED",
+      "evidence_kind": "UNKNOWN_BLOCKED",
+      "evidence_sha": null,
+      "maximum_known": {
+        "context": false,
+        "output": false
+      },
+      "output_capacity_evidence_kind": "VERIFIED_SAFE_OUTPUT_LOWER_BOUND",
+      "output_request_cap": 2531,
+      "planned_input": null,
+      "planned_input_status": "NOT_MATERIALIZED_CURRENT_HEAD",
+      "protocol_overhead": null,
+      "role": "draft",
+      "route_identity": "099e358eae5fd0ff5e3d1b8cda34cd90c73c735c001ed44334ade3e3b667bf4e",
+      "safety_headroom": null,
+      "stage": "draft-part-05",
+      "verified_bound": {
+        "context_capacity_tokens": null,
+        "output_capacity_tokens": null
+      }
+    },
+    {
+      "admission_margin": 382426,
+      "admission_result": "UNKNOWN_BLOCKED",
+      "context_capacity_evidence_kind": "VERIFIED_EXACT_LIMIT",
+      "evidence_kind": "VERIFIED_EXACT_LIMIT",
+      "evidence_sha": "ffccf7d96e6d5490284819dd960be178a83cf4cc8c470aada874b038ad5e98e8",
+      "maximum_known": {
+        "context": true,
+        "output": true
+      },
+      "output_capacity_evidence_kind": "VERIFIED_EXACT_LIMIT",
+      "output_request_cap": 1574,
+      "planned_input": null,
+      "planned_input_status": "NOT_MATERIALIZED_CURRENT_HEAD",
+      "protocol_overhead": null,
+      "role": "review",
+      "route_identity": "04a443a6702fcc95b74906e44b7233c9370cb9b94bbbbadce4bf59c088b68c31",
+      "safety_headroom": null,
+      "stage": "review-part-05-segment-05-semantic",
+      "verified_bound": {
+        "context_capacity_tokens": 1000000,
+        "output_capacity_tokens": 384000
+      }
+    },
+    {
+      "admission_margin": null,
+      "admission_result": "UNKNOWN_BLOCKED",
+      "context_capacity_evidence_kind": "UNKNOWN_BLOCKED",
+      "evidence_kind": "UNKNOWN_BLOCKED",
+      "evidence_sha": null,
+      "maximum_known": {
+        "context": false,
+        "output": false
+      },
+      "output_capacity_evidence_kind": "VERIFIED_SAFE_OUTPUT_LOWER_BOUND",
+      "output_request_cap": 2500,
+      "planned_input": null,
+      "planned_input_status": "NOT_MATERIALIZED_CURRENT_HEAD",
+      "protocol_overhead": null,
+      "role": "draft",
+      "route_identity": "099e358eae5fd0ff5e3d1b8cda34cd90c73c735c001ed44334ade3e3b667bf4e",
+      "safety_headroom": null,
+      "stage": "draft-part-06",
+      "verified_bound": {
+        "context_capacity_tokens": null,
+        "output_capacity_tokens": null
+      }
+    },
+    {
+      "admission_margin": 382426,
+      "admission_result": "UNKNOWN_BLOCKED",
+      "context_capacity_evidence_kind": "VERIFIED_EXACT_LIMIT",
+      "evidence_kind": "VERIFIED_EXACT_LIMIT",
+      "evidence_sha": "ffccf7d96e6d5490284819dd960be178a83cf4cc8c470aada874b038ad5e98e8",
+      "maximum_known": {
+        "context": true,
+        "output": true
+      },
+      "output_capacity_evidence_kind": "VERIFIED_EXACT_LIMIT",
+      "output_request_cap": 1574,
+      "planned_input": null,
+      "planned_input_status": "NOT_MATERIALIZED_CURRENT_HEAD",
+      "protocol_overhead": null,
+      "role": "review",
+      "route_identity": "04a443a6702fcc95b74906e44b7233c9370cb9b94bbbbadce4bf59c088b68c31",
+      "safety_headroom": null,
+      "stage": "review-part-06-segment-06-semantic",
+      "verified_bound": {
+        "context_capacity_tokens": 1000000,
+        "output_capacity_tokens": 384000
+      }
+    },
+    {
+      "admission_margin": 381913,
+      "admission_result": "UNKNOWN_BLOCKED",
+      "context_capacity_evidence_kind": "VERIFIED_EXACT_LIMIT",
+      "evidence_kind": "VERIFIED_EXACT_LIMIT",
+      "evidence_sha": "ffccf7d96e6d5490284819dd960be178a83cf4cc8c470aada874b038ad5e98e8",
+      "maximum_known": {
+        "context": true,
+        "output": true
+      },
+      "output_capacity_evidence_kind": "VERIFIED_EXACT_LIMIT",
+      "output_request_cap": 2087,
+      "planned_input": null,
+      "planned_input_status": "NOT_MATERIALIZED_CURRENT_HEAD",
+      "protocol_overhead": null,
+      "role": "review",
+      "route_identity": "04a443a6702fcc95b74906e44b7233c9370cb9b94bbbbadce4bf59c088b68c31",
+      "safety_headroom": null,
+      "stage": "review-draft-whole-semantic",
+      "verified_bound": {
+        "context_capacity_tokens": 1000000,
+        "output_capacity_tokens": 384000
+      }
+    },
+    {
+      "admission_margin": 383232,
+      "admission_result": "UNKNOWN_BLOCKED",
+      "context_capacity_evidence_kind": "VERIFIED_EXACT_LIMIT",
+      "evidence_kind": "VERIFIED_EXACT_LIMIT",
+      "evidence_sha": "ffccf7d96e6d5490284819dd960be178a83cf4cc8c470aada874b038ad5e98e8",
+      "maximum_known": {
+        "context": true,
+        "output": true
+      },
+      "output_capacity_evidence_kind": "VERIFIED_EXACT_LIMIT",
+      "output_request_cap": 768,
+      "planned_input": null,
+      "planned_input_status": "NOT_MATERIALIZED_CURRENT_HEAD",
+      "protocol_overhead": null,
+      "role": "review",
+      "route_identity": "04a443a6702fcc95b74906e44b7233c9370cb9b94bbbbadce4bf59c088b68c31",
+      "safety_headroom": null,
+      "stage": "review-initial-window-001",
+      "verified_bound": {
+        "context_capacity_tokens": 1000000,
+        "output_capacity_tokens": 384000
+      }
+    },
+    {
+      "admission_margin": 383232,
+      "admission_result": "UNKNOWN_BLOCKED",
+      "context_capacity_evidence_kind": "VERIFIED_EXACT_LIMIT",
+      "evidence_kind": "VERIFIED_EXACT_LIMIT",
+      "evidence_sha": "ffccf7d96e6d5490284819dd960be178a83cf4cc8c470aada874b038ad5e98e8",
+      "maximum_known": {
+        "context": true,
+        "output": true
+      },
+      "output_capacity_evidence_kind": "VERIFIED_EXACT_LIMIT",
+      "output_request_cap": 768,
+      "planned_input": null,
+      "planned_input_status": "NOT_MATERIALIZED_CURRENT_HEAD",
+      "protocol_overhead": null,
+      "role": "review",
+      "route_identity": "04a443a6702fcc95b74906e44b7233c9370cb9b94bbbbadce4bf59c088b68c31",
+      "safety_headroom": null,
+      "stage": "review-initial-window-002",
+      "verified_bound": {
+        "context_capacity_tokens": 1000000,
+        "output_capacity_tokens": 384000
+      }
+    },
+    {
+      "admission_margin": 383232,
+      "admission_result": "UNKNOWN_BLOCKED",
+      "context_capacity_evidence_kind": "VERIFIED_EXACT_LIMIT",
+      "evidence_kind": "VERIFIED_EXACT_LIMIT",
+      "evidence_sha": "ffccf7d96e6d5490284819dd960be178a83cf4cc8c470aada874b038ad5e98e8",
+      "maximum_known": {
+        "context": true,
+        "output": true
+      },
+      "output_capacity_evidence_kind": "VERIFIED_EXACT_LIMIT",
+      "output_request_cap": 768,
+      "planned_input": null,
+      "planned_input_status": "NOT_MATERIALIZED_CURRENT_HEAD",
+      "protocol_overhead": null,
+      "role": "review",
+      "route_identity": "04a443a6702fcc95b74906e44b7233c9370cb9b94bbbbadce4bf59c088b68c31",
+      "safety_headroom": null,
+      "stage": "review-initial-window-003",
+      "verified_bound": {
+        "context_capacity_tokens": 1000000,
+        "output_capacity_tokens": 384000
+      }
+    },
+    {
+      "admission_margin": 383232,
+      "admission_result": "UNKNOWN_BLOCKED",
+      "context_capacity_evidence_kind": "VERIFIED_EXACT_LIMIT",
+      "evidence_kind": "VERIFIED_EXACT_LIMIT",
+      "evidence_sha": "ffccf7d96e6d5490284819dd960be178a83cf4cc8c470aada874b038ad5e98e8",
+      "maximum_known": {
+        "context": true,
+        "output": true
+      },
+      "output_capacity_evidence_kind": "VERIFIED_EXACT_LIMIT",
+      "output_request_cap": 768,
+      "planned_input": null,
+      "planned_input_status": "NOT_MATERIALIZED_CURRENT_HEAD",
+      "protocol_overhead": null,
+      "role": "review",
+      "route_identity": "04a443a6702fcc95b74906e44b7233c9370cb9b94bbbbadce4bf59c088b68c31",
+      "safety_headroom": null,
+      "stage": "review-initial-window-004",
+      "verified_bound": {
+        "context_capacity_tokens": 1000000,
+        "output_capacity_tokens": 384000
+      }
+    },
+    {
+      "admission_margin": 383232,
+      "admission_result": "UNKNOWN_BLOCKED",
+      "context_capacity_evidence_kind": "VERIFIED_EXACT_LIMIT",
+      "evidence_kind": "VERIFIED_EXACT_LIMIT",
+      "evidence_sha": "ffccf7d96e6d5490284819dd960be178a83cf4cc8c470aada874b038ad5e98e8",
+      "maximum_known": {
+        "context": true,
+        "output": true
+      },
+      "output_capacity_evidence_kind": "VERIFIED_EXACT_LIMIT",
+      "output_request_cap": 768,
+      "planned_input": null,
+      "planned_input_status": "NOT_MATERIALIZED_CURRENT_HEAD",
+      "protocol_overhead": null,
+      "role": "review",
+      "route_identity": "04a443a6702fcc95b74906e44b7233c9370cb9b94bbbbadce4bf59c088b68c31",
+      "safety_headroom": null,
+      "stage": "review-initial-global-reducer",
+      "verified_bound": {
+        "context_capacity_tokens": 1000000,
+        "output_capacity_tokens": 384000
+      }
+    },
+    {
+      "admission_margin": 31232,
+      "admission_result": "UNKNOWN_BLOCKED",
+      "context_capacity_evidence_kind": "VERIFIED_EXACT_LIMIT",
+      "evidence_kind": "VERIFIED_EXACT_LIMIT",
+      "evidence_sha": "180c299cb2baff957456beb5ee83583ab99af03d1186310588e2126fa91e7208",
+      "maximum_known": {
+        "context": true,
+        "output": true
+      },
+      "output_capacity_evidence_kind": "VERIFIED_EXACT_LIMIT",
+      "output_request_cap": 768,
+      "planned_input": null,
+      "planned_input_status": "NOT_MATERIALIZED_CURRENT_HEAD",
+      "protocol_overhead": null,
+      "role": "reader_review",
+      "route_identity": "026d0b3206ad50c89b4eca81b4730ebfa3370815cac98078149c6438e705bfe1",
+      "safety_headroom": null,
+      "stage": "review-reader-window-001",
+      "verified_bound": {
+        "context_capacity_tokens": 128000,
+        "output_capacity_tokens": 32000
+      }
+    },
+    {
+      "admission_margin": 31232,
+      "admission_result": "UNKNOWN_BLOCKED",
+      "context_capacity_evidence_kind": "VERIFIED_EXACT_LIMIT",
+      "evidence_kind": "VERIFIED_EXACT_LIMIT",
+      "evidence_sha": "180c299cb2baff957456beb5ee83583ab99af03d1186310588e2126fa91e7208",
+      "maximum_known": {
+        "context": true,
+        "output": true
+      },
+      "output_capacity_evidence_kind": "VERIFIED_EXACT_LIMIT",
+      "output_request_cap": 768,
+      "planned_input": null,
+      "planned_input_status": "NOT_MATERIALIZED_CURRENT_HEAD",
+      "protocol_overhead": null,
+      "role": "reader_review",
+      "route_identity": "026d0b3206ad50c89b4eca81b4730ebfa3370815cac98078149c6438e705bfe1",
+      "safety_headroom": null,
+      "stage": "review-reader-window-002",
+      "verified_bound": {
+        "context_capacity_tokens": 128000,
+        "output_capacity_tokens": 32000
+      }
+    },
+    {
+      "admission_margin": 31232,
+      "admission_result": "UNKNOWN_BLOCKED",
+      "context_capacity_evidence_kind": "VERIFIED_EXACT_LIMIT",
+      "evidence_kind": "VERIFIED_EXACT_LIMIT",
+      "evidence_sha": "180c299cb2baff957456beb5ee83583ab99af03d1186310588e2126fa91e7208",
+      "maximum_known": {
+        "context": true,
+        "output": true
+      },
+      "output_capacity_evidence_kind": "VERIFIED_EXACT_LIMIT",
+      "output_request_cap": 768,
+      "planned_input": null,
+      "planned_input_status": "NOT_MATERIALIZED_CURRENT_HEAD",
+      "protocol_overhead": null,
+      "role": "reader_review",
+      "route_identity": "026d0b3206ad50c89b4eca81b4730ebfa3370815cac98078149c6438e705bfe1",
+      "safety_headroom": null,
+      "stage": "review-reader-window-003",
+      "verified_bound": {
+        "context_capacity_tokens": 128000,
+        "output_capacity_tokens": 32000
+      }
+    },
+    {
+      "admission_margin": 31232,
+      "admission_result": "UNKNOWN_BLOCKED",
+      "context_capacity_evidence_kind": "VERIFIED_EXACT_LIMIT",
+      "evidence_kind": "VERIFIED_EXACT_LIMIT",
+      "evidence_sha": "180c299cb2baff957456beb5ee83583ab99af03d1186310588e2126fa91e7208",
+      "maximum_known": {
+        "context": true,
+        "output": true
+      },
+      "output_capacity_evidence_kind": "VERIFIED_EXACT_LIMIT",
+      "output_request_cap": 768,
+      "planned_input": null,
+      "planned_input_status": "NOT_MATERIALIZED_CURRENT_HEAD",
+      "protocol_overhead": null,
+      "role": "reader_review",
+      "route_identity": "026d0b3206ad50c89b4eca81b4730ebfa3370815cac98078149c6438e705bfe1",
+      "safety_headroom": null,
+      "stage": "review-reader-window-004",
+      "verified_bound": {
+        "context_capacity_tokens": 128000,
+        "output_capacity_tokens": 32000
+      }
+    },
+    {
+      "admission_margin": 31232,
+      "admission_result": "UNKNOWN_BLOCKED",
+      "context_capacity_evidence_kind": "VERIFIED_EXACT_LIMIT",
+      "evidence_kind": "VERIFIED_EXACT_LIMIT",
+      "evidence_sha": "180c299cb2baff957456beb5ee83583ab99af03d1186310588e2126fa91e7208",
+      "maximum_known": {
+        "context": true,
+        "output": true
+      },
+      "output_capacity_evidence_kind": "VERIFIED_EXACT_LIMIT",
+      "output_request_cap": 768,
+      "planned_input": null,
+      "planned_input_status": "NOT_MATERIALIZED_CURRENT_HEAD",
+      "protocol_overhead": null,
+      "role": "reader_review",
+      "route_identity": "026d0b3206ad50c89b4eca81b4730ebfa3370815cac98078149c6438e705bfe1",
+      "safety_headroom": null,
+      "stage": "review-reader-global-reducer",
+      "verified_bound": {
+        "context_capacity_tokens": 128000,
+        "output_capacity_tokens": 32000
+      }
+    },
+    {
+      "admission_margin": null,
+      "admission_result": "UNKNOWN_BLOCKED",
+      "context_capacity_evidence_kind": "UNKNOWN_BLOCKED",
+      "evidence_kind": "UNKNOWN_BLOCKED",
+      "evidence_sha": null,
+      "maximum_known": {
+        "context": false,
+        "output": false
+      },
+      "output_capacity_evidence_kind": "UNKNOWN_BLOCKED",
+      "output_request_cap": 2785,
+      "planned_input": null,
+      "planned_input_status": "NOT_MATERIALIZED_CURRENT_HEAD",
+      "protocol_overhead": null,
+      "role": "polish",
+      "route_identity": "4a9f19e78d8101d0bc82aa664582c775741b59d5d9953c73a5624de03b2a539c",
+      "safety_headroom": null,
+      "stage": "polish-part-01",
+      "verified_bound": {
+        "context_capacity_tokens": null,
+        "output_capacity_tokens": null
+      }
+    },
+    {
+      "admission_margin": null,
+      "admission_result": "UNKNOWN_BLOCKED",
+      "context_capacity_evidence_kind": "UNKNOWN_BLOCKED",
+      "evidence_kind": "UNKNOWN_BLOCKED",
+      "evidence_sha": null,
+      "maximum_known": {
+        "context": false,
+        "output": false
+      },
+      "output_capacity_evidence_kind": "UNKNOWN_BLOCKED",
+      "output_request_cap": 1,
+      "planned_input": null,
+      "planned_input_status": "NOT_MATERIALIZED_CURRENT_HEAD",
+      "protocol_overhead": null,
+      "role": "polish",
+      "route_identity": "4a9f19e78d8101d0bc82aa664582c775741b59d5d9953c73a5624de03b2a539c",
+      "safety_headroom": null,
+      "stage": "polish-part-02",
+      "verified_bound": {
+        "context_capacity_tokens": null,
+        "output_capacity_tokens": null
+      }
+    },
+    {
+      "admission_margin": null,
+      "admission_result": "UNKNOWN_BLOCKED",
+      "context_capacity_evidence_kind": "UNKNOWN_BLOCKED",
+      "evidence_kind": "UNKNOWN_BLOCKED",
+      "evidence_sha": null,
+      "maximum_known": {
+        "context": false,
+        "output": false
+      },
+      "output_capacity_evidence_kind": "UNKNOWN_BLOCKED",
+      "output_request_cap": 2699,
+      "planned_input": null,
+      "planned_input_status": "NOT_MATERIALIZED_CURRENT_HEAD",
+      "protocol_overhead": null,
+      "role": "polish",
+      "route_identity": "4a9f19e78d8101d0bc82aa664582c775741b59d5d9953c73a5624de03b2a539c",
+      "safety_headroom": null,
+      "stage": "polish-part-03",
+      "verified_bound": {
+        "context_capacity_tokens": null,
+        "output_capacity_tokens": null
+      }
+    },
+    {
+      "admission_margin": null,
+      "admission_result": "UNKNOWN_BLOCKED",
+      "context_capacity_evidence_kind": "UNKNOWN_BLOCKED",
+      "evidence_kind": "UNKNOWN_BLOCKED",
+      "evidence_sha": null,
+      "maximum_known": {
+        "context": false,
+        "output": false
+      },
+      "output_capacity_evidence_kind": "UNKNOWN_BLOCKED",
+      "output_request_cap": 1,
+      "planned_input": null,
+      "planned_input_status": "NOT_MATERIALIZED_CURRENT_HEAD",
+      "protocol_overhead": null,
+      "role": "polish",
+      "route_identity": "4a9f19e78d8101d0bc82aa664582c775741b59d5d9953c73a5624de03b2a539c",
+      "safety_headroom": null,
+      "stage": "polish-part-04",
+      "verified_bound": {
+        "context_capacity_tokens": null,
+        "output_capacity_tokens": null
+      }
+    },
+    {
+      "admission_margin": null,
+      "admission_result": "UNKNOWN_BLOCKED",
+      "context_capacity_evidence_kind": "UNKNOWN_BLOCKED",
+      "evidence_kind": "UNKNOWN_BLOCKED",
+      "evidence_sha": null,
+      "maximum_known": {
+        "context": false,
+        "output": false
+      },
+      "output_capacity_evidence_kind": "UNKNOWN_BLOCKED",
+      "output_request_cap": 2537,
+      "planned_input": null,
+      "planned_input_status": "NOT_MATERIALIZED_CURRENT_HEAD",
+      "protocol_overhead": null,
+      "role": "polish",
+      "route_identity": "4a9f19e78d8101d0bc82aa664582c775741b59d5d9953c73a5624de03b2a539c",
+      "safety_headroom": null,
+      "stage": "polish-part-05",
+      "verified_bound": {
+        "context_capacity_tokens": null,
+        "output_capacity_tokens": null
+      }
+    },
+    {
+      "admission_margin": null,
+      "admission_result": "UNKNOWN_BLOCKED",
+      "context_capacity_evidence_kind": "UNKNOWN_BLOCKED",
+      "evidence_kind": "UNKNOWN_BLOCKED",
+      "evidence_sha": null,
+      "maximum_known": {
+        "context": false,
+        "output": false
+      },
+      "output_capacity_evidence_kind": "UNKNOWN_BLOCKED",
+      "output_request_cap": 1,
+      "planned_input": null,
+      "planned_input_status": "NOT_MATERIALIZED_CURRENT_HEAD",
+      "protocol_overhead": null,
+      "role": "polish",
+      "route_identity": "4a9f19e78d8101d0bc82aa664582c775741b59d5d9953c73a5624de03b2a539c",
+      "safety_headroom": null,
+      "stage": "polish-part-06",
+      "verified_bound": {
+        "context_capacity_tokens": null,
+        "output_capacity_tokens": null
+      }
+    },
+    {
+      "admission_margin": null,
+      "admission_result": "UNKNOWN_BLOCKED",
+      "context_capacity_evidence_kind": "UNKNOWN_BLOCKED",
+      "evidence_kind": "UNKNOWN_BLOCKED",
+      "evidence_sha": null,
+      "maximum_known": {
+        "context": false,
+        "output": false
+      },
+      "output_capacity_evidence_kind": "UNKNOWN_BLOCKED",
+      "output_request_cap": 2538,
+      "planned_input": null,
+      "planned_input_status": "NOT_MATERIALIZED_CURRENT_HEAD",
+      "protocol_overhead": null,
+      "role": "polish",
+      "route_identity": "4a9f19e78d8101d0bc82aa664582c775741b59d5d9953c73a5624de03b2a539c",
+      "safety_headroom": null,
+      "stage": "polish-part-07",
+      "verified_bound": {
+        "context_capacity_tokens": null,
+        "output_capacity_tokens": null
+      }
+    },
+    {
+      "admission_margin": null,
+      "admission_result": "UNKNOWN_BLOCKED",
+      "context_capacity_evidence_kind": "UNKNOWN_BLOCKED",
+      "evidence_kind": "UNKNOWN_BLOCKED",
+      "evidence_sha": null,
+      "maximum_known": {
+        "context": false,
+        "output": false
+      },
+      "output_capacity_evidence_kind": "UNKNOWN_BLOCKED",
+      "output_request_cap": 1,
+      "planned_input": null,
+      "planned_input_status": "NOT_MATERIALIZED_CURRENT_HEAD",
+      "protocol_overhead": null,
+      "role": "polish",
+      "route_identity": "4a9f19e78d8101d0bc82aa664582c775741b59d5d9953c73a5624de03b2a539c",
+      "safety_headroom": null,
+      "stage": "polish-part-08",
+      "verified_bound": {
+        "context_capacity_tokens": null,
+        "output_capacity_tokens": null
+      }
+    },
+    {
+      "admission_margin": null,
+      "admission_result": "UNKNOWN_BLOCKED",
+      "context_capacity_evidence_kind": "UNKNOWN_BLOCKED",
+      "evidence_kind": "UNKNOWN_BLOCKED",
+      "evidence_sha": null,
+      "maximum_known": {
+        "context": false,
+        "output": false
+      },
+      "output_capacity_evidence_kind": "UNKNOWN_BLOCKED",
+      "output_request_cap": 2712,
+      "planned_input": null,
+      "planned_input_status": "NOT_MATERIALIZED_CURRENT_HEAD",
+      "protocol_overhead": null,
+      "role": "polish",
+      "route_identity": "4a9f19e78d8101d0bc82aa664582c775741b59d5d9953c73a5624de03b2a539c",
+      "safety_headroom": null,
+      "stage": "polish-part-09",
+      "verified_bound": {
+        "context_capacity_tokens": null,
+        "output_capacity_tokens": null
+      }
+    },
+    {
+      "admission_margin": null,
+      "admission_result": "UNKNOWN_BLOCKED",
+      "context_capacity_evidence_kind": "UNKNOWN_BLOCKED",
+      "evidence_kind": "UNKNOWN_BLOCKED",
+      "evidence_sha": null,
+      "maximum_known": {
+        "context": false,
+        "output": false
+      },
+      "output_capacity_evidence_kind": "UNKNOWN_BLOCKED",
+      "output_request_cap": 1,
+      "planned_input": null,
+      "planned_input_status": "NOT_MATERIALIZED_CURRENT_HEAD",
+      "protocol_overhead": null,
+      "role": "polish",
+      "route_identity": "4a9f19e78d8101d0bc82aa664582c775741b59d5d9953c73a5624de03b2a539c",
+      "safety_headroom": null,
+      "stage": "polish-part-10",
+      "verified_bound": {
+        "context_capacity_tokens": null,
+        "output_capacity_tokens": null
+      }
+    },
+    {
+      "admission_margin": null,
+      "admission_result": "UNKNOWN_BLOCKED",
+      "context_capacity_evidence_kind": "UNKNOWN_BLOCKED",
+      "evidence_kind": "UNKNOWN_BLOCKED",
+      "evidence_sha": null,
+      "maximum_known": {
+        "context": false,
+        "output": false
+      },
+      "output_capacity_evidence_kind": "UNKNOWN_BLOCKED",
+      "output_request_cap": 2688,
+      "planned_input": null,
+      "planned_input_status": "NOT_MATERIALIZED_CURRENT_HEAD",
+      "protocol_overhead": null,
+      "role": "polish",
+      "route_identity": "4a9f19e78d8101d0bc82aa664582c775741b59d5d9953c73a5624de03b2a539c",
+      "safety_headroom": null,
+      "stage": "polish-part-11",
+      "verified_bound": {
+        "context_capacity_tokens": null,
+        "output_capacity_tokens": null
+      }
+    },
+    {
+      "admission_margin": null,
+      "admission_result": "UNKNOWN_BLOCKED",
+      "context_capacity_evidence_kind": "UNKNOWN_BLOCKED",
+      "evidence_kind": "UNKNOWN_BLOCKED",
+      "evidence_sha": null,
+      "maximum_known": {
+        "context": false,
+        "output": false
+      },
+      "output_capacity_evidence_kind": "UNKNOWN_BLOCKED",
+      "output_request_cap": 365,
+      "planned_input": null,
+      "planned_input_status": "NOT_MATERIALIZED_CURRENT_HEAD",
+      "protocol_overhead": null,
+      "role": "polish",
+      "route_identity": "4a9f19e78d8101d0bc82aa664582c775741b59d5d9953c73a5624de03b2a539c",
+      "safety_headroom": null,
+      "stage": "polish-part-12",
+      "verified_bound": {
+        "context_capacity_tokens": null,
+        "output_capacity_tokens": null
+      }
+    },
+    {
+      "admission_margin": 381913,
+      "admission_result": "UNKNOWN_BLOCKED",
+      "context_capacity_evidence_kind": "VERIFIED_EXACT_LIMIT",
+      "evidence_kind": "VERIFIED_EXACT_LIMIT",
+      "evidence_sha": "ffccf7d96e6d5490284819dd960be178a83cf4cc8c470aada874b038ad5e98e8",
+      "maximum_known": {
+        "context": true,
+        "output": true
+      },
+      "output_capacity_evidence_kind": "VERIFIED_EXACT_LIMIT",
+      "output_request_cap": 2087,
+      "planned_input": null,
+      "planned_input_status": "NOT_MATERIALIZED_CURRENT_HEAD",
+      "protocol_overhead": null,
+      "role": "review",
+      "route_identity": "04a443a6702fcc95b74906e44b7233c9370cb9b94bbbbadce4bf59c088b68c31",
+      "safety_headroom": null,
+      "stage": "review-draft-whole-semantic.2.1ab13cb0",
+      "verified_bound": {
+        "context_capacity_tokens": 1000000,
+        "output_capacity_tokens": 384000
+      }
+    },
+    {
+      "admission_margin": null,
+      "admission_result": "UNKNOWN_BLOCKED",
+      "context_capacity_evidence_kind": "UNKNOWN_BLOCKED",
+      "evidence_kind": "UNKNOWN_BLOCKED",
+      "evidence_sha": null,
+      "maximum_known": {
+        "context": false,
+        "output": false
+      },
+      "output_capacity_evidence_kind": "VERIFIED_SAFE_OUTPUT_LOWER_BOUND",
+      "output_request_cap": 768,
+      "planned_input": null,
+      "planned_input_status": "NOT_MATERIALIZED_CURRENT_HEAD",
+      "protocol_overhead": null,
+      "role": "final_review",
+      "route_identity": "30e9cbaf86fbb4b89b43614d71cc11b359ad41e7411e8ebda5d3ce4199879bf0",
+      "safety_headroom": null,
+      "stage": "final_review-window-1",
+      "verified_bound": {
+        "context_capacity_tokens": null,
+        "output_capacity_tokens": null
+      }
+    },
+    {
+      "admission_margin": null,
+      "admission_result": "UNKNOWN_BLOCKED",
+      "context_capacity_evidence_kind": "UNKNOWN_BLOCKED",
+      "evidence_kind": "UNKNOWN_BLOCKED",
+      "evidence_sha": null,
+      "maximum_known": {
+        "context": false,
+        "output": false
+      },
+      "output_capacity_evidence_kind": "VERIFIED_SAFE_OUTPUT_LOWER_BOUND",
+      "output_request_cap": 768,
+      "planned_input": null,
+      "planned_input_status": "NOT_MATERIALIZED_CURRENT_HEAD",
+      "protocol_overhead": null,
+      "role": "final_review",
+      "route_identity": "30e9cbaf86fbb4b89b43614d71cc11b359ad41e7411e8ebda5d3ce4199879bf0",
+      "safety_headroom": null,
+      "stage": "final_review-window-2",
+      "verified_bound": {
+        "context_capacity_tokens": null,
+        "output_capacity_tokens": null
+      }
+    },
+    {
+      "admission_margin": null,
+      "admission_result": "UNKNOWN_BLOCKED",
+      "context_capacity_evidence_kind": "UNKNOWN_BLOCKED",
+      "evidence_kind": "UNKNOWN_BLOCKED",
+      "evidence_sha": null,
+      "maximum_known": {
+        "context": false,
+        "output": false
+      },
+      "output_capacity_evidence_kind": "VERIFIED_SAFE_OUTPUT_LOWER_BOUND",
+      "output_request_cap": 768,
+      "planned_input": null,
+      "planned_input_status": "NOT_MATERIALIZED_CURRENT_HEAD",
+      "protocol_overhead": null,
+      "role": "final_review",
+      "route_identity": "30e9cbaf86fbb4b89b43614d71cc11b359ad41e7411e8ebda5d3ce4199879bf0",
+      "safety_headroom": null,
+      "stage": "final_review-window-3",
+      "verified_bound": {
+        "context_capacity_tokens": null,
+        "output_capacity_tokens": null
+      }
+    },
+    {
+      "admission_margin": null,
+      "admission_result": "UNKNOWN_BLOCKED",
+      "context_capacity_evidence_kind": "UNKNOWN_BLOCKED",
+      "evidence_kind": "UNKNOWN_BLOCKED",
+      "evidence_sha": null,
+      "maximum_known": {
+        "context": false,
+        "output": false
+      },
+      "output_capacity_evidence_kind": "VERIFIED_SAFE_OUTPUT_LOWER_BOUND",
+      "output_request_cap": 768,
+      "planned_input": null,
+      "planned_input_status": "NOT_MATERIALIZED_CURRENT_HEAD",
+      "protocol_overhead": null,
+      "role": "final_review",
+      "route_identity": "30e9cbaf86fbb4b89b43614d71cc11b359ad41e7411e8ebda5d3ce4199879bf0",
+      "safety_headroom": null,
+      "stage": "final_review-window-4",
+      "verified_bound": {
+        "context_capacity_tokens": null,
+        "output_capacity_tokens": null
+      }
+    },
+    {
+      "admission_margin": null,
+      "admission_result": "UNKNOWN_BLOCKED",
+      "context_capacity_evidence_kind": "UNKNOWN_BLOCKED",
+      "evidence_kind": "UNKNOWN_BLOCKED",
+      "evidence_sha": null,
+      "maximum_known": {
+        "context": false,
+        "output": false
+      },
+      "output_capacity_evidence_kind": "VERIFIED_SAFE_OUTPUT_LOWER_BOUND",
+      "output_request_cap": 768,
+      "planned_input": null,
+      "planned_input_status": "NOT_MATERIALIZED_CURRENT_HEAD",
+      "protocol_overhead": null,
+      "role": "final_review",
+      "route_identity": "30e9cbaf86fbb4b89b43614d71cc11b359ad41e7411e8ebda5d3ce4199879bf0",
+      "safety_headroom": null,
+      "stage": "final_review-adjudication",
+      "verified_bound": {
+        "context_capacity_tokens": null,
+        "output_capacity_tokens": null
+      }
+    },
+    {
+      "admission_margin": null,
+      "admission_result": "UNKNOWN_BLOCKED",
+      "context_capacity_evidence_kind": "UNKNOWN_BLOCKED",
+      "evidence_kind": "UNKNOWN_BLOCKED",
+      "evidence_sha": null,
+      "maximum_known": {
+        "context": false,
+        "output": false
+      },
+      "output_capacity_evidence_kind": "VERIFIED_SAFE_OUTPUT_LOWER_BOUND",
+      "output_request_cap": 768,
+      "planned_input": null,
+      "planned_input_status": "NOT_MATERIALIZED_CURRENT_HEAD",
+      "protocol_overhead": null,
+      "role": "maintenance",
+      "route_identity": "30e9cbaf86fbb4b89b43614d71cc11b359ad41e7411e8ebda5d3ce4199879bf0",
+      "safety_headroom": null,
+      "stage": "maintenance-map-001-mw-ed7eaa308ec8aa94-mw-ee9d85b3711f4c80-window",
+      "verified_bound": {
+        "context_capacity_tokens": null,
+        "output_capacity_tokens": null
+      }
+    },
+    {
+      "admission_margin": null,
+      "admission_result": "UNKNOWN_BLOCKED",
+      "context_capacity_evidence_kind": "UNKNOWN_BLOCKED",
+      "evidence_kind": "UNKNOWN_BLOCKED",
+      "evidence_sha": null,
+      "maximum_known": {
+        "context": false,
+        "output": false
+      },
+      "output_capacity_evidence_kind": "VERIFIED_SAFE_OUTPUT_LOWER_BOUND",
+      "output_request_cap": 768,
+      "planned_input": null,
+      "planned_input_status": "NOT_MATERIALIZED_CURRENT_HEAD",
+      "protocol_overhead": null,
+      "role": "maintenance",
+      "route_identity": "30e9cbaf86fbb4b89b43614d71cc11b359ad41e7411e8ebda5d3ce4199879bf0",
+      "safety_headroom": null,
+      "stage": "maintenance-map-001-mw-ed7eaa308ec8aa94-mw-a9c07f5fd5adf4dd-mw-2545f4cee7a591cc-window",
+      "verified_bound": {
+        "context_capacity_tokens": null,
+        "output_capacity_tokens": null
+      }
+    },
+    {
+      "admission_margin": null,
+      "admission_result": "UNKNOWN_BLOCKED",
+      "context_capacity_evidence_kind": "UNKNOWN_BLOCKED",
+      "evidence_kind": "UNKNOWN_BLOCKED",
+      "evidence_sha": null,
+      "maximum_known": {
+        "context": false,
+        "output": false
+      },
+      "output_capacity_evidence_kind": "VERIFIED_SAFE_OUTPUT_LOWER_BOUND",
+      "output_request_cap": 768,
+      "planned_input": null,
+      "planned_input_status": "NOT_MATERIALIZED_CURRENT_HEAD",
+      "protocol_overhead": null,
+      "role": "maintenance",
+      "route_identity": "30e9cbaf86fbb4b89b43614d71cc11b359ad41e7411e8ebda5d3ce4199879bf0",
+      "safety_headroom": null,
+      "stage": "maintenance-map-001-mw-ed7eaa308ec8aa94-mw-a9c07f5fd5adf4dd-mw-fba09a88441757ba-window",
+      "verified_bound": {
+        "context_capacity_tokens": null,
+        "output_capacity_tokens": null
+      }
+    },
+    {
+      "admission_margin": null,
+      "admission_result": "UNKNOWN_BLOCKED",
+      "context_capacity_evidence_kind": "UNKNOWN_BLOCKED",
+      "evidence_kind": "UNKNOWN_BLOCKED",
+      "evidence_sha": null,
+      "maximum_known": {
+        "context": false,
+        "output": false
+      },
+      "output_capacity_evidence_kind": "VERIFIED_SAFE_OUTPUT_LOWER_BOUND",
+      "output_request_cap": 768,
+      "planned_input": null,
+      "planned_input_status": "NOT_MATERIALIZED_CURRENT_HEAD",
+      "protocol_overhead": null,
+      "role": "maintenance",
+      "route_identity": "30e9cbaf86fbb4b89b43614d71cc11b359ad41e7411e8ebda5d3ce4199879bf0",
+      "safety_headroom": null,
+      "stage": "maintenance-map-001-mw-0879a4cf486366b3-mw-367e6b72b466b429-mw-1589cd13d1c3e3b7-window",
+      "verified_bound": {
+        "context_capacity_tokens": null,
+        "output_capacity_tokens": null
+      }
+    },
+    {
+      "admission_margin": null,
+      "admission_result": "UNKNOWN_BLOCKED",
+      "context_capacity_evidence_kind": "UNKNOWN_BLOCKED",
+      "evidence_kind": "UNKNOWN_BLOCKED",
+      "evidence_sha": null,
+      "maximum_known": {
+        "context": false,
+        "output": false
+      },
+      "output_capacity_evidence_kind": "VERIFIED_SAFE_OUTPUT_LOWER_BOUND",
+      "output_request_cap": 768,
+      "planned_input": null,
+      "planned_input_status": "NOT_MATERIALIZED_CURRENT_HEAD",
+      "protocol_overhead": null,
+      "role": "maintenance",
+      "route_identity": "30e9cbaf86fbb4b89b43614d71cc11b359ad41e7411e8ebda5d3ce4199879bf0",
+      "safety_headroom": null,
+      "stage": "maintenance-map-001-mw-0879a4cf486366b3-mw-367e6b72b466b429-mw-d982fc7cccfdb6a3-window",
+      "verified_bound": {
+        "context_capacity_tokens": null,
+        "output_capacity_tokens": null
+      }
+    },
+    {
+      "admission_margin": null,
+      "admission_result": "UNKNOWN_BLOCKED",
+      "context_capacity_evidence_kind": "UNKNOWN_BLOCKED",
+      "evidence_kind": "UNKNOWN_BLOCKED",
+      "evidence_sha": null,
+      "maximum_known": {
+        "context": false,
+        "output": false
+      },
+      "output_capacity_evidence_kind": "VERIFIED_SAFE_OUTPUT_LOWER_BOUND",
+      "output_request_cap": 768,
+      "planned_input": null,
+      "planned_input_status": "NOT_MATERIALIZED_CURRENT_HEAD",
+      "protocol_overhead": null,
+      "role": "maintenance",
+      "route_identity": "30e9cbaf86fbb4b89b43614d71cc11b359ad41e7411e8ebda5d3ce4199879bf0",
+      "safety_headroom": null,
+      "stage": "maintenance-map-001-mw-0879a4cf486366b3-mw-543c171ec9c29a58-mw-f112eccd25df3e48-window",
+      "verified_bound": {
+        "context_capacity_tokens": null,
+        "output_capacity_tokens": null
+      }
+    },
+    {
+      "admission_margin": null,
+      "admission_result": "UNKNOWN_BLOCKED",
+      "context_capacity_evidence_kind": "UNKNOWN_BLOCKED",
+      "evidence_kind": "UNKNOWN_BLOCKED",
+      "evidence_sha": null,
+      "maximum_known": {
+        "context": false,
+        "output": false
+      },
+      "output_capacity_evidence_kind": "VERIFIED_SAFE_OUTPUT_LOWER_BOUND",
+      "output_request_cap": 768,
+      "planned_input": null,
+      "planned_input_status": "NOT_MATERIALIZED_CURRENT_HEAD",
+      "protocol_overhead": null,
+      "role": "maintenance",
+      "route_identity": "30e9cbaf86fbb4b89b43614d71cc11b359ad41e7411e8ebda5d3ce4199879bf0",
+      "safety_headroom": null,
+      "stage": "maintenance-map-001-mw-0879a4cf486366b3-mw-543c171ec9c29a58-mw-3928230828d75328-window",
+      "verified_bound": {
+        "context_capacity_tokens": null,
+        "output_capacity_tokens": null
+      }
+    },
+    {
+      "admission_margin": null,
+      "admission_result": "UNKNOWN_BLOCKED",
+      "context_capacity_evidence_kind": "UNKNOWN_BLOCKED",
+      "evidence_kind": "UNKNOWN_BLOCKED",
+      "evidence_sha": null,
+      "maximum_known": {
+        "context": false,
+        "output": false
+      },
+      "output_capacity_evidence_kind": "VERIFIED_SAFE_OUTPUT_LOWER_BOUND",
+      "output_request_cap": 768,
+      "planned_input": null,
+      "planned_input_status": "NOT_MATERIALIZED_CURRENT_HEAD",
+      "protocol_overhead": null,
+      "role": "maintenance",
+      "route_identity": "30e9cbaf86fbb4b89b43614d71cc11b359ad41e7411e8ebda5d3ce4199879bf0",
+      "safety_headroom": null,
+      "stage": "maintenance-map-002-mw-881066e6741a81dd-mw-ab5c480e9a256442-window",
+      "verified_bound": {
+        "context_capacity_tokens": null,
+        "output_capacity_tokens": null
+      }
+    },
+    {
+      "admission_margin": null,
+      "admission_result": "UNKNOWN_BLOCKED",
+      "context_capacity_evidence_kind": "UNKNOWN_BLOCKED",
+      "evidence_kind": "UNKNOWN_BLOCKED",
+      "evidence_sha": null,
+      "maximum_known": {
+        "context": false,
+        "output": false
+      },
+      "output_capacity_evidence_kind": "VERIFIED_SAFE_OUTPUT_LOWER_BOUND",
+      "output_request_cap": 768,
+      "planned_input": null,
+      "planned_input_status": "NOT_MATERIALIZED_CURRENT_HEAD",
+      "protocol_overhead": null,
+      "role": "maintenance",
+      "route_identity": "30e9cbaf86fbb4b89b43614d71cc11b359ad41e7411e8ebda5d3ce4199879bf0",
+      "safety_headroom": null,
+      "stage": "maintenance-map-002-mw-881066e6741a81dd-mw-747e735ee301b52f-mw-9e53d385f8850d05-window",
+      "verified_bound": {
+        "context_capacity_tokens": null,
+        "output_capacity_tokens": null
+      }
+    },
+    {
+      "admission_margin": null,
+      "admission_result": "UNKNOWN_BLOCKED",
+      "context_capacity_evidence_kind": "UNKNOWN_BLOCKED",
+      "evidence_kind": "UNKNOWN_BLOCKED",
+      "evidence_sha": null,
+      "maximum_known": {
+        "context": false,
+        "output": false
+      },
+      "output_capacity_evidence_kind": "VERIFIED_SAFE_OUTPUT_LOWER_BOUND",
+      "output_request_cap": 768,
+      "planned_input": null,
+      "planned_input_status": "NOT_MATERIALIZED_CURRENT_HEAD",
+      "protocol_overhead": null,
+      "role": "maintenance",
+      "route_identity": "30e9cbaf86fbb4b89b43614d71cc11b359ad41e7411e8ebda5d3ce4199879bf0",
+      "safety_headroom": null,
+      "stage": "maintenance-map-002-mw-881066e6741a81dd-mw-747e735ee301b52f-mw-7f376e02fe99bb1f-window",
+      "verified_bound": {
+        "context_capacity_tokens": null,
+        "output_capacity_tokens": null
+      }
+    },
+    {
+      "admission_margin": null,
+      "admission_result": "UNKNOWN_BLOCKED",
+      "context_capacity_evidence_kind": "UNKNOWN_BLOCKED",
+      "evidence_kind": "UNKNOWN_BLOCKED",
+      "evidence_sha": null,
+      "maximum_known": {
+        "context": false,
+        "output": false
+      },
+      "output_capacity_evidence_kind": "VERIFIED_SAFE_OUTPUT_LOWER_BOUND",
+      "output_request_cap": 768,
+      "planned_input": null,
+      "planned_input_status": "NOT_MATERIALIZED_CURRENT_HEAD",
+      "protocol_overhead": null,
+      "role": "maintenance",
+      "route_identity": "30e9cbaf86fbb4b89b43614d71cc11b359ad41e7411e8ebda5d3ce4199879bf0",
+      "safety_headroom": null,
+      "stage": "maintenance-map-002-mw-afa2854cf35b6866-mw-c93691f1eab2426e-mw-9b6f4edc43758626-window",
+      "verified_bound": {
+        "context_capacity_tokens": null,
+        "output_capacity_tokens": null
+      }
+    },
+    {
+      "admission_margin": null,
+      "admission_result": "UNKNOWN_BLOCKED",
+      "context_capacity_evidence_kind": "UNKNOWN_BLOCKED",
+      "evidence_kind": "UNKNOWN_BLOCKED",
+      "evidence_sha": null,
+      "maximum_known": {
+        "context": false,
+        "output": false
+      },
+      "output_capacity_evidence_kind": "VERIFIED_SAFE_OUTPUT_LOWER_BOUND",
+      "output_request_cap": 768,
+      "planned_input": null,
+      "planned_input_status": "NOT_MATERIALIZED_CURRENT_HEAD",
+      "protocol_overhead": null,
+      "role": "maintenance",
+      "route_identity": "30e9cbaf86fbb4b89b43614d71cc11b359ad41e7411e8ebda5d3ce4199879bf0",
+      "safety_headroom": null,
+      "stage": "maintenance-map-002-mw-afa2854cf35b6866-mw-c93691f1eab2426e-mw-c0132a1e1461f4f3-window",
+      "verified_bound": {
+        "context_capacity_tokens": null,
+        "output_capacity_tokens": null
+      }
+    },
+    {
+      "admission_margin": null,
+      "admission_result": "UNKNOWN_BLOCKED",
+      "context_capacity_evidence_kind": "UNKNOWN_BLOCKED",
+      "evidence_kind": "UNKNOWN_BLOCKED",
+      "evidence_sha": null,
+      "maximum_known": {
+        "context": false,
+        "output": false
+      },
+      "output_capacity_evidence_kind": "VERIFIED_SAFE_OUTPUT_LOWER_BOUND",
+      "output_request_cap": 768,
+      "planned_input": null,
+      "planned_input_status": "NOT_MATERIALIZED_CURRENT_HEAD",
+      "protocol_overhead": null,
+      "role": "maintenance",
+      "route_identity": "30e9cbaf86fbb4b89b43614d71cc11b359ad41e7411e8ebda5d3ce4199879bf0",
+      "safety_headroom": null,
+      "stage": "maintenance-map-002-mw-afa2854cf35b6866-mw-d6a128955ee8b12f-mw-fc993739c2c558cd-window",
+      "verified_bound": {
+        "context_capacity_tokens": null,
+        "output_capacity_tokens": null
+      }
+    },
+    {
+      "admission_margin": null,
+      "admission_result": "UNKNOWN_BLOCKED",
+      "context_capacity_evidence_kind": "UNKNOWN_BLOCKED",
+      "evidence_kind": "UNKNOWN_BLOCKED",
+      "evidence_sha": null,
+      "maximum_known": {
+        "context": false,
+        "output": false
+      },
+      "output_capacity_evidence_kind": "VERIFIED_SAFE_OUTPUT_LOWER_BOUND",
+      "output_request_cap": 768,
+      "planned_input": null,
+      "planned_input_status": "NOT_MATERIALIZED_CURRENT_HEAD",
+      "protocol_overhead": null,
+      "role": "maintenance",
+      "route_identity": "30e9cbaf86fbb4b89b43614d71cc11b359ad41e7411e8ebda5d3ce4199879bf0",
+      "safety_headroom": null,
+      "stage": "maintenance-map-002-mw-afa2854cf35b6866-mw-d6a128955ee8b12f-mw-85476515adc76e02-window",
+      "verified_bound": {
+        "context_capacity_tokens": null,
+        "output_capacity_tokens": null
+      }
+    },
+    {
+      "admission_margin": null,
+      "admission_result": "UNKNOWN_BLOCKED",
+      "context_capacity_evidence_kind": "UNKNOWN_BLOCKED",
+      "evidence_kind": "UNKNOWN_BLOCKED",
+      "evidence_sha": null,
+      "maximum_known": {
+        "context": false,
+        "output": false
+      },
+      "output_capacity_evidence_kind": "VERIFIED_SAFE_OUTPUT_LOWER_BOUND",
+      "output_request_cap": 768,
+      "planned_input": null,
+      "planned_input_status": "NOT_MATERIALIZED_CURRENT_HEAD",
+      "protocol_overhead": null,
+      "role": "maintenance",
+      "route_identity": "30e9cbaf86fbb4b89b43614d71cc11b359ad41e7411e8ebda5d3ce4199879bf0",
+      "safety_headroom": null,
+      "stage": "maintenance-map-003-mw-45b09d58ed23f802-mw-5083cc8d4d667f09-window",
+      "verified_bound": {
+        "context_capacity_tokens": null,
+        "output_capacity_tokens": null
+      }
+    },
+    {
+      "admission_margin": null,
+      "admission_result": "UNKNOWN_BLOCKED",
+      "context_capacity_evidence_kind": "UNKNOWN_BLOCKED",
+      "evidence_kind": "UNKNOWN_BLOCKED",
+      "evidence_sha": null,
+      "maximum_known": {
+        "context": false,
+        "output": false
+      },
+      "output_capacity_evidence_kind": "VERIFIED_SAFE_OUTPUT_LOWER_BOUND",
+      "output_request_cap": 768,
+      "planned_input": null,
+      "planned_input_status": "NOT_MATERIALIZED_CURRENT_HEAD",
+      "protocol_overhead": null,
+      "role": "maintenance",
+      "route_identity": "30e9cbaf86fbb4b89b43614d71cc11b359ad41e7411e8ebda5d3ce4199879bf0",
+      "safety_headroom": null,
+      "stage": "maintenance-map-003-mw-45b09d58ed23f802-mw-f4f0214bd6444622-mw-4f85069da508c9fd-window",
+      "verified_bound": {
+        "context_capacity_tokens": null,
+        "output_capacity_tokens": null
+      }
+    },
+    {
+      "admission_margin": null,
+      "admission_result": "UNKNOWN_BLOCKED",
+      "context_capacity_evidence_kind": "UNKNOWN_BLOCKED",
+      "evidence_kind": "UNKNOWN_BLOCKED",
+      "evidence_sha": null,
+      "maximum_known": {
+        "context": false,
+        "output": false
+      },
+      "output_capacity_evidence_kind": "VERIFIED_SAFE_OUTPUT_LOWER_BOUND",
+      "output_request_cap": 768,
+      "planned_input": null,
+      "planned_input_status": "NOT_MATERIALIZED_CURRENT_HEAD",
+      "protocol_overhead": null,
+      "role": "maintenance",
+      "route_identity": "30e9cbaf86fbb4b89b43614d71cc11b359ad41e7411e8ebda5d3ce4199879bf0",
+      "safety_headroom": null,
+      "stage": "maintenance-map-003-mw-45b09d58ed23f802-mw-f4f0214bd6444622-mw-8a4f294474b20f3d-window",
+      "verified_bound": {
+        "context_capacity_tokens": null,
+        "output_capacity_tokens": null
+      }
+    },
+    {
+      "admission_margin": null,
+      "admission_result": "UNKNOWN_BLOCKED",
+      "context_capacity_evidence_kind": "UNKNOWN_BLOCKED",
+      "evidence_kind": "UNKNOWN_BLOCKED",
+      "evidence_sha": null,
+      "maximum_known": {
+        "context": false,
+        "output": false
+      },
+      "output_capacity_evidence_kind": "VERIFIED_SAFE_OUTPUT_LOWER_BOUND",
+      "output_request_cap": 768,
+      "planned_input": null,
+      "planned_input_status": "NOT_MATERIALIZED_CURRENT_HEAD",
+      "protocol_overhead": null,
+      "role": "maintenance",
+      "route_identity": "30e9cbaf86fbb4b89b43614d71cc11b359ad41e7411e8ebda5d3ce4199879bf0",
+      "safety_headroom": null,
+      "stage": "maintenance-map-003-mw-10c30726b5133d70-mw-2f3bf6cc7aa64505-mw-1d48c59f1510f0ae-window",
+      "verified_bound": {
+        "context_capacity_tokens": null,
+        "output_capacity_tokens": null
+      }
+    },
+    {
+      "admission_margin": null,
+      "admission_result": "UNKNOWN_BLOCKED",
+      "context_capacity_evidence_kind": "UNKNOWN_BLOCKED",
+      "evidence_kind": "UNKNOWN_BLOCKED",
+      "evidence_sha": null,
+      "maximum_known": {
+        "context": false,
+        "output": false
+      },
+      "output_capacity_evidence_kind": "VERIFIED_SAFE_OUTPUT_LOWER_BOUND",
+      "output_request_cap": 768,
+      "planned_input": null,
+      "planned_input_status": "NOT_MATERIALIZED_CURRENT_HEAD",
+      "protocol_overhead": null,
+      "role": "maintenance",
+      "route_identity": "30e9cbaf86fbb4b89b43614d71cc11b359ad41e7411e8ebda5d3ce4199879bf0",
+      "safety_headroom": null,
+      "stage": "maintenance-map-003-mw-10c30726b5133d70-mw-2f3bf6cc7aa64505-mw-ec5b7c739c919c33-window",
+      "verified_bound": {
+        "context_capacity_tokens": null,
+        "output_capacity_tokens": null
+      }
+    },
+    {
+      "admission_margin": null,
+      "admission_result": "UNKNOWN_BLOCKED",
+      "context_capacity_evidence_kind": "UNKNOWN_BLOCKED",
+      "evidence_kind": "UNKNOWN_BLOCKED",
+      "evidence_sha": null,
+      "maximum_known": {
+        "context": false,
+        "output": false
+      },
+      "output_capacity_evidence_kind": "VERIFIED_SAFE_OUTPUT_LOWER_BOUND",
+      "output_request_cap": 768,
+      "planned_input": null,
+      "planned_input_status": "NOT_MATERIALIZED_CURRENT_HEAD",
+      "protocol_overhead": null,
+      "role": "maintenance",
+      "route_identity": "30e9cbaf86fbb4b89b43614d71cc11b359ad41e7411e8ebda5d3ce4199879bf0",
+      "safety_headroom": null,
+      "stage": "maintenance-map-003-mw-10c30726b5133d70-mw-d6a265b7561eff77-mw-b52117dec7e44877-window",
+      "verified_bound": {
+        "context_capacity_tokens": null,
+        "output_capacity_tokens": null
+      }
+    },
+    {
+      "admission_margin": null,
+      "admission_result": "UNKNOWN_BLOCKED",
+      "context_capacity_evidence_kind": "UNKNOWN_BLOCKED",
+      "evidence_kind": "UNKNOWN_BLOCKED",
+      "evidence_sha": null,
+      "maximum_known": {
+        "context": false,
+        "output": false
+      },
+      "output_capacity_evidence_kind": "VERIFIED_SAFE_OUTPUT_LOWER_BOUND",
+      "output_request_cap": 768,
+      "planned_input": null,
+      "planned_input_status": "NOT_MATERIALIZED_CURRENT_HEAD",
+      "protocol_overhead": null,
+      "role": "maintenance",
+      "route_identity": "30e9cbaf86fbb4b89b43614d71cc11b359ad41e7411e8ebda5d3ce4199879bf0",
+      "safety_headroom": null,
+      "stage": "maintenance-map-003-mw-10c30726b5133d70-mw-d6a265b7561eff77-mw-f3edc2be6a95ac45-window",
+      "verified_bound": {
+        "context_capacity_tokens": null,
+        "output_capacity_tokens": null
+      }
+    }
+  ],
+  "status": "BLOCKED",
+  "supplement_applied": true,
+  "version": 1
+}

@@ -1,0 +1,20 @@
+{
+  "deterministic_materializer": true,
+  "external_boundary": {
+    "full_short_real_execution_count": 0,
+    "http_post_attempts": 0,
+    "model_calls": 0,
+    "network_model_api_calls": 0,
+    "paid_calls": 0,
+    "real_credential_lookup_count": 0,
+    "real_provider_client_creation_count": 0,
+    "real_provider_request_attempts": 0,
+    "real_secret_read_count": 0
+  },
+  "generated_at_field_present": false,
+  "registry_mutated": true,
+  "registry_mutation_scope": "one exact official direct Doubao route",
+  "schema": "ExactReadyRouteCapabilityDeterminismV1",
+  "status": "PASS",
+  "version": 1
+}

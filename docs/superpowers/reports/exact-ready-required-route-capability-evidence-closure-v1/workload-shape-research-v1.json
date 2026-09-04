@@ -1,0 +1,44 @@
+{
+  "external_boundary": {
+    "full_short_real_execution_count": 0,
+    "http_post_attempts": 0,
+    "model_calls": 0,
+    "network_model_api_calls": 0,
+    "paid_calls": 0,
+    "real_credential_lookup_count": 0,
+    "real_provider_client_creation_count": 0,
+    "real_provider_request_attempts": 0,
+    "real_secret_read_count": 0
+  },
+  "fresh_child_agents": 3,
+  "routes": [
+    {
+      "disposition": "OUTPUT_PARTIAL_AND_CURRENT_INPUT_UNAVAILABLE",
+      "exact_ready_max_requested_output_tokens": 8328,
+      "route_fingerprint": "30e9cbaf86fbb4b89b43614d71cc11b359ad41e7411e8ebda5d3ce4199879bf0",
+      "terminal": "end_turn/transport_complete/no silent truncation/no fallback",
+      "verified_input_shape": "5080 UTF-8 bytes; token count unavailable",
+      "verified_requested_output_tokens": 4624
+    },
+    {
+      "disposition": "OUTPUT_COVERED_CURRENT_INPUT_UNAVAILABLE",
+      "exact_ready_max_requested_output_tokens": 2974,
+      "provider_reported_input_tokens": 16859,
+      "route_fingerprint": "099e358eae5fd0ff5e3d1b8cda34cd90c73c735c001ed44334ade3e3b667bf4e",
+      "terminal": "completed/end_turn/no fallback/no capacity rejection",
+      "verified_input_tokens": 15361,
+      "verified_requested_output_tokens": 11524
+    },
+    {
+      "disposition": "NO_VERIFIED_BOUND_RECEIPT_LACKS_EXACT_ROUTE_FINGERPRINT_AND_TERMINAL_FIELDS",
+      "exact_ready_max_requested_output_tokens": 2785,
+      "nonqualifying_candidate_input_tokens": 34632,
+      "nonqualifying_candidate_output_tokens": 6281,
+      "route_fingerprint": "4a9f19e78d8101d0bc82aa664582c775741b59d5d9953c73a5624de03b2a539c",
+      "verified_requested_output_tokens": null
+    }
+  ],
+  "schema": "ExactReadyHistoricalWorkloadShapeResearchV1",
+  "status": "PARTIAL_ONLY_BLOCKED",
+  "version": 1
+}

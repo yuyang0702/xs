@@ -1,0 +1,157 @@
+{
+  "external_boundary": {
+    "full_short_real_execution_count": 0,
+    "http_post_attempts": 0,
+    "model_calls": 0,
+    "network_model_api_calls": 0,
+    "paid_calls": 0,
+    "real_credential_lookup_count": 0,
+    "real_provider_client_creation_count": 0,
+    "real_provider_request_attempts": 0,
+    "real_secret_read_count": 0
+  },
+  "provider_api_call_count": 0,
+  "public_research_without_login": true,
+  "schema": "RequiredRoutePublicEvidenceV1",
+  "sources": [
+    {
+      "accepted_for_verification": false,
+      "normalized_evidence_sha256": "d1b44591aff457b336abd58eb4e64421dc1dcec61e4a72fc78dcaece8e1bd3b4",
+      "public_references": [
+        {
+          "accepted_for_verification": false,
+          "fact": "Relay-owned public gateway identity only; no lingsuan.org, exact-route capacity, or model-limit binding.",
+          "title": "灵算 - AI API Gateway",
+          "url": "https://lingsuan.top/"
+        },
+        {
+          "accepted_for_verification": false,
+          "fact": "Third-party mirror reports a 2026-08-05 notice adding lingsuan.org.",
+          "rejection_reason": "Third-party mirror cannot prove current common control or effective capacity.",
+          "title": "lingsuan.top - 中转站检测详情",
+          "url": "https://www.zzstan.com/en/sites/lingsuantop"
+        },
+        {
+          "accepted_for_verification": false,
+          "fact": "Third-party observation saw the gpt-5.6-sol label; long-context verification was disabled.",
+          "rejection_reason": "Cannot verify model authenticity, capacity, or the configured Anthropic route.",
+          "title": "lingsuan.org OpenAI 中转站检测报告",
+          "url": "https://veridrop.org/r/Z7mKtmFU"
+        }
+      ],
+      "queries": [
+        "site:lingsuan.top/pricing \"gpt-5.6-sol\"",
+        "site:lingsuan.top/pricing \"claude-sonnet-5\"",
+        "site:lingsuan.org \"gpt-5.6-sol\""
+      ],
+      "reason": "No relay-owned public page bound model capacity to the configured lingsuan.org Anthropic-compatible destination.",
+      "result": "NO_INDEXED_EXACT_RELAY_DOCUMENTATION",
+      "route_class": "LINGSUAN_GPT_AND_SONNET"
+    },
+    {
+      "accepted_for_verification": false,
+      "normalized_evidence_sha256": "a2c5cf975202d23fdb9902b101281a130f9f1fdbd19c7c1b697cbe009243e743",
+      "public_references": [
+        {
+          "accepted_for_verification": false,
+          "fact": "Happy identifies as a multi-protocol unified gateway and lists Qwen generally, without qwen-3.7-plus route limits.",
+          "title": "New API",
+          "url": "https://happyapi.org/"
+        },
+        {
+          "accepted_for_verification": false,
+          "fact": "Upstream direct model documentation; alias spelling and relay mapping differ from Happy.",
+          "rejection_reason": "No Happy alias-to-upstream identity chain or relay pass-through guarantee.",
+          "title": "qwen3.7-plus - Alibaba Cloud Model Studio",
+          "url": "https://docs.modelstudio.console.alibabacloud.com/zh/model-studio/qwen3-7-plus"
+        },
+        {
+          "accepted_for_verification": false,
+          "fact": "Generic gateway software defines /v1/messages and max_tokens semantics.",
+          "rejection_reason": "Generic software documentation does not prove this deployment's model mapping or limits.",
+          "title": "New API Anthropic Chat documentation",
+          "url": "https://github.com/QuantumNous/new-api-docs/blob/main/docs/en/api/anthropic-chat.md"
+        }
+      ],
+      "queries": [
+        "site:happyapi.org \"qwen-3.7-plus\"",
+        "site:cn.happyapi.org \"qwen-3.7-plus\""
+      ],
+      "reason": "No relay-owned public document states numeric context and maximum output for the configured destination/protocol.",
+      "result": "NO_INDEXED_EXACT_RELAY_DOCUMENTATION",
+      "route_class": "HAPPY_QWEN"
+    },
+    {
+      "accepted_for_verification": true,
+      "normalized_evidence_sha256": "3d2a026f0b1c2281147f02c4c2d9fff57acad66342252aa4378bb687ab97cb9e",
+      "normalized_values": {
+        "context_window_tokens": 128000,
+        "max_output_tokens": 32000,
+        "rule": "project decimal K convention",
+        "safety_semantics": "32k is the documented maximum answer and is used as a conservative total output admission ceiling; no larger reasoning allowance is inferred"
+      },
+      "public_references": [
+        {
+          "accepted_for_verification": true,
+          "exact_fact_location": "doubao-seed-character-260628 model row",
+          "exact_model": "doubao-seed-character-260628",
+          "raw_context_window": "128k",
+          "raw_max_answer": "32k (default 4k)",
+          "raw_max_input": "96k",
+          "raw_max_reasoning": "128k",
+          "title": "模型列表 - 火山方舟 - 火山引擎",
+          "updated": "2026-09-02 21:31:18",
+          "url": "https://docs.volcengine.com/docs/82379/1330310?lang=zh"
+        },
+        {
+          "accepted_for_verification": true,
+          "endpoint": "POST https://ark.cn-beijing.volces.com/api/v3/responses",
+          "exact_fact_location": "request endpoint and max_output_tokens field",
+          "max_output_tokens_semantics": "answer plus chain-of-thought tokens",
+          "title": "创建 Response - 火山方舟 - 火山引擎",
+          "updated": "2026-09-04 20:21:49",
+          "url": "https://docs.volcengine.com/docs/82379/1569618?lang=zh"
+        },
+        {
+          "accepted_for_verification": true,
+          "context_window_semantics": "input plus model output for one request",
+          "exact_fact_location": "model capacity terminology",
+          "max_tokens_semantics": "maximum model output content for one request",
+          "title": "文本生成 - 火山方舟 - 火山引擎",
+          "updated": "2026-06-23 16:51:46",
+          "url": "https://docs.volcengine.com/docs/82379/1399009?lang=zh"
+        },
+        {
+          "accepted_for_verification": false,
+          "fact": "Official Ark documentation root exposes Responses API documentation but the indexed page does not state exact-version capacity.",
+          "title": "火山方舟-火山引擎",
+          "url": "https://www.volcengine.com/docs/82379/?lang=zh"
+        },
+        {
+          "accepted_for_verification": false,
+          "fact": "Third-party aggregator claims 256K context and 256K output for an unversioned route.",
+          "rejection_reason": "Not Volcengine documentation and not bound to exact official version/destination.",
+          "title": "Doubao Seed Character API - 价格、上下文与接入 | OfoxAI",
+          "url": "https://ofox.io/zh/models/volcengine/doubao-seed-character"
+        },
+        {
+          "accepted_for_verification": false,
+          "fact": "Third-party relay catalogs the exact model label but gives no numeric exact maximum output and is a different operator.",
+          "rejection_reason": "Different route/operator; cannot certify Volcengine Ark limits.",
+          "title": "Doubao Seed Character API by DOUBAO | Atlas Cloud",
+          "url": "https://www.atlascloud.ai/models/bytedance/doubao-seed-character-260628"
+        }
+      ],
+      "queries": [
+        "site:volcengine.com \"doubao-seed-character-260628\"",
+        "site:volcengine.com/docs \"Seed Character\" \"260628\"",
+        "\"doubao-seed-character-260628\""
+      ],
+      "result": "VERIFIED_OFFICIAL_DIRECT_PROVIDER_DOCUMENTATION",
+      "route_binding_reason": "Official exact model row plus official exact Ark Responses endpoint; the configured destination is the documented direct-provider endpoint",
+      "route_class": "DOUBAO_CHARACTER"
+    }
+  ],
+  "status": "PARTIAL_CLOSURE_ONE_DIRECT_ROUTE_PROMOTED",
+  "version": 1
+}

@@ -1,0 +1,163 @@
+{
+  "current_model_route_scheduling_changed": false,
+  "exact_ready_plan_unknown_required_route_count": 5,
+  "exact_ready_plan_unknown_required_unique_route_count": 3,
+  "external_boundary": {
+    "full_short_real_execution_count": 0,
+    "http_post_attempts": 0,
+    "model_calls": 0,
+    "network_model_api_calls": 0,
+    "paid_calls": 0,
+    "real_credential_lookup_count": 0,
+    "real_provider_client_creation_count": 0,
+    "real_provider_request_attempts": 0,
+    "real_secret_read_count": 0
+  },
+  "remaining": [
+    {
+      "best_verified_lower_bound": {
+        "context_tokens": 15361,
+        "limitation": "current Exact READY rendered input was not materialized",
+        "provider_reported_input_tokens": 16859,
+        "requested_output_tokens": 11524,
+        "silent_truncation": false,
+        "source": "docs/superpowers/reports/pa-auth-1/pa-strict-tool-obs-1-real-evidence-v1.json",
+        "terminal_status": "completed/end_turn"
+      },
+      "capability_status": "UNKNOWN_BLOCKED",
+      "destination": "https://happyapi.org:443/v1/messages",
+      "evidence_searched": "committed configs/manifests/reports, migrated historical screenshots, relay/platform public pages, and exact official-provider public search",
+      "missing_evidence": [
+        "route-bound exact or conservative input size covering the current stage",
+        "route-bound requested-output evidence covering the current stage",
+        "terminal proof excluding substitution, hidden fallback, capacity rejection, and unexplained truncation"
+      ],
+      "model": "qwen-3.7-plus",
+      "planned_workload": {
+        "maximum_requested_output_tokens": 2974,
+        "planned_input": null,
+        "planned_input_status": "NOT_MATERIALIZED_CURRENT_HEAD"
+      },
+      "protocol": "anthropic",
+      "provider": "happy",
+      "role": "draft",
+      "route_fingerprint": "099e358eae5fd0ff5e3d1b8cda34cd90c73c735c001ed44334ade3e3b667bf4e",
+      "why_current_workload_not_proven_safe": "The Happy screenshot proves qwen-3.7-plus identity and pricing, not capacity. Its visible endpoint example is cn.happyapi.org/v1/chat/completions rather than the exact configured happyapi.org/v1/messages route. The available evidence does not mechanically cover both the current input shape and requested output cap."
+    },
+    {
+      "best_verified_lower_bound": {
+        "context_tokens": null,
+        "limitation": "historical input token count was not retained",
+        "requested_output_tokens": 4624,
+        "silent_truncation": false,
+        "source": "docs/superpowers/reports/skill-v3-character-heavy-pilot-a1-real-execution-v3/route-capacity-v1.json",
+        "terminal_status": "end_turn"
+      },
+      "capability_status": "UNKNOWN_BLOCKED",
+      "destination": "https://lingsuan.org:443/v1/messages",
+      "evidence_searched": "committed configs/manifests/reports, migrated historical screenshots, relay/platform public pages, and exact official-provider public search",
+      "missing_evidence": [
+        "route-bound exact or conservative input size covering the current stage",
+        "route-bound requested-output evidence covering the current stage",
+        "terminal proof excluding substitution, hidden fallback, capacity rejection, and unexplained truncation"
+      ],
+      "model": "gpt-5.6-sol",
+      "planned_workload": {
+        "maximum_requested_output_tokens": 768,
+        "planned_input": null,
+        "planned_input_status": "NOT_MATERIALIZED_CURRENT_HEAD"
+      },
+      "protocol": "anthropic",
+      "provider": "lingsuan_gpt",
+      "role": "final_review",
+      "route_fingerprint": "30e9cbaf86fbb4b89b43614d71cc11b359ad41e7411e8ebda5d3ce4199879bf0",
+      "why_current_workload_not_proven_safe": "The supplied lingsuan.top relay-console screenshot visibly states 372K for gpt-5.6-sol, but no maximum output is shown and the console-to-lingsuan.org API operator link is not independently archived. The available evidence does not mechanically cover both the current input shape and requested output cap."
+    },
+    {
+      "best_verified_lower_bound": {
+        "context_tokens": null,
+        "limitation": "historical input token count was not retained",
+        "requested_output_tokens": 4624,
+        "silent_truncation": false,
+        "source": "docs/superpowers/reports/skill-v3-character-heavy-pilot-a1-real-execution-v3/route-capacity-v1.json",
+        "terminal_status": "end_turn"
+      },
+      "capability_status": "UNKNOWN_BLOCKED",
+      "destination": "https://lingsuan.org:443/v1/messages",
+      "evidence_searched": "committed configs/manifests/reports, migrated historical screenshots, relay/platform public pages, and exact official-provider public search",
+      "missing_evidence": [
+        "route-bound exact or conservative input size covering the current stage",
+        "route-bound requested-output evidence covering the current stage",
+        "terminal proof excluding substitution, hidden fallback, capacity rejection, and unexplained truncation"
+      ],
+      "model": "gpt-5.6-sol",
+      "planned_workload": {
+        "maximum_requested_output_tokens": 768,
+        "planned_input": null,
+        "planned_input_status": "NOT_MATERIALIZED_CURRENT_HEAD"
+      },
+      "protocol": "anthropic",
+      "provider": "lingsuan_gpt",
+      "role": "maintenance",
+      "route_fingerprint": "30e9cbaf86fbb4b89b43614d71cc11b359ad41e7411e8ebda5d3ce4199879bf0",
+      "why_current_workload_not_proven_safe": "The supplied lingsuan.top relay-console screenshot visibly states 372K for gpt-5.6-sol, but no maximum output is shown and the console-to-lingsuan.org API operator link is not independently archived. The available evidence does not mechanically cover both the current input shape and requested output cap."
+    },
+    {
+      "best_verified_lower_bound": {
+        "context_tokens": null,
+        "limitation": "historical input token count was not retained",
+        "requested_output_tokens": 4624,
+        "silent_truncation": false,
+        "source": "docs/superpowers/reports/skill-v3-character-heavy-pilot-a1-real-execution-v3/route-capacity-v1.json",
+        "terminal_status": "end_turn"
+      },
+      "capability_status": "UNKNOWN_BLOCKED",
+      "destination": "https://lingsuan.org:443/v1/messages",
+      "evidence_searched": "committed configs/manifests/reports, migrated historical screenshots, relay/platform public pages, and exact official-provider public search",
+      "missing_evidence": [
+        "route-bound exact or conservative input size covering the current stage",
+        "route-bound requested-output evidence covering the current stage",
+        "terminal proof excluding substitution, hidden fallback, capacity rejection, and unexplained truncation"
+      ],
+      "model": "gpt-5.6-sol",
+      "planned_workload": {
+        "maximum_requested_output_tokens": 8328,
+        "planned_input": null,
+        "planned_input_status": "NOT_MATERIALIZED_CURRENT_HEAD"
+      },
+      "protocol": "anthropic",
+      "provider": "lingsuan_gpt",
+      "role": "planning",
+      "route_fingerprint": "30e9cbaf86fbb4b89b43614d71cc11b359ad41e7411e8ebda5d3ce4199879bf0",
+      "why_current_workload_not_proven_safe": "The supplied lingsuan.top relay-console screenshot visibly states 372K for gpt-5.6-sol, but no maximum output is shown and the console-to-lingsuan.org API operator link is not independently archived. The available evidence does not mechanically cover both the current input shape and requested output cap."
+    },
+    {
+      "best_verified_lower_bound": null,
+      "capability_status": "UNKNOWN_BLOCKED",
+      "destination": "https://lingsuan.org:443/v1/messages",
+      "evidence_searched": "committed configs/manifests/reports, migrated historical screenshots, relay/platform public pages, and exact official-provider public search",
+      "missing_evidence": [
+        "route-bound exact or conservative input size covering the current stage",
+        "route-bound requested-output evidence covering the current stage",
+        "terminal proof excluding substitution, hidden fallback, capacity rejection, and unexplained truncation"
+      ],
+      "model": "claude-sonnet-5",
+      "planned_workload": {
+        "maximum_requested_output_tokens": 2785,
+        "planned_input": null,
+        "planned_input_status": "NOT_MATERIALIZED_CURRENT_HEAD"
+      },
+      "protocol": "anthropic",
+      "provider": "lingsuan_sonnet",
+      "role": "polish",
+      "route_fingerprint": "4a9f19e78d8101d0bc82aa664582c775741b59d5d9953c73a5624de03b2a539c",
+      "why_current_workload_not_proven_safe": "The LingSuan screenshot proves claude-sonnet-5 relay catalog identity and pricing only. The available evidence does not mechanically cover both the current input shape and requested output cap."
+    }
+  ],
+  "required_route_capability_closure": "BLOCKED",
+  "route_with_guessed_context_window_count": 0,
+  "route_with_guessed_max_output_count": 0,
+  "schema": "RequiredRouteCapabilityClosureV1",
+  "status": "BLOCKED",
+  "version": 1
+}

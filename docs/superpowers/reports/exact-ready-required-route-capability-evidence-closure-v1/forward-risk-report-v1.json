@@ -1,0 +1,81 @@
+{
+  "closed_world_justification": "The finite seven-route Exact READY primary set and immutable historical evidence corpus are evaluated deterministically.",
+  "constraint_traceability": [
+    {
+      "evidence": "required-route-public-evidence-v1.json",
+      "implementation": "promote_doubao",
+      "requirement": "Promote only exact official direct-route proof.",
+      "test_paths": [
+        "tests/canary/test_exact_ready_route_capability_closure.py",
+        "tests/test_route_capabilities.py"
+      ]
+    },
+    {
+      "evidence": "workload-capacity-admission-v1.json",
+      "implementation": "workload-capacity-admission-v1.json materialization",
+      "requirement": "Apply workload-sufficiency admission without guessed maxima.",
+      "test_paths": [
+        "tests/canary/test_exact_ready_route_capability_closure.py",
+        "tests/test_stage_capacity.py"
+      ]
+    }
+  ],
+  "forbidden_narrowing": [
+    "Do not serialize a lower bound as an exact maximum.",
+    "Do not inherit upstream limits through a relay.",
+    "Do not treat policy caps, prices, aliases, or small successful outputs as capacity.",
+    "Do not let an unknown theoretical maximum block a sufficient proven workload."
+  ],
+  "historical_incident_families_checked": [
+    "same-model cross-operator inheritance",
+    "request cap misclassified as provider maximum",
+    "historical success without reconstructable input",
+    "recovery physical-attempt capacity drift",
+    "unknown required-route dispatch"
+  ],
+  "model_output_boundary_changed": false,
+  "model_output_not_applicable_evidence": "No model-output parser or literary path changed.",
+  "next_authoritative_boundary_tests": [
+    "tests/test_route_capabilities.py",
+    "tests/test_stage_capacity.py",
+    "tests/canary/test_full_short_runner_hardening.py"
+  ],
+  "operational_definition": "A stage passes only when its exact route has a documented exact limit or mechanically bound same-or-larger lower-bound/request shape.",
+  "original_requirement": "Verify Exact READY workload sufficiency using route-bound exact limits, safe lower bounds, or comparable historical request shapes.",
+  "production_shaped_tests": [
+    "tests/quality/test_full_short_capacity_fault_campaign_v3.py"
+  ],
+  "projected_failure_mechanisms": [
+    "unbound relay identity",
+    "unknown input shape",
+    "insufficient output lower bound",
+    "hidden fallback or substitution",
+    "reasoning/output accounting ambiguity"
+  ],
+  "remaining_risks": [
+    "Three relay route classes still lack sufficient route-bound workload evidence.",
+    "Exact READY run and authorization remain blocked before dispatch."
+  ],
+  "resolution_status": "case_fixed",
+  "schema": "ForwardRiskReviewV2",
+  "scope_classification": "closed_world",
+  "sibling_boundaries": [
+    {
+      "boundary": "all seven execution roles",
+      "disposition": "fixed_and_tested",
+      "evidence": "workload-capacity-admission-v1.json enumerates all 95 logical stages"
+    },
+    {
+      "boundary": "retry/recovery attempts",
+      "disposition": "tested_not_susceptible",
+      "evidence": "capacity-attempt-identity-revalidation-v1.json and V3 fault campaign tests"
+    },
+    {
+      "boundary": "authorization and external actions",
+      "disposition": "tested_not_susceptible",
+      "evidence": "readiness-disposition-v1.json stops before authorization and all external counters are zero"
+    }
+  ],
+  "version": 2,
+  "why_previous_tests_missed": "The preceding Master required exact maxima universally; the Supplement introduces lower-bound/workload-shape admission."
+}
