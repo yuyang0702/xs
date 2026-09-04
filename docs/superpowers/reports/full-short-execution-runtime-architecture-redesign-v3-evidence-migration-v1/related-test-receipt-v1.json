@@ -1,23 +1,36 @@
 {
-  "command": ".venv\\Scripts\\python.exe -m pytest -q tests/quality/test_full_short_capacity_fault_campaign_v3.py tests/quality/test_full_short_capacity_fault_campaign.py tests/test_stage_capacity.py tests/test_full_short_execution.py tests/test_route_capabilities.py tests/test_contract_runtime.py tests/test_reasoning_finalization_recovery.py tests/test_full_short_runtime_kernel.py tests/providers/test_protocols.py tests/test_full_short_runtime_source_binding.py",
+  "schema": "FullShortRuntimeCapacityV3VerificationReceiptV1",
+  "version": 1,
+  "status": "PASS_WITH_SEPARATELY_RECORDED_BASELINE_RESIDUAL",
+  "implementation_head": "11aa5e994dc089869062ca9ea641d62658a57b94",
+  "passing_commands": [
+    {
+      "command": ".venv\\Scripts\\python.exe -X utf8 -m pytest -q tests/test_full_short_execution.py tests/test_full_short_runtime_kernel.py tests/test_contract_runtime.py tests/test_provider_response_capture.py tests/providers/test_protocols.py",
+      "result": "440 passed in 20.60s"
+    },
+    {
+      "command": ".venv\\Scripts\\python.exe -X utf8 -m pytest -q tests/canary/test_full_short_runner_hardening.py tests/quality/test_full_short_capacity_fault_campaign.py tests/quality/test_full_short_capacity_fault_campaign_v3.py",
+      "result": "103 passed in 36.10s"
+    }
+  ],
+  "baseline_residual": {
+    "test": "tests/test_phase05_evidence_closure.py::test_phase05_production_shaped_evidence_closure",
+    "result": "1 failed in 19.17s",
+    "failure": "Formal promotion requires a hash-bound passing quality review",
+    "baseline_identity_check": "git diff --quiet 11aa5e994dc089869062ca9ea641d62658a57b94 -- src/novel_flywheel/workflows.py tests/test_phase05_evidence_closure.py => BASELINE_IDENTICAL=YES",
+    "disposition": "INHERITED_UNRELATED_NOT_REOPENED"
+  },
   "external_boundary": {
-    "full_short_execution_count": 0,
-    "http_calls": 0,
-    "http_post_attempts": 0,
-    "model_calls": 0,
-    "network_calls": 0,
-    "paid_calls": 0,
     "real_credential_lookup_count": 0,
-    "real_full_short_runs": 0,
+    "real_secret_read_count": 0,
     "real_provider_client_creation_count": 0,
     "real_provider_request_attempts": 0,
-    "real_secret_read_count": 0
-  },
-  "implementation_head": "d086ca9c7cbe297dce42f94c880509c9e594010b",
-  "schema": "FullShortRuntimeCapacityV3VerificationReceiptV1",
-  "failed": 0,
-  "passed": 524,
-  "source_head_at_run": "11f6a75a4a4db15d7f03edf5b382cdd15acbab3b",
-  "status": "PASS_WITH_D086_MATERIALIZER_DELTA_COVERED_BY_FOCUSED_TESTS",
-  "version": 1
+    "http_post_attempts": 0,
+    "http_calls": 0,
+    "network_calls": 0,
+    "model_calls": 0,
+    "paid_calls": 0,
+    "full_short_execution_count": 0,
+    "real_full_short_runs": 0
+  }
 }

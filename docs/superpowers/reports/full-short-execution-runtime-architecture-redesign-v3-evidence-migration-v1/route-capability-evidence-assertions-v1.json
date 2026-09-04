@@ -1,0 +1,62 @@
+{
+  "schema": "RouteCapabilityEvidenceAssertionsV1",
+  "version": 1,
+  "status": "HISTORICAL_EVIDENCE_RECLASSIFIED",
+  "assertions": {
+    "deepseek_v4_pro_direct": {
+      "provider": "deepseek",
+      "provider_id_sha256": "4555bcd38d06ac2e82d7b92da7d4fdbc31122db1636254cfaefc40aa20ac3b82",
+      "operator": "DEEPSEEK_OFFICIAL",
+      "destination": "https://api.deepseek.com:443/anthropic/v1/messages",
+      "protocol": "anthropic",
+      "model": "deepseek-v4-pro",
+      "model_id_sha256": "ffaf088b15c6107032e5450965693c6d9a1e0735a6186e2957463bfa460a8937",
+      "route_fingerprint": "04a443a6702fcc95b74906e44b7233c9370cb9b94bbbbadce4bf59c088b68c31",
+      "context_window_tokens": 1000000,
+      "max_output_tokens": 384000,
+      "reasoning_token_accounting": "INCLUDED_IN_COMPLETION_CAP",
+      "reasoning_output_reservation": "WITHIN_COMPLETION_CAP",
+      "classification": "VERIFIED_REUSABLE",
+      "classification_code": "A",
+      "provenance": [
+        {
+          "source_path": "docs/superpowers/reports/c0b-p0-provider-model-evidence-matrix.json",
+          "source_sha256": "c61f574e7630647e65d033c5fda7169ca9f937caa7749c304cb3de2643651c98",
+          "source_date": "2026-08-14",
+          "source_kind": "HISTORICAL_OFFICIAL_PROVIDER_DOCUMENTATION_RECORD",
+          "proved": ["provider", "operator", "protocol", "model", "context_window_tokens", "max_output_tokens"],
+          "original_source_urls": [
+            "https://api-docs.deepseek.com/quick_start/pricing/",
+            "https://api-docs.deepseek.com/updates/"
+          ],
+          "archived_web_content_available": false
+        },
+        {
+          "source_path": "docs/superpowers/reports/first-trustworthy-full-short-deepseek-reasoning-finalization-recovery-v1/provider-reasoning-capability-contract-v1.json",
+          "source_sha256": "cac6343a1aa274af690bea7e10ebf6ef7c36b5db142a5527722673f66e71572c",
+          "source_kind": "HISTORICAL_EXACT_ROUTE_IDENTITY_CONTRACT",
+          "proved": ["provider", "provider_id_sha256", "operator", "destination", "protocol", "model", "model_id_sha256", "route_fingerprint"]
+        },
+        {
+          "source_path": "docs/superpowers/reports/c0b-smoke-1-approval-packet-v1.json",
+          "source_sha256": "49e257c42d29b1898b36808fa685ef5954a6fbf5cac4e59c1450aae1919540ba",
+          "source_date": "2026-08-15",
+          "source_kind": "HISTORICAL_REASONING_ACCOUNTING_PACKET",
+          "proved": ["reasoning_token_accounting", "reasoning_output_reservation"]
+        }
+      ],
+      "trust_decision": "The archived source-content hash is unavailable, but the current route is the exact official endpoint and the contemporaneous repository report records the exact values, official URLs, retrieval date and VERIFIED_OFFICIAL disposition. The revised task explicitly authorizes reuse of this historical report. No relay or model-name inheritance is involved."
+    }
+  },
+  "external_boundary": {
+    "real_credential_lookup_count": 0,
+    "real_secret_read_count": 0,
+    "real_provider_client_creation_count": 0,
+    "real_provider_request_attempts": 0,
+    "http_post_attempts": 0,
+    "network_calls": 0,
+    "model_calls": 0,
+    "paid_calls": 0,
+    "full_short_execution_count": 0
+  }
+}

@@ -44325,7 +44325,7 @@
     }
   ],
   "searched_file_inventory_sha256": "984b5158dcea24232916a3ded7beb3452f0c7e0964c51fc933e823014066f427",
-  "source_truth_boundary": "BASELINE_GIT_TREE_ALL_TRACKED_BLOBS",
+  "source_truth_boundary": "HISTORICAL_PRE_V3_GIT_TREE_ALL_TRACKED_BLOBS",
   "status": "SEARCH_COMPLETE",
   "tracked_repository_file_count": 3961,
   "untracked_or_ignored_project_local_disposition": "EXCLUDED_NOT_REPOSITORY_SOURCE_TRUTH_AND_MAY_CONTAIN_SECRETS",

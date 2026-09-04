@@ -216,4 +216,12 @@ The workbench can preview and run migration for an older project. Migration pres
 
 Exact Full Short preflight uses `config/full_short_route_capability_registry_v1.json` as the route-exact capacity source. Every live primary and fallback lane has a content-addressed record. A record without trustworthy context-window and maximum-output provenance remains `UNKNOWN_BLOCKED`; it does not block an unused lane, but it is rejected before credential lookup when the execution plan selects that lane. Runtime no longer treats a bare model configuration value as provider capacity evidence.
 
+Historical evidence is migrated field by field. The exact official DeepSeek
+route may use its content-addressed 1,000,000-context/384,000-output historical
+record. The supplied relay-console screenshots preserve visible model, pricing,
+endpoint-family, parameter, and LingSuan 372K-context facts, but they do not
+make a relay route dispatchable when maximum-output or exact destination
+provenance is absent. A visible price, parameter, unlabeled badge, or successful
+request size is never promoted into a missing capacity limit.
+
 Logical recovery schedule slots and physical dispatch attempts are separate identities. The durable dispatch observer alone allocates the next physical attempt ordinal from the ledger, so a rejected recovery slot cannot create attempt-number drift. Context, output, estimator, route-capability, and attempt-identity failures remain typed and fail closed without truncating story authority.

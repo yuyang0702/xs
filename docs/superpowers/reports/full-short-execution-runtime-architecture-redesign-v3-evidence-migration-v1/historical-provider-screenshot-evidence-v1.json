@@ -1,0 +1,109 @@
+{
+  "schema": "HistoricalProviderScreenshotEvidenceV1",
+  "version": 1,
+  "status": "INSPECTED_AND_CLASSIFIED",
+  "source_type": "USER_SUPPLIED_HISTORICAL_PROVIDER_RELAY_SCREENSHOT_BUNDLE",
+  "source_bundle_sha256": "84dbd766cf3b700c2b9b16f98012988d59f7a8afdfd9de2b4723f7da4a9ed4f4",
+  "source_bundle_entry_count": 15,
+  "evidence_date": "2026-08-15",
+  "inspection_date": "2026-09-04",
+  "raw_bundle_committed": false,
+  "raw_bundle_disposition": "HASH_INVENTORIED_ONLY_TO_AVOID_COMMITTING_ACCOUNT_UI_AND_UNRELATED_PRIVATE_SCREEN_CONTENT",
+  "entries": {
+    "1f5f3b82-dbbf-42df-8755-20d6ecc92fc6.png": "b4c8bea32fccb2562a5a3dade31a04487349981dc3b3197059f9efd233cc175d",
+    "301fb9e3-31c8-40fb-803e-b1bd597a98c3.png": "7f040df3938f3e68d374ac4d5ec1e556a45c5dc49123104ba3520be9d1926077",
+    "32159641-8c5c-409d-a708-5eaa82f9fdbb.png": "a47cf5d2d611961790ef5fb911ec03a2729a5ddaf165dca1f846ca2d4a4345d3",
+    "4106a18d-2783-4d77-b42d-6b24a45efc22.png": "4cf4c06b300b81b7063c78df4a24ceaa239a5997ffaaaa76f2c9bae27fd89c60",
+    "4446d342-216b-4d73-9a89-f82629e7290b.png": "466ad1aec6afe61c96b81bd34980b86bb472b2472619a5585a4da555aa15810b",
+    "4d65dc36-a306-4206-9b28-5c3da56d9d3d.png": "320f5d0632b77859df52397addada1b63501f200589f30211342b4ee6aa23517",
+    "55ad6514-fca5-42a7-aaf4-ef510519acc6.png": "af383e336b363ed4b91a9d71c2ad39ef33e020634d8cd54c8f47a5b98266374f",
+    "7532028d-9a76-4187-931b-cc323ee4f5e0.png": "78ee48777e170d6ecc4955fe478219595374b5583344ee1905edf61b47bb8d30",
+    "78817da3-5927-4a32-ae48-1a83b2cf8bcb.png": "1bb1aae7e13368b0a83ce5aac5edef8429714c4287810a88fdfc0f11add6d861",
+    "848e4546-1b9b-4689-bea2-34f216aaa826.png": "da96f56f094fb6937548270e57eaca6c61ea383db9deaf67a1d3fe94e7b1bbe9",
+    "a1a18470-c7b5-4bb5-963b-dc229b396469.png": "7d7157355a442a9b4b69c36052d7d4ae7cfb56690bebd5509e177bedbfe8ea41",
+    "cdf26981-6df9-4a8c-9a1f-5812dd12a49c.png": "aa8fde92689d0b40dd4d8126d8349342dd0196e5891bd77389a1a5655916d271",
+    "d88fcc32-3834-41c5-8713-d3977f29d267.png": "e1cb6e5d14a23ae44269cb3906f42c4c7ac8f08d6dcac58a2bb6af805fb33068",
+    "dcebf947-9282-4ac5-adcd-89d69f988969.png": "2c68efaafe3aa08fe9df1ac6f15faef82a5134e3b44e59c37f869c51f6632e92",
+    "e7acae19-5ed2-4dbd-9332-dab6386c7316.png": "149233365964a5e2e113fb724deccf77367bbc830d88c2987e973436a8ffe09d"
+  },
+  "privacy_safe_crops": [
+    {
+      "path": "historical-provider-screenshot-crops-v1/lingsuan-gpt-5.6-sol-context-372k.png",
+      "sha256": "0f32a9edf0fc67a651abaf6430419bb977f1298ec00a04adfcff56978bc5685c",
+      "source_entry": "32159641-8c5c-409d-a708-5eaa82f9fdbb.png"
+    },
+    {
+      "path": "historical-provider-screenshot-crops-v1/lingsuan-claude-sonnet-5-identity.png",
+      "sha256": "35a1eef03f204fce4f649525799cdaf0095dce4aa1cdee7ee75860085b4d176e",
+      "source_entry": "4106a18d-2783-4d77-b42d-6b24a45efc22.png"
+    },
+    {
+      "path": "historical-provider-screenshot-crops-v1/happy-qwen-3.7-plus-route-detail.png",
+      "sha256": "178a75f94913a4dfdb94477256cf3f19f214591992f98d3c2b4879956bab0205",
+      "source_entry": "4446d342-216b-4d73-9a89-f82629e7290b.png"
+    },
+    {
+      "path": "historical-provider-screenshot-crops-v1/happy-qwen-max-thinking-parameters.png",
+      "sha256": "8d703a3467735ed86b2e2ca6655b395f2674faa04681201c1d3af46ffa8493ad",
+      "source_entry": "78817da3-5927-4a32-ae48-1a83b2cf8bcb.png"
+    }
+  ],
+  "observations": [
+    {
+      "provider": "lingsuan_gpt",
+      "model": "gpt-5.6-sol",
+      "proved_fields": ["relay_console_identity", "model", "context_window_tokens"],
+      "context_window_tokens": 372000,
+      "max_output_tokens": null,
+      "disposition": "PARTIAL_ONLY_UNKNOWN_BLOCKED",
+      "reason": "The relay console explicitly labels context length 372K, but no maximum output is visible and the lingsuan.top console-to-lingsuan.org API operator link is not independently proved."
+    },
+    {
+      "provider": "lingsuan_sonnet",
+      "model": "claude-sonnet-5",
+      "proved_fields": ["relay_console_identity", "model", "pricing"],
+      "context_window_tokens": null,
+      "max_output_tokens": null,
+      "disposition": "IDENTITY_ONLY_UNKNOWN_BLOCKED"
+    },
+    {
+      "provider": "happy",
+      "model": "qwen-3.7-plus",
+      "proved_fields": ["relay_console_identity", "model", "upstream_label", "endpoint_family", "pricing"],
+      "context_window_tokens": null,
+      "max_output_tokens": null,
+      "disposition": "IDENTITY_ONLY_UNKNOWN_BLOCKED",
+      "reason": "The visible 1M card badge is not labeled as a context-window field in the captured detail view and is not promoted."
+    },
+    {
+      "provider": "happy",
+      "model": "qwen-max-thinking",
+      "proved_fields": ["relay_console_identity", "model", "endpoint_family", "reasoning_effort_parameter", "max_completion_tokens_parameter"],
+      "context_window_tokens": null,
+      "max_output_tokens": null,
+      "disposition": "PARAMETER_SEMANTICS_ONLY_UNKNOWN_BLOCKED",
+      "reason": "Parameter presence and integer >=1 do not establish a maximum value."
+    },
+    {
+      "provider": "happy",
+      "model": "claude-opus-4-5",
+      "proved_fields": ["relay_console_identity", "model", "endpoint_family", "pricing", "historical_performance"],
+      "context_window_tokens": null,
+      "max_output_tokens": null,
+      "disposition": "IDENTITY_ONLY_UNKNOWN_BLOCKED"
+    }
+  ],
+  "bundle_exhausted": true,
+  "numeric_capacity_values_not_visible_are_not_inferred": true,
+  "external_boundary": {
+    "real_credential_lookup_count": 0,
+    "real_secret_read_count": 0,
+    "real_provider_client_creation_count": 0,
+    "real_provider_request_attempts": 0,
+    "http_post_attempts": 0,
+    "network_calls": 0,
+    "model_calls": 0,
+    "paid_calls": 0,
+    "full_short_execution_count": 0
+  }
+}

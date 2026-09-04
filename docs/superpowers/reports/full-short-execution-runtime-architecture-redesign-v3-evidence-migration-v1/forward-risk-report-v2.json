@@ -1,0 +1,126 @@
+{
+  "schema": "ForwardRiskReviewV2",
+  "version": 2,
+  "original_requirement": "From the authorized clean 11aa5e9 baseline, reuse only trustworthy historical Provider/model evidence to populate the Route Capability Registry, require VERIFIED only for Exact READY routes, keep insufficient routes UNKNOWN_BLOCKED, close CAPACITY_PHYSICAL_ATTEMPT_DRIFT where evidence permits, and make no credential, network, model, paid, or real Full Short call.",
+  "scope_classification": "closed_world",
+  "closed_world_justification": "The changed behavior is limited to deterministic materialization of a finite, hash-bound set of repository evidence and the user-supplied 15-entry screenshot package into the existing 14-record route registry. No parser for arbitrary Provider responses or model output changed.",
+  "operational_definition": "A route is promoted only when both numeric capacity fields and the exact operator, destination, protocol, model, and route fingerprint are source-grounded. Partial screenshots remain evidence locators on UNKNOWN_BLOCKED records. Exact READY planning stops before dispatch while any required primary record is unknown, and every external-action counter remains zero.",
+  "forbidden_narrowing": [
+    "Do not infer relay capacity from an upstream or same-named model.",
+    "Do not turn request caps, policy ceilings, observed outputs, badges, or parameter presence into Provider maxima.",
+    "Do not require unused fallback routes to be VERIFIED for the current Exact READY plan.",
+    "Do not reuse historical authorization, approval, nonce, run ID, store, credential, or secret.",
+    "Do not report V3 closed while required Exact READY routes remain UNKNOWN_BLOCKED."
+  ],
+  "resolution_status": "case_fixed",
+  "constraint_traceability": [
+    {
+      "requirement": "Migrate route-exact complete historical capability evidence and no weaker claim.",
+      "implementation": "tools/diagnostics/materialize_full_short_runtime_architecture_redesign_v3.py applies the exact DeepSeek assertion to matching fingerprints and retains every incomplete relay claim as UNKNOWN_BLOCKED.",
+      "test_paths": [
+        "tests/canary/test_full_short_runner_hardening.py",
+        "tests/test_route_capabilities.py"
+      ],
+      "evidence": "route-capability-evidence-assertions-v1.json, historical-capability-evidence-matrix-v1.json, and route-capability-registry-v1.json"
+    },
+    {
+      "requirement": "Hash-bind and classify the supplied screenshot bundle without inventing missing values.",
+      "implementation": "historical-provider-screenshot-evidence-v1.json records the ZIP hash, all 15 entry hashes, four privacy-safe crop hashes, visible fields, missing fields, and non-promotion dispositions.",
+      "test_paths": [
+        "tests/canary/test_full_short_runner_hardening.py"
+      ],
+      "evidence": "test_v3_historical_screenshot_manifest_is_hash_bound_and_non_inferential and historical-provider-screenshot-crops-v1"
+    },
+    {
+      "requirement": "Require VERIFIED only for routes selected by the Exact READY plan and stop before dispatch on an unknown required route.",
+      "implementation": "The existing RouteCapabilityRegistry admission boundary is reused; the materializer computes required primary records separately from unused fallbacks and emits a blocked exact plan without invoking the runner.",
+      "test_paths": [
+        "tests/test_route_capabilities.py",
+        "tests/test_stage_capacity.py",
+        "tests/canary/test_full_short_runner_hardening.py"
+      ],
+      "evidence": "exact-ready-required-route-set-v1.json, exact-ready-execution-plan-v1.json, and required-route-missing-fields-v1.json"
+    },
+    {
+      "requirement": "Preserve physical-attempt identity, typed capacity failures, isolation, and zero unauthorized external actions.",
+      "implementation": "The existing Runtime Kernel and failure taxonomy are not rewritten; the V3 materializer reruns the deterministic 20-scenario fault campaign in a self-owned temporary journal and records zero external counters.",
+      "test_paths": [
+        "tests/quality/test_full_short_capacity_fault_campaign_v3.py",
+        "tests/test_stage_capacity.py",
+        "tests/canary/test_full_short_runner_hardening.py"
+      ],
+      "evidence": "capacity-fault-campaign-v3-summary.json, production-isolation-v1.json, and v3-stop-loss-v1.json"
+    }
+  ],
+  "historical_incident_families_checked": [
+    "capacity_physical_attempt_drift",
+    "same_model_cross_operator_inheritance",
+    "request_cap_misclassified_as_provider_maximum",
+    "policy_ceiling_misclassified_as_provider_capacity",
+    "unknown_required_route_dispatch",
+    "unused_fallback_overblocking",
+    "stale_or_replayed_authorization",
+    "route_identity_or_destination_drift",
+    "journal_exact_once_conflict",
+    "credential_or_network_boundary_escape"
+  ],
+  "projected_failure_mechanisms": [
+    "missing context or output capacity",
+    "partial evidence promoted as complete",
+    "relay and official Provider identity conflation",
+    "physical attempt identity loss across split retry fallback or resume",
+    "output truncation and typed capacity stop",
+    "stale evidence hash or route fingerprint",
+    "duplicate journal identity",
+    "unauthorized external side effect"
+  ],
+  "why_previous_tests_missed": "The pre-revised V3 materialization deliberately classified all historical numeric claims as unproven and did not ingest the newly supplied screenshot package or compose the already archived official DeepSeek capacity matrix with the exact direct-route identity contract. Existing runtime tests therefore proved fail-closed behavior but not selective historical promotion.",
+  "sibling_boundaries": [
+    {
+      "boundary": "initialization and project discovery",
+      "disposition": "tested_not_susceptible",
+      "evidence": "No src project-discovery or StoryState code changed; the admission tests operate on the same sanitized repository fixture."
+    },
+    {
+      "boundary": "planning, causal chain, and execution manifest",
+      "disposition": "fixed_and_tested",
+      "evidence": "Exact READY required-route materialization enumerates all seven primary stage uses and remains blocked before plan discovery for unknown planning capacity."
+    },
+    {
+      "boundary": "drafting, split, retry, fallback, resume, and merge",
+      "disposition": "fixed_and_tested",
+      "evidence": "The 20-scenario V3 campaign reuses the Runtime Kernel and proves one physical_attempt_id per attempt, typed capacity failures, exact-once journals, and bounded stop-loss."
+    },
+    {
+      "boundary": "review, reader review, polish, and final review",
+      "disposition": "fixed_and_tested",
+      "evidence": "The required-route set checks every selected primary route; only the exact direct DeepSeek review route is VERIFIED, while Doubao, Happy Qwen, and LingSuan Sonnet remain explicitly blocked."
+    },
+    {
+      "boundary": "targeted or manual revision, AI issue refresh, and formal promotion",
+      "disposition": "tested_not_susceptible",
+      "evidence": "No revision, issue-refresh, publication, manuscript, StoryState, or promotion source changed, and the current execution stops before any model dispatch or artifact mutation."
+    },
+    {
+      "boundary": "authorization, credential, Provider, and network execution",
+      "disposition": "tested_not_susceptible",
+      "evidence": "External actions are disabled, no authorization artifact is created, no historical authorization is consumed, and every external counter is recorded as zero."
+    }
+  ],
+  "model_output_boundary_changed": false,
+  "model_output_not_applicable_evidence": "The diff changes only a deterministic offline diagnostic materializer, registry data, evidence/docs, and tests. No file under src/novel_flywheel/model_output.py, provider response parsing, BAML, or generated prose handling is modified.",
+  "production_shaped_tests": [
+    "tests/quality/test_full_short_capacity_fault_campaign_v3.py",
+    "tests/canary/test_full_short_runner_hardening.py"
+  ],
+  "next_authoritative_boundary_tests": [
+    "tests/test_route_capabilities.py",
+    "tests/test_stage_capacity.py",
+    "tests/canary/test_full_short_runner_hardening.py"
+  ],
+  "remaining_risks": [
+    "Six required role records across four unique routes remain UNKNOWN_BLOCKED because source-grounded fields are still missing.",
+    "The current Exact READY production-shaped Full Short dry run cannot begin until those required route records are VERIFIED; V3 therefore remains NOT_CLOSED.",
+    "No live capability probe or real Full Short was performed, by authorization."
+  ]
+}

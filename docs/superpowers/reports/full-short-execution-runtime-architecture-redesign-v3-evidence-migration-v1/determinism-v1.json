@@ -1,7 +1,5 @@
 {
   "command": "historical production-shaped dry-run exact capture replay",
-  "current_v3_campaign_deterministic": true,
-  "current_v3_campaign_report_sha256": "f1a99d736794096f3c202c6223e7bb54ef90211e9e26a897c855d3f5bb7c435a",
   "dry_run_source_head": "06e8a2868c145e5db9f71bab9acef94bea5bf64a",
   "external_boundary": {
     "full_short_execution_count": 0,
@@ -17,7 +15,7 @@
     "real_secret_read_count": 0
   },
   "final_artifact_sha256": "7ff795c16c13596e23cef15c1efb7a98604f723c5d09f145f4e12cc5b4bd862b",
-  "implementation_head": "d086ca9c7cbe297dce42f94c880509c9e594010b",
+  "implementation_head": "11aa5e994dc089869062ca9ea641d62658a57b94",
   "logical_stage_plan_sha256": "b6333e9da439706da1c27a1020adccfde0119f86e61960b891d2f5c48ae4cf09",
   "replay_final_artifact_sha256": "7ff795c16c13596e23cef15c1efb7a98604f723c5d09f145f4e12cc5b4bd862b",
   "same_final_artifact": true,

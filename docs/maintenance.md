@@ -2562,6 +2562,17 @@ independently. The semantic windowing and compaction machinery may change
 representation only at an ownership boundary and must retain complete authority;
 prefix slicing and silent truncation remain prohibited.
 
+The revised V3 evidence migration retains privacy-safe crops and a hash
+inventory for the user-supplied historical screenshots. Only the direct
+DeepSeek `deepseek-v4-pro` route currently has a complete reusable historical
+record: 1,000,000 context tokens and 384,000 maximum output tokens, bound to the
+official destination and exact route fingerprint. The LingSuan screenshot's
+visible `gpt-5.6-sol` 372K context label remains partial evidence because it
+does not show maximum output and does not independently prove the
+`lingsuan.top` console-to-`lingsuan.org` API operator link. Happy Qwen and
+LingSuan Claude screenshots establish only the fields they display. Missing
+capacity stays null and `UNKNOWN_BLOCKED`.
+
 `FullShortDispatchLedgerObserverV1` is the sole physical-attempt allocator.
 The workflow recovery index selects a policy slot but is not a dispatch ordinal.
 Each physical plan binds the immutable logical capacity-envelope hash and the

@@ -1,0 +1,35 @@
+{
+  "external_boundary": {
+    "full_short_execution_count": 0,
+    "http_calls": 0,
+    "http_post_attempts": 0,
+    "model_calls": 0,
+    "network_calls": 0,
+    "paid_calls": 0,
+    "real_credential_lookup_count": 0,
+    "real_full_short_runs": 0,
+    "real_provider_client_creation_count": 0,
+    "real_provider_request_attempts": 0,
+    "real_secret_read_count": 0
+  },
+  "inherited_from_revised_start_head": "11aa5e994dc089869062ca9ea641d62658a57b94",
+  "inherited_report_paths": [
+    "child-agent-a-initial-v1.json",
+    "child-agent-b-initial-v1.json",
+    "child-agent-c-initial-v1.json",
+    "child-agent-d-initial-v1.json",
+    "child-agent-e-initial-v1.json",
+    "child-agent-f-initial-v1.json"
+  ],
+  "new_team_review_claimed": false,
+  "revalidation_disposition": {
+    "architecture_and_attempt_identity": "REUSABLE",
+    "historical_evidence_conclusion": "SUPERSEDED_BY_SCREENSHOT_INTAKE",
+    "required_route_derivation": "REVALIDATED",
+    "runtime_integration": "REUSABLE",
+    "token_accounting": "REUSABLE"
+  },
+  "schema": "FullShortRuntimeCapacityV3InheritedChildReportRevalidationV1",
+  "status": "REVALIDATED_WITH_REVISED_INPUT",
+  "version": 1
+}

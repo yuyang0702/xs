@@ -1,5 +1,5 @@
 {
-  "exact_ready_plan_unknown_required_route_count": 7,
+  "exact_ready_plan_unknown_required_route_count": 6,
   "exact_ready_required_route_count": 7,
   "external_boundary": {
     "full_short_execution_count": 0,
@@ -21,7 +21,7 @@
         "EXACT_ROUTE_CONTEXT_WINDOW_EVIDENCE_UNAVAILABLE",
         "EXACT_ROUTE_MAX_OUTPUT_EVIDENCE_UNAVAILABLE"
       ],
-      "capability_sha256": "bc3ef8f874d8a3a2ad68c47bf86c7c9efc10a74fd9f460be4cc064d02486f648",
+      "capability_sha256": "38cc627f2161634629754e6db675fd829796e6d7c27517e5d3b87653b23c45e0",
       "capability_status": "UNKNOWN_BLOCKED",
       "context_window_tokens": null,
       "destination": "https://happyapi.org:443/v1/messages",
@@ -43,6 +43,22 @@
           "evidence_date": "2026-08-15",
           "evidence_version": 1,
           "proved_fields": [
+            "historical_relay_console_identity",
+            "model",
+            "endpoint_family",
+            "reasoning_effort_parameter",
+            "max_completion_tokens_parameter"
+          ],
+          "provenance_available": true,
+          "route_fingerprint": "eb1676db66669efb33b72997a2c4b59e44b786e505b693f5aac88097e4454fee",
+          "source_evidence_sha256": "99a861f64e32901c8f9957d22e3ffbb0b05f588f45e73656dcc62261bc685d7b",
+          "source_kind": "user_supplied_historical_screenshot_manifest",
+          "source_locator": "docs/superpowers/reports/full-short-execution-runtime-architecture-redesign-v3-evidence-migration-v1/historical-provider-screenshot-evidence-v1.json"
+        },
+        {
+          "evidence_date": "2026-08-15",
+          "evidence_version": 1,
+          "proved_fields": [
             "reasoning_token_accounting"
           ],
           "provenance_available": true,
@@ -58,7 +74,7 @@
         "EXACT_ROUTE_CONTEXT_WINDOW_EVIDENCE_UNAVAILABLE",
         "EXACT_ROUTE_MAX_OUTPUT_EVIDENCE_UNAVAILABLE"
       ],
-      "capability_sha256": "ef43df5c0862a02dc36b75c59ef428efd4e6de3e7211e78ad36839c5b36a5e13",
+      "capability_sha256": "70a73e1958ccc223467f85bd578df1ee6e8950ec1b923cfb7cba5477c18ee3ed",
       "capability_status": "UNKNOWN_BLOCKED",
       "context_window_tokens": null,
       "destination": "https://happyapi.org:443/v1/messages",
@@ -80,6 +96,20 @@
           "evidence_date": "2026-08-15",
           "evidence_version": 1,
           "proved_fields": [
+            "historical_relay_console_identity",
+            "model",
+            "endpoint_family"
+          ],
+          "provenance_available": true,
+          "route_fingerprint": "099e358eae5fd0ff5e3d1b8cda34cd90c73c735c001ed44334ade3e3b667bf4e",
+          "source_evidence_sha256": "99a861f64e32901c8f9957d22e3ffbb0b05f588f45e73656dcc62261bc685d7b",
+          "source_kind": "user_supplied_historical_screenshot_manifest",
+          "source_locator": "docs/superpowers/reports/full-short-execution-runtime-architecture-redesign-v3-evidence-migration-v1/historical-provider-screenshot-evidence-v1.json"
+        },
+        {
+          "evidence_date": "2026-08-15",
+          "evidence_version": 1,
+          "proved_fields": [
             "reasoning_token_accounting"
           ],
           "provenance_available": true,
@@ -91,17 +121,13 @@
       ]
     },
     {
-      "blocking_reason_codes": [
-        "HISTORICAL_ASSERTION_HAS_NO_ARCHIVED_SOURCE_CONTENT",
-        "EXACT_ROUTE_CONTEXT_WINDOW_EVIDENCE_UNAVAILABLE",
-        "EXACT_ROUTE_MAX_OUTPUT_EVIDENCE_UNAVAILABLE"
-      ],
-      "capability_sha256": "14d7b9d9c9445b677159a65083842df093ccd7544601c7b5176c470fa5d81242",
-      "capability_status": "UNKNOWN_BLOCKED",
-      "context_window_tokens": null,
+      "blocking_reason_codes": [],
+      "capability_sha256": "62f42671a6a434205015197ca3662b457c11309c54104e878b5b556cfa0a3383",
+      "capability_status": "VERIFIED_HISTORICAL_EVIDENCE",
+      "context_window_tokens": 1000000,
       "destination": "https://api.deepseek.com:443/anthropic/v1/messages",
       "lane": "fallback",
-      "max_output_tokens": null,
+      "max_output_tokens": 384000,
       "model": "deepseek-v4-pro",
       "model_id_sha256": "ffaf088b15c6107032e5450965693c6d9a1e0735a6186e2957463bfa460a8937",
       "operator": "DEEPSEEK_OFFICIAL",
@@ -118,13 +144,24 @@
           "evidence_date": "2026-08-14",
           "evidence_version": 1,
           "proved_fields": [
-            "historical_unarchived_capacity_assertion"
+            "context_window_tokens",
+            "max_output_tokens",
+            "reasoning_token_accounting",
+            "reasoning_output_reservation",
+            "route_fingerprint",
+            "provider",
+            "provider_id_sha256",
+            "operator",
+            "destination",
+            "protocol",
+            "model",
+            "model_id_sha256"
           ],
           "provenance_available": true,
           "route_fingerprint": "04a443a6702fcc95b74906e44b7233c9370cb9b94bbbbadce4bf59c088b68c31",
-          "source_evidence_sha256": "c61f574e7630647e65d033c5fda7169ca9f937caa7749c304cb3de2643651c98",
-          "source_kind": "historical_official_documentation_matrix",
-          "source_locator": "docs/superpowers/reports/c0b-p0-provider-model-evidence-matrix.json"
+          "source_evidence_sha256": "75a45b9bcf3edeefb4130023fff5aae1c0f046e86c32e1723eedf4b17b1fb3ea",
+          "source_kind": "historical_route_exact_composite_assertion",
+          "source_locator": "docs/superpowers/reports/full-short-execution-runtime-architecture-redesign-v3-evidence-migration-v1/route-capability-evidence-assertions-v1.json#/assertions/deepseek_v4_pro_direct"
         },
         {
           "evidence_date": "2026-08-15",
@@ -145,7 +182,7 @@
         "EXACT_ROUTE_CONTEXT_WINDOW_EVIDENCE_UNAVAILABLE",
         "EXACT_ROUTE_MAX_OUTPUT_EVIDENCE_UNAVAILABLE"
       ],
-      "capability_sha256": "e840ffefdbbda7d1fa755011d8f1113f584517f6311553a8d342e33fa263566b",
+      "capability_sha256": "cf887acf9afd28dd225d2fab17c519fa76ffee5b6cd4f24b03393be1cf608fd4",
       "capability_status": "UNKNOWN_BLOCKED",
       "context_window_tokens": null,
       "destination": "https://lingsuan.org:443/v1/messages",
@@ -167,6 +204,19 @@
           "evidence_date": "2026-08-15",
           "evidence_version": 1,
           "proved_fields": [
+            "historical_relay_console_identity",
+            "context_window_tokens"
+          ],
+          "provenance_available": true,
+          "route_fingerprint": "30e9cbaf86fbb4b89b43614d71cc11b359ad41e7411e8ebda5d3ce4199879bf0",
+          "source_evidence_sha256": "99a861f64e32901c8f9957d22e3ffbb0b05f588f45e73656dcc62261bc685d7b",
+          "source_kind": "user_supplied_historical_screenshot_manifest",
+          "source_locator": "docs/superpowers/reports/full-short-execution-runtime-architecture-redesign-v3-evidence-migration-v1/historical-provider-screenshot-evidence-v1.json"
+        },
+        {
+          "evidence_date": "2026-08-15",
+          "evidence_version": 1,
+          "proved_fields": [
             "reasoning_token_accounting"
           ],
           "provenance_available": true,
@@ -178,17 +228,13 @@
       ]
     },
     {
-      "blocking_reason_codes": [
-        "HISTORICAL_ASSERTION_HAS_NO_ARCHIVED_SOURCE_CONTENT",
-        "EXACT_ROUTE_CONTEXT_WINDOW_EVIDENCE_UNAVAILABLE",
-        "EXACT_ROUTE_MAX_OUTPUT_EVIDENCE_UNAVAILABLE"
-      ],
-      "capability_sha256": "9b948fd8a8ee79d91aac1e0ba48a58088af2a7be7677755f67c5d2927253d225",
-      "capability_status": "UNKNOWN_BLOCKED",
-      "context_window_tokens": null,
+      "blocking_reason_codes": [],
+      "capability_sha256": "9e374efdf391fa0bae32d4adba63515d8ce9f7715d39ab1fb0129510111dff8a",
+      "capability_status": "VERIFIED_HISTORICAL_EVIDENCE",
+      "context_window_tokens": 1000000,
       "destination": "https://api.deepseek.com:443/anthropic/v1/messages",
       "lane": "fallback",
-      "max_output_tokens": null,
+      "max_output_tokens": 384000,
       "model": "deepseek-v4-pro",
       "model_id_sha256": "ffaf088b15c6107032e5450965693c6d9a1e0735a6186e2957463bfa460a8937",
       "operator": "DEEPSEEK_OFFICIAL",
@@ -205,13 +251,24 @@
           "evidence_date": "2026-08-14",
           "evidence_version": 1,
           "proved_fields": [
-            "historical_unarchived_capacity_assertion"
+            "context_window_tokens",
+            "max_output_tokens",
+            "reasoning_token_accounting",
+            "reasoning_output_reservation",
+            "route_fingerprint",
+            "provider",
+            "provider_id_sha256",
+            "operator",
+            "destination",
+            "protocol",
+            "model",
+            "model_id_sha256"
           ],
           "provenance_available": true,
           "route_fingerprint": "04a443a6702fcc95b74906e44b7233c9370cb9b94bbbbadce4bf59c088b68c31",
-          "source_evidence_sha256": "c61f574e7630647e65d033c5fda7169ca9f937caa7749c304cb3de2643651c98",
-          "source_kind": "historical_official_documentation_matrix",
-          "source_locator": "docs/superpowers/reports/c0b-p0-provider-model-evidence-matrix.json"
+          "source_evidence_sha256": "75a45b9bcf3edeefb4130023fff5aae1c0f046e86c32e1723eedf4b17b1fb3ea",
+          "source_kind": "historical_route_exact_composite_assertion",
+          "source_locator": "docs/superpowers/reports/full-short-execution-runtime-architecture-redesign-v3-evidence-migration-v1/route-capability-evidence-assertions-v1.json#/assertions/deepseek_v4_pro_direct"
         },
         {
           "evidence_date": "2026-08-15",
@@ -232,7 +289,7 @@
         "EXACT_ROUTE_CONTEXT_WINDOW_EVIDENCE_UNAVAILABLE",
         "EXACT_ROUTE_MAX_OUTPUT_EVIDENCE_UNAVAILABLE"
       ],
-      "capability_sha256": "2e272da8b61d66eeda61b056f715bcb2c3478477b14c9f062e2cb07e69071f8b",
+      "capability_sha256": "674384aa4f80036c2ab01852213d96eead70c13358d580254f570f2ba20a9ee1",
       "capability_status": "UNKNOWN_BLOCKED",
       "context_window_tokens": null,
       "destination": "https://lingsuan.org:443/v1/messages",
@@ -254,6 +311,19 @@
           "evidence_date": "2026-08-15",
           "evidence_version": 1,
           "proved_fields": [
+            "historical_relay_console_identity",
+            "context_window_tokens"
+          ],
+          "provenance_available": true,
+          "route_fingerprint": "30e9cbaf86fbb4b89b43614d71cc11b359ad41e7411e8ebda5d3ce4199879bf0",
+          "source_evidence_sha256": "99a861f64e32901c8f9957d22e3ffbb0b05f588f45e73656dcc62261bc685d7b",
+          "source_kind": "user_supplied_historical_screenshot_manifest",
+          "source_locator": "docs/superpowers/reports/full-short-execution-runtime-architecture-redesign-v3-evidence-migration-v1/historical-provider-screenshot-evidence-v1.json"
+        },
+        {
+          "evidence_date": "2026-08-15",
+          "evidence_version": 1,
+          "proved_fields": [
             "reasoning_token_accounting"
           ],
           "provenance_available": true,
@@ -265,17 +335,13 @@
       ]
     },
     {
-      "blocking_reason_codes": [
-        "HISTORICAL_ASSERTION_HAS_NO_ARCHIVED_SOURCE_CONTENT",
-        "EXACT_ROUTE_CONTEXT_WINDOW_EVIDENCE_UNAVAILABLE",
-        "EXACT_ROUTE_MAX_OUTPUT_EVIDENCE_UNAVAILABLE"
-      ],
-      "capability_sha256": "dbe917aa8e278d594f5ed84f3246a95b005a21d8a7294f5d5f2b287abffbe4e7",
-      "capability_status": "UNKNOWN_BLOCKED",
-      "context_window_tokens": null,
+      "blocking_reason_codes": [],
+      "capability_sha256": "150f2f88a4c5ca00c3829ae6c3105952066ec8c8adcf95fdcbe6992cdacbb073",
+      "capability_status": "VERIFIED_HISTORICAL_EVIDENCE",
+      "context_window_tokens": 1000000,
       "destination": "https://api.deepseek.com:443/anthropic/v1/messages",
       "lane": "fallback",
-      "max_output_tokens": null,
+      "max_output_tokens": 384000,
       "model": "deepseek-v4-pro",
       "model_id_sha256": "ffaf088b15c6107032e5450965693c6d9a1e0735a6186e2957463bfa460a8937",
       "operator": "DEEPSEEK_OFFICIAL",
@@ -292,13 +358,24 @@
           "evidence_date": "2026-08-14",
           "evidence_version": 1,
           "proved_fields": [
-            "historical_unarchived_capacity_assertion"
+            "context_window_tokens",
+            "max_output_tokens",
+            "reasoning_token_accounting",
+            "reasoning_output_reservation",
+            "route_fingerprint",
+            "provider",
+            "provider_id_sha256",
+            "operator",
+            "destination",
+            "protocol",
+            "model",
+            "model_id_sha256"
           ],
           "provenance_available": true,
           "route_fingerprint": "04a443a6702fcc95b74906e44b7233c9370cb9b94bbbbadce4bf59c088b68c31",
-          "source_evidence_sha256": "c61f574e7630647e65d033c5fda7169ca9f937caa7749c304cb3de2643651c98",
-          "source_kind": "historical_official_documentation_matrix",
-          "source_locator": "docs/superpowers/reports/c0b-p0-provider-model-evidence-matrix.json"
+          "source_evidence_sha256": "75a45b9bcf3edeefb4130023fff5aae1c0f046e86c32e1723eedf4b17b1fb3ea",
+          "source_kind": "historical_route_exact_composite_assertion",
+          "source_locator": "docs/superpowers/reports/full-short-execution-runtime-architecture-redesign-v3-evidence-migration-v1/route-capability-evidence-assertions-v1.json#/assertions/deepseek_v4_pro_direct"
         },
         {
           "evidence_date": "2026-08-15",
@@ -319,7 +396,7 @@
         "EXACT_ROUTE_CONTEXT_WINDOW_EVIDENCE_UNAVAILABLE",
         "EXACT_ROUTE_MAX_OUTPUT_EVIDENCE_UNAVAILABLE"
       ],
-      "capability_sha256": "b51942f1f0a63efa85504b8d1c13e40915f2b8cc97ff0c806f3c961aea0c2495",
+      "capability_sha256": "e88cd593ce11ff572bd83c2bf806f0eef67de32c9b992b0e823fc4bd566fc648",
       "capability_status": "UNKNOWN_BLOCKED",
       "context_window_tokens": null,
       "destination": "https://lingsuan.org:443/v1/messages",
@@ -341,6 +418,19 @@
           "evidence_date": "2026-08-15",
           "evidence_version": 1,
           "proved_fields": [
+            "historical_relay_console_identity",
+            "context_window_tokens"
+          ],
+          "provenance_available": true,
+          "route_fingerprint": "30e9cbaf86fbb4b89b43614d71cc11b359ad41e7411e8ebda5d3ce4199879bf0",
+          "source_evidence_sha256": "99a861f64e32901c8f9957d22e3ffbb0b05f588f45e73656dcc62261bc685d7b",
+          "source_kind": "user_supplied_historical_screenshot_manifest",
+          "source_locator": "docs/superpowers/reports/full-short-execution-runtime-architecture-redesign-v3-evidence-migration-v1/historical-provider-screenshot-evidence-v1.json"
+        },
+        {
+          "evidence_date": "2026-08-15",
+          "evidence_version": 1,
+          "proved_fields": [
             "reasoning_token_accounting"
           ],
           "provenance_available": true,
@@ -356,7 +446,7 @@
         "EXACT_ROUTE_CONTEXT_WINDOW_EVIDENCE_UNAVAILABLE",
         "EXACT_ROUTE_MAX_OUTPUT_EVIDENCE_UNAVAILABLE"
       ],
-      "capability_sha256": "94390d64edc086e7233dec27b47fa09d0f844cb8f3f38793bb24ec06259f01a7",
+      "capability_sha256": "3efc69a18e7fff059ae1d79f6f6c049380bad34829d9cfbfb3c40badf9ce12ff",
       "capability_status": "UNKNOWN_BLOCKED",
       "context_window_tokens": null,
       "destination": "https://happyapi.org:443/v1/messages",
@@ -378,6 +468,20 @@
           "evidence_date": "2026-08-15",
           "evidence_version": 1,
           "proved_fields": [
+            "historical_relay_console_identity",
+            "model",
+            "endpoint_family"
+          ],
+          "provenance_available": true,
+          "route_fingerprint": "66ed2f039f6532193f7fcc0ce3dc459a4e4f53528bb1eda13007ee85e314677f",
+          "source_evidence_sha256": "99a861f64e32901c8f9957d22e3ffbb0b05f588f45e73656dcc62261bc685d7b",
+          "source_kind": "user_supplied_historical_screenshot_manifest",
+          "source_locator": "docs/superpowers/reports/full-short-execution-runtime-architecture-redesign-v3-evidence-migration-v1/historical-provider-screenshot-evidence-v1.json"
+        },
+        {
+          "evidence_date": "2026-08-15",
+          "evidence_version": 1,
+          "proved_fields": [
             "reasoning_token_accounting"
           ],
           "provenance_available": true,
@@ -393,7 +497,7 @@
         "EXACT_ROUTE_CONTEXT_WINDOW_EVIDENCE_UNAVAILABLE",
         "EXACT_ROUTE_MAX_OUTPUT_EVIDENCE_UNAVAILABLE"
       ],
-      "capability_sha256": "a023ecbb6f34bce579543b395ba1593edda175ce4689ad7eaaed821bb18c3a9c",
+      "capability_sha256": "762e82c3ca7834711713471a76a9c1140cdc5b02752502388448d17fcfbb3074",
       "capability_status": "UNKNOWN_BLOCKED",
       "context_window_tokens": null,
       "destination": "https://lingsuan.org:443/v1/messages",
@@ -411,6 +515,19 @@
       "role": "polish",
       "route_fingerprint": "4a9f19e78d8101d0bc82aa664582c775741b59d5d9953c73a5624de03b2a539c",
       "source_evidence": [
+        {
+          "evidence_date": "2026-08-15",
+          "evidence_version": 1,
+          "proved_fields": [
+            "historical_relay_console_identity",
+            "model"
+          ],
+          "provenance_available": true,
+          "route_fingerprint": "4a9f19e78d8101d0bc82aa664582c775741b59d5d9953c73a5624de03b2a539c",
+          "source_evidence_sha256": "99a861f64e32901c8f9957d22e3ffbb0b05f588f45e73656dcc62261bc685d7b",
+          "source_kind": "user_supplied_historical_screenshot_manifest",
+          "source_locator": "docs/superpowers/reports/full-short-execution-runtime-architecture-redesign-v3-evidence-migration-v1/historical-provider-screenshot-evidence-v1.json"
+        },
         {
           "evidence_date": "2026-08-15",
           "evidence_version": 1,
@@ -504,7 +621,7 @@
         "EXACT_ROUTE_CONTEXT_WINDOW_EVIDENCE_UNAVAILABLE",
         "EXACT_ROUTE_MAX_OUTPUT_EVIDENCE_UNAVAILABLE"
       ],
-      "capability_sha256": "fd1f630673f81fd543241f858ceb118c28906bb584166595e059fbcea6d19242",
+      "capability_sha256": "e71a81498bc65c8df42525a018091d524470811ec65b02136f0b203a37bc7798",
       "capability_status": "UNKNOWN_BLOCKED",
       "context_window_tokens": null,
       "destination": "https://lingsuan.org:443/v1/messages",
@@ -526,6 +643,19 @@
           "evidence_date": "2026-08-15",
           "evidence_version": 1,
           "proved_fields": [
+            "historical_relay_console_identity",
+            "context_window_tokens"
+          ],
+          "provenance_available": true,
+          "route_fingerprint": "30e9cbaf86fbb4b89b43614d71cc11b359ad41e7411e8ebda5d3ce4199879bf0",
+          "source_evidence_sha256": "99a861f64e32901c8f9957d22e3ffbb0b05f588f45e73656dcc62261bc685d7b",
+          "source_kind": "user_supplied_historical_screenshot_manifest",
+          "source_locator": "docs/superpowers/reports/full-short-execution-runtime-architecture-redesign-v3-evidence-migration-v1/historical-provider-screenshot-evidence-v1.json"
+        },
+        {
+          "evidence_date": "2026-08-15",
+          "evidence_version": 1,
+          "proved_fields": [
             "reasoning_token_accounting"
           ],
           "provenance_available": true,
@@ -537,17 +667,13 @@
       ]
     },
     {
-      "blocking_reason_codes": [
-        "HISTORICAL_ASSERTION_HAS_NO_ARCHIVED_SOURCE_CONTENT",
-        "EXACT_ROUTE_CONTEXT_WINDOW_EVIDENCE_UNAVAILABLE",
-        "EXACT_ROUTE_MAX_OUTPUT_EVIDENCE_UNAVAILABLE"
-      ],
-      "capability_sha256": "9ccc9735fb4a4623611fb54c585773e5532474195a2afe731b452e0e7d54e781",
-      "capability_status": "UNKNOWN_BLOCKED",
-      "context_window_tokens": null,
+      "blocking_reason_codes": [],
+      "capability_sha256": "ffccf7d96e6d5490284819dd960be178a83cf4cc8c470aada874b038ad5e98e8",
+      "capability_status": "VERIFIED_HISTORICAL_EVIDENCE",
+      "context_window_tokens": 1000000,
       "destination": "https://api.deepseek.com:443/anthropic/v1/messages",
       "lane": "primary",
-      "max_output_tokens": null,
+      "max_output_tokens": 384000,
       "model": "deepseek-v4-pro",
       "model_id_sha256": "ffaf088b15c6107032e5450965693c6d9a1e0735a6186e2957463bfa460a8937",
       "operator": "DEEPSEEK_OFFICIAL",
@@ -564,13 +690,24 @@
           "evidence_date": "2026-08-14",
           "evidence_version": 1,
           "proved_fields": [
-            "historical_unarchived_capacity_assertion"
+            "context_window_tokens",
+            "max_output_tokens",
+            "reasoning_token_accounting",
+            "reasoning_output_reservation",
+            "route_fingerprint",
+            "provider",
+            "provider_id_sha256",
+            "operator",
+            "destination",
+            "protocol",
+            "model",
+            "model_id_sha256"
           ],
           "provenance_available": true,
           "route_fingerprint": "04a443a6702fcc95b74906e44b7233c9370cb9b94bbbbadce4bf59c088b68c31",
-          "source_evidence_sha256": "c61f574e7630647e65d033c5fda7169ca9f937caa7749c304cb3de2643651c98",
-          "source_kind": "historical_official_documentation_matrix",
-          "source_locator": "docs/superpowers/reports/c0b-p0-provider-model-evidence-matrix.json"
+          "source_evidence_sha256": "75a45b9bcf3edeefb4130023fff5aae1c0f046e86c32e1723eedf4b17b1fb3ea",
+          "source_kind": "historical_route_exact_composite_assertion",
+          "source_locator": "docs/superpowers/reports/full-short-execution-runtime-architecture-redesign-v3-evidence-migration-v1/route-capability-evidence-assertions-v1.json#/assertions/deepseek_v4_pro_direct"
         },
         {
           "evidence_date": "2026-08-15",
@@ -591,7 +728,7 @@
   "route_without_capability_record_count": 0,
   "schema": "LiveRouteCapabilityMatrixV1",
   "status": "PARTIAL_REQUIRED_ROUTES_BLOCKED",
-  "unused_unknown_blocked_route_count": 7,
+  "unused_unknown_blocked_route_count": 4,
   "unused_unknown_blocked_routes_allowed": true,
   "version": 1
 }

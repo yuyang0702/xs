@@ -1,6 +1,6 @@
 {
   "completion_receipt_sha256": "10ec9d16af6d38f48903e62f64cb6865be00b1df235c9d0b1d69998899752f9b",
-  "current_source_head": "d086ca9c7cbe297dce42f94c880509c9e594010b",
+  "current_source_head": "11aa5e994dc089869062ca9ea641d62658a57b94",
   "current_source_roles": [
     "planning",
     "draft",
@@ -1266,35 +1266,35 @@
   "project_id_sha256": "a69d9140943781ee24b78ff87d8ef408d29c281c6e993981dc2ef4a8eb82f720",
   "required_routes": [
     {
-      "capability_sha256": "ef43df5c0862a02dc36b75c59ef428efd4e6de3e7211e78ad36839c5b36a5e13",
+      "capability_sha256": "70a73e1958ccc223467f85bd578df1ee6e8950ec1b923cfb7cba5477c18ee3ed",
       "capability_status": "UNKNOWN_BLOCKED",
       "lane": "primary",
       "role": "draft",
       "route_fingerprint": "099e358eae5fd0ff5e3d1b8cda34cd90c73c735c001ed44334ade3e3b667bf4e"
     },
     {
-      "capability_sha256": "e840ffefdbbda7d1fa755011d8f1113f584517f6311553a8d342e33fa263566b",
+      "capability_sha256": "cf887acf9afd28dd225d2fab17c519fa76ffee5b6cd4f24b03393be1cf608fd4",
       "capability_status": "UNKNOWN_BLOCKED",
       "lane": "primary",
       "role": "final_review",
       "route_fingerprint": "30e9cbaf86fbb4b89b43614d71cc11b359ad41e7411e8ebda5d3ce4199879bf0"
     },
     {
-      "capability_sha256": "2e272da8b61d66eeda61b056f715bcb2c3478477b14c9f062e2cb07e69071f8b",
+      "capability_sha256": "674384aa4f80036c2ab01852213d96eead70c13358d580254f570f2ba20a9ee1",
       "capability_status": "UNKNOWN_BLOCKED",
       "lane": "primary",
       "role": "maintenance",
       "route_fingerprint": "30e9cbaf86fbb4b89b43614d71cc11b359ad41e7411e8ebda5d3ce4199879bf0"
     },
     {
-      "capability_sha256": "b51942f1f0a63efa85504b8d1c13e40915f2b8cc97ff0c806f3c961aea0c2495",
+      "capability_sha256": "e88cd593ce11ff572bd83c2bf806f0eef67de32c9b992b0e823fc4bd566fc648",
       "capability_status": "UNKNOWN_BLOCKED",
       "lane": "primary",
       "role": "planning",
       "route_fingerprint": "30e9cbaf86fbb4b89b43614d71cc11b359ad41e7411e8ebda5d3ce4199879bf0"
     },
     {
-      "capability_sha256": "a023ecbb6f34bce579543b395ba1593edda175ce4689ad7eaaed821bb18c3a9c",
+      "capability_sha256": "762e82c3ca7834711713471a76a9c1140cdc5b02752502388448d17fcfbb3074",
       "capability_status": "UNKNOWN_BLOCKED",
       "lane": "primary",
       "role": "polish",
@@ -1308,8 +1308,8 @@
       "route_fingerprint": "026d0b3206ad50c89b4eca81b4730ebfa3370815cac98078149c6438e705bfe1"
     },
     {
-      "capability_sha256": "9ccc9735fb4a4623611fb54c585773e5532474195a2afe731b452e0e7d54e781",
-      "capability_status": "UNKNOWN_BLOCKED",
+      "capability_sha256": "ffccf7d96e6d5490284819dd960be178a83cf4cc8c470aada874b038ad5e98e8",
+      "capability_status": "VERIFIED_HISTORICAL_EVIDENCE",
       "lane": "primary",
       "role": "review",
       "route_fingerprint": "04a443a6702fcc95b74906e44b7233c9370cb9b94bbbbadce4bf59c088b68c31"
@@ -1330,19 +1330,19 @@
       "route_fingerprint": "eb1676db66669efb33b72997a2c4b59e44b786e505b693f5aac88097e4454fee"
     },
     {
-      "capability_status": "UNKNOWN_BLOCKED",
+      "capability_status": "VERIFIED_HISTORICAL_EVIDENCE",
       "lane": "fallback",
       "role": "final_review",
       "route_fingerprint": "04a443a6702fcc95b74906e44b7233c9370cb9b94bbbbadce4bf59c088b68c31"
     },
     {
-      "capability_status": "UNKNOWN_BLOCKED",
+      "capability_status": "VERIFIED_HISTORICAL_EVIDENCE",
       "lane": "fallback",
       "role": "maintenance",
       "route_fingerprint": "04a443a6702fcc95b74906e44b7233c9370cb9b94bbbbadce4bf59c088b68c31"
     },
     {
-      "capability_status": "UNKNOWN_BLOCKED",
+      "capability_status": "VERIFIED_HISTORICAL_EVIDENCE",
       "lane": "fallback",
       "role": "planning",
       "route_fingerprint": "04a443a6702fcc95b74906e44b7233c9370cb9b94bbbbadce4bf59c088b68c31"

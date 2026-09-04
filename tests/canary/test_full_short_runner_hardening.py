@@ -1834,14 +1834,111 @@ def test_v3_historical_value_classification_and_external_stop_loss_contract() ->
     records = materializer._historical_value_records(Path.cwd())
 
     assert len(records) == 9
-    assert {item["classification_code"] for item in records} == {"B"}
-    assert not any(item["eligible_for_verified_registry"] for item in records)
+    assert {item["classification_code"] for item in records} == {"A", "B"}
+    verified = [
+        item for item in records if item["classification_code"] == "A"
+    ]
+    assert {
+        (item["capability_field"], item["value"])
+        for item in verified
+    } == {
+        ("context_window_tokens", 1_000_000),
+        ("max_output_tokens", 384_000),
+    }
+    assert all(
+        item["eligible_for_verified_registry"]
+        and item["provenance_available"]
+        and item["route_fingerprint"]
+        == materializer.DEEPSEEK_ROUTE_FINGERPRINT
+        for item in verified
+    )
     claim = next(item for item in records if item["value"] == 372_000)
     assert claim["classification"] == "HISTORICAL_BUT_UNPROVEN"
     assert claim["original_source_path"].endswith(
-        "c0b-p1-bounded-unknown-capability-matrix-v1.json"
+        "historical-provider-screenshot-evidence-v1.json"
     )
-    assert claim["provenance_available"] is False
+    assert claim["provenance_available"] is True
+    assert claim["eligible_for_verified_registry"] is False
+
+
+def test_v3_registry_promotes_only_route_exact_complete_historical_evidence() -> None:
+    from tools.diagnostics import (
+        materialize_full_short_runtime_architecture_redesign_v3 as materializer,
+    )
+
+    registry = materializer.build_registry(Path.cwd())
+    verified = [
+        item for item in registry.records
+        if item.capability_status is CapabilityStatus.VERIFIED_HISTORICAL_EVIDENCE
+    ]
+
+    assert {
+        (item.role, item.lane) for item in verified
+    } == {
+        ("planning", "fallback"),
+        ("review", "primary"),
+        ("final_review", "fallback"),
+        ("maintenance", "fallback"),
+    }
+    assert all(
+        item.route_fingerprint == materializer.DEEPSEEK_ROUTE_FINGERPRINT
+        and item.context_window_tokens == 1_000_000
+        and item.max_output_tokens == 384_000
+        for item in verified
+    )
+    required_unknown = registry.unknown_required_count(
+        (role, "primary") for role in materializer.ROLES
+    )
+    assert required_unknown == 6
+    lingsuan = registry.require_record(role="planning", lane="primary")
+    assert lingsuan.capability_status is CapabilityStatus.UNKNOWN_BLOCKED
+    assert lingsuan.context_window_tokens is None
+    assert lingsuan.max_output_tokens is None
+    assert any(
+        "context_window_tokens" in evidence.proved_fields
+        and evidence.source_kind
+        == "user_supplied_historical_screenshot_manifest"
+        for evidence in lingsuan.source_evidence
+    )
+
+
+def test_v3_historical_screenshot_manifest_is_hash_bound_and_non_inferential() -> None:
+    evidence_root = (
+        Path.cwd()
+        / "docs"
+        / "superpowers"
+        / "reports"
+        / "full-short-execution-runtime-architecture-redesign-v3-evidence-migration-v1"
+    )
+    manifest = json.loads(
+        (evidence_root / "historical-provider-screenshot-evidence-v1.json")
+        .read_text(encoding="utf-8")
+    )
+
+    assert manifest["source_bundle_sha256"] == (
+        "84dbd766cf3b700c2b9b16f98012988d59f7a8afdfd9de2b4723f7da4a9ed4f4"
+    )
+    assert manifest["source_bundle_entry_count"] == 15
+    assert len(manifest["entries"]) == 15
+    for crop in manifest["privacy_safe_crops"]:
+        crop_path = evidence_root / crop["path"]
+        assert crop_path.is_file()
+        assert hashlib.sha256(crop_path.read_bytes()).hexdigest() == crop["sha256"]
+
+    gpt_claim = next(
+        item for item in manifest["observations"]
+        if item["provider"] == "lingsuan_gpt"
+        and item["model"] == "gpt-5.6-sol"
+    )
+    assert gpt_claim["context_window_tokens"] == 372_000
+    assert gpt_claim["max_output_tokens"] is None
+    assert gpt_claim["disposition"] == "PARTIAL_ONLY_UNKNOWN_BLOCKED"
+    assert all(
+        item["disposition"].endswith("UNKNOWN_BLOCKED")
+        for item in manifest["observations"]
+    )
+    assert manifest["numeric_capacity_values_not_visible_are_not_inferred"] is True
+    assert set(manifest["external_boundary"].values()) == {0}
 
 
 def test_v3_historical_capacity_parser_uses_nearest_unambiguous_field() -> None:

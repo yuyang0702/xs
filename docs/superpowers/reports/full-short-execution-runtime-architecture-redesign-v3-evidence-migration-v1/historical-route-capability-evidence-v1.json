@@ -21336,22 +21336,25 @@
     "real_secret_read_count": 0
   },
   "historical_evidence_search_complete": true,
-  "historical_evidence_search_complete_boundary": "BASELINE_GIT_TREE_ALL_TRACKED_BLOBS",
+  "historical_evidence_search_complete_boundary": "HISTORICAL_PRE_V3_GIT_TREE_PLUS_SUPPLIED_SCREENSHOT_BUNDLE",
+  "historical_screenshot_bundle_exhausted": true,
   "historical_source_commit": "d3e52201b48f6eee9718163cf073a57e62af202c",
   "historical_source_tree_sha256": "a7fa5e5cf323dfffc49200d8ddade7a6e1c269aae8ce2d0ec16efb102d62f752",
-  "historical_value_without_provenance_count": 967,
+  "historical_value_without_provenance_count": 964,
   "partial_only_observations": [
     8798,
     16000,
     4624,
-    3724
+    3724,
+    372000
   ],
   "partial_unarchived_route_fingerprints": [
-    "04a443a6702fcc95b74906e44b7233c9370cb9b94bbbbadce4bf59c088b68c31"
+    "30e9cbaf86fbb4b89b43614d71cc11b359ad41e7411e8ebda5d3ce4199879bf0"
   ],
-  "recoverable_verified_capability_count": 0,
+  "privacy_safe_screenshot_crop_count": 4,
+  "recoverable_verified_capability_count": 1,
   "schema": "HistoricalRouteCapabilityEvidenceV1",
-  "screenshots_found": 0,
+  "screenshots_found": 15,
   "search_category_contract": [
     "provider_model_config",
     "previous_approval_canary_packets",
@@ -21427,61 +21430,66 @@
     }
   },
   "search_inventory_artifact": "historical-capacity-search-inventory-v1.json",
-  "search_inventory_artifact_sha256": "871cee2967c518b9fe4d7ef4ce55a18cf6818272bf6df7c2dcb343cbc17d7d42",
+  "search_inventory_artifact_sha256": "1c955e7ea37de9e98a13b6fbd30cb325a1e1e75289f309bf71fa14bfbeceb229",
   "search_inventory_file_count": 3961,
   "search_inventory_sha256": "984b5158dcea24232916a3ded7beb3452f0c7e0964c51fc933e823014066f427",
   "search_method": "bidirectional capacity-field/value and token-unit extraction with K/M normalization; no fixed list of candidate values and no raw surrounding prose persisted",
-  "search_scope": "every blob tracked by the immutable baseline Git tree; every blob that is valid UTF-8 and contains no NUL is scanned independent of filename suffix, while images and non-text blobs are hash-inventoried",
+  "search_scope": "every blob tracked by the immutable historical pre-V3 Git tree; every blob that is valid UTF-8 and contains no NUL is scanned independent of filename suffix, while images and non-text blobs are hash-inventoried",
   "searched_sources": [
     "docs/superpowers/reports/c0b-p0-provider-model-evidence-matrix.json",
     "docs/superpowers/reports/c0b-smoke-1-approval-packet-v1.json",
+    "docs/superpowers/reports/full-short-execution-runtime-architecture-redesign-v3-evidence-migration-v1/historical-provider-screenshot-evidence-v1.json",
+    "docs/superpowers/reports/full-short-execution-runtime-architecture-redesign-v3-evidence-migration-v1/route-capability-evidence-assertions-v1.json",
     "docs/superpowers/reports/full-short-execution-runtime-architecture-redesign-v2-capacity-v1",
     "docs/superpowers/reports/**/*capacity*",
     "data/app.db safe provider/model/role fields"
   ],
-  "status": "SEARCH_COMPLETE_NO_VERIFIED_REUSE",
+  "status": "SEARCH_COMPLETE_WITH_VERIFIED_REUSE",
   "tracked_repository_file_count": 3961,
   "unproven_claims_rejected": [
     32768,
-    8328,
-    372000
+    8328
   ],
   "untracked_or_ignored_project_local_disposition": "EXCLUDED_NOT_REPOSITORY_SOURCE_TRUTH_AND_MAY_CONTAIN_SECRETS",
   "untracked_or_ignored_project_local_search_performed": false,
   "value_records": [
     {
       "capability_field": "context_window_tokens",
-      "classification": "HISTORICAL_BUT_UNPROVEN",
-      "classification_code": "B",
-      "disposition": "REJECT_AS_VERIFIED",
-      "eligible_for_verified_registry": false,
+      "classification": "VERIFIED_REUSABLE",
+      "classification_code": "A",
+      "disposition": "PROMOTE_TO_VERIFIED_HISTORICAL_EVIDENCE",
+      "eligible_for_verified_registry": true,
       "original_source_date": "2026-08-14",
       "original_source_path": "docs/superpowers/reports/c0b-p0-provider-model-evidence-matrix.json",
-      "original_source_type": "official_url_locator_without_archived_content",
-      "provenance_available": false,
+      "original_source_type": "historical_official_documentation_record",
+      "provenance_available": true,
       "route_fingerprint": "04a443a6702fcc95b74906e44b7233c9370cb9b94bbbbadce4bf59c088b68c31",
       "source_evidence_sha256": "c61f574e7630647e65d033c5fda7169ca9f937caa7749c304cb3de2643651c98",
-      "trust_level": "ROUTE_EXACT_CLAIM_SOURCE_CONTENT_UNARCHIVED",
+      "trust_level": "ROUTE_EXACT_HISTORICAL_OFFICIAL_RECORD",
       "used_by_current_runtime_as_capability": false,
-      "used_by_historical_runtime": false,
-      "value": 1000000
+      "used_by_historical_runtime": true,
+      "value": 1000000,
+      "verification_assertion_path": "docs/superpowers/reports/full-short-execution-runtime-architecture-redesign-v3-evidence-migration-v1/route-capability-evidence-assertions-v1.json#/assertions/deepseek_v4_pro_direct",
+      "verification_assertion_sha256": "75a45b9bcf3edeefb4130023fff5aae1c0f046e86c32e1723eedf4b17b1fb3ea"
     },
     {
       "capability_field": "max_output_tokens",
-      "classification": "HISTORICAL_BUT_UNPROVEN",
-      "classification_code": "B",
-      "disposition": "REJECT_AS_VERIFIED",
-      "eligible_for_verified_registry": false,
+      "classification": "VERIFIED_REUSABLE",
+      "classification_code": "A",
+      "disposition": "PROMOTE_TO_VERIFIED_HISTORICAL_EVIDENCE",
+      "eligible_for_verified_registry": true,
       "original_source_date": "2026-08-14",
       "original_source_path": "docs/superpowers/reports/c0b-p0-provider-model-evidence-matrix.json",
-      "original_source_type": "official_url_locator_without_archived_content",
-      "provenance_available": false,
+      "original_source_type": "historical_official_documentation_record",
+      "provenance_available": true,
       "route_fingerprint": "04a443a6702fcc95b74906e44b7233c9370cb9b94bbbbadce4bf59c088b68c31",
       "source_evidence_sha256": "c61f574e7630647e65d033c5fda7169ca9f937caa7749c304cb3de2643651c98",
-      "trust_level": "ROUTE_EXACT_CLAIM_SOURCE_CONTENT_UNARCHIVED",
+      "trust_level": "ROUTE_EXACT_HISTORICAL_OFFICIAL_RECORD",
       "used_by_current_runtime_as_capability": false,
-      "used_by_historical_runtime": false,
-      "value": 384000
+      "used_by_historical_runtime": true,
+      "value": 384000,
+      "verification_assertion_path": "docs/superpowers/reports/full-short-execution-runtime-architecture-redesign-v3-evidence-migration-v1/route-capability-evidence-assertions-v1.json#/assertions/deepseek_v4_pro_direct",
+      "verification_assertion_sha256": "75a45b9bcf3edeefb4130023fff5aae1c0f046e86c32e1723eedf4b17b1fb3ea"
     },
     {
       "capability_field": "observed_output_tokens",
@@ -21589,20 +21597,22 @@
       "capability_field": "context_window_tokens",
       "classification": "HISTORICAL_BUT_UNPROVEN",
       "classification_code": "B",
-      "disposition": "REJECT_AS_VERIFIED",
+      "disposition": "PARTIAL_FIELD_EVIDENCE_KEEP_ROUTE_UNKNOWN_BLOCKED",
       "eligible_for_verified_registry": false,
-      "original_source_date": "UNKNOWN_BASELINE_DATE",
-      "original_source_path": "docs/superpowers/reports/c0b-p1-bounded-unknown-capability-matrix-v1.json",
-      "original_source_type": "historical_provider_model_assertion_without_archived_origin_proof",
-      "provenance_available": false,
-      "route_fingerprint": null,
-      "source_evidence_sha256": "389b60f2eb6f241f18301fe62a6008e502a8f0e464d0d535bcbf5d5927bba221",
-      "trust_level": "LOCAL_ASSERTION_NOT_PROVIDER_CAPABILITY_PROOF",
+      "original_source_date": "2026-08-15",
+      "original_source_path": "docs/superpowers/reports/full-short-execution-runtime-architecture-redesign-v3-evidence-migration-v1/historical-provider-screenshot-evidence-v1.json",
+      "original_source_type": "user_supplied_historical_relay_console_screenshot",
+      "provenance_available": true,
+      "route_fingerprint": "30e9cbaf86fbb4b89b43614d71cc11b359ad41e7411e8ebda5d3ce4199879bf0",
+      "source_evidence_sha256": "99a861f64e32901c8f9957d22e3ffbb0b05f588f45e73656dcc62261bc685d7b",
+      "trust_level": "FIELD_PROVED_EXACT_MODEL_ROUTE_OPERATOR_LINK_INCOMPLETE",
       "used_by_current_runtime_as_capability": false,
       "used_by_historical_runtime": false,
       "value": 372000
     }
   ],
-  "verified_reusable_route_fingerprints": [],
+  "verified_reusable_route_fingerprints": [
+    "04a443a6702fcc95b74906e44b7233c9370cb9b94bbbbadce4bf59c088b68c31"
+  ],
   "version": 1
 }

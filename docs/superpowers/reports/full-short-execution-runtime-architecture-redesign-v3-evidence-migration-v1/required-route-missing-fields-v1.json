@@ -1,0 +1,133 @@
+{
+  "exact_ready_unknown_required_record_count": 6,
+  "exact_ready_unknown_required_unique_route_count": 4,
+  "external_boundary": {
+    "full_short_execution_count": 0,
+    "http_calls": 0,
+    "http_post_attempts": 0,
+    "model_calls": 0,
+    "network_calls": 0,
+    "paid_calls": 0,
+    "real_credential_lookup_count": 0,
+    "real_full_short_runs": 0,
+    "real_provider_client_creation_count": 0,
+    "real_provider_request_attempts": 0,
+    "real_secret_read_count": 0
+  },
+  "historical_repository_search_exhausted": true,
+  "live_or_paid_probe_performed": false,
+  "public_documentation_lookup_disallowed_by_current_authorization": true,
+  "public_documentation_lookup_performed": false,
+  "records": [
+    {
+      "destination": "https://happyapi.org:443/v1/messages",
+      "lane": "primary",
+      "missing_fields": [
+        "context_window_tokens",
+        "max_output_tokens"
+      ],
+      "model": "qwen-3.7-plus",
+      "operator": "THIRD_PARTY_RELAY_UNVERIFIED_UPSTREAM",
+      "protocol": "anthropic",
+      "provider": "happy",
+      "recovered_but_not_promoted": {
+        "reason": "The Happy screenshot proves qwen-3.7-plus identity and pricing, not capacity. Its visible endpoint example is cn.happyapi.org/v1/chat/completions rather than the exact configured happyapi.org/v1/messages route."
+      },
+      "role": "draft",
+      "route_fingerprint": "099e358eae5fd0ff5e3d1b8cda34cd90c73c735c001ed44334ade3e3b667bf4e"
+    },
+    {
+      "destination": "https://lingsuan.org:443/v1/messages",
+      "lane": "primary",
+      "missing_fields": [
+        "max_output_tokens",
+        "relay_console_to_exact_destination_identity_proof"
+      ],
+      "model": "gpt-5.6-sol",
+      "operator": "THIRD_PARTY_RELAY_UNVERIFIED_UPSTREAM",
+      "protocol": "anthropic",
+      "provider": "lingsuan_gpt",
+      "recovered_but_not_promoted": {
+        "context_window_tokens": 372000,
+        "reason": "The supplied lingsuan.top relay-console screenshot visibly states 372K for gpt-5.6-sol, but no maximum output is shown and the console-to-lingsuan.org API operator link is not independently archived."
+      },
+      "role": "final_review",
+      "route_fingerprint": "30e9cbaf86fbb4b89b43614d71cc11b359ad41e7411e8ebda5d3ce4199879bf0"
+    },
+    {
+      "destination": "https://lingsuan.org:443/v1/messages",
+      "lane": "primary",
+      "missing_fields": [
+        "max_output_tokens",
+        "relay_console_to_exact_destination_identity_proof"
+      ],
+      "model": "gpt-5.6-sol",
+      "operator": "THIRD_PARTY_RELAY_UNVERIFIED_UPSTREAM",
+      "protocol": "anthropic",
+      "provider": "lingsuan_gpt",
+      "recovered_but_not_promoted": {
+        "context_window_tokens": 372000,
+        "reason": "The supplied lingsuan.top relay-console screenshot visibly states 372K for gpt-5.6-sol, but no maximum output is shown and the console-to-lingsuan.org API operator link is not independently archived."
+      },
+      "role": "maintenance",
+      "route_fingerprint": "30e9cbaf86fbb4b89b43614d71cc11b359ad41e7411e8ebda5d3ce4199879bf0"
+    },
+    {
+      "destination": "https://lingsuan.org:443/v1/messages",
+      "lane": "primary",
+      "missing_fields": [
+        "max_output_tokens",
+        "relay_console_to_exact_destination_identity_proof"
+      ],
+      "model": "gpt-5.6-sol",
+      "operator": "THIRD_PARTY_RELAY_UNVERIFIED_UPSTREAM",
+      "protocol": "anthropic",
+      "provider": "lingsuan_gpt",
+      "recovered_but_not_promoted": {
+        "context_window_tokens": 372000,
+        "reason": "The supplied lingsuan.top relay-console screenshot visibly states 372K for gpt-5.6-sol, but no maximum output is shown and the console-to-lingsuan.org API operator link is not independently archived."
+      },
+      "role": "planning",
+      "route_fingerprint": "30e9cbaf86fbb4b89b43614d71cc11b359ad41e7411e8ebda5d3ce4199879bf0"
+    },
+    {
+      "destination": "https://lingsuan.org:443/v1/messages",
+      "lane": "primary",
+      "missing_fields": [
+        "context_window_tokens",
+        "max_output_tokens",
+        "relay_console_to_exact_destination_identity_proof"
+      ],
+      "model": "claude-sonnet-5",
+      "operator": "THIRD_PARTY_RELAY_UNVERIFIED_UPSTREAM",
+      "protocol": "anthropic",
+      "provider": "lingsuan_sonnet",
+      "recovered_but_not_promoted": {
+        "reason": "The LingSuan screenshot proves claude-sonnet-5 relay catalog identity and pricing only."
+      },
+      "role": "polish",
+      "route_fingerprint": "4a9f19e78d8101d0bc82aa664582c775741b59d5d9953c73a5624de03b2a539c"
+    },
+    {
+      "destination": "https://ark.cn-beijing.volces.com:443/api/v3/responses",
+      "lane": "primary",
+      "missing_fields": [
+        "context_window_tokens",
+        "max_output_tokens"
+      ],
+      "model": "doubao-seed-character-260628",
+      "operator": "VOLCENGINE_ARK_DIRECT",
+      "protocol": "openai-responses",
+      "provider": "doubao",
+      "recovered_but_not_promoted": {
+        "reason": "No screenshot in the supplied bundle displays the exact doubao-seed-character-260628 capacity values. Historical price and successful-dispatch records are not maxima."
+      },
+      "role": "reader_review",
+      "route_fingerprint": "026d0b3206ad50c89b4eca81b4730ebfa3370815cac98078149c6438e705bfe1"
+    }
+  ],
+  "schema": "ExactReadyRequiredRouteMissingFieldsV1",
+  "status": "HISTORICAL_SOURCE_EXHAUSTED_UNKNOWN_BLOCKED",
+  "user_supplied_screenshot_bundle_exhausted": true,
+  "version": 1
+}

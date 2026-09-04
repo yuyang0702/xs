@@ -2,9 +2,9 @@
   "completed_stage_count": 95,
   "completion_goal_outcome": "SHORT_WORKFLOW_COMPLETED_AND_FINAL_REVIEW_ACCEPTED",
   "completion_receipt_sha256": "10ec9d16af6d38f48903e62f64cb6865be00b1df235c9d0b1d69998899752f9b",
-  "current_head": "d086ca9c7cbe297dce42f94c880509c9e594010b",
+  "current_head": "11aa5e994dc089869062ca9ea641d62658a57b94",
   "deterministic_replay": true,
-  "exact_ready_unknown_required_route_count": 7,
+  "exact_ready_unknown_required_route_count": 6,
   "external_boundary": {
     "full_short_execution_count": 0,
     "http_calls": 0,

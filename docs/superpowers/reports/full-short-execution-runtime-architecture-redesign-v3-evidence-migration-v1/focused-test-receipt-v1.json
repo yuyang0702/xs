@@ -1,22 +1,33 @@
 {
-  "command": ".venv\\Scripts\\python.exe -m pytest -q tests/canary/test_full_short_runner_hardening.py -k \"v3_historical or v3_materializer_writes\"",
+  "schema": "FullShortRuntimeCapacityV3VerificationReceiptV1",
+  "version": 1,
+  "status": "PASS",
+  "implementation_head": "11aa5e994dc089869062ca9ea641d62658a57b94",
+  "commands": [
+    {
+      "command": ".venv\\Scripts\\python.exe -X utf8 -m pytest -q tests/test_route_capabilities.py tests/test_stage_capacity.py tests/quality/test_full_short_capacity_fault_campaign_v3.py",
+      "result": "83 passed in 15.51s"
+    },
+    {
+      "command": ".venv\\Scripts\\python.exe -X utf8 -m pytest -q tests/canary/test_full_short_runner_hardening.py -k 'v3_historical or v3_registry_promotes or historical_screenshot_manifest or authorization_stops_before_plan_discovery or unknown_unused_fallback'",
+      "result": "8 passed, 65 deselected in 4.88s"
+    },
+    {
+      "command": ".venv\\Scripts\\python.exe -X utf8 -m pytest -q tests/test_route_capabilities.py tests/test_stage_capacity.py tests/quality/test_full_short_capacity_fault_campaign_v3.py tests/canary/test_full_short_runner_hardening.py -k 'v3_historical or v3_registry_promotes or historical_screenshot_manifest or route_capabilit or stage_capacity or capacity_fault_campaign_v3 or authorization_stops_before_plan_discovery'",
+      "result": "91 passed, 65 deselected in 15.61s"
+    }
+  ],
   "external_boundary": {
-    "full_short_execution_count": 0,
-    "http_calls": 0,
-    "http_post_attempts": 0,
-    "model_calls": 0,
-    "network_calls": 0,
-    "paid_calls": 0,
     "real_credential_lookup_count": 0,
-    "real_full_short_runs": 0,
+    "real_secret_read_count": 0,
     "real_provider_client_creation_count": 0,
     "real_provider_request_attempts": 0,
-    "real_secret_read_count": 0
-  },
-  "implementation_head": "d086ca9c7cbe297dce42f94c880509c9e594010b",
-  "schema": "FullShortRuntimeCapacityV3VerificationReceiptV1",
-  "failed": 0,
-  "passed": 5,
-  "status": "PASS",
-  "version": 1
+    "http_post_attempts": 0,
+    "http_calls": 0,
+    "network_calls": 0,
+    "model_calls": 0,
+    "paid_calls": 0,
+    "full_short_execution_count": 0,
+    "real_full_short_runs": 0
+  }
 }

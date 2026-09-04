@@ -1,0 +1,53 @@
+{
+  "schema": "FullShortRuntimeCapacityV3ChangeContractV1",
+  "version": 1,
+  "risk_level": "L3",
+  "scope_classification": "closed_world",
+  "authorization": "implementation",
+  "requested_outcome": "Reuse the supplied historical screenshots and repository evidence to migrate only source-proven exact-route capacity into the registry and re-evaluate Exact READY readiness without any external action.",
+  "operational_definition": "A route is VERIFIED only when content-addressed evidence proves its exact provider, operator, destination, protocol, model, route fingerprint, context window, maximum output and reasoning semantics. All fourteen routes retain records; an unused unknown route does not block Exact READY.",
+  "forbidden_narrowing": [
+    "do not infer relay capability from an upstream model name",
+    "do not treat price, parameter availability or a successful request size as a provider maximum",
+    "do not require unused routes to become VERIFIED",
+    "do not replace existing Runtime architecture without source-grounded cause"
+  ],
+  "allowed_changes": [
+    "historical evidence intake and classification",
+    "route capability registry records whose full proof obligation is met",
+    "derived Exact READY, size-matrix, test and stop-loss evidence"
+  ],
+  "protected_unchanged_behavior": [
+    "all forty-six commits inherited from the revised baseline",
+    "Runtime Kernel, source-exit binding, authority and recovery semantics",
+    "StoryState, Canon and all manuscript data",
+    "provider/model bindings and fallback policy",
+    "no credentials, provider clients, HTTP, network, model, paid or real Full Short calls"
+  ],
+  "authority_impact": {
+    "formal_manuscript": "not involved",
+    "candidate_and_best": "not involved",
+    "story_state_and_locked_facts": "not involved",
+    "provider_model_bindings": "read-only",
+    "route_capability_registry": "changed",
+    "runtime_kernel_and_attempt_identity": "revalidated",
+    "credentials_and_private_sources": "hash-only or privacy-safe derived evidence"
+  },
+  "selected_approach": "Preserve the current registry architecture, add content-addressed historical screenshot observations, promote only exact-route complete evidence, rematerialize derived evidence, then run focused, related, full-suite and strict L3 gates.",
+  "rejected_alternatives": [
+    "live or paid capability probes",
+    "official-upstream inheritance for third-party relays",
+    "using 32768 stage policy or historical request caps as provider maxima",
+    "rewriting the Runtime Kernel"
+  ],
+  "rollback_path": "Revert only the revised-baseline evidence/capability commit; the 11aa5e9 baseline and its forty-six inherited commits remain intact.",
+  "focused_tests": [
+    "tests/test_route_capabilities.py",
+    "tests/test_stage_capacity.py",
+    "tests/quality/test_full_short_capacity_fault_campaign_v3.py"
+  ],
+  "related_tests": "V1/V2/V3 Runtime, provider protocol, Exact READY offline runner, size matrix and evidence materializer tests",
+  "full_suite_requirement": "pytest -q with NOVEL_FLYWHEEL_EXTERNAL_ACTIONS_DISABLED=1",
+  "resolution_status": "unresolved",
+  "unresolved_user_decisions": []
+}

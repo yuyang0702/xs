@@ -1,0 +1,38 @@
+{
+  "schema": "FullShortRuntimeCapacityV3BaselineSkillHybridInvisibilityV1",
+  "version": 1,
+  "status": "PASS",
+  "start_head": "11aa5e994dc089869062ca9ea641d62658a57b94",
+  "source_diff_from_start_head": [],
+  "baseline_skill_identity": {
+    "path": "src/novel_flywheel/runtime_skill_profiles.py",
+    "sha256": "10b7a45ada60e9b699d020e0ebf076ae20dad151afcb624c51a2bc3c3fae9f96",
+    "changed": false
+  },
+  "hybrid_invisibility": {
+    "path": "src/novel_flywheel/hybrid_skill_context.py",
+    "sha256": "07ef225e4903c4f4ce561f3afe1447f27e1aea484d904efe4d902bca7ab6e198",
+    "changed": false,
+    "hybrid_leak_count": 0
+  },
+  "verification": {
+    "command": ".venv\\Scripts\\python.exe -X utf8 -m pytest -q tests/test_runtime_skill_profiles.py tests/test_hybrid_skill_context.py",
+    "result": "66 passed in 9.83s",
+    "runtime_skill_profile_test_sha256": "8ce9a0450ecf8981f4e557bb97ba281e557924b9f5e721df1486ab84573b7df2",
+    "hybrid_skill_context_test_sha256": "24ec43dc19873b6834344cbf6a21851d3257f0d984b967176fe6a3b2843d5915"
+  },
+  "model_visible_architecture_changed": false,
+  "external_boundary": {
+    "real_credential_lookup_count": 0,
+    "real_secret_read_count": 0,
+    "real_provider_client_creation_count": 0,
+    "real_provider_request_attempts": 0,
+    "http_post_attempts": 0,
+    "http_calls": 0,
+    "network_calls": 0,
+    "model_calls": 0,
+    "paid_calls": 0,
+    "full_short_execution_count": 0,
+    "real_full_short_runs": 0
+  }
+}

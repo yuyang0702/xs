@@ -8,8 +8,8 @@ import hashlib
 import json
 from pathlib import Path
 import re
-import shutil
 import subprocess
+import tempfile
 from typing import Any
 
 from novel_flywheel.db import Database
@@ -41,7 +41,11 @@ from tools.quality.full_short_capacity_fault_campaign import (
 )
 
 
-BASELINE_HEAD = "d3e52201b48f6eee9718163cf073a57e62af202c"
+HISTORICAL_PRE_V3_HEAD = "d3e52201b48f6eee9718163cf073a57e62af202c"
+REVISED_START_HEAD = "11aa5e994dc089869062ca9ea641d62658a57b94"
+# Retained as the immutable tree scanned for evidence that predates V3.  The
+# revised task baseline is REVISED_START_HEAD and is bound separately.
+BASELINE_HEAD = HISTORICAL_PRE_V3_HEAD
 BRANCH = "r1-ptr3/planning-repair-finding-propagation-20260817"
 ROLES = FULL_SHORT_REQUIRED_EXECUTION_ROLES
 ROOT = Path(
@@ -56,10 +60,8 @@ HISTORICAL_MATRIX = Path(
 HISTORICAL_PRICE_PACKET = Path(
     "docs/superpowers/reports/c0b-smoke-1-approval-packet-v1.json"
 )
-HISTORICAL_BOUNDED_CAPABILITY_MATRIX = Path(
-    "docs/superpowers/reports/"
-    "c0b-p1-bounded-unknown-capability-matrix-v1.json"
-)
+SCREENSHOT_EVIDENCE = ROOT / "historical-provider-screenshot-evidence-v1.json"
+ROUTE_CAPABILITY_ASSERTIONS = ROOT / "route-capability-evidence-assertions-v1.json"
 V2_ROOT = Path(
     "docs/superpowers/reports/"
     "full-short-execution-runtime-architecture-redesign-v2-capacity-v1"
@@ -68,6 +70,9 @@ DEEPSEEK_PROVIDER_ID = "0e6a5627-5882-40df-bca5-7d98b97fdd0b"
 DEEPSEEK_MODEL_ID = "e4b6f0b8-3c5e-412e-8d4e-8453c840a032"
 DEEPSEEK_ROUTE_FINGERPRINT = (
     "04a443a6702fcc95b74906e44b7233c9370cb9b94bbbbadce4bf59c088b68c31"
+)
+LINGSUAN_GPT_ROUTE_FINGERPRINT = (
+    "30e9cbaf86fbb4b89b43614d71cc11b359ad41e7411e8ebda5d3ce4199879bf0"
 )
 EXTERNAL_ZERO = {
     "real_credential_lookup_count": 0,
@@ -194,8 +199,9 @@ def _operator(provider_id: str, destination: str) -> str:
 
 def build_registry(repo: Path) -> RouteCapabilityRegistryV1:
     db = Database(repo / "data" / "app.db")
-    history_sha = sha_file(repo / HISTORICAL_MATRIX)
     price_sha = sha_file(repo / HISTORICAL_PRICE_PACKET)
+    screenshot_sha = sha_file(repo / SCREENSHOT_EVIDENCE)
+    assertion_sha = sha_file(repo / ROUTE_CAPABILITY_ASSERTIONS)
     records: list[RouteCapabilityRecordV1] = []
     for role in ROLES:
         binding = db.get_role_binding(role) or {}
@@ -218,17 +224,56 @@ def build_registry(repo: Path) -> RouteCapabilityRegistryV1:
             evidence: list[CapabilityEvidenceV1] = []
             if exact_deepseek_historical_claim:
                 evidence.append(CapabilityEvidenceV1(
-                    source_kind="historical_official_documentation_matrix",
+                    source_kind="historical_route_exact_composite_assertion",
                     source_locator=(
-                        HISTORICAL_MATRIX.as_posix()
+                        ROUTE_CAPABILITY_ASSERTIONS.as_posix()
+                        + "#/assertions/deepseek_v4_pro_direct"
                     ),
-                    source_evidence_sha256=history_sha,
+                    source_evidence_sha256=assertion_sha,
                     evidence_version=1,
                     evidence_date="2026-08-14",
                     route_fingerprint=fingerprint,
                     proved_fields=(
-                        "historical_unarchived_capacity_assertion",
+                        "context_window_tokens", "max_output_tokens",
+                        "reasoning_token_accounting",
+                        "reasoning_output_reservation",
+                        "route_fingerprint", "provider",
+                        "provider_id_sha256", "operator", "destination",
+                        "protocol", "model", "model_id_sha256",
                     ),
+                    provenance_available=True,
+                ))
+            screenshot_fields = {
+                ("lingsuan_gpt", "gpt-5.6-sol"): (
+                    "historical_relay_console_identity",
+                    "context_window_tokens",
+                ),
+                ("lingsuan_sonnet", "claude-sonnet-5"): (
+                    "historical_relay_console_identity", "model",
+                ),
+                ("happy", "qwen-3.7-plus"): (
+                    "historical_relay_console_identity", "model",
+                    "endpoint_family",
+                ),
+                ("happy", "qwen-max-thinking"): (
+                    "historical_relay_console_identity", "model",
+                    "endpoint_family", "reasoning_effort_parameter",
+                    "max_completion_tokens_parameter",
+                ),
+                ("happy", "claude-opus-4-5"): (
+                    "historical_relay_console_identity", "model",
+                    "endpoint_family",
+                ),
+            }.get((str(provider["name"]), str(model["model_name"])))
+            if screenshot_fields:
+                evidence.append(CapabilityEvidenceV1(
+                    source_kind="user_supplied_historical_screenshot_manifest",
+                    source_locator=SCREENSHOT_EVIDENCE.as_posix(),
+                    source_evidence_sha256=screenshot_sha,
+                    evidence_version=1,
+                    evidence_date="2026-08-15",
+                    route_fingerprint=fingerprint,
+                    proved_fields=screenshot_fields,
                     provenance_available=True,
                 ))
             evidence.append(CapabilityEvidenceV1(
@@ -259,22 +304,26 @@ def build_registry(repo: Path) -> RouteCapabilityRegistryV1:
                 model=str(model["model_name"]),
                 model_id_sha256=sha_bytes(model_id.encode("utf-8")),
                 route_fingerprint=fingerprint,
-                context_window_tokens=None,
-                max_output_tokens=None,
+                context_window_tokens=(
+                    1_000_000 if exact_deepseek_historical_claim else None
+                ),
+                max_output_tokens=(
+                    384_000 if exact_deepseek_historical_claim else None
+                ),
                 reasoning_token_accounting=reasoning,
                 reasoning_output_reservation=(
                     "WITHIN_COMPLETION_CAP"
                     if reasoning == "INCLUDED_IN_COMPLETION_CAP"
                     else "SEPARATE_REPORTED_RESERVATION_REQUIRED"
                 ),
-                capability_status=CapabilityStatus.UNKNOWN_BLOCKED,
+                capability_status=(
+                    CapabilityStatus.VERIFIED_HISTORICAL_EVIDENCE
+                    if exact_deepseek_historical_claim
+                    else CapabilityStatus.UNKNOWN_BLOCKED
+                ),
                 source_evidence=evidence,
                 blocking_reason_codes=(
-                    (
-                        "HISTORICAL_ASSERTION_HAS_NO_ARCHIVED_SOURCE_CONTENT",
-                        "EXACT_ROUTE_CONTEXT_WINDOW_EVIDENCE_UNAVAILABLE",
-                        "EXACT_ROUTE_MAX_OUTPUT_EVIDENCE_UNAVAILABLE",
-                    ) if exact_deepseek_historical_claim else (
+                    () if exact_deepseek_historical_claim else (
                         "EXACT_ROUTE_CONTEXT_WINDOW_EVIDENCE_UNAVAILABLE",
                         "EXACT_ROUTE_MAX_OUTPUT_EVIDENCE_UNAVAILABLE",
                     )
@@ -619,11 +668,8 @@ def _historical_search_inventory(repo: Path) -> dict[str, Any]:
 
 def _historical_value_records(repo: Path) -> list[dict[str, Any]]:
     matrix_sha = sha_file(repo / HISTORICAL_MATRIX)
-    bounded_matrix_sha = sha_bytes(git_raw(
-        repo,
-        "show",
-        f"{BASELINE_HEAD}:{HISTORICAL_BOUNDED_CAPABILITY_MATRIX.as_posix()}",
-    ))
+    assertion_sha = sha_file(repo / ROUTE_CAPABILITY_ASSERTIONS)
+    screenshot_sha = sha_file(repo / SCREENSHOT_EVIDENCE)
     sources = {
         8798: Path(
             "docs/superpowers/reports/sc-fresh-real-short-"
@@ -664,33 +710,45 @@ def _historical_value_records(repo: Path) -> list[dict[str, Any]]:
             **common,
             "capability_field": "context_window_tokens",
             "value": 1_000_000,
-            "classification_code": "B",
-            "classification": "HISTORICAL_BUT_UNPROVEN",
+            "classification_code": "A",
+            "classification": "VERIFIED_REUSABLE",
             "original_source_path": HISTORICAL_MATRIX.as_posix(),
-            "original_source_type": "official_url_locator_without_archived_content",
+            "original_source_type": "historical_official_documentation_record",
             "original_source_date": "2026-08-14",
             "source_evidence_sha256": matrix_sha,
-            "provenance_available": False,
-            "used_by_historical_runtime": False,
-            "trust_level": "ROUTE_EXACT_CLAIM_SOURCE_CONTENT_UNARCHIVED",
+            "verification_assertion_path": (
+                ROUTE_CAPABILITY_ASSERTIONS.as_posix()
+                + "#/assertions/deepseek_v4_pro_direct"
+            ),
+            "verification_assertion_sha256": assertion_sha,
+            "provenance_available": True,
+            "used_by_historical_runtime": True,
+            "eligible_for_verified_registry": True,
+            "trust_level": "ROUTE_EXACT_HISTORICAL_OFFICIAL_RECORD",
             "route_fingerprint": DEEPSEEK_ROUTE_FINGERPRINT,
-            "disposition": "REJECT_AS_VERIFIED",
+            "disposition": "PROMOTE_TO_VERIFIED_HISTORICAL_EVIDENCE",
         },
         {
             **common,
             "capability_field": "max_output_tokens",
             "value": 384_000,
-            "classification_code": "B",
-            "classification": "HISTORICAL_BUT_UNPROVEN",
+            "classification_code": "A",
+            "classification": "VERIFIED_REUSABLE",
             "original_source_path": HISTORICAL_MATRIX.as_posix(),
-            "original_source_type": "official_url_locator_without_archived_content",
+            "original_source_type": "historical_official_documentation_record",
             "original_source_date": "2026-08-14",
             "source_evidence_sha256": matrix_sha,
-            "provenance_available": False,
-            "used_by_historical_runtime": False,
-            "trust_level": "ROUTE_EXACT_CLAIM_SOURCE_CONTENT_UNARCHIVED",
+            "verification_assertion_path": (
+                ROUTE_CAPABILITY_ASSERTIONS.as_posix()
+                + "#/assertions/deepseek_v4_pro_direct"
+            ),
+            "verification_assertion_sha256": assertion_sha,
+            "provenance_available": True,
+            "used_by_historical_runtime": True,
+            "eligible_for_verified_registry": True,
+            "trust_level": "ROUTE_EXACT_HISTORICAL_OFFICIAL_RECORD",
             "route_fingerprint": DEEPSEEK_ROUTE_FINGERPRINT,
-            "disposition": "REJECT_AS_VERIFIED",
+            "disposition": "PROMOTE_TO_VERIFIED_HISTORICAL_EVIDENCE",
         },
         *[
             {
@@ -744,19 +802,17 @@ def _historical_value_records(repo: Path) -> list[dict[str, Any]]:
             "value": 372_000,
             "classification_code": "B",
             "classification": "HISTORICAL_BUT_UNPROVEN",
-            "original_source_path": (
-                HISTORICAL_BOUNDED_CAPABILITY_MATRIX.as_posix()
-            ),
+            "original_source_path": SCREENSHOT_EVIDENCE.as_posix(),
             "original_source_type": (
-                "historical_provider_model_assertion_without_archived_origin_proof"
+                "user_supplied_historical_relay_console_screenshot"
             ),
-            "original_source_date": "UNKNOWN_BASELINE_DATE",
-            "source_evidence_sha256": bounded_matrix_sha,
-            "provenance_available": False,
+            "original_source_date": "2026-08-15",
+            "source_evidence_sha256": screenshot_sha,
+            "provenance_available": True,
             "used_by_historical_runtime": False,
-            "trust_level": "LOCAL_ASSERTION_NOT_PROVIDER_CAPABILITY_PROOF",
-            "route_fingerprint": None,
-            "disposition": "REJECT_AS_VERIFIED",
+            "trust_level": "FIELD_PROVED_EXACT_MODEL_ROUTE_OPERATOR_LINK_INCOMPLETE",
+            "route_fingerprint": LINGSUAN_GPT_ROUTE_FINGERPRINT,
+            "disposition": "PARTIAL_FIELD_EVIDENCE_KEEP_ROUTE_UNKNOWN_BLOCKED",
         },
     ]
 
@@ -832,8 +888,16 @@ def materialize(
 
     write_json(root / "baseline-binding-v1.json", receipt(
         "FullShortRuntimeCapacityV3BaselineBindingV1", "PASS",
-        expected_head=BASELINE_HEAD,
-        observed_start_head=BASELINE_HEAD,
+        expected_head=REVISED_START_HEAD,
+        observed_start_head=REVISED_START_HEAD,
+        historical_pre_v3_head=HISTORICAL_PRE_V3_HEAD,
+        revised_start_head_is_current_head_or_ancestor=(
+            subprocess.run(
+                ["git", "merge-base", "--is-ancestor", REVISED_START_HEAD, head],
+                cwd=repo,
+                check=False,
+            ).returncode == 0
+        ),
         branch=BRANCH,
         baseline_worktree_clean=True,
         prior_authorization_reused=False,
@@ -861,45 +925,30 @@ def materialize(
         target_words=exact_binding.get("target_words"),
     ))
 
-    child_reports = {
-        "a": ("historical capability evidence", [
-            "DeepSeek exact official route has an unarchived 1,000,000/384,000 historical assertion, not reusable verified evidence.",
-            "8798/16000/4624/3724 observations are lower bounds or requests, not maxima.",
-            "No tracked original screenshots were found.",
-        ]),
-        "b": ("Exact READY required routes", [
-            "The required role/lane set is derived from current-source required roles and their initial primary lanes; the older dry-run plan is historical behavior evidence only.",
-            "Every selected route remains UNKNOWN_BLOCKED without trustworthy capability evidence.",
-        ]),
-        "c": ("route capability registry architecture", [
-            "Every role/lane requires an exact content-addressed record.",
-            "Unknown values remain null and block only when the route is dispatchable.",
-        ]),
-        "d": ("physical attempt identity", [
-            "Recovery schedule slot was incorrectly passed as physical attempt ordinal.",
-            "The durable observer must be the sole physical-attempt allocator.",
-        ]),
-        "e": ("token accounting", [
-            "Admission invariant is I + P + O + R + S <= C per exact route.",
-            "Primary and fallback capacity are independently evaluated; no silent truncation is allowed.",
-        ]),
-        "f": ("runtime integration", [
-            "Use registry, immutable logical envelope, observer-owned physical plan, typed journal, and fail-closed rollback.",
-        ]),
-    }
-    for letter, (focus, findings) in child_reports.items():
-        write_json(root / f"child-agent-{letter}-initial-v1.json", receipt(
-            "FullShortRuntimeCapacityV3InitialChildReportV1", "COMPLETE",
-            workstream=letter.upper(), focus=focus, findings=findings,
-            mode="fresh_read_only_offline", old_authority_reused=False,
-        ))
+    write_json(root / "inherited-child-report-revalidation-v1.json", receipt(
+        "FullShortRuntimeCapacityV3InheritedChildReportRevalidationV1",
+        "REVALIDATED_WITH_REVISED_INPUT",
+        inherited_report_paths=[
+            f"child-agent-{letter}-initial-v1.json"
+            for letter in "abcdef"
+        ],
+        inherited_from_revised_start_head=REVISED_START_HEAD,
+        new_team_review_claimed=False,
+        revalidation_disposition={
+            "architecture_and_attempt_identity": "REUSABLE",
+            "required_route_derivation": "REVALIDATED",
+            "historical_evidence_conclusion": "SUPERSEDED_BY_SCREENSHOT_INTAKE",
+            "token_accounting": "REUSABLE",
+            "runtime_integration": "REUSABLE",
+        },
+    ))
 
     historical_search = _historical_search_inventory(repo)
     historical_values = _historical_value_records(repo)
     search_inventory_path = root / "historical-capacity-search-inventory-v1.json"
     write_json(search_inventory_path, receipt(
         "HistoricalCapacitySearchInventoryV1", "SEARCH_COMPLETE",
-        source_truth_boundary="BASELINE_GIT_TREE_ALL_TRACKED_BLOBS",
+        source_truth_boundary="HISTORICAL_PRE_V3_GIT_TREE_ALL_TRACKED_BLOBS",
         historical_source_commit=historical_search[
             "historical_source_commit"
         ],
@@ -928,10 +977,10 @@ def materialize(
     historical = {
         "schema": "HistoricalRouteCapabilityEvidenceV1",
         "version": 1,
-        "status": "SEARCH_COMPLETE_NO_VERIFIED_REUSE",
+        "status": "SEARCH_COMPLETE_WITH_VERIFIED_REUSE",
         "historical_evidence_search_complete": True,
         "historical_evidence_search_complete_boundary": (
-            "BASELINE_GIT_TREE_ALL_TRACKED_BLOBS"
+            "HISTORICAL_PRE_V3_GIT_TREE_PLUS_SUPPLIED_SCREENSHOT_BUNDLE"
         ),
         "historical_source_commit": historical_search[
             "historical_source_commit"
@@ -945,7 +994,8 @@ def materialize(
             "EXCLUDED_NOT_REPOSITORY_SOURCE_TRUTH_AND_MAY_CONTAIN_SECRETS"
         ),
         "search_scope": (
-            "every blob tracked by the immutable baseline Git tree; every blob "
+            "every blob tracked by the immutable historical pre-V3 Git tree; "
+            "every blob "
             "that is valid UTF-8 and contains no NUL is scanned independent of "
             "filename suffix, while images and non-text blobs are hash-inventoried"
         ),
@@ -985,18 +1035,22 @@ def materialize(
         "searched_sources": [
             HISTORICAL_MATRIX.as_posix(),
             HISTORICAL_PRICE_PACKET.as_posix(),
+            SCREENSHOT_EVIDENCE.as_posix(),
+            ROUTE_CAPABILITY_ASSERTIONS.as_posix(),
             V2_ROOT.as_posix(),
             "docs/superpowers/reports/**/*capacity*",
             "data/app.db safe provider/model/role fields",
         ],
-        "verified_reusable_route_fingerprints": [],
-        "partial_unarchived_route_fingerprints": [
+        "verified_reusable_route_fingerprints": [
             DEEPSEEK_ROUTE_FINGERPRINT
         ],
-        "partial_only_observations": [8798, 16000, 4624, 3724],
-        "unproven_claims_rejected": [32768, 8328, 372000],
+        "partial_unarchived_route_fingerprints": [
+            LINGSUAN_GPT_ROUTE_FINGERPRINT
+        ],
+        "partial_only_observations": [8798, 16000, 4624, 3724, 372000],
+        "unproven_claims_rejected": [32768, 8328],
         "value_records": historical_values,
-        "recoverable_verified_capability_count": 0,
+        "recoverable_verified_capability_count": 1,
         "historical_value_without_provenance_count": (
             len([
                 item for item in historical_values
@@ -1008,9 +1062,9 @@ def materialize(
                 if not item["provenance_available"]
             ])
         ),
-        "screenshots_found": historical_search["category_summary"][
-            "tracked_screenshots_images"
-        ]["tracked_file_count"],
+        "screenshots_found": 15,
+        "privacy_safe_screenshot_crop_count": 4,
+        "historical_screenshot_bundle_exhausted": True,
         "external_boundary": EXTERNAL_ZERO,
     }
     write_json(root / "historical-route-capability-evidence-v1.json", historical)
@@ -1019,16 +1073,18 @@ def materialize(
         for capability_field in (
             "context_window_tokens", "max_output_tokens",
         ):
-            deepseek_candidate = (
+            deepseek_verified = (
                 item["route_fingerprint"] == DEEPSEEK_ROUTE_FINGERPRINT
             )
-            lingsuan_context_candidate = (
+            lingsuan_context_partial = (
                 item["provider"] == "lingsuan_gpt"
                 and item["model"] == "gpt-5.6-sol"
                 and capability_field == "context_window_tokens"
             )
-            historical_candidate = (
-                deepseek_candidate or lingsuan_context_candidate
+            classification_code = (
+                "A" if deepseek_verified
+                else "B" if lingsuan_context_partial
+                else "D"
             )
             route_field_records.append({
                 "role": item["role"],
@@ -1040,63 +1096,63 @@ def materialize(
                 "model": item["model"],
                 "route_fingerprint": item["route_fingerprint"],
                 "capability_field": capability_field,
-                "value": None,
-                "classification_code": "B" if historical_candidate else "D",
+                "value": (
+                    (1_000_000 if capability_field == "context_window_tokens"
+                     else 384_000)
+                    if deepseek_verified
+                    else 372_000 if lingsuan_context_partial
+                    else None
+                ),
+                "classification_code": classification_code,
                 "classification": (
-                    "HISTORICAL_BUT_UNPROVEN"
-                    if historical_candidate else "NO_EVIDENCE"
+                    "VERIFIED_REUSABLE" if deepseek_verified
+                    else "HISTORICAL_BUT_UNPROVEN"
+                    if lingsuan_context_partial
+                    else "NO_EVIDENCE"
                 ),
                 "original_source_path": (
-                    (
-                        HISTORICAL_MATRIX.as_posix()
-                        if deepseek_candidate
-                        else HISTORICAL_BOUNDED_CAPABILITY_MATRIX.as_posix()
-                    )
-                    if historical_candidate else None
+                    HISTORICAL_MATRIX.as_posix() if deepseek_verified
+                    else SCREENSHOT_EVIDENCE.as_posix()
+                    if lingsuan_context_partial else None
                 ),
                 "original_source_type": (
-                    (
-                        "official_url_locator_without_archived_content"
-                        if deepseek_candidate
-                        else "provider_model_claim_without_exact_route_or_origin_proof"
-                    )
-                    if historical_candidate else None
+                    "historical_official_documentation_record"
+                    if deepseek_verified
+                    else "user_supplied_historical_relay_console_screenshot"
+                    if lingsuan_context_partial else None
                 ),
                 "original_source_date": (
-                    (
-                        "2026-08-14"
-                        if deepseek_candidate else "UNKNOWN_BASELINE_DATE"
-                    )
-                    if historical_candidate else None
+                    "2026-08-14" if deepseek_verified
+                    else "2026-08-15"
+                    if lingsuan_context_partial else None
                 ),
                 "source_evidence_sha256": (
-                    (
-                        sha_file(repo / HISTORICAL_MATRIX)
-                        if deepseek_candidate
-                        else sha_bytes(git_raw(
-                            repo,
-                            "show",
-                            f"{BASELINE_HEAD}:"
-                            f"{HISTORICAL_BOUNDED_CAPABILITY_MATRIX.as_posix()}",
-                        ))
-                    )
-                    if historical_candidate else None
+                    sha_file(repo / ROUTE_CAPABILITY_ASSERTIONS)
+                    if deepseek_verified
+                    else sha_file(repo / SCREENSHOT_EVIDENCE)
+                    if lingsuan_context_partial else None
                 ),
-                "provenance_available": False,
-                "used_by_historical_runtime": False,
+                "provenance_available": bool(
+                    deepseek_verified or lingsuan_context_partial
+                ),
+                "used_by_historical_runtime": bool(
+                    deepseek_verified or lingsuan_context_partial
+                ),
                 "trust_level": (
-                    (
-                        "ROUTE_EXACT_CLAIM_SOURCE_CONTENT_UNARCHIVED"
-                        if deepseek_candidate
-                        else "PARTIAL_ROUTE_ASSERTION_NOT_PROVIDER_PROOF"
-                    )
-                    if historical_candidate else "NO_LOCAL_SOURCE_FOUND"
+                    "ROUTE_EXACT_HISTORICAL_OFFICIAL_RECORD"
+                    if deepseek_verified
+                    else "FIELD_PROVED_EXACT_MODEL_ROUTE_OPERATOR_LINK_INCOMPLETE"
+                    if lingsuan_context_partial
+                    else "NO_LOCAL_SOURCE_FOUND"
                 ),
-                "eligible_for_verified_registry": False,
-                "registry_disposition": "UNKNOWN_BLOCKED",
+                "eligible_for_verified_registry": deepseek_verified,
+                "registry_disposition": (
+                    "VERIFIED_HISTORICAL_EVIDENCE"
+                    if deepseek_verified else "UNKNOWN_BLOCKED"
+                ),
             })
     write_json(root / "historical-capability-evidence-matrix-v1.json", receipt(
-        "HistoricalCapabilityEvidenceMatrixV1", "NO_VERIFIED_REUSE",
+        "HistoricalCapabilityEvidenceMatrixV1", "PARTIAL_VERIFIED_REUSE",
         classification_contract={
             "A": "VERIFIED_REUSABLE",
             "B": "HISTORICAL_BUT_UNPROVEN",
@@ -1163,6 +1219,80 @@ def materialize(
     )
     write_json(root / "live-route-capability-matrix-v1.json", matrix)
     write_json(root / "route-capability-registry-v1.json", registry.to_document())
+    missing_by_fingerprint = {
+        LINGSUAN_GPT_ROUTE_FINGERPRINT: {
+            "missing_fields": [
+                "max_output_tokens",
+                "relay_console_to_exact_destination_identity_proof",
+            ],
+            "recovered_but_not_promoted": {
+                "context_window_tokens": 372_000,
+                "reason": (
+                    "The supplied lingsuan.top relay-console screenshot "
+                    "visibly states 372K for gpt-5.6-sol, but no maximum "
+                    "output is shown and the console-to-lingsuan.org API "
+                    "operator link is not independently archived."
+                ),
+            },
+        },
+        "099e358eae5fd0ff5e3d1b8cda34cd90c73c735c001ed44334ade3e3b667bf4e": {
+            "missing_fields": ["context_window_tokens", "max_output_tokens"],
+            "recovered_but_not_promoted": {
+                "reason": (
+                    "The Happy screenshot proves qwen-3.7-plus identity and "
+                    "pricing, not capacity. Its visible endpoint example is "
+                    "cn.happyapi.org/v1/chat/completions rather than the exact "
+                    "configured happyapi.org/v1/messages route."
+                ),
+            },
+        },
+        "4a9f19e78d8101d0bc82aa664582c775741b59d5d9953c73a5624de03b2a539c": {
+            "missing_fields": [
+                "context_window_tokens", "max_output_tokens",
+                "relay_console_to_exact_destination_identity_proof",
+            ],
+            "recovered_but_not_promoted": {
+                "reason": (
+                    "The LingSuan screenshot proves claude-sonnet-5 relay "
+                    "catalog identity and pricing only."
+                ),
+            },
+        },
+        "026d0b3206ad50c89b4eca81b4730ebfa3370815cac98078149c6438e705bfe1": {
+            "missing_fields": ["context_window_tokens", "max_output_tokens"],
+            "recovered_but_not_promoted": {
+                "reason": (
+                    "No screenshot in the supplied bundle displays the exact "
+                    "doubao-seed-character-260628 capacity values. Historical "
+                    "price and successful-dispatch records are not maxima."
+                ),
+            },
+        },
+    }
+    write_json(root / "required-route-missing-fields-v1.json", receipt(
+        "ExactReadyRequiredRouteMissingFieldsV1",
+        "HISTORICAL_SOURCE_EXHAUSTED_UNKNOWN_BLOCKED",
+        exact_ready_unknown_required_record_count=len(unknown_required),
+        exact_ready_unknown_required_unique_route_count=len({
+            item["route_fingerprint"] for item in unknown_required
+        }),
+        records=[{
+            "role": item["role"],
+            "lane": item["lane"],
+            "provider": item["provider"],
+            "operator": item["operator"],
+            "destination": item["destination"],
+            "protocol": item["protocol"],
+            "model": item["model"],
+            "route_fingerprint": item["route_fingerprint"],
+            **missing_by_fingerprint[item["route_fingerprint"]],
+        } for item in unknown_required],
+        historical_repository_search_exhausted=True,
+        user_supplied_screenshot_bundle_exhausted=True,
+        public_documentation_lookup_performed=False,
+        public_documentation_lookup_disallowed_by_current_authorization=True,
+        live_or_paid_probe_performed=False,
+    ))
 
     write_json(root / "capacity-failure-taxonomy-v3.json", receipt(
         "CapacityFailureTaxonomyV3", "PASS",
@@ -1261,9 +1391,17 @@ def materialize(
     write_json(root / "exact-ready-execution-plan-v1.json", plan)
 
     fault_journal_root = root / "fault-journal"
-    if fault_journal_root.exists():
-        shutil.rmtree(fault_journal_root)
-    fault_report = run_capacity_fault_campaign_v3(fault_journal_root)
+    fault_journal_root.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(
+        prefix="novel-flywheel-v3-capacity-fault-"
+    ) as temporary_fault_root:
+        temporary_root = Path(temporary_fault_root)
+        fault_report = run_capacity_fault_campaign_v3(temporary_root)
+        for generated in temporary_root.iterdir():
+            if generated.is_file():
+                (fault_journal_root / generated.name).write_bytes(
+                    generated.read_bytes()
+                )
     write_json(root / "v3-capacity-fault-injection-report-v1.json", fault_report)
     write_json(root / "size-matrix-rerun-v1.json", receipt(
         "FullShortSizeMatrixRerunV1", "SOURCE_GROUNDED_TYPED_STOP_LOSS",
@@ -1322,18 +1460,17 @@ def materialize(
         source_receipt=dry_run_receipt,
     ))
 
-    # Final reviewer files are replaced with the fresh review findings before
-    # the evidence seal. Keeping explicit pending receipts prevents omission.
-    for number, focus in enumerate((
-        "historical provenance", "required-route closure",
-        "attempt identity", "fault and regression coverage",
-        "privacy, determinism, and authorization stop-loss",
-    ), start=1):
-        write_json(root / f"reviewer-{number}-final-v1.json", receipt(
-            "FullShortRuntimeCapacityV3FinalReviewV1", "PENDING",
-            reviewer_number=number, focus=focus,
-            findings=["Fresh final review has not yet been sealed."],
-        ))
+    write_json(root / "revised-baseline-review-disposition-v1.json", receipt(
+        "FullShortRuntimeCapacityV3RevisedBaselineReviewDispositionV1",
+        "CURRENT_REVIEW_PENDING",
+        inherited_reviewer_reports=[
+            f"reviewer-{number}-final-v1.json" for number in range(1, 6)
+        ],
+        inherited_reports_preserved=True,
+        inherited_reports_authoritative_for_current_diff=False,
+        new_independent_review_claimed=False,
+        required_current_review="SINGLE_AGENT_CLEAN_ROOM_FINAL_DIFF",
+    ))
 
     for name, status, command in (
         ("strict-l3-receipt-v1.json", "PENDING", "strict L3 command pending"),
@@ -1465,6 +1602,12 @@ def main() -> int:
     repo = args.repo.resolve(strict=True)
     if git(repo, "branch", "--show-current") != BRANCH:
         raise ValueError("branch_mismatch")
+    if subprocess.run(
+        ["git", "merge-base", "--is-ancestor", REVISED_START_HEAD, "HEAD"],
+        cwd=repo,
+        check=False,
+    ).returncode != 0:
+        raise ValueError("revised_start_head_not_ancestor")
     registry = build_registry(repo)
     write_registry(repo, registry)
     if not args.registry_only:

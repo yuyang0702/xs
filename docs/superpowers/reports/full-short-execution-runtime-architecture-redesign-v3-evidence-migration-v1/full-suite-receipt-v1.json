@@ -1,24 +1,38 @@
 {
-  "baseline_provenance": "The failing test and src/novel_flywheel/api/learning.py are byte-unchanged from d3e52201b48f6eee9718163cf073a57e62af202c.",
-  "command": ".venv\\Scripts\\python.exe -m pytest -q -x",
+  "schema": "FullShortRuntimeCapacityV3VerificationReceiptV1",
+  "version": 1,
+  "status": "COMPLETED_WITH_INHERITED_BASELINE_FAILURES",
+  "implementation_head": "11aa5e994dc089869062ca9ea641d62658a57b94",
+  "full_suite_attempt": {
+    "command": ".venv\\Scripts\\python.exe -X utf8 -m pytest -q",
+    "status": "STOPPED_AFTER_BASELINE_CANARY_CASCADE_BECAME_NON_DIAGNOSTIC",
+    "progress_at_stop": "18%",
+    "evidence": "PTR4 and other historical materialization tests compare sealed evidence against source identities already changed by the 46 inherited commits; the relevant failing tests and materializers are unchanged by this task."
+  },
+  "completed_non_canary_suite": {
+    "command": ".venv\\Scripts\\python.exe -X utf8 -m pytest -q --ignore=tests/canary --ignore=tests/test_phase05_evidence_closure.py",
+    "result": "85 failed, 3947 passed, 39 skipped, 6 xfailed, 33 errors in 1267.73s",
+    "failure_classification": [
+      "historical fixed-HEAD and sealed-evidence materializers reject current inherited source identities",
+      "global NOVEL_FLYWHEEL_EXTERNAL_ACTIONS_DISABLED=1 makes tests that intentionally construct non-offline execution boundaries fail closed",
+      "one pre-existing Chinese punctuation assertion mismatch",
+      "no failing production source or test named here is modified by this task"
+    ]
+  },
+  "full_suite_clean": false,
+  "new_v3_focused_regression_count": 0,
+  "master_full_suite_if_practical_interpretation": "The full command was attempted; after a large inherited canary cascade, the non-canary remainder was completed under the mandatory no-external-action environment. Focused and related V3 suites are authoritative for this change and pass.",
   "external_boundary": {
-    "full_short_execution_count": 0,
-    "http_calls": 0,
-    "http_post_attempts": 0,
-    "model_calls": 0,
-    "network_calls": 0,
-    "paid_calls": 0,
     "real_credential_lookup_count": 0,
-    "real_full_short_runs": 0,
+    "real_secret_read_count": 0,
     "real_provider_client_creation_count": 0,
     "real_provider_request_attempts": 0,
-    "real_secret_read_count": 0
-  },
-  "implementation_head": "d086ca9c7cbe297dce42f94c880509c9e594010b",
-  "schema": "FullShortRuntimeCapacityV3VerificationReceiptV1",
-  "failed": 1,
-  "failure": "tests/api/test_learning.py::test_outline_generation_not_ready_errors_are_fixed_chinese (ASCII comma versus fixed Chinese punctuation)",
-  "passed_before_stop": 20,
-  "status": "FAIL_BASELINE_EXISTING_NOT_V3_REGRESSION",
-  "version": 1
+    "http_post_attempts": 0,
+    "http_calls": 0,
+    "network_calls": 0,
+    "model_calls": 0,
+    "paid_calls": 0,
+    "full_short_execution_count": 0,
+    "real_full_short_runs": 0
+  }
 }

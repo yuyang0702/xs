@@ -1,0 +1,50 @@
+{
+  "schema": "FullShortRuntimeCapacityV3RevisedBaselineClassificationV1",
+  "version": 1,
+  "status": "PASS",
+  "branch": "r1-ptr3/planning-repair-finding-propagation-20260817",
+  "historical_pre_v3_head": "d3e52201b48f6eee9718163cf073a57e62af202c",
+  "revised_start_head": "11aa5e994dc089869062ca9ea641d62658a57b94",
+  "worktree_clean_at_revalidation": true,
+  "preserved_commit_count": 46,
+  "classification": {
+    "completed_and_reusable": [
+      "RouteCapabilityRegistryV1 and UNKNOWN_BLOCKED pre-dispatch semantics",
+      "typed capacity failure taxonomy",
+      "logical and physical capacity-attempt identity",
+      "V3 twenty-scenario fault campaign",
+      "offline production isolation and external-zero counters"
+    ],
+    "completed_but_requiring_revalidation": [
+      "Exact READY required-route derivation",
+      "historical capability evidence classification",
+      "registry materialization",
+      "Exact READY and size-matrix evidence",
+      "Strict L3 and final evidence manifest"
+    ],
+    "newly_required_by_revised_v3": [
+      "content-addressed intake of the user-supplied historical screenshot bundle",
+      "field-level screenshot observations and privacy-safe evidence crops",
+      "reclassification of route-exact historical evidence",
+      "revised-baseline-bound evidence regeneration"
+    ],
+    "unrelated_and_not_reopened": [
+      "StoryState, Canon, manuscript, candidate and formal promotion semantics",
+      "provider/model role bindings",
+      "Baseline runtime Skill identity",
+      "Hybrid or Selective production cutover",
+      "historical authorizations, approvals, nonces, run IDs and stores"
+    ]
+  },
+  "external_boundary": {
+    "real_credential_lookup_count": 0,
+    "real_secret_read_count": 0,
+    "real_provider_client_creation_count": 0,
+    "real_provider_request_attempts": 0,
+    "http_post_attempts": 0,
+    "network_calls": 0,
+    "model_calls": 0,
+    "paid_calls": 0,
+    "full_short_execution_count": 0
+  }
+}

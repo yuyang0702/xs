@@ -1,7 +1,7 @@
 {
   "baseline_worktree_clean": true,
   "branch": "r1-ptr3/planning-repair-finding-propagation-20260817",
-  "expected_head": "d3e52201b48f6eee9718163cf073a57e62af202c",
+  "expected_head": "11aa5e994dc089869062ca9ea641d62658a57b94",
   "external_boundary": {
     "full_short_execution_count": 0,
     "http_calls": 0,
@@ -15,8 +15,10 @@
     "real_provider_request_attempts": 0,
     "real_secret_read_count": 0
   },
-  "observed_start_head": "d3e52201b48f6eee9718163cf073a57e62af202c",
+  "historical_pre_v3_head": "d3e52201b48f6eee9718163cf073a57e62af202c",
+  "observed_start_head": "11aa5e994dc089869062ca9ea641d62658a57b94",
   "prior_authorization_reused": false,
+  "revised_start_head_is_current_head_or_ancestor": true,
   "schema": "FullShortRuntimeCapacityV3BaselineBindingV1",
   "status": "PASS",
   "version": 1

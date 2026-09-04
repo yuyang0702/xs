@@ -45,14 +45,22 @@ reserve, prompt overlay, and capture identity.
 
 ## Historical evidence disposition
 
-The 2026-08-14 DeepSeek official-route matrix is a route-exact historical
-candidate, but its cited external source content was not archived. It therefore
-remains historical-but-unproven and is not reusable as VERIFIED capability
-evidence. Local relay claims without their original screenshots or route-exact
-provenance receive the same disposition. Observed request budgets prove only a
-successful lower-bound observation, never a maximum capability. Existing
-`32,768` values are stage policy ceilings and are explicitly not provider
-context limits.
+The revised task binds the 2026-08-14 DeepSeek official-route matrix to the
+archived exact-route identity contract and reasoning-accounting packet. The
+composite assertion records the official source locators, retrieval date and
+source hashes, so the direct `deepseek-v4-pro` route is reusable as
+`VERIFIED_HISTORICAL_EVIDENCE` at 1,000,000 context tokens and 384,000 maximum
+output tokens. This does not establish any relay capability.
+
+The user-supplied screenshot bundle is hash-inventoried and represented by
+privacy-safe crops. The LingSuan `gpt-5.6-sol` screenshot visibly proves a 372K
+context label, but no maximum output and no independently archived
+`lingsuan.top` console-to-`lingsuan.org` API operator link; the route therefore
+remains `UNKNOWN_BLOCKED`. Happy Qwen and LingSuan Claude screenshots prove
+only their visible identity, endpoint-family, pricing, performance, and
+parameter facts. Observed request budgets prove only successful lower bounds,
+never maxima. Existing `32,768` values remain stage policy ceilings rather than
+provider context limits.
 
 ## Verification and stop-loss
 
