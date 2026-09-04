@@ -1283,6 +1283,18 @@ async def test_combined_planning_injections_own_distinct_logical_stages() -> Non
     persisted = json.dumps(first_envelope, ensure_ascii=False)
     assert "Return the planning contract only." not in persisted
     assert "IR_FIRST_SHORT_PLANNING_PACKET_V2" not in persisted
+    assert len(factory.projected_reasoning_recovery_envelopes) == 1
+    projected = factory.projected_reasoning_recovery_envelopes[0]
+    assert projected["attempt_role"] == "PLANNING_FINAL_ARTIFACT_RECOVERY"
+    assert projected["recovery_overlay_kind"] == "FINAL_ARTIFACT_COMPLETION"
+    assert projected["requested_output_tokens"] == 512
+    assert projected["reasoning_field_present"] is False
+    assert projected["rendered_message_tokens"] > (
+        factory.call_plan[2]["rendered_message_tokens"]
+    )
+    projected_persisted = json.dumps(projected, ensure_ascii=False)
+    assert "FINAL_ARTIFACT_COMPLETION" in projected_persisted
+    assert "Return the planning contract only." not in projected_persisted
 
 
 def test_lowest_http_seam_adapter_fault_hook_is_optional() -> None:

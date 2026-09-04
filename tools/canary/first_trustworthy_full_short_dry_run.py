@@ -27,6 +27,9 @@ from typing import Any, Awaitable, Callable
 import httpx
 
 from novel_flywheel.context_policy import estimate_input_tokens
+from novel_flywheel.contract_runtime import (
+    _FINAL_ARTIFACT_COMPLETION_SYSTEM_SUFFIX_V1,
+)
 from novel_flywheel.db import Database
 from novel_flywheel.failure_boundary import failure_evidence_sha256
 from novel_flywheel.full_short_execution import (
@@ -423,6 +426,13 @@ def _safe_request_plan_entry_v1(
 ) -> dict[str, Any]:
     """Project an exact provider-wire request to counts and hashes only."""
 
+    def section_tokens(heading: str) -> int:
+        marker = heading + ":\n"
+        if marker not in system:
+            return 0
+        value = system.split(marker, 1)[1].split("\n\n", 1)[0]
+        return estimate_input_tokens(marker + value)
+
     rendered = system + "\n" + user
     rendered_sha256 = hashlib.sha256(rendered.encode("utf-8")).hexdigest()
     wire_payload = json.dumps(
@@ -443,6 +453,15 @@ def _safe_request_plan_entry_v1(
         "provider_wire_requested_output_tokens": maximum,
         "system_tokens": estimate_input_tokens(system),
         "task_tokens": estimate_input_tokens(user),
+        "authority_context_tokens": sum(
+            section_tokens(heading) for heading in (
+                "CURRENT_TASK_ENVELOPE",
+                "MANDATORY_NARRATIVE_RULES",
+                "GLOBAL_STORY_SKELETON",
+            )
+        ) or estimate_input_tokens(system),
+        "skill_advisory_tokens": section_tokens("ADVISORY_CONTEXT"),
+        "manuscript_window_tokens": estimate_input_tokens(user),
         "rendered_message_tokens": estimate_input_tokens(rendered),
         "rendered_message_utf8_bytes": len(rendered.encode("utf-8")),
         "provider_wire_payload_utf8_bytes": len(wire_payload.encode("utf-8")),
@@ -471,7 +490,9 @@ def _safe_request_plan_entry_v1(
     entry["input_envelope_sha256"] = _domain({
         key: entry[key] for key in (
             "route_fingerprint", "protocol", "role",
-            "system_tokens", "task_tokens", "rendered_message_tokens",
+            "system_tokens", "task_tokens", "authority_context_tokens",
+            "skill_advisory_tokens", "manuscript_window_tokens",
+            "rendered_message_tokens",
             "rendered_message_utf8_bytes", "protocol_overhead_tokens",
             "rendered_request_sha256", "requested_output_tokens",
         )
@@ -955,6 +976,7 @@ class _OfflineHttpTransportFactory:
             inject_planning_reasoning_only_once
         )
         self.planning_reasoning_only_injected = False
+        self.projected_reasoning_recovery_envelopes: list[dict[str, Any]] = []
 
     def install_adapter_failure_after_exact_capture_once(
         self, adapter: Any,
@@ -1032,6 +1054,49 @@ class _OfflineHttpTransportFactory:
                 )
             ):
                 self.planning_reasoning_only_injected = True
+                recovery_payload = json.loads(json.dumps(payload))
+                recovery_system = (
+                    system + _FINAL_ARTIFACT_COMPLETION_SYSTEM_SUFFIX_V1
+                )
+                recovery_payload.pop("reasoning", None)
+                if protocol == "anthropic":
+                    recovery_payload["system"] = recovery_system
+                elif protocol == "openai-responses":
+                    recovery_payload["instructions"] = recovery_system
+                else:
+                    messages = list(recovery_payload.get("messages") or [])
+                    replaced = False
+                    for item in messages:
+                        if isinstance(item, dict) and item.get("role") == "system":
+                            item["content"] = recovery_system
+                            replaced = True
+                            break
+                    if not replaced:
+                        messages.insert(0, {
+                            "role": "system", "content": recovery_system,
+                        })
+                    recovery_payload["messages"] = messages
+                projected = _safe_request_plan_entry_v1(
+                    ordinal=len(self.call_plan) + 1,
+                    protocol=protocol, destination=destination,
+                    provider_id_sha256=provider_id_sha256,
+                    model_id_sha256=model_id_sha256, model_name=model_name,
+                    route_fingerprint=route_fingerprint,
+                    provider_operator=provider_operator,
+                    route_lane=route_lane, role=role,
+                    contract_marker=contract_marker, maximum=maximum,
+                    payload=recovery_payload, system=recovery_system,
+                    user=user,
+                )
+                projected.update({
+                    "attempt_role": "PLANNING_FINAL_ARTIFACT_RECOVERY",
+                    "recovery_overlay_kind": "FINAL_ARTIFACT_COMPLETION",
+                    "projection_status": (
+                        "DETERMINISTIC_CONTRACT_RUNTIME_PROJECTION_"
+                        "NOT_DISPATCHED"
+                    ),
+                })
+                self.projected_reasoning_recovery_envelopes.append(projected)
                 return OfflineHttpResponseV1(200, json_body={
                     "id": "offline-reasoning-only",
                     "content": [{
@@ -1728,6 +1793,40 @@ async def _discover_plan(
     if len(logical_stage_plan) != len(registry.call_plan):
         raise RuntimeError("FULL_SHORT_DRY_RUN_LOGICAL_PLAN_INCOMPLETE")
     return registry.call_plan, logical_stage_plan
+
+
+async def _discover_reasoning_recovery_projection_v1(
+    *, repo: Path, data_dir: Path, project_id: str,
+) -> dict[str, Any]:
+    """Render the sealed Planning final-artifact retry without dispatching it."""
+
+    factory = _OfflineHttpTransportFactory(
+        inject_planning_reasoning_only_once=True,
+    )
+    registry = _LowestHttpSeamRegistry(
+        Database(data_dir / "app.db"), _memory_secrets(data_dir)(),
+        http_transport_factory=factory,
+        transport_policy=SingleDispatchTransportPolicyV1.phase_b(),
+    )
+    try:
+        await _await_with_registry_close(
+            lambda: run_full_short_workflow_path(
+                repo=repo, data_dir=data_dir, project_id=project_id,
+                execution_id=DISCOVERY_ID, registry=registry,
+            ),
+            registry,
+        )
+    except Exception:
+        # The ordinary discovery observer owns one route slot, so the typed
+        # reasoning-only response terminates locally.  The exact sealed retry
+        # payload was already projected from the in-memory request above.
+        pass
+    projections = list(factory.projected_reasoning_recovery_envelopes)
+    if len(projections) != 1:
+        raise RuntimeError(
+            "FULL_SHORT_REASONING_RECOVERY_PROJECTION_INCOMPLETE"
+        )
+    return projections[0]
 
 
 def _replayed_adapter_text(
