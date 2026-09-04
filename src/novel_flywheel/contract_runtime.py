@@ -1706,7 +1706,10 @@ async def execute_contract_runtime(
                 # The complete entity is authoritative.  Propagate its exact
                 # adapter/protocol exception and forbid a second provider call.
                 raise
-            if _is_explicit_nonretryable_failure(exc):
+            if (
+                not final_artifact_failure
+                and _is_explicit_nonretryable_failure(exc)
+            ):
                 raise
             last_error = exc
             if isinstance(error_receipt, Mapping):

@@ -97,6 +97,7 @@ def test_restart_probes_reopen_durable_state_and_fail_closed_without_dispatch(
     assert logical["reopened_durable_store"] is True
     assert physical["physical_plan_reopened"] is True
     for item in (logical, physical):
+        assert item["fresh_process_boundary"] == "SEQUENTIAL_OS_SUBPROCESS"
         assert item["restart_blocked"] is True
         assert item["restart_reason"] == "OBSERVER_ALREADY_CLAIMED_NO_RESTART"
         assert item["dispatch_attempt_count"] == 0

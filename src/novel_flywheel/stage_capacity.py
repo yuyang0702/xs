@@ -1086,6 +1086,16 @@ def validate_capacity_attempt_delta_v1(
         raise CapacityAdmissionFailureV1(
             CapacityFailureCode.INVALID_ATTEMPT_DELTA
         )
+    if (
+        not isinstance(prior_value("physical_attempt_id"), str)
+        or not prior_value("physical_attempt_id")
+        or not isinstance(candidate.physical_attempt_id, str)
+        or not candidate.physical_attempt_id
+        or candidate.physical_attempt_id == prior_value("physical_attempt_id")
+    ):
+        raise CapacityAdmissionFailureV1(
+            CapacityFailureCode.PHYSICAL_ATTEMPT_DRIFT
+        )
     immutable_fields = (
         (
             "stage_id", "logical_stage_id", "stage", "contract_name",

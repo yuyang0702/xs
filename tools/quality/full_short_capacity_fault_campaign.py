@@ -4,7 +4,10 @@ import argparse
 from dataclasses import asdict, dataclass, replace
 import hashlib
 import json
+import os
 from pathlib import Path
+import subprocess
+import sys
 import tempfile
 from typing import Iterable
 
@@ -626,22 +629,29 @@ def _pass_v3(scenario_id: str, primitive: str, scope: str, **evidence: object) -
 
 
 def _durable_observer_fixture_v3(
-    artifact_dir: Path, scenario_id: str,
+    artifact_dir: Path,
+    scenario_id: str,
+    *,
+    fixture_root: Path | None = None,
 ) -> tuple[
     FullShortDurableExecutionStoreV1,
     FullShortDispatchLedgerObserverV1,
     dict[str, object],
     tuple[dict[str, object], ...],
     dict[str, object],
-    tempfile.TemporaryDirectory[str],
+    tempfile.TemporaryDirectory[str] | None,
 ]:
     """Create a disabled-actions production observer with durable authority."""
 
     # Keep Windows paths below MAX_PATH even when the report root is deeply
     # nested. The returned owner keeps this private durable fixture alive for
     # the whole close/reopen probe and removes it afterwards.
-    temporary = tempfile.TemporaryDirectory(prefix="v3-capacity-restart-")
-    fixture_root = Path(temporary.name)
+    temporary = None
+    if fixture_root is None:
+        temporary = tempfile.TemporaryDirectory(prefix="v3-capacity-restart-")
+        fixture_root = Path(temporary.name)
+    else:
+        fixture_root.mkdir(parents=True, exist_ok=True)
     repo_root = fixture_root / "repo"
     repo_root.mkdir(parents=True)
     store = FullShortDurableExecutionStoreV1(
@@ -739,6 +749,152 @@ def _durable_observer_fixture_v3(
         external_actions_enabled=False,
     )
     return store, observer, policy, routes, egress_policy, temporary
+
+
+def _write_json_v3(path: Path, value: object) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        json.dumps(value, ensure_ascii=False, sort_keys=True, indent=2) + "\n",
+        encoding="utf-8",
+    )
+
+
+def _restart_worker_v3(*, phase: str, input_path: Path, output_path: Path) -> int:
+    """Run one restart phase in a short-lived, offline child process."""
+
+    request = json.loads(input_path.read_text(encoding="utf-8"))
+    scenario_id = str(request["scenario_id"])
+    if phase == "initialize":
+        fixture_root = Path(str(request["fixture_root"]))
+        store, observer, policy, routes, egress_policy, temporary = (
+            _durable_observer_fixture_v3(
+                fixture_root,
+                scenario_id,
+                fixture_root=fixture_root,
+            )
+        )
+        assert temporary is None
+        result: dict[str, object] = {
+            "scenario_id": scenario_id,
+            "repo_root": str(store.repo_root),
+            "store_root": str(store.root),
+            "execution_id": "capacity-v3-" + scenario_id,
+            "policy": policy,
+            "routes": list(routes),
+            "egress_policy": egress_policy,
+        }
+        if scenario_id == "restart_after_logical_envelope":
+            context = observer.capacity_admission_context(
+                route="primary", role="planning", physical_attempt=1,
+            )
+            result["logical_capacity_envelope_bound"] = (
+                isinstance(context["logical_capacity_envelope_sha256"], str)
+                and len(context["logical_capacity_envelope_sha256"]) == 64
+            )
+        elif scenario_id == "restart_after_physical_plan":
+            plan, _ = _observer_capacity_plan_v3(observer)
+            result["plan_sha256"] = plan.plan_sha256
+        else:
+            raise AssertionError("restart_worker_scenario_invalid:" + scenario_id)
+        _write_json_v3(output_path, result)
+        return 0
+
+    if phase != "reopen":
+        raise AssertionError("restart_worker_phase_invalid:" + phase)
+    store = FullShortDurableExecutionStoreV1(
+        repo_root=Path(str(request["repo_root"])),
+        store_root=Path(str(request["store_root"])),
+    )
+    physical_plan_reopened = None
+    if scenario_id == "restart_after_physical_plan":
+        receipt = store.load_capacity_admission_receipt(
+            execution_id=str(request["execution_id"]),
+            plan_sha256=str(request["plan_sha256"]),
+        )
+        physical_plan_reopened = (
+            receipt["capacity_plan_sha256"] == request["plan_sha256"]
+            and receipt["state"] == "PLAN_BOUND_UNCONSUMED"
+        )
+    try:
+        FullShortDispatchLedgerObserverV1(
+            store=store,
+            execution_id=str(request["execution_id"]),
+            policy=request["policy"],
+            authorized_routes=tuple(request["routes"]),
+            egress_policy=request["egress_policy"],
+            session_id="capacity-v3-restarted-process",
+            external_actions_enabled=False,
+        )
+    except FullShortExecutionBoundaryError as exc:
+        restart_reason = exc.reason_code
+    else:
+        raise AssertionError("restart_worker_was_not_blocked")
+    ledger = store.load_ledger(str(request["execution_id"]))
+    _write_json_v3(output_path, {
+        "fresh_process_boundary": "SEQUENTIAL_OS_SUBPROCESS",
+        "reopened_durable_store": True,
+        "logical_capacity_envelope_bound": request.get(
+            "logical_capacity_envelope_bound"
+        ),
+        "physical_plan_reopened": physical_plan_reopened,
+        "restart_blocked": restart_reason == "OBSERVER_ALREADY_CLAIMED_NO_RESTART",
+        "restart_reason": restart_reason,
+        "dispatch_attempt_count": len(ledger["attempts"]),
+    })
+    return 0
+
+
+def _run_restart_subprocess_probe_v3(
+    scenario_id: str,
+) -> dict[str, object]:
+    """Initialize, exit, then reopen in a different OS process."""
+
+    with tempfile.TemporaryDirectory(prefix="v3-capacity-restart-") as temp_dir:
+        fixture_root = Path(temp_dir)
+        initialize_request = fixture_root / "initialize-request.json"
+        initialized = fixture_root / "initialized.json"
+        reopened = fixture_root / "reopened.json"
+        _write_json_v3(initialize_request, {
+            "scenario_id": scenario_id,
+            "fixture_root": str(fixture_root),
+        })
+        script = Path(__file__).resolve()
+        project_root = script.parents[2]
+        child_environment = os.environ.copy()
+        child_environment["NOVEL_FLYWHEEL_EXTERNAL_ACTIONS_DISABLED"] = "1"
+        source_root = str(project_root / "src")
+        child_environment["PYTHONPATH"] = os.pathsep.join(filter(None, (
+            source_root,
+            child_environment.get("PYTHONPATH", ""),
+        )))
+
+        def run_child(phase: str, child_input: Path, child_output: Path) -> None:
+            completed = subprocess.run(
+                [
+                    sys.executable,
+                    str(script),
+                    "--restart-worker-phase", phase,
+                    "--restart-worker-input", str(child_input),
+                    "--restart-worker-output", str(child_output),
+                ],
+                cwd=project_root,
+                env=child_environment,
+                check=False,
+                capture_output=True,
+                text=True,
+                timeout=30,
+            )
+            if completed.returncode != 0:
+                raise AssertionError(
+                    "restart_worker_failed:"
+                    + phase
+                    + ":"
+                    + completed.stderr[-2000:]
+                )
+
+        run_child("initialize", initialize_request, initialized)
+        run_child("reopen", initialized, reopened)
+        return json.loads(reopened.read_text(encoding="utf-8"))
 
 
 def _observer_capacity_plan_v3(
@@ -896,7 +1052,7 @@ def _run_v3_probe(scenario_id: str, artifact_dir: Path) -> dict[str, object]:
         changes = {
             "legitimate_recovery_attempt_delta": {},
             "illegal_route_delta": {"provider_route_identity_sha256": "9" * 64},
-            "illegal_authority_delta": {"logical_capacity_envelope_sha256": "8" * 64},
+            "illegal_authority_delta": {"physical_attempt_id": "physical-first"},
             "illegal_output_cap_delta": {"requested_output_token_cap": 2_315},
         }[scenario_id]
         prior, candidate = _recovery_pair_v3(**changes)
@@ -921,86 +1077,21 @@ def _run_v3_probe(scenario_id: str, artifact_dir: Path) -> dict[str, object]:
         assert all(item.admission_status is AdmissionStatus.PASS for item in children)
         return _pass_v3(scenario_id, "build_stage_capacity_plan_v1+capacity_failure_recovery_disposition_v1", "PRODUCTION_STAGE_CAPACITY_ONLY_NOT_FULL_SHORT", parent_status=parent.admission_status.value, child_count=len(children), complete_token_coverage=sum(item.rendered_message_tokens for item in children))
     if scenario_id == "restart_after_logical_envelope":
-        store, observer, policy, routes, egress_policy, temporary = (
-            _durable_observer_fixture_v3(artifact_dir, scenario_id)
-        )
-        first = observer.capacity_admission_context(
-            route="primary", role="planning", physical_attempt=1,
-        )
-        reopened_store = FullShortDurableExecutionStoreV1(
-            repo_root=store.repo_root, store_root=store.root,
-        )
-        try:
-            FullShortDispatchLedgerObserverV1(
-                store=reopened_store,
-                execution_id="capacity-v3-" + scenario_id,
-                policy=policy,
-                authorized_routes=routes,
-                egress_policy=egress_policy,
-                session_id="capacity-v3-restarted-process",
-                external_actions_enabled=False,
-            )
-        except FullShortExecutionBoundaryError as exc:
-            assert exc.reason_code == "OBSERVER_ALREADY_CLAIMED_NO_RESTART"
-        else:
-            raise AssertionError("logical_envelope_restart_was_not_blocked")
-        ledger = reopened_store.load_ledger("capacity-v3-" + scenario_id)
-        result = _pass_v3(
+        restart = _run_restart_subprocess_probe_v3(scenario_id)
+        return _pass_v3(
             scenario_id,
             "FullShortDispatchLedgerObserverV1.capacity_admission_context",
             "DURABLE_OBSERVER_RESTART_FAIL_CLOSED",
-            logical_capacity_envelope_bound=(
-                isinstance(first["logical_capacity_envelope_sha256"], str)
-                and len(first["logical_capacity_envelope_sha256"]) == 64
-            ),
-            reopened_durable_store=True,
-            restart_blocked=True,
-            restart_reason="OBSERVER_ALREADY_CLAIMED_NO_RESTART",
-            dispatch_attempt_count=len(ledger["attempts"]),
+            **restart,
         )
-        temporary.cleanup()
-        return result
     if scenario_id == "restart_after_physical_plan":
-        store, observer, policy, routes, egress_policy, temporary = (
-            _durable_observer_fixture_v3(artifact_dir, scenario_id)
-        )
-        plan, _ = _observer_capacity_plan_v3(observer)
-        reopened_store = FullShortDurableExecutionStoreV1(
-            repo_root=store.repo_root, store_root=store.root,
-        )
-        receipt = reopened_store.load_capacity_admission_receipt(
-            execution_id="capacity-v3-" + scenario_id,
-            plan_sha256=plan.plan_sha256,
-        )
-        try:
-            FullShortDispatchLedgerObserverV1(
-                store=reopened_store,
-                execution_id="capacity-v3-" + scenario_id,
-                policy=policy,
-                authorized_routes=routes,
-                egress_policy=egress_policy,
-                session_id="capacity-v3-restarted-process",
-                external_actions_enabled=False,
-            )
-        except FullShortExecutionBoundaryError as exc:
-            assert exc.reason_code == "OBSERVER_ALREADY_CLAIMED_NO_RESTART"
-        else:
-            raise AssertionError("physical_plan_restart_was_not_blocked")
-        ledger = reopened_store.load_ledger("capacity-v3-" + scenario_id)
-        result = _pass_v3(
+        restart = _run_restart_subprocess_probe_v3(scenario_id)
+        return _pass_v3(
             scenario_id,
             "FullShortDispatchLedgerObserverV1.bind_capacity_plan",
             "DURABLE_PHYSICAL_PLAN_REOPEN_AND_RESTART_FAIL_CLOSED",
-            physical_plan_reopened=(
-                receipt["capacity_plan_sha256"] == plan.plan_sha256
-                and receipt["state"] == "PLAN_BOUND_UNCONSUMED"
-            ),
-            restart_blocked=True,
-            restart_reason="OBSERVER_ALREADY_CLAIMED_NO_RESTART",
-            dispatch_attempt_count=len(ledger["attempts"]),
+            **restart,
         )
-        temporary.cleanup()
-        return result
     raise AssertionError("unknown_v3_scenario:" + scenario_id)
 
 
@@ -1073,7 +1164,20 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument("--artifact-dir", type=Path)
     parser.add_argument("--output", type=Path)
+    parser.add_argument(
+        "--restart-worker-phase", choices=("initialize", "reopen"),
+    )
+    parser.add_argument("--restart-worker-input", type=Path)
+    parser.add_argument("--restart-worker-output", type=Path)
     args = parser.parse_args(argv)
+    if args.restart_worker_phase is not None:
+        if args.restart_worker_input is None or args.restart_worker_output is None:
+            parser.error("restart worker requires input and output paths")
+        return _restart_worker_v3(
+            phase=args.restart_worker_phase,
+            input_path=args.restart_worker_input,
+            output_path=args.restart_worker_output,
+        )
     if args.artifact_dir is None:
         with tempfile.TemporaryDirectory(
             prefix="full-short-capacity-fault-campaign-"

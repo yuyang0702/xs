@@ -209,6 +209,8 @@ def test_capacity_attempt_delta_accepts_only_explicit_recovery_fields() -> None:
          "capacity.invalid_attempt_delta"),
         ({"logical_capacity_envelope_sha256": "8" * 64},
          "capacity.physical_attempt_drift"),
+        ({"physical_attempt_id": "physical-first"},
+         "capacity.physical_attempt_drift"),
     ),
 )
 def test_capacity_attempt_delta_rejects_route_output_or_authority_drift(
