@@ -1,0 +1,182 @@
+{
+  "version": 2,
+  "original_requirement": "Close the exact eight-probe authorization/nonce path and frozen-HEAD external workload-evidence consumption without changing production route/model or literary semantics, then conditionally run one bounded Full Short.",
+  "scope_classification": "closed_world",
+  "closed_world_justification": "The source universe is the sealed 183-shape Exact READY matrix at one current route/model graph; its 111 blocked shapes mechanically partition into eight named provider-visible workload families and unknown partitions fail closed.",
+  "operational_definition": "Exactly eight sequential synthetic requests prove only their current route-bound workload lower bounds; signed evidence admits only same-HEAD, same-route, same-family production requests at or below the proven input/output bounds.",
+  "forbidden_narrowing": [
+    "no reduction of literary, authority, or protected context",
+    "no production route/model or fallback change",
+    "no output-budget reduction",
+    "no arbitrary external JSON or upstream-name inheritance",
+    "no theoretical maximum inference from workload probes",
+    "no retry or replacement Full Short"
+  ],
+  "resolution_status": "case_fixed",
+  "constraint_traceability": [
+    {
+      "requirement": "eight exact probes cover every blocked shape",
+      "implementation": "full_short_probe_campaign.py and full_short_budget_unblocked_campaign.py",
+      "test_paths": [
+        "tests/test_full_short_probe_campaign.py",
+        "tests/canary/test_full_short_budget_unblocked_campaign.py",
+        "tests/canary/test_external_workload_capacity_admission.py"
+      ],
+      "evidence": "authoritative sparse 111-shape partition collapses to exactly eight disjoint workload families"
+    },
+    {
+      "requirement": "nonce before credential, one request, no retry/fallback/route switch",
+      "implementation": "FullShortProbeCampaign and GuardedProviderDispatch",
+      "test_paths": [
+        "tests/test_full_short_probe_campaign.py",
+        "tests/canary/test_full_short_budget_unblocked_campaign.py"
+      ],
+      "evidence": "in-memory transport tests observe eight reservations before eight secret reads and halt on the first failed dispatch"
+    },
+    {
+      "requirement": "frozen-HEAD external evidence is exact and tamper resistant",
+      "implementation": "external_workload_evidence.py and FullShort capacity admission",
+      "test_paths": [
+        "tests/test_external_workload_evidence.py",
+        "tests/canary/test_external_workload_capacity_admission.py",
+        "tests/test_full_short_execution.py"
+      ],
+      "evidence": "canonical authenticated package binds authorization, HEAD, route, family, fixture, exact payload, nonce, response and measured usage"
+    },
+    {
+      "requirement": "the campaign budget is mechanically derived and cumulatively enforced before every external attempt",
+      "implementation": "execute_full_short_budget_unblocked_one_round.py, full_short_execution.py and provider_response_capture.py",
+      "test_paths": [
+        "tests/test_full_short_campaign_authorization.py",
+        "tests/test_full_short_execution.py",
+        "tests/test_provider_response_capture.py",
+        "tests/canary/test_full_short_budget_unblocked_orchestrator.py"
+      ],
+      "evidence": "three SHA-pinned current-plan sources are recomputed into the 2,559,809 estimate and 3,071,771 cap; captured actual usage or a conservative sealed debit is checked before each next nonce and HTTP attempt"
+    },
+    {
+      "requirement": "verified workload evidence admits every exact sealed family without weakening generic capacity",
+      "implementation": "stage_capacity.py and full_short_execution.py",
+      "test_paths": [
+        "tests/test_stage_capacity.py",
+        "tests/canary/test_external_workload_capacity_admission.py",
+        "tests/canary/test_full_short_budget_unblocked_campaign.py"
+      ],
+      "evidence": "all eight family maxima pass both build and enforce only with the exact external evidence bindings; generic and partially bound sources remain fixed at the existing stage ceiling"
+    },
+    {
+      "requirement": "authorization, gate provenance and exact-once durable state cannot be self-asserted or rewound",
+      "implementation": "full_short_campaign_authorization.py, full_short_probe_campaign.py and execute_full_short_budget_unblocked_one_round.py",
+      "test_paths": [
+        "tests/test_full_short_campaign_authorization.py",
+        "tests/test_full_short_probe_campaign.py",
+        "tests/canary/test_full_short_budget_unblocked_orchestrator.py"
+      ],
+      "evidence": "HMAC-bound journals reject self-consistent rollback; post-probe policy is an exact outer-authorized derivation; gate receipts are derived only after mechanical validation of eight campaign-bound canonical source artifacts"
+    },
+    {
+      "requirement": "production scheduling and literary behavior remain unchanged",
+      "implementation": "public operator classification plus additive capacity evidence source",
+      "test_paths": [
+        "tests/providers/test_registry.py",
+        "tests/test_reasoning_finalization_recovery.py",
+        "tests/canary/test_full_short_runner_hardening.py"
+      ],
+      "evidence": "route selection is untouched; evidence is inert unless an exact verified package is explicitly supplied"
+    }
+  ],
+  "historical_incident_families_checked": [
+    "provider.connection_failed",
+    "model.output_truncated",
+    "capacity.context_window_exceeded",
+    "parser.generated_artifact_shape",
+    "provider.reasoning_only_final_artifact_unavailable",
+    "planning structured_output_business_incomplete",
+    "ambiguous external completion",
+    "stale route capability evidence"
+  ],
+  "projected_failure_mechanisms": [
+    "credential lookup before durable nonce reservation",
+    "hidden transport retry or route switch",
+    "payload hash confused with reusable request-family hash",
+    "dynamic stage identities exploding one bounded family",
+    "stale HEAD or route evidence promotion",
+    "workload lower bound misrepresented as theoretical maximum",
+    "tampered response or nonce evidence",
+    "capacity admission receipt losing evidence identity",
+    "provider tokenizer compressing a synthetic workload below the promoted bound",
+    "self-consistent durable-state rewind",
+    "unanchored response-capture replay",
+    "caller-authored gate PASS receipt",
+    "evidence-backed capacity build/enforce ceiling disagreement",
+    "unmetered failed attempt bypassing cumulative usage debit"
+  ],
+  "model_output_boundary_changed": false,
+  "model_output_not_applicable_evidence": "No production parser, prompt, generated-artifact adapter, output normalizer, literary validator, or model-visible workflow input changed. The canary reuses ModelRequest, registered production schemas, ProviderRegistry adapters, and ModelResponse; new code only governs dispatch/evidence/admission around those unchanged boundaries.",
+  "why_previous_tests_missed": "Earlier capacity tests proved the 111 shapes were blocked but had no authenticated post-freeze workload-evidence path and no eight-case nonce/transport orchestration to cross the credential boundary safely.",
+  "sibling_boundaries": [
+    {
+      "boundary": "planning",
+      "disposition": "fixed_and_tested",
+      "evidence": "planning adaptation, causal-chain and execution-manifest families have distinct registered schema hashes and bounds"
+    },
+    {
+      "boundary": "causal chain",
+      "disposition": "fixed_and_tested",
+      "evidence": "short_causal_chain is one exact structured partition with stop-on-failure coverage"
+    },
+    {
+      "boundary": "execution manifest",
+      "disposition": "fixed_and_tested",
+      "evidence": "execution_manifest is one exact structured partition and cannot inherit planning-adaptation evidence"
+    },
+    {
+      "boundary": "drafting",
+      "disposition": "fixed_and_tested",
+      "evidence": "all 12 blocked draft shapes collapse only to draft_plain on the exact Qwen route"
+    },
+    {
+      "boundary": "split/merge",
+      "disposition": "tested_not_susceptible",
+      "evidence": "no ownership, split, merge, candidate, checkpoint, or promotion code changed"
+    },
+    {
+      "boundary": "polish",
+      "disposition": "fixed_and_tested",
+      "evidence": "all 24 blocked polish shapes collapse only to polish_plain on the exact Sonnet route"
+    },
+    {
+      "boundary": "targeted/manual revision",
+      "disposition": "tested_not_susceptible",
+      "evidence": "the Full Short logical-stage plan is the only accepted evidence consumer"
+    },
+    {
+      "boundary": "AI issue refresh",
+      "disposition": "tested_not_susceptible",
+      "evidence": "no AI issue refresh route or contract is in the eight-family closed world"
+    },
+    {
+      "boundary": "final review",
+      "disposition": "fixed_and_tested",
+      "evidence": "window and adjudication are separate exact structured families and cannot substitute for each other"
+    },
+    {
+      "boundary": "maintenance and formal promotion",
+      "disposition": "fixed_and_tested",
+      "evidence": "41 dynamic maintenance windows collapse by provider-visible plain mode while StoryState/Canon/formal-write authority remains unchanged"
+    }
+  ],
+  "production_shaped_tests": [
+    "tests/canary/test_full_short_budget_unblocked_campaign.py",
+    "tests/canary/test_external_workload_capacity_admission.py",
+    "tests/canary/test_full_short_runner_hardening.py",
+    "tests/test_full_short_execution.py"
+  ],
+  "next_authoritative_boundary_tests": [
+    "tests/canary/test_full_short_runner_hardening.py",
+    "tests/test_full_short_execution.py"
+  ],
+  "remaining_risks": [
+    "Real-provider acceptance remains a separately executed campaign gate; no local test can assert the relay accepts all eight maximum workload shapes."
+  ]
+}

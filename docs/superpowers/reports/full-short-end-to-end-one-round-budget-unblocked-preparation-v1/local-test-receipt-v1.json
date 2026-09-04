@@ -1,0 +1,29 @@
+{
+  "schema": "FullShortBudgetUnblockedLocalTestReceiptV1",
+  "version": 1,
+  "status": "PASS",
+  "focused": {
+    "passed": 503,
+    "failed": 0,
+    "duration_seconds": 93.04,
+    "coverage": "probe HMAC state, fixture/dispatch, authorization and budget derivation, external evidence, all-eight capacity build/enforce, anchored response capture, cumulative usage, runner, route operator, reasoning policy"
+  },
+  "size_matrix": {
+    "passed": 3,
+    "failed": 0,
+    "duration_seconds": 104.54,
+    "targets": [13000, 20000, 30000],
+    "coverage": "production WorkflowService through real registry/adapters with only the lowest httpx seam replaced"
+  },
+  "new_regression_count": 0,
+  "real_external_action_counters": {
+    "credential_lookups": 0,
+    "provider_client_creations": 0,
+    "provider_requests": 0,
+    "http_post_attempts": 0,
+    "network_calls": 0,
+    "model_calls": 0,
+    "paid_calls": 0,
+    "real_full_short_executions": 0
+  }
+}

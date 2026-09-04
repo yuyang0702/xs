@@ -117,12 +117,12 @@ def test_unverified_routes_fail_closed_without_wire_injection() -> None:
     normal = anthropic_payload_v1(_request())
     for changes in (
         {
-            "operator": "THIRD_PARTY_ENDPOINT_LOCAL_METADATA_ONLY",
+            "operator": "THIRD_PARTY_RELAY_UNVERIFIED_UPSTREAM",
             "destination": "https://relay.test:443/anthropic/v1/messages",
         },
         {
             "provider_id": "third-party-deepseek",
-            "operator": "THIRD_PARTY_ENDPOINT_LOCAL_METADATA_ONLY",
+            "operator": "THIRD_PARTY_RELAY_UNVERIFIED_UPSTREAM",
         },
     ):
         with pytest.raises(ReasoningPolicyCapabilityError):
@@ -182,7 +182,7 @@ def test_exact_official_deepseek_capability_resolves_and_every_key_is_closed() -
     ) is ProviderReasoningDirective.DISABLE_REASONING
     mutations = {
         "provider_id": "other",
-        "operator": "THIRD_PARTY_ENDPOINT_LOCAL_METADATA_ONLY",
+        "operator": "THIRD_PARTY_RELAY_UNVERIFIED_UPSTREAM",
         "destination": "https://relay.test:443/anthropic/v1/messages",
         "protocol": "openai-responses",
         "model_id": "other",
@@ -203,7 +203,7 @@ def test_exact_official_deepseek_capability_resolves_and_every_key_is_closed() -
             )
     assert resolve_provider_reasoning_directive_v1(
         ReasoningPolicy.CURRENT_PROVIDER_DEFAULT,
-        **_capability_args(operator="THIRD_PARTY_ENDPOINT_LOCAL_METADATA_ONLY"),
+        **_capability_args(operator="THIRD_PARTY_RELAY_UNVERIFIED_UPSTREAM"),
     ) is ProviderReasoningDirective.CURRENT_PROVIDER_DEFAULT
 
 

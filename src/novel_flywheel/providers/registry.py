@@ -256,13 +256,19 @@ class ProviderRegistry:
             destination == "https://api.deepseek.com:443/anthropic/v1/messages",
             protocol == "anthropic",
         ))
+        official_volcengine_ark = all((
+            destination
+            == "https://ark.cn-beijing.volces.com:443/api/v3/responses",
+            protocol == "openai-responses",
+        ))
         return PublicRouteReadinessV1(
             provider=dict(provider), model=dict(model),
             route_fingerprint=self.route_fingerprint(provider, model),
             protocol=protocol, destination=destination,
             provider_operator=(
                 "DEEPSEEK_OFFICIAL" if official_deepseek
-                else "THIRD_PARTY_ENDPOINT_LOCAL_METADATA_ONLY"
+                else "VOLCENGINE_ARK_DIRECT" if official_volcengine_ark
+                else "THIRD_PARTY_RELAY_UNVERIFIED_UPSTREAM"
             ),
         )
 

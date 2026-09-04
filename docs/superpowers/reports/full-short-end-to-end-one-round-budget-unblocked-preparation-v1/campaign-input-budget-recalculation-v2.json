@@ -1,0 +1,42 @@
+{
+  "schema": "FullShortCampaignInputBudgetRecalculationV2",
+  "version": 2,
+  "status": "PASS",
+  "source_branch": "r1-ptr3/planning-repair-finding-propagation-20260817",
+  "source_head": "fb1b6970fc9df38eb3c9c7575d7cc75cc57e6755",
+  "authorization_source_sha256": "29ab6557dc7ebdf687b86ee47f55472aa01e406166d0cfde87641630bd22791e",
+  "OLD_ABSOLUTE_MAX_INPUT_TOKENS": 2000000,
+  "NEW_ABSOLUTE_MAX_INPUT_TOKENS": 4000000,
+  "OLD_CAMPAIGN_INPUT_LOWER_BOUND": 2388221,
+  "NORMAL_FULL_SHORT_PROVIDER_WIRE_INPUT_WITH_DEDUPLICATED_SHAPE": 2201488,
+  "RESTORED_DEDUPLICATED_CALL_INPUT": 16037,
+  "NORMAL_FULL_SHORT_PROVIDER_WIRE_INPUT_EXACT": 2217525,
+  "MAXIMUM_TYPED_BUSINESS_RECOVERY_PATH_PHYSICAL_CALLS": 96,
+  "MAXIMUM_TYPED_BUSINESS_RECOVERY_PATH_PROVIDER_WIRE_INPUT": 2373076,
+  "MINIMUM_EXACT_ROUTE_PROBE_CASE_COUNT": 8,
+  "MINIMUM_8_PROBE_INPUT": 186733,
+  "EXACT_PRE_DISPATCH_ESTIMATED_INPUT_TOKENS": 2559809,
+  "PLAN_DERIVED_MARGIN_NUMERATOR": 120,
+  "PLAN_DERIVED_MARGIN_DENOMINATOR": 100,
+  "PLAN_DERIVED_MAX_INPUT_TOKENS": 3071771,
+  "PLAN_DERIVED_HEADROOM_BELOW_NEW_ABSOLUTE_CAP": 928229,
+  "BUDGET_GATE": "PASS",
+  "accounting": {
+    "input_estimator_identity": "context_policy.estimate_input_tokens.v1",
+    "full_short_basis": "maximum_current_96-physical-call_typed-business-recovery_scenario",
+    "probe_basis": "eight_exact-route_provider-visible_request-family_maxima",
+    "mutually_exclusive_scenarios_double_counted": false,
+    "protocol_request_overhead_included": true,
+    "generated_output_not_counted_as_input": true
+  },
+  "external_action_counters": {
+    "credential_lookups": 0,
+    "provider_client_creations": 0,
+    "provider_requests": 0,
+    "http_post_attempts": 0,
+    "network_calls": 0,
+    "model_calls": 0,
+    "paid_calls": 0,
+    "real_full_short_executions": 0
+  }
+}

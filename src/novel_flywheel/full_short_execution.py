@@ -21,10 +21,12 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 import hashlib
 import json
+import math
 import os
 from pathlib import Path
 import re
 import secrets
+import time
 from typing import Any, Callable, Iterator, Mapping
 from urllib.parse import urlsplit
 
@@ -74,7 +76,9 @@ from novel_flywheel.runtime_fingerprint_build import (
 from novel_flywheel.provider_response_capture import (
     CONTRACT_RUNTIME_INPUT_BYTES,
     PROVIDER_PROTOCOL_INPUT_BYTES,
+    ProviderResponseCaptureError,
     ProviderResponseCaptureStoreV1,
+    extract_provider_reported_actual_usage_v1,
 )
 from novel_flywheel.recovery_engine import FailureClass, ReliabilityFailure
 from novel_flywheel.stage_capacity import (
@@ -85,6 +89,7 @@ from novel_flywheel.stage_capacity import (
     MAX_CONTEXT_LIMIT_TOKENS_V1,
     RouteContextCapabilitySourceV1,
     StageCapacityAdmissionEngineV1,
+    _mint_verified_external_workload_capacity_capability_v1,
     StageCapacityPlanV1,
     capacity_recovery_overlay_sha256_v1,
     capacity_recovery_prompt_delta_sha256_v1,
@@ -312,11 +317,13 @@ _CAPACITY_ADMISSION_RECEIPT_FIELDS_V1 = frozenset({
     "physical_attempt_id", "global_physical_attempt_ordinal",
     "logical_capacity_envelope_sha256",
     "route_capability_snapshot_sha256",
+    "external_workload_evidence_sha256",
     "contract_name_sha256", "contract_version",
     "contract_schema_sha256", "provider_route_identity_sha256",
     "stage_operational_context_ceiling_tokens",
     "route_context_capability_limit_tokens",
     "route_context_capability_source", "model_context_limit",
+    "provider_wire_input_token_estimate",
     "role_sha256", "route", "rendered_request_sha256",
     "requested_output_token_cap", "final_output_reserve",
     "route_max_output_tokens", "reasoning_token_reserve",
@@ -348,6 +355,21 @@ _CAPACITY_ADMISSION_REQUEST_HASH_FIELDS_V1 = frozenset({
 })
 _CAPACITY_ADMISSION_DISPATCH_HASH_FIELDS_V1 = frozenset({
     "outbound_request_bytes_sha256", "destination_sha256",
+})
+_EXTERNAL_WORKLOAD_FAMILY_FIELDS_V1 = frozenset({
+    "schema", "version", "request_family_sha256", "request_sha256",
+    "evidence_sha256",
+    "authorization_sha256", "final_execution_head", "case_id",
+    "input_tokens", "requested_output_tokens", "actual_output_tokens",
+    "proven_workload_context_lower_bound_tokens",
+})
+_OUTER_CAMPAIGN_USAGE_GUARD_FIELDS_V1 = frozenset({
+    "schema", "version", "campaign_authorization_sha256",
+    "prior_provider_request_count", "prior_input_tokens",
+    "prior_output_tokens", "remaining_provider_requests",
+    "remaining_input_tokens", "remaining_output_tokens",
+    "remaining_elapsed_seconds", "absolute_deadline_unix_seconds",
+    "guard_sha256",
 })
 
 
@@ -388,6 +410,7 @@ def _validate_capacity_admission_receipt_v1(
         "contract_version",
         "stage_operational_context_ceiling_tokens",
         "route_context_capability_limit_tokens", "model_context_limit",
+        "provider_wire_input_token_estimate",
         "requested_output_token_cap", "final_output_reserve",
         "route_max_output_tokens",
     )
@@ -408,6 +431,25 @@ def _validate_capacity_admission_receipt_v1(
                 and _HEX64.fullmatch(optional_hash) is not None
             ),
             "CAPACITY_ADMISSION_RECEIPT_HASH_INVALID",
+        )
+    external_evidence_sha256 = body.get(
+        "external_workload_evidence_sha256"
+    )
+    if body.get("route_context_capability_source") == (
+        RouteContextCapabilitySourceV1
+        .VERIFIED_EXTERNAL_WORKLOAD_EVIDENCE.value
+    ):
+        _require(
+            isinstance(external_evidence_sha256, str)
+            and _HEX64.fullmatch(external_evidence_sha256) is not None
+            and external_evidence_sha256
+            == body.get("route_capability_snapshot_sha256"),
+            "CAPACITY_ADMISSION_EXTERNAL_EVIDENCE_INVALID",
+        )
+    else:
+        _require(
+            external_evidence_sha256 is None,
+            "CAPACITY_ADMISSION_EXTERNAL_EVIDENCE_INVALID",
         )
     _require(
         isinstance(body.get("recovery_stage_role"), str)
@@ -724,6 +766,411 @@ def _now() -> str:
     )
 
 
+def build_full_short_outer_campaign_usage_guard_v1(
+    *, campaign_authorization_sha256: str,
+    prior_provider_request_count: int, prior_input_tokens: int,
+    prior_output_tokens: int, remaining_provider_requests: int,
+    remaining_input_tokens: int, remaining_output_tokens: int,
+    remaining_elapsed_seconds: int, absolute_deadline_unix_seconds: int,
+) -> dict[str, Any]:
+    """Build the optional outer-campaign budget supplied by the launcher."""
+
+    body = {
+        "schema": "FullShortOuterCampaignUsageGuardV1",
+        "version": 1,
+        "campaign_authorization_sha256": campaign_authorization_sha256,
+        "prior_provider_request_count": prior_provider_request_count,
+        "prior_input_tokens": prior_input_tokens,
+        "prior_output_tokens": prior_output_tokens,
+        "remaining_provider_requests": remaining_provider_requests,
+        "remaining_input_tokens": remaining_input_tokens,
+        "remaining_output_tokens": remaining_output_tokens,
+        "remaining_elapsed_seconds": remaining_elapsed_seconds,
+        "absolute_deadline_unix_seconds": absolute_deadline_unix_seconds,
+    }
+    return {
+        **body,
+        "guard_sha256": domain_sha256(
+            "novel-flywheel-full-short-outer-campaign-usage-guard-v1",
+            body,
+        ),
+    }
+
+
+def validate_full_short_outer_campaign_usage_guard_v1(
+    value: Mapping[str, Any],
+) -> dict[str, Any]:
+    _require(isinstance(value, Mapping), "OUTER_CAMPAIGN_USAGE_GUARD_INVALID")
+    body = deepcopy(dict(value))
+    _require(
+        set(body) == _OUTER_CAMPAIGN_USAGE_GUARD_FIELDS_V1
+        and body.get("schema") == "FullShortOuterCampaignUsageGuardV1"
+        and body.get("version") == 1,
+        "OUTER_CAMPAIGN_USAGE_GUARD_INVALID",
+    )
+    _require(
+        isinstance(body.get("campaign_authorization_sha256"), str)
+        and _HEX64.fullmatch(body["campaign_authorization_sha256"])
+        is not None,
+        "OUTER_CAMPAIGN_USAGE_GUARD_INVALID",
+    )
+    integer_fields = (
+        "prior_provider_request_count", "prior_input_tokens",
+        "prior_output_tokens", "remaining_provider_requests",
+        "remaining_input_tokens", "remaining_output_tokens",
+        "remaining_elapsed_seconds", "absolute_deadline_unix_seconds",
+    )
+    _require(
+        all(type(body.get(field)) is int and body[field] >= 0
+            for field in integer_fields),
+        "OUTER_CAMPAIGN_USAGE_GUARD_INVALID",
+    )
+    _require(
+        body["absolute_deadline_unix_seconds"] > 0,
+        "OUTER_CAMPAIGN_USAGE_GUARD_INVALID",
+    )
+    sealed = dict(body)
+    guard_sha256 = sealed.pop("guard_sha256", None)
+    _require(
+        guard_sha256 == domain_sha256(
+            "novel-flywheel-full-short-outer-campaign-usage-guard-v1",
+            sealed,
+        ),
+        "OUTER_CAMPAIGN_USAGE_GUARD_SHA256_MISMATCH",
+    )
+    return body
+
+
+def _campaign_accounted_usage_debit_v1(
+    *, attempt: Mapping[str, Any],
+    provider_usage: Mapping[str, Any] | None,
+) -> dict[str, Any]:
+    if provider_usage is None:
+        basis = "CONSERVATIVE_REQUEST_BOUND"
+        input_tokens = int(attempt["estimated_input_tokens"])
+        output_tokens = int(attempt["requested_output_tokens"])
+        provider_usage_receipt_sha256 = None
+        provider_entity_sha256 = None
+    else:
+        basis = "PROVIDER_REPORTED_ACTUAL"
+        input_tokens = int(provider_usage["input_tokens"])
+        output_tokens = int(provider_usage["output_tokens"])
+        provider_usage_receipt_sha256 = provider_usage[
+            "usage_receipt_sha256"
+        ]
+        provider_entity_sha256 = provider_usage["provider_entity_sha256"]
+    body = {
+        "schema": "FullShortCampaignAccountedUsageDebitV1",
+        "version": 1,
+        "accounting_basis": basis,
+        "input_tokens": input_tokens,
+        "output_tokens": output_tokens,
+        "estimated_input_tokens": int(attempt["estimated_input_tokens"]),
+        "requested_output_tokens": int(attempt["requested_output_tokens"]),
+        "provider_protocol_capture_receipt_sha256": attempt.get(
+            "provider_protocol_capture_receipt_sha256"
+        ),
+        "provider_usage_receipt_sha256": provider_usage_receipt_sha256,
+        "provider_entity_sha256": provider_entity_sha256,
+    }
+    return {
+        **body,
+        "accounted_usage_debit_sha256": domain_sha256(
+            "novel-flywheel-full-short-campaign-accounted-usage-debit-v1",
+            body,
+        ),
+    }
+
+
+def _attempt_actual_usage_receipt_v1(
+    *, attempt: Mapping[str, Any], accounted_usage: Mapping[str, Any],
+    guard: Mapping[str, Any], full_short_input_tokens: int,
+    full_short_output_tokens: int,
+) -> dict[str, Any]:
+    body = {
+        "schema": "FullShortAttemptActualUsageReceiptV1",
+        "version": 1,
+        "ordinal": attempt.get("ordinal"),
+        "physical_attempt_id": attempt.get("physical_attempt_id"),
+        "provider_protocol_capture_receipt_sha256": attempt.get(
+            "provider_protocol_capture_receipt_sha256"
+        ),
+        "accounted_usage_debit_sha256": accounted_usage.get(
+            "accounted_usage_debit_sha256"
+        ),
+        "outer_campaign_usage_guard_sha256": guard["guard_sha256"],
+        "accounted_input_tokens": accounted_usage.get("input_tokens"),
+        "accounted_output_tokens": accounted_usage.get("output_tokens"),
+        "full_short_cumulative_input_tokens": full_short_input_tokens,
+        "full_short_cumulative_output_tokens": full_short_output_tokens,
+        "campaign_cumulative_provider_requests": (
+            guard["prior_provider_request_count"] + int(attempt["ordinal"])
+        ),
+        "campaign_cumulative_input_tokens": (
+            guard["prior_input_tokens"] + full_short_input_tokens
+        ),
+        "campaign_cumulative_output_tokens": (
+            guard["prior_output_tokens"] + full_short_output_tokens
+        ),
+    }
+    return {
+        **body,
+        "attempt_usage_receipt_sha256": domain_sha256(
+            "novel-flywheel-full-short-attempt-actual-usage-v1", body,
+        ),
+    }
+
+
+def verify_full_short_actual_usage_v1(
+    *, ledger: Mapping[str, Any],
+    durable_store: FullShortDurableExecutionStoreV1 | None = None,
+    policy: Mapping[str, Any] | None = None,
+) -> dict[str, Any] | None:
+    """Verify the append-only per-attempt usage chain, optionally from bytes."""
+
+    sealed = FullShortDurableExecutionStoreV1._verify_seal(
+        ledger, domain="novel-flywheel-full-short-dispatch-ledger-v1",
+        field="ledger_sha256", reason="LEDGER_SHA256_MISMATCH",
+    )
+    attempts = list(sealed.get("attempts") or [])
+    guarded = [
+        item for item in attempts
+        if item.get("outer_campaign_usage_guard") is not None
+    ]
+    if not guarded:
+        _require(
+            not any(
+                item.get("provider_reported_actual_usage") is not None
+                or item.get("campaign_accounted_usage") is not None
+                or item.get("attempt_usage_receipt_sha256") is not None
+                for item in attempts
+            ),
+            "OUTER_CAMPAIGN_USAGE_WITHOUT_GUARD",
+        )
+        return None
+    _require(
+        len(guarded) == len(attempts),
+        "OUTER_CAMPAIGN_USAGE_GUARD_PARTIAL",
+    )
+    guard = validate_full_short_outer_campaign_usage_guard_v1(
+        guarded[0]["outer_campaign_usage_guard"]
+    )
+    input_total = 0
+    output_total = 0
+    provider_receipts: list[str] = []
+    accounted_debits: list[str] = []
+    attempt_receipts: list[str] = []
+    provider_reported_actual_complete = True
+    capture_store = (
+        ProviderResponseCaptureStoreV1(
+            repo_root=durable_store.repo_root,
+            store_root=(
+                durable_store.root / "provider-response-captures-v1"
+            ),
+        )
+        if durable_store is not None else None
+    )
+    if capture_store is not None:
+        _require(
+            isinstance(policy, Mapping),
+            "PROVIDER_CAPTURE_EXTERNAL_ANCHOR_POLICY_REQUIRED",
+        )
+        validated_policy = durable_store._verify_store_binding(policy)
+        capture_anchors = durable_store.audit_provider_response_capture_anchors(
+            policy=validated_policy,
+        )
+        audited = capture_store.audit_all(
+            expected_receipt_sha256s=[
+                str(item["provider_response_capture_receipt_sha256"])
+                for item in capture_anchors
+            ],
+        )
+    else:
+        audited = []
+    for expected_ordinal, attempt in enumerate(attempts, 1):
+        current_guard = validate_full_short_outer_campaign_usage_guard_v1(
+            attempt.get("outer_campaign_usage_guard") or {}
+        )
+        _require(current_guard == guard, "OUTER_CAMPAIGN_USAGE_GUARD_DRIFT")
+        _require(
+            attempt.get("ordinal") == expected_ordinal,
+            "OUTER_CAMPAIGN_USAGE_ORDINAL_INVALID",
+        )
+        accounted_usage = attempt.get("campaign_accounted_usage")
+        _require(
+            isinstance(accounted_usage, Mapping),
+            "CAMPAIGN_ACCOUNTED_USAGE_NOT_DURABLE",
+        )
+        accounted_usage = dict(accounted_usage)
+        accounted_body = dict(accounted_usage)
+        accounted_sha256 = accounted_body.pop(
+            "accounted_usage_debit_sha256", None,
+        )
+        _require(
+            accounted_sha256 == domain_sha256(
+                "novel-flywheel-full-short-campaign-accounted-usage-debit-v1",
+                accounted_body,
+            ),
+            "CAMPAIGN_ACCOUNTED_USAGE_DEBIT_MISMATCH",
+        )
+        basis = accounted_usage.get("accounting_basis")
+        provider_usage = attempt.get("provider_reported_actual_usage")
+        if basis == "PROVIDER_REPORTED_ACTUAL":
+            _require(
+                isinstance(provider_usage, Mapping),
+                "PROVIDER_REPORTED_USAGE_NOT_DURABLE",
+            )
+            provider_usage = dict(provider_usage)
+            provider_body = dict(provider_usage)
+            provider_sha256 = provider_body.pop("usage_receipt_sha256", None)
+            _require(
+                provider_sha256 == domain_sha256(
+                    "novel-flywheel-provider-reported-actual-usage-v1",
+                    provider_body,
+                )
+                and accounted_usage
+                == _campaign_accounted_usage_debit_v1(
+                    attempt=attempt, provider_usage=provider_usage,
+                ),
+                "PROVIDER_REPORTED_USAGE_RECEIPT_MISMATCH",
+            )
+        elif basis == "CONSERVATIVE_REQUEST_BOUND":
+            provider_reported_actual_complete = False
+            provider_sha256 = None
+            _require(
+                provider_usage is None
+                and accounted_usage == _campaign_accounted_usage_debit_v1(
+                    attempt=attempt, provider_usage=None,
+                ),
+                "CAMPAIGN_CONSERVATIVE_USAGE_DEBIT_INVALID",
+            )
+        else:
+            raise FullShortExecutionBoundaryError(
+                "CAMPAIGN_ACCOUNTED_USAGE_BASIS_INVALID"
+            )
+        if capture_store is not None:
+            matches = [
+                item for item in audited
+                if item.get("byte_domain") == PROVIDER_PROTOCOL_INPUT_BYTES
+                and item.get("execution_id") == sealed.get("execution_id")
+                and item.get("call_id")
+                == f"{sealed.get('execution_id')}:{expected_ordinal}"
+                and item.get("ledger_receipt_sha256")
+                == attempt.get("provider_protocol_capture_receipt_sha256")
+            ]
+            _require(
+                len(matches) == 1,
+                "PROVIDER_REPORTED_USAGE_CAPTURE_IDENTITY_NOT_EXACT",
+            )
+            data, metadata = capture_store.replay(
+                byte_domain=PROVIDER_PROTOCOL_INPUT_BYTES,
+                expected_metadata=matches[0]["metadata"],
+                expected_receipt_sha256=str(
+                    attempt["provider_protocol_capture_receipt_sha256"]
+                ),
+            )
+            if basis == "PROVIDER_REPORTED_ACTUAL":
+                extracted = extract_provider_reported_actual_usage_v1(
+                    data, protocol=str(metadata["protocol"]),
+                    content_type=str(metadata["content_type"]),
+                    encoding=str(metadata["encoding"]),
+                )
+                _require(
+                    extracted == provider_usage,
+                    "PROVIDER_REPORTED_USAGE_CAPTURE_MISMATCH",
+                )
+            elif (
+                metadata.get("transport_complete") is True
+                and metadata.get("http_success") is True
+            ):
+                try:
+                    extract_provider_reported_actual_usage_v1(
+                        data, protocol=str(metadata["protocol"]),
+                        content_type=str(metadata["content_type"]),
+                        encoding=str(metadata["encoding"]),
+                    )
+                except ProviderResponseCaptureError as exc:
+                    _require(
+                        str(exc) in {
+                            "PROVIDER_REPORTED_USAGE_MISSING",
+                            "PROVIDER_REPORTED_USAGE_INCOMPLETE",
+                            "PROVIDER_REPORTED_USAGE_NOT_POSITIVE",
+                        },
+                        "CAMPAIGN_CONSERVATIVE_USAGE_SOURCE_INVALID",
+                    )
+                else:
+                    raise FullShortExecutionBoundaryError(
+                        "CAMPAIGN_CONSERVATIVE_USAGE_WHEN_ACTUAL_AVAILABLE"
+                    )
+        input_total += int(accounted_usage.get("input_tokens") or 0)
+        output_total += int(accounted_usage.get("output_tokens") or 0)
+        expected_receipt = _attempt_actual_usage_receipt_v1(
+            attempt=attempt, accounted_usage=accounted_usage, guard=guard,
+            full_short_input_tokens=input_total,
+            full_short_output_tokens=output_total,
+        )
+        _require(
+            attempt.get("attempt_usage_receipt_sha256")
+            == expected_receipt["attempt_usage_receipt_sha256"],
+            "OUTER_CAMPAIGN_ATTEMPT_USAGE_RECEIPT_MISMATCH",
+        )
+        if provider_sha256 is not None:
+            provider_receipts.append(str(provider_sha256))
+        accounted_debits.append(str(accounted_sha256))
+        attempt_receipts.append(str(
+            expected_receipt["attempt_usage_receipt_sha256"]
+        ))
+    body = {
+        "schema": "FullShortVerifiedActualUsageV1",
+        "version": 1,
+        "outer_campaign_usage_guard_sha256": guard["guard_sha256"],
+        "prior_provider_request_count": guard[
+            "prior_provider_request_count"
+        ],
+        "prior_input_tokens": guard["prior_input_tokens"],
+        "prior_output_tokens": guard["prior_output_tokens"],
+        "full_short_provider_request_count": len(attempts),
+        "full_short_input_tokens": input_total,
+        "full_short_output_tokens": output_total,
+        "provider_reported_actual_complete": (
+            provider_reported_actual_complete
+        ),
+        "campaign_cumulative_provider_request_count": (
+            guard["prior_provider_request_count"] + len(attempts)
+        ),
+        "campaign_cumulative_input_tokens": (
+            guard["prior_input_tokens"] + input_total
+        ),
+        "campaign_cumulative_output_tokens": (
+            guard["prior_output_tokens"] + output_total
+        ),
+        "remaining_provider_requests": (
+            guard["remaining_provider_requests"] - len(attempts)
+        ),
+        "remaining_input_tokens": (
+            guard["remaining_input_tokens"] - input_total
+        ),
+        "remaining_output_tokens": (
+            guard["remaining_output_tokens"] - output_total
+        ),
+        "provider_usage_receipt_sha256s": provider_receipts,
+        "accounted_usage_debit_sha256s": accounted_debits,
+        "attempt_usage_receipt_sha256s": attempt_receipts,
+    }
+    _require(
+        body["remaining_provider_requests"] >= 0
+        and body["remaining_input_tokens"] >= 0
+        and body["remaining_output_tokens"] >= 0,
+        "OUTER_CAMPAIGN_ACTUAL_USAGE_CAP_EXCEEDED",
+    )
+    return {
+        **body,
+        "verified_usage_sha256": domain_sha256(
+            "novel-flywheel-full-short-verified-actual-usage-v1", body,
+        ),
+    }
+
+
 def _validate_dispatch_readiness_v1(
     readiness: Mapping[str, Any], *, execution_id: str,
     policy: Mapping[str, Any], session_sha256: str,
@@ -927,6 +1374,8 @@ _MUTABLE_ATTEMPT_FIELDS_V1 = frozenset({
     "local_rejection_failure_reason_sha256", "local_rejection_stage",
     "local_stage_receipt_sha256", "output_sha256", "role",
     "contract_name", "contract_version", "contract_schema_sha256",
+    "provider_reported_actual_usage", "campaign_accounted_usage",
+    "attempt_usage_receipt_sha256",
 })
 
 
@@ -1256,6 +1705,208 @@ def full_short_logical_stage_plan_sha256_v1(value: Any) -> str:
     return domain_sha256(
         "novel-flywheel-full-short-logical-stage-plan-v1",
         validate_full_short_logical_stage_plan_v1(value),
+    )
+
+
+def full_short_workload_request_family_id_v1(
+    value: Mapping[str, Any],
+) -> str:
+    """Return one of the eight closed-world provider workload partitions."""
+
+    item = dict(value)
+    _require(
+        set(item) == _LOGICAL_STAGE_PLAN_KEYS,
+        "WORKLOAD_REQUEST_FAMILY_KEYS_INVALID",
+    )
+    _require(
+        _ID.fullmatch(str(item.get("stage_id") or "")) is not None
+        and item.get("logical_stage_base_id") == item.get("stage_id")
+        and _ID.fullmatch(str(item.get("role") or "")) is not None
+        and item.get("route_lane") in {
+            "primary", "configured_fallback",
+        }
+        and isinstance(item.get("contract_name"), str)
+        and bool(item["contract_name"])
+        and type(item.get("contract_version")) is int
+        and item["contract_version"] > 0
+        and _HEX64.fullmatch(
+            str(item.get("contract_schema_sha256") or "")
+        ) is not None
+        and type(item.get("contract_runtime_input_required")) is bool
+        and type(item.get("requested_output_tokens")) is int
+        and item["requested_output_tokens"] > 0,
+        "WORKLOAD_REQUEST_FAMILY_INVALID",
+    )
+    stage_id = str(item["stage_id"])
+    role = str(item["role"])
+    contract_name = str(item["contract_name"])
+    structured = item["contract_runtime_input_required"]
+    family_id: str | None = None
+    if role == "draft" and stage_id.startswith("draft-part-") and not structured:
+        family_id = "draft_plain"
+    elif (
+        role == "polish"
+        and stage_id.startswith("polish-part-")
+        and not structured
+    ):
+        family_id = "polish_plain"
+    elif (
+        role == "planning"
+        and stage_id.startswith("planning-adaptation-segment-")
+        and structured
+        and contract_name == "planning_event_realizations"
+    ):
+        family_id = "planning_adaptation"
+    elif (
+        role == "planning"
+        and stage_id.startswith("planning-causal-chain-packet-")
+        and structured
+        and contract_name == "short_causal_chain"
+    ):
+        family_id = "causal_chain"
+    elif (
+        role == "planning"
+        and stage_id.startswith("planning-execution-segment-")
+        and structured
+        and contract_name == "execution_manifest"
+    ):
+        family_id = "execution_manifest"
+    elif (
+        role == "final_review"
+        and stage_id.startswith("final_review-window-")
+        and structured
+        and contract_name == "final_review_window"
+    ):
+        family_id = "final_review_window"
+    elif (
+        role == "final_review"
+        and stage_id == "final_review-adjudication"
+        and structured
+        and contract_name == "full_short_final_review"
+    ):
+        family_id = "final_review_adjudication"
+    elif (
+        role == "maintenance"
+        and stage_id.startswith("maintenance-map-")
+        and not structured
+    ):
+        family_id = "maintenance_plain"
+    _require(family_id is not None, "WORKLOAD_REQUEST_FAMILY_UNKNOWN")
+    return family_id
+
+
+def full_short_workload_request_family_sha256_v1(
+    value: Mapping[str, Any],
+    *,
+    provider: str,
+    operator: str,
+    destination: str,
+    protocol: str,
+    model: str,
+    route_fingerprint_sha256: str,
+) -> str:
+    """Bind evidence to an exact route and one of eight workload families.
+
+    Raw stage/occurrence identity and token sizes are deliberately excluded.
+    Plain-text draft, polish, and maintenance calls also exclude their dynamic
+    contract labels and schema placeholders.  Structured families retain the
+    exact provider-visible contract version and schema.
+    """
+
+    item = dict(value)
+    family_id = full_short_workload_request_family_id_v1(item)
+    structured = item["contract_runtime_input_required"]
+    return full_short_workload_partition_sha256_v1(
+        family_id=family_id,
+        provider=provider,
+        operator=operator,
+        destination=destination,
+        protocol=protocol,
+        model=model,
+        route_fingerprint_sha256=route_fingerprint_sha256,
+        contract_name=item["contract_name"] if structured else None,
+        contract_version=item["contract_version"] if structured else None,
+        contract_schema_sha256=(
+            item["contract_schema_sha256"] if structured else None
+        ),
+    )
+
+
+def full_short_workload_partition_sha256_v1(
+    *,
+    family_id: str,
+    provider: str,
+    operator: str,
+    destination: str,
+    protocol: str,
+    model: str,
+    route_fingerprint_sha256: str,
+    contract_name: str | None = None,
+    contract_version: int | None = None,
+    contract_schema_sha256: str | None = None,
+) -> str:
+    """Hash the shared eight-probe/runtime workload partition contract."""
+
+    structured_contracts = {
+        "planning_adaptation": "planning_event_realizations",
+        "causal_chain": "short_causal_chain",
+        "execution_manifest": "execution_manifest",
+        "final_review_window": "final_review_window",
+        "final_review_adjudication": "full_short_final_review",
+    }
+    plain_families = {"draft_plain", "polish_plain", "maintenance_plain"}
+    _require(
+        family_id in plain_families or family_id in structured_contracts,
+        "WORKLOAD_REQUEST_FAMILY_UNKNOWN",
+    )
+    route = {
+        "provider": provider,
+        "operator": operator,
+        "destination": destination,
+        "protocol": protocol,
+        "model": model,
+        "route_fingerprint_sha256": route_fingerprint_sha256,
+    }
+    _require(
+        all(
+            isinstance(route[field], str)
+            and bool(route[field])
+            and route[field].strip() == route[field]
+            for field in (
+                "provider", "operator", "destination", "protocol", "model",
+            )
+        )
+        and _HEX64.fullmatch(route_fingerprint_sha256) is not None,
+        "WORKLOAD_REQUEST_FAMILY_ROUTE_INVALID",
+    )
+    request_partition: dict[str, Any] = {"family_id": family_id}
+    if family_id in structured_contracts:
+        _require(
+            contract_name == structured_contracts[family_id]
+            and type(contract_version) is int
+            and contract_version > 0
+            and isinstance(contract_schema_sha256, str)
+            and _HEX64.fullmatch(contract_schema_sha256) is not None,
+            "WORKLOAD_REQUEST_FAMILY_STRUCTURED_CONTRACT_INVALID",
+        )
+        request_partition["structured_contract"] = {
+            "name": contract_name,
+            "version": contract_version,
+            "schema_sha256": contract_schema_sha256,
+        }
+    else:
+        _require(
+            contract_name is None
+            and contract_version is None
+            and contract_schema_sha256 is None,
+            "WORKLOAD_REQUEST_FAMILY_PLAIN_CONTRACT_INVALID",
+        )
+    return domain_sha256(
+        "novel-flywheel-full-short-workload-request-family-v1",
+        {
+            "route": route,
+            "request_partition": request_partition,
+        },
     )
 
 
@@ -2912,19 +3563,27 @@ class FullShortDurableExecutionStoreV1:
             store_root=self.root / "provider-response-captures-v1",
         )
         try:
-            audited = capture_store.audit_all()
+            anchors = [
+                item for item in self.audit_provider_response_capture_anchors(
+                    policy=policy,
+                )
+                if item.get("execution_id") == execution_id
+            ]
+            all_anchors = self.audit_provider_response_capture_anchors(
+                policy=policy,
+            )
+            audited = capture_store.audit_all(
+                expected_receipt_sha256s=[
+                    str(item["provider_response_capture_receipt_sha256"])
+                    for item in all_anchors
+                ],
+            )
         except Exception as exc:
             raise FullShortExecutionBoundaryError(
                 "COMPLETION_CAPTURE_PROVENANCE_INVALID"
             ) from exc
         actual = [
             item for item in audited
-            if item.get("execution_id") == execution_id
-        ]
-        anchors = [
-            item for item in self.audit_provider_response_capture_anchors(
-                policy=policy,
-            )
             if item.get("execution_id") == execution_id
         ]
         expected: list[tuple[int, str, str]] = []
@@ -3148,10 +3807,11 @@ class FullShortDurableExecutionStoreV1:
                 is external_actions_enabled,
                 "EXTERNAL_ACTION_AUTHORITY_MISMATCH",
             )
-        return {
+        context = {
             "permission": permission, "approval": approval,
             "nonce": nonce, "ledger": ledger,
         }
+        return context
 
     def claim_observer_session(
         self, *, execution_id: str, policy: Mapping[str, Any], session_id: str,
@@ -3602,6 +4262,9 @@ class FullShortDispatchLedgerObserverV1:
         egress_policy: Mapping[str, Any], session_id: str | None = None,
         external_actions_enabled: bool = False,
         live_authority_recheck: Callable[[], None] | None = None,
+        outer_campaign_usage_guard: Mapping[str, Any] | None = None,
+        external_workload_capacity_issuer: object | None = None,
+        wall_clock: Callable[[], float] = time.time,
     ) -> None:
         self.store = store
         self.execution_id = execution_id
@@ -3640,6 +4303,14 @@ class FullShortDispatchLedgerObserverV1:
         self.session_id = session_id or secrets.token_hex(16)
         self.external_actions_enabled = external_actions_enabled
         self.live_authority_recheck = live_authority_recheck
+        self.outer_campaign_usage_guard = (
+            validate_full_short_outer_campaign_usage_guard_v1(
+                outer_campaign_usage_guard
+            )
+            if outer_campaign_usage_guard is not None else None
+        )
+        self.wall_clock = wall_clock
+        self.external_workload_capacity_issuer = external_workload_capacity_issuer
         self.pending_ordinal: int | None = None
         self.bound_route: dict[str, Any] | None = None
         self.expected_provider_payload: dict[str, Any] | None = None
@@ -3659,9 +4330,20 @@ class FullShortDispatchLedgerObserverV1:
                 external_actions_enabled is False,
                 "READINESS_LESS_NONCE_LIVE_DISPATCH_FORBIDDEN",
             )
-            self.store.verify_ready_chain(
+            ready_chain = self.store.verify_ready_chain(
                 execution_id=execution_id, policy=self.policy,
                 external_actions_enabled=external_actions_enabled,
+            )
+            _require(
+                isinstance(ready_chain, Mapping)
+                and set(ready_chain) == {
+                    "permission", "approval", "nonce", "ledger",
+                }
+                and all(
+                    isinstance(ready_chain[field], Mapping)
+                    for field in ready_chain
+                ),
+                "EXECUTION_CHAIN_CONTEXT_INVALID",
             )
             self.store.claim_observer_session(
                 execution_id=execution_id, policy=self.policy,
@@ -3688,8 +4370,91 @@ class FullShortDispatchLedgerObserverV1:
         ]
         _require(len(matches) == 1, "CAPACITY_ROUTE_BINDING_DRIFT")
         sealed = matches[0]
-        route_limit = sealed.get("route_context_capability_limit_tokens")
         route_source = sealed.get("route_context_capability_source")
+        if route_source == (
+            RouteContextCapabilitySourceV1
+            .VERIFIED_EXTERNAL_WORKLOAD_EVIDENCE.value
+        ):
+            expected = (
+                self._validate_pending_logical_stage_plan()
+                if self.pending_stage_context is not None
+                else self._next_logical_stage_plan_entry()
+            )
+            request_family_sha256 = (
+                full_short_workload_request_family_sha256_v1(
+                    expected,
+                    provider=str(sealed.get("provider_name") or ""),
+                    operator=str(sealed.get("provider_operator") or ""),
+                    destination=str(sealed.get("destination") or ""),
+                    protocol=str(sealed.get("protocol") or ""),
+                    model=str(sealed.get("model_name") or ""),
+                    route_fingerprint_sha256=str(
+                        sealed.get("route_fingerprint") or ""
+                    ),
+                )
+            )
+            families = sealed.get("external_workload_evidence_families")
+            _require(
+                isinstance(families, list)
+                and all(
+                    isinstance(item, Mapping)
+                    and set(item) == _EXTERNAL_WORKLOAD_FAMILY_FIELDS_V1
+                    for item in families
+                ),
+                "EXTERNAL_WORKLOAD_EVIDENCE_FAMILY_INVALID",
+            )
+            selected = [
+                dict(item) for item in families
+                if item.get("request_family_sha256")
+                == request_family_sha256
+            ]
+            _require(
+                len(selected) == 1,
+                "EXTERNAL_WORKLOAD_EVIDENCE_FAMILY_MISSING",
+            )
+            family = selected[0]
+            _require(
+                _HEX64.fullmatch(str(family.get("request_sha256") or ""))
+                is not None
+                and _HEX64.fullmatch(
+                    str(family.get("evidence_sha256") or "")
+                )
+                is not None
+                and _HEX64.fullmatch(str(
+                    family.get("authorization_sha256") or ""
+                )) is not None
+                and family.get("final_execution_head")
+                == self.policy["execution_head"]
+                and type(family.get("input_tokens")) is int
+                and family["input_tokens"] > 0
+                and type(family.get("requested_output_tokens")) is int
+                and family["requested_output_tokens"]
+                >= expected["requested_output_tokens"]
+                and type(family.get(
+                    "proven_workload_context_lower_bound_tokens"
+                )) is int
+                and family[
+                    "proven_workload_context_lower_bound_tokens"
+                ] == family["input_tokens"]
+                + family["requested_output_tokens"],
+                "EXTERNAL_WORKLOAD_EVIDENCE_FAMILY_INVALID",
+            )
+            sealed["route_context_capability_limit_tokens"] = family[
+                "proven_workload_context_lower_bound_tokens"
+            ]
+            sealed["max_output_tokens"] = family[
+                "requested_output_tokens"
+            ]
+            sealed["route_capability_sha256"] = family[
+                "evidence_sha256"
+            ]
+            sealed["external_workload_evidence_sha256"] = family[
+                "evidence_sha256"
+            ]
+            sealed["external_workload_request_family_sha256"] = (
+                request_family_sha256
+            )
+        route_limit = sealed.get("route_context_capability_limit_tokens")
         route_max_output = sealed.get("max_output_tokens")
         reasoning_accounting = str(
             sealed.get("reasoning_token_accounting")
@@ -3743,9 +4508,7 @@ class FullShortDispatchLedgerObserverV1:
             ),
             "OFFLINE_CONTEXT_CAPABILITY_LIVE_DISPATCH_FORBIDDEN",
         )
-        sealed["role_binding_sha256"] = domain_sha256(
-            "novel-flywheel-full-short-role-binding-v1",
-            {key: sealed.get(key) for key in (
+        role_binding = {key: sealed.get(key) for key in (
                 "role", "lane", "provider_id_sha256", "model_id_sha256",
                 "model_name", "protocol", "route_fingerprint", "destination",
                 "route_context_capability_limit_tokens",
@@ -3754,7 +4517,22 @@ class FullShortDispatchLedgerObserverV1:
                 "reasoning_output_reservation", "reasoning_token_reserve",
                 "route_capability_sha256",
                 "route_capability_status",
-            )},
+            )}
+        if route_source == (
+            RouteContextCapabilitySourceV1
+            .VERIFIED_EXTERNAL_WORKLOAD_EVIDENCE.value
+        ):
+            role_binding.update({
+                "external_workload_evidence_sha256": sealed[
+                    "external_workload_evidence_sha256"
+                ],
+                "external_workload_request_family_sha256": sealed[
+                    "external_workload_request_family_sha256"
+                ],
+            })
+        sealed["role_binding_sha256"] = domain_sha256(
+            "novel-flywheel-full-short-role-binding-v1",
+            role_binding,
         )
         capability_sha = sealed.get("route_capability_sha256")
         sealed["route_capability_snapshot_sha256"] = (
@@ -3876,7 +4654,7 @@ class FullShortDispatchLedgerObserverV1:
             )
         else:
             reasoning_policy = "DEFAULT"
-        return {
+        context = {
             "logical_stage_id": logical_stage_id,
             "physical_attempt": expected_physical_attempt,
             "physical_attempt_id": physical_attempt_id,
@@ -3913,6 +4691,27 @@ class FullShortDispatchLedgerObserverV1:
                 recovery_source_capture_receipt_sha256
             ),
         }
+        if sealed["route_context_capability_source"] == (
+            RouteContextCapabilitySourceV1
+            .VERIFIED_EXTERNAL_WORKLOAD_EVIDENCE.value
+        ):
+            context["external_workload_capacity_capability"] = (
+                _mint_verified_external_workload_capacity_capability_v1(
+                    issuer=self.external_workload_capacity_issuer,
+                    route_context_capability_limit_tokens=int(
+                        sealed["route_context_capability_limit_tokens"]
+                    ),
+                    route_capability_snapshot_sha256=str(
+                        sealed["route_capability_snapshot_sha256"]
+                    ),
+                    physical_attempt_id=physical_attempt_id,
+                    global_physical_attempt_ordinal=len(attempts) + 1,
+                    logical_capacity_envelope_sha256=logical_capacity_envelope_sha256,
+                    provider_route_identity_sha256=str(sealed["role_binding_sha256"]),
+                    requested_output_token_cap=int(expected["requested_output_tokens"]),
+                )
+            )
+        return context
 
     @full_short_boundary_entry("FS.CAPACITY.ADMIT")
     def bind_capacity_plan(
@@ -4018,6 +4817,7 @@ class FullShortDispatchLedgerObserverV1:
             validate_capacity_attempt_delta_v1(prior_receipt, plan)
             immutable_delta_fields = (
                 "route_capability_snapshot_sha256",
+                "external_workload_evidence_sha256",
                 "provider_route_identity_sha256",
                 "route_context_capability_limit_tokens",
                 "route_context_capability_source",
@@ -4037,6 +4837,13 @@ class FullShortDispatchLedgerObserverV1:
                 ),
                 "route_capability_snapshot_sha256": (
                     plan.route_capability_snapshot_sha256
+                ),
+                "external_workload_evidence_sha256": (
+                    plan.route_capability_snapshot_sha256
+                    if plan.route_context_capability_source is
+                    RouteContextCapabilitySourceV1
+                    .VERIFIED_EXTERNAL_WORKLOAD_EVIDENCE
+                    else None
                 ),
                 "provider_route_identity_sha256": (
                     plan.provider_route_identity_sha256
@@ -4102,6 +4909,13 @@ class FullShortDispatchLedgerObserverV1:
             "route_capability_snapshot_sha256": (
                 plan.route_capability_snapshot_sha256
             ),
+            "external_workload_evidence_sha256": (
+                plan.route_capability_snapshot_sha256
+                if plan.route_context_capability_source is
+                RouteContextCapabilitySourceV1
+                .VERIFIED_EXTERNAL_WORKLOAD_EVIDENCE
+                else None
+            ),
             "contract_name_sha256": hashlib.sha256(
                 plan.contract_name.encode("utf-8")
             ).hexdigest(),
@@ -4120,6 +4934,11 @@ class FullShortDispatchLedgerObserverV1:
                 plan.route_context_capability_source.value
             ),
             "model_context_limit": plan.model_context_limit,
+            "provider_wire_input_token_estimate": (
+                plan.expected_rendered_input
+                + plan.provider_envelope_tokens
+                + plan.wrapper_and_estimator_margin_tokens
+            ),
             "role_sha256": hashlib.sha256(role.encode("utf-8")).hexdigest(),
             "route": route,
             "rendered_request_sha256": plan.rendered_request_sha256,
@@ -4398,6 +5217,10 @@ class FullShortDispatchLedgerObserverV1:
             # manifest member becomes the candidate; wire binding below still
             # makes the eventual dispatch lane/destination immutable.
         self.bound_route = route
+        # This observer hook returns directly to ProviderRegistry.resolve,
+        # whose next authority boundary is ``secrets.get``.  Check after every
+        # potentially slow live-authority and durable-receipt read above.
+        self._require_outer_campaign_absolute_deadline_v1()
 
     def bind_model_request(
         self, *, protocol: str, request: ModelRequest,
@@ -4529,6 +5352,89 @@ class FullShortDispatchLedgerObserverV1:
             )
         )
 
+    def _enforce_outer_campaign_predispatch_v1(
+        self, *, ledger: Mapping[str, Any], requested_output_tokens: int,
+    ) -> None:
+        guard = self.outer_campaign_usage_guard
+        if guard is None:
+            _require(
+                not any(
+                    item.get("outer_campaign_usage_guard") is not None
+                    for item in ledger.get("attempts") or []
+                ),
+                "OUTER_CAMPAIGN_USAGE_GUARD_MISSING_ON_CONTINUATION",
+            )
+            return
+        self._require_outer_campaign_absolute_deadline_v1()
+        attempts = list(ledger.get("attempts") or [])
+        if attempts:
+            usage = verify_full_short_actual_usage_v1(
+                ledger=ledger, durable_store=self.store, policy=self.policy,
+            )
+            _require(isinstance(usage, Mapping), "OUTER_CAMPAIGN_USAGE_MISSING")
+            used_input = int(usage["full_short_input_tokens"])
+            used_output = int(usage["full_short_output_tokens"])
+        else:
+            used_input = 0
+            used_output = 0
+        capacity_receipt = self.pending_capacity_receipt
+        _require(
+            isinstance(capacity_receipt, Mapping)
+            and type(capacity_receipt.get(
+                "provider_wire_input_token_estimate"
+            )) is int
+            and capacity_receipt["provider_wire_input_token_estimate"] > 0,
+            "OUTER_CAMPAIGN_NEXT_INPUT_ESTIMATE_NOT_BOUND",
+        )
+        estimated_next_input = int(
+            capacity_receipt["provider_wire_input_token_estimate"]
+        )
+        try:
+            created_at = datetime.fromisoformat(
+                str(ledger["created_at"]).replace("Z", "+00:00"),
+            )
+        except (KeyError, ValueError) as exc:
+            raise FullShortExecutionBoundaryError(
+                "OUTER_CAMPAIGN_LEDGER_CREATED_AT_INVALID"
+            ) from exc
+        elapsed = (datetime.now(timezone.utc) - created_at).total_seconds()
+        _require(
+            elapsed <= guard["remaining_elapsed_seconds"],
+            "OUTER_CAMPAIGN_ELAPSED_CAP_EXHAUSTED",
+        )
+        _require(
+            len(attempts) < guard["remaining_provider_requests"],
+            "OUTER_CAMPAIGN_PROVIDER_REQUEST_CAP_EXHAUSTED",
+        )
+        _require(
+            used_input + estimated_next_input
+            <= guard["remaining_input_tokens"],
+            "OUTER_CAMPAIGN_INPUT_TOKEN_CAP_EXHAUSTED",
+        )
+        _require(
+            used_output + requested_output_tokens
+            <= guard["remaining_output_tokens"],
+            "OUTER_CAMPAIGN_OUTPUT_TOKEN_CAP_EXHAUSTED",
+        )
+
+    def _require_outer_campaign_absolute_deadline_v1(self) -> None:
+        """Fail closed against the outer campaign's immutable wall deadline."""
+
+        guard = self.outer_campaign_usage_guard
+        if guard is None:
+            return
+        now = self.wall_clock()
+        _require(
+            isinstance(now, (int, float))
+            and not isinstance(now, bool)
+            and math.isfinite(float(now)),
+            "OUTER_CAMPAIGN_ABSOLUTE_DEADLINE_CLOCK_INVALID",
+        )
+        _require(
+            float(now) < float(guard["absolute_deadline_unix_seconds"]),
+            "OUTER_CAMPAIGN_ABSOLUTE_DEADLINE_EXPIRED",
+        )
+
     @full_short_boundary_entry("FS.CONTROL.PREFLIGHT")
     def before_http_dispatch(
         self, *, method: str, url: str, payload: Mapping[str, Any],
@@ -4536,6 +5442,8 @@ class FullShortDispatchLedgerObserverV1:
     ) -> None:
         if self.live_authority_recheck is not None:
             self.live_authority_recheck()
+        # The live source-truth read above may itself cross the deadline.
+        self._require_outer_campaign_absolute_deadline_v1()
         target = urlsplit(url)
         normalized = f"{target.scheme}://{target.hostname}:{target.port or 443}{target.path}"
         _require(method == "POST", "HTTP_METHOD_NOT_AUTHORIZED")
@@ -4628,6 +5536,9 @@ class FullShortDispatchLedgerObserverV1:
         ordinal = len(attempts) + 1
         requested_tokens = request_shape["requested_output_tokens"]
         _require(requested_tokens > 0, "OUTPUT_TOKEN_CAP_INVALID")
+        self._enforce_outer_campaign_predispatch_v1(
+            ledger=ledger, requested_output_tokens=requested_tokens,
+        )
         _require(
             requested_tokens <= self.policy["per_call_output_token_hard_cap"],
             "PER_CALL_OUTPUT_TOKEN_CAP_EXHAUSTED",
@@ -4861,6 +5772,9 @@ class FullShortDispatchLedgerObserverV1:
             "session_id": self.session_id,
             "request_shape_sha256": request_shape_sha256,
             "requested_output_tokens": requested_tokens,
+            "estimated_input_tokens": capacity_receipt[
+                "provider_wire_input_token_estimate"
+            ],
             "provider_id_sha256": route["provider_id_sha256"],
             "model_id_sha256": route["model_id_sha256"],
             "model_name_sha256": request_shape["model_sha256"],
@@ -4972,6 +5886,18 @@ class FullShortDispatchLedgerObserverV1:
             "contract_runtime_capture_receipt_sha256": None,
             "contract_runtime_capture_transport_complete": None,
         }
+        if self.outer_campaign_usage_guard is not None:
+            attempt.update({
+                "outer_campaign_usage_guard": deepcopy(
+                    self.outer_campaign_usage_guard
+                ),
+                "provider_reported_actual_usage": None,
+                "campaign_accounted_usage": None,
+                "attempt_usage_receipt_sha256": None,
+            })
+        # All local route, capacity, wire, and ledger validation is complete.
+        # Recheck immediately before the durable nonce reservation.
+        self._require_outer_campaign_absolute_deadline_v1()
         if not self.store.nonce_exists(self.execution_id):
             self.store.reserve_nonce_from_dispatch_readiness(
                 execution_id=self.execution_id, policy=self.policy,
@@ -5077,9 +6003,11 @@ class FullShortDispatchLedgerObserverV1:
     def before_http_post(self) -> None:
         # Backward-compatible observer hook; the exact dispatch is already
         # durably recorded by ``before_http_dispatch``.
+        self._require_outer_campaign_absolute_deadline_v1()
         _require(self.pending_ordinal is not None, "DISPATCH_NOT_DURABLY_RECORDED")
 
     def before_network_request(self) -> None:
+        self._require_outer_campaign_absolute_deadline_v1()
         _require(self.pending_ordinal is not None, "DISPATCH_NOT_DURABLY_RECORDED")
 
     def _capture_metadata(
@@ -5122,6 +6050,7 @@ class FullShortDispatchLedgerObserverV1:
         self, *, field: str, receipt_sha256: str,
         transport_complete: bool, http_success: bool | None = None,
         status_code: int | None = None,
+        provider_reported_usage: Mapping[str, Any] | None = None,
     ) -> None:
         ordinal = self.pending_ordinal
         _require(ordinal is not None, "DISPATCH_NOT_DURABLY_RECORDED")
@@ -5153,6 +6082,52 @@ class FullShortDispatchLedgerObserverV1:
                 current["response_status_sha256"] = hashlib.sha256(
                     str(status_code).encode("ascii"),
                 ).hexdigest()
+                if self.outer_campaign_usage_guard is not None:
+                    _require(
+                        current.get("outer_campaign_usage_guard")
+                        == self.outer_campaign_usage_guard,
+                        "OUTER_CAMPAIGN_USAGE_GUARD_DRIFT",
+                    )
+                    usage = (
+                        deepcopy(dict(provider_reported_usage))
+                        if provider_reported_usage is not None else None
+                    )
+                    if usage is not None:
+                        _require(
+                            int(usage.get("output_tokens") or 0)
+                            <= int(current.get("requested_output_tokens") or 0),
+                            "PROVIDER_REPORTED_OUTPUT_EXCEEDS_REQUEST_CAP",
+                        )
+                    accounted_usage = _campaign_accounted_usage_debit_v1(
+                        attempt=current, provider_usage=usage,
+                    )
+                    prior_usage = [
+                        item.get("campaign_accounted_usage")
+                        for item in attempts[: ordinal - 1]
+                    ]
+                    _require(
+                        all(isinstance(item, Mapping) for item in prior_usage),
+                        "PRIOR_CAMPAIGN_ACCOUNTED_USAGE_NOT_DURABLE",
+                    )
+                    input_total = sum(
+                        int(item.get("input_tokens") or 0)
+                        for item in prior_usage
+                    ) + int(accounted_usage["input_tokens"])
+                    output_total = sum(
+                        int(item.get("output_tokens") or 0)
+                        for item in prior_usage
+                    ) + int(accounted_usage["output_tokens"])
+                    current["provider_reported_actual_usage"] = usage
+                    current["campaign_accounted_usage"] = accounted_usage
+                    current["attempt_usage_receipt_sha256"] = (
+                        _attempt_actual_usage_receipt_v1(
+                            attempt=current,
+                            accounted_usage=accounted_usage,
+                            guard=self.outer_campaign_usage_guard,
+                            full_short_input_tokens=input_total,
+                            full_short_output_tokens=output_total,
+                        )["attempt_usage_receipt_sha256"]
+                    )
             attempts[ordinal - 1] = current
             body["attempts"] = attempts
             return body
@@ -5188,13 +6163,41 @@ class FullShortDispatchLedgerObserverV1:
             byte_domain=PROVIDER_PROTOCOL_INPUT_BYTES,
             provider_response_capture_receipt_sha256=receipt_sha256,
         )
+        provider_usage: dict[str, Any] | None = None
+        usage_error: ProviderResponseCaptureError | None = None
+        if self.outer_campaign_usage_guard is not None and 200 <= status_code < 300:
+            if transport_complete:
+                try:
+                    provider_usage = extract_provider_reported_actual_usage_v1(
+                        data, protocol=str(route["protocol"]),
+                        content_type=content_type, encoding=encoding,
+                    )
+                except ProviderResponseCaptureError as exc:
+                    if str(exc) not in {
+                        "PROVIDER_REPORTED_USAGE_MISSING",
+                        "PROVIDER_REPORTED_USAGE_INCOMPLETE",
+                        "PROVIDER_REPORTED_USAGE_NOT_POSITIVE",
+                    }:
+                        usage_error = exc
         self._record_capture_receipt(
             field="provider_protocol_capture_receipt_sha256",
             receipt_sha256=receipt_sha256,
             transport_complete=transport_complete,
             http_success=200 <= status_code < 300,
             status_code=status_code,
+            provider_reported_usage=provider_usage,
         )
+        if usage_error is not None:
+            raise usage_error
+        if provider_usage is not None:
+            usage = verify_full_short_actual_usage_v1(
+                ledger=self.store.load_ledger(self.execution_id),
+                durable_store=self.store, policy=self.policy,
+            )
+            _require(
+                isinstance(usage, Mapping),
+                "OUTER_CAMPAIGN_USAGE_NOT_VERIFIABLE",
+            )
         runtime_kernel = active_full_short_kernel_v1()
         if (
             runtime_kernel is not None
@@ -6276,6 +7279,9 @@ def build_full_short_completion_receipt_v1(
         *final_bindings.values(),
     ):
         _require(_HEX64.fullmatch(str(value)) is not None, "COMPLETION_BINDING_INVALID")
+    verified_actual_usage = verify_full_short_actual_usage_v1(
+        ledger=sealed_ledger, durable_store=durable_store, policy=validated,
+    )
     body = {
         "schema": COMPLETION_SCHEMA, "version": 1,
         "execution_id": execution_id,
@@ -6300,6 +7306,8 @@ def build_full_short_completion_receipt_v1(
         "outcome": "FULL_SHORT_COMPLETED_EXACT",
         "created_at": _now(),
     }
+    if verified_actual_usage is not None:
+        body["verified_actual_usage"] = verified_actual_usage
     return _seal(
         "novel-flywheel-full-short-completion-receipt-v1", body,
         "completion_receipt_sha256",
@@ -6308,9 +7316,10 @@ def build_full_short_completion_receipt_v1(
 
 def reconcile_full_short_capture_anchor_v1(
     *, store: FullShortDurableExecutionStoreV1, execution_id: str,
-    ordinal: int, byte_domain: str = PROVIDER_PROTOCOL_INPUT_BYTES,
+    ordinal: int, policy: Mapping[str, Any],
+    byte_domain: str = PROVIDER_PROTOCOL_INPUT_BYTES,
 ) -> dict[str, Any]:
-    """Anchor one atomically published capture without any network access.
+    """Reconcile one externally anchored capture without network access.
 
     Publication intentionally precedes the ledger mutation.  If the process
     stops in that interval, this routine accepts exactly one envelope whose
@@ -6339,12 +7348,21 @@ def reconcile_full_short_capture_anchor_v1(
         attempt.get("ordinal") == ordinal,
         "CAPTURE_RECONCILIATION_ATTEMPT_IDENTITY_INVALID",
     )
+    validated_policy = store._verify_store_binding(policy)
+    external_anchors = store.audit_provider_response_capture_anchors(
+        policy=validated_policy,
+    )
     capture_store = ProviderResponseCaptureStoreV1(
         repo_root=store.repo_root,
         store_root=store.root / "provider-response-captures-v1",
     )
     candidates = [
-        item for item in capture_store.audit_all()
+        item for item in capture_store.audit_all(
+            expected_receipt_sha256s=[
+                str(item["provider_response_capture_receipt_sha256"])
+                for item in external_anchors
+            ],
+        )
         if item["byte_domain"] == byte_domain
         and item["execution_id"] == execution_id
         and item["call_id"] == f"{execution_id}:{ordinal}"
@@ -6399,11 +7417,16 @@ def reconcile_full_short_capture_anchor_v1(
         expected_metadata=capture["metadata"],
         expected_receipt_sha256=receipt_sha256,
     )
-    store.create_provider_response_capture_anchor(
-        execution_id=execution_id,
-        ordinal=ordinal,
-        byte_domain=byte_domain,
-        provider_response_capture_receipt_sha256=receipt_sha256,
+    _require(
+        any(
+            item.get("execution_id") == execution_id
+            and item.get("ordinal") == ordinal
+            and item.get("byte_domain") == byte_domain
+            and item.get("provider_response_capture_receipt_sha256")
+            == receipt_sha256
+            for item in external_anchors
+        ),
+        "CAPTURE_RECONCILIATION_EXTERNAL_ANCHOR_MISSING",
     )
     field = (
         "provider_protocol_capture_receipt_sha256"
@@ -6499,7 +7522,7 @@ def reconcile_full_short_capture_anchor_v1(
 
 def replay_full_short_provider_attempt_v1(
     *, store: FullShortDurableExecutionStoreV1, execution_id: str,
-    ordinal: int,
+    ordinal: int, policy: Mapping[str, Any],
 ):
     """Read-only replay of one receipt-anchored captured provider entity.
 
@@ -6518,28 +7541,32 @@ def replay_full_short_provider_attempt_v1(
         "provider_protocol_capture_receipt_sha256"
     )
     if receipt_sha256 is None:
-        # The only recovery from the capture-publication crash window is an
-        # exact local reconciliation.  It cannot resolve credentials, construct
-        # an HTTP client, consume a nonce, or authorize another dispatch.
-        orphan_store = ProviderResponseCaptureStoreV1(
-            repo_root=store.repo_root,
-            store_root=store.root / "provider-response-captures-v1",
+        # The only recovery from the ledger-publication crash window is an
+        # exact local reconciliation from a separately signed capture anchor.
+        # A raw/self-consistent capture alone is never authority.
+        validated_policy = store._verify_store_binding(policy)
+        anchored = store.audit_provider_response_capture_anchors(
+            policy=validated_policy,
         )
-        orphan_candidates = [
-            item for item in orphan_store.audit_all()
-            if item["byte_domain"] == PROVIDER_PROTOCOL_INPUT_BYTES
-            and item["execution_id"] == execution_id
-            and item["call_id"] == f"{execution_id}:{ordinal}"
-        ]
-        if orphan_candidates:
-            reconcile_full_short_capture_anchor_v1(
-                store=store, execution_id=execution_id, ordinal=ordinal,
-            )
-            ledger = store.load_ledger(execution_id)
-            attempt = list(ledger.get("attempts") or [])[ordinal - 1]
-            receipt_sha256 = attempt.get(
-                "provider_protocol_capture_receipt_sha256"
-            )
+        _require(
+            any(
+                item.get("execution_id") == execution_id
+                and item.get("ordinal") == ordinal
+                and item.get("byte_domain")
+                == PROVIDER_PROTOCOL_INPUT_BYTES
+                for item in anchored
+            ),
+            "REPLAY_LEDGER_CAPTURE_RECEIPT_MISSING",
+        )
+        reconcile_full_short_capture_anchor_v1(
+            store=store, execution_id=execution_id, ordinal=ordinal,
+            policy=policy,
+        )
+        ledger = store.load_ledger(execution_id)
+        attempt = list(ledger.get("attempts") or [])[ordinal - 1]
+        receipt_sha256 = attempt.get(
+            "provider_protocol_capture_receipt_sha256"
+        )
     _require(
         isinstance(receipt_sha256, str)
         and _HEX64.fullmatch(receipt_sha256) is not None,
@@ -6549,8 +7576,17 @@ def replay_full_short_provider_attempt_v1(
         repo_root=store.repo_root,
         store_root=store.root / "provider-response-captures-v1",
     )
+    validated_policy = store._verify_store_binding(policy)
+    external_anchors = store.audit_provider_response_capture_anchors(
+        policy=validated_policy,
+    )
     matches = [
-        item for item in capture_store.audit_all()
+        item for item in capture_store.audit_all(
+            expected_receipt_sha256s=[
+                str(item["provider_response_capture_receipt_sha256"])
+                for item in external_anchors
+            ],
+        )
         if item["byte_domain"] == PROVIDER_PROTOCOL_INPUT_BYTES
         and item["execution_id"] == execution_id
         and item["call_id"] == f"{execution_id}:{ordinal}"
@@ -6585,6 +7621,19 @@ def replay_full_short_provider_attempt_v1(
         in _PROVIDER_PROTOCOL_ADAPTER_IDS.get(protocol, frozenset()),
         "REPLAY_ADAPTER_IDENTITY_INVALID",
     )
+    if attempt.get("outer_campaign_usage_guard") is not None:
+        extracted_usage = extract_provider_reported_actual_usage_v1(
+            data, protocol=protocol,
+            content_type=str(metadata["content_type"]),
+            encoding=str(metadata["encoding"]),
+        )
+        _require(
+            extracted_usage == attempt.get("provider_reported_actual_usage"),
+            "REPLAY_PROVIDER_REPORTED_USAGE_MISMATCH",
+        )
+        verify_full_short_actual_usage_v1(
+            ledger=ledger, durable_store=store, policy=validated_policy,
+        )
     if protocol == "anthropic":
         from novel_flywheel.providers.anthropic import AnthropicAdapter
         adapter = AnthropicAdapter

@@ -23,6 +23,7 @@ from novel_flywheel.provider_response_capture import (
     ProviderResponseCaptureStoreV1,
     FullShortTransportEvidenceStateV1,
     decide_full_short_transport_recovery_v1,
+    extract_provider_reported_actual_usage_v1,
     parse_provider_protocol_input_bytes_v1,
 )
 from novel_flywheel.providers.http import (
@@ -62,6 +63,13 @@ def _store(tmp_path: Path) -> ProviderResponseCaptureStoreV1:
     repo.mkdir()
     return ProviderResponseCaptureStoreV1(
         repo_root=repo, store_root=tmp_path / "private-captures",
+    )
+
+
+def _anchor(receipt) -> str:
+    return domain_sha256(
+        "novel-flywheel-provider-response-capture-receipt-v1",
+        receipt.document(),
     )
 
 
@@ -150,6 +158,7 @@ def test_exact_capture_replay_preserves_every_byte(tmp_path: Path, data: bytes) 
     replayed, header = store.replay(
         byte_domain=PROVIDER_PROTOCOL_INPUT_BYTES,
         expected_metadata=metadata,
+        expected_receipt_sha256=_anchor(receipt),
     )
 
     assert replayed == data
@@ -169,7 +178,7 @@ def test_capture_envelope_binds_normalized_http_classification(
             str(status_code).encode("ascii")
         ).hexdigest(),
     )
-    store.capture(
+    receipt = store.capture(
         byte_domain=PROVIDER_PROTOCOL_INPUT_BYTES,
         data=b'{"error":"offline"}', metadata=metadata,
     )
@@ -177,6 +186,7 @@ def test_capture_envelope_binds_normalized_http_classification(
     _, header = store.replay(
         byte_domain=PROVIDER_PROTOCOL_INPUT_BYTES,
         expected_metadata=metadata,
+        expected_receipt_sha256=_anchor(receipt),
     )
 
     assert header["status_code"] == status_code
@@ -255,7 +265,7 @@ def test_sse_parser_rejects_eof_without_empty_line_delimiter(raw: bytes) -> None
 def test_duplicate_capture_is_rejected_without_overwrite(tmp_path: Path) -> None:
     store = _store(tmp_path)
     metadata = _metadata()
-    store.capture(
+    receipt = store.capture(
         byte_domain=PROVIDER_PROTOCOL_INPUT_BYTES,
         data=b"first", metadata=metadata,
     )
@@ -268,6 +278,7 @@ def test_duplicate_capture_is_rejected_without_overwrite(tmp_path: Path) -> None
     replayed, _ = store.replay(
         byte_domain=PROVIDER_PROTOCOL_INPUT_BYTES,
         expected_metadata=metadata,
+        expected_receipt_sha256=_anchor(receipt),
     )
     assert replayed == b"first"
 
@@ -275,7 +286,7 @@ def test_duplicate_capture_is_rejected_without_overwrite(tmp_path: Path) -> None
 def test_tampered_bytes_fail_before_replay(tmp_path: Path) -> None:
     store = _store(tmp_path)
     metadata = _metadata()
-    store.capture(
+    receipt = store.capture(
         byte_domain=PROVIDER_PROTOCOL_INPUT_BYTES,
         data=b"original", metadata=metadata,
     )
@@ -287,6 +298,7 @@ def test_tampered_bytes_fail_before_replay(tmp_path: Path) -> None:
         store.replay(
             byte_domain=PROVIDER_PROTOCOL_INPUT_BYTES,
             expected_metadata=metadata,
+            expected_receipt_sha256=_anchor(receipt),
         )
 
 
@@ -334,7 +346,7 @@ def test_wrong_identity_or_metadata_fails_closed(
 ) -> None:
     store = _store(tmp_path)
     metadata = _metadata()
-    store.capture(
+    receipt = store.capture(
         byte_domain=PROVIDER_PROTOCOL_INPUT_BYTES,
         data=b"identity", metadata=metadata,
     )
@@ -345,6 +357,7 @@ def test_wrong_identity_or_metadata_fails_closed(
         store.replay(
             byte_domain=PROVIDER_PROTOCOL_INPUT_BYTES,
             expected_metadata=changed,
+            expected_receipt_sha256=_anchor(receipt),
         )
 
 
@@ -381,7 +394,7 @@ def test_malformed_provider_bytes_remain_replayable_after_parse_failure(
     store = _store(tmp_path)
     metadata = _metadata()
     raw = b'{"broken":'
-    store.capture(
+    receipt = store.capture(
         byte_domain=PROVIDER_PROTOCOL_INPUT_BYTES,
         data=raw, metadata=metadata,
     )
@@ -392,6 +405,7 @@ def test_malformed_provider_bytes_remain_replayable_after_parse_failure(
     replayed, _ = store.replay(
         byte_domain=PROVIDER_PROTOCOL_INPUT_BYTES,
         expected_metadata=metadata,
+        expected_receipt_sha256=_anchor(receipt),
     )
     assert replayed == raw
 
@@ -404,7 +418,7 @@ def test_business_incomplete_conversion_replays_same_failure_family(
         content_type="text/plain; purpose=contract-runtime-input",
     )
     raw = json.dumps({"facts": []}, separators=(",", ":")).encode("utf-8")
-    store.capture(
+    receipt = store.capture(
         byte_domain=CONTRACT_RUNTIME_INPUT_BYTES,
         data=raw, metadata=metadata,
     )
@@ -425,6 +439,7 @@ def test_business_incomplete_conversion_replays_same_failure_family(
     replayed, _ = store.replay(
         byte_domain=CONTRACT_RUNTIME_INPUT_BYTES,
         expected_metadata=metadata,
+        expected_receipt_sha256=_anchor(receipt),
     )
     assert failure_code(replayed) == live_code
 
@@ -598,21 +613,24 @@ def test_capture_store_refuses_git_worktree_location(tmp_path: Path) -> None:
 def test_audit_all_verifies_identity_and_returns_no_raw_bytes(tmp_path: Path) -> None:
     store = _store(tmp_path)
     metadata = _metadata()
-    store.capture(
+    receipt = store.capture(
         byte_domain=PROVIDER_PROTOCOL_INPUT_BYTES,
         data=b'{"private":"response"}', metadata=metadata,
     )
 
-    receipts = store.audit_all()
+    receipts = store.audit_all(
+        expected_receipt_sha256s=[_anchor(receipt)],
+    )
 
     assert len(receipts) == 1
     assert receipts[0]["byte_domain"] == PROVIDER_PROTOCOL_INPUT_BYTES
+    assert receipts[0]["authoritative"] is True
     assert "private" not in json.dumps(receipts)
 
 
 def test_audit_all_fails_closed_on_tampered_capture(tmp_path: Path) -> None:
     store = _store(tmp_path)
-    store.capture(
+    receipt = store.capture(
         byte_domain=PROVIDER_PROTOCOL_INPUT_BYTES,
         data=b'{"ok":true}', metadata=_metadata(),
     )
@@ -624,4 +642,121 @@ def test_audit_all_fails_closed_on_tampered_capture(tmp_path: Path) -> None:
         ProviderResponseCaptureError,
         match="PROVIDER_RESPONSE_CAPTURE_AUDIT_SHA256_MISMATCH",
     ):
-        store.audit_all()
+        store.audit_all(expected_receipt_sha256s=[_anchor(receipt)])
+
+
+def test_unanchored_inspection_is_explicitly_non_authoritative_and_rewrite_fails_audit(
+    tmp_path: Path,
+) -> None:
+    store = _store(tmp_path)
+    receipt = store.capture(
+        byte_domain=PROVIDER_PROTOCOL_INPUT_BYTES,
+        data=b'{"original":true}', metadata=_metadata(),
+    )
+    anchor = _anchor(receipt)
+    path = next(store.root.glob("*.capture"))
+    payload = path.read_bytes()
+    header_bytes, _ = payload[len(CAPTURE_MAGIC):].split(b"\n", 1)
+    header = json.loads(header_bytes.decode("utf-8"))
+    replacement = b'{"rewritten":true}'
+    header["byte_sha256"] = hashlib.sha256(replacement).hexdigest()
+    header["byte_length"] = len(replacement)
+    rewritten_header = json.dumps(
+        header, ensure_ascii=False, sort_keys=True, separators=(",", ":"),
+    ).encode("utf-8")
+    path.write_bytes(CAPTURE_MAGIC + rewritten_header + b"\n" + replacement)
+
+    inspected = store.inspect_all_unanchored()
+    assert inspected[0]["authoritative"] is False
+    assert inspected[0]["integrity_authority"] == (
+        "UNANCHORED_NON_AUTHORITATIVE_INSPECTION"
+    )
+    with pytest.raises(
+        ProviderResponseCaptureError, match="EXTERNAL_ANCHOR_MISMATCH",
+    ):
+        store.audit_all(expected_receipt_sha256s=[anchor])
+
+
+@pytest.mark.parametrize(
+    ("protocol", "content_type", "data", "expected"),
+    [
+        (
+            "anthropic", "application/json",
+            b'{"usage":{"input_tokens":10,"cache_read_input_tokens":3,"output_tokens":7}}',
+            (13, 7),
+        ),
+        (
+            "anthropic", "text/event-stream",
+            b'data: {"type":"message_start","message":{"usage":{"input_tokens":11,"output_tokens":0}}}\n\n'
+            b'data: {"type":"message_delta","usage":{"output_tokens":9}}\n\n'
+            b'data: {"type":"message_stop"}\n\n',
+            (11, 9),
+        ),
+        (
+            "openai-chat", "application/json",
+            b'{"usage":{"prompt_tokens":12,"completion_tokens":8}}',
+            (12, 8),
+        ),
+        (
+            "openai-chat", "text/event-stream",
+            b'data: {"choices":[],"usage":{"prompt_tokens":13,"completion_tokens":6}}\n\n'
+            b'data: [DONE]\n\n',
+            (13, 6),
+        ),
+        (
+            "openai-responses", "application/json",
+            b'{"usage":{"input_tokens":14,"output_tokens":5}}',
+            (14, 5),
+        ),
+        (
+            "openai-responses", "text/event-stream",
+            b'data: {"type":"response.completed","response":{"usage":{"input_tokens":15,"output_tokens":4}}}\n\n',
+            (15, 4),
+        ),
+    ],
+)
+def test_exact_provider_usage_formats_are_hash_bound(
+    protocol: str, content_type: str, data: bytes,
+    expected: tuple[int, int],
+) -> None:
+    receipt = extract_provider_reported_actual_usage_v1(
+        data, protocol=protocol, content_type=content_type,
+    )
+
+    assert (receipt["input_tokens"], receipt["output_tokens"]) == expected
+    assert receipt["provider_entity_sha256"] == hashlib.sha256(data).hexdigest()
+    assert receipt["usage_record_count"] >= 1
+    assert len(receipt["usage_receipt_sha256"]) == 64
+
+
+@pytest.mark.parametrize(
+    ("protocol", "content_type", "data", "reason"),
+    [
+        (
+            "anthropic", "application/json", b'{"content":[]}',
+            "PROVIDER_REPORTED_USAGE_MISSING",
+        ),
+        (
+            "anthropic", "text/event-stream",
+            b'data: {"message":{"usage":{"input_tokens":2,"output_tokens":9}}}\n\n'
+            b'data: {"type":"message_stop","usage":{"input_tokens":2,"output_tokens":8}}\n\n',
+            "PROVIDER_REPORTED_USAGE_OUTPUT_NON_MONOTONIC",
+        ),
+        (
+            "openai-chat", "text/event-stream",
+            b'data: {"usage":{"prompt_tokens":2,"completion_tokens":1}}\n\n',
+            "PROVIDER_REPORTED_USAGE_SSE_TERMINAL_MISSING",
+        ),
+        (
+            "openai-responses", "application/json", b'{not-json}',
+            "PROVIDER_RESPONSE_REPLAY_JSON_INVALID",
+        ),
+    ],
+)
+def test_provider_usage_missing_conflicting_or_incomplete_fails_closed(
+    protocol: str, content_type: str, data: bytes, reason: str,
+) -> None:
+    with pytest.raises(ProviderResponseCaptureError, match=reason):
+        extract_provider_reported_actual_usage_v1(
+            data, protocol=protocol, content_type=content_type,
+        )

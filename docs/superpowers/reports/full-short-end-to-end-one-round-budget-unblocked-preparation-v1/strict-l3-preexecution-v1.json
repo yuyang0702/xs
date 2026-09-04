@@ -1,0 +1,17 @@
+{
+  "schema": "FullShortBudgetUnblockedStrictL3PreexecutionV1",
+  "version": 1,
+  "status": "PASS",
+  "declared_level": "L3",
+  "automatic_level": "L3",
+  "baseline_used": true,
+  "forward_risk_report": "forward-risk-report-v2.json",
+  "warnings": 0,
+  "blockers": 0,
+  "new_capacity_regression_count": 0,
+  "new_runtime_kernel_regression_count": 0,
+  "new_authority_regression_count": 0,
+  "new_model_visible_literary_regression_count": 0,
+  "model_output_boundary_changed": false,
+  "external_actions": "NOT_REACHED"
+}

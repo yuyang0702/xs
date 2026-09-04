@@ -1944,7 +1944,10 @@ def _offline_role_for_anthropic_request(payload: dict) -> str:
     """Recover the production role below request construction, without prose."""
 
     system, user = _offline_request_messages(payload)
-    if "TARGET READER SIMULATION" in user:
+    if (
+        "TARGET READER SIMULATION" in user
+        or "SHORT_READER_REVIEW_" in user
+    ):
         return "reader_review"
     if any(marker in user for marker in (
         "FULL MANUSCRIPT WINDOW SUMMARY",
@@ -1973,10 +1976,15 @@ class _LowestSeamProductionRegistry(ProviderRegistry):
 
     def __init__(self, *args, oracle: ProductionSizedShortGateway,
                  transport_observer: FullShortDispatchLedgerObserverV1 | None = None,
+                 evidence_root: Path | None = None,
+                 evidence_target_words: int | None = None,
                  **kwargs) -> None:
         super().__init__(*args, attempt_observer=transport_observer, **kwargs)
         self.oracle = oracle
         self.open_clients: list[httpx.AsyncClient] = []
+        self.wire_envelopes: list[dict[str, object]] = []
+        self.evidence_root = evidence_root
+        self.evidence_target_words = evidence_target_words
 
     def resolve(
         self, provider_id: str, model_id: str, *,
@@ -1990,7 +1998,33 @@ class _LowestSeamProductionRegistry(ProviderRegistry):
         previous = resolved.adapter.client
 
         async def respond(request: httpx.Request) -> httpx.Response:
-            payload = json.loads(request.content.decode("utf-8"))
+            wire_bytes = request.content
+            payload = json.loads(wire_bytes.decode("utf-8"))
+            evidence = None
+            if self.evidence_root is not None:
+                self.evidence_root.mkdir(parents=True, exist_ok=True)
+                evidence_path = (
+                    self.evidence_root
+                    / f"payload-{self.evidence_target_words}-{len(self.wire_envelopes) + 1:03d}.json"
+                ).resolve()
+                evidence_path.write_bytes(wire_bytes)
+                evidence = {
+                    "path": str(evidence_path),
+                    "sha256": hashlib.sha256(wire_bytes).hexdigest(),
+                }
+            self.wire_envelopes.append({
+                "model_name": str(payload.get("model") or ""),
+                "estimated_input_tokens": estimate_input_tokens(
+                    wire_bytes.decode("utf-8")
+                ),
+                "requested_output_tokens": int(
+                    payload.get("max_tokens")
+                    or payload.get("max_output_tokens") or 0
+                ),
+                "payload_bytes": len(wire_bytes),
+                "payload_sha256": hashlib.sha256(wire_bytes).hexdigest(),
+                **({"payload_evidence": evidence} if evidence is not None else {}),
+            })
             role = _offline_role_for_anthropic_request(payload)
             system, user = _offline_request_messages(payload)
             result = await self.oracle.complete(
@@ -4043,10 +4077,11 @@ async def test_short_ir_first_production_length_matrix_reaches_formal_manuscript
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("target_words", [13_000, 20_000, 30_000])
 async def test_full_short_real_http_seam(
-    tmp_path, monkeypatch,
+    tmp_path, monkeypatch, target_words,
 ) -> None:
-    """Complete the real Short workflow with only ``httpx`` replaced."""
+    """Complete the production-length matrix with only ``httpx`` replaced."""
 
     repo_root = tmp_path / "repo"
     repo_root.mkdir()
@@ -4077,7 +4112,7 @@ async def test_full_short_real_http_seam(
     project = projects.create(ProjectCreate(
         title="FS", mode="short", genre="mystery",
         premise="A missing archivist leaves a contradictory evidence chain.",
-        target_words=13_000,
+        target_words=target_words,
     ))
     (project.path / "characters" / "shen-yan.md").write_text(
         "---\nname: 沈砚\nrole: protagonist\n---\n", encoding="utf-8",
@@ -4088,9 +4123,17 @@ async def test_full_short_real_http_seam(
     secrets = MemorySecretStore()
     secrets.set("offline", "offline-test-secret")
     oracle = ProductionSizedShortGateway()
+    evidence_directory = os.environ.get(
+        "NOVEL_FULL_SHORT_SIZE_MATRIX_EVIDENCE_DIR"
+    )
     registry = _LowestSeamProductionRegistry(
         db, secrets, oracle=oracle,
         transport_policy=SingleDispatchTransportPolicyV1.phase_b(),
+        evidence_root=(
+            Path(evidence_directory).resolve()
+            if evidence_directory else None
+        ),
+        evidence_target_words=target_words,
     )
     service = WorkflowService(
         db, projects, ModelGateway(db, registry),
@@ -4098,7 +4141,11 @@ async def test_full_short_real_http_seam(
         crewai_data_dir=repo_root / "crewai",
     )
 
-    segment_count = service._short_segment_count(13_000)
+    segment_count = service._short_segment_count(target_words)
+    evidence_units_per_event = max(
+        3,
+        60 // segment_count - (2 if segment_count >= 12 else 0),
+    )
     formal_events = []
     for event_index in range(1, segment_count * 2 + 1):
         formal_events.append({
@@ -4107,7 +4154,7 @@ async def test_full_short_real_http_seam(
             "evidence": "".join(
                 f"事件{event_index}证据{unit}：沈砚核验签章与时间，顾岚依据现场行动"
                 f"推进关系状态{event_index}-{unit}并保留结局线索。"
-                for unit in range(1, 13)
+                for unit in range(1, evidence_units_per_event + 1)
             ),
         })
     initial_state = service.story_states.ensure(project.id, project.path)
@@ -4153,11 +4200,54 @@ async def test_full_short_real_http_seam(
 
     run_path = project.path / "runs" / result["id"]
     manuscript = project.path / "manuscript" / "story.md"
+    formal = manuscript.read_text(encoding="utf-8")
     assert result["status"] == "completed"
-    assert effective_han_characters(manuscript.read_text(encoding="utf-8")) >= 13_000
+    assert target_words <= effective_han_characters(formal) <= int(
+        target_words * 1.20
+    )
     assert {"planning", "draft", "review", "polish", "final_review"} <= set(
         oracle.roles
     )
+    assert registry.wire_envelopes
+    model_limits = {
+        "planning-small": (32_768, 16_384),
+        "offline-large": (262_144, 32_768),
+    }
+    for envelope in registry.wire_envelopes:
+        context_limit, output_limit = model_limits[str(envelope["model_name"])]
+        input_tokens = int(envelope["estimated_input_tokens"])
+        output_tokens = int(envelope["requested_output_tokens"])
+        assert int(envelope["payload_bytes"]) > 0
+        assert re.fullmatch(r"[0-9a-f]{64}", str(envelope["payload_sha256"]))
+        assert input_tokens > 0
+        assert output_tokens > 0
+        assert output_tokens <= output_limit
+        assert input_tokens + output_tokens <= context_limit
+    if oracle.packet_calls:
+        assert {
+            int(item["global_segment"]) for item in oracle.packet_calls
+        } == set(range(1, segment_count + 1))
+    assert len(oracle.draft_segments) == segment_count
+    paragraphs = [item.strip() for item in formal.split("\n\n") if item.strip()]
+    assert len(paragraphs) == len(set(paragraphs))
+    assert "约定在天亮前公开底账" in formal
+    assert "完成先前约定" in formal
+    for artifact in (
+        "planning-semantic-v2.json", "short-causal-chain.json",
+        "short-execution-index.json", "draft.md", "polish.md",
+        "final-review-evidence.json", "quality-report.json",
+    ):
+        assert (run_path / "outputs" / artifact).is_file(), artifact
+    event_types = [
+        item["event_type"] for item in db.list_run_events(result["id"])
+    ]
+    if target_words > 13_000:
+        assert "stage_capacity_split_requested" in event_types
+        assert "planning_semantic_packets_reduced" in event_types
+    else:
+        assert "planning_ir_first_compiled" in event_types
+    assert "draft_integrity_passed" in event_types
+    assert "story_state_committed" in event_types
     assert (run_path / "outputs" / "project-mutation-journal.json").is_file()
     live_state = service.story_states.ensure(project.id, project.path)
     terminal = verify_short_completion_v1(
@@ -4178,6 +4268,75 @@ async def test_full_short_real_http_seam(
     )
     assert terminal["completion_goal_outcome"] == COMPLETION_GOAL, terminal
     assert terminal["maintenance"]["closure_status"] == "exact"
+    if evidence_directory:
+        source_head = os.environ.get("NOVEL_FULL_SHORT_SIZE_MATRIX_SOURCE_HEAD")
+        junit_path_value = os.environ.get("NOVEL_FULL_SHORT_SIZE_MATRIX_JUNIT_XML")
+        if not source_head or not re.fullmatch(r"[0-9a-f]{40}", source_head):
+            raise AssertionError("size-matrix evidence requires a frozen source HEAD")
+        if not junit_path_value:
+            raise AssertionError("size-matrix evidence requires the JUnit XML path")
+        evidence_root = Path(evidence_directory).resolve()
+        junit_path = Path(junit_path_value).resolve()
+        manifest_path = evidence_root / "full-short-size-matrix-envelope-manifest-v1.json"
+        if manifest_path.exists():
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        else:
+            manifest = {
+                "schema": "FullShortHttpSeamEnvelopeManifestV1",
+                "version": 1,
+                "source_head": source_head,
+                "test_path": (
+                    "tests/test_workflows.py::test_full_short_real_http_seam"
+                ),
+                "test_file_sha256": hashlib.sha256(
+                    Path(__file__).read_bytes()
+                ).hexdigest(),
+                # Filled after pytest has finalized the XML by the companion
+                # evidence finalizer; a pre-finalized manifest cannot pass the
+                # campaign gate.
+                "junit_xml_sha256": (
+                    hashlib.sha256(junit_path.read_bytes()).hexdigest()
+                    if junit_path.is_file() else None
+                ),
+                "run_records": [],
+            }
+        manifest["run_records"] = [
+            item for item in manifest["run_records"]
+            if item.get("target_words") != target_words
+        ]
+        manifest["run_records"].append({
+            "target_words": target_words,
+            "pytest_node_id": (
+                "tests/test_workflows.py::test_full_short_real_http_seam"
+                f"[{target_words}]"
+            ),
+            "status": "passed", "workflow_status": result["status"],
+            "actual_effective_han_characters": effective_han_characters(formal),
+            "segmentation_behavior": "PASS",
+            "required_roles_completed": True,
+            "required_artifacts_present": True,
+            "completion_goal_outcome": terminal["completion_goal_outcome"],
+            "provider_wire_envelopes": [
+                {
+                    **envelope,
+                    "context_limit_tokens": model_limits[
+                        str(envelope["model_name"])
+                    ][0],
+                    "max_output_tokens": model_limits[
+                        str(envelope["model_name"])
+                    ][1],
+                }
+                for envelope in registry.wire_envelopes
+            ],
+        })
+        manifest["run_records"].sort(key=lambda item: item["target_words"])
+        manifest_path.write_text(
+            json.dumps(
+                manifest, ensure_ascii=False, sort_keys=True,
+                separators=(",", ":"),
+            ),
+            encoding="utf-8",
+        )
 
 
 def test_new_short_project_uses_stable_project_brief_event_authority(tmp_path) -> None:

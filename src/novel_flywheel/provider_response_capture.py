@@ -17,7 +17,7 @@ import json
 import os
 from pathlib import Path
 import secrets
-from typing import Any, Iterator, Mapping
+from typing import Any, Collection, Iterator, Mapping
 
 from novel_flywheel.runtime_fingerprint_build import domain_sha256
 from novel_flywheel.recovery_engine import FailureClass, ReliabilityFailure
@@ -32,6 +32,7 @@ CAPTURE_DOMAINS = frozenset({
     CONTRACT_RUNTIME_INPUT_BYTES,
 })
 PRIVACY_CLASSIFICATION = "PRIVATE_PROVIDER_OUTPUT_EXTERNAL_ONLY"
+PROVIDER_REPORTED_USAGE_SCHEMA = "ProviderReportedActualUsageV1"
 PROHIBITED_METADATA_KEYS = frozenset({
     "authorization", "api_key", "credential", "headers", "prompt",
     "request_body", "story", "system", "tool_arguments", "user",
@@ -397,8 +398,27 @@ class ProviderResponseCaptureStoreV1:
 
     def replay(
         self, *, byte_domain: str, expected_metadata: Mapping[str, Any],
-        expected_receipt_sha256: str | None = None,
+        expected_receipt_sha256: str,
     ) -> tuple[bytes, dict[str, Any]]:
+        """Authoritatively replay bytes bound by an external receipt hash.
+
+        The capture envelope is deliberately not its own integrity authority:
+        an attacker able to replace the file can rewrite both its header and
+        bytes consistently.  Therefore every replay requires a receipt hash
+        obtained from an independent ledger/attestation boundary.
+        """
+
+        if (
+            not isinstance(expected_receipt_sha256, str)
+            or len(expected_receipt_sha256) != 64
+            or any(
+                char not in "0123456789abcdef"
+                for char in expected_receipt_sha256
+            )
+        ):
+            raise ProviderResponseCaptureError(
+                "PROVIDER_RESPONSE_REPLAY_EXTERNAL_ANCHOR_REQUIRED"
+            )
         if byte_domain not in CAPTURE_DOMAINS:
             raise ProviderResponseCaptureError(
                 "PROVIDER_RESPONSE_REPLAY_DOMAIN_INVALID"
@@ -464,17 +484,23 @@ class ProviderResponseCaptureStoreV1:
             "novel-flywheel-provider-response-capture-receipt-v1",
             receipt.document(),
         )
-        if expected_receipt_sha256 is not None and (
-            expected_receipt_sha256 != ledger_receipt_sha256
-        ):
+        if expected_receipt_sha256 != ledger_receipt_sha256:
             raise ProviderResponseCaptureError(
                 "PROVIDER_RESPONSE_REPLAY_LEDGER_RECEIPT_MISMATCH"
             )
         header["ledger_receipt_sha256"] = ledger_receipt_sha256
+        header["integrity_authority"] = "EXTERNAL_RECEIPT_ANCHORED"
+        header["authoritative"] = True
         return data, header
 
-    def audit_all(self) -> list[dict[str, Any]]:
-        """Verify every immutable capture and return metadata-only receipts."""
+    def inspect_all_unanchored(self) -> list[dict[str, Any]]:
+        """Inspect internal consistency only; results are non-authoritative.
+
+        This is useful for orphan discovery and diagnostics, but it cannot
+        establish that the capture was not replaced with a self-consistent
+        rewritten envelope.  Production replay, accounting, and completion
+        callers must use :meth:`audit_all` with external receipt anchors.
+        """
 
         receipts: list[dict[str, Any]] = []
         for path in sorted(self.root.glob("*.capture")):
@@ -530,6 +556,8 @@ class ProviderResponseCaptureStoreV1:
                     "PROVIDER_RESPONSE_CAPTURE_AUDIT_SHA256_MISMATCH"
                 )
             receipts.append({
+                "integrity_authority": "UNANCHORED_NON_AUTHORITATIVE_INSPECTION",
+                "authoritative": False,
                 "byte_domain": domain,
                 "byte_sha256": header["byte_sha256"],
                 "byte_length": header["byte_length"],
@@ -554,6 +582,47 @@ class ProviderResponseCaptureStoreV1:
                 ),
             })
         return receipts
+
+    def audit_all(
+        self, *, expected_receipt_sha256s: Collection[str],
+    ) -> list[dict[str, Any]]:
+        """Authoritatively audit all captures against external anchors.
+
+        Exact set equality is intentional: an unanchored extra capture is an
+        integrity failure, not something an authoritative caller may ignore.
+        """
+
+        if isinstance(expected_receipt_sha256s, (str, bytes)):
+            raise ProviderResponseCaptureError(
+                "PROVIDER_RESPONSE_CAPTURE_AUDIT_EXTERNAL_ANCHORS_REQUIRED"
+            )
+        expected = list(expected_receipt_sha256s)
+        if (
+            len(set(expected)) != len(expected)
+            or any(
+                not isinstance(value, str)
+                or len(value) != 64
+                or any(char not in "0123456789abcdef" for char in value)
+                for value in expected
+            )
+        ):
+            raise ProviderResponseCaptureError(
+                "PROVIDER_RESPONSE_CAPTURE_AUDIT_EXTERNAL_ANCHORS_REQUIRED"
+            )
+        inspected = self.inspect_all_unanchored()
+        actual = [item["ledger_receipt_sha256"] for item in inspected]
+        if set(actual) != set(expected) or len(actual) != len(expected):
+            raise ProviderResponseCaptureError(
+                "PROVIDER_RESPONSE_CAPTURE_AUDIT_EXTERNAL_ANCHOR_MISMATCH"
+            )
+        return [
+            {
+                **item,
+                "integrity_authority": "EXTERNAL_RECEIPT_ANCHORED",
+                "authoritative": True,
+            }
+            for item in inspected
+        ]
 
 
 def parse_provider_protocol_input_bytes_v1(
@@ -656,4 +725,170 @@ def provider_protocol_input_has_terminal_bytes_v1(
         "response.completed",
         "response.failed",
         "response.incomplete",
+    }
+
+
+def _usage_int(value: Any, *, field: str) -> int:
+    if type(value) is not int or value < 0:
+        raise ProviderResponseCaptureError(
+            f"PROVIDER_REPORTED_USAGE_FIELD_INVALID:{field}"
+        )
+    return value
+
+
+def _aliased_usage_int(
+    usage: Mapping[str, Any], *, primary: str, alias: str,
+) -> int | None:
+    values = []
+    for field in (primary, alias):
+        if field in usage:
+            values.append(_usage_int(usage[field], field=field))
+    if not values:
+        return None
+    if len(set(values)) != 1:
+        raise ProviderResponseCaptureError(
+            "PROVIDER_REPORTED_USAGE_ALIAS_CONFLICT"
+        )
+    return values[0]
+
+
+def _canonical_usage_sample_v1(
+    protocol: str, usage: Mapping[str, Any],
+) -> tuple[int | None, int | None]:
+    """Project a protocol-owned usage object without scanning arbitrary JSON."""
+
+    if protocol == "anthropic":
+        input_fields = (
+            "input_tokens", "cache_creation_input_tokens",
+            "cache_read_input_tokens",
+        )
+        present_input = [field for field in input_fields if field in usage]
+        input_tokens = (
+            sum(_usage_int(usage[field], field=field) for field in present_input)
+            if present_input else None
+        )
+        output_tokens = (
+            _usage_int(usage["output_tokens"], field="output_tokens")
+            if "output_tokens" in usage else None
+        )
+        return input_tokens, output_tokens
+    if protocol == "openai-chat":
+        return (
+            _aliased_usage_int(
+                usage, primary="prompt_tokens", alias="input_tokens",
+            ),
+            _aliased_usage_int(
+                usage, primary="completion_tokens", alias="output_tokens",
+            ),
+        )
+    if protocol == "openai-responses":
+        return (
+            _aliased_usage_int(
+                usage, primary="input_tokens", alias="prompt_tokens",
+            ),
+            _aliased_usage_int(
+                usage, primary="output_tokens", alias="completion_tokens",
+            ),
+        )
+    raise ProviderResponseCaptureError(
+        "PROVIDER_REPORTED_USAGE_PROTOCOL_UNSUPPORTED"
+    )
+
+
+def extract_provider_reported_actual_usage_v1(
+    data: bytes, *, protocol: str, content_type: str,
+    encoding: str = "utf-8",
+) -> dict[str, Any]:
+    """Derive actual token usage from one exact captured Provider entity.
+
+    Only the closed protocol-owned usage locations are considered.  SSE usage
+    samples must be monotonic and the entity must include a closed terminal
+    frame.  The returned hash-only receipt is bound to the exact entity bytes.
+    """
+
+    canonical_protocol = str(protocol).strip().casefold().replace("_", "-")
+    if canonical_protocol not in {
+        "anthropic", "openai-chat", "openai-responses",
+    }:
+        raise ProviderResponseCaptureError(
+            "PROVIDER_REPORTED_USAGE_PROTOCOL_UNSUPPORTED"
+        )
+    events, document = parse_provider_protocol_input_bytes_v1(
+        data, content_type=content_type, encoding=encoding,
+    )
+    is_sse = "text/event-stream" in content_type.lower()
+    if is_sse and not provider_protocol_input_has_terminal_bytes_v1(
+        data, content_type=content_type, encoding=encoding,
+    ):
+        raise ProviderResponseCaptureError(
+            "PROVIDER_REPORTED_USAGE_SSE_TERMINAL_MISSING"
+        )
+    containers: list[tuple[str, Mapping[str, Any]]] = []
+    values = events if is_sse else [document]
+    for index, value in enumerate(values):
+        if not isinstance(value, Mapping):
+            continue
+        direct = value.get("usage")
+        if isinstance(direct, Mapping):
+            containers.append((f"event[{index}].usage", direct))
+        if canonical_protocol == "anthropic":
+            message = value.get("message")
+            nested = message.get("usage") if isinstance(message, Mapping) else None
+            if isinstance(nested, Mapping):
+                containers.append((f"event[{index}].message.usage", nested))
+        if canonical_protocol == "openai-responses":
+            response = value.get("response")
+            nested = response.get("usage") if isinstance(response, Mapping) else None
+            if isinstance(nested, Mapping):
+                containers.append((f"event[{index}].response.usage", nested))
+    if not containers:
+        raise ProviderResponseCaptureError(
+            "PROVIDER_REPORTED_USAGE_MISSING"
+        )
+    samples: list[tuple[str, int | None, int | None]] = []
+    for topology, usage in containers:
+        input_tokens, output_tokens = _canonical_usage_sample_v1(
+            canonical_protocol, usage,
+        )
+        if input_tokens is not None or output_tokens is not None:
+            samples.append((topology, input_tokens, output_tokens))
+    if not samples:
+        raise ProviderResponseCaptureError(
+            "PROVIDER_REPORTED_USAGE_MISSING"
+        )
+    input_samples = [item[1] for item in samples if item[1] is not None]
+    output_samples = [item[2] for item in samples if item[2] is not None]
+    if not input_samples or not output_samples:
+        raise ProviderResponseCaptureError(
+            "PROVIDER_REPORTED_USAGE_INCOMPLETE"
+        )
+    if len(set(input_samples)) != 1:
+        raise ProviderResponseCaptureError(
+            "PROVIDER_REPORTED_USAGE_INPUT_CONFLICT"
+        )
+    if output_samples != sorted(output_samples):
+        raise ProviderResponseCaptureError(
+            "PROVIDER_REPORTED_USAGE_OUTPUT_NON_MONOTONIC"
+        )
+    input_tokens = input_samples[-1]
+    output_tokens = output_samples[-1]
+    if input_tokens <= 0 or output_tokens <= 0:
+        raise ProviderResponseCaptureError(
+            "PROVIDER_REPORTED_USAGE_NOT_POSITIVE"
+        )
+    body = {
+        "schema": PROVIDER_REPORTED_USAGE_SCHEMA,
+        "version": 1,
+        "protocol": canonical_protocol,
+        "input_tokens": input_tokens,
+        "output_tokens": output_tokens,
+        "provider_entity_sha256": _sha256(data),
+        "source_topologies": [item[0] for item in samples],
+        "usage_record_count": len(samples),
+    }
+    return {
+        **body,
+        "usage_receipt_sha256": domain_sha256(
+            "novel-flywheel-provider-reported-actual-usage-v1", body,
+        ),
     }

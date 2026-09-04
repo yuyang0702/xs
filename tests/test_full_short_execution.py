@@ -29,12 +29,14 @@ from novel_flywheel.full_short_execution import (
     TRANSPORT_RECOVERY_POLICY_V1,
     _validate_dispatch_readiness_v1,
     _expected_provider_payload_v1,
+    build_full_short_outer_campaign_usage_guard_v1,
     build_full_short_completion_receipt_v1,
     reconcile_full_short_capture_anchor_v1,
     replay_full_short_provider_attempt_v1,
     render_full_short_canonical_authorization_v1,
     validate_full_short_canonical_authorization_v1,
     validate_full_short_preflight_v1,
+    verify_full_short_actual_usage_v1,
     validate_policy_v1,
 )
 from novel_flywheel.full_short_runtime_kernel import (
@@ -1549,12 +1551,14 @@ def test_capture_publication_crash_reconciles_exactly_without_network(
     ] is None
     reconciled = reconcile_full_short_capture_anchor_v1(
         store=store, execution_id=execution_id, ordinal=1,
+        policy=observer.policy,
     )
     assert reconciled["attempts"][0][
         "provider_protocol_capture_transport_complete"
     ] is True
     assert replay_full_short_provider_attempt_v1(
         store=store, execution_id=execution_id, ordinal=1,
+        policy=observer.policy,
     ).text == "reconciled"
 
 
@@ -1584,6 +1588,7 @@ def test_capture_publication_crash_restores_5xx_classification_and_blocks_replay
 
     reconciled = reconcile_full_short_capture_anchor_v1(
         store=store, execution_id=execution_id, ordinal=1,
+        policy=observer.policy,
     )
     attempt = reconciled["attempts"][0]
     assert attempt["state"] == "HTTP_RESPONSE_FAILED_CLOSED"
@@ -1595,6 +1600,7 @@ def test_capture_publication_crash_restores_5xx_classification_and_blocks_replay
     with pytest.raises(FullShortExecutionBoundaryError) as caught:
         replay_full_short_provider_attempt_v1(
             store=store, execution_id=execution_id, ordinal=1,
+            policy=observer.policy,
         )
     assert caught.value.reason_code == "REPLAY_HTTP_RESPONSE_NOT_SUCCESSFUL"
     assert len(store.load_ledger(execution_id)["attempts"]) == 1
@@ -1681,6 +1687,7 @@ def test_exact_local_replay_uses_runtime_protocol_production_adapter(
 
     replayed = replay_full_short_provider_attempt_v1(
         store=store, execution_id=execution_id, ordinal=1,
+        policy=observer.policy,
     )
 
     assert replayed.text == expected_text
@@ -1717,6 +1724,7 @@ def test_capture_reconciliation_rejects_tampered_published_bytes(
     with pytest.raises(ProviderResponseCaptureError, match="SHA256_MISMATCH"):
         reconcile_full_short_capture_anchor_v1(
             store=store, execution_id=execution_id, ordinal=1,
+            policy=observer.policy,
         )
     assert store.load_ledger(execution_id)["attempts"][0][
         "provider_protocol_capture_receipt_sha256"
@@ -1769,6 +1777,7 @@ def test_capture_reconciliation_binds_openai_protocol_adapter_identity(
 
     reconciled = reconcile_full_short_capture_anchor_v1(
         store=store, execution_id=execution_id, ordinal=1,
+        policy=observer.policy,
     )
     attempt = reconciled["attempts"][0]
     assert attempt["provider_protocol_capture_transport_complete"] is True
@@ -1915,6 +1924,7 @@ def test_restart_read_only_replay_uses_exact_ledger_anchored_capture(
 
     replayed = replay_full_short_provider_attempt_v1(
         store=store, execution_id="anchored-local-replay", ordinal=1,
+        policy=observer.policy,
     )
 
     assert replayed.text == "exact local artifact"
@@ -1934,6 +1944,7 @@ def test_restart_read_only_replay_fails_closed_without_ledger_anchor(
     with pytest.raises(FullShortExecutionBoundaryError) as missing:
         replay_full_short_provider_attempt_v1(
             store=store, execution_id="unanchored-local-replay", ordinal=1,
+            policy=observer.policy,
         )
 
     assert missing.value.reason_code == "REPLAY_LEDGER_CAPTURE_RECEIPT_MISSING"
@@ -2947,6 +2958,37 @@ def test_durable_chain_tamper_and_external_authority_mismatch_fail_closed(
     assert tampered.value.reason_code == "APPROVAL_SHA256_MISMATCH"
 
 
+def test_verified_ready_chain_is_returned_and_required_by_observer(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    store = _store(tmp_path / "verified-ready-context")
+    execution_id = "verified-ready-context"
+    _authorize_offline(store, execution_id)
+    policy = _policy(store)
+
+    context = store.verify_ready_chain(
+        execution_id=execution_id, policy=policy,
+        external_actions_enabled=False,
+    )
+
+    assert context == {
+        "permission": store._read(execution_id, "permission"),
+        "approval": store._read(execution_id, "approval"),
+        "nonce": store._read(execution_id, "nonce"),
+        "ledger": store._read(execution_id, "ledger"),
+    }
+
+    monkeypatch.setattr(store, "verify_ready_chain", lambda **_kwargs: None)
+    with pytest.raises(FullShortExecutionBoundaryError) as rejected:
+        FullShortDispatchLedgerObserverV1(
+            store=store, execution_id=execution_id, policy=policy,
+            authorized_routes=_routes(), egress_policy=_egress(),
+        )
+
+    assert rejected.value.reason_code == "EXECUTION_CHAIN_CONTEXT_INVALID"
+    assert store.load_nonce(execution_id)["observer_session_sha256"] is None
+
+
 def test_total_requested_output_cap_is_enforced_before_second_dispatch(
     tmp_path: Path,
 ) -> None:
@@ -3225,6 +3267,7 @@ def test_closed_attempt_reconciliation_only_fills_exact_capture_receipt(
 
     reconciled = reconcile_full_short_capture_anchor_v1(
         store=reopened, execution_id=execution_id, ordinal=1,
+        policy=observer.policy,
     )
     after = reconciled["attempts"][0]
     assert after["state"] == before["state"] == "OUTCOME_UNKNOWN_FAIL_CLOSED"
@@ -4308,7 +4351,7 @@ def test_completion_rejects_resealed_capture_against_write_once_anchor(
         repo_root=store.repo_root,
         store_root=store.root / "provider-response-captures-v1",
     )
-    capture = capture_store.audit_all()[0]
+    capture = capture_store.inspect_all_unanchored()[0]
     path = capture_store._path(
         capture["metadata"], PROVIDER_PROTOCOL_INPUT_BYTES,
     )
@@ -4321,7 +4364,7 @@ def test_completion_rejects_resealed_capture_against_write_once_anchor(
     path.write_bytes(
         CAPTURE_MAGIC + canonical_json_bytes(header) + b"\n" + forged_data,
     )
-    forged_capture = capture_store.audit_all()[0]
+    forged_capture = capture_store.inspect_all_unanchored()[0]
     ledger_body = dict(ledger)
     ledger_body.pop("ledger_sha256")
     attempts = [dict(item) for item in ledger_body["attempts"]]
@@ -4586,4 +4629,473 @@ def test_terminal_capacity_receipt_audit_rejects_durable_tamper(
     with pytest.raises(FullShortExecutionBoundaryError):
         store.verify_completion_capacity_receipts(
             execution_id=execution_id, policy=_policy(store), ledger=ledger,
+        )
+
+
+def _outer_usage_guard(**updates: int) -> dict:
+    values = {
+        "campaign_authorization_sha256": "f" * 64,
+        "prior_provider_request_count": 8,
+        "prior_input_tokens": 1_000,
+        "prior_output_tokens": 100,
+        "remaining_provider_requests": 4,
+        "remaining_input_tokens": 10_000,
+        "remaining_output_tokens": 1_000,
+        "remaining_elapsed_seconds": 3_600,
+        "absolute_deadline_unix_seconds": 4_000_000_000,
+    }
+    values.update(updates)
+    return build_full_short_outer_campaign_usage_guard_v1(**values)
+
+
+def _guarded_observer(
+    store: FullShortDurableExecutionStoreV1, execution_id: str,
+    guard: dict, *, policy: dict | None = None,
+    wall_clock=lambda: 1_000.0,
+    live_authority_recheck=None,
+) -> FullShortDispatchLedgerObserverV1:
+    bound_policy = policy or _policy(store)
+    observer = FullShortDispatchLedgerObserverV1(
+        store=store, execution_id=execution_id, policy=bound_policy,
+        authorized_routes=_routes(), egress_policy=_egress(),
+        outer_campaign_usage_guard=guard,
+        wall_clock=wall_clock,
+        live_authority_recheck=live_authority_recheck,
+    )
+    expected = observer._next_logical_stage_plan_entry()
+    observer.bind_stage_context(
+        stage_id=expected["stage_id"],
+        contract_name=expected["contract_name"],
+        contract_version=expected["contract_version"],
+        contract_schema_sha256=expected["contract_schema_sha256"],
+        contract_runtime_input_required=expected[
+            "contract_runtime_input_required"
+        ],
+    )
+    _bind_route_with_capacity(
+        observer, role="planning", lane="primary", provider_id="provider",
+        model_id="model-id", route_fingerprint="9" * 64,
+    )
+    observer.bind_model_request(protocol="anthropic", request=_request())
+    return observer
+
+
+def test_outer_absolute_deadline_is_rechecked_after_live_route_revalidation(
+    tmp_path: Path,
+) -> None:
+    store = _store(tmp_path / "outer-deadline-route-bind")
+    execution_id = "outer-deadline-route-bind"
+    _authorize_offline(store, execution_id)
+    clock = SimpleNamespace(now=100.0)
+
+    def recheck() -> None:
+        clock.now = 105.0
+
+    with pytest.raises(
+        FullShortExecutionBoundaryError,
+        match="OUTER_CAMPAIGN_ABSOLUTE_DEADLINE_EXPIRED",
+    ):
+        _guarded_observer(
+            store, execution_id,
+            _outer_usage_guard(absolute_deadline_unix_seconds=105),
+            wall_clock=lambda: clock.now,
+            live_authority_recheck=recheck,
+        )
+
+    assert store.load_ledger(execution_id)["attempts"] == []
+
+
+def test_outer_absolute_deadline_stops_nonce_and_network_boundaries(
+    tmp_path: Path,
+) -> None:
+    store = _store(tmp_path / "outer-deadline-dispatch")
+    execution_id = "outer-deadline-dispatch"
+    _authorize_offline(store, execution_id)
+    clock = SimpleNamespace(now=100.0)
+    observer = _guarded_observer(
+        store, execution_id,
+        _outer_usage_guard(absolute_deadline_unix_seconds=105),
+        wall_clock=lambda: clock.now,
+    )
+    clock.now = 105.0
+
+    with pytest.raises(
+        FullShortExecutionBoundaryError,
+        match="OUTER_CAMPAIGN_ABSOLUTE_DEADLINE_EXPIRED",
+    ):
+        observer.before_http_dispatch(
+            method="POST", url="https://unit.test/v1/messages",
+            payload=_payload(),
+        )
+
+    assert store.load_ledger(execution_id)["attempts"] == []
+
+    clock.now = 100.0
+    observer.before_http_dispatch(
+        method="POST", url="https://unit.test/v1/messages",
+        payload=_payload(),
+    )
+    clock.now = 105.0
+    with pytest.raises(
+        FullShortExecutionBoundaryError,
+        match="OUTER_CAMPAIGN_ABSOLUTE_DEADLINE_EXPIRED",
+    ):
+        observer.before_http_post()
+    with pytest.raises(
+        FullShortExecutionBoundaryError,
+        match="OUTER_CAMPAIGN_ABSOLUTE_DEADLINE_EXPIRED",
+    ):
+        observer.before_network_request()
+
+
+def test_outer_absolute_deadline_is_hash_bound(tmp_path: Path) -> None:
+    store = _store(tmp_path / "outer-deadline-tamper")
+    execution_id = "outer-deadline-tamper"
+    _authorize_offline(store, execution_id)
+    guard = _outer_usage_guard()
+    guard["absolute_deadline_unix_seconds"] += 1
+
+    with pytest.raises(
+        FullShortExecutionBoundaryError,
+        match="OUTER_CAMPAIGN_USAGE_GUARD_SHA256_MISMATCH",
+    ):
+        FullShortDispatchLedgerObserverV1(
+            store=store, execution_id=execution_id, policy=_policy(store),
+            authorized_routes=_routes(), egress_policy=_egress(),
+            outer_campaign_usage_guard=guard,
+        )
+
+
+def _capture_guarded_usage(
+    observer: FullShortDispatchLedgerObserverV1, *,
+    input_tokens: int, output_tokens: int,
+) -> None:
+    observer.before_http_dispatch(
+        method="POST", url="https://unit.test/v1/messages",
+        payload=_payload(),
+    )
+    observer.capture_provider_protocol_input(
+        data=json.dumps({
+            "usage": {
+                "input_tokens": input_tokens,
+                "output_tokens": output_tokens,
+            },
+        }, separators=(",", ":")).encode("utf-8"),
+        status_code=200, content_type="application/json",
+        encoding="utf-8", transport_complete=True,
+    )
+    observer.after_http_response(status_code=200)
+
+
+def test_outer_campaign_usage_is_durable_and_exposed_in_completion(
+    tmp_path: Path,
+) -> None:
+    store = _store(tmp_path / "guarded-completion")
+    execution_id = "guarded-completion"
+    permission, approval, nonce = _authorize_offline(store, execution_id)
+    observer = _guarded_observer(
+        store, execution_id, _outer_usage_guard(),
+    )
+    role_binding_sha256 = observer.bound_route["role_binding_sha256"]
+    _capture_guarded_usage(observer, input_tokens=321, output_tokens=45)
+    observer.mark_local_stage_complete(
+        stage="planning", role="planning",
+        role_binding_sha256=role_binding_sha256,
+        output_sha256="a" * 64, receipt_sha256="b" * 64,
+    )
+    ledger = store.load_ledger(execution_id)
+
+    verified = verify_full_short_actual_usage_v1(
+        ledger=ledger, durable_store=store, policy=observer.policy,
+    )
+    completion = _build_completion(
+        store, execution_id, permission, approval, nonce, ledger,
+    )
+
+    assert verified is not None
+    assert verified["full_short_provider_request_count"] == 1
+    assert verified["full_short_input_tokens"] == 321
+    assert verified["full_short_output_tokens"] == 45
+    assert verified["campaign_cumulative_input_tokens"] == 1_321
+    assert verified["campaign_cumulative_output_tokens"] == 145
+    assert completion["verified_actual_usage"] == verified
+
+
+@pytest.mark.parametrize(
+    ("guard", "reason_code"),
+    [
+        (
+            _outer_usage_guard(remaining_provider_requests=0),
+            "OUTER_CAMPAIGN_PROVIDER_REQUEST_CAP_EXHAUSTED",
+        ),
+        (
+            _outer_usage_guard(remaining_input_tokens=1_279),
+            "OUTER_CAMPAIGN_INPUT_TOKEN_CAP_EXHAUSTED",
+        ),
+        (
+            _outer_usage_guard(remaining_output_tokens=127),
+            "OUTER_CAMPAIGN_OUTPUT_TOKEN_CAP_EXHAUSTED",
+        ),
+        (
+            _outer_usage_guard(remaining_elapsed_seconds=0),
+            "OUTER_CAMPAIGN_ELAPSED_CAP_EXHAUSTED",
+        ),
+    ],
+)
+def test_outer_campaign_cap_stops_before_first_dispatch(
+    tmp_path: Path, guard: dict, reason_code: str,
+) -> None:
+    store = _store(tmp_path / reason_code)
+    execution_id = "pre-" + reason_code.casefold().replace("_", "-")
+    _authorize_offline(store, execution_id)
+    observer = _guarded_observer(store, execution_id, guard)
+
+    with pytest.raises(FullShortExecutionBoundaryError) as caught:
+        observer.before_http_dispatch(
+            method="POST", url="https://unit.test/v1/messages",
+            payload=_payload(),
+        )
+
+    assert caught.value.reason_code == reason_code
+    assert store.load_ledger(execution_id)["attempts"] == []
+
+
+def test_actual_input_overrun_is_durable_and_blocks_continuation(
+    tmp_path: Path,
+) -> None:
+    store = _store(tmp_path / "input-overrun")
+    execution_id = "input-overrun"
+    _authorize_offline(store, execution_id)
+    observer = _guarded_observer(
+        store, execution_id, _outer_usage_guard(remaining_input_tokens=1_280),
+    )
+
+    observer.before_http_dispatch(
+        method="POST", url="https://unit.test/v1/messages",
+        payload=_payload(),
+    )
+    with pytest.raises(
+        FullShortExecutionBoundaryError,
+        match="OUTER_CAMPAIGN_ACTUAL_USAGE_CAP_EXCEEDED",
+    ):
+        observer.capture_provider_protocol_input(
+            data=b'{"usage":{"input_tokens":1281,"output_tokens":1}}',
+            status_code=200, content_type="application/json",
+            encoding="utf-8", transport_complete=True,
+        )
+
+    attempt = store.load_ledger(execution_id)["attempts"][0]
+    assert attempt["provider_reported_actual_usage"]["input_tokens"] == 1_281
+    assert len(attempt["attempt_usage_receipt_sha256"]) == 64
+
+
+def test_cumulative_actual_usage_is_checked_before_next_dispatch(
+    tmp_path: Path,
+) -> None:
+    store = _store(tmp_path / "next-dispatch-cap")
+    execution_id = "next-dispatch-cap"
+    schema_sha256 = _hash({})
+    plan = _logical_stage_plan(
+        (
+            "planning-a", "planning", "unstructured_text", 1,
+            schema_sha256, False, 128,
+        ),
+        (
+            "planning-b", "planning", "unstructured_text", 1,
+            schema_sha256, False, 128,
+        ),
+    )
+    policy = _policy(
+        store, expected_stage_calls=2, logical_stage_plan=plan,
+    )
+    _authorize_offline(
+        store, execution_id, expected_stage_calls=2,
+        logical_stage_plan=plan,
+    )
+    observer = _guarded_observer(
+        store, execution_id,
+        _outer_usage_guard(remaining_provider_requests=1),
+        policy=policy,
+    )
+    role_binding_sha256 = observer.bound_route["role_binding_sha256"]
+    _capture_guarded_usage(observer, input_tokens=20, output_tokens=3)
+    observer.mark_local_stage_complete(
+        stage="planning-a", role="planning",
+        role_binding_sha256=role_binding_sha256,
+        output_sha256="a" * 64, receipt_sha256="b" * 64,
+    )
+    expected = observer._next_logical_stage_plan_entry()
+    observer.bind_stage_context(
+        stage_id=expected["stage_id"],
+        contract_name=expected["contract_name"],
+        contract_version=expected["contract_version"],
+        contract_schema_sha256=expected["contract_schema_sha256"],
+        contract_runtime_input_required=expected[
+            "contract_runtime_input_required"
+        ],
+    )
+    _bind_route_with_capacity(
+        observer, role="planning", lane="primary", provider_id="provider",
+        model_id="model-id", route_fingerprint="9" * 64,
+    )
+    observer.bind_model_request(protocol="anthropic", request=_request())
+
+    with pytest.raises(
+        FullShortExecutionBoundaryError,
+        match="OUTER_CAMPAIGN_PROVIDER_REQUEST_CAP_EXHAUSTED",
+    ):
+        observer.before_http_dispatch(
+            method="POST", url="https://unit.test/v1/messages",
+            payload=_payload(),
+        )
+
+    ledger = store.load_ledger(execution_id)
+    assert len(ledger["attempts"]) == 1
+    assert ledger["attempts"][0]["provider_reported_actual_usage"][
+        "input_tokens"
+    ] == 20
+
+
+def test_unmetered_response_uses_conservative_request_bound_debit(
+    tmp_path: Path,
+) -> None:
+    store = _store(tmp_path / "conservative-debit")
+    execution_id = "conservative-debit"
+    _authorize_offline(store, execution_id)
+    observer = _guarded_observer(store, execution_id, _outer_usage_guard())
+    role_binding_sha256 = observer.bound_route["role_binding_sha256"]
+    observer.before_http_dispatch(
+        method="POST", url="https://unit.test/v1/messages",
+        payload=_payload(),
+    )
+    observer.capture_provider_protocol_input(
+        data=b'{"content":[{"type":"text","text":"ok"}]}',
+        status_code=200, content_type="application/json",
+        encoding="utf-8", transport_complete=True,
+    )
+    observer.after_http_response(status_code=200)
+    observer.mark_local_stage_complete(
+        stage="planning", role="planning",
+        role_binding_sha256=role_binding_sha256,
+        output_sha256="a" * 64, receipt_sha256="b" * 64,
+    )
+
+    verified = verify_full_short_actual_usage_v1(
+        ledger=store.load_ledger(execution_id), durable_store=store,
+        policy=observer.policy,
+    )
+    attempt = store.load_ledger(execution_id)["attempts"][0]
+    assert verified is not None
+    assert verified["provider_reported_actual_complete"] is False
+    assert verified["full_short_input_tokens"] == 1_280
+    assert verified["full_short_output_tokens"] == 128
+    assert attempt["provider_reported_actual_usage"] is None
+    assert attempt["campaign_accounted_usage"]["accounting_basis"] == (
+        "CONSERVATIVE_REQUEST_BOUND"
+    )
+
+
+def test_outer_campaign_usage_tamper_fails_even_with_resealed_ledger(
+    tmp_path: Path,
+) -> None:
+    store = _store(tmp_path / "usage-tamper")
+    execution_id = "usage-tamper"
+    _authorize_offline(store, execution_id)
+    observer = _guarded_observer(store, execution_id, _outer_usage_guard())
+    role_binding_sha256 = observer.bound_route["role_binding_sha256"]
+    _capture_guarded_usage(observer, input_tokens=20, output_tokens=3)
+    observer.mark_local_stage_complete(
+        stage="planning", role="planning",
+        role_binding_sha256=role_binding_sha256,
+        output_sha256="a" * 64, receipt_sha256="b" * 64,
+    )
+    ledger = store.load_ledger(execution_id)
+    body = dict(ledger)
+    body.pop("ledger_sha256")
+    attempts = list(body["attempts"])
+    attempt = dict(attempts[0])
+    forged_usage = dict(attempt["provider_reported_actual_usage"])
+    forged_usage["input_tokens"] = 21
+    attempt["provider_reported_actual_usage"] = forged_usage
+    attempts[0] = attempt
+    body["attempts"] = attempts
+    store._replace(
+        store._path(execution_id, "ledger"),
+        {
+            **body,
+            "ledger_sha256": domain_sha256(
+                "novel-flywheel-full-short-dispatch-ledger-v1", body,
+            ),
+        },
+    )
+
+    with pytest.raises(
+        FullShortExecutionBoundaryError,
+        match="PROVIDER_REPORTED_USAGE_RECEIPT_MISMATCH",
+    ):
+        verify_full_short_actual_usage_v1(
+            ledger=store.load_ledger(execution_id), durable_store=store,
+            policy=observer.policy,
+        )
+
+
+def test_usage_replay_rejects_forged_receipts_not_matching_capture(
+    tmp_path: Path,
+) -> None:
+    store = _store(tmp_path / "usage-replay")
+    execution_id = "usage-replay"
+    _authorize_offline(store, execution_id)
+    guard = _outer_usage_guard()
+    observer = _guarded_observer(store, execution_id, guard)
+    role_binding_sha256 = observer.bound_route["role_binding_sha256"]
+    _capture_guarded_usage(observer, input_tokens=20, output_tokens=3)
+    observer.mark_local_stage_complete(
+        stage="planning", role="planning",
+        role_binding_sha256=role_binding_sha256,
+        output_sha256="a" * 64, receipt_sha256="b" * 64,
+    )
+    ledger = store.load_ledger(execution_id)
+    body = dict(ledger)
+    body.pop("ledger_sha256")
+    attempts = list(body["attempts"])
+    attempt = dict(attempts[0])
+    provider_usage = dict(attempt["provider_reported_actual_usage"])
+    provider_usage["input_tokens"] = 21
+    provider_body = dict(provider_usage)
+    provider_body.pop("usage_receipt_sha256")
+    provider_usage["usage_receipt_sha256"] = domain_sha256(
+        "novel-flywheel-provider-reported-actual-usage-v1", provider_body,
+    )
+    attempt["provider_reported_actual_usage"] = provider_usage
+    accounted_usage = (
+        full_short_execution_module._campaign_accounted_usage_debit_v1(
+            attempt=attempt, provider_usage=provider_usage,
+        )
+    )
+    attempt["campaign_accounted_usage"] = accounted_usage
+    attempt["attempt_usage_receipt_sha256"] = (
+        full_short_execution_module._attempt_actual_usage_receipt_v1(
+            attempt=attempt, accounted_usage=accounted_usage, guard=guard,
+            full_short_input_tokens=21, full_short_output_tokens=3,
+        )["attempt_usage_receipt_sha256"]
+    )
+    attempts[0] = attempt
+    body["attempts"] = attempts
+    store._replace(
+        store._path(execution_id, "ledger"),
+        {
+            **body,
+            "ledger_sha256": domain_sha256(
+                "novel-flywheel-full-short-dispatch-ledger-v1", body,
+            ),
+        },
+    )
+
+    with pytest.raises(
+        FullShortExecutionBoundaryError,
+        match="REPLAY_PROVIDER_REPORTED_USAGE_MISMATCH",
+    ):
+        replay_full_short_provider_attempt_v1(
+            store=store, execution_id=execution_id, ordinal=1,
+            policy=observer.policy,
         )

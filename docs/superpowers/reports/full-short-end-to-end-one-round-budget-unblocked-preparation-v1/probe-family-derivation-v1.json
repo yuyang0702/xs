@@ -1,0 +1,92 @@
+{
+  "schema": "FullShortBudgetUnblockedProbeFamilyDerivationV1",
+  "version": 1,
+  "status": "PASS",
+  "authoritative_matrix": "docs/superpowers/reports/full-short-capacity-final-one-round-confirmation-v1/exact-ready-authoritative-physical-attempt-matrix-v1.json",
+  "authoritative_matrix_sha256": "b8a49e188b0b13187e8730cbbbd48714fdb71a6aa5a16bd4f3ee25edf61e0287",
+  "authoritative_physical_attempt_shape_count": 183,
+  "source_blocked_physical_shape_count": 111,
+  "minimum_exact_route_probe_case_count": 8,
+  "blocked_shape_coverage_count": 111,
+  "uncovered_blocked_shape_count": 0,
+  "probe_input_tokens": 186733,
+  "families": [
+    {
+      "ordinal": 1,
+      "family_id": "draft_plain",
+      "role": "draft",
+      "contract": null,
+      "shape_count": 12,
+      "provider_wire_estimated_input_tokens": 30458,
+      "provider_wire_requested_output_cap": 2974
+    },
+    {
+      "ordinal": 2,
+      "family_id": "polish_plain",
+      "role": "polish",
+      "contract": null,
+      "shape_count": 24,
+      "provider_wire_estimated_input_tokens": 32380,
+      "provider_wire_requested_output_cap": 2832
+    },
+    {
+      "ordinal": 3,
+      "family_id": "planning_adaptation",
+      "role": "planning",
+      "contract": "planning_event_realizations",
+      "shape_count": 8,
+      "provider_wire_estimated_input_tokens": 16321,
+      "provider_wire_requested_output_cap": 8328
+    },
+    {
+      "ordinal": 4,
+      "family_id": "causal_chain",
+      "role": "planning",
+      "contract": "short_causal_chain",
+      "shape_count": 4,
+      "provider_wire_estimated_input_tokens": 18140,
+      "provider_wire_requested_output_cap": 7625
+    },
+    {
+      "ordinal": 5,
+      "family_id": "execution_manifest",
+      "role": "planning",
+      "contract": "execution_manifest",
+      "shape_count": 12,
+      "provider_wire_estimated_input_tokens": 18429,
+      "provider_wire_requested_output_cap": 3541
+    },
+    {
+      "ordinal": 6,
+      "family_id": "final_review_window",
+      "role": "final_review",
+      "contract": "final_review_window",
+      "shape_count": 8,
+      "provider_wire_estimated_input_tokens": 21136,
+      "provider_wire_requested_output_cap": 768
+    },
+    {
+      "ordinal": 7,
+      "family_id": "final_review_adjudication",
+      "role": "final_review",
+      "contract": "full_short_final_review",
+      "shape_count": 2,
+      "provider_wire_estimated_input_tokens": 18549,
+      "provider_wire_requested_output_cap": 768
+    },
+    {
+      "ordinal": 8,
+      "family_id": "maintenance_plain",
+      "role": "maintenance",
+      "contract": null,
+      "shape_count": 41,
+      "provider_wire_estimated_input_tokens": 31320,
+      "provider_wire_requested_output_cap": 768
+    }
+  ],
+  "privacy": {
+    "raw_novel_content_egress_count": 0,
+    "real_project_content_egress_count": 0,
+    "fixture_kind": "deterministic_non_sensitive_provider_shape_only"
+  }
+}

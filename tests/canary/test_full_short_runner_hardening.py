@@ -1452,6 +1452,56 @@ def test_private_workspace_closes_after_asyncio_run_teardown(
     ]
 
 
+def test_dry_gate_evidence_directory_is_external_empty_and_exclusive(
+    tmp_path: Path,
+) -> None:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    with pytest.raises(RuntimeError, match="MUST_BE_OUTSIDE_GIT"):
+        dry_run._require_external_evidence_directory_v1(
+            repo, repo / "evidence",
+        )
+
+    target = tmp_path / "external-evidence"
+    assert dry_run._require_external_evidence_directory_v1(repo, target) == target
+    receipt = dry_run._exclusive_evidence_write_v1(
+        target / "raw.bin", b"actual isolated bytes",
+    )
+    assert receipt["sha256"] == hashlib.sha256(
+        b"actual isolated bytes"
+    ).hexdigest()
+    with pytest.raises(FileExistsError):
+        dry_run._exclusive_evidence_write_v1(
+            target / "raw.bin", b"replacement forbidden",
+        )
+    with pytest.raises(RuntimeError, match="DIRECTORY_NOT_EMPTY"):
+        dry_run._require_external_evidence_directory_v1(repo, target)
+
+
+def test_dry_run_cli_accepts_explicit_external_gate_evidence_directory(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    output = tmp_path / "dry-output.json"
+    gate_root = tmp_path / "gate-evidence"
+    captured: list[Path] = []
+
+    def fake_run(args) -> dict:
+        captured.append(args.gate_evidence_dir)
+        return {"pass": True}
+
+    monkeypatch.setattr(dry_run, "_run_with_private_workspace", fake_run)
+    monkeypatch.setattr(sys, "argv", [
+        "first_trustworthy_full_short_dry_run.py",
+        "--repo", str(tmp_path),
+        "--project-id", "project",
+        "--output", str(output),
+        "--gate-evidence-dir", str(gate_root),
+    ])
+    assert dry_run.main() == 0
+    assert captured == [gate_root]
+    assert json.loads(output.read_text(encoding="utf-8")) == {"pass": True}
+
+
 def test_crewai_event_bus_shutdown_waits_for_handlers(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

@@ -1,0 +1,63 @@
+{
+  "schema": "FullShortBudgetUnblockedChangeContractV1",
+  "version": 1,
+  "risk_level": "L3",
+  "authorization": "implementation_and_one_bounded_conditional_operation",
+  "requested_outcome": "Close the eight-probe exact-once campaign and frozen-HEAD external workload-evidence path, then execute one real Full Short only after every gate passes.",
+  "scope_classification": "closed_world",
+  "operational_definition": "Exactly eight current-route synthetic workload probes cover the sealed 111 blocked physical shapes, promote only verified lower-bound evidence, and conditionally admit one Exact READY Full Short.",
+  "forbidden_narrowing": [
+    "do not reduce literary or protected context",
+    "do not change production route/model scheduling",
+    "do not lower production output caps",
+    "do not omit a blocked provider-visible request family",
+    "do not treat a workload lower bound as a theoretical provider maximum"
+  ],
+  "allowed_changes": [
+    "closed-world canary orchestration and tests",
+    "canonical relay operator classification",
+    "strict external workload-evidence verification and admission",
+    "preparation evidence and maintenance documentation"
+  ],
+  "protected_unchanged_behavior": [
+    "formal manuscript and current candidate",
+    "StoryState, Canon, confirmed outline and ending",
+    "Runtime Kernel and current route/model graph",
+    "Baseline Skill and model-visible literary semantics",
+    "existing bounded production recovery policy",
+    "Long, Hybrid, Selective and Planning V2 cutover states"
+  ],
+  "authority_impact": {
+    "formal_manuscript": "read-only until one gated production run",
+    "StoryState_and_Canon": "read-only during preparation and probes",
+    "provider_routes_and_credentials": "identity-read-only; credentials only after frozen preflight",
+    "capacity_admission": "changed to accept only authenticated exact workload lower-bound evidence",
+    "run_checkpoint_and_exact_once": "extended by a closed-world eight-probe state machine",
+    "UI_and_API": "not involved"
+  },
+  "selected_approach": "Reuse production payload/transport boundaries, add hash-bound campaign and evidence contracts, and feed only verified normalized lower-bound evidence into the existing admission path.",
+  "rejected_alternatives": [
+    "changing routes or models",
+    "truncating production prompts or context",
+    "rewriting historical sealed PTR4 evidence",
+    "trusting arbitrary post-freeze JSON",
+    "probing theoretical maximum context"
+  ],
+  "rollback_path": "Revert this task's committed successor changes; all preparation/probe behavior is inert unless a fresh exact campaign authorization is supplied, and no historical or formal project artifact is migrated.",
+  "focused_tests": [
+    "tests/test_full_short_probe_campaign.py",
+    "tests/test_external_workload_evidence.py",
+    "tests/providers/test_registry.py",
+    "tests/canary/test_full_short_budget_unblocked_campaign.py"
+  ],
+  "related_tests": [
+    "tests/test_full_short_execution.py",
+    "tests/canary/test_full_short_runner_hardening.py",
+    "tests/canary/test_full_short_capacity_final_one_round.py",
+    "tests/canary/test_exact_ready_route_capability_closure.py",
+    "tests/test_reasoning_finalization_recovery.py"
+  ],
+  "full_suite_required": true,
+  "unresolved_user_decisions": [],
+  "resolution_status": "unresolved_until_all_local_and_real_gates_pass"
+}

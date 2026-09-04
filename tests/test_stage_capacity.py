@@ -31,6 +31,8 @@ from novel_flywheel.stage_capacity import (
     StageCapacityAdmissionEngineV1,
     StageCapacityPolicyRegistryV1,
     StageCapacityPolicyV1,
+    _issue_verified_external_workload_capacity_issuer_v1,
+    _mint_verified_external_workload_capacity_capability_v1,
     build_stage_capacity_plan_v1,
     capacity_failure_recovery_disposition_v1,
     validate_capacity_attempt_delta_v1,
@@ -131,6 +133,232 @@ def test_exact_ready_pref_fix_shape_has_deterministic_headroom() -> None:
     )
     assert plan.model_context_limit == 32768
     assert plan.plan_sha256 == _plan().plan_sha256
+
+
+@pytest.mark.parametrize(
+    (
+        "family", "stage", "proved_input_tokens",
+        "requested_output_tokens",
+    ),
+    (
+        ("draft_plain", "draft", 30_458, 2_974),
+        ("polish_plain", "polish", 32_380, 2_832),
+        ("planning_adaptation", "planning", 16_321, 8_328),
+        ("causal_chain", "planning", 18_140, 7_625),
+        ("execution_manifest", "planning", 18_429, 3_541),
+        ("final_review_window", "final_review", 21_136, 768),
+        (
+            "final_review_adjudication", "final_review",
+            18_549, 768,
+        ),
+        ("maintenance_plain", "maintenance", 31_320, 768),
+    ),
+)
+def test_verified_external_workload_lower_bound_admits_exact_family_maximum(
+    family, stage, proved_input_tokens, requested_output_tokens,
+) -> None:
+    provider_envelope_tokens = 256
+    estimator_margin_tokens = 1_024
+    rendered_message_tokens = (
+        proved_input_tokens
+        - provider_envelope_tokens
+        - estimator_margin_tokens
+    )
+    proved_workload_lower_bound = (
+        proved_input_tokens + requested_output_tokens
+    )
+    capability = _mint_verified_external_workload_capacity_capability_v1(
+        issuer=_issue_verified_external_workload_capacity_issuer_v1(
+            evidence_sha256s=("2" * 64,),
+        ),
+        route_context_capability_limit_tokens=proved_workload_lower_bound,
+        route_capability_snapshot_sha256="2" * 64,
+        physical_attempt_id="physical-external-family-maximum",
+        global_physical_attempt_ordinal=1,
+        logical_capacity_envelope_sha256="1" * 64,
+        provider_route_identity_sha256="b" * 64,
+        requested_output_token_cap=requested_output_tokens,
+    )
+
+    plan = _plan(
+        stage=stage,
+        stage_id=f"{family}-external-family-maximum",
+        logical_stage_id=f"{family}-external-family-maximum",
+        route_context_capability_source=(
+            RouteContextCapabilitySourceV1
+            .VERIFIED_EXTERNAL_WORKLOAD_EVIDENCE
+        ),
+        model_context_limit=proved_workload_lower_bound,
+        route_max_output_tokens=requested_output_tokens,
+        requested_output_token_cap=requested_output_tokens,
+        final_output_reserve=requested_output_tokens,
+        rendered_message_tokens=rendered_message_tokens,
+        structured_envelope_tokens=0,
+        provider_envelope_tokens=provider_envelope_tokens,
+        wrapper_and_estimator_margin_tokens=estimator_margin_tokens,
+        layer_projections=(
+            _layer(
+                "exact-authorized-family",
+                CapacityLayerClass.HARD_PROTECTED,
+                rendered_message_tokens,
+            ),
+        ),
+        physical_attempt_id="physical-external-family-maximum",
+        global_physical_attempt_ordinal=1,
+        logical_capacity_envelope_sha256="1" * 64,
+        route_capability_snapshot_sha256="2" * 64,
+        external_workload_capacity_capability=capability,
+    )
+
+    assert plan.admission_status is AdmissionStatus.PASS
+    assert plan.expected_rendered_input == rendered_message_tokens
+    assert plan.prompt_budget == rendered_message_tokens
+    assert plan.headroom == 0
+    assert plan.route_context_capability_limit_tokens == (
+        proved_workload_lower_bound
+    )
+    assert plan.model_context_limit == proved_workload_lower_bound
+    assert plan.stage_operational_context_ceiling_tokens == max(
+        32_768, proved_workload_lower_bound,
+    )
+    assert StageCapacityAdmissionEngineV1.enforce(plan) is plan
+
+
+@pytest.mark.parametrize(
+    "missing_binding",
+    (
+        "physical_attempt_id",
+        "global_physical_attempt_ordinal",
+        "logical_capacity_envelope_sha256",
+        "route_capability_snapshot_sha256",
+    ),
+)
+def test_external_workload_ceiling_requires_sealed_physical_binding(
+    missing_binding,
+) -> None:
+    bindings = {
+        "physical_attempt_id": "physical-external-family-maximum",
+        "global_physical_attempt_ordinal": 1,
+        "logical_capacity_envelope_sha256": "1" * 64,
+        "route_capability_snapshot_sha256": "2" * 64,
+    }
+    bindings[missing_binding] = None
+    with pytest.raises(
+        CapacityAdmissionFailureV1,
+        match="capacity.context_limit_inconsistent",
+    ):
+        _plan(
+            route_context_capability_source=(
+                RouteContextCapabilitySourceV1
+                .VERIFIED_EXTERNAL_WORKLOAD_EVIDENCE
+            ),
+            model_context_limit=33_432,
+            **bindings,
+        )
+
+
+def test_fixed_stage_ceiling_still_blocks_same_unproved_large_request() -> None:
+    plan = _plan(
+        stage="draft",
+        model_context_limit=33_432,
+        route_max_output_tokens=2_974,
+        requested_output_token_cap=2_974,
+        final_output_reserve=2_974,
+        rendered_message_tokens=29_178,
+        structured_envelope_tokens=0,
+        provider_envelope_tokens=256,
+        wrapper_and_estimator_margin_tokens=1_024,
+        layer_projections=(
+            _layer(
+                "unproved-family",
+                CapacityLayerClass.HARD_PROTECTED,
+                29_178,
+            ),
+        ),
+    )
+
+    assert plan.admission_status is AdmissionStatus.WINDOWING_REQUIRED
+    assert plan.stage_operational_context_ceiling_tokens == 32_768
+    assert plan.model_context_limit == 32_768
+    with pytest.raises(
+        CapacityAdmissionFailureV1,
+        match="capacity.windowing_required",
+    ):
+        StageCapacityAdmissionEngineV1.enforce(plan)
+
+
+def test_generic_source_cannot_reuse_external_evidence_ceiling() -> None:
+    generic = _plan(
+        stage="draft",
+        stage_id="draft-generic-ceiling",
+        logical_stage_id="draft-generic-ceiling",
+        route_context_capability_source=(
+            RouteContextCapabilitySourceV1.MODEL_CONFIGURATION
+        ),
+        model_context_limit=33_432,
+        route_max_output_tokens=2_974,
+        requested_output_token_cap=2_974,
+        final_output_reserve=2_974,
+        rendered_message_tokens=29_178,
+        structured_envelope_tokens=0,
+        provider_envelope_tokens=256,
+        wrapper_and_estimator_margin_tokens=1_024,
+        layer_projections=(
+            _layer(
+                "unproved-family",
+                CapacityLayerClass.HARD_PROTECTED,
+                29_178,
+            ),
+        ),
+        physical_attempt_id="physical-external-family-maximum",
+        global_physical_attempt_ordinal=1,
+        logical_capacity_envelope_sha256="1" * 64,
+        route_capability_snapshot_sha256="2" * 64,
+    )
+    assert generic.stage_operational_context_ceiling_tokens == 32_768
+    assert generic.model_context_limit == 32_768
+    assert generic.admission_status is AdmissionStatus.WINDOWING_REQUIRED
+
+    with pytest.raises(
+        CapacityAdmissionFailureV1,
+        match="capacity.windowing_required",
+    ):
+        StageCapacityAdmissionEngineV1.enforce(generic)
+
+
+def test_external_evidence_label_and_hashes_cannot_raise_shared_ceiling() -> None:
+    forged = _plan(
+        stage="draft",
+        stage_id="draft-forged-external-label",
+        logical_stage_id="draft-forged-external-label",
+        route_context_capability_source=(
+            RouteContextCapabilitySourceV1
+            .VERIFIED_EXTERNAL_WORKLOAD_EVIDENCE
+        ),
+        model_context_limit=33_432,
+        route_max_output_tokens=2_974,
+        requested_output_token_cap=2_974,
+        final_output_reserve=2_974,
+        rendered_message_tokens=29_178,
+        structured_envelope_tokens=0,
+        provider_envelope_tokens=256,
+        wrapper_and_estimator_margin_tokens=1_024,
+        layer_projections=(
+            _layer("forged-external-family", CapacityLayerClass.HARD_PROTECTED, 29_178),
+        ),
+        physical_attempt_id="physical-forged-external-family",
+        global_physical_attempt_ordinal=1,
+        logical_capacity_envelope_sha256="1" * 64,
+        route_capability_snapshot_sha256="2" * 64,
+    )
+    assert forged.stage_operational_context_ceiling_tokens == 32_768
+    assert forged.model_context_limit == 32_768
+    assert forged.admission_status is AdmissionStatus.WINDOWING_REQUIRED
+    with pytest.raises(
+        CapacityAdmissionFailureV1,
+        match="capacity.windowing_required",
+    ):
+        StageCapacityAdmissionEngineV1.enforce(forged)
 
 
 def test_separate_reasoning_reserve_is_included_in_capacity_equation() -> None:

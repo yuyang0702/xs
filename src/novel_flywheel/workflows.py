@@ -31015,6 +31015,11 @@ class WorkflowService:
                     "route_context_capability_source": (
                         route_context_capability_source
                     ),
+                    "external_workload_capacity_capability": (
+                        (admission_context or {}).get(
+                            "external_workload_capacity_capability"
+                        )
+                    ),
                     "requested_output_token_cap": output_cap,
                     "route_max_output_tokens": int(
                         (admission_context or {}).get(

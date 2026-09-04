@@ -17,6 +17,92 @@ CAPACITY_BOUNDARY_ID_V1 = "FS.CAPACITY.ADMIT"
 MAX_CONTEXT_LIMIT_TOKENS_V1 = 2_000_000
 
 
+_EXTERNAL_WORKLOAD_CAPABILITY_SEAL_V1 = object()
+
+
+class _VerifiedExternalWorkloadCapacityIssuerV1:
+    __slots__ = ("_seal", "evidence_sha256s")
+
+    def __init__(self, *, seal: object, evidence_sha256s: frozenset[str]) -> None:
+        if seal is not _EXTERNAL_WORKLOAD_CAPABILITY_SEAL_V1:
+            raise ValueError("external_workload_capacity_issuer_forbidden")
+        self._seal = seal
+        self.evidence_sha256s = evidence_sha256s
+
+
+def _issue_verified_external_workload_capacity_issuer_v1(
+    *, evidence_sha256s: Iterable[str],
+) -> object:
+    values = frozenset(evidence_sha256s)
+    if not values:
+        raise ValueError("external_workload_capacity_evidence_required")
+    for value in values:
+        _require_sha256(value, field_name="external_workload_evidence_sha256")
+    return _VerifiedExternalWorkloadCapacityIssuerV1(
+        seal=_EXTERNAL_WORKLOAD_CAPABILITY_SEAL_V1,
+        evidence_sha256s=values,
+    )
+
+
+class _VerifiedExternalWorkloadCapacityCapabilityV1:
+    """Opaque, process-local proof minted after signed evidence validation."""
+
+    __slots__ = (
+        "_seal", "route_context_capability_limit_tokens",
+        "route_capability_snapshot_sha256", "physical_attempt_id",
+        "global_physical_attempt_ordinal",
+        "logical_capacity_envelope_sha256",
+        "provider_route_identity_sha256", "requested_output_token_cap",
+    )
+
+    def __init__(
+        self, *, seal: object, route_context_capability_limit_tokens: int,
+        route_capability_snapshot_sha256: str, physical_attempt_id: str,
+        global_physical_attempt_ordinal: int,
+        logical_capacity_envelope_sha256: str,
+        provider_route_identity_sha256: str,
+        requested_output_token_cap: int,
+    ) -> None:
+        if seal is not _EXTERNAL_WORKLOAD_CAPABILITY_SEAL_V1:
+            raise ValueError("external_workload_capacity_capability_forbidden")
+        self._seal = seal
+        self.route_context_capability_limit_tokens = route_context_capability_limit_tokens
+        self.route_capability_snapshot_sha256 = route_capability_snapshot_sha256
+        self.physical_attempt_id = physical_attempt_id
+        self.global_physical_attempt_ordinal = global_physical_attempt_ordinal
+        self.logical_capacity_envelope_sha256 = logical_capacity_envelope_sha256
+        self.provider_route_identity_sha256 = provider_route_identity_sha256
+        self.requested_output_token_cap = requested_output_token_cap
+
+
+def _mint_verified_external_workload_capacity_capability_v1(
+    *, issuer: object, route_context_capability_limit_tokens: int,
+    route_capability_snapshot_sha256: str, physical_attempt_id: str,
+    global_physical_attempt_ordinal: int,
+    logical_capacity_envelope_sha256: str,
+    provider_route_identity_sha256: str,
+    requested_output_token_cap: int,
+) -> object:
+    """Mint the opaque proof used only by the validated Full Short consumer."""
+
+    if not (
+        isinstance(issuer, _VerifiedExternalWorkloadCapacityIssuerV1)
+        and issuer._seal is _EXTERNAL_WORKLOAD_CAPABILITY_SEAL_V1
+        and route_capability_snapshot_sha256 in issuer.evidence_sha256s
+    ):
+        raise ValueError("external_workload_capacity_issuer_invalid")
+    return _VerifiedExternalWorkloadCapacityCapabilityV1(
+        seal=_EXTERNAL_WORKLOAD_CAPABILITY_SEAL_V1,
+        route_context_capability_limit_tokens=route_context_capability_limit_tokens,
+        route_capability_snapshot_sha256=route_capability_snapshot_sha256,
+        physical_attempt_id=physical_attempt_id,
+        global_physical_attempt_ordinal=global_physical_attempt_ordinal,
+        logical_capacity_envelope_sha256=logical_capacity_envelope_sha256,
+        provider_route_identity_sha256=provider_route_identity_sha256,
+        requested_output_token_cap=requested_output_token_cap,
+    )
+
+
 def _canonical_sha256(value: object) -> str:
     return hashlib.sha256(
         json.dumps(
@@ -60,6 +146,9 @@ class CapacityRecoveryDisposition(StrEnum):
 class RouteContextCapabilitySourceV1(StrEnum):
     ROUTE_CAPABILITY_REGISTRY = "route_capability_registry"
     MODEL_CONFIGURATION = "model_configuration"
+    VERIFIED_EXTERNAL_WORKLOAD_EVIDENCE = (
+        "verified_external_workload_evidence"
+    )
     OFFLINE_DETERMINISTIC_GATEWAY_MANIFEST = (
         "offline_deterministic_gateway_manifest"
     )
@@ -423,6 +512,7 @@ class StageCapacityPlanV1:
     stage_operational_context_ceiling_tokens: int
     route_context_capability_limit_tokens: int
     route_context_capability_source: RouteContextCapabilitySourceV1
+    external_workload_capacity_capability: object | None
     model_context_limit: int
     requested_output_token_cap: int
     route_max_output_tokens: int
@@ -461,6 +551,7 @@ class StageCapacityPlanV1:
     def canonical_payload(self) -> dict[str, object]:
         payload = asdict(self)
         payload.pop("plan_sha256")
+        payload.pop("external_workload_capacity_capability")
         payload["admission_status"] = self.admission_status.value
         payload["denial_failure_id"] = (
             self.denial_failure_id.value if self.denial_failure_id else None
@@ -690,6 +781,55 @@ def capacity_recovery_prompt_delta_sha256_v1(
     })
 
 
+def _expected_stage_context_ceiling_v1(
+    *,
+    policy: StageCapacityPolicyV1,
+    capability_source: RouteContextCapabilitySourceV1,
+    route_context_capability_limit_tokens: int,
+    physical_attempt_id: str | None,
+    global_physical_attempt_ordinal: int | None,
+    logical_capacity_envelope_sha256: str | None,
+    route_capability_snapshot_sha256: str | None,
+    provider_route_identity_sha256: str,
+    requested_output_token_cap: int,
+    external_workload_capacity_capability: object | None,
+) -> int:
+    """Return the only policy-valid ceiling for one bound capability source."""
+
+    policy_ceiling = policy.stage_operational_context_ceiling_tokens
+    if capability_source is not (
+        RouteContextCapabilitySourceV1.VERIFIED_EXTERNAL_WORKLOAD_EVIDENCE
+    ):
+        return policy_ceiling
+    if any(item is None for item in (
+        physical_attempt_id,
+        global_physical_attempt_ordinal,
+        logical_capacity_envelope_sha256,
+        route_capability_snapshot_sha256,
+    )):
+        return policy_ceiling
+    capability = external_workload_capacity_capability
+    if not (
+        isinstance(capability, _VerifiedExternalWorkloadCapacityCapabilityV1)
+        and capability._seal is _EXTERNAL_WORKLOAD_CAPABILITY_SEAL_V1
+        and capability.route_context_capability_limit_tokens
+        == route_context_capability_limit_tokens
+        and capability.route_capability_snapshot_sha256
+        == route_capability_snapshot_sha256
+        and capability.physical_attempt_id == physical_attempt_id
+        and capability.global_physical_attempt_ordinal
+        == global_physical_attempt_ordinal
+        and capability.logical_capacity_envelope_sha256
+        == logical_capacity_envelope_sha256
+        and capability.provider_route_identity_sha256
+        == provider_route_identity_sha256
+        and capability.requested_output_token_cap
+        == requested_output_token_cap
+    ):
+        return policy_ceiling
+    return max(policy_ceiling, route_context_capability_limit_tokens)
+
+
 def build_stage_capacity_plan_v1(
     *,
     stage_id: str,
@@ -717,6 +857,7 @@ def build_stage_capacity_plan_v1(
     global_physical_attempt_ordinal: int | None = None,
     logical_capacity_envelope_sha256: str | None = None,
     route_capability_snapshot_sha256: str | None = None,
+    external_workload_capacity_capability: object | None = None,
     route_max_output_tokens: int | None = None,
     reasoning_token_reserve: int = 0,
     reasoning_token_accounting: str = "INCLUDED_IN_COMPLETION_CAP",
@@ -772,7 +913,18 @@ def build_stage_capacity_plan_v1(
         raise ValueError("capacity_value_negative")
     projections = tuple(layer_projections)
     policy = policy_registry.require_policy(stage)
-    stage_context_ceiling = policy.stage_operational_context_ceiling_tokens
+    stage_context_ceiling = _expected_stage_context_ceiling_v1(
+        policy=policy,
+        capability_source=capability_source,
+        route_context_capability_limit_tokens=model_context_limit,
+        physical_attempt_id=physical_attempt_id,
+        global_physical_attempt_ordinal=global_physical_attempt_ordinal,
+        logical_capacity_envelope_sha256=logical_capacity_envelope_sha256,
+        route_capability_snapshot_sha256=route_capability_snapshot_sha256,
+        provider_route_identity_sha256=provider_route_identity_sha256,
+        requested_output_token_cap=requested_output_token_cap,
+        external_workload_capacity_capability=external_workload_capacity_capability,
+    )
     effective_context_limit = min(model_context_limit, stage_context_ceiling)
     effective_route_max_output = int(
         route_max_output_tokens or requested_output_token_cap
@@ -784,7 +936,10 @@ def build_stage_capacity_plan_v1(
         raise CapacityAdmissionFailureV1(
             CapacityFailureCode.OUTPUT_RESERVE_UNSATISFIED,
         )
-    if capability_source is RouteContextCapabilitySourceV1.ROUTE_CAPABILITY_REGISTRY:
+    if capability_source in {
+        RouteContextCapabilitySourceV1.ROUTE_CAPABILITY_REGISTRY,
+        RouteContextCapabilitySourceV1.VERIFIED_EXTERNAL_WORKLOAD_EVIDENCE,
+    }:
         if any(item is None for item in (
             physical_attempt_id,
             global_physical_attempt_ordinal,
@@ -974,6 +1129,7 @@ def build_stage_capacity_plan_v1(
         "stage_operational_context_ceiling_tokens": stage_context_ceiling,
         "route_context_capability_limit_tokens": model_context_limit,
         "route_context_capability_source": capability_source,
+        "external_workload_capacity_capability": external_workload_capacity_capability,
         "model_context_limit": effective_context_limit,
         "requested_output_token_cap": requested_output_token_cap,
         "route_max_output_tokens": effective_route_max_output,
@@ -1025,6 +1181,7 @@ def build_stage_capacity_plan_v1(
             for layer in projections
         ],
     }
+    canonical_payload.pop("external_workload_capacity_capability")
     return StageCapacityPlanV1(
         **payload,
         plan_sha256=_canonical_sha256(canonical_payload),
@@ -1163,6 +1320,28 @@ def enforce_stage_capacity_plan_v1(
             plan=plan,
         )
     policy = policy_registry.require_policy(plan.stage)
+    expected_stage_context_ceiling = _expected_stage_context_ceiling_v1(
+        policy=policy,
+        capability_source=plan.route_context_capability_source,
+        route_context_capability_limit_tokens=(
+            plan.route_context_capability_limit_tokens
+        ),
+        physical_attempt_id=plan.physical_attempt_id,
+        global_physical_attempt_ordinal=(
+            plan.global_physical_attempt_ordinal
+        ),
+        logical_capacity_envelope_sha256=(
+            plan.logical_capacity_envelope_sha256
+        ),
+        route_capability_snapshot_sha256=(
+            plan.route_capability_snapshot_sha256
+        ),
+        provider_route_identity_sha256=plan.provider_route_identity_sha256,
+        requested_output_token_cap=plan.requested_output_token_cap,
+        external_workload_capacity_capability=(
+            plan.external_workload_capacity_capability
+        ),
+    )
     if (
         any(
             layer.classification not in policy.allowed_layer_classes
@@ -1213,7 +1392,7 @@ def enforce_stage_capacity_plan_v1(
         or plan.segmentation_policy_id != policy.segmentation_policy_id
         or plan.recovery_policy_id != policy.recovery_policy_id
         or plan.stage_operational_context_ceiling_tokens
-        != policy.stage_operational_context_ceiling_tokens
+        != expected_stage_context_ceiling
         or not isinstance(
             plan.route_context_capability_source,
             RouteContextCapabilitySourceV1,

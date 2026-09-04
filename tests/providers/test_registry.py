@@ -29,6 +29,30 @@ def test_registry_rejects_unsupported_protocol(tmp_path) -> None:
         raise AssertionError("unsupported protocol was accepted")
 
 
+def test_public_route_uses_canonical_operator_classification(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    registry = ProviderRegistry(db, MemorySecretStore())
+    relay_id = registry.add_provider(
+        provider_id="relay", name="Relay", protocol="anthropic",
+        base_url="https://relay.test/v1", api_key="secret",
+    )
+    relay_model = registry.add_model(relay_id, "Model", "model-v1")
+    assert registry.inspect_public_route(
+        relay_id, relay_model,
+    ).provider_operator == "THIRD_PARTY_RELAY_UNVERIFIED_UPSTREAM"
+
+    ark_id = registry.add_provider(
+        provider_id="ark", name="Ark", protocol="openai-responses",
+        base_url="https://ark.cn-beijing.volces.com/api/v3",
+        api_key="secret",
+    )
+    ark_model = registry.add_model(ark_id, "Seed", "seed-v1")
+    assert registry.inspect_public_route(
+        ark_id, ark_model,
+    ).provider_operator == "VOLCENGINE_ARK_DIRECT"
+
+
 def test_observed_capability_is_invalidated_when_third_party_route_changes(tmp_path) -> None:
     db = Database(tmp_path / "app.db")
     db.migrate()

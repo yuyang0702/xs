@@ -2585,3 +2585,76 @@ bound a capacity plan or request is deliberately terminal for that exact
 execution: it cannot resume or redispatch, and any later run requires fresh
 authorization. Read-only replay of an already anchored provider capture remains
 local and never authorizes network activity.
+# Budget-unblocked Full Short capacity evidence
+
+The one-round Full Short canary has a closed-world eight-probe preparation
+path for routes whose theoretical limits remain unknown.  The probes use only
+deterministic synthetic provider-shaped payloads, run sequentially through the
+single-dispatch transport policy, reserve a durable nonce before credential
+lookup, and stop after the first dispatched failure.  They do not contain
+StoryState, Canon, blueprint, Skill, project, character, reference, or novel
+prose. Synthetic input pressure uses domain-separated, deterministic
+low-compressibility bytes rather than a repeated-character run. A successful
+probe must also carry complete raw Provider usage whose reported input-token
+count is at least the workload lower bound being promoted; the local estimator
+alone can never promote capacity.
+
+Successful observations may be consumed after the execution HEAD is frozen
+only as canonical authenticated `ExternalWorkloadEvidenceV1` packages.  The
+package binds the campaign authorization, frozen HEAD, exact route/operator/
+destination/protocol/model/fingerprint, probe fixture and payload hashes, a
+separate reusable request-family hash, nonce, raw-response hash, and measured
+usage.  Admission treats the result only as a verified workload lower bound;
+it does not infer a theoretical provider maximum.  Missing, unused, duplicated,
+tampered, wrong-HEAD, wrong-route, wrong-family, or over-bound evidence fails
+closed.
+
+The outer one-round authorization is materialized before probes, so it binds
+the frozen production route graph and invariant policies rather than embedding
+the later Full Short authorization bytes. After all eight signed packages
+pass, the nested `FullShortCanonicalAuthorizationV1` is derived exactly once
+from the same HEAD and those exact packages, then stored outside Git. This
+avoids a circular hash dependency while retaining exact substitution checks.
+Campaign state is an append-only HMAC-sealed journal: probe and Full Short
+phases are durably reserved before their credential boundaries and an uncertain
+reserved state is never redispatched. Probe usage and the projected Full Short
+maximum share the same cumulative request, token, cost-when-metered, and elapsed
+caps.
+
+When the campaign launches its sole Full Short, it supplies a hash-bound outer
+usage guard to the existing dispatch observer. Before every physical dispatch,
+the observer combines prior probe usage, earlier Full Short usage, and the next
+capacity plan's provider-wire input estimate and requested output ceiling. Each
+complete JSON or SSE response is then re-read from the exact external capture
+to bind provider-reported input/output usage into the durable ledger. If usage
+is absent on an otherwise captured attempt, the ledger debits the full sealed
+input estimate and requested output ceiling as a conservative request bound;
+the final receipt states whether every debit was provider-reported actual.
+Tampered usage, capture mismatch, exhausted remaining requests/tokens, or an
+expired remaining elapsed window stops before another nonce or HTTP dispatch.
+Ordinary runs that do not supply this campaign guard retain their prior behavior.
+
+The one-round controller does not accept caller-authored PASS receipts.  Its
+post-probe gate imports canonical source bundles that dereference the actual
+isolated dry-run authority files, size-matrix JUnit and wire payloads, Strict L3
+inspection inputs/output, and five independent review reports.  It recomputes
+the file, authority, current-tree, and test hashes both when the gates are
+recorded and immediately before the sole Full Short is reserved.  The isolated
+dry-run producer can export the persisted completion, terminal verification,
+final manuscript and chapter, StoryState snapshot, Canon, READY receipt,
+project-mutation journal, and maintenance receipts to an empty directory outside
+Git; those bytes are the authority source for the gate, not a summary assertion.
+
+For the two exact workload families whose proved input-plus-output shape exceeds
+the generic 32,768 stage ceiling, the validated Full Short evidence consumer
+mints a process-local capability bound to the signed evidence snapshot, route,
+physical attempt, logical envelope, and output cap.  Both capacity build and
+enforcement require that capability before using the proved workload lower bound
+as the operational ceiling.  Merely naming the external-evidence source or
+supplying plausible hashes never relaxes the generic stage policy.
+
+Public route inspection now classifies the official DeepSeek endpoint as
+`DEEPSEEK_OFFICIAL`, the direct Volcengine Ark endpoint as
+`VOLCENGINE_ARK_DIRECT`, and all remaining routes as
+`THIRD_PARTY_RELAY_UNVERIFIED_UPSTREAM`.  This is public metadata only and does
+not infer an unverified relay's upstream operator or model provenance.

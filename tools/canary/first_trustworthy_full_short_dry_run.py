@@ -33,13 +33,18 @@ from novel_flywheel.contract_runtime import (
 from novel_flywheel.db import Database
 from novel_flywheel.failure_boundary import failure_evidence_sha256
 from novel_flywheel.full_short_execution import (
+    FullShortDurableExecutionStoreV1,
     FullShortExecutionPolicyV1,
     LOGICAL_STAGE_RECOVERY_POLICY_V1,
+    build_full_short_completion_receipt_v1,
     full_short_logical_stage_id_v1,
     render_full_short_canonical_authorization_v1,
     validate_full_short_canonical_authorization_v1,
 )
 from novel_flywheel.models import ModelResult
+from novel_flywheel.maintenance_authority import (
+    validate_maintenance_reduction,
+)
 from novel_flywheel.offline_http_transport import (
     OfflineHttpRequestV1,
     OfflineHttpResponseV1,
@@ -51,12 +56,29 @@ from novel_flywheel.provider_response_capture import (
     ProviderResponseCaptureStoreV1,
     parse_provider_protocol_input_bytes_v1,
 )
+from novel_flywheel.project_transactions import (
+    ProjectMutationJournalV1,
+    canonical_json_sha256,
+    project_mutation_journal_path,
+)
+from novel_flywheel.runtime_fingerprint_build import domain_sha256
 from novel_flywheel.projects import ProjectStore
 from novel_flywheel.providers.http import SingleDispatchTransportPolicyV1
 from novel_flywheel.providers.registry import ADAPTERS, ProviderRegistry, ResolvedModel
 from novel_flywheel.secrets import MemorySecretStore
 from novel_flywheel.stage_capacity import (
     DEFAULT_STAGE_CAPACITY_POLICY_REGISTRY_V1,
+)
+from novel_flywheel.story_state import StoryStateStore
+from novel_flywheel.short_canonical_promotion import (
+    MaintenanceProposalInventoryV1,
+)
+from novel_flywheel.full_short_runtime_kernel import (
+    DurableExecutionJournalV1,
+    ExecutionState,
+)
+from novel_flywheel.workflows import (
+    validate_short_maintenance_business_complete_v2,
 )
 from tools.canary.fake_boundary import (
     DeterministicShortBoundary,
@@ -89,6 +111,17 @@ OFFLINE_CONTEXT_MANIFEST_V1 = {
     ),
     "scope": "ISOLATED_PRIVATE_DATA_COPY_ONLY",
     "external_actions_enabled": False,
+}
+
+_FULL_SHORT_REQUIRED_ARTIFACTS = {
+    "planning-semantic-v2.json",
+    "short-causal-chain.json",
+    "short-execution-index.json",
+    "draft.md",
+    "polish.md",
+    "final-review-evidence.json",
+    "quality-report.json",
+    "draft-integrity.json",
 }
 
 
@@ -2076,6 +2109,625 @@ async def _replay_full_workflow_from_captured_bytes(
     }
 
 
+def _canonical_json_bytes_v1(value: object) -> bytes:
+    return json.dumps(
+        value, ensure_ascii=False, sort_keys=True, separators=(",", ":"),
+        allow_nan=False,
+    ).encode("utf-8")
+
+
+def _exclusive_evidence_write_v1(path: Path, raw: bytes) -> dict[str, str]:
+    """Persist one immutable evidence object without replacing prior bytes."""
+
+    if not raw:
+        raise RuntimeError("FULL_SHORT_DRY_GATE_EVIDENCE_EMPTY")
+    flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_BINARY", 0)
+    descriptor = os.open(path, flags, 0o600)
+    try:
+        offset = 0
+        while offset < len(raw):
+            written = os.write(descriptor, raw[offset:])
+            if written <= 0:
+                raise RuntimeError("FULL_SHORT_DRY_GATE_WRITE_NO_PROGRESS")
+            offset += written
+        os.fsync(descriptor)
+    finally:
+        os.close(descriptor)
+    return {
+        "path": str(path.resolve(strict=True)),
+        "sha256": hashlib.sha256(raw).hexdigest(),
+    }
+
+
+def _require_external_evidence_directory_v1(repo: Path, target: Path) -> Path:
+    repo = repo.resolve(strict=True)
+    target = target.resolve()
+    if target == repo or target.is_relative_to(repo):
+        raise RuntimeError("FULL_SHORT_DRY_GATE_EVIDENCE_MUST_BE_OUTSIDE_GIT")
+    target.mkdir(parents=True, exist_ok=True)
+    if any(target.iterdir()):
+        raise RuntimeError("FULL_SHORT_DRY_GATE_EVIDENCE_DIRECTORY_NOT_EMPTY")
+    return target
+
+
+def persist_full_short_isolated_dry_run_evidence_v1(
+    *, repo: Path, gate_evidence_dir: Path, source_head: str,
+    project_id: str, execution_data: Path, project_root: Path,
+    run_root: Path, store_root: Path, completion: dict[str, Any],
+    terminal: dict[str, Any], workflow_result: dict[str, Any],
+    base_runtime_authority: dict[str, Any],
+    project_workload: dict[str, Any],
+    runtime_authority_sha256: str,
+    workload_sha256: str,
+    base_story_state_data: dict[str, Any],
+    policy: dict[str, Any], public_bindings: dict[str, Any],
+    authorization_raw: bytes, replay_proof: dict[str, Any],
+) -> dict[str, str]:
+    """Export the actual isolated authority chain before temp cleanup.
+
+    The exported files are private external evidence.  Hashes are derived from
+    the exact completed control-plane objects and isolated project/database
+    bytes; callers cannot supply free-standing receipt hashes.
+    """
+
+    target = _require_external_evidence_directory_v1(repo, gate_evidence_dir)
+    project_sha256 = hashlib.sha256(project_id.encode("utf-8")).hexdigest()
+    if workflow_result.get("status") != "completed":
+        raise RuntimeError("FULL_SHORT_DRY_GATE_WORKFLOW_NOT_COMPLETED")
+    if (
+        completion.get("schema") != "FullShortCompletionReceiptV1"
+        or terminal.get("schema") != "ShortCompletionVerificationV1"
+        or completion.get("completion_receipt_sha256") is None
+        or terminal.get("verification_receipt_sha256") is None
+    ):
+        raise RuntimeError("FULL_SHORT_DRY_GATE_CONTROL_PLANE_INVALID")
+
+    completion_paths = sorted(store_root.glob("*.completion.json"))
+    if len(completion_paths) != 1:
+        raise RuntimeError("FULL_SHORT_DRY_GATE_COMPLETION_FILE_AMBIGUOUS")
+    completion_raw = completion_paths[0].read_bytes()
+    try:
+        persisted_completion = json.loads(completion_raw.decode("utf-8"))
+    except (UnicodeError, ValueError) as exc:
+        raise RuntimeError("FULL_SHORT_DRY_GATE_COMPLETION_FILE_INVALID") from exc
+    if persisted_completion != completion:
+        raise RuntimeError("FULL_SHORT_DRY_GATE_COMPLETION_OBJECT_DRIFT")
+    try:
+        authorization = validate_full_short_canonical_authorization_v1(
+            authorization_raw, policy=policy, public_bindings=public_bindings,
+        )
+        if (
+            authorization.get("policy") != policy
+            or authorization.get("public_bindings") != public_bindings
+            or policy.get("run_id") != EXECUTION_ID
+            or public_bindings.get("run_id") != EXECUTION_ID
+        ):
+            raise ValueError("dry authorization identity drift")
+        durable_store = FullShortDurableExecutionStoreV1(
+            repo_root=repo, store_root=store_root,
+        )
+        permission = FullShortDurableExecutionStoreV1._verify_seal(
+            durable_store._read(EXECUTION_ID, "permission"),
+            domain="novel-flywheel-full-short-permission-v1",
+            field="permission_sha256", reason="PERMISSION_SHA256_MISMATCH",
+        )
+        approval = FullShortDurableExecutionStoreV1._verify_seal(
+            durable_store._read(EXECUTION_ID, "approval"),
+            domain="novel-flywheel-full-short-jit-approval-v1",
+            field="signed_approval_sha256", reason="APPROVAL_SHA256_MISMATCH",
+        )
+        nonce = FullShortDurableExecutionStoreV1._verify_seal(
+            durable_store._read(EXECUTION_ID, "nonce"),
+            domain="novel-flywheel-full-short-nonce-record-v1",
+            field="nonce_record_sha256", reason="NONCE_SHA256_MISMATCH",
+        )
+        ledger = durable_store.load_ledger(EXECUTION_ID)
+        capacity_receipts = durable_store.verify_completion_capacity_receipts(
+            execution_id=EXECUTION_ID, policy=policy, ledger=ledger,
+        )
+        durable_store.verify_completion_capture_receipts(
+            execution_id=EXECUTION_ID, policy=policy, ledger=ledger,
+        )
+        rebuilt_completion = build_full_short_completion_receipt_v1(
+            execution_id=EXECUTION_ID, policy=policy,
+            durable_store=durable_store,
+            permission_sha256=permission["permission_sha256"],
+            signed_approval_sha256=approval["signed_approval_sha256"],
+            nonce_sha256=nonce["nonce_sha256"], ledger=ledger,
+            final_bindings=completion["final_bindings"],
+            terminal_verification=terminal,
+            capacity_admission_receipts=capacity_receipts,
+        )
+        rebuilt_completion["created_at"] = completion["created_at"]
+        rebuilt_completion["completion_receipt_sha256"] = domain_sha256(
+            "novel-flywheel-full-short-completion-receipt-v1",
+            {
+                key: value for key, value in rebuilt_completion.items()
+                if key != "completion_receipt_sha256"
+            },
+        )
+        if rebuilt_completion != completion:
+            raise ValueError("completion rebuild drift")
+        runtime_journal_path = (
+            store_root / f"{EXECUTION_ID}.runtime-journal-v1.json"
+        )
+        runtime_journal = DurableExecutionJournalV1.open(runtime_journal_path)
+        if (
+            runtime_journal.execution_id != EXECUTION_ID
+            or runtime_journal.state is not ExecutionState.COMPLETED
+        ):
+            raise ValueError("runtime journal is not completed")
+    except Exception as exc:
+        raise RuntimeError("FULL_SHORT_DRY_GATE_DURABLE_CHAIN_INVALID") from exc
+
+    story_state = StoryStateStore(Database(execution_data / "app.db")).get(
+        project_id
+    )
+    if story_state is None:
+        raise RuntimeError("FULL_SHORT_DRY_GATE_STORY_STATE_MISSING")
+    story_state_sha256 = canonical_json_sha256(story_state.data)
+    final_bindings = completion.get("final_bindings") or {}
+    if (
+        final_bindings.get("story_state_sha256") != story_state_sha256
+        or final_bindings.get("terminal_verification_sha256")
+        != terminal["verification_receipt_sha256"]
+    ):
+        raise RuntimeError("FULL_SHORT_DRY_GATE_AUTHORITY_BINDING_DRIFT")
+    story_state_snapshot = {
+        "schema": "FullShortStoryStateAuthoritySnapshotV1",
+        "version": 1,
+        "project_id_sha256": project_sha256,
+        "revision": story_state.revision,
+        "data": story_state.data,
+        "authority_sha256": story_state_sha256,
+    }
+
+    manuscript_path = project_root / "manuscript" / "story.md"
+    chapter_path = project_root / "chapters" / "chapter-01.md"
+    canon_path = project_root / "memory" / "canon.json"
+    project_path = project_root / "project.json"
+    constraints_path = project_root / "constraints.md"
+    quality_checkpoint_path = run_root / "outputs" / "quality-checkpoint.json"
+    journal_path = project_mutation_journal_path(project_root, EXECUTION_ID)
+    journal_raw = journal_path.read_bytes()
+    journal = ProjectMutationJournalV1.model_validate_json(journal_raw)
+    if (
+        journal.status != "committed"
+        or journal.project_id != project_id
+        or journal.run_id != EXECUTION_ID
+        or journal.story_state is None
+        or journal.story_state.target_revision != story_state.revision
+        or journal.story_state.state_sha256 != story_state_sha256
+        or journal.story_state.data != story_state.data
+        or journal.post_commit_gate is None
+        or journal.post_commit_gate.status != "passed"
+        or not journal.post_commit_gate.receipt_path
+        or not journal.post_commit_gate.receipt_sha256
+    ):
+        raise RuntimeError("FULL_SHORT_DRY_GATE_JOURNAL_AUTHORITY_INVALID")
+    ready_path = project_root / journal.post_commit_gate.receipt_path
+    source_files = {
+        "final_artifact": manuscript_path,
+        "chapter": chapter_path,
+        "canon": canon_path,
+        "ready": ready_path,
+        "project_mutation_journal": journal_path,
+        "project": project_path,
+        "constraints": constraints_path,
+        "quality_checkpoint": quality_checkpoint_path,
+    }
+    source_bytes = {name: path.read_bytes() for name, path in source_files.items()}
+    source_hashes = {
+        name: hashlib.sha256(raw).hexdigest()
+        for name, raw in source_bytes.items()
+    }
+    try:
+        project_document = json.loads(source_bytes["project"].decode("utf-8"))
+        quality_checkpoint = json.loads(
+            source_bytes["quality_checkpoint"].decode("utf-8")
+        )
+    except (UnicodeError, ValueError, TypeError) as exc:
+        raise RuntimeError("FULL_SHORT_DRY_GATE_AUTHORITY_FILE_INVALID") from exc
+    narrative_integrity_reference = quality_checkpoint.get(
+        "narrative_integrity"
+    ) if isinstance(quality_checkpoint, dict) else None
+    if (
+        not isinstance(narrative_integrity_reference, dict)
+        or set(narrative_integrity_reference) != {"path", "sha256"}
+        or not isinstance(narrative_integrity_reference.get("path"), str)
+        or not narrative_integrity_reference["path"].startswith("outputs/")
+    ):
+        raise RuntimeError("FULL_SHORT_DRY_GATE_NARRATIVE_INTEGRITY_INVALID")
+    narrative_integrity_path = (
+        run_root / narrative_integrity_reference["path"]
+    ).resolve()
+    try:
+        narrative_integrity_path.relative_to(run_root.resolve(strict=True))
+        narrative_integrity_raw = narrative_integrity_path.read_bytes()
+    except (OSError, ValueError):
+        raise RuntimeError(
+            "FULL_SHORT_DRY_GATE_NARRATIVE_INTEGRITY_INVALID"
+        ) from None
+    narrative_integrity_sha256 = hashlib.sha256(
+        narrative_integrity_raw
+    ).hexdigest()
+    if (
+        not narrative_integrity_raw
+        or narrative_integrity_reference.get("sha256")
+        != narrative_integrity_sha256
+    ):
+        raise RuntimeError("FULL_SHORT_DRY_GATE_NARRATIVE_INTEGRITY_INVALID")
+    try:
+        base_revision = int(base_runtime_authority["story_state_revision"])
+        base_authority_sha256 = str(
+            base_runtime_authority["story_state_sha256"]
+        )
+        maintenance_source_state_sha256 = str(
+            base_runtime_authority["maintenance_source_state_sha256"]
+        )
+    except (KeyError, TypeError, ValueError) as exc:
+        raise RuntimeError("FULL_SHORT_DRY_GATE_BASE_AUTHORITY_INVALID") from exc
+    if (
+        story_state.revision != base_revision + 1
+        or journal.expected_story_state_revision != base_revision
+        or journal.story_state is None
+        or journal.story_state.expected_revision != base_revision
+    ):
+        raise RuntimeError("FULL_SHORT_DRY_GATE_BASE_AUTHORITY_DRIFT")
+    if canonical_json_sha256(base_story_state_data) != base_authority_sha256:
+        raise RuntimeError("FULL_SHORT_DRY_GATE_BASE_AUTHORITY_DRIFT")
+    base_story_state_snapshot = {
+        "schema": "FullShortBaseStoryStateAuthoritySnapshotV1",
+        "version": 1,
+        "project_id_sha256": project_sha256,
+        "revision": base_revision,
+        "data": base_story_state_data,
+        "authority_sha256": base_authority_sha256,
+    }
+    if (
+        final_bindings.get("manuscript_sha256") != source_hashes["final_artifact"]
+        or final_bindings.get("chapter_sha256") != source_hashes["chapter"]
+        or final_bindings.get("canon_sha256") != source_hashes["canon"]
+        or final_bindings.get("terminal_verification_sha256")
+        != terminal["verification_receipt_sha256"]
+        or terminal.get("final_manuscript_sha256")
+        != source_hashes["final_artifact"]
+        or terminal.get("completion_goal_outcome") != COMPLETION_GOAL
+        or journal.post_commit_gate.receipt_sha256 != source_hashes["ready"]
+        or source_hashes["project"]
+        != base_runtime_authority.get("project_json_sha256")
+        or source_hashes["project"]
+        != project_workload.get("project_json_sha256")
+        or source_hashes["constraints"]
+        != project_workload.get("constraints_sha256")
+        or _domain(base_runtime_authority) != runtime_authority_sha256
+        or _domain(project_workload) != workload_sha256
+        or not isinstance(project_document, dict)
+        or project_document.get("id") != project_id
+        or project_document.get("target_words")
+        != project_workload.get("target_words")
+        or not isinstance(quality_checkpoint, dict)
+        or quality_checkpoint.get("manuscript_hash")
+        != source_hashes["final_artifact"]
+        or quality_checkpoint.get("terminal_reviewed_hash")
+        != source_hashes["final_artifact"]
+        or final_bindings.get("quality_checkpoint_sha256")
+        != source_hashes["quality_checkpoint"]
+        or (terminal.get("final_checkpoint") or {}).get("checkpoint_sha256")
+        != source_hashes["quality_checkpoint"]
+    ):
+        raise RuntimeError("FULL_SHORT_DRY_GATE_ARTIFACT_BINDING_DRIFT")
+
+    references: dict[str, Any] = {
+        "completion": _exclusive_evidence_write_v1(
+            target / "completion-receipt.json",
+            _canonical_json_bytes_v1(completion),
+        ),
+        "terminal_verification": _exclusive_evidence_write_v1(
+            target / "terminal-verification.json",
+            _canonical_json_bytes_v1(terminal),
+        ),
+        "story_state": _exclusive_evidence_write_v1(
+            target / "story-state-authority.json",
+            _canonical_json_bytes_v1(story_state_snapshot),
+        ),
+        "base_story_state": _exclusive_evidence_write_v1(
+            target / "base-story-state-authority.json",
+            _canonical_json_bytes_v1(base_story_state_snapshot),
+        ),
+        "project": _exclusive_evidence_write_v1(
+            target / "project.json", source_bytes["project"],
+        ),
+        "constraints": _exclusive_evidence_write_v1(
+            target / "constraints.md", source_bytes["constraints"],
+        ),
+        "quality_checkpoint": _exclusive_evidence_write_v1(
+            target / "quality-checkpoint.json",
+            source_bytes["quality_checkpoint"],
+        ),
+        "narrative_integrity": _exclusive_evidence_write_v1(
+            target / "narrative-integrity.json", narrative_integrity_raw,
+        ),
+        "canonical_authorization": _exclusive_evidence_write_v1(
+            target / "canonical-authorization.json", authorization_raw,
+        ),
+        "authorization_policy": _exclusive_evidence_write_v1(
+            target / "authorization-policy.json",
+            _canonical_json_bytes_v1(policy),
+        ),
+        "authorization_public_bindings": _exclusive_evidence_write_v1(
+            target / "authorization-public-bindings.json",
+            _canonical_json_bytes_v1(public_bindings),
+        ),
+        "runtime_journal": _exclusive_evidence_write_v1(
+            target / "runtime-journal-v1.json",
+            runtime_journal_path.read_bytes(),
+        ),
+        "replay_proof": _exclusive_evidence_write_v1(
+            target / "captured-response-replay-proof.json",
+            _canonical_json_bytes_v1(replay_proof),
+        ),
+    }
+    control_store: dict[str, dict[str, str]] = {}
+    for kind in ("permission", "approval", "nonce", "ledger", "completion"):
+        path = durable_store._path(EXECUTION_ID, kind)
+        control_store[kind] = _exclusive_evidence_write_v1(
+            target / f"durable-{kind}.json", path.read_bytes(),
+        )
+    references["control_store"] = control_store
+    references["capacity_admission_receipts"] = [
+        _exclusive_evidence_write_v1(
+            target / f"capacity-admission-{index:03d}.json",
+            path.read_bytes(),
+        )
+        for index, path in enumerate(
+            sorted(durable_store.capacity_receipt_root.glob("*.json")), 1,
+        )
+    ]
+    references["capture_anchors"] = [
+        _exclusive_evidence_write_v1(
+            target / f"capture-anchor-{index:03d}.json", path.read_bytes(),
+        )
+        for index, path in enumerate(
+            sorted(durable_store.capture_anchor_root.glob("*.json")), 1,
+        )
+    ]
+    capture_root = store_root / "provider-response-captures-v1"
+    references["provider_response_captures"] = [
+        {
+            "relative_path": path.relative_to(capture_root).as_posix(),
+            "evidence": _exclusive_evidence_write_v1(
+                target / f"provider-capture-{index:03d}.bin",
+                path.read_bytes(),
+            ),
+        }
+        for index, path in enumerate(
+            sorted(item for item in capture_root.rglob("*") if item.is_file()),
+            1,
+        )
+    ]
+    output_names = {
+        "final_artifact": "final-artifact.md",
+        "chapter": "chapter-01.md",
+        "canon": "canon.json",
+        "ready": "ready-receipt.json",
+        "project_mutation_journal": "project-mutation-journal.json",
+    }
+    for name, output_name in output_names.items():
+        references[name] = _exclusive_evidence_write_v1(
+            target / output_name, source_bytes[name],
+        )
+
+    stage_artifacts: dict[str, dict[str, str]] = {}
+    for name in sorted(_FULL_SHORT_REQUIRED_ARTIFACTS):
+        path = run_root / "outputs" / name
+        if not path.is_file():
+            raise RuntimeError("FULL_SHORT_DRY_GATE_REQUIRED_ARTIFACT_MISSING")
+        stage_artifacts[name] = _exclusive_evidence_write_v1(
+            target / f"stage-{name}", path.read_bytes(),
+        )
+    references["stage_artifacts"] = stage_artifacts
+
+    maintenance_receipts = []
+    maintenance_paths = sorted(
+        (run_root / "receipts").glob("maintenance-inventory-*.json")
+    ) + sorted((run_root / "receipts").glob("maintenance-reduction-*.json"))
+    if not maintenance_paths:
+        raise RuntimeError("FULL_SHORT_DRY_GATE_MAINTENANCE_EVIDENCE_MISSING")
+    for index, path in enumerate(maintenance_paths, 1):
+        raw = path.read_bytes()
+        try:
+            value = json.loads(raw.decode("utf-8"))
+        except (UnicodeError, ValueError) as exc:
+            raise RuntimeError("FULL_SHORT_DRY_GATE_MAINTENANCE_INVALID") from exc
+        try:
+            if value.get("schema") == "MaintenanceProposalInventoryV1":
+                inventory = MaintenanceProposalInventoryV1.model_validate_json(raw)
+                if (
+                    inventory.complete is not True
+                    or inventory.coverage_gaps
+                    or inventory.source_artifact_hash
+                    != source_hashes["final_artifact"]
+                    or inventory.base_authority_revision != base_revision
+                    or inventory.base_authority_hash != base_authority_sha256
+                ):
+                    raise ValueError("maintenance inventory authority drift")
+                kind = "MaintenanceProposalInventoryV1"
+            elif value.get("version") == "maintenance-reduction-v1":
+                validate_maintenance_reduction(
+                    value,
+                    manuscript=source_bytes["final_artifact"].decode("utf-8"),
+                    source_state_sha256=maintenance_source_state_sha256,
+                )
+                kind = "MaintenanceReductionV1"
+            else:
+                raise ValueError("unknown maintenance authority artifact")
+        except (UnicodeError, TypeError, ValueError) as exc:
+            raise RuntimeError("FULL_SHORT_DRY_GATE_MAINTENANCE_INVALID") from exc
+        maintenance_receipts.append({
+            "kind": kind,
+            "evidence": _exclusive_evidence_write_v1(
+                target / f"maintenance-authority-{index:02d}.json", raw,
+            ),
+        })
+    maintenance_model_receipt = run_root / "receipts" / "maintenance.json"
+    maintenance_output = run_root / "outputs" / "maintenance.md"
+    try:
+        model_receipt_value = json.loads(
+            maintenance_model_receipt.read_text(encoding="utf-8")
+        )
+        maintenance_output_value = json.loads(
+            maintenance_output.read_text(encoding="utf-8")
+        )
+    except (OSError, UnicodeError, ValueError) as exc:
+        raise RuntimeError("FULL_SHORT_DRY_GATE_MAINTENANCE_INVALID") from exc
+    try:
+        validate_short_maintenance_business_complete_v2(
+            maintenance_output_value,
+            expected_manuscript_sha256=source_hashes["final_artifact"],
+        )
+    except (TypeError, ValueError) as exc:
+        raise RuntimeError("FULL_SHORT_DRY_GATE_MAINTENANCE_INVALID") from exc
+    inventory_modes = {
+        json.loads(path.read_text(encoding="utf-8")).get("source_mode")
+        for path in maintenance_paths
+        if path.name.startswith("maintenance-inventory-")
+    }
+    reduction_present = any(
+        path.name.startswith("maintenance-reduction-")
+        for path in maintenance_paths
+    )
+    normal_lane_exact = bool(
+        "normal" in inventory_modes
+        and isinstance(model_receipt_value, dict)
+        and isinstance(model_receipt_value.get("model"), dict)
+        and model_receipt_value["model"].get("role") == "maintenance"
+        and isinstance(maintenance_output_value, dict)
+    )
+    completed_maintenance = [
+        item for item in (ledger.get("completed_stage_receipts") or [])
+        if item.get("role") == "maintenance"
+    ]
+    if len(completed_maintenance) != 1:
+        raise RuntimeError("FULL_SHORT_DRY_GATE_MAINTENANCE_INVALID")
+    completed_maintenance_receipt = completed_maintenance[0]
+    accepted_attempt = [
+        item for item in (ledger.get("attempts") or [])
+        if item.get("physical_attempt_id")
+        == completed_maintenance_receipt.get("accepted_physical_attempt_id")
+    ]
+    model_body = model_receipt_value.get("model") or {}
+    if (
+        completed_maintenance_receipt.get("output_sha256")
+        != hashlib.sha256(maintenance_output.read_bytes()).hexdigest()
+        or completed_maintenance_receipt.get("receipt_sha256")
+        != hashlib.sha256(maintenance_model_receipt.read_bytes()).hexdigest()
+        or len(accepted_attempt) != 1
+        or accepted_attempt[0].get("state") != "LOCAL_STAGE_COMPLETE"
+        or accepted_attempt[0].get("bound_role") != "maintenance"
+        or accepted_attempt[0].get("provider_protocol_capture_receipt_sha256")
+        is None
+        or model_body.get("role") != "maintenance"
+        or hashlib.sha256(
+            str(model_body.get("provider_id") or "").encode("utf-8")
+        ).hexdigest() != accepted_attempt[0].get("provider_id_sha256")
+        or hashlib.sha256(
+            str(model_body.get("model_id") or "").encode("utf-8")
+        ).hexdigest() != accepted_attempt[0].get("model_id_sha256")
+        or model_body.get("route_fingerprint")
+        != accepted_attempt[0].get("route_fingerprint")
+    ):
+        raise RuntimeError("FULL_SHORT_DRY_GATE_MAINTENANCE_INVALID")
+    if not any(
+        item["kind"] == "MaintenanceProposalInventoryV1"
+        for item in maintenance_receipts
+    ) or not (normal_lane_exact or reduction_present):
+        raise RuntimeError("FULL_SHORT_DRY_GATE_MAINTENANCE_INVALID")
+    references["maintenance_model_receipt"] = _exclusive_evidence_write_v1(
+        target / "maintenance-model-receipt.json",
+        maintenance_model_receipt.read_bytes(),
+    )
+    references["maintenance_output"] = _exclusive_evidence_write_v1(
+        target / "maintenance-output.json", maintenance_output.read_bytes(),
+    )
+    references["maintenance_receipts"] = maintenance_receipts
+
+    manifest = {
+        "schema": "FullShortIsolatedDryRunEvidenceManifestV2",
+        "version": 2,
+        "source_head": source_head,
+        "project_id_sha256": project_sha256,
+        "execution_id_sha256": hashlib.sha256(
+            EXECUTION_ID.encode("utf-8")
+        ).hexdigest(),
+        "execution_id": EXECUTION_ID,
+        "durable_store": {
+            "root": str(store_root.resolve(strict=True)),
+            "store_root_sha256": durable_store.store_root_sha256,
+        },
+        "authority_bindings": {
+            "completion_receipt_sha256": completion[
+                "completion_receipt_sha256"
+            ],
+            "terminal_verification_sha256": terminal[
+                "verification_receipt_sha256"
+            ],
+            "final_artifact_sha256": source_hashes["final_artifact"],
+            "chapter_sha256": source_hashes["chapter"],
+            "story_state_sha256": story_state_sha256,
+            "canon_sha256": source_hashes["canon"],
+            "ready_receipt_sha256": source_hashes["ready"],
+            "project_mutation_journal_sha256": source_hashes[
+                "project_mutation_journal"
+            ],
+            "maintenance_artifact_receipt_sha256": (
+                terminal.get("maintenance") or {}
+            ).get("artifact_receipt_sha256"),
+            "required_stage_artifacts_sha256": _domain([
+                {"name": name, "sha256": reference["sha256"]}
+                for name, reference in sorted(stage_artifacts.items())
+            ]),
+            "runtime_authority_sha256": runtime_authority_sha256,
+            "workload_sha256": workload_sha256,
+            "project_json_sha256": source_hashes["project"],
+            "constraints_sha256": source_hashes["constraints"],
+            "quality_checkpoint_sha256": source_hashes[
+                "quality_checkpoint"
+            ],
+            "narrative_integrity_sha256": narrative_integrity_sha256,
+        },
+        "maintenance_authority": {
+            "base_story_state_revision": base_revision,
+            "base_story_state_sha256": base_authority_sha256,
+            "live_story_state_revision": story_state.revision,
+            "live_story_state_sha256": story_state_sha256,
+            "maintenance_source_state_sha256": (
+                maintenance_source_state_sha256
+            ),
+            "source_modes": sorted(
+                mode for mode in inventory_modes if isinstance(mode, str)
+            ),
+            "normal_lane_exact": normal_lane_exact,
+            "reduction_lane_exact": reduction_present,
+        },
+        "receipts": references,
+        "external_actions": {
+            "credential_lookup": 0,
+            "provider_client_creation": 0,
+            "provider_request": 0,
+            "http_post": 0,
+            "network": 0,
+            "model": 0,
+            "paid": 0,
+        },
+        "private_isolated_evidence": True,
+    }
+    return _exclusive_evidence_write_v1(
+        target / "isolated-evidence-manifest.json",
+        _canonical_json_bytes_v1(manifest),
+    )
+
+
 async def _run(
     args: argparse.Namespace, *, private_root: Path | None = None,
 ) -> dict[str, Any]:
@@ -2099,6 +2751,11 @@ async def _run(
     if private_root is None:
         raise ValueError("private_root is required")
     private_root = private_root.resolve(strict=True)
+    stable_gate_root: Path | None = None
+    if getattr(args, "gate_evidence_dir", None) is not None:
+        stable_gate_root = _require_external_evidence_directory_v1(
+            repo, Path(args.gate_evidence_dir),
+        )
     with nullcontext(str(private_root)) as temp_name:
         private_root = Path(temp_name)
         discovery_data = _copy_private_data(
@@ -2128,12 +2785,21 @@ async def _run(
                 None,
             ),) if args.offline_planning_deepseek_official_fixture else (),
         )
-        store_root = private_root / "control-store"
+        store_root = (
+            stable_gate_root / "durable-control-store"
+            if stable_gate_root is not None
+            else private_root / "control-store"
+        )
         actual, public = collect_live_bindings(
             repo=repo, data_dir=execution_data, project_id=project_id,
             run_id=EXECUTION_ID, logical_stage_plan=logical_stage_plan,
             store_root=store_root,
         )
+        base_story_state = StoryStateStore(Database(execution_data / "app.db")).get(
+            project_id
+        )
+        if base_story_state is None:
+            raise RuntimeError("FULL_SHORT_DRY_RUN_BASE_STORY_STATE_MISSING")
         if actual["head"] != start_head:
             raise RuntimeError("FULL_SHORT_DRY_RUN_HEAD_DRIFT")
         expected_calls = len(call_plan)
@@ -2658,6 +3324,35 @@ async def _run(
                 ]
             ),
         }
+        gate_evidence_dir = getattr(args, "gate_evidence_dir", None)
+        if gate_evidence_dir is not None:
+            manifest_reference = persist_full_short_isolated_dry_run_evidence_v1(
+                repo=repo,
+                gate_evidence_dir=stable_gate_root / "evidence",
+                source_head=start_head,
+                project_id=project_id,
+                execution_data=execution_data,
+                project_root=execution_data / "projects" / source_project.name,
+                run_root=(
+                    execution_data / "projects" / source_project.name
+                    / "runs" / EXECUTION_ID
+                ),
+                store_root=store_root,
+                completion=completion,
+                terminal=terminal,
+                workflow_result=result,
+                base_runtime_authority=dict(public["runtime_authority"]),
+                project_workload=dict(public["project_workload"]),
+                runtime_authority_sha256=actual[
+                    "runtime_authority_sha256"
+                ],
+                workload_sha256=actual["workload_sha256"],
+                base_story_state_data=dict(base_story_state.data),
+                policy=policy, public_bindings=public,
+                authorization_raw=raw, replay_proof=replay_proof,
+            )
+            summary["isolated_evidence_manifest"] = manifest_reference
+            summary["isolated_gate_evidence_persisted"] = True
     return summary
 
 
@@ -2666,6 +3361,14 @@ def main() -> int:
     parser.add_argument("--repo", type=Path, required=True)
     parser.add_argument("--project-id", required=True)
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument(
+        "--gate-evidence-dir",
+        type=Path,
+        help=(
+            "empty directory outside the Git worktree for immutable private "
+            "isolated gate evidence"
+        ),
+    )
     parser.add_argument(
         "--inject-planning-business-incomplete-once",
         action="store_true",

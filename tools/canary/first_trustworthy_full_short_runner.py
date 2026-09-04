@@ -19,7 +19,7 @@ import json
 import os
 from pathlib import Path
 import subprocess
-from typing import Any, Callable
+from typing import Any, Callable, Mapping
 from urllib.parse import urlsplit
 
 from novel_flywheel.config import Settings, configure_runtime_environment
@@ -43,6 +43,12 @@ from novel_flywheel.execution_failure_architecture import (
     RestartBehavior,
     build_durable_failure_evidence,
 )
+from novel_flywheel.external_workload_evidence import (
+    ExpectedWorkloadEvidenceV1,
+    ExternalWorkloadEvidenceError,
+    VerifiedWorkloadEvidenceV1,
+    validate_external_workload_evidence_v1,
+)
 from novel_flywheel.full_short_execution import (
     FullShortDispatchLedgerObserverV1,
     FullShortDurableExecutionStoreV1,
@@ -55,10 +61,12 @@ from novel_flywheel.full_short_execution import (
     TRANSPORT_RECOVERY_POLICY_V1,
     build_full_short_completion_receipt_v1,
     full_short_logical_stage_plan_sha256_v1,
+    full_short_workload_request_family_sha256_v1,
     validate_full_short_logical_stage_plan_v1,
     validate_full_short_canonical_authorization_v1,
     validate_full_short_preflight_v1,
 )
+from novel_flywheel.full_short_probe_campaign import ProbeCase, ProbeRouteIdentity
 from novel_flywheel.full_short_runtime_kernel import (
     DEFAULT_FAILURE_BOUNDARY_REGISTRY_V1,
     DurableExecutionJournalV1,
@@ -96,6 +104,8 @@ from novel_flywheel.stage_capacity import (
     CapacityAdmissionFailureV1,
     CapacityFailureCode,
     DEFAULT_STAGE_CAPACITY_POLICY_REGISTRY_V1,
+    MAX_CONTEXT_LIMIT_TOKENS_V1,
+    _issue_verified_external_workload_capacity_issuer_v1,
 )
 from novel_flywheel.style_context import selected_style_reference_provenance
 from novel_flywheel.tasks import RunTaskManager
@@ -545,9 +555,217 @@ def _destination(provider: dict) -> str:
     return f"{parsed.scheme}://{parsed.hostname}:{parsed.port or 443}{parsed.path}"
 
 
+_EXTERNAL_AUTHORIZED_CASE_KEYS_V1 = {
+    "blocked_shape_ordinals", "case_id", "case_sha256",
+    "estimated_input_tokens", "fixture_sha256", "input_envelope_sha256",
+    "ordinal", "request_family_sha256", "request_sha256", "route",
+    "wire_requested_output_cap",
+}
+_EXTERNAL_AUTHORIZED_ROUTE_KEYS_V1 = {
+    "destination", "destination_sha256", "model", "operator", "protocol",
+    "provider", "route_fingerprint",
+}
+
+
+def _is_lower_hex(value: Any, length: int) -> bool:
+    return (
+        isinstance(value, str)
+        and len(value) == length
+        and all(character in "0123456789abcdef" for character in value)
+    )
+
+
+def _validate_authorized_external_workload_evidence_v1(
+    *,
+    evidence: tuple[VerifiedWorkloadEvidenceV1, ...],
+    authorized_cases: tuple[Mapping[str, Any], ...],
+    authorization_sha256: str,
+    final_execution_head: str,
+    verification_keys: Mapping[str, bytes],
+) -> None:
+    """Reverify evidence only against the caller's frozen outer manifest.
+
+    In particular, no expected field is copied from an evidence value.  The
+    only evidence-owned values consulted before package verification are the
+    case identity used to select an outer-authorized case and the immutable
+    package bytes themselves.
+    """
+
+    if (
+        not isinstance(evidence, tuple)
+        or not evidence
+        or not all(isinstance(item, VerifiedWorkloadEvidenceV1) for item in evidence)
+        or not isinstance(authorized_cases, tuple)
+        or len(authorized_cases) != len(evidence)
+        or not _is_lower_hex(authorization_sha256, 64)
+        or not _is_lower_hex(final_execution_head, 40)
+        or not isinstance(verification_keys, Mapping)
+        or len(verification_keys) != 1
+    ):
+        raise CapacityAdmissionFailureV1(
+            CapacityFailureCode.ROUTE_CAPABILITY_UNKNOWN
+        )
+    key_id, key = next(iter(verification_keys.items()))
+    if (
+        not isinstance(key_id, str)
+        or not key_id
+        or key_id.strip() != key_id
+        or not isinstance(key, bytes)
+        or len(key) < 32
+    ):
+        raise CapacityAdmissionFailureV1(
+            CapacityFailureCode.ROUTE_CAPABILITY_UNKNOWN
+        )
+
+    expected_by_case: dict[str, ExpectedWorkloadEvidenceV1] = {}
+    for ordinal, case in enumerate(authorized_cases, 1):
+        if (
+            not isinstance(case, Mapping)
+            or set(case) != _EXTERNAL_AUTHORIZED_CASE_KEYS_V1
+            or case.get("ordinal") != ordinal
+            or not isinstance(case.get("route"), Mapping)
+            or set(case["route"]) != _EXTERNAL_AUTHORIZED_ROUTE_KEYS_V1
+        ):
+            raise CapacityAdmissionFailureV1(
+                CapacityFailureCode.ROUTE_CAPABILITY_UNKNOWN
+            )
+        route = case["route"]
+        case_id = case.get("case_id")
+        input_tokens = case.get("estimated_input_tokens")
+        requested_output_tokens = case.get("wire_requested_output_cap")
+        blocked_shape_ordinals = case.get("blocked_shape_ordinals")
+        if (
+            not isinstance(case_id, str)
+            or not case_id
+            or case_id.strip() != case_id
+            or case_id in expected_by_case
+            or not isinstance(input_tokens, int)
+            or isinstance(input_tokens, bool)
+            or input_tokens <= 0
+            or not isinstance(requested_output_tokens, int)
+            or isinstance(requested_output_tokens, bool)
+            or requested_output_tokens <= 0
+            or requested_output_tokens > 32_000
+            or not isinstance(blocked_shape_ordinals, list)
+            or not blocked_shape_ordinals
+            or any(
+                not isinstance(value, int)
+                or isinstance(value, bool)
+                or value <= 0
+                for value in blocked_shape_ordinals
+            )
+            or blocked_shape_ordinals != sorted(set(blocked_shape_ordinals))
+            or case.get("input_envelope_sha256") != case.get("request_sha256")
+            or not _is_lower_hex(case.get("fixture_sha256"), 64)
+            or not _is_lower_hex(case.get("request_family_sha256"), 64)
+            or not _is_lower_hex(case.get("request_sha256"), 64)
+            or not _is_lower_hex(route.get("destination_sha256"), 64)
+            or not _is_lower_hex(route.get("route_fingerprint"), 64)
+            or hashlib.sha256(
+                str(route.get("destination") or "").encode("utf-8")
+            ).hexdigest() != route.get("destination_sha256")
+            or any(
+                not isinstance(route.get(name), str)
+                or not route[name]
+                or route[name].strip() != route[name]
+                for name in (
+                    "provider", "operator", "destination", "protocol", "model"
+                )
+            )
+        ):
+            raise CapacityAdmissionFailureV1(
+                CapacityFailureCode.ROUTE_CAPABILITY_UNKNOWN
+            )
+        try:
+            runtime_case = ProbeCase(
+                ordinal=ordinal,
+                case_id=case_id,
+                route=ProbeRouteIdentity(
+                    provider=route["provider"],
+                    operator=route["operator"],
+                    destination_sha256=route["destination_sha256"],
+                    protocol=route["protocol"],
+                    model=route["model"],
+                    route_fingerprint=route["route_fingerprint"],
+                ),
+                fixture_sha256=case["fixture_sha256"],
+                input_envelope_sha256=case["input_envelope_sha256"],
+                estimated_input_tokens=input_tokens,
+                wire_requested_output_cap=requested_output_tokens,
+                blocked_shape_ordinals=tuple(blocked_shape_ordinals),
+            )
+        except (TypeError, ValueError, RuntimeError):
+            raise CapacityAdmissionFailureV1(
+                CapacityFailureCode.ROUTE_CAPABILITY_UNKNOWN
+            ) from None
+        if runtime_case.case_sha256 != case.get("case_sha256"):
+            raise CapacityAdmissionFailureV1(
+                CapacityFailureCode.ROUTE_CAPABILITY_UNKNOWN
+            )
+        expected_by_case[case_id] = ExpectedWorkloadEvidenceV1(
+            authorization_sha256=authorization_sha256,
+            final_execution_head=final_execution_head,
+            provider=route["provider"],
+            operator=route["operator"],
+            destination=route["destination"],
+            protocol=route["protocol"],
+            model=route["model"],
+            route_fingerprint_sha256=route["route_fingerprint"],
+            case_id=case_id,
+            fixture_sha256=case["fixture_sha256"],
+            request_family_sha256=case["request_family_sha256"],
+            request_sha256=case["request_sha256"],
+            input_tokens=input_tokens,
+            requested_output_tokens=requested_output_tokens,
+            key_id=key_id,
+        )
+
+    observed_case_ids: set[str] = set()
+    observed_nonce_sha256s: set[str] = set()
+    observed_evidence_sha256s: set[str] = set()
+    for item in evidence:
+        expected = expected_by_case.get(item.case_id)
+        if expected is None or item.case_id in observed_case_ids:
+            raise CapacityAdmissionFailureV1(
+                CapacityFailureCode.ROUTE_CAPABILITY_UNKNOWN
+            )
+        try:
+            reverified = validate_external_workload_evidence_v1(
+                item.package_bytes,
+                expected=expected,
+                verification_keys=verification_keys,
+            )
+        except ExternalWorkloadEvidenceError:
+            raise CapacityAdmissionFailureV1(
+                CapacityFailureCode.ROUTE_CAPABILITY_UNKNOWN
+            ) from None
+        if (
+            reverified != item
+            or item.nonce_sha256 in observed_nonce_sha256s
+            or item.evidence_sha256 in observed_evidence_sha256s
+        ):
+            raise CapacityAdmissionFailureV1(
+                CapacityFailureCode.ROUTE_CAPABILITY_UNKNOWN
+            )
+        observed_case_ids.add(item.case_id)
+        observed_nonce_sha256s.add(item.nonce_sha256)
+        observed_evidence_sha256s.add(item.evidence_sha256)
+    if observed_case_ids != set(expected_by_case):
+        raise CapacityAdmissionFailureV1(
+            CapacityFailureCode.ROUTE_CAPABILITY_UNKNOWN
+        )
+
+
 def collect_live_bindings(
     *, repo: Path, data_dir: Path, project_id: str, run_id: str,
     logical_stage_plan: list[dict[str, Any]], store_root: Path | None = None,
+    verified_external_workload_evidence: tuple[
+        VerifiedWorkloadEvidenceV1, ...
+    ] = (),
+    external_workload_authorized_cases: tuple[Mapping[str, Any], ...] = (),
+    external_workload_authorization_sha256: str | None = None,
+    external_workload_verification_keys: Mapping[str, bytes] | None = None,
+    outer_authorization_projection: bool = False,
 ) -> tuple[dict, dict]:
     """Collect public, credential-free live bindings from source truth."""
 
@@ -562,6 +780,44 @@ def collect_live_bindings(
     exact_store_root = _canonical_store_root(
         repo=repo, data_dir=data_dir, store_root=store_root,
     )
+    execution_head = _git(repo, "rev-parse", "HEAD")
+    if type(outer_authorization_projection) is not bool:
+        raise CapacityAdmissionFailureV1(
+            CapacityFailureCode.ROUTE_CAPABILITY_UNKNOWN
+        )
+    if outer_authorization_projection and (
+        verified_external_workload_evidence
+        or external_workload_authorized_cases
+        or external_workload_authorization_sha256 is not None
+        or external_workload_verification_keys is not None
+    ):
+        raise CapacityAdmissionFailureV1(
+            CapacityFailureCode.ROUTE_CAPABILITY_UNKNOWN
+        )
+    if verified_external_workload_evidence:
+        if (
+            not isinstance(external_workload_authorization_sha256, str)
+            or not isinstance(external_workload_verification_keys, Mapping)
+        ):
+            raise CapacityAdmissionFailureV1(
+                CapacityFailureCode.ROUTE_CAPABILITY_UNKNOWN
+            )
+        _validate_authorized_external_workload_evidence_v1(
+            evidence=verified_external_workload_evidence,
+            authorized_cases=external_workload_authorized_cases,
+            authorization_sha256=external_workload_authorization_sha256,
+            final_execution_head=execution_head,
+            verification_keys=external_workload_verification_keys,
+        )
+    elif (
+        external_workload_authorized_cases
+        or external_workload_authorization_sha256 is not None
+        or external_workload_verification_keys is not None
+    ):
+        raise CapacityAdmissionFailureV1(
+            CapacityFailureCode.ROUTE_CAPABILITY_UNKNOWN
+        )
+    used_external_evidence_sha256s: set[str] = set()
     attestation_store = FullShortDurableExecutionStoreV1(
         repo_root=repo, store_root=exact_store_root,
     )
@@ -632,6 +888,15 @@ def collect_live_bindings(
                 destination=destination,
             )
             route_selected = (role, lane) in selected_routes
+            route_plan_entries = [
+                entry for entry in logical_stage_plan
+                if entry["role"] == role
+                and (
+                    "fallback"
+                    if entry["route_lane"] == "configured_fallback"
+                    else entry["route_lane"]
+                ) == lane
+            ]
             capabilities = model.get("capabilities")
             offline_manifest = (
                 capabilities.get(_OFFLINE_CONTEXT_MANIFEST_KEY_V1)
@@ -668,7 +933,97 @@ def collect_live_bindings(
             stage_output_budget = WorkflowService._stage_output_budget(
                 stage_budget_role
             )
-            if capability_record is not None and (
+            external_families: list[dict[str, Any]] = []
+            if (
+                capability_record is not None
+                and route_selected
+                and not capability_record.capability_status.value.startswith(
+                    "VERIFIED_"
+                )
+            ):
+                if not verified_external_workload_evidence:
+                    if outer_authorization_projection:
+                        route_context_limit = None
+                        route_context_source = None
+                        max_output = None
+                        max_output_source = None
+                    else:
+                        raise CapacityAdmissionFailureV1(
+                            CapacityFailureCode.ROUTE_CAPABILITY_UNKNOWN
+                        )
+                else:
+                    for plan_entry in route_plan_entries:
+                        family_sha256 = full_short_workload_request_family_sha256_v1(
+                            plan_entry,
+                            provider=str(provider.get("name") or ""),
+                            operator=operator,
+                            destination=destination,
+                            protocol=str(provider["protocol"]),
+                            model=str(model.get("model_name") or ""),
+                            route_fingerprint_sha256=route_fingerprint,
+                        )
+                        candidates = [
+                            item for item in verified_external_workload_evidence
+                            if item.request_family_sha256 == family_sha256
+                            and item.authorization_sha256
+                            == external_workload_authorization_sha256
+                            and item.final_execution_head == execution_head
+                            and item.provider == str(provider.get("name") or "")
+                            and item.operator == operator
+                            and item.destination == destination
+                            and item.protocol == str(provider["protocol"])
+                            and item.model == str(model.get("model_name") or "")
+                            and item.route_fingerprint_sha256 == route_fingerprint
+                        ]
+                        if len(candidates) != 1:
+                            raise CapacityAdmissionFailureV1(
+                                CapacityFailureCode.ROUTE_CAPABILITY_UNKNOWN
+                            )
+                        evidence = candidates[0]
+                        if (
+                            plan_entry["requested_output_tokens"]
+                            > evidence.requested_output_tokens
+                            or evidence.input_tokens
+                            + evidence.requested_output_tokens
+                            > MAX_CONTEXT_LIMIT_TOKENS_V1
+                        ):
+                            raise CapacityAdmissionFailureV1(
+                                CapacityFailureCode.OUTPUT_RESERVE_UNSATISFIED
+                            )
+                        used_external_evidence_sha256s.add(evidence.evidence_sha256)
+                        family = {
+                            "schema": "VerifiedExternalWorkloadFamilyV1",
+                            "version": 1,
+                            "request_family_sha256": family_sha256,
+                            "request_sha256": evidence.request_sha256,
+                            "evidence_sha256": evidence.evidence_sha256,
+                            "authorization_sha256": evidence.authorization_sha256,
+                            "final_execution_head": evidence.final_execution_head,
+                            "case_id": evidence.case_id,
+                            "input_tokens": evidence.input_tokens,
+                            "requested_output_tokens": evidence.requested_output_tokens,
+                            "actual_output_tokens": evidence.actual_output_tokens,
+                            "proven_workload_context_lower_bound_tokens": (
+                                evidence.input_tokens
+                                + evidence.requested_output_tokens
+                            ),
+                        }
+                        if family not in external_families:
+                            external_families.append(family)
+                    external_families.sort(
+                        key=lambda item: item["request_family_sha256"]
+                    )
+                    route_context_limit = min(
+                        item["proven_workload_context_lower_bound_tokens"]
+                        for item in external_families
+                    )
+                    route_context_source = "verified_external_workload_evidence"
+                    max_output = min(
+                        item["requested_output_tokens"]
+                        for item in external_families
+                    )
+                    max_output_source = "verified_external_workload_evidence"
+            elif capability_record is not None and (
                 route_selected
                 or capability_record.capability_status.value.startswith(
                     "VERIFIED_"
@@ -723,6 +1078,22 @@ def collect_live_bindings(
                         CapacityFailureCode.OUTPUT_RESERVE_UNSATISFIED
                     )
                 max_per_call = max(max_per_call, max_output)
+            reasoning_reserve = (
+                capability_record.reasoning_token_reserve
+                if capability_record is not None else 0
+            )
+            if external_families and reasoning_reserve is None:
+                if (
+                    capability_record.reasoning_token_accounting
+                    == "INCLUDED_IN_COMPLETION_CAP"
+                    and capability_record.reasoning_output_reservation
+                    == "WITHIN_COMPLETION_CAP"
+                ):
+                    reasoning_reserve = 0
+                else:
+                    raise CapacityAdmissionFailureV1(
+                        CapacityFailureCode.ROUTE_CAPABILITY_UNKNOWN
+                    )
             records.append({
                 "role": role, "lane": lane,
                 "provider_id_sha256": provider_id_sha256,
@@ -740,14 +1111,21 @@ def collect_live_bindings(
                 ),
                 "route_context_capability_source": route_context_source,
                 "route_capability_sha256": (
-                    capability_record.capability_sha256
+                    _domain(external_families)
+                    if external_families
+                    else capability_record.capability_sha256
                     if capability_record is not None else None
                 ),
                 "route_capability_status": (
-                    capability_record.capability_status.value
+                    "VERIFIED_EXTERNAL_WORKLOAD_FAMILY_EVIDENCE"
+                    if external_families
+                    else capability_record.capability_status.value
                     if capability_record is not None
                     else "ISOLATED_OFFLINE_MANIFEST"
                 ),
+                **({
+                    "external_workload_evidence_families": external_families,
+                } if external_families else {}),
                 "reasoning_token_accounting": (
                     capability_record.reasoning_token_accounting
                     if capability_record is not None
@@ -759,12 +1137,17 @@ def collect_live_bindings(
                     else "WITHIN_COMPLETION_CAP"
                 ),
                 "reasoning_token_reserve": (
-                    capability_record.reasoning_token_reserve
-                    if capability_record is not None else 0
+                    reasoning_reserve
                 ),
                 "required_by_logical_stage_plan": route_selected,
             })
     records.sort(key=lambda item: (item["role"], item["lane"]))
+    if used_external_evidence_sha256s != {
+        item.evidence_sha256 for item in verified_external_workload_evidence
+    }:
+        raise CapacityAdmissionFailureV1(
+            CapacityFailureCode.ROUTE_CAPABILITY_UNKNOWN
+        )
     if not selected_routes <= {
         (str(item["role"]), str(item["lane"])) for item in records
     }:
@@ -980,18 +1363,35 @@ def collect_live_bindings(
     }
     route_manifest_sha256 = _domain(records)
     destination_manifest_sha256 = _domain(sorted(destinations))
+    destination_operators = []
+    for destination in sorted(destinations):
+        operators = {
+            str(record["provider_operator"])
+            for record in records
+            if record["destination"] == destination
+        }
+        if len(operators) != 1:
+            raise FullShortExecutionBoundaryError(
+                "DESTINATION_OPERATOR_IDENTITY_AMBIGUOUS"
+            )
+        destination_operators.append({
+            "destination": destination,
+            "operator_classification": next(iter(operators)),
+        })
     selected_route_records = [
         item for item in records
         if item["required_by_logical_stage_plan"]
     ]
     authorization_eligible = bool(selected_route_records) and all(
-        item["route_context_capability_source"]
-        == "route_capability_registry"
+        item["route_context_capability_source"] in {
+            "route_capability_registry",
+            "verified_external_workload_evidence",
+        }
         and str(item["route_capability_status"]).startswith("VERIFIED_")
         for item in selected_route_records
     )
     actual = {
-        "head": _git(repo, "rev-parse", "HEAD"),
+        "head": execution_head,
         "branch": _git(repo, "branch", "--show-current"),
         "run_id": run_id,
         "worktree_clean": _git(repo, "status", "--porcelain") == "",
@@ -1071,15 +1471,7 @@ def collect_live_bindings(
             if capability_registry is not None else None
         ),
         "destinations": sorted(destinations),
-        "destination_operators": [{
-            "destination": destination,
-            "operator_classification": (
-                "DEEPSEEK_OFFICIAL"
-                if destination
-                == "https://api.deepseek.com:443/anthropic/v1/messages"
-                else "THIRD_PARTY_ENDPOINT_LOCAL_METADATA_ONLY"
-            ),
-        } for destination in sorted(destinations)],
+        "destination_operators": destination_operators,
         "egress_policy": egress,
         "response_capture_policy": RESPONSE_CAPTURE_POLICY_V1,
         "capture_attestation_scheme": "ED25519_CAPTURE_ANCHOR_V1",
@@ -1151,6 +1543,18 @@ def preflight_full_short_control_plane(
         run_id=str(policy["run_id"]),
         logical_stage_plan=list(bindings["logical_stage_plan"]),
         store_root=args.store_root,
+        verified_external_workload_evidence=getattr(
+            args, "verified_external_workload_evidence", (),
+        ),
+        external_workload_authorized_cases=getattr(
+            args, "external_workload_authorized_cases", (),
+        ),
+        external_workload_authorization_sha256=getattr(
+            args, "external_workload_authorization_sha256", None,
+        ),
+        external_workload_verification_keys=getattr(
+            args, "external_workload_verification_keys", None,
+        ),
     )
     if external_actions_enabled and not live_public.get(
         "authorization_eligible"
@@ -1335,6 +1739,7 @@ async def execute_full_short_control_plane(
     registry_factory: Callable[..., ProviderRegistry] | None = None,
     http_transport_factory: Callable[..., Any] | None = None,
     required_stage_roles: tuple[str, ...] = (),
+    outer_campaign_usage_guard: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Enter the production boundary; disabled actions are not executable here."""
 
@@ -1348,6 +1753,7 @@ async def execute_full_short_control_plane(
         registry_factory=registry_factory,
         http_transport_factory=http_transport_factory,
         required_stage_roles=required_stage_roles,
+        outer_campaign_usage_guard=outer_campaign_usage_guard,
         offline_capability=None,
     )
 
@@ -1379,6 +1785,7 @@ async def _execute_full_short_control_plane_offline(
         registry_factory=_LowestHttpSeamRegistry,
         http_transport_factory=http_transport_factory,
         required_stage_roles=required_stage_roles,
+        outer_campaign_usage_guard=None,
         offline_capability=_OFFLINE_EXECUTION_CAPABILITY_V1,
     )
 
@@ -1392,6 +1799,7 @@ async def _execute_full_short_control_plane_with_capability(
     registry_factory: Callable[..., ProviderRegistry] | None = None,
     http_transport_factory: Callable[..., Any] | None = None,
     required_stage_roles: tuple[str, ...] = (),
+    outer_campaign_usage_guard: Mapping[str, Any] | None,
     offline_capability: _OfflineExecutionCapabilityV1 | None,
 ) -> dict[str, Any]:
     """Execute the real control-plane, task manager, and WorkflowService path.
@@ -1432,6 +1840,17 @@ async def _execute_full_short_control_plane_with_capability(
         raise
     policy = authorization["policy"]
     bindings = authorization["public_bindings"]
+    verified_external_evidence = tuple(
+        getattr(args, "verified_external_workload_evidence", ())
+    )
+    external_workload_capacity_issuer = (
+        _issue_verified_external_workload_capacity_issuer_v1(
+            evidence_sha256s=(
+                item.evidence_sha256 for item in verified_external_evidence
+            ),
+        )
+        if verified_external_evidence else None
+    )
 
     def recheck_live_authority() -> None:
         """Re-collect every credential-free binding at each dispatch edge."""
@@ -1563,6 +1982,10 @@ async def _execute_full_short_control_plane_with_capability(
             egress_policy=bindings["egress_policy"],
             external_actions_enabled=external_actions_enabled,
             live_authority_recheck=recheck_live_authority,
+            outer_campaign_usage_guard=outer_campaign_usage_guard,
+            external_workload_capacity_issuer=(
+                external_workload_capacity_issuer
+            ),
         ),
         "full_short.prelaunch.observer",
     )
@@ -1823,6 +2246,7 @@ async def _execute_full_short_control_plane_with_capability(
         ],
         "observed_roles": closure_state["observed_roles"],
         "call_plan": list(getattr(registry, "call_plan", ())),
+        "verified_actual_usage": completion.get("verified_actual_usage"),
     }
 
 
