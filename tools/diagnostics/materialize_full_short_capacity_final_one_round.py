@@ -142,6 +142,8 @@ def envelope(
         "physical_attempt": physical_attempt,
         "route": call["route_lane"],
         "route_fingerprint": call["route_fingerprint"],
+        "provider_id_sha256": call["provider_id_sha256"],
+        "destination_sha256": call["destination_sha256"],
         "provider_operator": call["provider_operator"],
         "protocol": call["protocol"],
         "model": call["model_name"],
@@ -377,11 +379,18 @@ def materialize(repo: Path) -> None:
     roles = sorted({str(item["role"]) for item in authoritative})
     route_groups: dict[str, dict[str, Any]] = {}
     for item in authoritative:
-        group = route_groups.setdefault(str(item["route_fingerprint"]), {
+        route_record_key = f'{item["route_fingerprint"]}:{item["role"]}'
+        capability_record = records[str(item["route_fingerprint"])]
+        group = route_groups.setdefault(route_record_key, {
             "route_fingerprint": item["route_fingerprint"],
+            "provider": capability_record["provider"],
+            "provider_id_sha256": item["provider_id_sha256"],
             "provider_operator": item["provider_operator"],
+            "destination_sha256": item["destination_sha256"],
             "protocol": item["protocol"],
             "model": item["model"],
+            "role": item["role"],
+            "lane": item["route"],
             "roles": set(), "shape_count": 0, "pass_count": 0,
             "max_current_input_tokens": 0,
             "max_current_input_bytes": 0,
@@ -416,7 +425,9 @@ def materialize(repo: Path) -> None:
             "PASS" if group["pass_count"] == group["shape_count"] else "BLOCKED"
         )
         route_admission.append(group)
-    route_admission.sort(key=lambda item: item["route_fingerprint"])
+    route_admission.sort(key=lambda item: (
+        item["route_fingerprint"], item["role"],
+    ))
 
     segmentation = [
         {"role": "planning", "mechanism": "capacity split plus event-owned packets and hierarchical adaptation reducers", "unbounded_provider_dispatch": False},
