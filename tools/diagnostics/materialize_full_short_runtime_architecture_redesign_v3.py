@@ -56,6 +56,10 @@ HISTORICAL_MATRIX = Path(
 HISTORICAL_PRICE_PACKET = Path(
     "docs/superpowers/reports/c0b-smoke-1-approval-packet-v1.json"
 )
+HISTORICAL_BOUNDED_CAPABILITY_MATRIX = Path(
+    "docs/superpowers/reports/"
+    "c0b-p1-bounded-unknown-capability-matrix-v1.json"
+)
 V2_ROOT = Path(
     "docs/superpowers/reports/"
     "full-short-execution-runtime-architecture-redesign-v2-capacity-v1"
@@ -153,10 +157,17 @@ def _baseline_tree_entries(repo: Path) -> list[dict[str, Any]]:
 
 def write_json(path: Path, value: object) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(
-        json.dumps(value, ensure_ascii=False, sort_keys=True, indent=2) + "\n",
-        encoding="utf-8",
-    )
+    with path.open("w", encoding="utf-8", newline="\n") as handle:
+        handle.write(
+            json.dumps(value, ensure_ascii=False, sort_keys=True, indent=2)
+            + "\n"
+        )
+
+
+def write_text_lf(path: Path, value: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", encoding="utf-8", newline="\n") as handle:
+        handle.write(value)
 
 
 def receipt(schema: str, status: str, **values: Any) -> dict[str, Any]:
@@ -344,6 +355,16 @@ _CAPACITY_CONTEXT_TERMS = (
     "capacity limits", "capacity values", "circuit breaker", "token limits",
     "容量值", "容量限制",
 )
+_CAPACITY_STATUS_VALUE_RE = re.compile(
+    r"(?P<status>verified|bounded)[_-]"
+    r"(?P<value>[0-9][0-9,_.]*(?:\.[0-9]+)?)(?P<unit>[kKmM])"
+    r"(?P<suffix>(?:[_-][A-Za-z][A-Za-z0-9_-]*)?)\b",
+    re.IGNORECASE,
+)
+_STRUCTURED_CAPABILITY_KEY_RE = re.compile(
+    r"[\"']?(?P<field>context|max[_ -]?output)[\"']?\s*:\s*[\"']?\s*$",
+    re.IGNORECASE,
+)
 
 
 def _historical_source_categories(
@@ -419,6 +440,25 @@ def _capacity_values_in_text(text: str) -> list[dict[str, Any]]:
                 "value": value,
                 "raw_unit": match.group("unit") or "tokens",
             })
+
+        for match in _CAPACITY_STATUS_VALUE_RE.finditer(line):
+            suffix = str(match.group("suffix") or "").lower().replace("-", "_")
+            structured_key = _STRUCTURED_CAPABILITY_KEY_RE.search(
+                line[:match.start()]
+            )
+            if "price_tier" in suffix:
+                field = "price_tier_boundary_marker_not_context"
+            elif structured_key is not None:
+                field = (
+                    structured_key.group("field").lower().replace(" ", "_")
+                    + "_historical_status_assertion"
+                )
+            else:
+                field = (
+                    match.group("status").lower()
+                    + "_historical_capacity_assertion"
+                )
+            append_match(match, field)
 
         for field_match in _CAPACITY_FIELD_RE.finditer(line):
             after = [
@@ -579,6 +619,11 @@ def _historical_search_inventory(repo: Path) -> dict[str, Any]:
 
 def _historical_value_records(repo: Path) -> list[dict[str, Any]]:
     matrix_sha = sha_file(repo / HISTORICAL_MATRIX)
+    bounded_matrix_sha = sha_bytes(git_raw(
+        repo,
+        "show",
+        f"{BASELINE_HEAD}:{HISTORICAL_BOUNDED_CAPABILITY_MATRIX.as_posix()}",
+    ))
     sources = {
         8798: Path(
             "docs/superpowers/reports/sc-fresh-real-short-"
@@ -697,17 +742,21 @@ def _historical_value_records(repo: Path) -> list[dict[str, Any]]:
             **common,
             "capability_field": "context_window_tokens",
             "value": 372_000,
-            "classification_code": "D",
-            "classification": "NO_EVIDENCE",
-            "original_source_path": None,
-            "original_source_type": None,
-            "original_source_date": None,
-            "source_evidence_sha256": None,
+            "classification_code": "B",
+            "classification": "HISTORICAL_BUT_UNPROVEN",
+            "original_source_path": (
+                HISTORICAL_BOUNDED_CAPABILITY_MATRIX.as_posix()
+            ),
+            "original_source_type": (
+                "historical_provider_model_assertion_without_archived_origin_proof"
+            ),
+            "original_source_date": "UNKNOWN_BASELINE_DATE",
+            "source_evidence_sha256": bounded_matrix_sha,
             "provenance_available": False,
             "used_by_historical_runtime": False,
-            "trust_level": "NO_LOCAL_SOURCE_FOUND",
+            "trust_level": "LOCAL_ASSERTION_NOT_PROVIDER_CAPABILITY_PROOF",
             "route_fingerprint": None,
-            "disposition": "REJECT_AS_UNSOURCED",
+            "disposition": "REJECT_AS_VERIFIED",
         },
     ]
 
@@ -973,6 +1022,14 @@ def materialize(
             deepseek_candidate = (
                 item["route_fingerprint"] == DEEPSEEK_ROUTE_FINGERPRINT
             )
+            lingsuan_context_candidate = (
+                item["provider"] == "lingsuan_gpt"
+                and item["model"] == "gpt-5.6-sol"
+                and capability_field == "context_window_tokens"
+            )
+            historical_candidate = (
+                deepseek_candidate or lingsuan_context_candidate
+            )
             route_field_records.append({
                 "role": item["role"],
                 "lane": item["lane"],
@@ -984,31 +1041,56 @@ def materialize(
                 "route_fingerprint": item["route_fingerprint"],
                 "capability_field": capability_field,
                 "value": None,
-                "classification_code": "B" if deepseek_candidate else "D",
+                "classification_code": "B" if historical_candidate else "D",
                 "classification": (
                     "HISTORICAL_BUT_UNPROVEN"
-                    if deepseek_candidate else "NO_EVIDENCE"
+                    if historical_candidate else "NO_EVIDENCE"
                 ),
                 "original_source_path": (
-                    HISTORICAL_MATRIX.as_posix()
-                    if deepseek_candidate else None
+                    (
+                        HISTORICAL_MATRIX.as_posix()
+                        if deepseek_candidate
+                        else HISTORICAL_BOUNDED_CAPABILITY_MATRIX.as_posix()
+                    )
+                    if historical_candidate else None
                 ),
                 "original_source_type": (
-                    "official_url_locator_without_archived_content"
-                    if deepseek_candidate else None
+                    (
+                        "official_url_locator_without_archived_content"
+                        if deepseek_candidate
+                        else "provider_model_claim_without_exact_route_or_origin_proof"
+                    )
+                    if historical_candidate else None
                 ),
                 "original_source_date": (
-                    "2026-08-14" if deepseek_candidate else None
+                    (
+                        "2026-08-14"
+                        if deepseek_candidate else "UNKNOWN_BASELINE_DATE"
+                    )
+                    if historical_candidate else None
                 ),
                 "source_evidence_sha256": (
-                    sha_file(repo / HISTORICAL_MATRIX)
-                    if deepseek_candidate else None
+                    (
+                        sha_file(repo / HISTORICAL_MATRIX)
+                        if deepseek_candidate
+                        else sha_bytes(git_raw(
+                            repo,
+                            "show",
+                            f"{BASELINE_HEAD}:"
+                            f"{HISTORICAL_BOUNDED_CAPABILITY_MATRIX.as_posix()}",
+                        ))
+                    )
+                    if historical_candidate else None
                 ),
                 "provenance_available": False,
                 "used_by_historical_runtime": False,
                 "trust_level": (
-                    "ROUTE_EXACT_CLAIM_SOURCE_CONTENT_UNARCHIVED"
-                    if deepseek_candidate else "NO_LOCAL_SOURCE_FOUND"
+                    (
+                        "ROUTE_EXACT_CLAIM_SOURCE_CONTENT_UNARCHIVED"
+                        if deepseek_candidate
+                        else "PARTIAL_ROUTE_ASSERTION_NOT_PROVIDER_PROOF"
+                    )
+                    if historical_candidate else "NO_LOCAL_SOURCE_FOUND"
                 ),
                 "eligible_for_verified_registry": False,
                 "registry_disposition": "UNKNOWN_BLOCKED",
@@ -1319,7 +1401,8 @@ def materialize(
             "FULL_SHORT_ROUTE_CAPABILITY_OR_WORKLOAD_POLICY_DECISION_REQUIRED"
         ),
     ))
-    (root / "README.md").write_text(
+    write_text_lf(
+        root / "README.md",
         "# Full Short runtime capacity redesign V3\n\n"
         "This offline evidence set migrates trustworthy historical route "
         "capacity evidence into a route-exact registry and closes the physical "
@@ -1335,9 +1418,9 @@ def materialize(
         "real-route capacity closure.\n\n"
         "No credential, provider, HTTP/network, model, paid, or real Full Short "
         "action occurred.\n",
-        encoding="utf-8",
     )
-    (root / "pre-authorization-final-report-v1.md").write_text(
+    write_text_lf(
+        root / "pre-authorization-final-report-v1.md",
         "# Pre-authorization disposition\n\n"
         "`EXECUTION_RUNTIME_REDESIGN_V3=NOT_CLOSED`\n\n"
         f"`LIVE_ROUTE_COUNT={len(records)}`\n\n"
@@ -1354,7 +1437,6 @@ def materialize(
         "`FULL_SHORT_EXECUTION_AUTHORIZED=NO`\n\n"
         "`FULL_SHORT=NOT_EXECUTED`\n\n"
         "`FULL_SHORT_ROUTE_CAPABILITY_OR_WORKLOAD_POLICY_DECISION_REQUIRED`\n",
-        encoding="utf-8",
     )
     manifest = {}
     for path in sorted(

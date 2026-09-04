@@ -1717,6 +1717,11 @@ def test_v3_historical_search_covers_mandated_sources_and_nonpreset_values(
         "docs/old-provider-observation.jsonl": (
             '{"note":"384K max output"}\n'
         ),
+        "docs/status-capability.json": (
+            '{"context":"VERIFIED_372K",'
+            '"max_output":"VERIFIED_384K",'
+            '"pricing":"BOUNDED_256K_PRICE_TIERS"}'
+        ),
         "README.md": (
             "circuit breakers: 120,000 tokens, 60,000 per pass, "
             "and 220,000 across the run; 8,192 output limit"
@@ -1765,7 +1770,8 @@ def test_v3_historical_search_covers_mandated_sources_and_nonpreset_values(
 
     values = {item["value"] for item in result["discovered_value_records"]}
     assert {
-        4096, 8192, 11524, 20000, 32768, 220000, 384000, 1000000,
+        4096, 8192, 11524, 20000, 32768, 220000, 256000, 372000,
+        384000, 1000000,
     } <= values
     assert 999999 not in values
     assert {999997, 999998}.isdisjoint(values)
@@ -1828,8 +1834,14 @@ def test_v3_historical_value_classification_and_external_stop_loss_contract() ->
     records = materializer._historical_value_records(Path.cwd())
 
     assert len(records) == 9
-    assert {item["classification_code"] for item in records} == {"B", "D"}
+    assert {item["classification_code"] for item in records} == {"B"}
     assert not any(item["eligible_for_verified_registry"] for item in records)
+    claim = next(item for item in records if item["value"] == 372_000)
+    assert claim["classification"] == "HISTORICAL_BUT_UNPROVEN"
+    assert claim["original_source_path"].endswith(
+        "c0b-p1-bounded-unknown-capability-matrix-v1.json"
+    )
+    assert claim["provenance_available"] is False
 
 
 def test_v3_historical_capacity_parser_uses_nearest_unambiguous_field() -> None:
@@ -1869,3 +1881,40 @@ def test_v3_historical_capacity_parser_uses_nearest_unambiguous_field() -> None:
         "real_full_short_runs",
     } <= materializer.EXTERNAL_ZERO.keys()
     assert set(materializer.EXTERNAL_ZERO.values()) == {0}
+
+
+def test_v3_historical_capacity_parser_recalls_status_encoded_claims() -> None:
+    from tools.diagnostics import (
+        materialize_full_short_runtime_architecture_redesign_v3 as materializer,
+    )
+
+    records = materializer._capacity_values_in_text(
+        '{"context":"VERIFIED_372K"}\n'
+        '{"max_output":"VERIFIED_384K"}\n'
+        '("provider", "model", "VERIFIED_1M", "UNKNOWN")\n'
+        '{"context":"BOUNDED_256K_PRICE_TIERS"}\n'
+        'release_status="VERIFIED_2026"\n'
+    )
+
+    assert [(item["value"], item["capability_field"]) for item in records] == [
+        (372_000, "context_historical_status_assertion"),
+        (384_000, "max_output_historical_status_assertion"),
+        (1_000_000, "verified_historical_capacity_assertion"),
+        (256_000, "price_tier_boundary_marker_not_context"),
+    ]
+
+
+def test_v3_materializer_writes_cross_checkout_stable_lf_bytes(
+    tmp_path: Path,
+) -> None:
+    from tools.diagnostics import (
+        materialize_full_short_runtime_architecture_redesign_v3 as materializer,
+    )
+
+    json_path = tmp_path / "receipt.json"
+    text_path = tmp_path / "report.md"
+    materializer.write_json(json_path, {"status": "PASS"})
+    materializer.write_text_lf(text_path, "line one\nline two\n")
+
+    assert b"\r\n" not in json_path.read_bytes()
+    assert b"\r\n" not in text_path.read_bytes()
