@@ -595,6 +595,34 @@ async def test_text_runtime_transport_retry_does_not_claim_business_failure() ->
 
 
 @pytest.mark.asyncio
+async def test_route_runtime_never_redispatches_a_nonretryable_protocol_failure() -> None:
+    from novel_flywheel.providers.openai_responses import (
+        OpenAIResponsesProjectionMismatchError,
+    )
+
+    class Gateway:
+        def __init__(self):
+            self.calls = 0
+
+        async def complete_primary(self, role, system, user, **kwargs):
+            self.calls += 1
+            raise OpenAIResponsesProjectionMismatchError()
+
+    gateway = Gateway()
+    with pytest.raises(OpenAIResponsesProjectionMismatchError):
+        await execute_text_runtime(
+            gateway,
+            role="planning",
+            system="system",
+            user="immutable input",
+            same_route_attempts=2,
+            fallback_attempts=1,
+        )
+
+    assert gateway.calls == 1
+
+
+@pytest.mark.asyncio
 async def test_runtime_never_uses_implicit_primary_when_fallback_is_configured() -> None:
     class Gateway:
         def __init__(self):

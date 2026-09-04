@@ -527,6 +527,14 @@ def _freeze_route_identities(
     }
 
 
+def _is_explicit_nonretryable_failure(exc: BaseException) -> bool:
+    reliability_failure = getattr(exc, "reliability_failure", None)
+    return bool(
+        reliability_failure is not None
+        and getattr(reliability_failure, "retryable", None) is False
+    )
+
+
 def _runtime_attempts(
     gateway: Any,
     *,
@@ -825,6 +833,12 @@ async def execute_model_route_runtime(
             # doomed requests or hiding the topology change in a fallback.
             if classify_model_failure(exc) == "input_context_overflow":
                 raise
+            # A domain/provider boundary that explicitly marks its failure
+            # non-retryable owns the dispatch decision. The generic route
+            # ladder may record it, but must not convert it into another paid
+            # attempt or a fallback dispatch.
+            if _is_explicit_nonretryable_failure(exc):
+                raise
             continue
         receipt = getattr(response, "receipt", None)
         if isinstance(receipt, dict):
@@ -972,6 +986,8 @@ async def execute_text_runtime(
             )
             last_error = exc
             last_domain_error = False
+            if _is_explicit_nonretryable_failure(exc):
+                raise
             continue
         text = str(response.text)
         try:
@@ -1689,6 +1705,8 @@ async def execute_contract_runtime(
             if post_capture_terminal:
                 # The complete entity is authoritative.  Propagate its exact
                 # adapter/protocol exception and forbid a second provider call.
+                raise
+            if _is_explicit_nonretryable_failure(exc):
                 raise
             last_error = exc
             if isinstance(error_receipt, Mapping):
