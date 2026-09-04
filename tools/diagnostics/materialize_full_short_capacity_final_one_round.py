@@ -6,6 +6,7 @@ import argparse
 import asyncio
 import hashlib
 import json
+import os
 from pathlib import Path
 import subprocess
 import tempfile
@@ -57,6 +58,14 @@ def sha_json(value: object) -> str:
 
 def sha_file(path: Path) -> str:
     return sha_bytes(path.read_bytes())
+
+
+def read_text_long_path(path: Path) -> str:
+    value = str(path.resolve())
+    if os.name == "nt" and not value.startswith("\\\\?\\"):
+        value = "\\\\?\\" + value
+    with open(value, encoding="utf-8") as stream:
+        return stream.read()
 
 
 def write_json(path: Path, value: object) -> None:
@@ -112,7 +121,7 @@ def discover(
         ))
         plan_documents = []
         for path in data.rglob("capacity-plans/*.json"):
-            document = json.loads(path.read_text(encoding="utf-8"))
+            document = json.loads(read_text_long_path(path))
             plan = document.get("plan") if isinstance(document, dict) else None
             if isinstance(plan, dict):
                 plan_documents.append(plan)
