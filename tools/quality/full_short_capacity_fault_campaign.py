@@ -1130,7 +1130,10 @@ def run_capacity_fault_campaign_v3(artifact_dir: Path) -> dict[str, object]:
         ],
         "narrow_scope_scenarios": {
             "17_18": "stage capacity and semantic split only; not Full Short",
-            "19_20": "durable store reopen and production observer restart fail-closed behavior",
+            "19_20": (
+                "sequential OS subprocess durable store reopen and production "
+                "observer restart fail-closed behavior"
+            ),
         },
         "external_actions_disabled": True,
         "credential_lookup_count": 0,
