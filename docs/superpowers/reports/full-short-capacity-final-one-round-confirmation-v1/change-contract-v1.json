@@ -1,0 +1,18 @@
+{
+  "schema": "FullShortCapacityFinalOneRoundChangeContractV1",
+  "version": 1,
+  "start_head": "d499ef33e43a1441f47c1ceadc06d598c889c467",
+  "branch": "r1-ptr3/planning-repair-finding-propagation-20260817",
+  "intent": "Materialize exact privacy-safe physical request envelopes, close output-cap lineage, compare only actual Exact READY workloads against route-bound evidence, and stop loss if any physical attempt remains unproven.",
+  "allowed_source_changes": [
+    "privacy-safe lowest-seam physical request envelope projection",
+    "route-exact local evidence locator repair",
+    "deterministic evidence materialization and focused regression tests"
+  ],
+  "forbidden_changes": [
+    "provider/model/route scheduling",
+    "literary workload or output budget reductions",
+    "credential, secret, live provider, HTTP network, model, paid, or real Full Short actions"
+  ],
+  "exact_ready_project_id": "2ad716f3c0d1"
+}

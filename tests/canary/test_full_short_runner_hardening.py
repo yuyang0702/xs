@@ -1265,6 +1265,25 @@ async def test_combined_planning_injections_own_distinct_logical_stages() -> Non
     finally:
         await client.aclose()
 
+    assert len(factory.call_plan) == 3
+    first_envelope = factory.call_plan[0]
+    assert first_envelope["provider_wire_requested_output_tokens"] == 512
+    assert first_envelope["system_tokens"] > 0
+    assert first_envelope["task_tokens"] > 0
+    assert first_envelope["rendered_message_tokens"] > 0
+    assert first_envelope["rendered_message_utf8_bytes"] > 0
+    assert first_envelope["provider_wire_payload_utf8_bytes"] > 0
+    assert first_envelope["provider_wire_payload_estimated_tokens"] > 0
+    assert first_envelope["protocol_overhead_tokens"] == 256
+    assert first_envelope["input_estimator_identity"] == (
+        "context_policy.estimate_input_tokens.v1"
+    )
+    assert first_envelope["raw_prompt_persisted"] is False
+    assert len(first_envelope["input_envelope_sha256"]) == 64
+    persisted = json.dumps(first_envelope, ensure_ascii=False)
+    assert "Return the planning contract only." not in persisted
+    assert "IR_FIRST_SHORT_PLANNING_PACKET_V2" not in persisted
+
 
 def test_lowest_http_seam_adapter_fault_hook_is_optional() -> None:
     from types import SimpleNamespace

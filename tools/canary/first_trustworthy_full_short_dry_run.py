@@ -26,6 +26,7 @@ from typing import Any, Awaitable, Callable
 
 import httpx
 
+from novel_flywheel.context_policy import estimate_input_tokens
 from novel_flywheel.db import Database
 from novel_flywheel.failure_boundary import failure_evidence_sha256
 from novel_flywheel.full_short_execution import (
@@ -112,6 +113,123 @@ def _safe_failure_projection(
 def _optional_text_sha256(value: object) -> str | None:
     text = str(value or "")
     return hashlib.sha256(text.encode("utf-8")).hexdigest() if text else None
+
+
+def _executed_physical_attempt_envelopes_v1(
+    *, project_root: Path, ledger: dict[str, Any],
+    observed_plan: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Join wire observations to their exact persisted capacity plans."""
+
+    capacity_root = (
+        project_root / "runs" / EXECUTION_ID / "outputs" / "capacity-plans"
+    )
+    plans: dict[str, dict[str, Any]] = {}
+    for path in capacity_root.glob("*.json"):
+        document = json.loads(path.read_text(encoding="utf-8"))
+        plan = document.get("plan") if isinstance(document, dict) else None
+        if not isinstance(plan, dict):
+            continue
+        plan_sha256 = str(plan.get("plan_sha256") or "")
+        if plan_sha256:
+            plans[plan_sha256] = plan
+    attempts = list(ledger.get("attempts") or [])
+    if len(attempts) != len(observed_plan):
+        raise RuntimeError("FULL_SHORT_PHYSICAL_ENVELOPE_ATTEMPT_COUNT_DRIFT")
+    result: list[dict[str, Any]] = []
+    for call, attempt in zip(observed_plan, attempts, strict=True):
+        plan_sha256 = str(attempt.get("capacity_plan_sha256") or "")
+        plan = plans.get(plan_sha256)
+        if plan is None:
+            raise RuntimeError("FULL_SHORT_PHYSICAL_ENVELOPE_PLAN_MISSING")
+        layers = {
+            str(item.get("layer_id")): item
+            for item in (plan.get("layer_projections") or [])
+            if isinstance(item, dict)
+        }
+        relevant = layers.get("relevant_context")
+        complete = layers.get("complete_request")
+        result.append({
+            "ordinal": int(call["ordinal"]),
+            "stage": str(attempt.get("stage") or plan.get("stage_id") or ""),
+            "role": str(call["role"]),
+            "logical_stage_id": str(attempt.get("logical_stage_id") or ""),
+            "physical_attempt": int(attempt.get("physical_attempt") or 0),
+            "attempt_role": str(attempt.get("stage_role") or "NORMAL"),
+            "route": str(attempt.get("bound_lane") or call.get("route_lane") or ""),
+            "route_fingerprint": str(call.get("route_fingerprint") or ""),
+            "provider_operator": str(call.get("provider_operator") or ""),
+            "protocol": str(call.get("protocol") or ""),
+            "model_name": str(call.get("model_name") or ""),
+            "system_tokens": int(call["system_tokens"]),
+            "task_tokens": int(call["task_tokens"]),
+            "authority_context_tokens": int(
+                plan.get("protected_layer_tokens") or 0
+            ),
+            "skill_advisory_tokens": int(
+                plan.get("advisory_layer_tokens") or 0
+            ),
+            "manuscript_window_tokens": int(
+                (relevant or complete or {}).get("post_transform_tokens") or 0
+            ),
+            "structured_envelope_tokens": int(
+                plan.get("structured_envelope_tokens") or 0
+            ),
+            "protocol_overhead_tokens": int(
+                plan.get("provider_envelope_tokens") or 0
+            ),
+            "wrapper_and_estimator_margin_tokens": int(
+                plan.get("wrapper_and_estimator_margin_tokens") or 0
+            ),
+            "total_rendered_input_tokens": int(
+                plan.get("expected_rendered_input") or 0
+            ),
+            "rendered_message_utf8_bytes": int(
+                call["rendered_message_utf8_bytes"]
+            ),
+            "provider_wire_payload_utf8_bytes": int(
+                call["provider_wire_payload_utf8_bytes"]
+            ),
+            "provider_wire_payload_estimated_tokens": int(
+                call["provider_wire_payload_estimated_tokens"]
+            ),
+            "safety_headroom": int(plan.get("headroom") or 0),
+            "input_envelope_sha256": str(call["input_envelope_sha256"]),
+            "capacity_plan_sha256": plan_sha256,
+            "compaction_policy_id": str(plan.get("compaction_policy_id") or ""),
+            "segmentation_policy_id": str(
+                plan.get("segmentation_policy_id") or ""
+            ),
+            "recovery_overlay_kind": str(
+                plan.get("recovery_overlay_kind") or "NONE"
+            ),
+            "business_desired_output_tokens": int(
+                plan.get("final_output_reserve") or 0
+            ),
+            "stage_specific_output_cap": int(
+                plan.get("requested_output_token_cap") or 0
+            ),
+            "recovery_specific_output_cap": (
+                int(plan.get("requested_output_token_cap") or 0)
+                if str(attempt.get("stage_role") or "NORMAL") != "NORMAL"
+                else None
+            ),
+            "physical_attempt_requested_output_cap": int(
+                plan.get("requested_output_token_cap") or 0
+            ),
+            "provider_wire_requested_output_cap": int(
+                call["provider_wire_requested_output_tokens"]
+            ),
+            "input_estimator_identity": str(call["input_estimator_identity"]),
+            "raw_prompt_persisted": False,
+        })
+    if any(
+        item["physical_attempt_requested_output_cap"]
+        != item["provider_wire_requested_output_cap"]
+        for item in result
+    ):
+        raise RuntimeError("FULL_SHORT_OUTPUT_CAP_LINEAGE_DRIFT")
+    return result
 
 
 def _secondary_close_cause(
@@ -293,6 +411,72 @@ def _request_role(system: str, user: str) -> str:
     if "MAINTENANCE" in upper or "STORYSTATE" in user.upper():
         return "maintenance"
     return "planning"
+
+
+def _safe_request_plan_entry_v1(
+    *, ordinal: int, protocol: str, destination: str,
+    provider_id_sha256: str | None, model_id_sha256: str | None,
+    model_name: str | None, route_fingerprint: str | None,
+    provider_operator: str | None, route_lane: str | None,
+    role: str, contract_marker: str | None, maximum: int,
+    payload: dict[str, Any], system: str, user: str,
+) -> dict[str, Any]:
+    """Project an exact provider-wire request to counts and hashes only."""
+
+    rendered = system + "\n" + user
+    rendered_sha256 = hashlib.sha256(rendered.encode("utf-8")).hexdigest()
+    wire_payload = json.dumps(
+        payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"),
+    )
+    entry = {
+        "ordinal": ordinal,
+        "role": role,
+        "route_lane": route_lane,
+        "route_fingerprint": route_fingerprint,
+        "provider_id_sha256": provider_id_sha256,
+        "model_id_sha256": model_id_sha256,
+        "model_name": model_name,
+        "provider_operator": provider_operator,
+        "protocol": protocol,
+        "contract_marker": contract_marker,
+        "requested_output_tokens": maximum,
+        "provider_wire_requested_output_tokens": maximum,
+        "system_tokens": estimate_input_tokens(system),
+        "task_tokens": estimate_input_tokens(user),
+        "rendered_message_tokens": estimate_input_tokens(rendered),
+        "rendered_message_utf8_bytes": len(rendered.encode("utf-8")),
+        "provider_wire_payload_utf8_bytes": len(wire_payload.encode("utf-8")),
+        "provider_wire_payload_estimated_tokens": estimate_input_tokens(
+            wire_payload
+        ),
+        "input_estimator_identity": "context_policy.estimate_input_tokens.v1",
+        "protocol_overhead_tokens": 256,
+        "rendered_request_sha256": rendered_sha256,
+        "destination_sha256": hashlib.sha256(
+            destination.encode("utf-8"),
+        ).hexdigest(),
+        "request_shape_sha256": _domain({
+            "protocol": protocol,
+            "payload_keys": sorted(str(key) for key in payload),
+            "role": role,
+            "requested_output_tokens": maximum,
+        }),
+        "reasoning_field_present": "reasoning" in payload,
+        "reasoning_effort": (
+            (payload.get("reasoning") or {}).get("effort")
+            if isinstance(payload.get("reasoning"), dict) else None
+        ),
+        "raw_prompt_persisted": False,
+    }
+    entry["input_envelope_sha256"] = _domain({
+        key: entry[key] for key in (
+            "route_fingerprint", "protocol", "role",
+            "system_tokens", "task_tokens", "rendered_message_tokens",
+            "rendered_message_utf8_bytes", "protocol_overhead_tokens",
+            "rendered_request_sha256", "requested_output_tokens",
+        )
+    })
+    return entry
 
 
 def _quality_review() -> str:
@@ -802,6 +986,12 @@ class _OfflineHttpTransportFactory:
 
     def build(
         self, *, protocol: str, destination: str, bound_role: str | None = None,
+        provider_id_sha256: str | None = None,
+        model_id_sha256: str | None = None,
+        model_name: str | None = None,
+        route_fingerprint: str | None = None,
+        provider_operator: str | None = None,
+        route_lane: str | None = None,
     ) -> Any:
         async def respond(request: OfflineHttpRequestV1) -> OfflineHttpResponseV1:
             payload = json.loads(request.content.decode("utf-8"))
@@ -819,26 +1009,16 @@ class _OfflineHttpTransportFactory:
                 payload.get("max_tokens")
                 or payload.get("max_output_tokens") or 0
             )
-            self.call_plan.append({
-                "ordinal": len(self.call_plan) + 1,
-                "role": role,
-                "contract_marker": contract_marker,
-                "requested_output_tokens": maximum,
-                "destination_sha256": hashlib.sha256(
-                    destination.encode("utf-8"),
-                ).hexdigest(),
-                "request_shape_sha256": _domain({
-                    "protocol": protocol,
-                    "payload_keys": sorted(str(key) for key in payload),
-                    "role": role,
-                    "requested_output_tokens": maximum,
-                }),
-                "reasoning_field_present": "reasoning" in payload,
-                "reasoning_effort": (
-                    (payload.get("reasoning") or {}).get("effort")
-                    if isinstance(payload.get("reasoning"), dict) else None
-                ),
-            })
+            self.call_plan.append(_safe_request_plan_entry_v1(
+                ordinal=len(self.call_plan) + 1,
+                protocol=protocol, destination=destination,
+                provider_id_sha256=provider_id_sha256,
+                model_id_sha256=model_id_sha256, model_name=model_name,
+                route_fingerprint=route_fingerprint,
+                provider_operator=provider_operator, route_lane=route_lane,
+                role=role, contract_marker=contract_marker,
+                maximum=maximum, payload=payload, system=system, user=user,
+            ))
             if (
                 self.inject_planning_reasoning_only_once
                 and not self.planning_reasoning_only_injected
@@ -942,6 +1122,12 @@ class _CapturedResponseReplayTransportFactory:
 
     def build(
         self, *, protocol: str, destination: str, bound_role: str | None = None,
+        provider_id_sha256: str | None = None,
+        model_id_sha256: str | None = None,
+        model_name: str | None = None,
+        route_fingerprint: str | None = None,
+        provider_operator: str | None = None,
+        route_lane: str | None = None,
     ) -> Any:
         async def respond(request: OfflineHttpRequestV1) -> OfflineHttpResponseV1:
             ordinal = len(self.call_plan) + 1
@@ -956,32 +1142,22 @@ class _CapturedResponseReplayTransportFactory:
                 payload.get("max_tokens")
                 or payload.get("max_output_tokens") or 0
             )
-            observed = {
-                "ordinal": ordinal,
-                "role": role,
-                "contract_marker": (
+            observed = _safe_request_plan_entry_v1(
+                ordinal=ordinal, protocol=protocol, destination=destination,
+                provider_id_sha256=provider_id_sha256,
+                model_id_sha256=model_id_sha256, model_name=model_name,
+                route_fingerprint=route_fingerprint,
+                provider_operator=provider_operator, route_lane=route_lane,
+                role=role,
+                contract_marker=(
                     "planning_semantic_v2"
                     if any(marker in user for marker in (
                         "IR_FIRST_SHORT_PLANNING_PACKET_V2",
                         "IR_FIRST_SHORT_PLANNING_V2",
                     )) else None
                 ),
-                "requested_output_tokens": maximum,
-                "destination_sha256": hashlib.sha256(
-                    destination.encode("utf-8"),
-                ).hexdigest(),
-                "request_shape_sha256": _domain({
-                    "protocol": protocol,
-                    "payload_keys": sorted(str(key) for key in payload),
-                    "role": role,
-                    "requested_output_tokens": maximum,
-                }),
-                "reasoning_field_present": "reasoning" in payload,
-                "reasoning_effort": (
-                    (payload.get("reasoning") or {}).get("effort")
-                    if isinstance(payload.get("reasoning"), dict) else None
-                ),
-            }
+                maximum=maximum, payload=payload, system=system, user=user,
+            )
             if observed != source:
                 self.failure = {
                     "reason_code": "FULL_SHORT_CAPTURE_REPLAY_REQUEST_DRIFT",
@@ -1231,6 +1407,16 @@ class _LowestHttpSeamRegistry(ProviderRegistry):
                 raise ValueError("offline memory secret is missing")
             transport = self.transport_factory.build(
                 protocol=protocol, destination=destination, bound_role=role,
+                provider_id_sha256=hashlib.sha256(
+                    provider_id.encode("utf-8")
+                ).hexdigest(),
+                model_id_sha256=hashlib.sha256(
+                    model_id.encode("utf-8")
+                ).hexdigest(),
+                model_name=str(model.get("model_name") or ""),
+                route_fingerprint=public.route_fingerprint,
+                provider_operator=public.provider_operator,
+                route_lane=str(lane or ""),
             )
             if type(transport) is not httpx.MockTransport:
                 raise ValueError("OFFLINE_HTTP_TRANSPORT_NOT_CLOSED")
@@ -1471,8 +1657,17 @@ def _memory_secrets(data_dir: Path) -> Callable[[], MemorySecretStore]:
 
 async def _discover_plan(
     *, repo: Path, data_dir: Path, project_id: str,
+    inject_planning_business_incomplete_once: bool = False,
+    inject_planning_reasoning_only_once: bool = False,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
-    factory = _OfflineHttpTransportFactory()
+    factory = _OfflineHttpTransportFactory(
+        inject_planning_business_incomplete_once=(
+            inject_planning_business_incomplete_once
+        ),
+        inject_planning_reasoning_only_once=(
+            inject_planning_reasoning_only_once
+        ),
+    )
     db = Database(data_dir / "app.db")
     registry = _LowestHttpSeamRegistry(
         db, _memory_secrets(data_dir)(),
@@ -2038,6 +2233,13 @@ async def _run(
             ) from exc
         observed_plan = execution["call_plan"]
         ledger = execution["ledger"]
+        physical_attempt_envelopes = _executed_physical_attempt_envelopes_v1(
+            project_root=(
+                execution_data / "projects" / source_project.name
+            ),
+            ledger=ledger,
+            observed_plan=observed_plan,
+        )
         capture_store = ProviderResponseCaptureStoreV1(
             repo_root=repo,
             store_root=store_root / "provider-response-captures-v1",
@@ -2162,6 +2364,19 @@ async def _run(
                 "logical_stage_plan_sha256"
             ],
             "logical_stage_plan": logical_stage_plan,
+            "physical_attempt_envelopes": physical_attempt_envelopes,
+            "physical_attempt_envelope_count": len(
+                physical_attempt_envelopes
+            ),
+            "physical_attempt_envelopes_complete": (
+                len(physical_attempt_envelopes) == len(ledger["attempts"])
+                and all(
+                    item["total_rendered_input_tokens"] > 0
+                    and item["provider_wire_requested_output_cap"] > 0
+                    and len(item["input_envelope_sha256"]) == 64
+                    for item in physical_attempt_envelopes
+                )
+            ),
             "transport_recovery_policy_sha256": policy[
                 "transport_recovery_policy_sha256"
             ],

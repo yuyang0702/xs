@@ -1,0 +1,37 @@
+{
+  "schema": "RouteExactPublicCapabilityAssertionV1",
+  "version": 1,
+  "route_fingerprint": "026d0b3206ad50c89b4eca81b4730ebfa3370815cac98078149c6438e705bfe1",
+  "provider": "doubao",
+  "provider_id_sha256": "17f329a8acc07b5517b19b951b87d069ecd89d0c62bd15da2bed9b443849f27e",
+  "operator": "VOLCENGINE_ARK_DIRECT",
+  "destination": "https://ark.cn-beijing.volces.com:443/api/v3/responses",
+  "protocol": "openai-responses",
+  "model": "doubao-seed-character-260628",
+  "model_id_sha256": "c1f03f8c3ed8fdbb9aae3b2e6711970a78da4236291e1865fd3466b078f66c28",
+  "context_window_tokens": 128000,
+  "max_output_tokens": 32000,
+  "reasoning_token_accounting": "INCLUDED_IN_COMPLETION_CAP",
+  "reasoning_output_reservation": "WITHIN_COMPLETION_CAP",
+  "evidence_semantics": "Official exact model row plus the official Ark Responses endpoint; 32k answer is retained as the conservative total completion ceiling and no larger reasoning allowance is inferred.",
+  "normalization_rule": "project decimal K convention",
+  "public_references": [
+    {
+      "title": "模型列表 - 火山方舟 - 火山引擎",
+      "url": "https://docs.volcengine.com/docs/82379/1330310?lang=zh",
+      "updated": "2026-09-02 21:31:18",
+      "exact_fact_location": "doubao-seed-character-260628 model row",
+      "raw_context_window": "128k",
+      "raw_max_answer": "32k (default 4k)"
+    },
+    {
+      "title": "创建 Response - 火山方舟 - 火山引擎",
+      "url": "https://docs.volcengine.com/docs/82379/1569618?lang=zh",
+      "updated": "2026-09-04 20:21:49",
+      "endpoint": "POST https://ark.cn-beijing.volces.com/api/v3/responses",
+      "max_output_tokens_semantics": "answer plus chain-of-thought tokens"
+    }
+  ],
+  "raw_prompt_persisted": false,
+  "external_actions_performed_during_materialization": 0
+}

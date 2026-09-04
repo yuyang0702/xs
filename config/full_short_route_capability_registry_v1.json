@@ -565,7 +565,7 @@
     },
     {
       "blocking_reason_codes": [],
-      "capability_sha256": "d26567c044e8f3f8dbea3f8e765ea9bcb77a03c89fc6da943270fe6201efa304",
+      "capability_sha256": "2bf26b8094fcb073ffe7732e6bfa4d8de1244c59c1ee8e1fb8722b4250c618f2",
       "capability_status": "VERIFIED_PUBLIC_DOCUMENTATION",
       "context_window_tokens": 128000,
       "destination": "https://ark.cn-beijing.volces.com:443/api/v3/responses",
@@ -614,9 +614,9 @@
           ],
           "provenance_available": true,
           "route_fingerprint": "026d0b3206ad50c89b4eca81b4730ebfa3370815cac98078149c6438e705bfe1",
-          "source_evidence_sha256": "180c299cb2baff957456beb5ee83583ab99af03d1186310588e2126fa91e7208",
+          "source_evidence_sha256": "3e596f71d0e01852b2a7275167f8f1a21efbc71d80197ee7d5f485c06a54bc2d",
           "source_kind": "official_direct_provider_documentation_composite",
-          "source_locator": "https://docs.volcengine.com/docs/82379/1330310?lang=zh"
+          "source_locator": "docs/superpowers/reports/full-short-capacity-final-one-round-confirmation-v1/doubao-route-exact-capability-assertion-v1.json"
         }
       ]
     },
@@ -728,7 +728,7 @@
       ]
     }
   ],
-  "registry_sha256": "0399b64cdb730b82af5e9983fa70b08626eceb3604ed92244a07794893190177",
+  "registry_sha256": "f41689256362d9ea655d7e64293d9e0167a97bfa0914988db5e85c93cbc7c385",
   "schema": "RouteCapabilityRegistryV1",
   "version": 1
 }
