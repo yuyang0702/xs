@@ -1394,8 +1394,20 @@ def main() -> int:
         plan_receipt = json.loads(
             plan_receipt_path.read_text(encoding="utf-8")
         )
+        source_receipt = plan_receipt.get("source_receipt")
+        dry_run_receipt = (
+            source_receipt
+            if isinstance(source_receipt, dict)
+            and source_receipt.get("schema")
+            == "FirstTrustworthyFullShortPrivateDryRunV2"
+            else plan_receipt
+        )
+        nested_plan = (
+            source_receipt.get("logical_stage_plan")
+            if isinstance(source_receipt, dict) else None
+        )
         logical_stage_plan = validate_full_short_logical_stage_plan_v1(
-            plan_receipt.get("logical_stage_plan")
+            plan_receipt.get("logical_stage_plan") or nested_plan
         )
         expected_plan_sha = full_short_logical_stage_plan_sha256_v1(
             logical_stage_plan
@@ -1406,7 +1418,7 @@ def main() -> int:
             repo,
             registry,
             logical_stage_plan=logical_stage_plan,
-            dry_run_receipt=plan_receipt,
+            dry_run_receipt=dry_run_receipt,
         )
     print(json.dumps({
         "registry_sha256": registry.registry_sha256,

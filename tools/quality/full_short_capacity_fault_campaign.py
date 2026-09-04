@@ -633,10 +633,15 @@ def _durable_observer_fixture_v3(
     dict[str, object],
     tuple[dict[str, object], ...],
     dict[str, object],
+    tempfile.TemporaryDirectory[str],
 ]:
     """Create a disabled-actions production observer with durable authority."""
 
-    fixture_root = artifact_dir / (scenario_id + "-observer")
+    # Keep Windows paths below MAX_PATH even when the report root is deeply
+    # nested. The returned owner keeps this private durable fixture alive for
+    # the whole close/reopen probe and removes it afterwards.
+    temporary = tempfile.TemporaryDirectory(prefix="v3-capacity-restart-")
+    fixture_root = Path(temporary.name)
     repo_root = fixture_root / "repo"
     repo_root.mkdir(parents=True)
     store = FullShortDurableExecutionStoreV1(
@@ -733,7 +738,7 @@ def _durable_observer_fixture_v3(
         session_id="capacity-v3-first-process",
         external_actions_enabled=False,
     )
-    return store, observer, policy, routes, egress_policy
+    return store, observer, policy, routes, egress_policy, temporary
 
 
 def _observer_capacity_plan_v3(
@@ -916,7 +921,7 @@ def _run_v3_probe(scenario_id: str, artifact_dir: Path) -> dict[str, object]:
         assert all(item.admission_status is AdmissionStatus.PASS for item in children)
         return _pass_v3(scenario_id, "build_stage_capacity_plan_v1+capacity_failure_recovery_disposition_v1", "PRODUCTION_STAGE_CAPACITY_ONLY_NOT_FULL_SHORT", parent_status=parent.admission_status.value, child_count=len(children), complete_token_coverage=sum(item.rendered_message_tokens for item in children))
     if scenario_id == "restart_after_logical_envelope":
-        store, observer, policy, routes, egress_policy = (
+        store, observer, policy, routes, egress_policy, temporary = (
             _durable_observer_fixture_v3(artifact_dir, scenario_id)
         )
         first = observer.capacity_admission_context(
@@ -940,7 +945,7 @@ def _run_v3_probe(scenario_id: str, artifact_dir: Path) -> dict[str, object]:
         else:
             raise AssertionError("logical_envelope_restart_was_not_blocked")
         ledger = reopened_store.load_ledger("capacity-v3-" + scenario_id)
-        return _pass_v3(
+        result = _pass_v3(
             scenario_id,
             "FullShortDispatchLedgerObserverV1.capacity_admission_context",
             "DURABLE_OBSERVER_RESTART_FAIL_CLOSED",
@@ -953,8 +958,10 @@ def _run_v3_probe(scenario_id: str, artifact_dir: Path) -> dict[str, object]:
             restart_reason="OBSERVER_ALREADY_CLAIMED_NO_RESTART",
             dispatch_attempt_count=len(ledger["attempts"]),
         )
+        temporary.cleanup()
+        return result
     if scenario_id == "restart_after_physical_plan":
-        store, observer, policy, routes, egress_policy = (
+        store, observer, policy, routes, egress_policy, temporary = (
             _durable_observer_fixture_v3(artifact_dir, scenario_id)
         )
         plan, _ = _observer_capacity_plan_v3(observer)
@@ -980,7 +987,7 @@ def _run_v3_probe(scenario_id: str, artifact_dir: Path) -> dict[str, object]:
         else:
             raise AssertionError("physical_plan_restart_was_not_blocked")
         ledger = reopened_store.load_ledger("capacity-v3-" + scenario_id)
-        return _pass_v3(
+        result = _pass_v3(
             scenario_id,
             "FullShortDispatchLedgerObserverV1.bind_capacity_plan",
             "DURABLE_PHYSICAL_PLAN_REOPEN_AND_RESTART_FAIL_CLOSED",
@@ -992,6 +999,8 @@ def _run_v3_probe(scenario_id: str, artifact_dir: Path) -> dict[str, object]:
             restart_reason="OBSERVER_ALREADY_CLAIMED_NO_RESTART",
             dispatch_attempt_count=len(ledger["attempts"]),
         )
+        temporary.cleanup()
+        return result
     raise AssertionError("unknown_v3_scenario:" + scenario_id)
 
 
