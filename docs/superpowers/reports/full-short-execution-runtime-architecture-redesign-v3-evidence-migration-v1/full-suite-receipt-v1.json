@@ -1,5 +1,6 @@
 {
-  "command": "full pytest pending",
+  "baseline_provenance": "The failing test and src/novel_flywheel/api/learning.py are byte-unchanged from d3e52201b48f6eee9718163cf073a57e62af202c.",
+  "command": ".venv\\Scripts\\python.exe -m pytest -q -x",
   "external_boundary": {
     "full_short_execution_count": 0,
     "http_calls": 0,
@@ -15,6 +16,9 @@
   },
   "implementation_head": "d086ca9c7cbe297dce42f94c880509c9e594010b",
   "schema": "FullShortRuntimeCapacityV3VerificationReceiptV1",
-  "status": "PENDING",
+  "failed": 1,
+  "failure": "tests/api/test_learning.py::test_outline_generation_not_ready_errors_are_fixed_chinese (ASCII comma versus fixed Chinese punctuation)",
+  "passed_before_stop": 20,
+  "status": "FAIL_BASELINE_EXISTING_NOT_V3_REGRESSION",
   "version": 1
 }

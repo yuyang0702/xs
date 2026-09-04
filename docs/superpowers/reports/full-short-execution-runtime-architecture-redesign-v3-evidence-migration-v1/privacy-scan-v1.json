@@ -1,5 +1,6 @@
 {
-  "command": "historical offline dry-run raw-content assertions",
+  "command": "UTF-8 decode, PUA scan, credential-pattern scan, and historical offline dry-run raw-content assertions over 47 evidence files",
+  "credential_pattern_match_count": 0,
   "dry_run_source_head": "06e8a2868c145e5db9f71bab9acef94bea5bf64a",
   "external_boundary": {
     "full_short_execution_count": 0,
@@ -15,10 +16,13 @@
     "real_secret_read_count": 0
   },
   "implementation_head": "d086ca9c7cbe297dce42f94c880509c9e594010b",
+  "private_use_unicode_match_count": 0,
   "raw_prompt_persisted": false,
   "raw_reference_persisted": false,
   "raw_story_persisted": false,
   "schema": "FullShortRuntimeCapacityV3VerificationReceiptV1",
-  "status": "PASS_HISTORICAL_OFFLINE_STUB_NOT_CURRENT_AUTHORITY",
+  "scanned_file_count": 47,
+  "status": "PASS",
+  "utf8_decode_failure_count": 0,
   "version": 1
 }

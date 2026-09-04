@@ -1,5 +1,5 @@
 {
-  "command": "focused pytest pending",
+  "command": ".venv\\Scripts\\python.exe -m pytest -q tests/canary/test_full_short_runner_hardening.py -k \"v3_historical or v3_materializer_writes\"",
   "external_boundary": {
     "full_short_execution_count": 0,
     "http_calls": 0,
@@ -15,6 +15,8 @@
   },
   "implementation_head": "d086ca9c7cbe297dce42f94c880509c9e594010b",
   "schema": "FullShortRuntimeCapacityV3VerificationReceiptV1",
-  "status": "PENDING",
+  "failed": 0,
+  "passed": 5,
+  "status": "PASS",
   "version": 1
 }

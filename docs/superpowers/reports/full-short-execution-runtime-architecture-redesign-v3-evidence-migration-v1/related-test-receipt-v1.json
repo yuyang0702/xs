@@ -1,5 +1,5 @@
 {
-  "command": "related pytest pending",
+  "command": ".venv\\Scripts\\python.exe -m pytest -q tests/quality/test_full_short_capacity_fault_campaign_v3.py tests/quality/test_full_short_capacity_fault_campaign.py tests/test_stage_capacity.py tests/test_full_short_execution.py tests/test_route_capabilities.py tests/test_contract_runtime.py tests/test_reasoning_finalization_recovery.py tests/test_full_short_runtime_kernel.py tests/providers/test_protocols.py tests/test_full_short_runtime_source_binding.py",
   "external_boundary": {
     "full_short_execution_count": 0,
     "http_calls": 0,
@@ -15,6 +15,9 @@
   },
   "implementation_head": "d086ca9c7cbe297dce42f94c880509c9e594010b",
   "schema": "FullShortRuntimeCapacityV3VerificationReceiptV1",
-  "status": "PENDING",
+  "failed": 0,
+  "passed": 524,
+  "source_head_at_run": "11f6a75a4a4db15d7f03edf5b382cdd15acbab3b",
+  "status": "PASS_WITH_D086_MATERIALIZER_DELTA_COVERED_BY_FOCUSED_TESTS",
   "version": 1
 }

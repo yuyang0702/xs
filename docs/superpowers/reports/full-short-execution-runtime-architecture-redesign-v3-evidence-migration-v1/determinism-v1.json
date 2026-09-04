@@ -1,5 +1,7 @@
 {
   "command": "historical production-shaped dry-run exact capture replay",
+  "current_v3_campaign_deterministic": true,
+  "current_v3_campaign_report_sha256": "f1a99d736794096f3c202c6223e7bb54ef90211e9e26a897c855d3f5bb7c435a",
   "dry_run_source_head": "06e8a2868c145e5db9f71bab9acef94bea5bf64a",
   "external_boundary": {
     "full_short_execution_count": 0,

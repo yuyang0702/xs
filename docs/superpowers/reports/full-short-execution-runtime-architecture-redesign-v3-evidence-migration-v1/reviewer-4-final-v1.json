@@ -12,12 +12,16 @@
     "real_provider_request_attempts": 0,
     "real_secret_read_count": 0
   },
-  "findings": [
-    "Fresh final review has not yet been sealed."
-  ],
+  "findings": [],
   "focus": "fault and regression coverage",
   "reviewer_number": 4,
   "schema": "FullShortRuntimeCapacityV3FinalReviewV1",
-  "status": "PENDING",
+  "overall_architecture_verdict": "ARCHITECTURE_STOP_LOSS_ACTIVE_NOT_CLOSED",
+  "reviewed_evidence_head": "63c6a4aec835f55d44a16fab39649f15449b7825",
+  "reviewed_source_head": "d086ca9c7cbe297dce42f94c880509c9e594010b",
+  "reviewer": "v3_behavior_final",
+  "slice_status": "ARCHITECTURE_PASS",
+  "status": "ARCHITECTURE_STOP_LOSS_ACTIVE_NOT_CLOSED",
+  "test_result": "87 passed; 20K/30K remain stage-only; 13K/20K/30K real matrix denied predispatch; Exact and real Full Short not executed",
   "version": 1
 }

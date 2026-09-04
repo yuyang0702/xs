@@ -1,5 +1,7 @@
 {
-  "command": "strict L3 command pending",
+  "baseline": "C:/小说/novel-flywheel-console/.tmp/v3-strict-baseline-final.json",
+  "blockers": 0,
+  "command": ".agents/skills/novel-dev-council/scripts/inspect_change_gate.py --baseline <baseline> --declared-level L3 --forward-risk-report <forward-risk> --split-review-report <split-review> --related-test <all changed source mappings> --strict",
   "external_boundary": {
     "full_short_execution_count": 0,
     "http_calls": 0,
@@ -15,6 +17,11 @@
   },
   "implementation_head": "d086ca9c7cbe297dce42f94c880509c9e594010b",
   "schema": "FullShortRuntimeCapacityV3VerificationReceiptV1",
-  "status": "PENDING",
+  "core_tree_sha256": "d2b2e606fee5807d9971a118f416d05674d167334258d8d374020fd2d9367bef",
+  "declared_level": "L3",
+  "recommended_level": "L3",
+  "review_mode": "INDEPENDENT_SPLIT_REVIEW",
+  "status": "PASS",
+  "warnings": 0,
   "version": 1
 }
