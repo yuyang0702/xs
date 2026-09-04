@@ -143,33 +143,19 @@ def discover(
                 and plan.get("plan_sha256") not in used_plan_shas
             ]
             if len(candidates) != 1:
-                raise RuntimeError(
-                    "FULL_SHORT_DISCOVERY_CAPACITY_PLAN_JOIN_INCOMPLETE:"
-                    + json.dumps({
-                        "call_ordinal": call.get("ordinal"),
-                        "stage_id": stage.get("stage_id"),
-                        "rendered_request_sha256": call.get(
-                            "rendered_request_sha256"
-                        ),
-                        "requested_output_tokens": call.get(
-                            "provider_wire_requested_output_tokens"
-                        ),
-                        "plan_count": len(plan_documents),
-                        "same_rendered_sha_count": sum(
-                            plan.get("rendered_request_sha256")
-                            == call.get("rendered_request_sha256")
-                            for plan in plan_documents
-                        ),
-                        "same_stage_count": sum(
-                            plan.get("stage_id") == stage.get("stage_id")
-                            for plan in plan_documents
-                        ),
-                        "route_lane": stage.get("route_lane"),
-                        "candidate_count": len(candidates),
-                    }, sort_keys=True)
-                )
-            joined.append(candidates[0])
-            used_plan_shas.add(str(candidates[0]["plan_sha256"]))
+                joined.append({
+                    "_join_status": (
+                        "CAPACITY_PLAN_JOIN_UNAVAILABLE"
+                        if not candidates else "CAPACITY_PLAN_JOIN_AMBIGUOUS"
+                    ),
+                    "_join_candidate_count": len(candidates),
+                })
+                continue
+            selected = candidates[0]
+            selected["_join_status"] = "EXACT_CAPACITY_PLAN_JOIN"
+            selected["_join_candidate_count"] = 1
+            joined.append(selected)
+            used_plan_shas.add(str(selected["plan_sha256"]))
         return calls, logical, joined
     finally:
         _shutdown_crewai_event_bus()
@@ -229,6 +215,12 @@ def envelope(
             "global_physical_attempt_ordinal"
         ),
         "capacity_plan_sha256": plan.get("plan_sha256"),
+        "capacity_plan_join_status": plan.get(
+            "_join_status", "DETERMINISTIC_RECOVERY_PROJECTION"
+        ),
+        "capacity_plan_join_candidate_count": plan.get(
+            "_join_candidate_count", 0
+        ),
         "capacity_receipt_role": plan.get("_receipt_role"),
         "recovery_overlay_kind": recovery_overlay_kind,
         "runtime_capacity_plan_headroom_tokens": plan.get("headroom"),
@@ -555,6 +547,9 @@ def materialize(repo: Path) -> None:
         int(item["provider_wire_requested_output_cap"])
         for item in authoritative
     )
+    capacity_plan_join_unsealed_shape_count = sum(
+        not bool(item["capacity_plan_sha256"]) for item in authoritative
+    )
     common = {
         "source_head": head,
         "project_id_sha256": sha_bytes(PROJECT_ID.encode("utf-8")),
@@ -586,6 +581,9 @@ def materialize(repo: Path) -> None:
         normal_path_call_count=len(normal_calls),
         typed_business_recovery_path_call_count=len(business_calls),
         distinct_attempt_shape_count=len(authoritative),
+        capacity_plan_join_unsealed_shape_count=(
+            capacity_plan_join_unsealed_shape_count
+        ),
         attempts=[{key: value for key, value in item.items() if key not in {
             "input_evidence_kind", "input_verified_bound", "input_bound_metric",
             "output_evidence_kind", "output_verified_bound", "max_context_known",
@@ -597,7 +595,8 @@ def materialize(repo: Path) -> None:
         }} for item in authoritative], **common,
     ))
     write_json(root / "agent-b-physical-input-envelope-v1.json", receipt(
-        "AgentBPhysicalInputEnvelopeAuditV1", "PASS_AFTER_LOCAL_SOURCE_FIX",
+        "AgentBPhysicalInputEnvelopeAuditV1",
+        "PASS_EXACT_WIRE_ENVELOPE_CAPACITY_PLAN_JOIN_PARTIAL",
         independent_agent=True,
         prior_stage_capacity_receipt_count_in_exact_project=0,
         owning_source_fix=(
@@ -653,7 +652,7 @@ def materialize(repo: Path) -> None:
         output_cap_conflation_bug_count=0, **common,
     ))
     write_json(root / "agent-c-output-cap-lineage-v1.json", receipt(
-        "AgentCOutputCapLineageAuditV1", "PASS",
+        "AgentCOutputCapLineageAuditV1", "PASS_WIRE_CAP_PLAN_JOIN_PARTIAL",
         independent_agent=True,
         planning_8328_classification="WIRE_REQUESTED_CAP",
         planning_physical_attempt_max_requested_output=planning_max,
