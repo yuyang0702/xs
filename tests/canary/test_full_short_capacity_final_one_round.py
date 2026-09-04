@@ -57,6 +57,7 @@ def test_final_capacity_evidence_is_complete_and_self_consistent() -> None:
     assert envelope["exact_ready_physical_attempt_envelope_complete"] is True
     assert envelope["unsealed_required_stage_input_count"] == 0
     assert envelope["unsealed_required_attempt_output_cap_count"] == 0
+    assert envelope["capacity_plan_join_unsealed_shape_count"] == 1
     assert matrix["exact_ready_total_physical_attempt_shapes"] == 183
     assert matrix["exact_ready_proven_safe_physical_attempt_shapes"] == 72
     assert matrix["exact_ready_unproven_physical_attempt_count"] == 111
@@ -90,7 +91,7 @@ def test_admission_is_route_bound_without_guessed_maxima_or_raw_prompts() -> Non
     assert admission["route_with_guessed_capability_count"] == 0
     assert admission["required_route_max_context_unknown_count"] == 5
     assert admission["required_route_max_output_unknown_count"] == 5
-    assert len(admission["route_records"]) == 7
+    assert len(admission["route_records"]) == 8
     assert segmentation["unbounded_physical_request_path_count"] == 0
     assert segmentation[
         "manuscript_length_used_as_direct_route_capacity_blocker_count"
@@ -132,3 +133,11 @@ def test_all_json_receipts_seal_the_offline_boundary_and_manifest() -> None:
         payload = (ROOT / name).read_bytes()
         assert hashlib.sha256(payload).hexdigest() == metadata["sha256"]
         assert len(payload) == metadata["bytes"]
+
+    reviewer = _load("agent-f-final-capacity-review-v1.json")
+    matrix_payload = (
+        ROOT / "exact-ready-authoritative-physical-attempt-matrix-v1.json"
+    ).read_bytes()
+    assert reviewer["authoritative_matrix_file_sha256"] == hashlib.sha256(
+        matrix_payload
+    ).hexdigest()

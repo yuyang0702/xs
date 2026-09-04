@@ -1,0 +1,31 @@
+{
+  "actual_runtime_capacity_risk_definition": "distinct projected provider-dispatch request shapes in the closed-world scenario union whose exact-route evidence does not cover current input and output",
+  "actual_runtime_capacity_risk_shape_count": 111,
+  "authoritative_attempts_canonical_sha256": "1c5842e9702236a1766cbff5ff3a26fa2e3a69f5f44c353a41607d1ccbe4c7ef",
+  "authoritative_matrix_file_sha256": "b8a49e188b0b13187e8730cbbbd48714fdb71a6aa5a16bd4f3ee25edf61e0287",
+  "blocked_role_count": 5,
+  "blocked_route_fingerprint_count": 3,
+  "business_recovery_path_risk_shape_count": 56,
+  "current_model_route_scheduling_changed": false,
+  "currently_authorized_physical_attempt_count": 0,
+  "external_boundary": {
+    "full_short_real_execution_count": 0,
+    "http_post_attempts": 0,
+    "model_calls": 0,
+    "network_model_api_calls": 0,
+    "paid_calls": 0,
+    "real_credential_lookup_count": 0,
+    "real_provider_client_creation_count": 0,
+    "real_provider_request_attempts": 0,
+    "real_secret_read_count": 0
+  },
+  "normal_path_risk_shape_count": 55,
+  "phase_7_prohibited": true,
+  "project_id_sha256": "a69d9140943781ee24b78ff87d8ef408d29c281c6e993981dc2ef4a8eb82f720",
+  "raw_prompt_persisted": false,
+  "schema": "AgentFFinalCapacityReviewV1",
+  "source_head": "58cf7a9c791cc7501d6dd508380f2dbcf75570d0",
+  "status": "EVIDENCE_MODEL_CLOSED_STOP_LOSS_BLOCKED",
+  "theoretical_unknown_maximum_counted_as_risk": false,
+  "version": 1
+}

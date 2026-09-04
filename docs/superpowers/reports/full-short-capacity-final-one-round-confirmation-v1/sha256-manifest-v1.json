@@ -1,0 +1,95 @@
+{
+  "current_model_route_scheduling_changed": false,
+  "external_boundary": {
+    "full_short_real_execution_count": 0,
+    "http_post_attempts": 0,
+    "model_calls": 0,
+    "network_model_api_calls": 0,
+    "paid_calls": 0,
+    "real_credential_lookup_count": 0,
+    "real_provider_client_creation_count": 0,
+    "real_provider_request_attempts": 0,
+    "real_secret_read_count": 0
+  },
+  "files": {
+    "README.md": {
+      "bytes": 631,
+      "sha256": "37dcb715d4fa25734c4f18c113570ff4ba20249496b6becb53eaa6a9fe6a76e7"
+    },
+    "agent-a-segmentation-windowing-v1.json": {
+      "bytes": 1953,
+      "sha256": "2df59b69e8f135d49ffcc9be43eef69a95a2cd521ab239ab4b1926a14ccf4212"
+    },
+    "agent-b-physical-input-envelope-v1.json": {
+      "bytes": 1006,
+      "sha256": "bef7ec2264c4f8e37883bec626f7f31ab5eee054fbe0f5c37a6999e6ba049d86"
+    },
+    "agent-c-output-cap-lineage-v1.json": {
+      "bytes": 866,
+      "sha256": "e2a5ccc8ed8ccf86d49e5578ee0c492a50ba6498631ac689f8d5981e9d0fcda5"
+    },
+    "agent-d-workload-sufficiency-v1.json": {
+      "bytes": 9474,
+      "sha256": "e8e4ceed81311eda66edac906a86835565cd553dafff7034aa5aa31e9cdd2cca"
+    },
+    "agent-e-lingsuan-provenance-v1.json": {
+      "bytes": 3674,
+      "sha256": "16e6ae62573b605b8196cee4bf200f3fbfdce134ae30f08fc39dca54093c10ed"
+    },
+    "agent-f-final-capacity-review-v1.json": {
+      "bytes": 1453,
+      "sha256": "78da7c376e0b694c6d25df371636e19e506fd9ddd0aeea069a1739ccd55ff3a5"
+    },
+    "baseline-binding-v1.json": {
+      "bytes": 909,
+      "sha256": "04fc9ea89fb39afe0f1d42ce6d0db05fa17803565bc696ad0de2958da99e8984"
+    },
+    "capacity-final-stop-loss-v1.json": {
+      "bytes": 88042,
+      "sha256": "c7077e82d62147b6f733070a1d9ece354f1d5cca70f8304d8da8d86dc2da13c2"
+    },
+    "change-contract-v1.json": {
+      "bytes": 925,
+      "sha256": "30068db9f5fd988894d62c10b7c6c4fe3e1df5c239629801b6d7a03853d88c55"
+    },
+    "doubao-route-exact-capability-assertion-v1.json": {
+      "bytes": 1805,
+      "sha256": "3e596f71d0e01852b2a7275167f8f1a21efbc71d80197ee7d5f485c06a54bc2d"
+    },
+    "exact-ready-authoritative-physical-attempt-matrix-v1.json": {
+      "bytes": 595926,
+      "sha256": "b8a49e188b0b13187e8730cbbbd48714fdb71a6aa5a16bd4f3ee25edf61e0287"
+    },
+    "exact-ready-physical-input-envelope-v1.json": {
+      "bytes": 422757,
+      "sha256": "8b6f8e55d59a624dbc25397d4df7e55c71ab5cd8ea02000376181155944836cc"
+    },
+    "lingsuan-historical-provenance-v1.json": {
+      "bytes": 3734,
+      "sha256": "3c34905684d09752889f7fc35ca04cb095dc591b7d2d95e82d7ba7f9f78a7b53"
+    },
+    "output-cap-lineage-matrix-v1.json": {
+      "bytes": 156480,
+      "sha256": "5ba682641b86d1ab7bf002a197e87e1fff48a225363ef6a2578b2af548744ad7"
+    },
+    "planning-8328-classification-v1.json": {
+      "bytes": 970,
+      "sha256": "2b735d69c95d43ed0422859a0dec0a23783a81ae064e19d482cdf4c0272f5f2d"
+    },
+    "route-workload-admission-v1.json": {
+      "bytes": 9846,
+      "sha256": "2e8800f3790c5f585e70a5ee482831d0120afafa46c62ea120782e838cb2b881"
+    },
+    "segmentation-windowing-boundary-matrix-v1.json": {
+      "bytes": 1946,
+      "sha256": "6283c1b5d3b81c1b63c4f738130c2cdb65df0995ff55558734158882e80d16fb"
+    }
+  },
+  "manifest_file_excluded_from_self_hash": true,
+  "project_id_sha256": "a69d9140943781ee24b78ff87d8ef408d29c281c6e993981dc2ef4a8eb82f720",
+  "raw_prompt_persisted": false,
+  "schema": "FullShortCapacityFinalSha256ManifestV1",
+  "source_head": "58cf7a9c791cc7501d6dd508380f2dbcf75570d0",
+  "status": "PASS",
+  "version": 1
+}

@@ -1,0 +1,25 @@
+{
+  "current_model_route_scheduling_changed": false,
+  "exact_ready_physical_attempt_envelope_complete": true,
+  "external_boundary": {
+    "full_short_real_execution_count": 0,
+    "http_post_attempts": 0,
+    "model_calls": 0,
+    "network_model_api_calls": 0,
+    "paid_calls": 0,
+    "real_credential_lookup_count": 0,
+    "real_provider_client_creation_count": 0,
+    "real_provider_request_attempts": 0,
+    "real_secret_read_count": 0
+  },
+  "independent_agent": true,
+  "owning_source_fix": "lowest HTTP seam now records privacy-safe rendered and exact wire-byte envelopes",
+  "prior_stage_capacity_receipt_count_in_exact_project": 0,
+  "project_id_sha256": "a69d9140943781ee24b78ff87d8ef408d29c281c6e993981dc2ef4a8eb82f720",
+  "raw_prompt_persisted": false,
+  "schema": "AgentBPhysicalInputEnvelopeAuditV1",
+  "source_head": "58cf7a9c791cc7501d6dd508380f2dbcf75570d0",
+  "status": "PASS_EXACT_WIRE_ENVELOPE_CAPACITY_PLAN_JOIN_PARTIAL",
+  "unsealed_required_stage_input_count": 0,
+  "version": 1
+}

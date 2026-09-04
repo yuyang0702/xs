@@ -1,0 +1,86 @@
+{
+  "current_model_route_scheduling_changed": false,
+  "external_boundary": {
+    "full_short_real_execution_count": 0,
+    "http_post_attempts": 0,
+    "model_calls": 0,
+    "network_model_api_calls": 0,
+    "paid_calls": 0,
+    "real_credential_lookup_count": 0,
+    "real_provider_client_creation_count": 0,
+    "real_provider_request_attempts": 0,
+    "real_secret_read_count": 0
+  },
+  "findings": {
+    "gpt": {
+      "capacity_rejection_absent": true,
+      "evidence_scope": "SELECTED_A1_SINGLE_DISPATCH",
+      "field_evidence": [
+        {
+          "source_locator": "docs/superpowers/reports/skill-v3-character-heavy-pilot-a1-real-execution-v3/wire-input-binding-v1.json",
+          "source_sha256": "132a860db22efbbc126e70ec6e8b95d1b3c828e007b750f4170c8636a7ad199c"
+        },
+        {
+          "source_locator": "docs/superpowers/reports/skill-v3-character-heavy-pilot-a1-real-execution-v3/destination-binding-v1.json",
+          "source_sha256": "0d2d0c963b65b867c9d4ff81ae917bdb18751e8fcbf42f6f93aba24504aca3f3"
+        },
+        {
+          "source_locator": "docs/superpowers/reports/skill-v3-character-heavy-pilot-a1-real-execution-v3/real-boundary-binding-v1.json",
+          "source_sha256": "49012df77c28449626b35c1ab43e3f9fa0b79be771267a569d4a72cc3880a13e"
+        },
+        {
+          "source_locator": "docs/superpowers/reports/skill-v3-character-heavy-pilot-a1-real-execution-v3/provider-result-shape-v1.json",
+          "source_sha256": "7a0ddce10dcdcf098a80f4547b5cd6aaba68d5e1ab17e766de248b090bf258d3"
+        },
+        {
+          "source_locator": "docs/superpowers/reports/skill-v3-character-heavy-pilot-a1-real-execution-v3/terminal-local-pipeline-receipt-v1.json",
+          "source_sha256": "4c42417abc9540d4153000e8da4da6ae584da2d11327c8a62372743f6b1ab47f"
+        }
+      ],
+      "no_fallback": true,
+      "no_route_substitution": true,
+      "provider_http_envelope_reconstructable": false,
+      "request_shape_reconstructable": "RENDERED_MESSAGE_ONLY",
+      "route_fingerprint": "30e9cbaf86fbb4b89b43614d71cc11b359ad41e7411e8ebda5d3ce4199879bf0",
+      "same_effective_route": true,
+      "status": "QUALIFIED_PARTIAL",
+      "terminal_response_complete": true,
+      "truncation_status": "NO_SILENT_TRUNCATION",
+      "verified_input_lower_bound": {
+        "components": {
+          "separator_utf8_bytes": 2,
+          "system_utf8_bytes": 3746,
+          "user_utf8_bytes": 1332
+        },
+        "metric": "CANONICAL_SYSTEM_NUL_USER_UTF8_BYTES",
+        "rendered_message_sha256": "47d7e240783edf70528dc05b1c6694271a4228677fee2ef358db398d35a406f5",
+        "value": 5080
+      },
+      "verified_output_request_lower_bound": {
+        "meaning": "PROVIDER_ACCEPTED_REQUESTED_CAP_NOT_MAXIMUM_OR_OBSERVED_OUTPUT",
+        "observed_output_tokens": 649,
+        "value": 4624
+      }
+    },
+    "sonnet": {
+      "capacity_rejection_absent": null,
+      "no_fallback": null,
+      "no_route_substitution": null,
+      "request_shape_reconstructable": false,
+      "route_fingerprint": "4a9f19e78d8101d0bc82aa664582c775741b59d5d9953c73a5624de03b2a539c",
+      "same_effective_route": null,
+      "status": "UNKNOWN_BLOCKED",
+      "terminal_response_complete": null,
+      "truncation_status": "UNPROVEN",
+      "verified_input_lower_bound": null,
+      "verified_output_request_lower_bound": null
+    }
+  },
+  "invented_provenance_count": 0,
+  "project_id_sha256": "a69d9140943781ee24b78ff87d8ef408d29c281c6e993981dc2ef4a8eb82f720",
+  "raw_prompt_persisted": false,
+  "schema": "AgentELingSuanProvenanceAuditV1",
+  "source_head": "58cf7a9c791cc7501d6dd508380f2dbcf75570d0",
+  "status": "PARTIAL_BLOCKED",
+  "version": 1
+}
