@@ -96,7 +96,9 @@ def source_project(repo: Path) -> Path:
 
 def discover(
     repo: Path, *, business_recovery: bool,
-) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+) -> tuple[
+    list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]],
+]:
     temporary = tempfile.TemporaryDirectory(prefix="full-short-private-")
     try:
         data = _copy_private_data(
@@ -104,10 +106,35 @@ def discover(
             project_id=PROJECT_ID, target=Path(temporary.name) / "d",
             install_offline_gateway_context_manifest=True,
         )
-        return asyncio.run(_discover_plan(
+        calls, logical = asyncio.run(_discover_plan(
             repo=repo, data_dir=data, project_id=PROJECT_ID,
             inject_planning_business_incomplete_once=business_recovery,
         ))
+        plan_documents = []
+        for path in data.rglob("capacity-plans/*.json"):
+            document = json.loads(path.read_text(encoding="utf-8"))
+            plan = document.get("plan") if isinstance(document, dict) else None
+            if isinstance(plan, dict):
+                plan_documents.append(plan)
+        joined: list[dict[str, Any]] = []
+        used_plan_shas: set[str] = set()
+        for call, stage in zip(calls, logical, strict=True):
+            candidates = [
+                plan for plan in plan_documents
+                if plan.get("rendered_request_sha256")
+                == call.get("rendered_request_sha256")
+                and int(plan.get("requested_output_token_cap") or 0)
+                == int(call.get("provider_wire_requested_output_tokens") or 0)
+                and plan.get("stage_id") == stage.get("stage_id")
+                and plan.get("plan_sha256") not in used_plan_shas
+            ]
+            if len(candidates) != 1:
+                raise RuntimeError(
+                    "FULL_SHORT_DISCOVERY_CAPACITY_PLAN_JOIN_INCOMPLETE"
+                )
+            joined.append(candidates[0])
+            used_plan_shas.add(str(candidates[0]["plan_sha256"]))
+        return calls, logical, joined
     finally:
         _shutdown_crewai_event_bus()
         _cleanup_private_workspace_v1(temporary)
@@ -131,15 +158,43 @@ def reasoning_projection(repo: Path) -> dict[str, Any]:
 
 def envelope(
     call: dict[str, Any], logical: dict[str, Any], *, scenario: str,
+    plan: dict[str, Any] | None = None,
     attempt_role: str = "NORMAL", physical_attempt: int = 1,
 ) -> dict[str, Any]:
+    plan = plan or {}
+    contract_attempt_index = int(logical.get("contract_attempt_index") or 1)
+    planned_physical_attempt = int(
+        plan.get("physical_attempt") or contract_attempt_index
+        or physical_attempt
+    )
+    resolved_attempt_role = attempt_role
+    recovery_overlay_kind = str(
+        plan.get("recovery_overlay_kind") or "NONE"
+    )
+    if (
+        attempt_role == "NORMAL"
+        and (planned_physical_attempt > 1 or recovery_overlay_kind != "NONE")
+    ):
+        resolved_attempt_role = "TYPED_BUSINESS_RECOVERY"
+    resolved_physical_attempt = max(physical_attempt, planned_physical_attempt)
     return {
         "scenario": scenario,
         "stage": logical["stage_id"],
         "role": call["role"],
         "logical_stage_id": logical["logical_stage_id"],
-        "attempt_role": attempt_role,
-        "physical_attempt": physical_attempt,
+        "attempt_role": resolved_attempt_role,
+        "physical_attempt": resolved_physical_attempt,
+        "contract_attempt_index": logical.get("contract_attempt_index"),
+        "contract_route": logical.get("contract_route"),
+        "contract_route_attempt": logical.get("contract_route_attempt"),
+        "stage_role": logical.get("stage_role", "NORMAL"),
+        "physical_attempt_id": plan.get("physical_attempt_id"),
+        "global_physical_attempt_ordinal": plan.get(
+            "global_physical_attempt_ordinal"
+        ),
+        "capacity_plan_sha256": plan.get("plan_sha256"),
+        "recovery_overlay_kind": recovery_overlay_kind,
+        "runtime_capacity_plan_headroom_tokens": plan.get("headroom"),
         "route": call["route_lane"],
         "route_fingerprint": call["route_fingerprint"],
         "provider_id_sha256": call["provider_id_sha256"],
@@ -163,14 +218,26 @@ def envelope(
         ),
         "input_estimator_identity": call["input_estimator_identity"],
         "input_envelope_sha256": call["input_envelope_sha256"],
-        "stage_specific_output_cap": call["requested_output_tokens"],
-        "business_desired_output_tokens": call["requested_output_tokens"],
+        "stage_specific_output_cap": int(
+            plan.get("requested_output_token_cap")
+            or call["requested_output_tokens"]
+        ),
+        "business_desired_output_tokens": int(
+            plan.get("final_output_reserve")
+            or call["requested_output_tokens"]
+        ),
         "recovery_specific_output_cap": (
-            call["requested_output_tokens"]
-            if attempt_role != "NORMAL" else None
+            int(
+                plan.get("requested_output_token_cap")
+                or call["requested_output_tokens"]
+            )
+            if resolved_attempt_role != "NORMAL" else None
         ),
         "physical_attempt_requested_output_cap": (
-            call["requested_output_tokens"]
+            int(
+                plan.get("requested_output_token_cap")
+                or call["requested_output_tokens"]
+            )
         ),
         "provider_wire_requested_output_cap": (
             call["provider_wire_requested_output_tokens"]
@@ -303,34 +370,29 @@ def materialize(repo: Path) -> None:
     prior_shape = repo / PRIOR / "workload-shape-research-v1.json"
     prior_shape_sha = sha_file(prior_shape)
 
-    normal_calls, normal_logical = discover(repo, business_recovery=False)
-    business_calls, business_logical = discover(repo, business_recovery=True)
+    normal_calls, normal_logical, normal_plans = discover(
+        repo, business_recovery=False,
+    )
+    business_calls, business_logical, business_plans = discover(
+        repo, business_recovery=True,
+    )
     projected_reasoning = reasoning_projection(repo)
 
     envelopes = [
-        envelope(call, logical, scenario="NORMAL_PATH")
-        for call, logical in zip(normal_calls, normal_logical, strict=True)
-    ]
-    business_envelopes = [
-        envelope(call, logical, scenario="TYPED_BUSINESS_RECOVERY_PATH")
-        for call, logical in zip(
-            business_calls, business_logical, strict=True,
+        envelope(call, logical, plan=plan, scenario="NORMAL_PATH")
+        for call, logical, plan in zip(
+            normal_calls, normal_logical, normal_plans, strict=True,
         )
     ]
-    for index, item in enumerate(business_envelopes):
-        if index and (
-            item["stage"] == business_envelopes[index - 1]["stage"]
-            and item["role"] == business_envelopes[index - 1]["role"]
-        ):
-            item["attempt_role"] = "TYPED_BUSINESS_RECOVERY"
-            item["physical_attempt"] = 2
-            item["logical_stage_id"] = business_envelopes[index - 1][
-                "logical_stage_id"
-            ]
-            item["recovery_specific_output_cap"] = item[
-                "provider_wire_requested_output_cap"
-            ]
-            break
+    business_envelopes = [
+        envelope(
+            call, logical, plan=plan,
+            scenario="TYPED_BUSINESS_RECOVERY_PATH",
+        )
+        for call, logical, plan in zip(
+            business_calls, business_logical, business_plans, strict=True,
+        )
+    ]
     envelopes.extend(business_envelopes)
     reasoning_logical = normal_logical[0]
     envelopes.append(envelope(
@@ -368,7 +430,10 @@ def materialize(repo: Path) -> None:
             **item,
             **evidence,
             "segment_window_bound": item["compaction_windowing_decision"],
-            "safety_headroom": evidence["input_margin"],
+            "input_evidence_safety_headroom": evidence["input_margin"],
+            "input_evidence_safety_headroom_metric": evidence[
+                "input_bound_metric"
+            ],
         })
 
     blocked = [
@@ -376,6 +441,13 @@ def materialize(repo: Path) -> None:
         if item["admission_result"] != "PASS"
     ]
     proven = len(authoritative) - len(blocked)
+    normal_path_risk_shapes = sum(
+        "NORMAL_PATH" in str(item["scenario"]) for item in blocked
+    )
+    business_path_risk_shapes = sum(
+        "TYPED_BUSINESS_RECOVERY_PATH" in str(item["scenario"])
+        for item in blocked
+    )
     roles = sorted({str(item["role"]) for item in authoritative})
     route_groups: dict[str, dict[str, Any]] = {}
     for item in authoritative:
@@ -483,7 +555,8 @@ def materialize(repo: Path) -> None:
             "max_output_known", "current_input_requirement", "input_margin",
             "output_margin", "identity_binding", "admission_result",
             "evidence_source", "evidence_source_sha256", "segment_window_bound",
-            "safety_headroom",
+            "input_evidence_safety_headroom",
+            "input_evidence_safety_headroom_metric",
         }} for item in authoritative], **common,
     ))
     write_json(root / "agent-b-physical-input-envelope-v1.json", receipt(
@@ -500,6 +573,7 @@ def materialize(repo: Path) -> None:
         "shape_ordinal": item["shape_ordinal"],
         "stage": item["stage"], "role": item["role"],
         "attempt_role": item["attempt_role"],
+        "capacity_plan_sha256": item["capacity_plan_sha256"],
         "route_fingerprint": item["route_fingerprint"],
         "stage_specific_output_cap": item["stage_specific_output_cap"],
         "business_desired_output": item["business_desired_output_tokens"],
@@ -515,10 +589,21 @@ def materialize(repo: Path) -> None:
         "authorization_outer_hard_cap_status": (
             "NOT_MATERIALIZED_STOP_LOSS_NO_HISTORICAL_AUTHORIZATION_REUSE"
         ),
-        "lineage_result": "EXACT_EQUAL_NO_CONFLATION",
+        "lineage_result": (
+            "PRODUCTION_CAPACITY_PLAN_TO_PROVIDER_WIRE_EXACT_EQUAL"
+            if item["capacity_plan_sha256"]
+            else "DETERMINISTIC_SEALED_RECOVERY_PROJECTION_EXACT_EQUAL"
+        ),
     } for item in authoritative]
     write_json(root / "output-cap-lineage-matrix-v1.json", receipt(
         "OutputCapLineageMatrixV1", "PASS", attempts=output_matrix,
+        production_capacity_plan_bound_shape_count=sum(
+            bool(item["capacity_plan_sha256"]) for item in authoritative
+        ),
+        deterministic_recovery_projection_shape_count=sum(
+            not bool(item["capacity_plan_sha256"])
+            for item in authoritative
+        ),
         output_cap_conflation_bug_count=0, **common,
     ))
     write_json(root / "planning-8328-classification-v1.json", receipt(
@@ -541,6 +626,8 @@ def materialize(repo: Path) -> None:
         "ExactReadyAuthoritativePhysicalAttemptMatrixV1",
         "PASS" if not blocked else "STOP_LOSS_BLOCKED",
         attempts=authoritative,
+        matrix_kind="CURRENT_HEAD_DETERMINISTIC_PROVIDER_DISPATCH_SHAPE_UNION",
+        mutually_exclusive_scenarios=True,
         exact_ready_total_physical_attempt_shapes=len(authoritative),
         exact_ready_proven_safe_physical_attempt_shapes=proven,
         exact_ready_unproven_physical_attempt_count=len(blocked),
@@ -554,12 +641,21 @@ def materialize(repo: Path) -> None:
         ),
         route_records=route_admission,
         route_with_guessed_capability_count=0,
+        exact_ready_required_role_lane_binding_count=len(route_admission),
         required_route_max_context_unknown_count=sum(
             not bool(item["max_context_known"]) for item in route_admission
         ),
         required_route_max_output_unknown_count=sum(
             not bool(item["max_output_known"]) for item in route_admission
         ),
+        required_unique_route_fingerprint_max_context_unknown_count=len({
+            item["route_fingerprint"] for item in route_admission
+            if not item["max_context_known"]
+        }),
+        required_unique_route_fingerprint_max_output_unknown_count=len({
+            item["route_fingerprint"] for item in route_admission
+            if not item["max_output_known"]
+        }),
         **common,
     ))
     write_json(root / "agent-d-workload-sufficiency-v1.json", receipt(
@@ -569,26 +665,59 @@ def materialize(repo: Path) -> None:
         route_records=route_admission,
         unproven_count=len(blocked), **common,
     ))
+    a1_root = Path(
+        "docs/superpowers/reports/"
+        "skill-v3-character-heavy-pilot-a1-real-execution-v3"
+    )
+    a1_reference_paths = [
+        a1_root / "wire-input-binding-v1.json",
+        a1_root / "destination-binding-v1.json",
+        a1_root / "real-boundary-binding-v1.json",
+        a1_root / "provider-result-shape-v1.json",
+        a1_root / "terminal-local-pipeline-receipt-v1.json",
+    ]
+    a1_references = [{
+        "source_locator": path.as_posix(),
+        "source_sha256": sha_file(repo / path),
+    } for path in a1_reference_paths]
     lingsuan = {
         "gpt": {
+            "status": "QUALIFIED_PARTIAL",
+            "evidence_scope": "SELECTED_A1_SINGLE_DISPATCH",
             "route_fingerprint": "30e9cbaf86fbb4b89b43614d71cc11b359ad41e7411e8ebda5d3ce4199879bf0",
             "same_effective_route": True,
             "no_route_substitution": True,
             "no_fallback": True,
-            "request_shape_reconstructable": True,
+            "request_shape_reconstructable": "RENDERED_MESSAGE_ONLY",
+            "provider_http_envelope_reconstructable": False,
             "terminal_response_complete": True,
             "capacity_rejection_absent": True,
             "truncation_status": "NO_SILENT_TRUNCATION",
-            "verified_input_lower_bound": {"value": 5080, "metric": "UTF8_BYTES"},
-            "verified_output_request_lower_bound": 4624,
+            "verified_input_lower_bound": {
+                "value": 5080,
+                "metric": "CANONICAL_SYSTEM_NUL_USER_UTF8_BYTES",
+                "components": {
+                    "system_utf8_bytes": 3746,
+                    "separator_utf8_bytes": 2,
+                    "user_utf8_bytes": 1332,
+                },
+                "rendered_message_sha256": "47d7e240783edf70528dc05b1c6694271a4228677fee2ef358db398d35a406f5",
+            },
+            "verified_output_request_lower_bound": {
+                "value": 4624,
+                "meaning": "PROVIDER_ACCEPTED_REQUESTED_CAP_NOT_MAXIMUM_OR_OBSERVED_OUTPUT",
+                "observed_output_tokens": 649,
+            },
+            "field_evidence": a1_references,
         },
         "sonnet": {
+            "status": "UNKNOWN_BLOCKED",
             "route_fingerprint": "4a9f19e78d8101d0bc82aa664582c775741b59d5d9953c73a5624de03b2a539c",
-            "same_effective_route": False,
+            "same_effective_route": None,
             "no_route_substitution": None,
             "no_fallback": None,
             "request_shape_reconstructable": False,
-            "terminal_response_complete": False,
+            "terminal_response_complete": None,
             "capacity_rejection_absent": None,
             "truncation_status": "UNPROVEN",
             "verified_input_lower_bound": None,
@@ -605,10 +734,24 @@ def materialize(repo: Path) -> None:
     ))
     write_json(root / "agent-f-final-capacity-review-v1.json", receipt(
         "AgentFFinalCapacityReviewV1",
-        "ARCHITECTURE_PASS_STOP_LOSS_BLOCKED" if blocked else "ARCHITECTURE_PASS",
-        actual_runtime_capacity_risk_count=len(blocked),
+        "EVIDENCE_MODEL_CLOSED_STOP_LOSS_BLOCKED" if blocked else "ARCHITECTURE_PASS",
+        actual_runtime_capacity_risk_shape_count=len(blocked),
+        actual_runtime_capacity_risk_definition=(
+            "distinct projected provider-dispatch request shapes in the closed-world scenario union whose exact-route evidence does not cover current input and output"
+        ),
+        normal_path_risk_shape_count=normal_path_risk_shapes,
+        business_recovery_path_risk_shape_count=business_path_risk_shapes,
+        blocked_route_fingerprint_count=len({
+            item["route_fingerprint"] for item in blocked
+        }),
+        blocked_role_count=len({item["role"] for item in blocked}),
+        currently_authorized_physical_attempt_count=0,
         theoretical_unknown_maximum_counted_as_risk=False,
-        authoritative_matrix_sha256=sha_json(authoritative), **common,
+        authoritative_attempts_canonical_sha256=sha_json(authoritative),
+        authoritative_matrix_file_sha256=sha_file(
+            root / "exact-ready-authoritative-physical-attempt-matrix-v1.json"
+        ),
+        phase_7_prohibited=bool(blocked), **common,
     ))
     write_json(root / "capacity-final-stop-loss-v1.json", receipt(
         "CapacityFinalStopLossV1",
@@ -617,9 +760,14 @@ def materialize(repo: Path) -> None:
         exact_ready_proven_safe_physical_attempt_shapes=proven,
         exact_ready_unproven_physical_attempt_count=len(blocked),
         blocked_attempts=[{
+            "shape_ordinal": item["shape_ordinal"],
+            "scenario": item["scenario"],
             "stage": item["stage"],
+            "logical_stage_id": item["logical_stage_id"],
+            "physical_attempt": item["physical_attempt"],
             "attempt_role": item["attempt_role"],
             "route": item["route_fingerprint"],
+            "input_envelope_sha256": item["input_envelope_sha256"],
             "current_input_requirement": item["current_input_requirement"],
             "current_input_metric": item["input_bound_metric"],
             "current_output_request": item["provider_wire_requested_output_cap"],

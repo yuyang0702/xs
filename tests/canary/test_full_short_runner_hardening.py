@@ -1180,10 +1180,53 @@ def test_discovery_mirrors_unstructured_runtime_stage_fallback() -> None:
         "contract_version": 1,
         "contract_schema_sha256": hashlib.sha256(b"{}").hexdigest(),
         "contract_runtime_input_required": False,
+        "contract_attempt_index": None,
+        "contract_route": None,
+        "contract_route_attempt": None,
+        "stage_role": "NORMAL",
         "requested_output_tokens": 321,
         "role": "planning",
         "route_lane": "primary",
     }]
+
+
+def test_discovery_preserves_contract_retry_identity() -> None:
+    from tools.canary.first_trustworthy_full_short_dry_run import (
+        _LogicalStagePlanDiscoveryObserver,
+    )
+
+    observer = _LogicalStagePlanDiscoveryObserver()
+    for attempt in (1, 2):
+        observer.bind_stage_context(
+            stage_id="planning-semantic",
+            contract_name="planning_semantic_v2",
+            contract_version=2,
+            contract_schema_sha256="a" * 64,
+            contract_runtime_input_required=True,
+            contract_attempt_index=attempt,
+            contract_route="primary",
+            contract_route_attempt=attempt,
+            stage_role="NORMAL",
+        )
+        observer.bind_route(
+            role="planning", lane="primary", provider_id="provider",
+            model_id="model", route_fingerprint="f" * 64,
+        )
+        observer.bind_model_request(
+            protocol="anthropic",
+            request=SimpleNamespace(
+                response_schema={"schema": {}}, max_output_tokens=8328,
+            ),
+        )
+        observer.before_http_dispatch()
+        observer.mark_local_stage_complete()
+
+    first, second = observer.logical_stage_plan
+    assert first["logical_stage_id"] == second["logical_stage_id"]
+    assert first["contract_attempt_index"] == 1
+    assert second["contract_attempt_index"] == 2
+    assert second["contract_route_attempt"] == 2
+    assert second["stage_role"] == "NORMAL"
 
 
 def test_dry_run_adapter_fault_is_one_local_projection_only() -> None:

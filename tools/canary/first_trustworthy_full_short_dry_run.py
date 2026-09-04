@@ -157,8 +157,22 @@ def _executed_physical_attempt_envelopes_v1(
             "stage": str(attempt.get("stage") or plan.get("stage_id") or ""),
             "role": str(call["role"]),
             "logical_stage_id": str(attempt.get("logical_stage_id") or ""),
-            "physical_attempt": int(attempt.get("physical_attempt") or 0),
-            "attempt_role": str(attempt.get("stage_role") or "NORMAL"),
+            "physical_attempt": int(plan.get("physical_attempt") or 0),
+            "physical_attempt_id": str(
+                attempt.get("physical_attempt_id")
+                or plan.get("physical_attempt_id") or ""
+            ),
+            "global_physical_attempt_ordinal": (
+                attempt.get("global_physical_attempt_ordinal")
+                or plan.get("global_physical_attempt_ordinal")
+            ),
+            "attempt_role": str(
+                attempt.get("recovery_family")
+                or attempt.get("stage_role") or "NORMAL"
+            ),
+            "recovery_family": str(
+                attempt.get("recovery_family") or "NORMAL"
+            ),
             "route": str(attempt.get("bound_lane") or call.get("route_lane") or ""),
             "route_fingerprint": str(call.get("route_fingerprint") or ""),
             "provider_operator": str(call.get("provider_operator") or ""),
@@ -1309,22 +1323,42 @@ class _LogicalStagePlanDiscoveryObserver:
 
     def bind_stage_context(self, **value: Any) -> None:
         stage_id = str(value["stage_id"])
-        occurrence = 1 + sum(
-            item["logical_stage_base_id"] == stage_id
-            for item in self.logical_stage_plan
-        )
+        contract_attempt_index = value.get("contract_attempt_index")
+        prior_stage_attempts = [
+            item for item in self.logical_stage_plan
+            if item["logical_stage_base_id"] == stage_id
+        ]
+        if (
+            type(contract_attempt_index) is int
+            and contract_attempt_index > 1
+            and prior_stage_attempts
+        ):
+            logical_stage_id = prior_stage_attempts[-1]["logical_stage_id"]
+        else:
+            occurrence = 1 + sum(
+                item["logical_stage_base_id"] == stage_id
+                and (
+                    item.get("contract_attempt_index") in {None, 1}
+                )
+                for item in self.logical_stage_plan
+            )
+            logical_stage_id = full_short_logical_stage_id_v1(
+                stage_id, occurrence,
+            )
         self.pending = {
             "stage_id": stage_id,
             "logical_stage_base_id": stage_id,
-            "logical_stage_id": full_short_logical_stage_id_v1(
-                stage_id, occurrence,
-            ),
+            "logical_stage_id": logical_stage_id,
             "contract_name": str(value["contract_name"]),
             "contract_version": int(value["contract_version"]),
             "contract_schema_sha256": str(value["contract_schema_sha256"]),
             "contract_runtime_input_required": bool(
                 value.get("contract_runtime_input_required")
             ),
+            "contract_attempt_index": contract_attempt_index,
+            "contract_route": value.get("contract_route"),
+            "contract_route_attempt": value.get("contract_route_attempt"),
+            "stage_role": str(value.get("stage_role") or "NORMAL"),
         }
 
     def bind_route(
@@ -1368,6 +1402,10 @@ class _LogicalStagePlanDiscoveryObserver:
                 "contract_version": 1,
                 "contract_schema_sha256": _domain(schema_value),
                 "contract_runtime_input_required": bool(response_schema),
+                "contract_attempt_index": None,
+                "contract_route": None,
+                "contract_route_attempt": None,
+                "stage_role": "NORMAL",
             }
         self.pending["requested_output_tokens"] = int(
             request.max_output_tokens or 8192
