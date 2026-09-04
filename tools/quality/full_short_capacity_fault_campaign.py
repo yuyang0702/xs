@@ -20,6 +20,12 @@ from novel_flywheel.full_short_runtime_kernel import (
     FullShortExecutionKernel,
     RecoveryDecisionKind,
 )
+from novel_flywheel.full_short_execution import (
+    FullShortDispatchLedgerObserverV1,
+    FullShortDurableExecutionStoreV1,
+    FullShortExecutionBoundaryError,
+    FullShortExecutionPolicyV1,
+)
 from novel_flywheel.stage_capacity import (
     AdmissionStatus,
     CAPACITY_BOUNDARY_ID_V1,
@@ -619,6 +625,176 @@ def _pass_v3(scenario_id: str, primitive: str, scope: str, **evidence: object) -
     return payload
 
 
+def _durable_observer_fixture_v3(
+    artifact_dir: Path, scenario_id: str,
+) -> tuple[
+    FullShortDurableExecutionStoreV1,
+    FullShortDispatchLedgerObserverV1,
+    dict[str, object],
+    tuple[dict[str, object], ...],
+    dict[str, object],
+]:
+    """Create a disabled-actions production observer with durable authority."""
+
+    fixture_root = artifact_dir / (scenario_id + "-observer")
+    repo_root = fixture_root / "repo"
+    repo_root.mkdir(parents=True)
+    store = FullShortDurableExecutionStoreV1(
+        repo_root=repo_root, store_root=fixture_root / "store",
+    )
+    routes: tuple[dict[str, object], ...] = ({
+        "role": "planning", "lane": "primary",
+        "provider_id_sha256": hashlib.sha256(b"provider").hexdigest(),
+        "model_id_sha256": hashlib.sha256(b"model-id").hexdigest(),
+        "model_name": "offline", "protocol": "anthropic",
+        "route_fingerprint": "9" * 64,
+        "destination": "https://unit.test:443/v1/messages",
+        "max_output_tokens": 4096,
+        "route_context_capability_limit_tokens": 32768,
+        "route_context_capability_source": "model_configuration",
+    },)
+    egress_policy: dict[str, object] = {
+        "allowed": [
+            "system_context", "task_contract", "authority", "story_slice",
+            "current_baseline_skill_context", "output_contract",
+            "provider_request_metadata",
+        ],
+        "forbidden": [
+            "credentials", "unrelated_project_data", "raw_provider_evidence",
+            "retired_skill_v3_hybrid_context",
+        ],
+    }
+    logical_plan = ({
+        "ordinal": 1,
+        "stage_id": "planning",
+        "logical_stage_base_id": "planning",
+        "logical_stage_id": "planning",
+        "role": "planning",
+        "route_lane": "primary",
+        "contract_name": "unstructured_text",
+        "contract_version": 1,
+        "contract_schema_sha256": _sha256({}),
+        "contract_runtime_input_required": False,
+        "requested_output_tokens": 128,
+    },)
+    policy = FullShortExecutionPolicyV1(
+        execution_head="a" * 40,
+        branch="capacity-v3",
+        run_id="capacity-v3",
+        project_id_sha256="b" * 64,
+        workload_sha256="c" * 64,
+        runtime_authority_sha256="d" * 64,
+        style_reference_authority_sha256="e" * 64,
+        route_manifest_sha256=_sha256(list(routes)),
+        destination_manifest_sha256=_sha256([
+            "https://unit.test:443/v1/messages",
+        ]),
+        egress_policy_sha256=_sha256(egress_policy),
+        store_root_sha256=store.store_root_sha256,
+        capture_attestation_public_key=store.capture_attestation_public_key,
+        capture_attestation_public_key_sha256=(
+            store.capture_attestation_public_key_sha256
+        ),
+        required_stage_roles=("planning",),
+        logical_stage_plan=logical_plan,
+        expected_stage_calls=1,
+        hard_max_provider_requests=4,
+        hard_max_http_posts=4,
+        hard_max_network_attempts=4,
+        per_call_output_token_hard_cap=4096,
+        total_output_token_hard_cap=4096,
+        maximum_elapsed_seconds=60,
+    ).document()
+    execution_id = "capacity-v3-" + scenario_id
+    permission = store.create_permission(
+        execution_id=execution_id,
+        authorization_text_sha256="3" * 64,
+        policy=policy,
+        external_actions_enabled=False,
+    )
+    approval = store.create_jit_approval(
+        execution_id=execution_id,
+        policy=policy,
+        permission=permission,
+        external_actions_enabled=False,
+    )
+    store.reserve_nonce(
+        execution_id=execution_id,
+        policy=policy,
+        approval=approval,
+        external_actions_enabled=False,
+    )
+    observer = FullShortDispatchLedgerObserverV1(
+        store=store,
+        execution_id=execution_id,
+        policy=policy,
+        authorized_routes=routes,
+        egress_policy=egress_policy,
+        session_id="capacity-v3-first-process",
+        external_actions_enabled=False,
+    )
+    return store, observer, policy, routes, egress_policy
+
+
+def _observer_capacity_plan_v3(
+    observer: FullShortDispatchLedgerObserverV1,
+):
+    expected = observer._next_logical_stage_plan_entry()
+    context = observer.capacity_admission_context(
+        route="primary", role="planning", physical_attempt=1,
+    )
+    rendered_request_sha256 = hashlib.sha256(b"\n\0").hexdigest()
+    plan = build_stage_capacity_plan_v1(
+        stage_id=str(expected["stage_id"]),
+        logical_stage_id=str(context["logical_stage_id"]),
+        physical_attempt=int(context["physical_attempt"]),
+        physical_attempt_id=str(context["physical_attempt_id"]),
+        global_physical_attempt_ordinal=int(
+            context["global_physical_attempt_ordinal"]
+        ),
+        logical_capacity_envelope_sha256=str(
+            context["logical_capacity_envelope_sha256"]
+        ),
+        route_capability_snapshot_sha256=str(
+            context["route_capability_snapshot_sha256"]
+        ),
+        stage="planning",
+        contract_name=str(expected["contract_name"]),
+        contract_version=int(expected["contract_version"]),
+        contract_schema_sha256=str(expected["contract_schema_sha256"]),
+        provider_route_identity_sha256=str(
+            context["provider_route_identity_sha256"]
+        ),
+        model_context_limit=int(
+            context["route_context_capability_limit_tokens"]
+        ),
+        route_context_capability_source=str(
+            context["route_context_capability_source"]
+        ),
+        requested_output_token_cap=int(expected["requested_output_tokens"]),
+        route_max_output_tokens=int(context["route_max_output_tokens"]),
+        final_output_reserve=int(expected["requested_output_tokens"]),
+        reasoning_token_reserve=int(context["reasoning_token_reserve"]),
+        reasoning_token_accounting=str(
+            context["reasoning_token_accounting"]
+        ),
+        reasoning_output_reservation=str(
+            context["reasoning_output_reservation"]
+        ),
+        recovery_stage_role=str(context["recovery_stage_role"]),
+        reasoning_policy=str(context["reasoning_policy"]),
+        rendered_message_tokens=0,
+        structured_envelope_tokens=0,
+        provider_envelope_tokens=256,
+        wrapper_and_estimator_margin_tokens=1024,
+        rendered_request_sha256=rendered_request_sha256,
+        layer_projections=(),
+        parent_plan_sha256=None,
+    )
+    observer.bind_capacity_plan(plan=plan, route="primary", role="planning")
+    return plan, context
+
+
 def _capacity_failure_v3(
     scenario_id: str, primitive: str, expected: str, operation, journal_path: Path,
 ) -> dict[str, object]:
@@ -740,20 +916,82 @@ def _run_v3_probe(scenario_id: str, artifact_dir: Path) -> dict[str, object]:
         assert all(item.admission_status is AdmissionStatus.PASS for item in children)
         return _pass_v3(scenario_id, "build_stage_capacity_plan_v1+capacity_failure_recovery_disposition_v1", "PRODUCTION_STAGE_CAPACITY_ONLY_NOT_FULL_SHORT", parent_status=parent.admission_status.value, child_count=len(children), complete_token_coverage=sum(item.rendered_message_tokens for item in children))
     if scenario_id == "restart_after_logical_envelope":
-        first = _plan_v3(logical_capacity_envelope_sha256="1" * 64, route_capability_snapshot_sha256="2" * 64, physical_attempt_id="physical-first", global_physical_attempt_ordinal=1, route_context_capability_source=RouteContextCapabilitySourceV1.ROUTE_CAPABILITY_REGISTRY)
-        rebuilt = _plan_v3(logical_capacity_envelope_sha256="1" * 64, route_capability_snapshot_sha256="2" * 64, physical_attempt_id="physical-first", global_physical_attempt_ordinal=1, route_context_capability_source=RouteContextCapabilitySourceV1.ROUTE_CAPABILITY_REGISTRY)
-        assert first == rebuilt
-        return _pass_v3(scenario_id, "build_stage_capacity_plan_v1", "DETERMINISTIC_PLAN_REBUILD_NOT_DURABLE_OBSERVER_RESTART", envelope_stable=True)
-    if scenario_id == "restart_after_physical_plan":
-        plan = _plan_v3(logical_capacity_envelope_sha256="1" * 64, route_capability_snapshot_sha256="2" * 64, physical_attempt_id="physical-first", global_physical_attempt_ordinal=1, route_context_capability_source=RouteContextCapabilitySourceV1.ROUTE_CAPABILITY_REGISTRY)
-        StageCapacityAdmissionEngineV1.enforce(plan)
+        store, observer, policy, routes, egress_policy = (
+            _durable_observer_fixture_v3(artifact_dir, scenario_id)
+        )
+        first = observer.capacity_admission_context(
+            route="primary", role="planning", physical_attempt=1,
+        )
+        reopened_store = FullShortDurableExecutionStoreV1(
+            repo_root=store.repo_root, store_root=store.root,
+        )
         try:
-            replace(plan, physical_attempt_id="physical-tampered")
-        except ValueError as exc:
-            assert str(exc) == "capacity_plan_sha256_mismatch"
+            FullShortDispatchLedgerObserverV1(
+                store=reopened_store,
+                execution_id="capacity-v3-" + scenario_id,
+                policy=policy,
+                authorized_routes=routes,
+                egress_policy=egress_policy,
+                session_id="capacity-v3-restarted-process",
+                external_actions_enabled=False,
+            )
+        except FullShortExecutionBoundaryError as exc:
+            assert exc.reason_code == "OBSERVER_ALREADY_CLAIMED_NO_RESTART"
         else:
-            raise AssertionError("tampered_physical_plan_was_accepted")
-        return _pass_v3(scenario_id, "StageCapacityAdmissionEngineV1.enforce", "HASH_REVALIDATION_NOT_DURABLE_OBSERVER_RESTART", physical_plan_revalidated=True, tamper_rejected=True)
+            raise AssertionError("logical_envelope_restart_was_not_blocked")
+        ledger = reopened_store.load_ledger("capacity-v3-" + scenario_id)
+        return _pass_v3(
+            scenario_id,
+            "FullShortDispatchLedgerObserverV1.capacity_admission_context",
+            "DURABLE_OBSERVER_RESTART_FAIL_CLOSED",
+            logical_capacity_envelope_bound=(
+                isinstance(first["logical_capacity_envelope_sha256"], str)
+                and len(first["logical_capacity_envelope_sha256"]) == 64
+            ),
+            reopened_durable_store=True,
+            restart_blocked=True,
+            restart_reason="OBSERVER_ALREADY_CLAIMED_NO_RESTART",
+            dispatch_attempt_count=len(ledger["attempts"]),
+        )
+    if scenario_id == "restart_after_physical_plan":
+        store, observer, policy, routes, egress_policy = (
+            _durable_observer_fixture_v3(artifact_dir, scenario_id)
+        )
+        plan, _ = _observer_capacity_plan_v3(observer)
+        reopened_store = FullShortDurableExecutionStoreV1(
+            repo_root=store.repo_root, store_root=store.root,
+        )
+        receipt = reopened_store.load_capacity_admission_receipt(
+            execution_id="capacity-v3-" + scenario_id,
+            plan_sha256=plan.plan_sha256,
+        )
+        try:
+            FullShortDispatchLedgerObserverV1(
+                store=reopened_store,
+                execution_id="capacity-v3-" + scenario_id,
+                policy=policy,
+                authorized_routes=routes,
+                egress_policy=egress_policy,
+                session_id="capacity-v3-restarted-process",
+                external_actions_enabled=False,
+            )
+        except FullShortExecutionBoundaryError as exc:
+            assert exc.reason_code == "OBSERVER_ALREADY_CLAIMED_NO_RESTART"
+        else:
+            raise AssertionError("physical_plan_restart_was_not_blocked")
+        ledger = reopened_store.load_ledger("capacity-v3-" + scenario_id)
+        return _pass_v3(
+            scenario_id,
+            "FullShortDispatchLedgerObserverV1.bind_capacity_plan",
+            "DURABLE_PHYSICAL_PLAN_REOPEN_AND_RESTART_FAIL_CLOSED",
+            physical_plan_reopened=(
+                receipt["capacity_plan_sha256"] == plan.plan_sha256
+                and receipt["state"] == "PLAN_BOUND_UNCONSUMED"
+            ),
+            restart_blocked=True,
+            restart_reason="OBSERVER_ALREADY_CLAIMED_NO_RESTART",
+            dispatch_attempt_count=len(ledger["attempts"]),
+        )
     raise AssertionError("unknown_v3_scenario:" + scenario_id)
 
 
@@ -784,7 +1022,7 @@ def run_capacity_fault_campaign_v3(artifact_dir: Path) -> dict[str, object]:
         "static_policy_assertion_count": 0,
         "v3_capacity_fault_injection_coverage": "100_PERCENT",
         "coverage_kind": "NAMED_PRODUCTION_PRIMITIVE_BEHAVIOR",
-        "production_observer_behavior_coverage_claimed": False,
+        "production_observer_behavior_coverage_claimed": True,
         "production_shaped_integration_tests": [
             "tests/test_full_short_execution.py",
             "tests/canary/test_full_short_runner_hardening.py",
@@ -792,7 +1030,7 @@ def run_capacity_fault_campaign_v3(artifact_dir: Path) -> dict[str, object]:
         ],
         "narrow_scope_scenarios": {
             "17_18": "stage capacity and semantic split only; not Full Short",
-            "19_20": "deterministic plan rebuild/hash validation only; not durable observer restart",
+            "19_20": "durable store reopen and production observer restart fail-closed behavior",
         },
         "external_actions_disabled": True,
         "credential_lookup_count": 0,

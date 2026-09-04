@@ -10,7 +10,11 @@ from novel_flywheel.provider_output import provider_output_shape_from_response
 from novel_flywheel.providers.anthropic import AnthropicAdapter
 from novel_flywheel.providers.http import ProviderResponseError
 from novel_flywheel.providers.openai_chat import OpenAIChatAdapter
-from novel_flywheel.providers.openai_responses import OpenAIResponsesAdapter
+from novel_flywheel.providers.openai_responses import (
+    OpenAIResponsesAdapter,
+    OpenAIResponsesProjectionMismatchError,
+)
+from novel_flywheel.recovery_engine import FailureClass
 
 
 REQUEST = ModelRequest(model="writer", messages=[Message(role="user", content="写作")])
@@ -540,11 +544,19 @@ def test_openai_responses_replay_rejects_conflicting_delta_and_terminal_text() -
     ).encode("utf-8")
 
     with pytest.raises(
-        ValueError, match="openai_responses_visible_text_projection_mismatch",
-    ):
+        OpenAIResponsesProjectionMismatchError,
+        match="openai_responses_visible_text_projection_mismatch",
+    ) as caught:
         OpenAIResponsesAdapter.replay_protocol_input_bytes_v1(
             payload, content_type="text/event-stream",
         )
+    assert caught.value.reliability_failure.code == (
+        "openai_responses_visible_text_projection_mismatch"
+    )
+    assert caught.value.reliability_failure.failure_class is (
+        FailureClass.SYNTAX_PROTOCOL
+    )
+    assert caught.value.reliability_failure.retryable is False
 
 
 def test_openai_responses_top_level_output_text_has_exact_replay_shape() -> None:

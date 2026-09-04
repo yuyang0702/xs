@@ -92,11 +92,45 @@ def _service(
     return db, store, project, service
 
 
+def _install_offline_capacity_metadata(db: Database) -> None:
+    """Give production-shaped fake runs explicit, non-guessed route limits."""
+
+    db.save_provider(
+        provider_id="offline-phase05",
+        name="Offline Phase 0.5",
+        protocol="anthropic",
+        base_url="https://offline-phase05.test",
+        auth_type="bearer",
+        timeout_seconds=180,
+        extra_headers={},
+    )
+    db.save_model(
+        model_id="offline-phase05-model",
+        provider_id="offline-phase05",
+        display_name="Offline Phase 0.5 model",
+        model_name="offline-phase05-model",
+        context_window=32_768,
+        max_output_tokens=8_192,
+    )
+    for role in (
+        "planning", "draft", "review", "reader_review", "polish",
+        "final_review", "maintenance",
+    ):
+        db.save_role_binding(
+            role,
+            "offline-phase05",
+            "offline-phase05-model",
+            None,
+            None,
+        )
+
+
 async def _run_short(root: Path, *, trace_enabled: bool) -> dict:
     gateway = RecordingFakeGateway()
-    _db, _store, project, service = _service(
+    db, _store, project, service = _service(
         root, mode="short", gateway=gateway, title="Phase 05 Short",
     )
+    _install_offline_capacity_metadata(db)
     previous = os.environ.get("NOVEL_RELIABILITY_TRACE")
     os.environ["NOVEL_RELIABILITY_TRACE"] = "1" if trace_enabled else "0"
     try:
@@ -141,6 +175,7 @@ async def _run_short_resume(root: Path) -> dict:
     db, store, project, service = _service(
         root, mode="short", gateway=gateway, title="Phase 05 Resume",
     )
+    _install_offline_capacity_metadata(db)
     db.create_run(
         "phase05-resume-source", project.id, "short-story", status="failed",
     )
@@ -179,6 +214,7 @@ async def _run_long_chapters(
     )
     project = prepared["project"]
     setup_service = prepared["service"]
+    _install_offline_capacity_metadata(setup_service.db)
     run_ids = []
     for number in range(1, chapter_count + 1):
         service = WorkflowService(

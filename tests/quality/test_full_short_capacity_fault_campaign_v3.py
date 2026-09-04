@@ -79,13 +79,27 @@ def test_capacity_failures_are_produced_and_durably_classified(report) -> None:
 
 
 def test_report_states_narrow_scope_instead_of_claiming_observer_or_full_short(report) -> None:
-    assert report["production_observer_behavior_coverage_claimed"] is False
+    assert report["production_observer_behavior_coverage_claimed"] is True
     assert "not Full Short" in report["narrow_scope_scenarios"]["17_18"]
-    assert "not durable observer restart" in report["narrow_scope_scenarios"]["19_20"]
+    assert "durable store reopen" in report["narrow_scope_scenarios"]["19_20"]
     assert report["credential_lookup_count"] == 0
     assert report["network_call_count"] == 0
     assert report["model_call_count"] == 0
     assert report["full_short_execution_count"] == 0
+
+
+def test_restart_probes_reopen_durable_state_and_fail_closed_without_dispatch(
+    report,
+) -> None:
+    by_id = {item["scenario_id"]: item for item in report["results"]}
+    logical = by_id["restart_after_logical_envelope"]
+    physical = by_id["restart_after_physical_plan"]
+    assert logical["reopened_durable_store"] is True
+    assert physical["physical_plan_reopened"] is True
+    for item in (logical, physical):
+        assert item["restart_blocked"] is True
+        assert item["restart_reason"] == "OBSERVER_ALREADY_CLAIMED_NO_RESTART"
+        assert item["dispatch_attempt_count"] == 0
 
 
 def test_a_missing_behavior_probe_makes_campaign_fail(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

@@ -1,6 +1,7 @@
 import json
 
 from novel_flywheel.domain.models import ModelRequest, ModelResponse, ToolCall
+from novel_flywheel.recovery_engine import FailureClass, ReliabilityFailure
 from novel_flywheel.model_diagnostics import (
     attach_exception_snapshot,
     provider_snapshot_with_status,
@@ -22,6 +23,22 @@ from novel_flywheel.provider_response_capture import (
 )
 
 
+class OpenAIResponsesProjectionMismatchError(ValueError):
+    """Contradictory provider-visible text projections cannot be replayed."""
+
+    reason_code = "openai_responses_visible_text_projection_mismatch"
+
+    def __init__(self) -> None:
+        self.reliability_failure = ReliabilityFailure(
+            code=self.reason_code,
+            failure_class=FailureClass.SYNTAX_PROTOCOL,
+            boundary="openai_responses.visible_text_projection",
+            message="",
+            retryable=False,
+        )
+        super().__init__(self.reason_code)
+
+
 def _output_text(body: dict) -> str:
     parts: list[str] = []
     for item in body.get("output", []):
@@ -39,7 +56,7 @@ def _resolved_visible_text(body: dict, streamed_text: str) -> str:
     nested = _output_text(body)
     candidates = [value for value in (top_level, nested, streamed_text) if value]
     if candidates and any(value != candidates[0] for value in candidates[1:]):
-        raise ValueError("openai_responses_visible_text_projection_mismatch")
+        raise OpenAIResponsesProjectionMismatchError()
     return candidates[0] if candidates else ""
 
 

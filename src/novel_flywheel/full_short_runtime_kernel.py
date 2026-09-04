@@ -34,6 +34,11 @@ _SOURCE_FAILURE_BINDINGS_V1 = {
         "novel_flywheel.models",
         "ReasoningOnlyFinalArtifactUnavailableError",
     ): "planning.reasoning_only_no_final",
+    (
+        "FS.DISPATCH.MODEL",
+        "novel_flywheel.providers.openai_responses",
+        "OpenAIResponsesProjectionMismatchError",
+    ): "provider.response_projection_mismatch",
 }
 
 
@@ -464,6 +469,11 @@ _FAILURES = (
         "restart.local_replay.v1",
     ),
     FailureSpecV1(
+        "provider.response_projection_mismatch",
+        "provider.response_projection_mismatch", "provider.protocol",
+        RecoveryDecisionKind.FAIL_CLOSED, "restart.forbidden.v1",
+    ),
+    FailureSpecV1(
         "contract.validation_rejected", "contract.validation_rejected",
         "contract.validation", RecoveryDecisionKind.LOCAL_REPAIR,
         "restart.same_logical_stage.v1",
@@ -637,6 +647,7 @@ _BOUNDARIES = (
         "RESPONSE_CAPTURED", "provider.configuration_invalid",
         "provider.credential_unavailable", "provider.transport_pre_dispatch",
         "provider.transport_ambiguous", "provider.capture_replay_available",
+        "provider.response_projection_mismatch",
         "planning.reasoning_only_no_final",
     ),
     _boundary(
@@ -848,6 +859,7 @@ _ENVELOPE_FAILURE_CLASS_V1: dict[str, FailureClass] = {
     "provider.transport_pre_dispatch": FailureClass.TRANSPORT,
     "provider.transport_ambiguous": FailureClass.TRANSPORT,
     "provider.capture_replay_available": FailureClass.SYNTAX_PROTOCOL,
+    "provider.response_projection_mismatch": FailureClass.SYNTAX_PROTOCOL,
     "contract.validation_rejected": FailureClass.SYNTAX_PROTOCOL,
     "checkpoint.persistence_failed": FailureClass.CAPABILITY,
     "authority.stale": FailureClass.STALE_AUTHORITY,

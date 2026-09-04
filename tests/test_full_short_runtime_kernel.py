@@ -34,6 +34,9 @@ from novel_flywheel.project_transactions import (
 from novel_flywheel.models import (
     ReasoningOnlyFinalArtifactUnavailableError,
 )
+from novel_flywheel.providers.openai_responses import (
+    OpenAIResponsesAdapter,
+)
 from novel_flywheel.completion_supervisor import classify_completion_failure
 from novel_flywheel.execution_failure_architecture import (
     build_durable_failure_evidence,
@@ -241,6 +244,48 @@ async def test_unexpected_reason_code_cannot_persist_secretlike_content(
     assert envelope.classification == FailureClassification.UNEXPECTED
     assert envelope.source_reason_code is None
     assert marker.encode("ascii") not in journal.path.read_bytes()
+
+
+@pytest.mark.asyncio
+async def test_responses_projection_mismatch_is_known_and_never_redispatches(
+    tmp_path: Path,
+) -> None:
+    journal = DurableExecutionJournalV1.create(
+        tmp_path / "responses-projection-mismatch.json",
+        execution_id="offline-execution",
+        initial_state=ExecutionState.RESPONSE_CAPTURED,
+    )
+    kernel = FullShortExecutionKernel(
+        registry=DEFAULT_FAILURE_BOUNDARY_REGISTRY_V1,
+        journal=journal,
+    )
+    payload = (
+        'data: {"type":"response.output_text.delta","delta":"draft"}\n\n'
+        'data: {"type":"response.completed","response":{"id":"resp",'
+        '"status":"completed","output":[{"type":"message","content":['
+        '{"type":"output_text","text":"final"}]}]}}\n\n'
+    ).encode("utf-8")
+
+    async def replay_conflict() -> None:
+        OpenAIResponsesAdapter.replay_protocol_input_bytes_v1(
+            payload, content_type="text/event-stream",
+        )
+
+    with pytest.raises(FullShortBoundaryFailureV1) as caught:
+        await kernel.execute_boundary("FS.DISPATCH.MODEL", replay_conflict)
+
+    envelope = caught.value.envelope
+    assert envelope.classification is FailureClassification.KNOWN
+    assert envelope.failure_code == "provider.response_projection_mismatch"
+    assert envelope.recovery_decision is RecoveryDecisionKind.FAIL_CLOSED
+    assert envelope.source_exception_class == (
+        "OpenAIResponsesProjectionMismatchError"
+    )
+    reopened = DurableExecutionJournalV1.open(journal.path)
+    assert reopened.state is ExecutionState.TERMINAL_FAILED
+    assert reopened.dispatch_token_receipts == []
+    assert len(reopened.failure_receipts) == 1
+    assert reopened.failure_receipts[0].failure_envelope == envelope
 
 
 @pytest.mark.asyncio
