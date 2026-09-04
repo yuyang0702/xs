@@ -135,11 +135,34 @@ def discover(
                 and int(plan.get("requested_output_token_cap") or 0)
                 == int(call.get("provider_wire_requested_output_tokens") or 0)
                 and plan.get("stage_id") == stage.get("stage_id")
+                and plan.get("route") == stage.get("route_lane")
                 and plan.get("plan_sha256") not in used_plan_shas
             ]
             if len(candidates) != 1:
                 raise RuntimeError(
-                    "FULL_SHORT_DISCOVERY_CAPACITY_PLAN_JOIN_INCOMPLETE"
+                    "FULL_SHORT_DISCOVERY_CAPACITY_PLAN_JOIN_INCOMPLETE:"
+                    + json.dumps({
+                        "call_ordinal": call.get("ordinal"),
+                        "stage_id": stage.get("stage_id"),
+                        "rendered_request_sha256": call.get(
+                            "rendered_request_sha256"
+                        ),
+                        "requested_output_tokens": call.get(
+                            "provider_wire_requested_output_tokens"
+                        ),
+                        "plan_count": len(plan_documents),
+                        "same_rendered_sha_count": sum(
+                            plan.get("rendered_request_sha256")
+                            == call.get("rendered_request_sha256")
+                            for plan in plan_documents
+                        ),
+                        "same_stage_count": sum(
+                            plan.get("stage_id") == stage.get("stage_id")
+                            for plan in plan_documents
+                        ),
+                        "route_lane": stage.get("route_lane"),
+                        "candidate_count": len(candidates),
+                    }, sort_keys=True)
                 )
             joined.append(candidates[0])
             used_plan_shas.add(str(candidates[0]["plan_sha256"]))
