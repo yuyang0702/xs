@@ -448,7 +448,12 @@ def _safe_request_plan_entry_v1(
         return estimate_input_tokens(marker + value)
 
     rendered = system + "\n" + user
-    rendered_sha256 = hashlib.sha256(rendered.encode("utf-8")).hexdigest()
+    rendered_message_sha256 = hashlib.sha256(
+        rendered.encode("utf-8")
+    ).hexdigest()
+    rendered_request_sha256 = hashlib.sha256(
+        (system + "\n\0" + user).encode("utf-8")
+    ).hexdigest()
     wire_payload = json.dumps(
         payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"),
     )
@@ -484,7 +489,8 @@ def _safe_request_plan_entry_v1(
         ),
         "input_estimator_identity": "context_policy.estimate_input_tokens.v1",
         "protocol_overhead_tokens": 256,
-        "rendered_request_sha256": rendered_sha256,
+        "rendered_message_sha256": rendered_message_sha256,
+        "rendered_request_sha256": rendered_request_sha256,
         "destination_sha256": hashlib.sha256(
             destination.encode("utf-8"),
         ).hexdigest(),
