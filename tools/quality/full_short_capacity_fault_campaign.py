@@ -1052,7 +1052,7 @@ def _run_v3_probe(scenario_id: str, artifact_dir: Path) -> dict[str, object]:
         changes = {
             "legitimate_recovery_attempt_delta": {},
             "illegal_route_delta": {"provider_route_identity_sha256": "9" * 64},
-            "illegal_authority_delta": {"physical_attempt_id": "physical-first"},
+            "illegal_authority_delta": {"logical_capacity_envelope_sha256": "8" * 64},
             "illegal_output_cap_delta": {"requested_output_token_cap": 2_315},
         }[scenario_id]
         prior, candidate = _recovery_pair_v3(**changes)
