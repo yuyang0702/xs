@@ -31094,6 +31094,8 @@ class WorkflowService:
                         {
                             "schema": "StageCapacityPlanReceiptV1",
                             "version": 1,
+                            "route": route,
+                            "role": gateway_role,
                             "raw_prompt_persisted": False,
                             "plan": asdict(plan),
                         },

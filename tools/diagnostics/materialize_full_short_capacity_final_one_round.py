@@ -124,7 +124,11 @@ def discover(
             document = json.loads(read_text_long_path(path))
             plan = document.get("plan") if isinstance(document, dict) else None
             if isinstance(plan, dict):
-                plan_documents.append(plan)
+                plan_documents.append({
+                    **plan,
+                    "_receipt_route": document.get("route"),
+                    "_receipt_role": document.get("role"),
+                })
         joined: list[dict[str, Any]] = []
         used_plan_shas: set[str] = set()
         for call, stage in zip(calls, logical, strict=True):
@@ -135,13 +139,8 @@ def discover(
                 and int(plan.get("requested_output_token_cap") or 0)
                 == int(call.get("provider_wire_requested_output_tokens") or 0)
                 and plan.get("stage_id") == stage.get("stage_id")
-                and plan.get("provider_route_identity_sha256") == sha_json({
-                    "role": call.get("role"),
-                    "route": stage.get("route_lane"),
-                    "context_window": plan.get(
-                        "route_context_capability_limit_tokens"
-                    ),
-                })
+                and plan.get("_receipt_route") == stage.get("route_lane")
+                and plan.get("_receipt_role") == call.get("role")
                 and plan.get("plan_sha256") not in used_plan_shas
             ]
             if len(candidates) != 1:
