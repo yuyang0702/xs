@@ -7,11 +7,11 @@
   "model_call_count": 0,
   "narrow_scope_scenarios": {
     "17_18": "stage capacity and semantic split only; not Full Short",
-    "19_20": "deterministic plan rebuild/hash validation only; not durable observer restart"
+    "19_20": "sequential OS subprocess durable store reopen and production observer restart fail-closed behavior"
   },
   "network_call_count": 0,
   "paid_call_count": 0,
-  "production_observer_behavior_coverage_claimed": false,
+  "production_observer_behavior_coverage_claimed": true,
   "production_primitive_scenario_count": 20,
   "production_shaped_integration_tests": [
     "tests/test_full_short_execution.py",
@@ -21,7 +21,7 @@
   "provider_client_creation_count": 0,
   "registered_capacity_failure_count": 16,
   "registered_capacity_failure_coverage": "REGISTRY_MEMBERSHIP_ONLY",
-  "report_sha256": "ffc2bcaa5695e9f2ee8f2d942cccd6c0b9d117c49e7a3aaa169b1646c4bf6b93",
+  "report_sha256": "f1a99d736794096f3c202c6223e7bb54ef90211e9e26a897c855d3f5bb7c435a",
   "results": [
     {
       "dispatch_attempt_count": 0,
@@ -283,14 +283,19 @@
     },
     {
       "dispatch_attempt_count": 0,
-      "envelope_stable": true,
       "execution_mode": "PRODUCTION_PRIMITIVE",
       "failure_id": null,
-      "primitive": "build_stage_capacity_plan_v1",
-      "probe_scope": "DETERMINISTIC_PLAN_REBUILD_NOT_DURABLE_OBSERVER_RESTART",
+      "fresh_process_boundary": "SEQUENTIAL_OS_SUBPROCESS",
+      "logical_capacity_envelope_bound": true,
+      "physical_plan_reopened": null,
+      "primitive": "FullShortDispatchLedgerObserverV1.capacity_admission_context",
+      "probe_scope": "DURABLE_OBSERVER_RESTART_FAIL_CLOSED",
       "production_behavior_exercised": true,
-      "projection_sha256": "676874e2155e1ed7eb63e8dfe060563cbfa77d0ab1c21b55ba55db58b2155446",
+      "projection_sha256": "c2668e1798644f65c5f3d3729f6160a8e18f246cea9659e6bb199ee6ed5b64e6",
       "raw_content_persisted": false,
+      "reopened_durable_store": true,
+      "restart_blocked": true,
+      "restart_reason": "OBSERVER_ALREADY_CLAIMED_NO_RESTART",
       "scenario_id": "restart_after_logical_envelope",
       "status": "PASS"
     },
@@ -298,22 +303,26 @@
       "dispatch_attempt_count": 0,
       "execution_mode": "PRODUCTION_PRIMITIVE",
       "failure_id": null,
-      "physical_plan_revalidated": true,
-      "primitive": "StageCapacityAdmissionEngineV1.enforce",
-      "probe_scope": "HASH_REVALIDATION_NOT_DURABLE_OBSERVER_RESTART",
+      "fresh_process_boundary": "SEQUENTIAL_OS_SUBPROCESS",
+      "logical_capacity_envelope_bound": null,
+      "physical_plan_reopened": true,
+      "primitive": "FullShortDispatchLedgerObserverV1.bind_capacity_plan",
+      "probe_scope": "DURABLE_PHYSICAL_PLAN_REOPEN_AND_RESTART_FAIL_CLOSED",
       "production_behavior_exercised": true,
-      "projection_sha256": "c8b32a6380f06f83b5eede50190fb2050b7da1e44a3c2fe9303dea1bd0c44353",
+      "projection_sha256": "8bc8710dea48f7ec521917f24fcb13064049f645c41eda4d5a2f389f2807e2e7",
       "raw_content_persisted": false,
+      "reopened_durable_store": true,
+      "restart_blocked": true,
+      "restart_reason": "OBSERVER_ALREADY_CLAIMED_NO_RESTART",
       "scenario_id": "restart_after_physical_plan",
-      "status": "PASS",
-      "tamper_rejected": true
+      "status": "PASS"
     }
   ],
   "scenario_coverage": "20_PRODUCTION_PRIMITIVE_PROBES",
   "schema_version": "FullShortCapacityFaultCampaignV3",
-  "source_boundary_registry_sha256": "251f409cef60408c51e4ae8322a44f812e8beb437926251010602dfb56f6f117",
+  "source_boundary_registry_sha256": "9a250f92ac2df5012934742d7d28968a21863fbeef7e333f93befd2ff640b099",
   "source_capacity_policy_registry_sha256": "97c152c2d4a93067ee5425359c1dc2a6eeee16a9280c79ef0dd63c3809138685",
-  "source_fault_registry_sha256": "f96c522eb2b0a6be58f9a175eaf84fe6c1e38c515e40af15f48d832fcd6a3c4c",
+  "source_fault_registry_sha256": "e162ba2b9cc68e1574c9749e67752865cc0b53ae983db0ee1a15b0b940c2d853",
   "static_policy_assertion_count": 0,
   "status": "PASS",
   "v3_capacity_fault_injection_coverage": "100_PERCENT"

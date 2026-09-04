@@ -1,7 +1,7 @@
 {
   "committed_source_truth_search_complete": true,
-  "discovered_candidate_occurrence_count": 951,
-  "discovered_candidate_value_count": 122,
+  "discovered_candidate_occurrence_count": 963,
+  "discovered_candidate_value_count": 124,
   "discovered_value_records": [
     {
       "capability_field": "output_limit",
@@ -1029,6 +1029,190 @@
       "trust_level": "LOCAL_OCCURRENCE_NOT_PROVIDER_CAPABILITY_PROOF",
       "used_by_historical_runtime": false,
       "value": 2000000
+    },
+    {
+      "capability_field": "context_historical_status_assertion",
+      "classification": "HISTORICAL_BUT_UNPROVEN",
+      "classification_code": "B",
+      "disposition": "REJECT_AS_ROUTE_CAPABILITY_UNLESS_SEPARATELY_PROVEN",
+      "eligible_for_verified_registry": false,
+      "local_artifact_provenance_available": true,
+      "original_evidence_date": null,
+      "original_source_path": "docs/superpowers/reports/c0b-p1-bounded-unknown-capability-matrix-v1.json",
+      "original_source_type": [
+        "capability_budget_reports",
+        "comments_docs",
+        "reports_tree"
+      ],
+      "provenance_available": false,
+      "raw_unit": "K",
+      "route_identity": null,
+      "source_evidence_sha256": "389b60f2eb6f241f18301fe62a6008e502a8f0e464d0d535bcbf5d5927bba221",
+      "source_line_number": 5,
+      "trust_level": "LOCAL_OCCURRENCE_NOT_PROVIDER_CAPABILITY_PROOF",
+      "used_by_historical_runtime": false,
+      "value": 372000
+    },
+    {
+      "capability_field": "context_historical_status_assertion",
+      "classification": "HISTORICAL_BUT_UNPROVEN",
+      "classification_code": "B",
+      "disposition": "REJECT_AS_ROUTE_CAPABILITY_UNLESS_SEPARATELY_PROVEN",
+      "eligible_for_verified_registry": false,
+      "local_artifact_provenance_available": true,
+      "original_evidence_date": null,
+      "original_source_path": "docs/superpowers/reports/c0b-p1-bounded-unknown-capability-matrix-v1.json",
+      "original_source_type": [
+        "capability_budget_reports",
+        "comments_docs",
+        "reports_tree"
+      ],
+      "provenance_available": false,
+      "raw_unit": "M",
+      "route_identity": null,
+      "source_evidence_sha256": "389b60f2eb6f241f18301fe62a6008e502a8f0e464d0d535bcbf5d5927bba221",
+      "source_line_number": 55,
+      "trust_level": "LOCAL_OCCURRENCE_NOT_PROVIDER_CAPABILITY_PROOF",
+      "used_by_historical_runtime": false,
+      "value": 1000000
+    },
+    {
+      "capability_field": "max_output_historical_status_assertion",
+      "classification": "HISTORICAL_BUT_UNPROVEN",
+      "classification_code": "B",
+      "disposition": "REJECT_AS_ROUTE_CAPABILITY_UNLESS_SEPARATELY_PROVEN",
+      "eligible_for_verified_registry": false,
+      "local_artifact_provenance_available": true,
+      "original_evidence_date": null,
+      "original_source_path": "docs/superpowers/reports/c0b-p1-bounded-unknown-capability-matrix-v1.json",
+      "original_source_type": [
+        "capability_budget_reports",
+        "comments_docs",
+        "reports_tree"
+      ],
+      "provenance_available": false,
+      "raw_unit": "K",
+      "route_identity": null,
+      "source_evidence_sha256": "389b60f2eb6f241f18301fe62a6008e502a8f0e464d0d535bcbf5d5927bba221",
+      "source_line_number": 57,
+      "trust_level": "LOCAL_OCCURRENCE_NOT_PROVIDER_CAPABILITY_PROOF",
+      "used_by_historical_runtime": false,
+      "value": 384000
+    },
+    {
+      "capability_field": "price_tier_boundary_marker_not_context",
+      "classification": "HISTORICAL_BUT_UNPROVEN",
+      "classification_code": "B",
+      "disposition": "REJECT_AS_ROUTE_CAPABILITY_UNLESS_SEPARATELY_PROVEN",
+      "eligible_for_verified_registry": false,
+      "local_artifact_provenance_available": true,
+      "original_evidence_date": null,
+      "original_source_path": "docs/superpowers/reports/c0b-p1-bounded-unknown-capability-matrix-v1.json",
+      "original_source_type": [
+        "capability_budget_reports",
+        "comments_docs",
+        "reports_tree"
+      ],
+      "provenance_available": false,
+      "raw_unit": "K",
+      "route_identity": null,
+      "source_evidence_sha256": "389b60f2eb6f241f18301fe62a6008e502a8f0e464d0d535bcbf5d5927bba221",
+      "source_line_number": 75,
+      "trust_level": "LOCAL_OCCURRENCE_NOT_PROVIDER_CAPABILITY_PROOF",
+      "used_by_historical_runtime": false,
+      "value": 256000
+    },
+    {
+      "capability_field": "context_historical_status_assertion",
+      "classification": "HISTORICAL_BUT_UNPROVEN",
+      "classification_code": "B",
+      "disposition": "REJECT_AS_ROUTE_CAPABILITY_UNLESS_SEPARATELY_PROVEN",
+      "eligible_for_verified_registry": false,
+      "local_artifact_provenance_available": true,
+      "original_evidence_date": null,
+      "original_source_path": "docs/superpowers/reports/c0b-p1-production-mirror-provider-evidence-matrix.json",
+      "original_source_type": [
+        "comments_docs",
+        "provider_model_config",
+        "reports_tree"
+      ],
+      "provenance_available": false,
+      "raw_unit": "K",
+      "route_identity": null,
+      "source_evidence_sha256": "c8940a139f15e491f083e648db67facb87fd6481e76a55312f1081ed0d1520c2",
+      "source_line_number": 4,
+      "trust_level": "LOCAL_OCCURRENCE_NOT_PROVIDER_CAPABILITY_PROOF",
+      "used_by_historical_runtime": false,
+      "value": 372000
+    },
+    {
+      "capability_field": "context_historical_status_assertion",
+      "classification": "HISTORICAL_BUT_UNPROVEN",
+      "classification_code": "B",
+      "disposition": "REJECT_AS_ROUTE_CAPABILITY_UNLESS_SEPARATELY_PROVEN",
+      "eligible_for_verified_registry": false,
+      "local_artifact_provenance_available": true,
+      "original_evidence_date": null,
+      "original_source_path": "docs/superpowers/reports/c0b-p1-production-mirror-provider-evidence-matrix.json",
+      "original_source_type": [
+        "comments_docs",
+        "provider_model_config",
+        "reports_tree"
+      ],
+      "provenance_available": false,
+      "raw_unit": "M",
+      "route_identity": null,
+      "source_evidence_sha256": "c8940a139f15e491f083e648db67facb87fd6481e76a55312f1081ed0d1520c2",
+      "source_line_number": 54,
+      "trust_level": "LOCAL_OCCURRENCE_NOT_PROVIDER_CAPABILITY_PROOF",
+      "used_by_historical_runtime": false,
+      "value": 1000000
+    },
+    {
+      "capability_field": "max_output_historical_status_assertion",
+      "classification": "HISTORICAL_BUT_UNPROVEN",
+      "classification_code": "B",
+      "disposition": "REJECT_AS_ROUTE_CAPABILITY_UNLESS_SEPARATELY_PROVEN",
+      "eligible_for_verified_registry": false,
+      "local_artifact_provenance_available": true,
+      "original_evidence_date": null,
+      "original_source_path": "docs/superpowers/reports/c0b-p1-production-mirror-provider-evidence-matrix.json",
+      "original_source_type": [
+        "comments_docs",
+        "provider_model_config",
+        "reports_tree"
+      ],
+      "provenance_available": false,
+      "raw_unit": "K",
+      "route_identity": null,
+      "source_evidence_sha256": "c8940a139f15e491f083e648db67facb87fd6481e76a55312f1081ed0d1520c2",
+      "source_line_number": 56,
+      "trust_level": "LOCAL_OCCURRENCE_NOT_PROVIDER_CAPABILITY_PROOF",
+      "used_by_historical_runtime": false,
+      "value": 384000
+    },
+    {
+      "capability_field": "price_tier_boundary_marker_not_context",
+      "classification": "HISTORICAL_BUT_UNPROVEN",
+      "classification_code": "B",
+      "disposition": "REJECT_AS_ROUTE_CAPABILITY_UNLESS_SEPARATELY_PROVEN",
+      "eligible_for_verified_registry": false,
+      "local_artifact_provenance_available": true,
+      "original_evidence_date": null,
+      "original_source_path": "docs/superpowers/reports/c0b-p1-production-mirror-provider-evidence-matrix.json",
+      "original_source_type": [
+        "comments_docs",
+        "provider_model_config",
+        "reports_tree"
+      ],
+      "provenance_available": false,
+      "raw_unit": "K",
+      "route_identity": null,
+      "source_evidence_sha256": "c8940a139f15e491f083e648db67facb87fd6481e76a55312f1081ed0d1520c2",
+      "source_line_number": 74,
+      "trust_level": "LOCAL_OCCURRENCE_NOT_PROVIDER_CAPABILITY_PROOF",
+      "used_by_historical_runtime": false,
+      "value": 256000
     },
     {
       "capability_field": "maximum_output_tokens",
@@ -20478,6 +20662,102 @@
       "value": 8798
     },
     {
+      "capability_field": "verified_historical_capacity_assertion",
+      "classification": "HISTORICAL_BUT_UNPROVEN",
+      "classification_code": "B",
+      "disposition": "REJECT_AS_ROUTE_CAPABILITY_UNLESS_SEPARATELY_PROVEN",
+      "eligible_for_verified_registry": false,
+      "local_artifact_provenance_available": true,
+      "original_evidence_date": null,
+      "original_source_path": "tools/canary/provider_matrix.py",
+      "original_source_type": [
+        "comments_docs",
+        "previous_approval_canary_packets",
+        "provider_model_config",
+        "route_manifests_provider_matrices"
+      ],
+      "provenance_available": false,
+      "raw_unit": "K",
+      "route_identity": null,
+      "source_evidence_sha256": "874cf01e9589ca6699bc14538a0e1461ff27c8891d3e5a3484e8490d048d02d7",
+      "source_line_number": 39,
+      "trust_level": "LOCAL_OCCURRENCE_NOT_PROVIDER_CAPABILITY_PROOF",
+      "used_by_historical_runtime": false,
+      "value": 372000
+    },
+    {
+      "capability_field": "verified_historical_capacity_assertion",
+      "classification": "HISTORICAL_BUT_UNPROVEN",
+      "classification_code": "B",
+      "disposition": "REJECT_AS_ROUTE_CAPABILITY_UNLESS_SEPARATELY_PROVEN",
+      "eligible_for_verified_registry": false,
+      "local_artifact_provenance_available": true,
+      "original_evidence_date": null,
+      "original_source_path": "tools/canary/provider_matrix.py",
+      "original_source_type": [
+        "comments_docs",
+        "previous_approval_canary_packets",
+        "provider_model_config",
+        "route_manifests_provider_matrices"
+      ],
+      "provenance_available": false,
+      "raw_unit": "M",
+      "route_identity": null,
+      "source_evidence_sha256": "874cf01e9589ca6699bc14538a0e1461ff27c8891d3e5a3484e8490d048d02d7",
+      "source_line_number": 44,
+      "trust_level": "LOCAL_OCCURRENCE_NOT_PROVIDER_CAPABILITY_PROOF",
+      "used_by_historical_runtime": false,
+      "value": 1000000
+    },
+    {
+      "capability_field": "verified_historical_capacity_assertion",
+      "classification": "HISTORICAL_BUT_UNPROVEN",
+      "classification_code": "B",
+      "disposition": "REJECT_AS_ROUTE_CAPABILITY_UNLESS_SEPARATELY_PROVEN",
+      "eligible_for_verified_registry": false,
+      "local_artifact_provenance_available": true,
+      "original_evidence_date": null,
+      "original_source_path": "tools/canary/provider_matrix.py",
+      "original_source_type": [
+        "comments_docs",
+        "previous_approval_canary_packets",
+        "provider_model_config",
+        "route_manifests_provider_matrices"
+      ],
+      "provenance_available": false,
+      "raw_unit": "K",
+      "route_identity": null,
+      "source_evidence_sha256": "874cf01e9589ca6699bc14538a0e1461ff27c8891d3e5a3484e8490d048d02d7",
+      "source_line_number": 44,
+      "trust_level": "LOCAL_OCCURRENCE_NOT_PROVIDER_CAPABILITY_PROOF",
+      "used_by_historical_runtime": false,
+      "value": 384000
+    },
+    {
+      "capability_field": "price_tier_boundary_marker_not_context",
+      "classification": "HISTORICAL_BUT_UNPROVEN",
+      "classification_code": "B",
+      "disposition": "REJECT_AS_ROUTE_CAPABILITY_UNLESS_SEPARATELY_PROVEN",
+      "eligible_for_verified_registry": false,
+      "local_artifact_provenance_available": true,
+      "original_evidence_date": null,
+      "original_source_path": "tools/canary/provider_matrix.py",
+      "original_source_type": [
+        "comments_docs",
+        "previous_approval_canary_packets",
+        "provider_model_config",
+        "route_manifests_provider_matrices"
+      ],
+      "provenance_available": false,
+      "raw_unit": "K",
+      "route_identity": null,
+      "source_evidence_sha256": "874cf01e9589ca6699bc14538a0e1461ff27c8891d3e5a3484e8490d048d02d7",
+      "source_line_number": 46,
+      "trust_level": "LOCAL_OCCURRENCE_NOT_PROVIDER_CAPABILITY_PROOF",
+      "used_by_historical_runtime": false,
+      "value": 256000
+    },
+    {
       "capability_field": "maximum_output_tokens",
       "classification": "HISTORICAL_BUT_UNPROVEN",
       "classification_code": "B",
@@ -21040,7 +21320,7 @@
       "value": 32
     }
   ],
-  "discovered_value_records_sha256": "dcdf8838cb290e145822bbcf9403dc1e68a761932fffee04aca8bd49a9e59731",
+  "discovered_value_records_sha256": "a3a39975432749704e698a133209e9b20e5db7d6d9e7c871b884fb3495d7c851",
   "excluded_current_generated_evidence_file_count": 0,
   "external_boundary": {
     "full_short_execution_count": 0,
@@ -21059,7 +21339,7 @@
   "historical_evidence_search_complete_boundary": "BASELINE_GIT_TREE_ALL_TRACKED_BLOBS",
   "historical_source_commit": "d3e52201b48f6eee9718163cf073a57e62af202c",
   "historical_source_tree_sha256": "a7fa5e5cf323dfffc49200d8ddade7a6e1c269aae8ce2d0ec16efb102d62f752",
-  "historical_value_without_provenance_count": 954,
+  "historical_value_without_provenance_count": 967,
   "partial_only_observations": [
     8798,
     16000,
@@ -21087,43 +21367,43 @@
   "search_category_summary": {
     "capability_budget_reports": {
       "binary_inventory_file_count": 0,
-      "candidate_occurrence_count": 122,
+      "candidate_occurrence_count": 126,
       "text_scanned_file_count": 170,
       "tracked_file_count": 170
     },
     "comments_docs": {
       "binary_inventory_file_count": 0,
-      "candidate_occurrence_count": 951,
+      "candidate_occurrence_count": 963,
       "text_scanned_file_count": 3961,
       "tracked_file_count": 3961
     },
     "manually_recorded_limits": {
       "binary_inventory_file_count": 0,
-      "candidate_occurrence_count": 951,
-      "text_scanned_file_count": 393,
-      "tracked_file_count": 393
+      "candidate_occurrence_count": 963,
+      "text_scanned_file_count": 396,
+      "tracked_file_count": 396
     },
     "previous_approval_canary_packets": {
       "binary_inventory_file_count": 0,
-      "candidate_occurrence_count": 214,
+      "candidate_occurrence_count": 218,
       "text_scanned_file_count": 700,
       "tracked_file_count": 700
     },
     "provider_model_config": {
       "binary_inventory_file_count": 0,
-      "candidate_occurrence_count": 90,
+      "candidate_occurrence_count": 98,
       "text_scanned_file_count": 151,
       "tracked_file_count": 151
     },
     "reports_tree": {
       "binary_inventory_file_count": 0,
-      "candidate_occurrence_count": 553,
+      "candidate_occurrence_count": 561,
       "text_scanned_file_count": 3100,
       "tracked_file_count": 3100
     },
     "route_manifests_provider_matrices": {
       "binary_inventory_file_count": 0,
-      "candidate_occurrence_count": 37,
+      "candidate_occurrence_count": 41,
       "text_scanned_file_count": 225,
       "tracked_file_count": 225
     },
@@ -21147,9 +21427,9 @@
     }
   },
   "search_inventory_artifact": "historical-capacity-search-inventory-v1.json",
-  "search_inventory_artifact_sha256": "68593c80bc03cc414f9b0849859b397f087c0cff2730af3f7bcdeb695d9fbfcd",
+  "search_inventory_artifact_sha256": "871cee2967c518b9fe4d7ef4ce55a18cf6818272bf6df7c2dcb343cbc17d7d42",
   "search_inventory_file_count": 3961,
-  "search_inventory_sha256": "10d359ffc0b89a7442eab372f34441a7cb452b75cd091f8528c40617d70c0e2a",
+  "search_inventory_sha256": "984b5158dcea24232916a3ded7beb3452f0c7e0964c51fc933e823014066f427",
   "search_method": "bidirectional capacity-field/value and token-unit extraction with K/M normalization; no fixed list of candidate values and no raw surrounding prose persisted",
   "search_scope": "every blob tracked by the immutable baseline Git tree; every blob that is valid UTF-8 and contains no NUL is scanned independent of filename suffix, while images and non-text blobs are hash-inventoried",
   "searched_sources": [
@@ -21307,17 +21587,17 @@
     },
     {
       "capability_field": "context_window_tokens",
-      "classification": "NO_EVIDENCE",
-      "classification_code": "D",
-      "disposition": "REJECT_AS_UNSOURCED",
+      "classification": "HISTORICAL_BUT_UNPROVEN",
+      "classification_code": "B",
+      "disposition": "REJECT_AS_VERIFIED",
       "eligible_for_verified_registry": false,
-      "original_source_date": null,
-      "original_source_path": null,
-      "original_source_type": null,
+      "original_source_date": "UNKNOWN_BASELINE_DATE",
+      "original_source_path": "docs/superpowers/reports/c0b-p1-bounded-unknown-capability-matrix-v1.json",
+      "original_source_type": "historical_provider_model_assertion_without_archived_origin_proof",
       "provenance_available": false,
       "route_fingerprint": null,
-      "source_evidence_sha256": null,
-      "trust_level": "NO_LOCAL_SOURCE_FOUND",
+      "source_evidence_sha256": "389b60f2eb6f241f18301fe62a6008e502a8f0e464d0d535bcbf5d5927bba221",
+      "trust_level": "LOCAL_ASSERTION_NOT_PROVIDER_CAPABILITY_PROOF",
       "used_by_current_runtime_as_capability": false,
       "used_by_historical_runtime": false,
       "value": 372000

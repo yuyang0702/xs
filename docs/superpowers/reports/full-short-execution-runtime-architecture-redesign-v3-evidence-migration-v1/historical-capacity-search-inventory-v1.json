@@ -32,43 +32,43 @@
   "search_category_summary": {
     "capability_budget_reports": {
       "binary_inventory_file_count": 0,
-      "candidate_occurrence_count": 122,
+      "candidate_occurrence_count": 126,
       "text_scanned_file_count": 170,
       "tracked_file_count": 170
     },
     "comments_docs": {
       "binary_inventory_file_count": 0,
-      "candidate_occurrence_count": 951,
+      "candidate_occurrence_count": 963,
       "text_scanned_file_count": 3961,
       "tracked_file_count": 3961
     },
     "manually_recorded_limits": {
       "binary_inventory_file_count": 0,
-      "candidate_occurrence_count": 951,
-      "text_scanned_file_count": 393,
-      "tracked_file_count": 393
+      "candidate_occurrence_count": 963,
+      "text_scanned_file_count": 396,
+      "tracked_file_count": 396
     },
     "previous_approval_canary_packets": {
       "binary_inventory_file_count": 0,
-      "candidate_occurrence_count": 214,
+      "candidate_occurrence_count": 218,
       "text_scanned_file_count": 700,
       "tracked_file_count": 700
     },
     "provider_model_config": {
       "binary_inventory_file_count": 0,
-      "candidate_occurrence_count": 90,
+      "candidate_occurrence_count": 98,
       "text_scanned_file_count": 151,
       "tracked_file_count": 151
     },
     "reports_tree": {
       "binary_inventory_file_count": 0,
-      "candidate_occurrence_count": 553,
+      "candidate_occurrence_count": 561,
       "text_scanned_file_count": 3100,
       "tracked_file_count": 3100
     },
     "route_manifests_provider_matrices": {
       "binary_inventory_file_count": 0,
-      "candidate_occurrence_count": 37,
+      "candidate_occurrence_count": 41,
       "text_scanned_file_count": 225,
       "tracked_file_count": 225
     },
@@ -1018,7 +1018,7 @@
       "sha256": "bedfb385659504c01802d40e39736908c2db9ed8bde547dc563a4cecd272586b"
     },
     {
-      "candidate_occurrence_count": 0,
+      "candidate_occurrence_count": 4,
       "categories": [
         "capability_budget_reports",
         "comments_docs",
@@ -1088,7 +1088,7 @@
       "sha256": "64306ccfcb6379b8d7503730a2b4d994da0a24fb4314e1e7a4b5e20585cff9f0"
     },
     {
-      "candidate_occurrence_count": 0,
+      "candidate_occurrence_count": 4,
       "categories": [
         "comments_docs",
         "provider_model_config",
@@ -42629,7 +42629,7 @@
       "sha256": "782a1a739d397c64146b6d77ec879f58a43679d4c3ffe2b653a06dd65b905966"
     },
     {
-      "candidate_occurrence_count": 0,
+      "candidate_occurrence_count": 4,
       "categories": [
         "comments_docs",
         "previous_approval_canary_packets",
@@ -44324,7 +44324,7 @@
       "sha256": "fe747c7e1a156d1c0204ab865a26e8f82ec0588c7b3772481b36861896bcf783"
     }
   ],
-  "searched_file_inventory_sha256": "10d359ffc0b89a7442eab372f34441a7cb452b75cd091f8528c40617d70c0e2a",
+  "searched_file_inventory_sha256": "984b5158dcea24232916a3ded7beb3452f0c7e0964c51fc933e823014066f427",
   "source_truth_boundary": "BASELINE_GIT_TREE_ALL_TRACKED_BLOBS",
   "status": "SEARCH_COMPLETE",
   "tracked_repository_file_count": 3961,
