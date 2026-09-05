@@ -1,0 +1,33 @@
+{
+  "schema": "Probe01ExactReplayBeforeFixV1",
+  "source_head": "43eaa34b4f8989e17ecd10023933a194180ceb45",
+  "raw_capture_sha256": "de1cdf7b6eefcab2fa28f6bab664aad159be87d1d4e152250a77e61974bef713",
+  "raw_capture_bytes": 1735,
+  "exact_bytes_verified": true,
+  "network_connect_forbidden": true,
+  "credential_lookups": 0,
+  "deterministic_runs": 2,
+  "content_type_provenance": "SSE_INFERRED_FROM_BYTES_NOT_PERSISTED_HTTP_HEADER",
+  "replay_result": "REPRODUCED_USAGE_INPUT_CONFLICT",
+  "source_changes_before_replay": false,
+  "terminal_present": true,
+  "event_types": [
+    "message_start",
+    "content_block_start",
+    "content_block_delta",
+    "content_block_delta",
+    "content_block_delta",
+    "content_block_stop",
+    "message_delta",
+    "message_stop"
+  ],
+  "adapter_protocol_complete": true,
+  "adapter_finish_reason": "end_turn",
+  "adapter_usage": {
+    "input_tokens": 48916,
+    "output_tokens": 9
+  },
+  "visible_final_present": true,
+  "usage_result": null,
+  "usage_error": "PROVIDER_REPORTED_USAGE_INPUT_CONFLICT"
+}

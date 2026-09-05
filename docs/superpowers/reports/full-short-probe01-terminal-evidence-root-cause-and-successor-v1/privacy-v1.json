@@ -1,0 +1,24 @@
+{
+  "source_head": "43eaa34b4f8989e17ecd10023933a194180ceb45",
+  "evidence_mode": "OFFLINE_HASH_ONLY",
+  "real_provider_calls": 0,
+  "credential_lookups": 0,
+  "historical_evidence_mutated": false,
+  "raw_provider_bytes_committed": false,
+  "raw_prompts_committed": false,
+  "raw_novel_text_committed": false,
+  "credentials_read": false,
+  "historical_campaign_key_read": false,
+  "real_provider_dispatches": 0,
+  "real_project_content_egress": 0,
+  "report_projection": "Hashes, counts, fixed error codes, public route identity and attributed dashboard numeric evidence only.",
+  "status": "PASS",
+  "scan_rules": [
+    "embedded_raw_capture",
+    "credential_assignment",
+    "absolute_machine_path",
+    "private_use_unicode"
+  ],
+  "scan_violations": [],
+  "historical_json_files_reverified": 13
+}

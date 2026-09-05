@@ -1,0 +1,44 @@
+{
+  "source_head": "43eaa34b4f8989e17ecd10023933a194180ceb45",
+  "evidence_mode": "OFFLINE_HASH_ONLY",
+  "real_provider_calls": 0,
+  "credential_lookups": 0,
+  "historical_evidence_mutated": false,
+  "reviewer": "/root/agent_c",
+  "route": {
+    "destination": "https://happyapi.org:443/v1/messages",
+    "destination_sha256": "3cc76394ea5ad18bdf67b080119b1f2b5d22336c9368b99d4ecbc16f3e3ceda6",
+    "model": "qwen-3.7-plus",
+    "operator": "THIRD_PARTY_RELAY_UNVERIFIED_UPSTREAM",
+    "protocol": "anthropic",
+    "provider": "happy",
+    "route_fingerprint": "099e358eae5fd0ff5e3d1b8cda34cd90c73c735c001ed44334ade3e3b667bf4e"
+  },
+  "HISTORICAL_SAME_ROUTE_TERMINAL_PATTERN": "EXACT_ROUTE_NORMALIZED_END_TURN_TRANSPORT_COMPLETE_ONLY",
+  "HISTORICAL_TERMINAL_EQUIVALENCE_SUPPORTED": "NO",
+  "historical_raw_sse_framing_available": false,
+  "history_status": "Normalized transport completions followed by prose-scope failures; not successful full stories.",
+  "committed_corroboration": "docs/superpowers/reports/r1-pa2/post-accepted-receipt-call-timeline-v1.json:267",
+  "historical_receipts": [
+    {
+      "identity": "draft-part-01.json",
+      "sha256": "1edc35d4cf51a99e8ef190f771138a05a2db6ca3da8a14c655e967871b89dc88",
+      "input": 15406,
+      "output": 3473
+    },
+    {
+      "identity": "draft-part-01-scope-retry.json",
+      "sha256": "11f4e31119f457241ce4117e52ac1b134e66d7757c60402a9010113f05f6a842",
+      "input": 15488,
+      "output": 3875
+    },
+    {
+      "identity": "draft-part-01-scope-retry-scope-retry.json",
+      "sha256": "2994af1ed0b7e17eb46eb15c241bde361c142c6d068c0ee7d22f693c4b8c0b36",
+      "input": 15488,
+      "output": 3306
+    }
+  ],
+  "historical_run_files_inspected": 61,
+  "usage_precedence_supported": false
+}

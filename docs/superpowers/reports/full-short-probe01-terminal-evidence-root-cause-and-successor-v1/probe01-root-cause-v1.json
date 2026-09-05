@@ -1,0 +1,29 @@
+{
+  "source_head": "43eaa34b4f8989e17ecd10023933a194180ceb45",
+  "evidence_mode": "OFFLINE_HASH_ONLY",
+  "real_provider_calls": 0,
+  "credential_lookups": 0,
+  "historical_evidence_mutated": false,
+  "reviewer": "/root/agent_d",
+  "PROBE01_ROOT_CAUSE_CLASS": "OTHER_TYPED_ROOT_CAUSE",
+  "PROBE01_ROOT_CAUSE": "CONTRADICTORY_PROVIDER_REPORTED_INPUT_USAGE_WITH_LOSSY_LOCAL_CLASSIFICATION",
+  "NETWORK_RERUN_REQUIRED": "NO",
+  "network_rerun_reason": "Existing bytes suffice to reproduce current failure. A request does not establish missing usage precedence semantics.",
+  "PROBE01_HISTORICAL_EVIDENCE_DISPOSITION": "BLOCKED_UNRESOLVED",
+  "SUCCESSOR_DISPATCH_ELIGIBLE": "NO",
+  "review_status": "REJECT_CURRENT_DISPATCH_ELIGIBILITY",
+  "local_defects_proven": [
+    "Precise usage conflict is collapsed to incomplete_terminal_evidence.",
+    "Unavailable normalized usage falls back to 30458 estimated input despite larger observed input samples.",
+    "Historical HTTP status/header/transport metadata was not durably persisted."
+  ],
+  "local_acceptance_defect_proven": false,
+  "usage_equality_relaxation_authorized_by_evidence": false,
+  "initial_classification_withdrawn": "Category 1 was withdrawn after challenge: terminal completeness does not prove conflicting usage is valid.",
+  "owning_source_if_local": [
+    "tools/canary/full_short_budget_unblocked_campaign.py:798",
+    "tools/canary/full_short_budget_unblocked_campaign.py:934",
+    "src/novel_flywheel/full_short_probe_campaign.py:508"
+  ],
+  "required_resolution": "Preserve typed evidence and separate conservative observed-usage accounting from capacity acceptance; establish source-grounded route usage semantics and successor eligibility before any dispatch."
+}

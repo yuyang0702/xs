@@ -1,0 +1,17 @@
+{
+  "source_head": "43eaa34b4f8989e17ecd10023933a194180ceb45",
+  "evidence_mode": "OFFLINE_HASH_ONLY",
+  "real_provider_calls": 0,
+  "credential_lookups": 0,
+  "historical_evidence_mutated": false,
+  "PROBE01_EXACT_REPLAY_AFTER_FIX": "NOT_APPLICABLE",
+  "source_modified": false,
+  "PROBE01_REQUEST_ACCEPTANCE_PROVEN": "NOT_FULLY_PROVEN",
+  "PROBE01_INPUT_WORKLOAD_EVIDENCE_PROVEN": "NO",
+  "PROBE01_OUTPUT_REQUEST_CAP_EVIDENCE_PROVEN": "WIRE_REQUEST_ONLY_NOT_PROMOTED",
+  "wire_output_cap": 2974,
+  "generated_output_reported": 9,
+  "terminal_complete": true,
+  "replay_promotion": "BLOCKED_UNRESOLVED",
+  "reason": "Review rejection and absent source-grounded usage precedence stop implementation/dispatch; do not weaken acceptance or rewrite historical evidence."
+}

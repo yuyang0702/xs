@@ -1,0 +1,26 @@
+{
+  "source_head": "43eaa34b4f8989e17ecd10023933a194180ceb45",
+  "evidence_mode": "OFFLINE_HASH_ONLY",
+  "real_provider_calls": 0,
+  "credential_lookups": 0,
+  "historical_evidence_mutated": false,
+  "schema": "Probe01SuccessorBaselineBindingV1",
+  "branch": "r1-ptr3/planning-repair-finding-propagation-20260817",
+  "expected_start_head": "43eaa34b4f8989e17ecd10023933a194180ceb45",
+  "observed_start_head": "43eaa34b4f8989e17ecd10023933a194180ceb45",
+  "initial_worktree": "CLEAN",
+  "master_source": {
+    "identity": "FULL_SHORT_PROBE01_TERMINAL_EVIDENCE_ROOT_CAUSE_AND_SUCCESSOR_CAMPAIGN_MASTER.txt",
+    "sha256": "866086eb31ba4fafb1ef08936e9072619754c9e6457872fe8fac5e7bac7fc11d"
+  },
+  "supplement_source": {
+    "identity": "PROBE01_RELAY_BILLING_PANEL_EVIDENCE_SUPPLEMENT.txt",
+    "sha256": "bbb1cfabb27cdafad3a3b3aa18a128cb34281dd206dd315f2486b574d54bf2d9",
+    "classification": "USER_SUPPLIED_RELAY_DASHBOARD_EVIDENCE"
+  },
+  "prior_authorization_sha256": "227bb4ff95137fba187ff0bcc1f4735bd34e654c5cb2f5aa09047e41efee423e",
+  "prior_terminal_evidence_sha256": "293e6057acddc91d0fddc9f28a1fece9e2f8c6d266d1736e6b8a65a50a4c6415",
+  "authorization_reused": false,
+  "nonce_reused": false,
+  "prior_state_reset": false
+}

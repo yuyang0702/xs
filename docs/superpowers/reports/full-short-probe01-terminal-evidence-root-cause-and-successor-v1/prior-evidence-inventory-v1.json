@@ -1,0 +1,74 @@
+{
+  "schema": "ReadOnlyPriorEvidenceInventoryV1",
+  "total_files": 14,
+  "json_files_inspected": 13,
+  "files": [
+    {
+      "relative_path": "campaign/campaign-authorization-v1.json",
+      "bytes": 26197,
+      "sha256": "227bb4ff95137fba187ff0bcc1f4735bd34e654c5cb2f5aa09047e41efee423e"
+    },
+    {
+      "relative_path": "campaign/campaign-state-0000.json",
+      "bytes": 1031,
+      "sha256": "593604558f426deee3b31b107a5bae609fa7f4773ce5fcc3fee58e3bf32444b4"
+    },
+    {
+      "relative_path": "campaign/campaign-state-0001.json",
+      "bytes": 1170,
+      "sha256": "69958b0acfa40618c913ed094ce55c4863b158faf9f9aa399d7daec2d8688822"
+    },
+    {
+      "relative_path": "campaign/campaign-state-0002.json",
+      "bytes": 1168,
+      "sha256": "26e9e088976b63c784fc7526623fe3dbd3092c7295f96760bd1063bf011fac8f"
+    },
+    {
+      "relative_path": "campaign/campaign-state-0003.json",
+      "bytes": 1255,
+      "sha256": "aecdcc7d285df72e6a1ec93d75ab718a3ca9a187be10158e5d0a643d5cf28dd8"
+    },
+    {
+      "relative_path": "campaign/full-short-run-collision-absence-v1.json",
+      "bytes": 1937,
+      "sha256": "87a425629a0d96b9a636ffdbf602049486a747c2ed6bb331908b4b863790edca"
+    },
+    {
+      "relative_path": "campaign/preprobe-full-short-policy-v1.json",
+      "bytes": 67365,
+      "sha256": "c09857ef87ae6e7178b615118922aff01832671d331f9a78bf118d90e91fe481"
+    },
+    {
+      "relative_path": "campaign/preprobe-full-short-public-bindings-v1.json",
+      "bytes": 97648,
+      "sha256": "48eb73d92baef977a8e45784fcaad5b84d5f84edda173fd3af9b3f4bfa27d61b"
+    },
+    {
+      "relative_path": "campaign/probe-state-0000.json",
+      "bytes": 4118,
+      "sha256": "5199a048f340ee4f81f1694033e31f0268bac1c663c52656c4df410a69a99bf7"
+    },
+    {
+      "relative_path": "campaign/probe-state-0001.json",
+      "bytes": 4168,
+      "sha256": "7e5b45711edec7b6ef84c3272d9c62c0bc72fc2daac8e8ca7d6fc5438ae34ae5"
+    },
+    {
+      "relative_path": "campaign/probe-state-0002.json",
+      "bytes": 6618,
+      "sha256": "293e6057acddc91d0fddc9f28a1fece9e2f8c6d266d1736e6b8a65a50a4c6415"
+    },
+    {
+      "relative_path": "campaign/probe-terminal-state-v1.json",
+      "bytes": 6618,
+      "sha256": "293e6057acddc91d0fddc9f28a1fece9e2f8c6d266d1736e6b8a65a50a4c6415"
+    }
+  ],
+  "excluded_secret_file": "campaign-key.bin",
+  "excluded_secret_read": false,
+  "raw_capture_embedded_locations": [
+    "campaign/probe-terminal-state-v1.json:records[0].raw_response_base64",
+    "campaign/probe-state-0002.json:records[0].raw_response_base64"
+  ],
+  "separate_capture_manifest_present": false
+}

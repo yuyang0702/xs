@@ -1,0 +1,126 @@
+{
+  "schema": "Probe01PreparationSha256ManifestV1",
+  "self_excluded": true,
+  "files": [
+    {
+      "path": "agent-a-raw-capture-forensics-v1.json",
+      "bytes": 2435,
+      "sha256": "423c4d08311823e443327ad0c6e3ddae7b7dd1f933d6b8d27ad94fb10f87680a"
+    },
+    {
+      "path": "agent-b-terminal-semantics-v1.json",
+      "bytes": 1681,
+      "sha256": "eea82113411450dd6b22bf7db772b47030c13daeb1fa667a13259e6d5808f5fd"
+    },
+    {
+      "path": "agent-c-historical-route-terminal-v1.json",
+      "bytes": 1800,
+      "sha256": "f0680e330aa691a49e9e9858238741e949f20714cf2188829a91e798441b40d4"
+    },
+    {
+      "path": "agent-d-root-cause-v1.json",
+      "bytes": 1763,
+      "sha256": "303419e01ecccda9bb723e33d7bb6354bb0b7dc0405f8ffbbd44f363046ad398"
+    },
+    {
+      "path": "agent-e-exact-replay-v1.json",
+      "bytes": 993,
+      "sha256": "a6bfdd391a7b20f569bc6d3255be0044eaa5342977c2d38462744552c9c63c48"
+    },
+    {
+      "path": "agent-f-successor-campaign-v1.json",
+      "bytes": 1548,
+      "sha256": "0bcf148ab41d8547f603574ace86aa02987641fcd45c42d01db65bd3059a392d"
+    },
+    {
+      "path": "baseline-binding-v1.json",
+      "bytes": 1257,
+      "sha256": "db6f0c55ab84d30e8865b3312fac5a84c16fb5dab15738f2c5c7b187f4be144e"
+    },
+    {
+      "path": "focused-tests-v1.json",
+      "bytes": 803,
+      "sha256": "8a2d99b7789cf61b0a6fdfc2e3d9596a6acce6866013240e3f5abc86bf5184f1"
+    },
+    {
+      "path": "input-token-accounting-discrepancy-v1.json",
+      "bytes": 2078,
+      "sha256": "537b852b78928ac9a243649e4fa91b4e2af8a02511a6c003141d59d64ebf8bc1"
+    },
+    {
+      "path": "preexecution-final-report-v1.md",
+      "bytes": 3662,
+      "sha256": "ebbb0bc83eb50be7630faeb5f8d35246de2675abf171b30f8aeb497c53de92a7"
+    },
+    {
+      "path": "prior-evidence-inventory-v1.json",
+      "bytes": 2678,
+      "sha256": "54ef1a6c2d14b41efb51299a1d7049ed1543b2299e421e217ad6019f2b7aee34"
+    },
+    {
+      "path": "privacy-v1.json",
+      "bytes": 827,
+      "sha256": "ca737bca4010c3b9cab9206a2bd2333cc1c95b40090ed9ca25f90661d9bb2238"
+    },
+    {
+      "path": "probe01-exact-replay-before-fix-v1.json",
+      "bytes": 1078,
+      "sha256": "a00a5ffc537df757d2def1036071d73c340fa690f6e2420ffd547dbbd6485f3b"
+    },
+    {
+      "path": "probe01-fix-and-replay-v1.json",
+      "bytes": 786,
+      "sha256": "e96f61a76212b6bc5fa30b524a02368e0f89e082d0d68078f86cf907b3d010ab"
+    },
+    {
+      "path": "probe01-historical-terminal-comparison-v1.json",
+      "bytes": 1800,
+      "sha256": "f0680e330aa691a49e9e9858238741e949f20714cf2188829a91e798441b40d4"
+    },
+    {
+      "path": "probe01-root-cause-v1.json",
+      "bytes": 1763,
+      "sha256": "303419e01ecccda9bb723e33d7bb6354bb0b7dc0405f8ffbbd44f363046ad398"
+    },
+    {
+      "path": "probe01-terminal-contract-v1.json",
+      "bytes": 1681,
+      "sha256": "eea82113411450dd6b22bf7db772b47030c13daeb1fa667a13259e6d5808f5fd"
+    },
+    {
+      "path": "README.md",
+      "bytes": 4475,
+      "sha256": "2f1b87f84894506c92c741bb592b3929ca06c8020bc379ba9e8281bfd8141905"
+    },
+    {
+      "path": "relay-billing-panel-evidence-v1.json",
+      "bytes": 2700,
+      "sha256": "b3de211ed526e8dbabadbe2bfedf1184c88fa4312ad61998ac06a15b5ec7afc0"
+    },
+    {
+      "path": "requirements-disposition-v1.json",
+      "bytes": 2546,
+      "sha256": "928d243f8b0ee97e4c68235a846db10ec89a4a4e3dfedde4ad6238d8c4a9e35e"
+    },
+    {
+      "path": "review-adjudication-v1.json",
+      "bytes": 976,
+      "sha256": "7ec7de297e3197e3c6cd0f72442c60242a4e765c152fb9df6ecaf5d7f90156da"
+    },
+    {
+      "path": "strict-l3-preexecution-v1.json",
+      "bytes": 395,
+      "sha256": "6a4210936dacfad3ea04807dab60c34d3639e70942af0f71c8b43c8b9328acad"
+    },
+    {
+      "path": "successor-budget-v1.json",
+      "bytes": 2077,
+      "sha256": "73b7b62b6df22917344fabdda346deea06e675025d5ed05f8b3fdd6cadaef9b2"
+    },
+    {
+      "path": "successor-probe-case-set-v1.json",
+      "bytes": 12189,
+      "sha256": "ca2fedc0aa83e6020a2593b2232d31eede4e8ebc7845065f45537756a1144e0e"
+    }
+  ]
+}

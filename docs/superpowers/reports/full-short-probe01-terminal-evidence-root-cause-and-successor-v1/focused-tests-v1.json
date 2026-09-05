@@ -1,0 +1,18 @@
+{
+  "source_head": "43eaa34b4f8989e17ecd10023933a194180ceb45",
+  "evidence_mode": "OFFLINE_HASH_ONLY",
+  "real_provider_calls": 0,
+  "credential_lookups": 0,
+  "historical_evidence_mutated": false,
+  "command": "python -X utf8 -m pytest -q tests/test_provider_response_capture.py tests/canary/test_full_short_budget_unblocked_campaign.py tests/test_full_short_probe_campaign.py",
+  "result": "PASS",
+  "passed": 86,
+  "failed": 0,
+  "pytest_duration_seconds": 10.5,
+  "raw_summary": "86 passed in 10.50s",
+  "new_source_changes": 0,
+  "NEW_REGRESSION_COUNT": 0,
+  "new_regression_scope": "No source/test changes; focused unchanged-baseline suites only.",
+  "complete_suite": "NOT_RUN_STOP_BEFORE_IMPLEMENTATION",
+  "new_isomorphic_fixture": "NOT_ADDED_NO_SOURCE_FIX_AND_REVIEW_STOP"
+}

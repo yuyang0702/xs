@@ -1,0 +1,58 @@
+{
+  "source_head": "43eaa34b4f8989e17ecd10023933a194180ceb45",
+  "evidence_mode": "OFFLINE_HASH_ONLY",
+  "real_provider_calls": 0,
+  "credential_lookups": 0,
+  "historical_evidence_mutated": false,
+  "status": "CONDITIONAL_NUMERIC_DERIVATION_ONLY_DISPATCH_GATE_NOT_REACHED",
+  "absolute_caps": {
+    "provider_requests": 144,
+    "http_posts": 144,
+    "network_requests": 144,
+    "input_tokens": 4000000,
+    "generated_output_tokens": 2000000,
+    "output_tokens_per_request": 32000,
+    "elapsed_seconds": 36000,
+    "usd_if_reliably_meterable": 60,
+    "cny_if_reliably_meterable": 120
+  },
+  "maximum_full_short_input_estimate": 2373076,
+  "maximum_full_short_path_calls": 96,
+  "conditional_replacement": {
+    "probe_count": 8,
+    "probe_input_estimate": 186733,
+    "probe_output_reserve": 27604,
+    "combined_estimate": 2559809,
+    "input_cap_120_percent_ceiling": 3071771,
+    "base_plan_provider_calls": 104
+  },
+  "conditional_replay_proven": {
+    "probe_count": 7,
+    "probe_input_estimate": 156275,
+    "combined_estimate": 2529351,
+    "input_cap_120_percent_ceiling": 3035222,
+    "base_plan_provider_calls": 103
+  },
+  "budget_source": "docs/superpowers/reports/full-short-end-to-end-one-round-budget-unblocked-preparation-v1/campaign-input-budget-recalculation-v2.json",
+  "budget_source_sha256": "be2fd1c00986c8a37b36461473a112c25a91c7e5cc5e756092eb249851ddbbb5",
+  "observed_accounting_risk": "Prior estimate is below both raw input samples. Numeric estimator cap alone is not sufficient successor accounting proof. No unsupported multiplier applied.",
+  "prior_frozen_usage_separate": {
+    "provider_requests": 1,
+    "input_debit": 30458,
+    "output_reserve": 2974,
+    "raw_input_samples": [
+      48916,
+      89255
+    ],
+    "raw_final_output": 9,
+    "panel_charge_usd_user_supplied": "0.089292"
+  },
+  "successor_usage": {
+    "provider_requests": 0,
+    "http_posts": 0,
+    "network_requests": 0,
+    "input_tokens": 0,
+    "output_tokens": 0,
+    "full_short_executions": 0
+  }
+}

@@ -1,0 +1,35 @@
+{
+  "source_head": "43eaa34b4f8989e17ecd10023933a194180ceb45",
+  "evidence_mode": "OFFLINE_HASH_ONLY",
+  "real_provider_calls": 0,
+  "credential_lookups": 0,
+  "historical_evidence_mutated": false,
+  "INPUT_TOKEN_ACCOUNTING_DISCREPANCY": "YES",
+  "wire_ascii_bytes": 121832,
+  "estimator_formula": "CJK count + ceil(non-CJK characters / 4)",
+  "local_estimate": 30458,
+  "local_ledger_debit_source": "AUTHORIZED_ESTIMATE_AND_FULL_OUTPUT_RESERVE",
+  "canonical_usage_error": "PROVIDER_REPORTED_USAGE_INPUT_CONFLICT",
+  "adapter_reported_input": 48916,
+  "raw_terminal_reported_input": 89255,
+  "raw_terminal_reported_output": 9,
+  "ratio": 2.9304287871823496,
+  "difference": 58797,
+  "supported_chain": [
+    "Synthetic request is sized to exactly estimated_input_tokens * 4 ASCII bytes, including JSON protocol envelope.",
+    "High-entropy URL-safe base64 filler is generated deterministically from SHA-256 blocks.",
+    "Before HTTP dispatch current code requires exact authorized bytes and SHA.",
+    "Input-sample conflict causes normalized actual usage to be discarded.",
+    "Campaign fallback retains the estimate instead of either larger observed usage sample."
+  ],
+  "hypothesis_audit": {
+    "different_tokenizer": "Plausible with high-entropy ASCII; not proven without relay tokenizer/usage semantics.",
+    "hidden_provider_framing": "Unknown; cannot infer from client-side capture.",
+    "local_serialization_overhead_omitted": "Not supported: estimator covers complete serialized JSON request bytes.",
+    "local_duplicate_wire_payload": "No evidence: exact-byte equality guard and reconstructed request shape; historical wire receipt absent.",
+    "cache_input": "Both raw protocol samples report zero cache creation/read tokens; these fields do not explain difference.",
+    "broader_relay_metric": "Unresolved: nested billing usage and panel align with final value but do not define precedence over initial value."
+  },
+  "conservative_label_valid_as_input_upper_bound": false,
+  "all_route_2_93_multiplier_proven": false
+}

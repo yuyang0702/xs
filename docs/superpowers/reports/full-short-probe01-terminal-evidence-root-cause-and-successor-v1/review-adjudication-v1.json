@@ -1,0 +1,24 @@
+{
+  "schema": "Probe01OfflineReviewAdjudicationV1",
+  "fresh_child_agent_count": 6,
+  "fresh_child_agents": [
+    "/root/agent_a",
+    "/root/agent_b",
+    "/root/agent_c",
+    "/root/agent_d",
+    "/root/agent_e",
+    "/root/agent_f"
+  ],
+  "execution": "Multiple waves within platform concurrency limit; Provider requests zero.",
+  "review_outcome": "REJECT_CURRENT_DISPATCH_ELIGIBILITY",
+  "reviewer_rejections": [
+    "/root/agent_d",
+    "/root/agent_f"
+  ],
+  "disagreement_resolution": "D withdrew category 1 after distinguishing correct input-conflict rejection from incorrect generic terminal classification. No reviewer supplies a proven input precedence rule.",
+  "lead_decision": "STOP_AND_SEAL_OFFLINE_EVIDENCE",
+  "stop_reason": "Mandatory root-cause disposition unresolved and independent reviewer rejection.",
+  "source_changes_after_rejection": false,
+  "automatic_restart": false,
+  "additional_user_authorization_requested": false
+}

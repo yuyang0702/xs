@@ -1,0 +1,57 @@
+{
+  "source_head": "43eaa34b4f8989e17ecd10023933a194180ceb45",
+  "evidence_mode": "OFFLINE_HASH_ONLY",
+  "real_provider_calls": 0,
+  "credential_lookups": 0,
+  "historical_evidence_mutated": false,
+  "reviewer": "/root/agent_a",
+  "REQUEST_CASE_ID": "full-short-probe-01-draft_plain",
+  "REQUEST_SHA": "d091d6276b789e5338f77ec1f4e0178d535a137dcf269b64232bde07e8271606",
+  "REQUEST_BYTE_LENGTH": 121832,
+  "REQUEST_ESTIMATED_INPUT_TOKENS": 30458,
+  "WIRE_REQUESTED_OUTPUT_CAP": 2974,
+  "FIXTURE_SHA": "07ba49dfb4b33ca6f72eedd016c6c1ed4ab7171eafdefa8982b9ee8e9cba2dac",
+  "CASE_SHA": "c24b873d52744e7641a8a2f5531c19a0339fad4370585e391b99ddf4bf008626",
+  "route": {
+    "destination": "https://happyapi.org:443/v1/messages",
+    "destination_sha256": "3cc76394ea5ad18bdf67b080119b1f2b5d22336c9368b99d4ecbc16f3e3ceda6",
+    "model": "qwen-3.7-plus",
+    "operator": "THIRD_PARTY_RELAY_UNVERIFIED_UPSTREAM",
+    "protocol": "anthropic",
+    "provider": "happy",
+    "route_fingerprint": "099e358eae5fd0ff5e3d1b8cda34cd90c73c735c001ed44334ade3e3b667bf4e"
+  },
+  "HTTP_STATUS": "UNKNOWN_NOT_PERSISTED",
+  "CONTENT_TYPE": "UNKNOWN_NOT_PERSISTED",
+  "ENCODING": "UNKNOWN_NOT_PERSISTED",
+  "TRANSPORT_COMPLETE_FLAG": "UNKNOWN_NOT_PERSISTED",
+  "STREAMING_MODE": "YES_FROM_REQUEST_AND_RAW_FRAMING",
+  "RESPONSE_CAPTURE_PRESENT": "YES",
+  "RESPONSE_CAPTURE_SHA": "de1cdf7b6eefcab2fa28f6bab664aad159be87d1d4e152250a77e61974bef713",
+  "RESPONSE_CAPTURE_BYTES": 1735,
+  "PROVIDER_ERROR_PRESENT": "NO",
+  "PROVIDER_ERROR_CODE": null,
+  "PROVIDER_ERROR_FAMILY": null,
+  "TERMINAL_MARKER_PRESENT": "YES",
+  "TERMINAL_MARKER": "message_stop",
+  "FINISH_REASON_PRESENT": "YES",
+  "FINISH_REASON": "end_turn",
+  "USAGE_PRESENT": "YES",
+  "VISIBLE_FINAL_PRESENT": "YES",
+  "VISIBLE_TEXT_CHARACTER_COUNT": 32,
+  "TOOL_OR_SCHEMA_TERMINAL_PRESENT": "NO",
+  "USAGE_SAMPLES": [
+    {
+      "location": "message_start.message.usage",
+      "input_tokens": 48916,
+      "output_tokens": 0
+    },
+    {
+      "location": "message_delta.usage",
+      "input_tokens": 89255,
+      "output_tokens": 9
+    }
+  ],
+  "FIRST_DIVERGENCE": "PROVIDER_REPORTED_USAGE_INPUT_CONFLICT is swallowed before generic incomplete_terminal_evidence classification",
+  "request_binding": "Current deterministic synthetic request reconstruction matches authorized SHA and fixture SHA; historical HTTP request receipt is absent."
+}

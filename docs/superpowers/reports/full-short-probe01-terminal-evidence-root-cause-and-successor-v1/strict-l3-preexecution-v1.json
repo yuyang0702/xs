@@ -1,0 +1,11 @@
+{
+  "source_head": "43eaa34b4f8989e17ecd10023933a194180ceb45",
+  "evidence_mode": "OFFLINE_HASH_ONLY",
+  "real_provider_calls": 0,
+  "credential_lookups": 0,
+  "historical_evidence_mutated": false,
+  "status": "NOT_REACHED",
+  "warnings": null,
+  "blockers": null,
+  "reason": "Stopped at root-cause disposition/reviewer rejection before implementation or successor authorization."
+}

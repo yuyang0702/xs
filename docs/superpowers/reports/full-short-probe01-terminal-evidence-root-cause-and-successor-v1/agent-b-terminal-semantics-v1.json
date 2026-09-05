@@ -1,0 +1,33 @@
+{
+  "source_head": "43eaa34b4f8989e17ecd10023933a194180ceb45",
+  "evidence_mode": "OFFLINE_HASH_ONLY",
+  "real_provider_calls": 0,
+  "credential_lookups": 0,
+  "historical_evidence_mutated": false,
+  "reviewer": "/root/agent_b",
+  "EXPECTED_TERMINAL_CONTRACT": "Anthropic message_start, balanced supported content blocks, message_delta stop reason, then message_stop; same production adapter validations remain mandatory. Probe also requires positive consistent captured usage matching adapter usage.",
+  "ACTUAL_RAW_TERMINAL_FACTS": {
+    "event_count": 8,
+    "protocol_complete": true,
+    "terminal": "message_stop",
+    "finish_reason": "end_turn",
+    "adapter_input_tokens": 48916,
+    "adapter_output_tokens": 9,
+    "usage_extractor_error": "PROVIDER_REPORTED_USAGE_INPUT_CONFLICT"
+  },
+  "TERMINAL_CONTRACT_MISMATCH": "No framing mismatch. Unequal input samples violate the current usage contract; observer loses precise reason.",
+  "input_precedence_rule_proven": false,
+  "owning_sources": [
+    "src/novel_flywheel/provider_response_capture.py:865",
+    "tools/canary/full_short_budget_unblocked_campaign.py:795",
+    "tools/canary/full_short_budget_unblocked_campaign.py:904",
+    "src/novel_flywheel/providers/anthropic.py:467",
+    "src/novel_flywheel/providers/anthropic.py:572"
+  ],
+  "capture_before_conversion_source": "src/novel_flywheel/providers/http.py:501",
+  "sibling_risks": [
+    "All eight probe families share lossy usage error classification.",
+    "Cached input totals can differ between canonical extraction and Anthropic adapter.",
+    "An extractor-only last-input patch would still fail adapter equality."
+  ]
+}

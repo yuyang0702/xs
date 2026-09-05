@@ -1,0 +1,71 @@
+{
+  "schema": "Probe01MasterRequirementsDispositionV1",
+  "scope": "CLOSED_INCIDENT_FORENSICS_WITH_CONDITIONAL_EXECUTION",
+  "musts": [
+    {
+      "requirement": "Exact clean baseline",
+      "status": "PASS",
+      "evidence": "baseline-binding-v1.json"
+    },
+    {
+      "requirement": "Exhaust persisted raw evidence before request or source modification",
+      "status": "PASS",
+      "evidence": [
+        "prior-evidence-inventory-v1.json",
+        "probe01-exact-replay-before-fix-v1.json"
+      ]
+    },
+    {
+      "requirement": "Six fresh offline agents",
+      "status": "PASS",
+      "evidence": "review-adjudication-v1.json"
+    },
+    {
+      "requirement": "Do not reuse historical authorization/nonce/failed state",
+      "status": "PASS",
+      "evidence": "No successor materialized; prior evidence read-only."
+    },
+    {
+      "requirement": "Source-grounded historical disposition and promotion",
+      "status": "BLOCKED_UNRESOLVED",
+      "evidence": "probe01-root-cause-v1.json"
+    },
+    {
+      "requirement": "Fix acceptance only if local root/source contract supports it",
+      "status": "NOT_ELIGIBLE",
+      "evidence": "No valid precedence rule proven; no production changes."
+    },
+    {
+      "requirement": "Stop on reviewer rejection; no automatic restart",
+      "status": "ENFORCED",
+      "evidence": "review-adjudication-v1.json"
+    },
+    {
+      "requirement": "Preserve bounded authority, serial requests, no retry/fallback/switch",
+      "status": "PASS_NO_DISPATCH",
+      "evidence": "successor-probe-case-set-v1.json"
+    },
+    {
+      "requirement": "Fresh authorization, commit/freeze, strict gates, probes, promotion, dry run, sizes, reviewers, one Full Short",
+      "status": "NOT_REACHED_AFTER_STOP",
+      "evidence": "preexecution-final-report-v1.md"
+    },
+    {
+      "requirement": "User dashboard correlation and accounting discrepancy",
+      "status": "COMPLETE_WITH_EXACT_BINDING_LIMIT",
+      "evidence": [
+        "relay-billing-panel-evidence-v1.json",
+        "input-token-accounting-discrepancy-v1.json"
+      ]
+    }
+  ],
+  "protected_unchanged": [
+    "Production source and tests",
+    "All routes/model scheduling/Skills",
+    "Request bytes and requested output caps",
+    "Formal manuscripts/StoryState/Canon/READY",
+    "Historical evidence/authorization/nonces"
+  ],
+  "rollback": "Evidence-only commit can be reverted; no production rollback needed.",
+  "resolution_status": "unresolved"
+}

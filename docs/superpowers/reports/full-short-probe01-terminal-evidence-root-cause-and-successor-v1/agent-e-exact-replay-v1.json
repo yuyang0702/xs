@@ -1,0 +1,25 @@
+{
+  "source_head": "43eaa34b4f8989e17ecd10023933a194180ceb45",
+  "evidence_mode": "OFFLINE_HASH_ONLY",
+  "real_provider_calls": 0,
+  "credential_lookups": 0,
+  "historical_evidence_mutated": false,
+  "reviewer": "/root/agent_e",
+  "EXACT_CAPTURE_REPLAY_AVAILABLE": "YES",
+  "EXACT_CAPTURE_REPLAY_RESULT": "REPRODUCED_USAGE_INPUT_CONFLICT",
+  "exact_raw_sha256": "de1cdf7b6eefcab2fa28f6bab664aad159be87d1d4e152250a77e61974bef713",
+  "exact_raw_bytes": 1735,
+  "deterministic_runs": 3,
+  "coverage": [
+    "parse_provider_protocol_input_bytes_v1",
+    "provider_protocol_input_has_terminal_bytes_v1",
+    "AnthropicAdapter._aggregate_stream",
+    "extract_provider_reported_actual_usage_v1"
+  ],
+  "socket_network_denied": true,
+  "writes_denied": true,
+  "historical_http_metadata_proven": false,
+  "dispatcher_executed": false,
+  "probe_pass_proven": false,
+  "initial_agent_turn": "Tool-reported content flag; subsequent bounded read-only parser review completed."
+}

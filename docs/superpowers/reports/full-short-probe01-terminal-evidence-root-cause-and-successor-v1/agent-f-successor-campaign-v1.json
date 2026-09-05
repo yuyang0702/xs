@@ -1,0 +1,64 @@
+{
+  "reviewer": "/root/agent_f",
+  "review_mode": "FRESH_READ_ONLY_OFFLINE",
+  "SUCCESSOR_REAL_PROBE_CASE_COUNT": 0,
+  "SUCCESSOR_PROBE_CASE_SET": [],
+  "SUCCESSOR_BLOCKED_SHAPE_COVERAGE": 0,
+  "review_status": "REJECT_CURRENT_DISPATCH_ELIGIBILITY",
+  "conditional_replay_proven": {
+    "case_ordinals": [
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8
+    ],
+    "case_count": 7,
+    "new_coverage": 99,
+    "replay_coverage": 12,
+    "probe_input_estimate": 156275,
+    "probe_output_reserve": 24630,
+    "full_short_plus_probe_estimate": 2529351,
+    "input_cap_120_percent_ceiling": 3035222,
+    "plan_provider_calls": 103
+  },
+  "conditional_replacement": {
+    "case_ordinals": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8
+    ],
+    "case_count": 8,
+    "coverage": 111,
+    "probe_input_estimate": 186733,
+    "probe_output_reserve": 27604,
+    "full_short_plus_probe_estimate": 2559809,
+    "input_cap_120_percent_ceiling": 3071771,
+    "plan_provider_calls": 104
+  },
+  "coverage_by_family": [
+    12,
+    24,
+    8,
+    4,
+    12,
+    8,
+    2,
+    41
+  ],
+  "first_failed_evidence_gate": "PROVIDER_REPORTED_USAGE_INPUT_CONFLICT",
+  "first_unresolved_eligibility_gate": "SOURCE_GROUNDED_USAGE_CONFLICT_RESOLUTION_AND_EXACT_HISTORICAL_REPLAY_DISPOSITION",
+  "automatic_replacement_eligible": false,
+  "promotion_eligible": false,
+  "budget_gate_pass_claimed": false,
+  "network_calls": 0,
+  "credential_lookups": 0,
+  "edits": 0
+}
