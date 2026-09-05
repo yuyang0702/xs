@@ -56,6 +56,10 @@ from novel_flywheel.provider_response_capture import (
     extract_provider_reported_actual_usage_v1,
 )
 from novel_flywheel.providers.http import SingleDispatchTransportPolicyV1
+from novel_flywheel.providers.anthropic import (
+    AnthropicProviderTerminalError, AnthropicStreamIncompleteError,
+    AnthropicStreamProtocolError,
+)
 from novel_flywheel.providers.registry import ProviderRegistry
 
 
@@ -75,6 +79,45 @@ RELAY_OPERATOR = "THIRD_PARTY_RELAY_UNVERIFIED_UPSTREAM"
 
 class CampaignFixtureError(RuntimeError):
     """A stable fail-closed error at the offline fixture boundary."""
+
+
+def _precise_response_failure_code(exc: Exception) -> str | None:
+    """Preserve existing families and closed child reasons, never Provider text."""
+    if isinstance(exc, AnthropicProviderTerminalError):
+        return exc.reliability_failure.code
+    if isinstance(exc, (AnthropicStreamProtocolError, AnthropicStreamIncompleteError)):
+        # reason_code is constructed solely by the adapter's state machine.
+        return exc.reliability_failure.code + "." + exc.reason_code.lower()
+    if isinstance(exc, ProviderResponseCaptureError):
+        reason, _, field = str(exc).partition(":")
+        known = {
+            "PROVIDER_RESPONSE_REPLAY_ENCODING_INVALID",
+            "PROVIDER_RESPONSE_REPLAY_JSON_INVALID",
+            "PROVIDER_RESPONSE_REPLAY_JSON_OBJECT_REQUIRED",
+            "PROVIDER_RESPONSE_REPLAY_SSE_EVENT_AFTER_DONE",
+            "PROVIDER_RESPONSE_REPLAY_SSE_JSON_INVALID",
+            "PROVIDER_RESPONSE_REPLAY_SSE_OBJECT_REQUIRED",
+            "PROVIDER_RESPONSE_REPLAY_SSE_EVENT_DELIMITER_MISSING",
+            "PROVIDER_REPORTED_USAGE_OBJECT_INVALID",
+            "PROVIDER_REPORTED_USAGE_FIELD_INVALID",
+            "PROVIDER_REPORTED_USAGE_ALIAS_CONFLICT",
+            "PROVIDER_REPORTED_USAGE_PROTOCOL_UNSUPPORTED",
+            "PROVIDER_REPORTED_USAGE_SSE_TERMINAL_MISSING",
+            "PROVIDER_REPORTED_USAGE_MISSING",
+            "PROVIDER_REPORTED_USAGE_INCOMPLETE",
+            "PROVIDER_REPORTED_USAGE_INPUT_CONFLICT",
+            "PROVIDER_REPORTED_USAGE_OUTPUT_NON_MONOTONIC",
+            "PROVIDER_REPORTED_USAGE_NOT_POSITIVE",
+        }
+        code = exc.reliability_failure.code
+        if reason in known:
+            code += "." + reason.lower()
+            if field in {"input_tokens", "output_tokens", "prompt_tokens",
+                         "completion_tokens", "cache_creation_input_tokens",
+                         "cache_read_input_tokens"}:
+                code += "." + field
+        return code
+    return None
 
 
 @dataclass(frozen=True)
@@ -676,6 +719,7 @@ class GuardedProviderDispatch:
     def __init__(
         self, fixtures: Sequence[SyntheticProbeFixture], registry: ProviderRegistry,
         *, deadline_guard: Callable[[], None] | None = None,
+        capture_metadata_persist: Callable[[Mapping[str, Any]], None] | None = None,
     ) -> None:
         if registry.transport_policy != SingleDispatchTransportPolicyV1.phase_b():
             _fail("SINGLE_DISPATCH_TRANSPORT_POLICY_REQUIRED")
@@ -687,6 +731,7 @@ class GuardedProviderDispatch:
         registry.attempt_observer = self
         self._registry = registry
         self._deadline_guard = deadline_guard or (lambda: None)
+        self._capture_metadata_persist = capture_metadata_persist
         self._fixtures = {fixture.case.case_sha256: fixture for fixture in fixtures}
         if len(self._fixtures) != 8:
             _fail("SYNTHETIC_FIXTURE_CASE_IDENTITY_INVALID")
@@ -695,6 +740,7 @@ class GuardedProviderDispatch:
         self._response_complete = False
         self._status_code: int | None = None
         self._provider_reported_usage: Mapping[str, Any] | None = None
+        self._usage_failure_code: str | None = None
         self._case_http_posts = 0
         self._case_network_requests = 0
         self._total_http_posts = 0
@@ -792,6 +838,19 @@ class GuardedProviderDispatch:
         self._status_code = status_code
         self._response_complete = bool(transport_complete)
         self._provider_reported_usage = None
+        if self._capture_metadata_persist is not None:
+            fixture = self._require_active()
+            self._capture_metadata_persist({
+                "case_sha256": fixture.case.case_sha256,
+                "request_sha256": fixture.request_sha256,
+                "route_fingerprint": fixture.route.route_fingerprint,
+                "provider_entity_sha256": hashlib.sha256(data).hexdigest(),
+                "provider_entity_bytes": len(data),
+                "status_code": status_code,
+                "content_type": content_type,
+                "encoding": encoding,
+                "transport_complete": bool(transport_complete),
+            })
         if transport_complete and 200 <= status_code < 300:
             try:
                 self._provider_reported_usage = (
@@ -802,10 +861,10 @@ class GuardedProviderDispatch:
                         encoding=encoding,
                     )
                 )
-            except ProviderResponseCaptureError:
-                # The enclosing dispatch classifies this case as a terminal
-                # probe failure.  No unmetered response can promote capacity.
-                self._provider_reported_usage = None
+            except ProviderResponseCaptureError as exc:
+                # Keep the child cause; do not throw from the observer and mask
+                # a more specific Provider error from the adapter afterwards.
+                self._usage_failure_code = _precise_response_failure_code(exc)
 
     def _require_active(self) -> SyntheticProbeFixture:
         if self._active is None:
@@ -871,6 +930,7 @@ class GuardedProviderDispatch:
         self._response_complete = False
         self._status_code = None
         self._provider_reported_usage = None
+        self._usage_failure_code = None
         self._case_http_posts = 0
         self._case_network_requests = 0
         try:
@@ -915,8 +975,6 @@ class GuardedProviderDispatch:
                 or provider_usage is None
                 or response.input_tokens != actual_input_tokens
                 or response.output_tokens != actual_output_tokens
-                or actual_input_tokens
-                < fixture.definition.estimated_input_tokens
             ):
                 self._input_tokens_by_case[fixture.case.case_sha256] = max(
                     0, actual_input_tokens,
@@ -927,10 +985,17 @@ class GuardedProviderDispatch:
                 return DispatchResult(
                     ProbeResultKind.FAILED,
                     (
-                        "probe.provider.input_workload_bound_unproven"
-                        if provider_usage is not None
-                        and actual_input_tokens
-                        < fixture.definition.estimated_input_tokens
+                        self._usage_failure_code
+                        if self._usage_failure_code is not None
+                        else "probe.provider.http_not_accepted"
+                        if self._status_code is not None and not 200 <= self._status_code < 300
+                        else "probe.provider.artifact_not_accepted"
+                        if not content_accepted
+                        else "probe.provider.usage_projection_mismatch"
+                        if provider_usage is not None and (
+                            response.input_tokens != actual_input_tokens
+                            or response.output_tokens != actual_output_tokens
+                        )
                         else "probe.provider.incomplete_terminal_evidence"
                     ),
                     self._raw_response or b"", max(0, actual_output_tokens),
@@ -951,7 +1016,7 @@ class GuardedProviderDispatch:
             )
         except CampaignFixtureError:
             raise
-        except Exception:
+        except Exception as exc:
             raw = self._raw_response or b""
             kind = (
                 ProbeResultKind.FAILED
@@ -963,7 +1028,13 @@ class GuardedProviderDispatch:
                 if kind is ProbeResultKind.FAILED
                 else "probe.provider.ambiguous_transport"
             )
-            return DispatchResult(kind, code, raw, None, None)
+            code = _precise_response_failure_code(exc) or self._usage_failure_code or code
+            usage = self._provider_reported_usage
+            return DispatchResult(
+                kind, code, raw,
+                int(usage["output_tokens"]) if usage is not None else None,
+                int(usage["input_tokens"]) if usage is not None else None,
+            )
         finally:
             self._active = None
 
@@ -1037,6 +1108,7 @@ def _run_guarded_campaign_with_registry_v1(
     persist: Callable[[Mapping[str, object]], None] | None = None,
     absolute_deadline_unix_seconds: float | None = None,
     wall_clock: Callable[[], float] | None = None,
+    capture_metadata_persist: Callable[[Mapping[str, Any]], None] | None = None,
 ) -> GuardedRealCampaignResult:
     """Exercise an already-constructed registry under the closed probe plan.
 
@@ -1071,6 +1143,7 @@ def _run_guarded_campaign_with_registry_v1(
 
     observer = GuardedProviderDispatch(
         fixtures, registry, deadline_guard=require_deadline,
+        capture_metadata_persist=capture_metadata_persist,
     )
     for fixture in fixtures:
         if _bind_public_route(registry, fixture.definition) != fixture.route:

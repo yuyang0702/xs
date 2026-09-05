@@ -1,0 +1,26 @@
+{
+  "schema": "FreshOfflineExactReplayReviewV1",
+  "agent": "usage_c_replay",
+  "mode": "READ_ONLY_OFFLINE",
+  "source": "prior-campaign/campaign/probe-terminal-state-v1.json::records[0].raw_response_base64",
+  "raw_sha256": "de1cdf7b6eefcab2fa28f6bab664aad159be87d1d4e152250a77e61974bef713",
+  "raw_bytes": 1735,
+  "event_types": ["message_start", "content_block_start", "content_block_delta", "content_block_delta", "content_block_delta", "content_block_stop", "message_delta", "message_stop"],
+  "usage_snapshots": [
+    {"event_index": 0, "event_type": "message_start", "input_tokens": 48916, "output_tokens": 0, "cache_creation_input_tokens": 0, "cache_read_input_tokens": 0},
+    {"event_index": 6, "event_type": "message_delta", "input_tokens": 89255, "output_tokens": 9, "cache_creation_input_tokens": 0, "cache_read_input_tokens": 0}
+  ],
+  "repeat_replay_count": 2,
+  "deterministic": true,
+  "adapter_before_fix": {"finish_reason": "end_turn", "input_tokens": 48916, "output_tokens": 9, "visible_characters": 32, "projection": "exact", "terminal_event": "message_stop"},
+  "extractor_before_fix": "PROVIDER_REPORTED_USAGE_INPUT_CONFLICT",
+  "output_shape_sha256": "309b78db673e2632db467b20fa00dcaccb85259c4e8792fbc4fe96ec8eb7838a",
+  "provider_error_present": false,
+  "http_metadata_persisted": false,
+  "replay_parameters": {"content_type": "text/event-stream", "encoding": "utf-8", "source": "INFERRED_FROM_ENTITY_NOT_RECOVERED_HEADERS"},
+  "historical_state": "FAILED_CONSUMED",
+  "historical_surface_code": "probe.provider.incomplete_terminal_evidence",
+  "historical_debit": {"input_tokens": 30458, "output_tokens": 2974, "source": "AUTHORIZED_ESTIMATE_AND_FULL_OUTPUT_RESERVE"},
+  "raw_provider_text_committed": false,
+  "provider_calls": 0
+}

@@ -1,0 +1,36 @@
+{
+  "reviewer": "/root/usage_a_official",
+  "AUTHORITATIVE_CUMULATIVE_USAGE_SEMANTICS_VERIFIED": "YES",
+  "MESSAGE_START_USAGE_SEMANTICS": "Seed the message usage snapshot.",
+  "MESSAGE_DELTA_USAGE_SEMANTICS": "Cumulative whole-message values replace applicable previous values; never add snapshots.",
+  "INPUT_TOKENS_DELTA_ALLOWED": "YES",
+  "CUMULATIVE_OVERWRITE_RULE": "Overwrite output and non-null supported optional input/cache fields, including zero.",
+  "OMITTED_FIELD_RULE": "Omitted/null optional fields retain prior values. Output is required in official schema; no official claim that absent/null output is valid.",
+  "other_metadata": "SDK replaces supported non-null server_tool_use/output_tokens_details; no generic unknown-field updates.",
+  "AUTHORITATIVE_SOURCE_REFERENCES": [
+    {
+      "url": "https://github.com/anthropics/anthropic-sdk-python/blob/62de60b27d04f0927a0ccf0f2610597fafcfab6a/src/anthropic/lib/streaming/_messages.py#L456-L534",
+      "sha256": "660dc0aa0dfacfdea50d20033c7f07d3ba3aa332733954ff134ff7b03fe8da13"
+    },
+    {
+      "url": "https://github.com/anthropics/anthropic-sdk-python/blob/62de60b27d04f0927a0ccf0f2610597fafcfab6a/src/anthropic/types/message_delta_usage.py#L12-L35",
+      "sha256": "124d1536b895a09872b40301b450db7ce77729e1c8c5d9152a7d3b58ee654eac"
+    },
+    {
+      "url": "https://github.com/anthropics/anthropic-sdk-python/blob/62de60b27d04f0927a0ccf0f2610597fafcfab6a/src/anthropic/types/usage.py",
+      "sha256": "d0d883058d47aae07de75bc0abae85a131259f0c787a46899da2fb6a86a9d78f"
+    },
+    {
+      "url": "https://github.com/anthropics/anthropic-sdk-python/blob/62de60b27d04f0927a0ccf0f2610597fafcfab6a/src/anthropic/types/raw_message_delta_event.py",
+      "sha256": "16725e7e227df8c6b91b3bbfd06d62c08231722e3e5f725cf38f8fe1ae0a43d4"
+    },
+    {
+      "url": "https://platform.claude.com/docs/en/build-with-claude/streaming",
+      "facts": "One or more message_delta events; cumulative usage."
+    }
+  ],
+  "release": "v1.4.0",
+  "commit": "62de60b27d04f0927a0ccf0f2610597fafcfab6a",
+  "research_date": "2026-09-05",
+  "model_calls": 0
+}

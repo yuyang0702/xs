@@ -1,0 +1,246 @@
+{
+  "version": 2,
+  "original_requirement": "Verify official cumulative usage; repair shared response accounting and cause preservation; prove unchanged requests; replay immutable probe01; bind a fresh bounded successor and continue only through every mandatory execution gate.",
+  "scope_classification": "closed_world",
+  "closed_world_justification": "The changed domain is the finite protocol-owned Anthropic usage counter/state contract, shared by every compatible route. No provider-name special case or open generated-business-container inference is introduced. All enabled routes are inventoried and 120 representative requests are compared. Campaign authority remains a closed eight-case replacement branch justified by missing historical HTTP status.",
+  "operational_definition": "Canonical final input/output match the official cumulative snapshot; fieldwise cache retention precedes summation; exact captures and typed causes cross adapter, budget, signed workload and consumed-nonce boundaries without changing request or literary policy. This source-fix gate does not claim completion of the separately mandatory post-probe Exact READY, size, reviewer and paid Full Short phases.",
+  "forbidden_narrowing": [
+    "No Happy-only patch",
+    "No first/maximum-token heuristic",
+    "No estimator equality requirement",
+    "No relay billing alias authority",
+    "No mocked parser replacing production replay",
+    "No protocol PASS equated to historical HTTP acceptance",
+    "No unchanged request claim based only on canonical JSON",
+    "No historical nonce or authority reset"
+  ],
+  "resolution_status": "case_fixed",
+  "constraint_traceability": [
+    {
+      "requirement": "Verify official behavior before source modification",
+      "implementation": "Shared counter reducer follows pinned official SDK start/delta behavior",
+      "test_paths": [
+        "tests/providers/test_anthropic_cumulative_usage.py",
+        "tests/test_provider_response_capture.py"
+      ],
+      "evidence": "authoritative-usage-semantics-v1.json and probe01-replay-before/after-fix-v1.json"
+    },
+    {
+      "requirement": "Response-only shared fix; request builder, prompts, caps, reasoning, routes unchanged",
+      "implementation": "Shared reducer in capture and response adapter; all request-prefix statements and builder dependencies untouched",
+      "test_paths": [
+        "tests/providers/test_anthropic_cumulative_usage.py",
+        "tests/canary/test_shared_usage_successor_controller.py",
+        "tests/providers/test_protocols.py"
+      ],
+      "evidence": "shared-protocol-request-zero-diff-v1.json; every field equal in 120 rows across 6 providers/15 models"
+    },
+    {
+      "requirement": "Preserve precise child causes; malformed streams still fail closed",
+      "implementation": "Capture observer retains safe typed child code, adapter Provider errors retain precedence, consumed nonce persists cause",
+      "test_paths": [
+        "tests/canary/test_full_short_budget_unblocked_campaign.py",
+        "tests/providers/test_anthropic_cumulative_usage.py",
+        "tests/canary/test_shared_usage_successor_controller.py"
+      ],
+      "evidence": "failure-cause-preservation-v1.json; HTTP seam invalid usage, Provider error, missing terminal and metadata failure paths"
+    },
+    {
+      "requirement": "Separate estimate, realized usage and reserves",
+      "implementation": "No actual-vs-estimator workload comparison; known usage never lowered to reserve; controller labels budget debit and promoted-evidence actual separately",
+      "test_paths": [
+        "tests/test_external_workload_evidence.py",
+        "tests/test_full_short_probe_campaign.py",
+        "tests/canary/test_full_short_budget_unblocked_campaign.py",
+        "tests/test_full_short_execution.py"
+      ],
+      "evidence": "agent-d-accounting-lineage-v1.json; lower/equal/higher tokenizer usage and partial/ambiguous known larger usage regressions"
+    },
+    {
+      "requirement": "Do not resend replay-proven accepted probe01; replacement only if acceptance remains unproven",
+      "implementation": "Historical metadata gap and 3xx source counterexample require one replacement; new authority binds disposition proof separately",
+      "test_paths": [
+        "tests/canary/test_shared_usage_successor_controller.py",
+        "tests/test_shared_protocol_usage_authorization.py"
+      ],
+      "evidence": "probe01-workload-evidence-disposition-v1.json"
+    },
+    {
+      "requirement": "Fresh bounded authorization, exact proof files, no historical state reuse",
+      "implementation": "New closed outer subtype retains nested runtime/dependency validators; controller revalidates actual proof content and current request source; old canonical bytes remain unchanged",
+      "test_paths": [
+        "tests/test_shared_protocol_usage_authorization.py",
+        "tests/canary/test_shared_usage_successor_controller.py",
+        "tests/canary/test_full_short_budget_unblocked_orchestrator.py"
+      ],
+      "evidence": "successor-probe-case-set-v1.json; missing/tampered proof, source/hash drift, idempotence and reused nonce tests"
+    },
+    {
+      "requirement": "Every later mandatory execution gate and exactly one Full Short",
+      "implementation": "Existing journal/capacity/dry-run/size/reviewer gates and production runner remain authoritative; no bypass or alternate runtime",
+      "test_paths": [
+        "tests/canary/test_full_short_budget_unblocked_orchestrator.py",
+        "tests/test_full_short_execution.py",
+        "tests/test_full_short_runtime_kernel.py"
+      ],
+      "evidence": "704 related tests and 47 successor gate tests; actual execution gates remain pending until frozen-head authorization and probes"
+    }
+  ],
+  "historical_incident_families_checked": [
+    "provider.cumulative_usage_accounting",
+    "provider.terminal_error_event",
+    "provider.route_rejected",
+    "provider.credentials_unavailable",
+    "runtime.stale_console_process",
+    "initialization.location_backlink_missing",
+    "initialization.location_reference_missing",
+    "initialization.relationship_inverse_mismatch",
+    "provider.connection_failed",
+    "model.context_capacity_indivisible_scope",
+    "planning.runtime_identity_echo_mismatch",
+    "planning.reviewed_dimensions_echo_conflict",
+    "planning.invariant_truth_set_shape",
+    "planning.execution_manifest_handoff_echo_mismatch",
+    "model.context_capacity_preflight",
+    "runtime.required_tool_output_missing",
+    "runtime.primary_error_masked",
+    "planning.typed_ir_scope_collision",
+    "parser.generated_artifact_shape",
+    "provider.reasoning_only_final_artifact_unavailable",
+    "model.output_truncated",
+    "provider.structured_output_business_incomplete",
+    "planning.causal_chain_invalid",
+    "planning.recovery_latent_issue_misattributed",
+    "planning.structure_drift",
+    "planning.review_evidence_semantic_mismatch",
+    "planning.review_evidence_binding_invalid",
+    "planning.review_protocol_route_exhausted",
+    "planning.plan_structure_validation_failed",
+    "planning.event_body_integrity",
+    "planning.presentation_normalized_ownership_revealed",
+    "planning.packet_merge_closedness",
+    "planning.participant_identity_realization_mismatch",
+    "planning.event_obligation_incomplete",
+    "planning.atomic_beat_scope_mismatch",
+    "planning.repair_anchor_collapse",
+    "narrative.first_person_contract_missing",
+    "draft.segment_integrity_failed",
+    "draft.split_merge_length_mismatch",
+    "draft.semantic_receipt_unsatisfied",
+    "polish.local_validation_failed",
+    "review.issue_ledger_not_refreshed",
+    "review.final_review_unavailable"
+  ],
+  "projected_failure_mechanisms": [
+    "Cumulative snapshot mistaken for invariant sample",
+    "Sparse cache update loses retained counters",
+    "Adapter/capture canonical mismatch",
+    "Provider error flattened to syntax/transport",
+    "Usage failure flattened to terminal absence",
+    "Cross-tokenizer bound comparison",
+    "Known usage erased by joint uncertainty branch",
+    "Missing HTTP provenance at consumed nonce",
+    "Proof hash syntax accepted without actual content/source binding"
+  ],
+  "model_output_boundary_changed": true,
+  "model_output_variants_tested": [
+    "Isomorphic eight-event text stream",
+    "Multiple message-delta cumulative snapshots",
+    "Omitted input retaining seed",
+    "Sparse cache update with zero reset",
+    "Tool-use terminal with schema arguments",
+    "Reasoning-only terminal without final prose",
+    "Nonstream JSON cached input",
+    "No usage delta preserving start output"
+  ],
+  "model_output_topology_classes_tested": [
+    "SSE text blocks",
+    "SSE tool-use blocks",
+    "SSE thinking blocks",
+    "Nonstream JSON message"
+  ],
+  "unseen_valid_variants_tested": [
+    "Multiple cumulative deltas changing input twice with omitted cache retention",
+    "Nonstream cached input and streaming sparse-cache parity"
+  ],
+  "invalid_output_variants_tested": [
+    "Negative/bool/string/fractional usage counter",
+    "Content block reopened after message delta",
+    "Unbalanced block delta",
+    "Unknown block type"
+  ],
+  "transport_capacity_variants_tested": [
+    "Unterminated SSE bytes before timeout remain unreplayable",
+    "Iterator failure after terminal bytes replays locally without second dispatch",
+    "Campaign known output over cap remains charged and stops"
+  ],
+  "unknown_variant_behavior": "Unknown billing extensions have no counter authority. Unsupported event/block topologies retain typed protocol rejection. No arbitrary wrapper search or generated-business alias registration is introduced.",
+  "invariant_test_paths": [
+    "tests/providers/test_anthropic_cumulative_usage.py",
+    "tests/providers/test_anthropic_sse_state_machine.py",
+    "tests/test_provider_response_capture.py",
+    "tests/canary/test_full_short_budget_unblocked_campaign.py",
+    "tests/canary/test_shared_usage_successor_controller.py"
+  ],
+  "why_previous_tests_missed": "Old tests seeded only input and updated only output, asserted an unsupported cross-event input equality and did not pass changed cumulative input through both adapter and usage extractor. Mixed terminal failure predicates hid the exact child cause; test fixtures coupled local estimator units to Provider counts.",
+  "sibling_boundaries": [
+    {
+      "boundary": "All compatible live routes and request builders",
+      "disposition": "fixed_and_tested",
+      "evidence": "One shared Anthropic reducer; 120 exact outgoing request identities and unchanged payload/http/registry/context-policy hashes"
+    },
+    {
+      "boundary": "OpenAI chat and responses usage extraction",
+      "disposition": "tested_not_susceptible",
+      "evidence": "Protocol dispatch retains its alias, input-consistency and monotonic-output checks; exact usage format tests include both protocols"
+    },
+    {
+      "boundary": "Captured response replay and durable execution usage receipt verification",
+      "disposition": "fixed_and_tested",
+      "evidence": "Same reducer and unchanged V1 receipt format; tests/test_full_short_execution.py checks forged usage receipts, cumulative actual budget and immutable capture anchors"
+    },
+    {
+      "boundary": "Planning causal chain and execution manifest",
+      "disposition": "tested_not_susceptible",
+      "evidence": "No model request content, business schema, reasoning directive or model-visible projection changed; tool schema terminal tests preserve arguments and finish semantics"
+    },
+    {
+      "boundary": "Draft split/merge, polish, targeted/manual revision, final review",
+      "disposition": "tested_not_susceptible",
+      "evidence": "No orchestration, segmentation, semantic receipt or narrative validator source changed; provider text/tool projections and output-shape semantics remain unchanged. Independent Exact READY/size execution gates remain required later."
+    },
+    {
+      "boundary": "StoryState, Canon, READY and formal promotion",
+      "disposition": "tested_not_susceptible",
+      "evidence": "No authority reducer, formal-write, checkpoint ownership or completion validator source changed; existing Full Short authority/capture/receipt rejection tests pass. No direct formal-data mutation occurs during local tests."
+    },
+    {
+      "boundary": "Probe workload promotion and input budget",
+      "disposition": "fixed_and_tested",
+      "evidence": "Accepted exact local request bound preserved independently from Provider tokenizer units; signed route/request/output/nonce mismatches still fail"
+    },
+    {
+      "boundary": "Successor restart, deadline and exactly-once runtime",
+      "disposition": "fixed_and_tested",
+      "evidence": "Existing eight-case consumed-state engine retained, fresh outer schema is canonical/idempotent, controller tests prove first failure stops and metadata is HMAC-bound before usage conversion"
+    }
+  ],
+  "production_shaped_tests": [
+    "tests/providers/test_anthropic_cumulative_usage.py",
+    "tests/canary/test_full_short_budget_unblocked_campaign.py",
+    "tests/canary/test_shared_usage_successor_controller.py",
+    "tests/test_external_workload_evidence.py"
+  ],
+  "next_authoritative_boundary_tests": [
+    "tests/test_full_short_execution.py",
+    "tests/test_full_short_probe_campaign.py",
+    "tests/test_shared_protocol_usage_authorization.py",
+    "tests/canary/test_full_short_budget_unblocked_orchestrator.py"
+  ],
+  "remaining_risks": [
+    "Historical HTTP acceptance remains unproved and requires one fresh replacement after gates",
+    "Local estimator margin is not a proven bound on Provider tokenizer usage; actual campaign hard-stop accounting remains necessary",
+    "Relay panel identity and microdollar difference remain unproved",
+    "No actual successor probe, capacity closure or real Full Short completion is claimed by this source-fix report"
+  ]
+}

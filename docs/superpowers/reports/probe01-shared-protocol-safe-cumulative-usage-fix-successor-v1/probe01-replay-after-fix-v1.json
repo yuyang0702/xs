@@ -1,0 +1,35 @@
+{
+  "schema": "Probe01ExactReplayAfterFixV1",
+  "PROBE01_EXACT_REPLAY_AFTER_FIX": "PASS",
+  "raw_capture_sha256": "de1cdf7b6eefcab2fa28f6bab664aad159be87d1d4e152250a77e61974bef713",
+  "raw_capture_bytes": 1735,
+  "MESSAGE_STOP_PRESENT": "YES",
+  "STOP_REASON": "end_turn",
+  "VISIBLE_FINAL_PRESENT": "YES",
+  "visible_characters": 32,
+  "PROVIDER_ERROR_PRESENT": "NO",
+  "CANONICAL_FINAL_PROVIDER_INPUT_TOKENS": 89255,
+  "CANONICAL_FINAL_PROVIDER_OUTPUT_TOKENS": 9,
+  "usage_receipt": {
+    "schema": "ProviderReportedActualUsageV1",
+    "version": 1,
+    "protocol": "anthropic",
+    "input_tokens": 89255,
+    "output_tokens": 9,
+    "provider_entity_sha256": "de1cdf7b6eefcab2fa28f6bab664aad159be87d1d4e152250a77e61974bef713",
+    "source_topologies": [
+      "event[0].message.usage",
+      "event[6].usage"
+    ],
+    "usage_record_count": 2,
+    "usage_receipt_sha256": "11f871e1dceb36d43cf4cbdfa5a3c575a2ca87e2bd3e47f1a560883d8d685bfd"
+  },
+  "historical_http_metadata_recovered": false,
+  "replay_parameters": {
+    "content_type": "text/event-stream",
+    "encoding": "utf-8",
+    "source": "INFERRED_FROM_ENTITY_NOT_RECOVERED_HEADERS"
+  },
+  "historical_evidence_edited": false,
+  "provider_calls": 0
+}

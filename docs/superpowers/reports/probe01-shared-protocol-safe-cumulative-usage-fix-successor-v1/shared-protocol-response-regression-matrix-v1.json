@@ -1,0 +1,120 @@
+{
+  "schema": "SharedProtocolResponseRegressionMatrixV1",
+  "status": "PASS",
+  "SHARED_PROTOCOL_REGRESSION_COUNT": 0,
+  "PRECISE_CHILD_CAUSE_LOST_TO_INCOMPLETE_TERMINAL_COUNT": 0,
+  "cases": [
+    {
+      "id": 1,
+      "behavior": "start snapshot then changed final input",
+      "status": "PASS"
+    },
+    {
+      "id": 2,
+      "behavior": "omitted input retains seed",
+      "status": "PASS"
+    },
+    {
+      "id": 3,
+      "behavior": "changed input replaces",
+      "status": "PASS"
+    },
+    {
+      "id": 4,
+      "behavior": "multiple cumulative outputs not summed",
+      "status": "PASS"
+    },
+    {
+      "id": 5,
+      "behavior": "message_stop with end_turn",
+      "status": "PASS"
+    },
+    {
+      "id": 6,
+      "behavior": "max_tokens terminal policy",
+      "status": "PASS"
+    },
+    {
+      "id": 7,
+      "behavior": "provider error after usage",
+      "status": "PASS"
+    },
+    {
+      "id": 8,
+      "behavior": "reasoning-only has no final artifact",
+      "status": "PASS"
+    },
+    {
+      "id": 9,
+      "behavior": "tool/schema terminal",
+      "status": "PASS"
+    },
+    {
+      "id": 10,
+      "behavior": "malformed block ordering",
+      "status": "PASS"
+    },
+    {
+      "id": 11,
+      "behavior": "truncated or unterminated stream",
+      "status": "PASS"
+    },
+    {
+      "id": 12,
+      "behavior": "no usage update preserves start",
+      "status": "PASS"
+    },
+    {
+      "id": 13,
+      "behavior": "sparse cache counters retained",
+      "status": "PASS"
+    },
+    {
+      "id": 14,
+      "behavior": "optional null and zero semantics",
+      "status": "PASS"
+    },
+    {
+      "id": 15,
+      "behavior": "JSON/stream/cache parity",
+      "status": "PASS"
+    },
+    {
+      "id": 16,
+      "behavior": "precise cause persisted after real HTTP-seam capture",
+      "status": "PASS"
+    },
+    {
+      "id": 17,
+      "behavior": "unknown relay billing cannot override protocol counters",
+      "status": "PASS"
+    }
+  ],
+  "test_runs": [
+    {
+      "filename": "focused-related.xml",
+      "sha256": "f6683cc1431b84ec8cd79adca50d29dbcb438513d7397186327c87faf19abca4",
+      "tests": 704,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "filename": "successor-gates.xml",
+      "sha256": "4f2458151f9f94badddf7a65f0608517f4a588d9649b30b415c2607ff112637d",
+      "tests": 47,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    }
+  ],
+  "test_paths": [
+    "tests/providers/test_anthropic_cumulative_usage.py",
+    "tests/providers/test_anthropic_sse_state_machine.py",
+    "tests/canary/test_full_short_budget_unblocked_campaign.py",
+    "tests/canary/test_shared_usage_successor_controller.py"
+  ],
+  "reasoning_policy_changes": 0,
+  "business_tool_contract_changes": 0,
+  "provider_calls": 0
+}

@@ -752,26 +752,51 @@ def _aliased_usage_int(
     return values[0]
 
 
+ANTHROPIC_USAGE_COUNTER_FIELDS_V1 = (
+    "input_tokens", "cache_creation_input_tokens", "cache_read_input_tokens",
+    "output_tokens",
+)
+
+
+def merge_anthropic_usage_snapshot_v1(
+    snapshot: Mapping[str, int], usage: Mapping[str, Any],
+) -> dict[str, int]:
+    """Replace protocol-owned cumulative counters, retaining omitted optionals.
+
+    Anthropic SDK 62de60b27d04f0927a0ccf0f2610597fafcfab6a,
+    lib/streaming/_messages.py:520-534. Cache counters must merge before input
+    summation. Relay extensions and nested billing aliases have no authority.
+    Missing output retains the existing compatible-adapter behavior; explicit
+    null output remains invalid (the official delta schema requires an int).
+    """
+    if not isinstance(usage, Mapping):
+        raise ProviderResponseCaptureError("PROVIDER_REPORTED_USAGE_OBJECT_INVALID")
+    result = dict(snapshot)
+    for field in ANTHROPIC_USAGE_COUNTER_FIELDS_V1:
+        if field not in usage:
+            continue
+        if usage[field] is None and field != "output_tokens":
+            continue
+        result[field] = _usage_int(usage[field], field=field)
+    return result
+
+
+def canonical_anthropic_usage_v1(
+    usage: Mapping[str, Any],
+) -> tuple[int | None, int | None]:
+    snapshot = merge_anthropic_usage_snapshot_v1({}, usage)
+    inputs = [snapshot[field] for field in ANTHROPIC_USAGE_COUNTER_FIELDS_V1[:-1]
+              if field in snapshot]
+    return (sum(inputs) if inputs else None, snapshot.get("output_tokens"))
+
+
 def _canonical_usage_sample_v1(
     protocol: str, usage: Mapping[str, Any],
 ) -> tuple[int | None, int | None]:
     """Project a protocol-owned usage object without scanning arbitrary JSON."""
 
     if protocol == "anthropic":
-        input_fields = (
-            "input_tokens", "cache_creation_input_tokens",
-            "cache_read_input_tokens",
-        )
-        present_input = [field for field in input_fields if field in usage]
-        input_tokens = (
-            sum(_usage_int(usage[field], field=field) for field in present_input)
-            if present_input else None
-        )
-        output_tokens = (
-            _usage_int(usage["output_tokens"], field="output_tokens")
-            if "output_tokens" in usage else None
-        )
-        return input_tokens, output_tokens
+        return canonical_anthropic_usage_v1(usage)
     if protocol == "openai-chat":
         return (
             _aliased_usage_int(
@@ -801,9 +826,10 @@ def extract_provider_reported_actual_usage_v1(
 ) -> dict[str, Any]:
     """Derive actual token usage from one exact captured Provider entity.
 
-    Only the closed protocol-owned usage locations are considered.  SSE usage
-    samples must be monotonic and the entity must include a closed terminal
-    frame.  The returned hash-only receipt is bound to the exact entity bytes.
+    Only closed protocol-owned usage locations are considered. Anthropic SSE
+    counters are cumulative snapshot replacements; OpenAI validation remains
+    independent. The entity must include a closed terminal frame. The receipt's
+    existing byte hash and source topologies retain exact lineage authority.
     """
 
     canonical_protocol = str(protocol).strip().casefold().replace("_", "-")
@@ -828,6 +854,17 @@ def extract_provider_reported_actual_usage_v1(
     for index, value in enumerate(values):
         if not isinstance(value, Mapping):
             continue
+        if canonical_protocol == "anthropic" and is_sse:
+            if value.get("type") == "message_start":
+                message = value.get("message")
+                nested = message.get("usage") if isinstance(message, Mapping) else None
+                if isinstance(nested, Mapping):
+                    containers.append((f"event[{index}].message.usage", nested))
+            elif value.get("type") == "message_delta":
+                direct = value.get("usage")
+                if isinstance(direct, Mapping):
+                    containers.append((f"event[{index}].usage", direct))
+            continue
         direct = value.get("usage")
         if isinstance(direct, Mapping):
             containers.append((f"event[{index}].usage", direct))
@@ -846,7 +883,16 @@ def extract_provider_reported_actual_usage_v1(
             "PROVIDER_REPORTED_USAGE_MISSING"
         )
     samples: list[tuple[str, int | None, int | None]] = []
+    anthropic_snapshot: dict[str, int] = {}
     for topology, usage in containers:
+        if canonical_protocol == "anthropic":
+            update = merge_anthropic_usage_snapshot_v1({}, usage)
+            anthropic_snapshot = merge_anthropic_usage_snapshot_v1(
+                anthropic_snapshot, usage,
+            )
+            if not update:
+                continue
+            usage = anthropic_snapshot
         input_tokens, output_tokens = _canonical_usage_sample_v1(
             canonical_protocol, usage,
         )
@@ -862,11 +908,11 @@ def extract_provider_reported_actual_usage_v1(
         raise ProviderResponseCaptureError(
             "PROVIDER_REPORTED_USAGE_INCOMPLETE"
         )
-    if len(set(input_samples)) != 1:
+    if canonical_protocol != "anthropic" and len(set(input_samples)) != 1:
         raise ProviderResponseCaptureError(
             "PROVIDER_REPORTED_USAGE_INPUT_CONFLICT"
         )
-    if output_samples != sorted(output_samples):
+    if canonical_protocol != "anthropic" and output_samples != sorted(output_samples):
         raise ProviderResponseCaptureError(
             "PROVIDER_REPORTED_USAGE_OUTPUT_NON_MONOTONIC"
         )

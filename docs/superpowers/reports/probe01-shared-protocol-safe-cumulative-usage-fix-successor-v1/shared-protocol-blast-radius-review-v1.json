@@ -1,0 +1,33 @@
+{
+  "schema": "SharedProtocolBlastRadiusIndependentReviewV1",
+  "reviewer": "/root/usage_shared_protocol_reviewer",
+  "independence_claimed": true,
+  "SHARED_ANTHROPIC_PROTOCOL_BLAST_RADIUS_REVIEW": "PASS",
+  "reviewed_sources": {
+    "src/novel_flywheel/provider_response_capture.py": "9d878324c63120a862ee71092f38927970169d6a042fb24af3e93199f946af02",
+    "src/novel_flywheel/providers/anthropic.py": "02431b6f9327d0085d2eb0589a05446fb37a398725fa690a54f9e84c328ac0be",
+    "src/novel_flywheel/full_short_probe_campaign.py": "dda02f5431309ca761344a5de79116e4bb93f62b9ec25b2ae333d972e8eef82a",
+    "src/novel_flywheel/external_workload_evidence.py": "71df076b90c51918399da4743114fbee6a7dc79c65240c22d651a4e6a90a1ada",
+    "src/novel_flywheel/full_short_campaign_authorization.py": "2b82f8d24a6eda2a864378fa62c01cf0418c6436bfd59be996a77141f25a9adb",
+    "tools/canary/full_short_budget_unblocked_campaign.py": "da338bc0666c708bba4c332b9986f3d167e7ece5990e6484fc73e98585ca7c65",
+    "tools/canary/execute_full_short_budget_unblocked_one_round.py": "4ab8d3fb0cca27af90130b8292c1a9f71d6e71f788e8ca78a606b65a2bd8f6cc"
+  },
+  "findings": [],
+  "independent_tests": {
+    "passed": 132,
+    "seconds": 14.18,
+    "source": "Fresh reviewer tool execution"
+  },
+  "assessment": [
+    "Protocol counter reducer shared across adapter and extractor",
+    "120 outgoing requests identical over every active compatible provider/model in inventory",
+    "Precise cause preserved into consumed nonce; real 2xx acceptance still required",
+    "Estimate, actual and reserve accounting separated; replacement disposition source-proven",
+    "Fresh authorization verifies actual proofs and current request builder sources"
+  ],
+  "limitations": [
+    "Official source research and exact private replay reviewed through evidence, not independently repeated by reviewer",
+    "Whole-suite, formal Strict L3, frozen HEAD and all execution gates remain independent"
+  ],
+  "provider_calls": 0
+}

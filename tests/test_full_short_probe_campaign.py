@@ -131,6 +131,23 @@ def test_missing_provider_usage_debits_authorized_upper_bounds() -> None:
     assert "private detail" not in str(state)
 
 
+@pytest.mark.parametrize("kind", [ProbeResultKind.FAILED, ProbeResultKind.AMBIGUOUS])
+@pytest.mark.parametrize("output", [None, 25])
+def test_partial_or_ambiguous_usage_never_discards_known_larger_usage(kind, output):
+    campaign = FullShortProbeCampaign(
+        _plan(), integrity_key=STATE_KEY, nonce_factory=lambda: "partial-usage",
+    )
+    state = campaign.run(lambda _request: DispatchResult(
+        kind, "probe.usage_partial", b"captured", output, 99,
+    ))
+    assert state["records"][0]["debited_input_tokens"] == 99
+    assert state["records"][0]["debited_output_tokens"] == (20 if output is None else 25)
+    assert state["records"][0]["state"] == (
+        "FAILED_CONSUMED" if output == 25 else f"{kind.value}_CONSUMED"
+    )
+    assert all(record["state"] == NonceState.UNUSED for record in state["records"][1:])
+
+
 def test_restart_after_attempt_fails_closed_without_redispatch() -> None:
     checkpoints = []
     campaign = FullShortProbeCampaign(

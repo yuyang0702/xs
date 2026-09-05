@@ -2658,3 +2658,10 @@ Public route inspection now classifies the official DeepSeek endpoint as
 `VOLCENGINE_ARK_DIRECT`, and all remaining routes as
 `THIRD_PARTY_RELAY_UNVERIFIED_UPSTREAM`.  This is public metadata only and does
 not infer an unverified relay's upstream operator or model provenance.
+# Shared Anthropic cumulative usage recovery (2026-09-05)
+
+The Anthropic response adapter and exact capture extractor now share a protocol-owned counter snapshot reducer. Message start seeds the counters; later message deltas replace present cumulative fields. Omitted or null optional input/cache fields retain their prior values, including across successive message deltas. Cache counters merge before canonical input summation. Cumulative output is never added twice. JSON and streaming projections agree; relay billing extensions do not override protocol counters. Outbound payloads, reasoning, caps, routes and transport policy are unchanged.
+
+Probe failures retain the existing precise capture/protocol families and safe child reason codes. Explicit Provider errors remain Provider errors, including after usage updates. Local request estimates remain workload bounds under the same estimator; Provider token counts are separate realized measurements. An accepted request is no longer rejected solely because its tokenizer reports fewer tokens than the local estimate. Partial/ambiguous accounting retains every known larger usage value and any necessary output reserve. Missing usage remains an estimate/reserve, never verified actual spend.
+
+The shared-usage successor authorization is a separate closed schema bound to the fresh Master and committed protocol, exact-replay, request-identity and regression evidence. The historical campaign and consumed nonces remain immutable. This successor uses one replacement probe 01 because the old capture lacks HTTP-status provenance, followed by cases 02–08, serially. New response metadata is sealed outside Git against the exact raw hash, request, route, authorization and consumed nonce. All existing capacity, Exact READY, size, Strict L3 and exactly-once Full Short gates still apply.

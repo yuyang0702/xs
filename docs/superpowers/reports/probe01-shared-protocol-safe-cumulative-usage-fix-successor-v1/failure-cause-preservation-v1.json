@@ -1,0 +1,20 @@
+{
+  "schema": "SharedUsageFailureCausePreservationV1",
+  "status": "PASS",
+  "PRECISE_CHILD_CAUSE_LOST_TO_INCOMPLETE_TERMINAL_COUNT": 0,
+  "boundary": "GuardedProviderDispatch.capture_provider_protocol_input -> adapter -> __call__ -> consumed nonce",
+  "tested": [
+    "invalid numeric usage field",
+    "explicit provider error after usage",
+    "missing message_stop"
+  ],
+  "existing_families": [
+    "provider_response_capture_integrity_failure",
+    "anthropic_provider_terminal_error",
+    "anthropic_sse_terminal_missing",
+    "anthropic_sse_protocol_invalid"
+  ],
+  "provider_error_details_not_copied": true,
+  "raw_bytes_hash_bound": true,
+  "http_metadata_nonce_hmac_bound": true
+}

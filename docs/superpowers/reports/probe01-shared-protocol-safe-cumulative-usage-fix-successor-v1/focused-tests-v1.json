@@ -1,0 +1,50 @@
+{
+  "schema": "SharedUsageFocusedTestEvidenceV1",
+  "status": "PASS",
+  "runs": [
+    {
+      "filename": "focused-related.xml",
+      "sha256": "f6683cc1431b84ec8cd79adca50d29dbcb438513d7397186327c87faf19abca4",
+      "tests": 704,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "filename": "successor-gates.xml",
+      "sha256": "4f2458151f9f94badddf7a65f0608517f4a588d9649b30b415c2607ff112637d",
+      "tests": 47,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    }
+  ],
+  "before_fix_runs": [
+    {
+      "filename": "new-regression-before.xml",
+      "sha256": "ede3922fb1281cb759636653528ed8c2c8728a7bab4f63f69dce04100a5d7534",
+      "tests": 21,
+      "failures": 13,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "filename": "accounting-regression-before.xml",
+      "sha256": "e35d86e9fbcafb5eb80ca08739a8dd4c1ed3291a28a841f0916d8ba03ebba55d",
+      "tests": 7,
+      "failures": 4,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "filename": "cause-regression-before.xml",
+      "sha256": "2f8c088af36770b6218fc79d6d54e4d44d7ce65d0115f10e22ca17894fd77114",
+      "tests": 3,
+      "failures": 3,
+      "errors": 0,
+      "skipped": 0
+    }
+  ],
+  "counts_are_per_run_not_additive_unique_total": true,
+  "provider_calls": 0
+}

@@ -53,6 +53,16 @@ def _validate(package=None, expected=None):
     return validate_external_workload_evidence_v1(package or _seal(), expected=expected or _expected(), verification_keys={"campaign-key-01": KEY})
 
 
+@pytest.mark.parametrize("actual_input", [1, 12345, 89255])
+def test_accepted_workload_preserves_estimate_and_provider_tokenizer_units(actual_input):
+    payload = _payload()
+    payload["result"]["actual_input_tokens"] = actual_input
+    verified = _validate(_seal(payload))
+    promoted = next(iter(deterministic_promotion_mapping_v1([verified]).values()))
+    assert promoted["input_tokens"] == 12345
+    assert promoted["actual_input_tokens"] == actual_input
+
+
 def test_valid_exact_frozen_head_evidence_promotes_deterministically() -> None:
     verified = _validate()
     left = deterministic_promotion_mapping_v1([verified])
@@ -90,7 +100,6 @@ def test_valid_exact_frozen_head_evidence_promotes_deterministically() -> None:
         (("result", "input_accepted"), False, "WORKLOAD_NOT_ACCEPTED"),
         (("result", "output_accepted"), False, "WORKLOAD_NOT_ACCEPTED"),
         (("result", "actual_input_tokens"), 0, "INVALID_ACTUAL_INPUT_TOKENS"),
-        (("result", "actual_input_tokens"), 12344, "ACTUAL_INPUT_BELOW_PROMOTED_WORKLOAD_BOUND"),
         (("result", "actual_output_tokens"), 2049, "OUTPUT_OUTSIDE_REQUEST_BOUND"),
     ],
 )

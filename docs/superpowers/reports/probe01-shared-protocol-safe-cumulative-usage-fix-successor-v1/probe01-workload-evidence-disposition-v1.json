@@ -1,0 +1,24 @@
+{
+  "schema": "Probe01WorkloadEvidenceDispositionV1",
+  "PROBE01_HISTORICAL_EVIDENCE_DISPOSITION": "FRESH_REPLACEMENT_REQUIRED",
+  "raw_capture_sha256": "de1cdf7b6eefcab2fa28f6bab664aad159be87d1d4e152250a77e61974bef713",
+  "historical_http_acceptance_proven": false,
+  "replacement_request_identity_preparable": true,
+  "reason": "Historical status metadata is absent. Frozen HttpProvider.post_stream only rejects status >=400. A 3xx entity with valid SSE can produce the identical mixed incomplete_terminal_evidence code; that code does not imply 2xx acceptance.",
+  "protocol_replay_result": "PASS",
+  "PROBE01_COVERED_SHAPE_IDS": [29, 31, 33, 35, 37, 39, 122, 124, 126, 128, 130, 132],
+  "PROBE01_COVERED_SHAPE_COUNT": 12,
+  "historical_shapes_promoted": 0,
+  "conditional_coverage": {
+    "local_probe_wire_estimate": 30458,
+    "maximum_covered_physical_wire_estimate": 30458,
+    "earlier_29371_projection_is_not_physical_wire_maximum": true,
+    "wire_output_cap": 2974
+  },
+  "request_sha256": "d091d6276b789e5338f77ec1f4e0178d535a137dcf269b64232bde07e8271606",
+  "request_family_sha256": "1711438a251f1a082bfcf59664949f2fee2c2a62ef7a2848ba358e282aeba6a4",
+  "route_fingerprint": "099e358eae5fd0ff5e3d1b8cda34cd90c73c735c001ed44334ade3e3b667bf4e",
+  "fresh_replacement_limit": 1,
+  "historical_state_modified": false,
+  "provider_calls": 0
+}

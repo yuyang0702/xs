@@ -1,0 +1,72 @@
+{
+  "schema": "SharedUsageWholeSuiteDifferentialDispositionV1",
+  "baseline_head": "b73688bfa36f7f02578117c71084b24a8ad73421",
+  "status": "DIFFERENTIAL_NO_NEW_FAILURES",
+  "NEW_REGRESSION_COUNT": 0,
+  "whole_suite_pass": false,
+  "baseline_junit": {
+    "tests": 5361,
+    "failures": 380,
+    "errors": 262,
+    "skipped": 47
+  },
+  "current_junit": {
+    "tests": 5438,
+    "failures": 382,
+    "errors": 262,
+    "skipped": 47
+  },
+  "baseline_junit_sha256": "b764475d78d816c067237556c8d1e0a42e9a0a74fc2784b53df3a22555b21324",
+  "current_junit_sha256": "3406321abba30ca8c57f780f9e58c13ecdd0fb99e3b17a55c33089e8d2837028",
+  "comparison_sha256": "bfbe018fc6dd1ad66a21757d65a1a82d2abd42a932c1bda19d9ff98a8bef557e",
+  "same_failure_node_phase_count": 642,
+  "current_only_failures": [
+    {
+      "nodeid": "tests/test_r1_ptr12_guard_decision_observability.py::test_adapter_exception_type_message_and_trace_gap_are_preserved",
+      "phase": "call",
+      "message": "AssertionError: assert ['diagnostic_..._decision_v1'] == ['diagnostic_..._decision_v1']\n  \n  Left contains 3 more items, first extra item: 'diagnostic_provider_raw_shape_v1'\n  Use -v to get more diff"
+    },
+    {
+      "nodeid": "tests/test_r1_ptr12_guard_decision_observability.py::test_reasoning_only_emits_raw_delta_and_guard_before_same_typed_failure",
+      "phase": "call",
+      "message": "AssertionError: assert ['diagnostic_..._decision_v1'] == ['diagnostic_..._decision_v1']\n  \n  Left contains 3 more items, first extra item: 'diagnostic_provider_raw_shape_v1'\n  Use -v to get more diff"
+    }
+  ],
+  "shared_normalized_failure_message_changes": [],
+  "current_only_failure_classification": "TWO_INDEPENDENTLY_REPRODUCED_CONCURRENT_HARNESS_TRACE_COLLISIONS",
+  "collision_disposition_sha256": "0eaa814217306deaedf10d2ea59cbba2048c3d2e0350bd9449ea0e29621476ac",
+  "collision_serial_retests": [
+    {
+      "label": "baseline",
+      "identity": "diagnostic-collision-proof-baseline.xml",
+      "sha256": "b4c9f6864505cffddef666d83b29d06c437b19803e1763aa898ccf658dfdddde",
+      "tests": 7,
+      "failures": 0,
+      "errors": 0,
+      "time": "4.350"
+    },
+    {
+      "label": "current",
+      "identity": "diagnostic-collision-proof-current.xml",
+      "sha256": "3f30bc2cab9fb2b1bd05f5bbf2173cdbe6591b69482d79fe4e89a5c6267503d4",
+      "tests": 7,
+      "failures": 0,
+      "errors": 0,
+      "time": "4.194"
+    }
+  ],
+  "baseline_only_failure_count": 0,
+  "snapshot_manifest_sha256": "cded4122272fdc50bf2aacfa356ffb74e868d4da9a07326104cb2486ccdd3651",
+  "failure_disposition": [
+    "Baseline source defect: existing dynamic __import__ call rejected by historical canary dependency scanner.",
+    "Disposable-environment limits: detached branch; LF archive versus historical CRLF-bound packet hashes.",
+    "Historical fixed Skill profile/evidence seals differ from current environment in both runs.",
+    "Other failed node/phase pairs and normalized causes remain identical; individual historical defects are not claimed resolved.",
+    "Nested Full Short static audit checks, failed checks and metrics were compared and are identical."
+  ],
+  "fresh_read_only_reviewer": "/root/usage_fullsuite_differential_review",
+  "reviewer_snapshot_scope": "Initial 514 identical events; MAIN binds completed comparison separately. Fresh usage_diagnostic_differential_cause independently proved the two later harness collisions.",
+  "interpretation": "The Master requires NEW_REGRESSION_COUNT=0. Complete suites executed; neither suite is presented as green. Exact live-source preflight and later mandatory gates remain required.",
+  "historical_test_side_effects": "Preserved externally; exact three known modified files restored from baseline; disposable suite state never copied back.",
+  "real_provider_calls": 0
+}

@@ -4,6 +4,8 @@ from novel_flywheel.domain.models import ModelRequest, ModelResponse, ToolCall
 from novel_flywheel.provider_response_capture import (
     FullShortTransportEvidenceStateV1,
     ProviderResponseCaptureError,
+    canonical_anthropic_usage_v1,
+    merge_anthropic_usage_snapshot_v1,
     decide_full_short_transport_recovery_v1,
     parse_provider_protocol_input_bytes_v1,
 )
@@ -248,6 +250,7 @@ class AnthropicAdapter(HttpProvider):
 
         AnthropicAdapter._validate_json_body(body)
         usage = body.get("usage", {})
+        input_tokens, output_tokens = canonical_anthropic_usage_v1(usage)
         content = body.get("content", [])
         return ModelResponse(
             text="".join(
@@ -261,8 +264,8 @@ class AnthropicAdapter(HttpProvider):
             ) for part in content
               if isinstance(part, dict) and part.get("type") == "tool_use"],
             finish_reason=body.get("stop_reason"),
-            input_tokens=usage.get("input_tokens", 0),
-            output_tokens=usage.get("output_tokens", 0),
+            input_tokens=input_tokens if input_tokens is not None else 0,
+            output_tokens=output_tokens if output_tokens is not None else 0,
             raw_request_id=body.get("id"),
             provider_state={
                 "content": content,
@@ -434,8 +437,7 @@ class AnthropicAdapter(HttpProvider):
     @staticmethod
     def _aggregate_stream(events: list[dict]) -> dict:
         message_id = None
-        input_tokens = 0
-        output_tokens = 0
+        usage_snapshot: dict[str, int] = {}
         stop_reason = None
         blocks: dict[int, dict] = {}
         tool_json: dict[int, list[str]] = {}
@@ -449,7 +451,7 @@ class AnthropicAdapter(HttpProvider):
                 raise AnthropicStreamProtocolError(
                     "ANTHROPIC_SSE_EVENT_AFTER_MESSAGE_STOP"
                 )
-            if message_delta_seen and kind not in {"ping", "message_stop"}:
+            if message_delta_seen and kind not in {"ping", "message_delta", "message_stop", "error"}:
                 raise AnthropicStreamProtocolError(
                     "ANTHROPIC_SSE_EVENT_AFTER_MESSAGE_DELTA"
                 )
@@ -464,7 +466,9 @@ class AnthropicAdapter(HttpProvider):
                 message_started = True
                 message = event.get("message") or {}
                 message_id = message.get("id")
-                input_tokens = (message.get("usage") or {}).get("input_tokens", 0)
+                usage_snapshot = merge_anthropic_usage_snapshot_v1(
+                    {}, message.get("usage") or {},
+                )
             elif kind == "content_block_start":
                 if not message_started:
                     raise AnthropicStreamProtocolError(
@@ -563,13 +567,15 @@ class AnthropicAdapter(HttpProvider):
                     )
                 open_blocks.remove(index)
             elif kind == "message_delta":
-                if not message_started or open_blocks or message_delta_seen:
+                if not message_started or open_blocks:
                     raise AnthropicStreamProtocolError(
                         "ANTHROPIC_SSE_MESSAGE_DELTA_STATE_INVALID"
                     )
                 message_delta_seen = True
                 stop_reason = (event.get("delta") or {}).get("stop_reason") or stop_reason
-                output_tokens = (event.get("usage") or {}).get("output_tokens", output_tokens)
+                usage_snapshot = merge_anthropic_usage_snapshot_v1(
+                    usage_snapshot, event.get("usage") or {},
+                )
             elif kind == "message_stop":
                 if (
                     not message_started or open_blocks or not message_delta_seen
@@ -599,7 +605,7 @@ class AnthropicAdapter(HttpProvider):
         return {
             "id": message_id, "content": [blocks[index] for index in sorted(blocks)],
             "stop_reason": stop_reason,
-            "usage": {"input_tokens": input_tokens, "output_tokens": output_tokens},
+            "usage": usage_snapshot,
             "_protocol_complete": True,
             "_terminal_event": "message_stop",
         }

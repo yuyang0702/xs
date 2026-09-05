@@ -22,6 +22,16 @@ class IncidentDefinition:
 # not one novel's names, file paths, segment numbers, or provider wording.
 INCIDENT_DEFINITIONS = (
     IncidentDefinition(
+        "provider.cumulative_usage_accounting",
+        "Protocol cumulative usage was treated as conflicting samples",
+        "Apply the protocol-owned cumulative snapshot reducer before cache summation; preserve omitted fields and precise capture causes. Keep deterministic request estimates, realized Provider usage and budget reserves separate. Replay immutable captured bytes before considering any newly authorized request.",
+        (
+            r"provider_reported_usage_input_conflict",
+            r"provider_reported_usage_field_invalid",
+            r"provider_reported_usage_output_non_monotonic",
+        ),
+    ),
+    IncidentDefinition(
         "provider.terminal_error_event",
         "Provider emitted an explicit terminal error event",
         "Preserve the exact response capture and classify the provider event locally. Do not treat it as an interrupted transport or redispatch under the consumed Full Short authority; any later provider attempt requires fresh explicit authorization.",

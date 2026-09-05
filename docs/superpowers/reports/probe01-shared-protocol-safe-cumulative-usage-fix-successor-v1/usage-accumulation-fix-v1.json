@@ -1,0 +1,19 @@
+{
+  "schema": "SharedProtocolUsageAccumulationFixV1",
+  "status": "PASS",
+  "owning_reducer": "src/novel_flywheel/provider_response_capture.py::merge_anthropic_usage_snapshot_v1",
+  "consumers": [
+    "AnthropicAdapter._aggregate_stream",
+    "AnthropicAdapter._model_response_from_body",
+    "extract_provider_reported_actual_usage_v1"
+  ],
+  "rule": "Seed start; replace present cumulative counter; retain omitted/null optional; merge before cache sum",
+  "unknown_billing_extensions_ignored": true,
+  "openai_rules_unchanged": true,
+  "receipt_v1_format_unchanged": true,
+  "final_input": 89255,
+  "final_output": 9,
+  "PRE_DISPATCH_ESTIMATOR_SEMANTICS_UNCHANGED": "YES",
+  "ESTIMATOR_AND_PROVIDER_USAGE_FIELDS_SEPARATED": "YES",
+  "REALIZED_PROVIDER_USAGE_ACCOUNTING_SOURCE_GROUNDED": "YES"
+}

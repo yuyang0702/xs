@@ -1,0 +1,30 @@
+{
+  "agent": "usage_d_accounting",
+  "mode": "READ_ONLY_OFFLINE",
+  "ACCOUNTING_CONFLATION_BUG_COUNT": 2,
+  "logical_defects": [
+    "Cross-unit estimate/actual bound comparison (probe classifier and signed evidence validator)",
+    "Joint missing/ambiguous usage branch discarded known larger actual input"
+  ],
+  "INPUT_TOKEN_ACCOUNTING_LINEAGE": {
+    "local_estimate": 30458,
+    "wire_ascii_bytes": 121832,
+    "initial_snapshot": 48916,
+    "provider_final_input": 89255,
+    "provider_final_output": 9,
+    "historical_budget_debit": 30458,
+    "historical_output_reserve": 2974,
+    "relay_panel_input": 89255,
+    "relay_panel_output": 9,
+    "panel_evidence_class": "USER_SUPPLIED_RELAY_DASHBOARD_EVIDENCE"
+  },
+  "difference": 58797,
+  "ratio": 2.9304287871823496,
+  "ratio_cause": "NOT_PROVEN",
+  "all_route_multiplier_applied": false,
+  "RELAY_BILLING_EVENT_BOUND_TO_PROBE01": "NO",
+  "panel_displayed_usd": "0.089292",
+  "panel_rate_arithmetic_usd": "0.089291",
+  "microdollar_difference_cause": "NOT_PROVEN",
+  "provider_calls": 0
+}

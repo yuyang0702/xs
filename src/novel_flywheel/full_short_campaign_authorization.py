@@ -45,6 +45,15 @@ AUTHORIZATION_SOURCE_SHA256 = (
     "29ab6557dc7ebdf687b86ee47f55472aa01e406166d0cfde87641630bd22791e"
 )
 AUTHORIZATION_SOURCE_IDENTITY = "FULL_SHORT_END_TO_END_ONE_ROUND_INPUT_BUDGET_UNBLOCK_EXECUTE_MASTER"
+SHARED_USAGE_RECOVERY_SCHEMA = (
+    "FullShortSharedProtocolSafeUsageRecoveryAndSuccessorExecutionAuthorizationV1"
+)
+SHARED_USAGE_RECOVERY_SOURCE_IDENTITY = (
+    "PROBE01_SHARED_PROTOCOL_SAFE_CUMULATIVE_USAGE_FIX_REPLAY_AND_END_TO_END_CONTINUE_MASTER"
+)
+SHARED_USAGE_RECOVERY_SOURCE_SHA256 = (
+    "925e5482cea2ac56e5a0b9dbc3b233563a2be15e00c0e0714d83d2a846ed5d10"
+)
 EXACT_READY_PROJECT_ID = "2ad716f3c0d1"
 EXACT_READY_PROJECT_ID_SHA256 = (
     "a69d9140943781ee24b78ff87d8ef408d29c281c6e993981dc2ef4a8eb82f720"
@@ -88,6 +97,44 @@ class AuthorizationSourceV1(_ClosedModel):
     sha256: Literal[
         "29ab6557dc7ebdf687b86ee47f55472aa01e406166d0cfde87641630bd22791e"
     ]
+
+
+class SharedUsageRecoveryAuthorizationSourceV1(_ClosedModel):
+    identity: Literal[
+        "PROBE01_SHARED_PROTOCOL_SAFE_CUMULATIVE_USAGE_FIX_REPLAY_AND_END_TO_END_CONTINUE_MASTER"
+    ]
+    sha256: Literal[
+        "925e5482cea2ac56e5a0b9dbc3b233563a2be15e00c0e0714d83d2a846ed5d10"
+    ]
+
+
+class SharedProtocolUsageRecoveryV1(_ClosedModel):
+    """Exact proof references; the controller verifies committed file contents."""
+
+    authoritative_usage_semantics: BoundIdentityV1
+    raw_capture_sha256: Literal[
+        "de1cdf7b6eefcab2fa28f6bab664aad159be87d1d4e152250a77e61974bef713"
+    ]
+    exact_replay: BoundIdentityV1
+    workload_disposition: BoundIdentityV1
+    probe01_disposition: Literal["FRESH_REPLACEMENT_REQUIRED"]
+    request_zero_diff: BoundIdentityV1
+    response_regression_matrix: BoundIdentityV1
+
+    @model_validator(mode="after")
+    def _relative_proof_paths(self) -> "SharedProtocolUsageRecoveryV1":
+        for proof in (
+            self.authoritative_usage_semantics, self.exact_replay,
+            self.workload_disposition,
+            self.request_zero_diff, self.response_regression_matrix,
+        ):
+            if (
+                "\\" in proof.identity or ":" in proof.identity
+                or any(part in {"", ".", ".."} for part in proof.identity.split("/"))
+                or any(ord(char) < 32 for char in proof.identity)
+            ):
+                raise ValueError("proof identity is not a canonical relative path")
+        return self
 
 
 class FrozenExecutionV1(_ClosedModel):
@@ -404,7 +451,7 @@ class AuthorizationUsageV1(_ClosedModel):
 
 
 class FullShortOneRoundBudgetUnblockedExecutionAuthorizationV1(_ClosedModel):
-    """The sole canonical value represented by this module."""
+    """Original canonical campaign value, retained without schema migration."""
 
     schema_name: Literal[
         "FullShortOneRoundBudgetUnblockedExecutionAuthorizationV1"
@@ -453,6 +500,18 @@ class FullShortOneRoundBudgetUnblockedExecutionAuthorizationV1(_ClosedModel):
         return self
 
 
+class FullShortSharedProtocolSafeUsageRecoveryAndSuccessorExecutionAuthorizationV1(
+    FullShortOneRoundBudgetUnblockedExecutionAuthorizationV1
+):
+    """Fresh successor authority preserving every existing nested validator."""
+
+    schema_name: Literal[
+        "FullShortSharedProtocolSafeUsageRecoveryAndSuccessorExecutionAuthorizationV1"
+    ] = Field(alias="schema")
+    authorization_source: SharedUsageRecoveryAuthorizationSourceV1
+    shared_protocol_usage_recovery: SharedProtocolUsageRecoveryV1
+
+
 def canonical_json_bytes(value: Any) -> bytes:
     """Return the sole accepted byte representation (UTF-8 JSON plus LF)."""
 
@@ -482,9 +541,13 @@ def _coerce(
     if isinstance(value, FullShortOneRoundBudgetUnblockedExecutionAuthorizationV1):
         return value
     try:
-        return FullShortOneRoundBudgetUnblockedExecutionAuthorizationV1.model_validate(
-            value, strict=True
+        model = (
+            FullShortSharedProtocolSafeUsageRecoveryAndSuccessorExecutionAuthorizationV1
+            if isinstance(value, Mapping)
+            and value.get("schema") == SHARED_USAGE_RECOVERY_SCHEMA
+            else FullShortOneRoundBudgetUnblockedExecutionAuthorizationV1
         )
+        return model.model_validate(value, strict=True)
     except (ValidationError, ValueError, RuntimeError, TypeError) as exc:
         raise FullShortCampaignAuthorizationError("AUTHORIZATION_SHAPE_OR_VALUE_INVALID") from exc
 
@@ -924,6 +987,11 @@ __all__ = [
     "EXACT_READY_PROJECT_ID_SHA256",
     "FullShortCampaignAuthorizationError",
     "FullShortOneRoundBudgetUnblockedExecutionAuthorizationV1",
+    "FullShortSharedProtocolSafeUsageRecoveryAndSuccessorExecutionAuthorizationV1",
+    "SharedProtocolUsageRecoveryV1",
+    "SHARED_USAGE_RECOVERY_SCHEMA",
+    "SHARED_USAGE_RECOVERY_SOURCE_IDENTITY",
+    "SHARED_USAGE_RECOVERY_SOURCE_SHA256",
     "NAMED_APPROVER",
     "NEW_ABSOLUTE_MAX_INPUT_TOKENS",
     "PLAN_DERIVED_MAX_INPUT_TOKENS",

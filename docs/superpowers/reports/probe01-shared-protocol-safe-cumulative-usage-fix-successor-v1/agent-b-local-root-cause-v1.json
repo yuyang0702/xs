@@ -1,0 +1,22 @@
+{
+  "schema": "FreshOfflineRootCauseReviewV1",
+  "agent": "usage_b_root",
+  "mode": "READ_ONLY_OFFLINE",
+  "USAGE_CONFLICT_OWNING_SOURCE": "src/novel_flywheel/provider_response_capture.py::extract_provider_reported_actual_usage_v1",
+  "LOSSY_FAILURE_CLASSIFICATION_OWNING_SOURCE": "tools/canary/full_short_budget_unblocked_campaign.py::GuardedProviderDispatch.capture_provider_protocol_input/__call__",
+  "MINIMAL_FIX_SET": [
+    "Shared protocol-owned fieldwise cumulative snapshot before cache input summation",
+    "Use the same snapshot rule in adapter stream and JSON projections and exact usage extraction",
+    "Allow successive message_delta events after content closure, preserving malformed ordering rejection",
+    "Preserve explicit Provider error after message_delta as Provider error",
+    "Retain safe typed capture/adapter causes through consumed probe state"
+  ],
+  "compatibility_constraints": [
+    "Do not alter OpenAI usage extraction",
+    "Preserve already-valid V1 exact usage receipt fields and hash contract",
+    "Do not change outbound request construction",
+    "Do not grant nested relay billing extensions protocol accounting authority"
+  ],
+  "production_source_edited_by_agent": false,
+  "provider_calls": 0
+}

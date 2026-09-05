@@ -1,0 +1,11 @@
+{
+  "schema": "SharedUsageStrictL3PreexecutionV1",
+  "STRICT_L3": "PASS",
+  "warnings": [],
+  "blockers": [],
+  "baseline_used": true,
+  "recommended_level": "L3",
+  "inspection_sha256": "eb12f37875ac4d312db1d5f70ab6e98a4e823ab02985de64d3a7ac1b4c1c01c0",
+  "full_suite_differential_gate": "NO_NEW_SOURCE_REGRESSION; TWO_PROVEN_HARNESS_COLLISIONS",
+  "scope": "Source architecture inspector gate; whole-suite disposition is separate"
+}

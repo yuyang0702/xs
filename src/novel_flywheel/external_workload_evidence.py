@@ -271,10 +271,8 @@ def _validate_payload(
     actual_input = result["actual_input_tokens"]
     if not _positive_int(actual_input):
         raise ExternalWorkloadEvidenceError("INVALID_ACTUAL_INPUT_TOKENS")
-    if actual_input < request["input_tokens"]:
-        raise ExternalWorkloadEvidenceError(
-            "ACTUAL_INPUT_BELOW_PROMOTED_WORKLOAD_BOUND"
-        )
+    # The bound is the exact accepted request under the deterministic local
+    # estimator. Provider tokenizer units are separate realized accounting.
     actual_output = result["actual_output_tokens"]
     if not _positive_int(actual_output) or actual_output > request["requested_output_tokens"]:
         raise ExternalWorkloadEvidenceError("OUTPUT_OUTSIDE_REQUEST_BOUND")

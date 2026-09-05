@@ -1,0 +1,14 @@
+{
+  "schema": "SharedUsagePreparationPrivacyV1",
+  "status": "PASS",
+  "scanned_file_count": 42,
+  "exact_raw_entity_or_base64_committed_count": 0,
+  "exact_historical_visible_output_committed_count": 0,
+  "real_credential_lookups": 0,
+  "real_provider_calls": 0,
+  "request_inventory_headers_secret_values": "REDACTED; offline sentinel only for building requests",
+  "panel_evidence": "USER_SUPPLIED_RELAY_DASHBOARD_EVIDENCE; unique event binding remains NO",
+  "historical_external_evidence": "READ_ONLY",
+  "committed_response_fixture": "SANITIZED_ISOMORPHIC; replaced ID/model/text, preserved event topology and numeric counter lineage",
+  "scope": "Task-changed source/tests/docs and preparation report files; hashes, route identities and protocol fields only"
+}

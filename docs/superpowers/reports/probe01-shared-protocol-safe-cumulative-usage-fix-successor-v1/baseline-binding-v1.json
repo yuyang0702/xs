@@ -1,0 +1,13 @@
+{
+  "schema": "SharedProtocolUsageTaskBaselineV1",
+  "branch": "r1-ptr3/planning-repair-finding-propagation-20260817",
+  "expected_start_head": "b73688bfa36f7f02578117c71084b24a8ad73421",
+  "observed_start_head": "b73688bfa36f7f02578117c71084b24a8ad73421",
+  "initial_worktree": "CLEAN",
+  "master_identity": "PROBE01_SHARED_PROTOCOL_SAFE_CUMULATIVE_USAGE_FIX_REPLAY_AND_END_TO_END_CONTINUE_MASTER.txt",
+  "master_sha256": "925e5482cea2ac56e5a0b9dbc3b233563a2be15e00c0e0714d83d2a846ed5d10",
+  "prior_campaign_and_offline_evidence_read_only": true,
+  "authorization_reused": false,
+  "nonce_reused": false,
+  "production_source_changes_before_authoritative_research": false
+}

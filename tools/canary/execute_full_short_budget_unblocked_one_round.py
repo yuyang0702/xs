@@ -10,6 +10,7 @@ uncertain process exit therefore consumes the phase instead of redispatching.
 from __future__ import annotations
 
 import argparse
+import ast
 import asyncio
 import hashlib
 import hmac
@@ -45,6 +46,9 @@ from novel_flywheel.external_workload_evidence import (
 from novel_flywheel.full_short_campaign_authorization import (
     AUTHORIZATION_SOURCE_IDENTITY,
     AUTHORIZATION_SOURCE_SHA256,
+    SHARED_USAGE_RECOVERY_SCHEMA,
+    SHARED_USAGE_RECOVERY_SOURCE_IDENTITY,
+    SHARED_USAGE_RECOVERY_SOURCE_SHA256,
     EXACT_READY_PROJECT_ID,
     EXACT_READY_PROJECT_ID_SHA256,
     FullShortCampaignAuthorizationError,
@@ -2625,6 +2629,97 @@ def derive_frozen_budget_v1(
     }
 
 
+_SHARED_USAGE_EVIDENCE_ROOT = Path(
+    "docs/superpowers/reports/probe01-shared-protocol-safe-cumulative-usage-fix-successor-v1"
+)
+
+
+def _shared_usage_recovery_binding_v1(repo: Path) -> dict[str, Any]:
+    """Bind actual committed protocol proofs; digest syntax alone is insufficient."""
+    names = {
+        "authoritative_usage_semantics": "authoritative-usage-semantics-v1.json",
+        "exact_replay": "probe01-replay-after-fix-v1.json",
+        "workload_disposition": "probe01-workload-evidence-disposition-v1.json",
+        "request_zero_diff": "shared-protocol-request-zero-diff-v1.json",
+        "response_regression_matrix": "shared-protocol-response-regression-matrix-v1.json",
+    }
+    binding: dict[str, Any] = {}
+    documents = {}
+    for key, name in names.items():
+        relative = _SHARED_USAGE_EVIDENCE_ROOT / name
+        try:
+            raw = (repo / relative).read_bytes()
+            document = json.loads(raw)
+        except (OSError, ValueError) as exc:
+            raise OneRoundCampaignError("SHARED_USAGE_PROOF_MISSING_OR_INVALID") from exc
+        if not isinstance(document, dict):
+            raise OneRoundCampaignError("SHARED_USAGE_PROOF_MISSING_OR_INVALID")
+        binding[key] = {"identity": relative.as_posix(), "sha256": hashlib.sha256(raw).hexdigest()}
+        documents[key] = document
+    official = documents["authoritative_usage_semantics"]
+    replay = documents["exact_replay"]
+    request = documents["request_zero_diff"]
+    matrix = documents["response_regression_matrix"]
+    disposition = documents["workload_disposition"]
+    raw_sha = "de1cdf7b6eefcab2fa28f6bab664aad159be87d1d4e152250a77e61974bef713"
+    if (
+        official.get("AUTHORITATIVE_CUMULATIVE_USAGE_SEMANTICS_VERIFIED") != "YES"
+        or not official.get("AUTHORITATIVE_SOURCE_REFERENCES")
+        or replay.get("PROBE01_EXACT_REPLAY_AFTER_FIX") != "PASS"
+        or replay.get("raw_capture_sha256") != raw_sha
+        or replay.get("CANONICAL_FINAL_PROVIDER_INPUT_TOKENS") != 89255
+        or replay.get("CANONICAL_FINAL_PROVIDER_OUTPUT_TOKENS") != 9
+        or replay.get("STOP_REASON") != "end_turn"
+        or disposition.get("PROBE01_HISTORICAL_EVIDENCE_DISPOSITION") != "FRESH_REPLACEMENT_REQUIRED"
+        or disposition.get("historical_http_acceptance_proven") is not False
+        or disposition.get("replacement_request_identity_preparable") is not True
+        or disposition.get("raw_capture_sha256") != raw_sha
+        or request.get("status") != "PASS"
+        or any(type(request.get(field)) is not int or request[field] != 0 for field in (
+            "OUTBOUND_REQUEST_BODY_CHANGED_COUNT", "MODEL_VISIBLE_REQUEST_BYTES_CHANGED_COUNT",
+            "ROUTE_BINDING_CHANGED_COUNT", "OUTPUT_CAP_CHANGED_COUNT", "REASONING_POLICY_CHANGED_COUNT",
+            "REQUEST_BUILDER_SOURCE_DIFF",
+        ))
+        or request.get("request_count", 0) < 1
+        or matrix.get("status") != "PASS"
+        or matrix.get("SHARED_PROTOCOL_REGRESSION_COUNT") != 0
+        or matrix.get("PRECISE_CHILD_CAUSE_LOST_TO_INCOMPLETE_TERMINAL_COUNT") != 0
+        or len(matrix.get("cases", [])) < 12
+        or any(case.get("status") != "PASS" for case in matrix.get("cases", []))
+    ):
+        raise OneRoundCampaignError("SHARED_USAGE_PROTOCOL_GATE_NOT_PASS")
+    inventory = request.get("inventory", {})
+    inventory_bytes = (json.dumps(inventory, ensure_ascii=False, indent=2) + "\n").encode("utf-8")
+    if (
+        hashlib.sha256(inventory_bytes).hexdigest() != request.get("before_inventory_sha256")
+        or request.get("before_inventory_sha256") != request.get("after_inventory_sha256")
+        or len(inventory.get("request_rows", [])) != request.get("request_count")
+    ):
+        raise OneRoundCampaignError("SHARED_USAGE_REQUEST_INVENTORY_DRIFT")
+    for relative, digest in inventory.get("source_hashes", {}).items():
+        if relative not in {
+            "src/novel_flywheel/provider_payloads.py", "src/novel_flywheel/providers/http.py",
+            "src/novel_flywheel/providers/registry.py", "src/novel_flywheel/context_policy.py",
+        } or hashlib.sha256((repo / relative).read_bytes()).hexdigest() != digest:
+            raise OneRoundCampaignError("SHARED_USAGE_REQUEST_BUILDER_SOURCE_DRIFT")
+    if len(inventory.get("source_hashes", {})) != 4:
+        raise OneRoundCampaignError("SHARED_USAGE_REQUEST_BUILDER_SOURCE_DRIFT")
+    adapter_ast = ast.parse((repo / "src/novel_flywheel/providers/anthropic.py").read_text(encoding="utf-8"))
+    complete = next(node for node in ast.walk(adapter_ast)
+                    if isinstance(node, ast.AsyncFunctionDef) and node.name == "complete")
+    prefix = ast.dump(ast.Module(body=complete.body[:5], type_ignores=[]), include_attributes=False)
+    if hashlib.sha256(prefix.encode()).hexdigest() != inventory.get("complete_request_prefix_ast_sha256"):
+        raise OneRoundCampaignError("SHARED_USAGE_REQUEST_BUILDER_SOURCE_DRIFT")
+    binding.update(raw_capture_sha256=raw_sha, probe01_disposition="FRESH_REPLACEMENT_REQUIRED")
+    return binding
+
+
+def _require_shared_usage_recovery_binding_v1(repo: Path, authorization: Mapping[str, Any]) -> None:
+    if authorization.get("schema") == SHARED_USAGE_RECOVERY_SCHEMA:
+        if authorization.get("shared_protocol_usage_recovery") != _shared_usage_recovery_binding_v1(repo):
+            raise OneRoundCampaignError("SHARED_USAGE_PROTOCOL_PROOF_DRIFT")
+
+
 def build_outer_authorization_v1(
     *,
     repo: Path,
@@ -2635,6 +2730,7 @@ def build_outer_authorization_v1(
     full_short_public_bindings: Mapping[str, Any],
     verification_key_id: str,
     verification_key: bytes,
+    shared_protocol_usage_recovery: bool = False,
 ) -> dict[str, Any]:
     """Derive the outer document solely from frozen, credential-free truth."""
 
@@ -2700,7 +2796,7 @@ def build_outer_authorization_v1(
         "runtime_authority": runtime,
     }
     identity = lambda name, digest: {"identity": name, "sha256": digest}
-    return {
+    authorization = {
         "schema": "FullShortOneRoundBudgetUnblockedExecutionAuthorizationV1",
         "version": 1,
         "authorization_source": {
@@ -2874,6 +2970,14 @@ def build_outer_authorization_v1(
             "nonces_created": 0,
         },
     }
+    if shared_protocol_usage_recovery:
+        authorization.update(
+            schema=SHARED_USAGE_RECOVERY_SCHEMA,
+            authorization_source={"identity": SHARED_USAGE_RECOVERY_SOURCE_IDENTITY,
+                                  "sha256": SHARED_USAGE_RECOVERY_SOURCE_SHA256},
+            shared_protocol_usage_recovery=_shared_usage_recovery_binding_v1(repo),
+        )
+    return authorization
 
 
 def materialize_campaign_authorization_v1(
@@ -2885,6 +2989,7 @@ def materialize_campaign_authorization_v1(
     full_short_public_bindings: Mapping[str, Any],
     verification_key_id: str,
     verification_key: bytes,
+    shared_protocol_usage_recovery: bool = False,
 ) -> MaterializedCampaignV1:
     repo = repo.resolve(strict=True)
     head = _git(repo, "rev-parse", "HEAD")
@@ -2897,6 +3002,7 @@ def materialize_campaign_authorization_v1(
         full_short_public_bindings=full_short_public_bindings,
         verification_key_id=verification_key_id,
         verification_key=verification_key,
+        shared_protocol_usage_recovery=shared_protocol_usage_recovery,
     )
     raw = render_full_short_one_round_budget_unblocked_execution_authorization_v1(
         authorization,
@@ -3082,6 +3188,7 @@ def prepare_campaign_from_live_source_v1(
     verification_key_id: str,
     verification_key: bytes,
     expected_final_head: str,
+    shared_protocol_usage_recovery: bool = False,
 ) -> MaterializedCampaignV1:
     """Credential-free single entry for frozen-head outer materialization.
 
@@ -3186,6 +3293,7 @@ def prepare_campaign_from_live_source_v1(
         full_short_policy=policy, full_short_public_bindings=public,
         verification_key_id=verification_key_id,
         verification_key=verification_key,
+        shared_protocol_usage_recovery=shared_protocol_usage_recovery,
     )
 
 
@@ -3226,6 +3334,7 @@ def preflight_campaign_v1(
         full_short_public_bindings=full_short_public_bindings,
         verification_key_id=verification_key_id,
         verification_key=verification_key,
+        shared_protocol_usage_recovery=materialized.authorization.get("schema") == SHARED_USAGE_RECOVERY_SCHEMA,
     )
     if canonical_json_bytes(rebuilt) != canonical_json_bytes(
         {key: value for key, value in validated.items()
@@ -3266,6 +3375,7 @@ def run_probe_phase_v1(
     verification_key_id: str, verification_key: bytes,
     runner: Callable[..., GuardedRealCampaignResult] | None = None,
 ) -> GuardedRealCampaignResult:
+    _require_shared_usage_recovery_binding_v1(repo, materialized.authorization)
     journal = CampaignJournalV1(
         materialized.evidence_root, materialized.authorization_sha256,
         verification_key,
@@ -3306,6 +3416,7 @@ def run_probe_phase_v1(
         "full_short_run_collision_absence_receipt_sha256": collision_sha256,
     })
     snapshots = 0
+    latest_probe_state: dict[str, Any] = {}
 
     def persist(snapshot: Mapping[str, object]) -> None:
         nonlocal snapshots
@@ -3314,6 +3425,26 @@ def run_probe_phase_v1(
             canonical_json_bytes(dict(snapshot)),
         )
         snapshots += 1
+        latest_probe_state.clear()
+        latest_probe_state.update(snapshot)
+
+    def capture_metadata_persist(metadata: Mapping[str, Any]) -> None:
+        active = [record for record in latest_probe_state.get("records", [])
+                  if record.get("case_sha256") == metadata.get("case_sha256")
+                  and record.get("state") == "DISPATCH_ATTEMPTED"]
+        if len(active) != 1:
+            raise OneRoundCampaignError("CAPTURE_METADATA_NONCE_BINDING_MISSING")
+        body = {
+            "schema": "ProbeProtocolCaptureMetadataV1", **dict(metadata),
+            "authorization_sha256": materialized.authorization_sha256,
+            "execution_head": frozen["final_execution_head"],
+            "nonce_sha256": active[0]["nonce_sha256"],
+        }
+        envelope = {"metadata": body, "metadata_hmac_sha256": hmac.new(
+            verification_key, b"probe-protocol-capture-metadata-v1\0" + canonical_json_bytes(body),
+            hashlib.sha256).hexdigest()}
+        _exclusive_write(materialized.evidence_root / (
+            f"probe-capture-metadata-{active[0]['ordinal']:02d}.json"), canonical_json_bytes(envelope))
 
     # Last fail-closed wall-clock check before the runner can construct the
     # keyring-backed registry or reserve an individual provider nonce.
@@ -3348,6 +3479,7 @@ def run_probe_phase_v1(
         )
         result = _run_guarded_campaign_with_registry_v1(
             fixtures, registry=registry, **runner_kwargs,
+            capture_metadata_persist=capture_metadata_persist,
         )
     else:
         result = runner(fixtures, db=db, **runner_kwargs)
@@ -3392,8 +3524,13 @@ def run_probe_phase_v1(
         evidence={
             "probe_all_required_cases_pass": "YES" if all_passed else "NO",
             "verified_evidence_count": len(result.verified_evidence),
-            "provider_reported_actual_input_tokens": actual_reported_input,
-            "estimator_input_tokens": int(counters["input_tokens"]),
+            "promoted_evidence_provider_reported_input_tokens": actual_reported_input,
+            "budget_debited_input_tokens": int(counters["input_tokens"]),
+            "local_pre_dispatch_estimated_input_tokens": sum(
+                fixture.definition.estimated_input_tokens
+                for fixture, record in zip(fixtures, result.campaign_state["records"], strict=True)
+                if str(record.get("state", "")).endswith("_CONSUMED")
+            ),
             "privacy_counts": dict(result.privacy_counts),
             "cost_status": "NOT_RELIABLY_METERABLE",
         },
@@ -3733,6 +3870,7 @@ async def execute_one_full_short_v1(
 ) -> dict[str, Any]:
     """Consume the sole Full Short phase; there is intentionally no retry API."""
 
+    _require_shared_usage_recovery_binding_v1(repo, materialized.authorization)
     journal = CampaignJournalV1(
         materialized.evidence_root, materialized.authorization_sha256,
         verification_key,
@@ -4189,6 +4327,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     prepare_parser.add_argument("--logical-stage-plan", required=True, type=Path)
     prepare_parser.add_argument("--run-id", required=True)
     prepare_parser.add_argument("--expected-final-head", required=True)
+    prepare_parser.add_argument("--shared-protocol-usage-recovery", action="store_true")
 
     preflight_parser = subparsers.add_parser(
         "preflight", help="offline exact authorization/source revalidation",
@@ -4279,6 +4418,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             verification_key_id=args.verification_key_id,
             verification_key=verification_key,
             expected_final_head=args.expected_final_head,
+            shared_protocol_usage_recovery=args.shared_protocol_usage_recovery,
         )
         _print_phase_result(materialized, phase="MATERIALIZED_UNUSED")
         return 0

@@ -1,0 +1,136 @@
+{
+  "schema": "SharedUsagePreparationSha256ManifestV1",
+  "manifest_self_excluded": true,
+  "files": [
+    {
+      "path": "agent-a-authoritative-usage-semantics-v1.json",
+      "bytes": 2108,
+      "sha256": "c13bcd6a8b355385391bd81893f02112f6ec110db6a7ebcab1db64b26aaa4cc8"
+    },
+    {
+      "path": "agent-b-local-root-cause-v1.json",
+      "bytes": 1243,
+      "sha256": "761347879f3295c930558f577cad8a0dfbdeeec9ae42086ea6176667304ec707"
+    },
+    {
+      "path": "agent-c-exact-replay-v1.json",
+      "bytes": 1761,
+      "sha256": "e8bd368dab1d86c4ccd7e69e824fa661f9a35f93c35618e49e4591bcd2ceb9d2"
+    },
+    {
+      "path": "agent-d-accounting-lineage-v1.json",
+      "bytes": 1048,
+      "sha256": "ef43ac6fa51b4dd9a0082da50af194d6aef4280a803a87bcfa2e0408f34a76b9"
+    },
+    {
+      "path": "agent-e-workload-evidence-v1.json",
+      "bytes": 1464,
+      "sha256": "16b7c1c5b89c19928c10143e243aa179dce11c724434199451b8d49a061aa2a1"
+    },
+    {
+      "path": "agent-f-successor-campaign-v1.json",
+      "bytes": 4191,
+      "sha256": "dac1f228926ad47f780a34e7dcaac81c9fcc23cabab7bd77c67b65843e974e2e"
+    },
+    {
+      "path": "authoritative-usage-semantics-v1.json",
+      "bytes": 2108,
+      "sha256": "c13bcd6a8b355385391bd81893f02112f6ec110db6a7ebcab1db64b26aaa4cc8"
+    },
+    {
+      "path": "baseline-binding-v1.json",
+      "bytes": 675,
+      "sha256": "7d02fca1f9180b4c8f8fd31e7bf6ce94f2c1d5d93b6ac3d1e06d534e0a9c14d0"
+    },
+    {
+      "path": "change-contract-v1.md",
+      "bytes": 3435,
+      "sha256": "09e9296c1ce2b5667d6d68c1dfddb86e85823bdf6f51477e4848e5c3c5784998"
+    },
+    {
+      "path": "complete-production-incident-catalog-scan-v1.json",
+      "bytes": 22241,
+      "sha256": "56bd424e7cd693386b8ae6bd9feecbf40f8db0336bd82c3ca41d4d5f3e7fe368"
+    },
+    {
+      "path": "failure-cause-preservation-v1.json",
+      "bytes": 692,
+      "sha256": "d7e09c828488f2a55b9388b4289faab6d8e9ad5d3c81b50cc30bbbddcd34c929"
+    },
+    {
+      "path": "focused-tests-v1.json",
+      "bytes": 1300,
+      "sha256": "b19d156e5eb99e868ab26584a366d5e7480d9d40a8e80e4875695c3c8d40bd39"
+    },
+    {
+      "path": "forward-risk-report-v2.json",
+      "bytes": 13935,
+      "sha256": "2ec32a06c52c2796dbd72a71ccb51fed756feeb34a5417085ac82de6610a74ba"
+    },
+    {
+      "path": "preexecution-final-report-v1.md",
+      "bytes": 4390,
+      "sha256": "03e3579098622ae43a6772e6a599d691fb8bcca6b3322b3e3c307fa6145a065a"
+    },
+    {
+      "path": "privacy-v1.json",
+      "bytes": 768,
+      "sha256": "a171051f539576a6745e7a643c962b9fc75f5aa9a2adce0a831848cb3e1fe739"
+    },
+    {
+      "path": "probe01-replay-after-fix-v1.json",
+      "bytes": 1213,
+      "sha256": "aad8cd7ba8067375854bf8dbdfe8cc7709284a95c936e11e64bd9fcb6152040b"
+    },
+    {
+      "path": "probe01-replay-before-fix-v1.json",
+      "bytes": 1941,
+      "sha256": "e7eeeea07f2ce7ad82084bfa51080dd30f931f61d83577c73e39217e5957b109"
+    },
+    {
+      "path": "probe01-workload-evidence-disposition-v1.json",
+      "bytes": 1350,
+      "sha256": "1774fa0a3f1724d3439a68dcfd32aa459e2e77366d22dc750ee26c94da73811c"
+    },
+    {
+      "path": "README.md",
+      "bytes": 2417,
+      "sha256": "dc8a9e4ec16608582e4362653afcff1b3d30107c13e780b9a5f139d40578a6ae"
+    },
+    {
+      "path": "shared-protocol-blast-radius-review-v1.json",
+      "bytes": 1971,
+      "sha256": "e5fa7e8449ce175cbeadb2415d6786b718c9d8ec8b2d0d899f7cf5229dda9dd9"
+    },
+    {
+      "path": "shared-protocol-request-zero-diff-v1.json",
+      "bytes": 240468,
+      "sha256": "43ebfdc9df51cb14e032862a9522edc52faa969bd476c0c2f33d124d05705a4a"
+    },
+    {
+      "path": "shared-protocol-response-regression-matrix-v1.json",
+      "bytes": 2802,
+      "sha256": "97193a4facf6724afde88ce2b44002d5d8ca2cba4f945b99e1a5a92a928732c4"
+    },
+    {
+      "path": "strict-l3-preexecution-v1.json",
+      "bytes": 435,
+      "sha256": "7f06482315ba490a9d80e13c608ec561e4e6190f5563755aa6cc154981b5bc43"
+    },
+    {
+      "path": "successor-probe-case-set-v1.json",
+      "bytes": 4191,
+      "sha256": "dac1f228926ad47f780a34e7dcaac81c9fcc23cabab7bd77c67b65843e974e2e"
+    },
+    {
+      "path": "usage-accumulation-fix-v1.json",
+      "bytes": 797,
+      "sha256": "cf4c2b1da9f4c82dc11ffca73e865f69a17045ea5131acf15e06850031417e7c"
+    },
+    {
+      "path": "whole-suite-differential-v1.json",
+      "bytes": 3803,
+      "sha256": "ece8c092a2ea1f767e13159ec5daf8ed42efb9f859f8ae1c13a3682ea54f641f"
+    }
+  ]
+}

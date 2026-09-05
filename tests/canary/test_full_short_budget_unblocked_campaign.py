@@ -466,7 +466,7 @@ def test_absolute_deadline_expiry_during_route_recheck_stops_credential_and_http
     assert result.campaign_state["records"][0]["state"] == "FAILED_CONSUMED"
 
 
-def test_real_probe_does_not_promote_when_provider_reports_smaller_input(
+def test_real_probe_separates_smaller_provider_units_from_accepted_request_bound(
     tmp_path, monkeypatch,
 ) -> None:
     registry, secrets = _registry(tmp_path)
@@ -524,11 +524,62 @@ def test_real_probe_does_not_promote_when_provider_reports_smaller_input(
     )
 
     assert result.campaign_state["halt_code"] == "FIRST_DISPATCHED_FAILURE"
-    assert result.campaign_state["records"][0]["typed_code"] == (
-        "probe.provider.input_workload_bound_unproven"
-    )
-    assert result.sealed_evidence == ()
-    assert result.verified_evidence == ()
+    assert result.campaign_state["records"][0]["state"] == "PASS_CONSUMED"
+    assert len(result.verified_evidence) == len(result.sealed_evidence) == 2
+    assert result.verified_evidence[0].actual_input_tokens == 1
+    assert result.verified_evidence[0].input_tokens == 30458
+    # Third case still rejects plain text against its tool/schema contract.
+    assert result.campaign_state["records"][2]["state"] == "FAILED_CONSUMED"
+
+
+@pytest.mark.parametrize("variant,expected_code", [
+    ("invalid_usage", "provider_response_capture_integrity_failure.provider_reported_usage_field_invalid.input_tokens"),
+    ("provider_error", "anthropic_provider_terminal_error"),
+    ("missing_terminal", "anthropic_sse_terminal_missing.anthropic_sse_message_stop_missing"),
+])
+def test_precise_child_cause_crosses_http_capture_and_consumed_nonce(
+    tmp_path, monkeypatch, variant, expected_code,
+):
+    import httpx
+    from novel_flywheel.providers.anthropic import AnthropicAdapter
+
+    registry, secrets = _registry(tmp_path)
+    fixtures = build_synthetic_probe_fixtures(registry)
+    items = [
+        {"type": "message_start", "message": {"id": "synthetic", "usage": {"input_tokens": 48916, "output_tokens": 0}}},
+        {"type": "content_block_start", "index": 0, "content_block": {"type": "text", "text": "safe"}},
+        {"type": "content_block_stop", "index": 0},
+        {"type": "message_delta", "delta": {"stop_reason": "end_turn"}, "usage": {"input_tokens": 89255, "output_tokens": 9}},
+        {"type": "message_stop"},
+    ]
+    if variant == "invalid_usage":
+        items[-2]["usage"]["input_tokens"] = -1
+    elif variant == "provider_error":
+        items[-1] = {"type": "error", "error": {"type": "private_provider_detail"}}
+    else:
+        items.pop()
+    raw = "".join("data: " + json.dumps(item) + "\n\n" for item in items).encode()
+
+    class OfflineAdapter(AnthropicAdapter):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs, injected_http_transport=httpx.MockTransport(
+                lambda request: httpx.Response(200, content=raw, headers={"content-type": "text/event-stream"})))
+
+    monkeypatch.setitem(registry_module.ADAPTERS, "anthropic", OfflineAdapter)
+    guarded_registry = ProviderRegistry(registry.db, secrets,
+        transport_policy=SingleDispatchTransportPolicyV1.phase_b())
+    result = _run_guarded_campaign_with_registry_v1(
+        fixtures, registry=guarded_registry, authorization_sha256="a" * 64,
+        final_execution_head="b" * 40, key_id="offline-fixture-key",
+        signing_key=b"offline-fixture-signing-key-32-bytes-minimum")
+    record = result.campaign_state["records"][0]
+    assert record["typed_code"] == expected_code
+    assert record["state"] == "FAILED_CONSUMED"
+    assert secrets.get_calls == 1
+    assert result.transport_counters == {"http_post_attempts": 1, "network_requests": 1}
+    assert record["raw_response_sha256"] == hashlib.sha256(raw).hexdigest()
+    assert "private_provider_detail" not in record["typed_code"]
+    assert all(r["state"] == "UNUSED" for r in result.campaign_state["records"][1:])
 
 
 def test_guarded_real_transport_fault_halts_without_retry_or_fallback(

@@ -737,9 +737,10 @@ def test_exact_provider_usage_formats_are_hash_bound(
             "PROVIDER_REPORTED_USAGE_MISSING",
         ),
         (
-            "anthropic", "text/event-stream",
-            b'data: {"message":{"usage":{"input_tokens":2,"output_tokens":9}}}\n\n'
-            b'data: {"type":"message_stop","usage":{"input_tokens":2,"output_tokens":8}}\n\n',
+            "openai-chat", "text/event-stream",
+            b'data: {"usage":{"prompt_tokens":2,"completion_tokens":9}}\n\n'
+            b'data: {"usage":{"prompt_tokens":2,"completion_tokens":8}}\n\n'
+            b'data: [DONE]\n\n',
             "PROVIDER_REPORTED_USAGE_OUTPUT_NON_MONOTONIC",
         ),
         (

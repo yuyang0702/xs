@@ -509,12 +509,10 @@ class FullShortProbeCampaign:
                 or result.generated_output_tokens is None
             )
             debited_input = (
-                case.estimated_input_tokens
-                if conservative_debit
-                else max(case.estimated_input_tokens, result.actual_input_tokens)
+                max(case.estimated_input_tokens, result.actual_input_tokens or 0)
             )
             debited_output = (
-                case.wire_requested_output_cap
+                max(case.wire_requested_output_cap, result.generated_output_tokens or 0)
                 if conservative_debit else result.generated_output_tokens
             )
             assert debited_input is not None and debited_output is not None
@@ -529,6 +527,9 @@ class FullShortProbeCampaign:
                 debited_output_tokens=debited_output,
                 usage_debit_source=(
                     "AUTHORIZED_ESTIMATE_AND_FULL_OUTPUT_RESERVE"
+                    if conservative_debit and result.actual_input_tokens is None
+                    and result.generated_output_tokens is None
+                    else "MAX_ESTIMATE_KNOWN_ACTUAL_AND_CONSERVATIVE_OUTPUT_RESERVE"
                     if conservative_debit
                     else "MAX_AUTHORIZED_ESTIMATE_PROVIDER_REPORTED_ACTUAL"
                 ),
