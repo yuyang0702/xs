@@ -2367,8 +2367,10 @@ def persist_full_short_isolated_dry_run_evidence_v1(
         quality_checkpoint = json.loads(
             source_bytes["quality_checkpoint"].decode("utf-8")
         )
+        manuscript_text = source_bytes["final_artifact"].decode("utf-8")
+        manuscript_text = manuscript_text.replace("\r\n", "\n").replace("\r", "\n")
         source_hashes["final_artifact_text"] = hashlib.sha256(
-            source_bytes["final_artifact"].decode("utf-8").encode("utf-8")
+            manuscript_text.encode("utf-8")
         ).hexdigest()
     except (UnicodeError, ValueError, TypeError) as exc:
         raise RuntimeError("FULL_SHORT_DRY_GATE_AUTHORITY_FILE_INVALID") from exc
