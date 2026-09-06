@@ -15815,7 +15815,25 @@ class WorkflowService:
 
         topology = planning_ownership_topology(planning_ir)
         planned_ids = list(topology.event_ids)
-        formal_events = narrative_outline_events(formal_outline_events)
+        # ``_short_formal_event_authority`` already returns canonical
+        # narrative contracts.  Re-running the hierarchy filter on those
+        # contracts can discard a valid event when its original outline
+        # nesting metadata is no longer present (for example a chapter-level
+        # event adjacent to a structural heading).  Keep canonical contracts
+        # lossless; only apply hierarchy selection to legacy/raw event rows.
+        canonical_contracts = all(
+            isinstance(item, dict)
+            and str(item.get("id") or "").strip()
+            and str(item.get("evidence") or "").strip()
+            and "source_order" in item
+            and "presentation_order" in item
+            for item in formal_outline_events
+        )
+        formal_events = (
+            [dict(item) for item in formal_outline_events]
+            if canonical_contracts else
+            narrative_outline_events(formal_outline_events)
+        )
         formal_ids = [
             str(item.get("id") or "").strip().upper()
             for item in formal_events
