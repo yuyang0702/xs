@@ -16133,7 +16133,19 @@ class WorkflowService:
                 )
                 if evidence not in values:
                     values.append(evidence)
-        events = narrative_outline_events(formal_outline_events)
+        canonical_contracts = all(
+            isinstance(item, dict)
+            and str(item.get("id") or "").strip()
+            and str(item.get("evidence") or "").strip()
+            and "source_order" in item
+            and "presentation_order" in item
+            for item in formal_outline_events
+        )
+        events = (
+            [dict(item) for item in formal_outline_events]
+            if canonical_contracts else
+            narrative_outline_events(formal_outline_events)
+        )
         if not events and outline_content.strip():
             events = narrative_outline_event_contracts(outline_content)
         normalized_events: list[dict] = []
