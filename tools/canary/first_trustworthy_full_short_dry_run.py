@@ -1232,7 +1232,11 @@ class _CapturedResponseReplayTransportFactory:
         self.source_call_plan = source_call_plan
         self.call_plan: list[dict[str, Any]] = []
         self.failure: dict[str, Any] | None = None
-        audited = capture_store.audit_all()
+        audited = capture_store.audit_all(
+            expected_receipt_sha256s=_capture_receipt_anchors_from_ledger(
+                ledger,
+            ),
+        )
         self._captures = {
             (str(item["call_id"]), str(item["byte_domain"])): item
             for item in audited
@@ -1962,12 +1966,33 @@ def _attempt_requires_contract_runtime_capture_v1(
     )
 
 
+def _capture_receipt_anchors_from_ledger(
+    ledger: Mapping[str, Any],
+) -> list[str]:
+    """Return the exact external capture anchors recorded by the ledger."""
+
+    anchors: list[str] = []
+    for attempt in ledger.get("attempts") or ():
+        if not isinstance(attempt, Mapping):
+            continue
+        for field in (
+            "provider_protocol_capture_receipt_sha256",
+            "contract_runtime_capture_receipt_sha256",
+        ):
+            value = attempt.get(field)
+            if value is not None:
+                anchors.append(str(value))
+    return anchors
+
+
 def _replay_captured_attempts(
     *, capture_store: ProviderResponseCaptureStoreV1, ledger: dict[str, Any],
 ) -> dict[str, Any]:
     """Replay every capture against its ledger anchor and conversion contract."""
 
-    audited = capture_store.audit_all()
+    audited = capture_store.audit_all(
+        expected_receipt_sha256s=_capture_receipt_anchors_from_ledger(ledger),
+    )
     indexed = {
         (str(item["call_id"]), str(item["byte_domain"])): item
         for item in audited
@@ -3053,7 +3078,11 @@ async def _run(
             repo_root=repo,
             store_root=store_root / "provider-response-captures-v1",
         )
-        capture_receipts = capture_store.audit_all()
+        capture_receipts = capture_store.audit_all(
+            expected_receipt_sha256s=_capture_receipt_anchors_from_ledger(
+                ledger,
+            ),
+        )
         replay_anchor_proof = _replay_captured_attempts(
             capture_store=capture_store, ledger=ledger,
         )
