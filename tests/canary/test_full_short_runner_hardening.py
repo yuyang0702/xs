@@ -1412,6 +1412,61 @@ async def test_registry_close_failure_is_secondary_to_business_failure() -> None
     assert caught.value.__cause__ is close_failure
 
 
+@pytest.mark.asyncio
+async def test_captured_response_replay_preserves_source_execution_identity(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    source_project = tmp_path / "source-project"
+    source_project.mkdir()
+    replay_target = tmp_path / "replay"
+    replay_data = replay_target / "data"
+    manuscript = (
+        replay_data / "projects" / source_project.name
+        / "manuscript" / "story.md"
+    )
+    manuscript.parent.mkdir(parents=True)
+    manuscript.write_text("exact replay artifact", encoding="utf-8")
+    observed_execution_ids: list[str] = []
+
+    class ReplayFactory:
+        def __init__(self, **_kwargs) -> None:
+            self.call_plan = [{"ordinal": 1}]
+            self.failure = None
+
+    class Registry:
+        def __init__(self, *_args, **_kwargs) -> None:
+            return None
+
+        async def close(self) -> None:
+            return None
+
+    async def run_workflow(**kwargs):
+        observed_execution_ids.append(kwargs["execution_id"])
+        return object(), object(), {"status": "completed"}
+
+    monkeypatch.setattr(dry_run, "_copy_private_data", lambda **_kwargs: replay_data)
+    monkeypatch.setattr(dry_run, "_memory_secrets", lambda _data: lambda: object())
+    monkeypatch.setattr(dry_run, "Database", lambda _path: object())
+    monkeypatch.setattr(
+        dry_run, "_CapturedResponseReplayTransportFactory", ReplayFactory,
+    )
+    monkeypatch.setattr(dry_run, "_LowestHttpSeamRegistry", Registry)
+    monkeypatch.setattr(dry_run, "run_full_short_workflow_path", run_workflow)
+
+    result = await dry_run._replay_full_workflow_from_captured_bytes(
+        repo=tmp_path, source_project=source_project, project_id="project",
+        replay_target=replay_target, capture_store=object(),
+        ledger={"execution_id": "source-execution"},
+        source_call_plan=[{"ordinal": 1}],
+        expected_final_artifact_sha256=hashlib.sha256(
+            b"exact replay artifact"
+        ).hexdigest(),
+    )
+
+    assert observed_execution_ids == ["source-execution"]
+    assert result["replay_call_count"] == 1
+
+
 def test_private_workspace_closes_after_asyncio_run_teardown(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
 ) -> None:

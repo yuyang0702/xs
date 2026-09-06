@@ -97,7 +97,6 @@ from tools.canary.first_trustworthy_full_short_runner import (
 
 EXECUTION_ID = "private-current-project-dry-run"
 DISCOVERY_ID = "private-current-project-call-plan"
-REPLAY_ID = "private-current-project-captured-response-replay"
 OFFLINE_CONTEXT_MANIFEST_KEY_V1 = (
     "offline_deterministic_context_manifest_v1"
 )
@@ -2082,6 +2081,11 @@ async def _replay_full_workflow_from_captured_bytes(
     expected_final_artifact_sha256: str,
     offline_planning_deepseek_official_fixture: bool = False,
 ) -> dict[str, Any]:
+    replay_execution_id = ledger.get("execution_id")
+    if not isinstance(replay_execution_id, str) or not replay_execution_id.strip():
+        raise RuntimeError(
+            "FULL_SHORT_CAPTURE_REPLAY_EXECUTION_ID_INVALID"
+        )
     replay_data = _copy_private_data(
         repo=repo, source_project=source_project, project_id=project_id,
         target=replay_target,
@@ -2107,7 +2111,10 @@ async def _replay_full_workflow_from_captured_bytes(
     _db, _project, result = await _await_with_registry_close(
         lambda: run_full_short_workflow_path(
             repo=repo, data_dir=replay_data, project_id=project_id,
-            execution_id=REPLAY_ID, registry=registry,
+            # Provider requests may bind the parent run identity.  A fresh
+            # isolated database prevents collision while preserving the exact
+            # source request identity required by byte-for-byte replay.
+            execution_id=replay_execution_id, registry=registry,
         ),
         registry,
     )
