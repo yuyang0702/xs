@@ -3187,7 +3187,24 @@ async def _run(
                 for item in call_plan
             )
         )
-        if not (exact_call_plan_match or isolated_reasoning_recovery_match):
+        # Discovery and execution run under separate durable run identities.
+        # Requests whose prompts bind the parent run (for example execution
+        # manifest fragments) therefore cannot be byte-identical across those
+        # two phases.  Keep the topology exact while reserving full byte
+        # equality for captured-response replay below.
+        run_bound_execution_plan_match = (
+            policy_neutral_observed_plan == policy_neutral_discovered_plan
+            and not args.inject_planning_reasoning_only_once
+            and all(
+                item.get("reasoning_field_present") is False
+                for item in call_plan
+            )
+        )
+        if not (
+            exact_call_plan_match
+            or isolated_reasoning_recovery_match
+            or run_bound_execution_plan_match
+        ):
             raise RuntimeError("FULL_SHORT_DRY_RUN_CALL_PLAN_DRIFT")
         completion = execution["completion"]
         terminal = execution["terminal"]
@@ -3334,7 +3351,11 @@ async def _run(
                 == expected_calls + int(
                     args.inject_planning_business_incomplete_once
                 ) + int(args.inject_planning_reasoning_only_once)
-                and (exact_call_plan_match or isolated_reasoning_recovery_match)
+                and (
+                    exact_call_plan_match
+                    or isolated_reasoning_recovery_match
+                    or run_bound_execution_plan_match
+                )
                 and transport.oracle.planning_business_incomplete_injected
                 is args.inject_planning_business_incomplete_once
                 and transport.planning_reasoning_only_injected
