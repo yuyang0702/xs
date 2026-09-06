@@ -1,0 +1,555 @@
+{
+  "schema": "ClosedWorldDirtyWorktreeIntakeV1",
+  "head": "79a99a58ebe95b2be4d1e51a8d190070a2568574",
+  "branch": "r1-ptr3/planning-repair-finding-propagation-20260817",
+  "initial_dirty": true,
+  "preserved_in_scope_change_count": 68,
+  "unrelated_dirty_path_count": 0,
+  "paths": [
+    {
+      "path": "docs/maintenance.md",
+      "status": "MODIFIED",
+      "classification": "G",
+      "sha256": "a0029e42161f4c0964b0b5bb04a234c3e63e2abfdd5ce3cb800ec6dfc05c139f",
+      "origin_evidence": "Exact match to prior takeover hash-bound snapshot or sealed prior task report; mixed ping/error/capture work preserved",
+      "action": "PRESERVE"
+    },
+    {
+      "path": "docs/superpowers/reports/new-main-takeover-probe02-error-hardening-successor-v1/README.md",
+      "status": "UNTRACKED",
+      "classification": "G",
+      "sha256": "309970c1d54a2a58aed42d656f4d6a8ea4841990d55b85c9b54329182fbdb3a8",
+      "origin_evidence": "Exact match to prior takeover hash-bound snapshot or sealed prior task report; mixed ping/error/capture work preserved",
+      "action": "PRESERVE"
+    },
+    {
+      "path": "docs/superpowers/reports/new-main-takeover-probe02-error-hardening-successor-v1/authoritative-error-event-semantics-v1.json",
+      "status": "UNTRACKED",
+      "classification": "G",
+      "sha256": "43ea2397788ac417f7ed300cd30c2527f5a78a388ab983aab37c3dd94c41c0ef",
+      "origin_evidence": "Exact match to prior takeover hash-bound snapshot or sealed prior task report; mixed ping/error/capture work preserved",
+      "action": "PRESERVE"
+    },
+    {
+      "path": "docs/superpowers/reports/new-main-takeover-probe02-error-hardening-successor-v1/baseline-binding-v1.json",
+      "status": "UNTRACKED",
+      "classification": "G",
+      "sha256": "de408aba15904dfc8cf0a9cfa3afdad92cb5a373dd5c981be714e8c45b93a428",
+      "origin_evidence": "Exact match to prior takeover hash-bound snapshot or sealed prior task report; mixed ping/error/capture work preserved",
+      "action": "PRESERVE"
+    },
+    {
+      "path": "docs/superpowers/reports/new-main-takeover-probe02-error-hardening-successor-v1/baseline-full-suite-recovery-v1.json",
+      "status": "UNTRACKED",
+      "classification": "G",
+      "sha256": "51ed2e5b242a2662592d7115c613d58e57b70dcc5999a3b5169665f9b1a2e727",
+      "origin_evidence": "Exact match to prior takeover hash-bound snapshot or sealed prior task report; mixed ping/error/capture work preserved",
+      "action": "PRESERVE"
+    },
+    {
+      "path": "docs/superpowers/reports/new-main-takeover-probe02-error-hardening-successor-v1/focused-tests-v1.json",
+      "status": "UNTRACKED",
+      "classification": "G",
+      "sha256": "045dd92c7e96fa67e04914805765fe5e7f9445502d23337ee2f7d8db28eaf964",
+      "origin_evidence": "Exact match to prior takeover hash-bound snapshot or sealed prior task report; mixed ping/error/capture work preserved",
+      "action": "PRESERVE"
+    },
+    {
+      "path": "docs/superpowers/reports/new-main-takeover-probe02-error-hardening-successor-v1/memory-path-origin-v1.json",
+      "status": "UNTRACKED",
+      "classification": "G",
+      "sha256": "b88506c127f925d9d87d9ae09bf259cef8eeecc828266115b8ae2f17d8946f3d",
+      "origin_evidence": "Exact match to prior takeover hash-bound snapshot or sealed prior task report; mixed ping/error/capture work preserved",
+      "action": "PRESERVE"
+    },
+    {
+      "path": "docs/superpowers/reports/new-main-takeover-probe02-error-hardening-successor-v1/old-main-child-work-recovery-v1.json",
+      "status": "UNTRACKED",
+      "classification": "G",
+      "sha256": "5b2609d8f31f528d60a00466e245b6097b0c6478d92f76cc4c2639e1453a54cb",
+      "origin_evidence": "Exact match to prior takeover hash-bound snapshot or sealed prior task report; mixed ping/error/capture work preserved",
+      "action": "PRESERVE"
+    },
+    {
+      "path": "docs/superpowers/reports/new-main-takeover-probe02-error-hardening-successor-v1/preexecution-final-report-v1.md",
+      "status": "UNTRACKED",
+      "classification": "G",
+      "sha256": "ca32ccdabfc2b2f94b8f78b51dc6ae13f8cd928dba7d9608a61394c7117b3224",
+      "origin_evidence": "Exact match to prior takeover hash-bound snapshot or sealed prior task report; mixed ping/error/capture work preserved",
+      "action": "PRESERVE"
+    },
+    {
+      "path": "docs/superpowers/reports/new-main-takeover-probe02-error-hardening-successor-v1/privacy-v1.json",
+      "status": "UNTRACKED",
+      "classification": "G",
+      "sha256": "b2774f4ccf4a0b352a2af9dd4d4a3235c34f293c975ffbf7ffb7570143d11cdf",
+      "origin_evidence": "Exact match to prior takeover hash-bound snapshot or sealed prior task report; mixed ping/error/capture work preserved",
+      "action": "PRESERVE"
+    },
+    {
+      "path": "docs/superpowers/reports/new-main-takeover-probe02-error-hardening-successor-v1/probe02-current-worktree-replay-v1.json",
+      "status": "UNTRACKED",
+      "classification": "G",
+      "sha256": "ccd6b388576de66addc31a49959a0359265d818820dfc8643d95b8dc604a1c06",
+      "origin_evidence": "Exact match to prior takeover hash-bound snapshot or sealed prior task report; mixed ping/error/capture work preserved",
+      "action": "PRESERVE"
+    },
+    {
+      "path": "docs/superpowers/reports/new-main-takeover-probe02-error-hardening-successor-v1/sha256-manifest-v1.json",
+      "status": "UNTRACKED",
+      "classification": "G",
+      "sha256": "4715f01e6e1091b5005fd71b5afbefc83f96a09de0745c0e4bb941c209c0ccb4",
+      "origin_evidence": "Exact match to prior takeover hash-bound snapshot or sealed prior task report; mixed ping/error/capture work preserved",
+      "action": "PRESERVE"
+    },
+    {
+      "path": "docs/superpowers/reports/new-main-takeover-probe02-error-hardening-successor-v1/shared-response-regression-matrix-v1.json",
+      "status": "UNTRACKED",
+      "classification": "G",
+      "sha256": "53a519a3dd967395d88916b2b9b2da3469249b4749374238ee0346a23f78dc2f",
+      "origin_evidence": "Exact match to prior takeover hash-bound snapshot or sealed prior task report; mixed ping/error/capture work preserved",
+      "action": "PRESERVE"
+    },
+    {
+      "path": "docs/superpowers/reports/new-main-takeover-probe02-error-hardening-successor-v1/stop-required-output-v1.json",
+      "status": "UNTRACKED",
+      "classification": "G",
+      "sha256": "0ca7876e99584833da44fe89778385505533a4b92592898d3173c58d4609440b",
+      "origin_evidence": "Exact match to prior takeover hash-bound snapshot or sealed prior task report; mixed ping/error/capture work preserved",
+      "action": "PRESERVE"
+    },
+    {
+      "path": "docs/superpowers/reports/new-main-takeover-probe02-error-hardening-successor-v1/strict-l3-preexecution-v1.json",
+      "status": "UNTRACKED",
+      "classification": "G",
+      "sha256": "7a5a0c0433b6c0ffc39e377e1548651d824b5f81167d0616e532fb61fedfd975",
+      "origin_evidence": "Exact match to prior takeover hash-bound snapshot or sealed prior task report; mixed ping/error/capture work preserved",
+      "action": "PRESERVE"
+    },
+    {
+      "path": "docs/superpowers/reports/new-main-takeover-probe02-error-hardening-successor-v1/takeover-worktree-intake-v1.json",
+      "status": "UNTRACKED",
+      "classification": "G",
+      "sha256": "793a299508b8fe0c6c2397fc985c8c3af35ec0bc42401705d5067e72ed60276f",
+      "origin_evidence": "Exact match to prior takeover hash-bound snapshot or sealed prior task report; mixed ping/error/capture work preserved",
+      "action": "PRESERVE"
+    },
+    {
+      "path": "docs/superpowers/reports/probe02-anthropic-error-hardening-successor-v1/agent-a-authoritative-error-semantics-v1.json",
+      "status": "UNTRACKED",
+      "classification": "G",
+      "sha256": "c88ace4b8b70e859402dd3e387e3d461fef28bf22ee337d6ccb21f3f42dad4c3",
+      "origin_evidence": "Exact match to prior takeover hash-bound snapshot or sealed prior task report; mixed ping/error/capture work preserved",
+      "action": "PRESERVE"
+    },
+    {
+      "path": "docs/superpowers/reports/probe02-anthropic-error-hardening-successor-v1/agent-b-error-precedence-root-cause-v1.json",
+      "status": "UNTRACKED",
+      "classification": "G",
+      "sha256": "47b94b1f2020fa4fcd9eb40db40f6b3ef5f2bd4fff35c6584c66f013d9ee5f5d",
+      "origin_evidence": "Exact match to prior takeover hash-bound snapshot or sealed prior task report; mixed ping/error/capture work preserved",
+      "action": "PRESERVE"
+    },
+    {
+      "path": "docs/superpowers/reports/probe02-anthropic-error-hardening-successor-v1/agent-c-nonobject-error-root-cause-v1.json",
+      "status": "UNTRACKED",
+      "classification": "G",
+      "sha256": "27985055905b444c92a99a0a6924e72c3a7680eec4110a33424ce76f838eb7fe",
+      "origin_evidence": "Exact match to prior takeover hash-bound snapshot or sealed prior task report; mixed ping/error/capture work preserved",
+      "action": "PRESERVE"
+    },
+    {
+      "path": "docs/superpowers/reports/probe02-anthropic-error-hardening-successor-v1/authoritative-error-event-semantics-v1.json",
+      "status": "UNTRACKED",
+      "classification": "G",
+      "sha256": "c88ace4b8b70e859402dd3e387e3d461fef28bf22ee337d6ccb21f3f42dad4c3",
+      "origin_evidence": "Exact match to prior takeover hash-bound snapshot or sealed prior task report; mixed ping/error/capture work preserved",
+      "action": "PRESERVE"
+    },
+    {
+      "path": "docs/superpowers/reports/probe02-anthropic-error-hardening-successor-v1/baseline-binding-v1.json",
+      "status": "UNTRACKED",
+      "classification": "G",
+      "sha256": "c76fafec0209e881a344ea82d79f208e2c7d9bcd1c98ce2dc947b4ed7557e354",
+      "origin_evidence": "Exact match to prior takeover hash-bound snapshot or sealed prior task report; mixed ping/error/capture work preserved",
+      "action": "PRESERVE"
+    },
+    {
+      "path": "docs/superpowers/reports/probe02-anthropic-error-hardening-successor-v1/change-contract-v1.json",
+      "status": "UNTRACKED",
+      "classification": "G",
+      "sha256": "aaf43e55a1bab380f6177bb2d004e478eb29d27be62c7c90be84c456ef071135",
+      "origin_evidence": "Exact match to prior takeover hash-bound snapshot or sealed prior task report; mixed ping/error/capture work preserved",
+      "action": "PRESERVE"
+    },
+    {
+      "path": "docs/superpowers/reports/probe02-anthropic-error-hardening-successor-v1/dirty-worktree-intake-v1.json",
+      "status": "UNTRACKED",
+      "classification": "G",
+      "sha256": "dfaa80d276300fcf8017e58220b3797759329335bfc38089b0173a87abc05c69",
+      "origin_evidence": "Exact match to prior takeover hash-bound snapshot or sealed prior task report; mixed ping/error/capture work preserved",
+      "action": "PRESERVE"
+    },
+    {
+      "path": "docs/superpowers/reports/probe02-anthropic-error-hardening-successor-v1/probe02-current-worktree-replay-v1.json",
+      "status": "UNTRACKED",
+      "classification": "G",
+      "sha256": "372ed0b6bf8b70b4ed3051f74d1b2d9ddf0ab43c36be0832792bb35b7416c1aa",
+      "origin_evidence": "Exact match to prior takeover hash-bound snapshot or sealed prior task report; mixed ping/error/capture work preserved",
+      "action": "PRESERVE"
+    },
+    {
+      "path": "docs/superpowers/reports/probe02-post-message-stop-ping-fix-successor-v1/README.md",
+      "status": "UNTRACKED",
+      "classification": "G",
+      "sha256": "f03c3d9f71795eec70c693503f4df80501db7b5e9647c103f18e502c29216912",
+      "origin_evidence": "Exact match to prior takeover hash-bound snapshot or sealed prior task report; mixed ping/error/capture work preserved",
+      "action": "PRESERVE"
+    },
+    {
+      "path": "docs/superpowers/reports/probe02-post-message-stop-ping-fix-successor-v1/agent-a-authoritative-ping-semantics-v1.json",
+      "status": "UNTRACKED",
+      "classification": "G",
+      "sha256": "492bd76100f41f4a69b689909739ca6e1f6d5052a61010140902b28161b2b190",
+      "origin_evidence": "Exact match to prior takeover hash-bound snapshot or sealed prior task report; mixed ping/error/capture work preserved",
+      "action": "PRESERVE"
+    },
+    {
+      "path": "docs/superpowers/reports/probe02-post-message-stop-ping-fix-successor-v1/agent-b-probe02-raw-forensics-v1.json",
+      "status": "UNTRACKED",
+      "classification": "G",
+      "sha256": "938c5f2bb9dd4bd8e6ba496034bf1a3055d383b788b603a9dabea74c4198c5b5",
+      "origin_evidence": "Exact match to prior takeover hash-bound snapshot or sealed prior task report; mixed ping/error/capture work preserved",
+      "action": "PRESERVE"
+    },
+    {
+      "path": "docs/superpowers/reports/probe02-post-message-stop-ping-fix-successor-v1/agent-c-state-machine-root-cause-v1.json",
+      "status": "UNTRACKED",
+      "classification": "G",
+      "sha256": "b68320784d2f8f6a5e53fa170fee19c3121249aac80a73f681478da8c5d3ca28",
+      "origin_evidence": "Exact match to prior takeover hash-bound snapshot or sealed prior task report; mixed ping/error/capture work preserved",
+      "action": "PRESERVE"
+    },
+    {
+      "path": "docs/superpowers/reports/probe02-post-message-stop-ping-fix-successor-v1/agent-d-shared-protocol-blast-radius-v1.json",
+      "status": "UNTRACKED",
+      "classification": "G",
+      "sha256": "d5bbbd1658e969c0c557eaae73163380207d9d7fa5dd6bcfe95eb2d456a4cc8b",
+      "origin_evidence": "Exact match to prior takeover hash-bound snapshot or sealed prior task report; mixed ping/error/capture work preserved",
+      "action": "PRESERVE"
+    },
+    {
+      "path": "docs/superpowers/reports/probe02-post-message-stop-ping-fix-successor-v1/agent-e-usage-disposition-v1.json",
+      "status": "UNTRACKED",
+      "classification": "G",
+      "sha256": "958d48cf549a1c5414a0bf9a782bc21fe2a136ff3b0ed095fc8fe9624c177d1f",
+      "origin_evidence": "Exact match to prior takeover hash-bound snapshot or sealed prior task report; mixed ping/error/capture work preserved",
+      "action": "PRESERVE"
+    },
+    {
+      "path": "docs/superpowers/reports/probe02-post-message-stop-ping-fix-successor-v1/agent-f-successor-campaign-v1.json",
+      "status": "UNTRACKED",
+      "classification": "G",
+      "sha256": "bc387f6d0f057cc30d237025c35ae6b987691b2e1c71bae5e9180650cc33a5aa",
+      "origin_evidence": "Exact match to prior takeover hash-bound snapshot or sealed prior task report; mixed ping/error/capture work preserved",
+      "action": "PRESERVE"
+    },
+    {
+      "path": "docs/superpowers/reports/probe02-post-message-stop-ping-fix-successor-v1/authoritative-ping-semantics-v1.json",
+      "status": "UNTRACKED",
+      "classification": "G",
+      "sha256": "492bd76100f41f4a69b689909739ca6e1f6d5052a61010140902b28161b2b190",
+      "origin_evidence": "Exact match to prior takeover hash-bound snapshot or sealed prior task report; mixed ping/error/capture work preserved",
+      "action": "PRESERVE"
+    },
+    {
+      "path": "docs/superpowers/reports/probe02-post-message-stop-ping-fix-successor-v1/baseline-binding-v1.json",
+      "status": "UNTRACKED",
+      "classification": "G",
+      "sha256": "871d59c1ac5ba32dd8586af7fb26020495569fbf163be8c2b612adbdfc9af38a",
+      "origin_evidence": "Exact match to prior takeover hash-bound snapshot or sealed prior task report; mixed ping/error/capture work preserved",
+      "action": "PRESERVE"
+    },
+    {
+      "path": "docs/superpowers/reports/probe02-post-message-stop-ping-fix-successor-v1/change-contract-v1.json",
+      "status": "UNTRACKED",
+      "classification": "G",
+      "sha256": "b2d4d7ff1e14ceae40d657317214c1b1dc992c3bb3e8246398309754ebc16bf0",
+      "origin_evidence": "Exact match to prior takeover hash-bound snapshot or sealed prior task report; mixed ping/error/capture work preserved",
+      "action": "PRESERVE"
+    },
+    {
+      "path": "docs/superpowers/reports/probe02-post-message-stop-ping-fix-successor-v1/complete-production-incident-catalog-scan-v1.json",
+      "status": "UNTRACKED",
+      "classification": "G",
+      "sha256": "621c7c06a3ca433c70b4edb44f29440a027bd8b5cbf6a49adf217d44e28c09a3",
+      "origin_evidence": "Exact match to prior takeover hash-bound snapshot or sealed prior task report; mixed ping/error/capture work preserved",
+      "action": "PRESERVE"
+    },
+    {
+      "path": "docs/superpowers/reports/probe02-post-message-stop-ping-fix-successor-v1/historical-manifest-verification-v1.json",
+      "status": "UNTRACKED",
+      "classification": "G",
+      "sha256": "6365da21f441a0ff8941b998f58c3ec459e0d3bf2d0eac7909ca2c47b05c5a89",
+      "origin_evidence": "Exact match to prior takeover hash-bound snapshot or sealed prior task report; mixed ping/error/capture work preserved",
+      "action": "PRESERVE"
+    },
+    {
+      "path": "docs/superpowers/reports/probe02-post-message-stop-ping-fix-successor-v1/historical-workload-admission-v1.json",
+      "status": "UNTRACKED",
+      "classification": "G",
+      "sha256": "3377fe863ba9ed952ee4fa3f28d3c0a79bb17d75bf3ab23270073d8195e386e2",
+      "origin_evidence": "Exact match to prior takeover hash-bound snapshot or sealed prior task report; mixed ping/error/capture work preserved",
+      "action": "PRESERVE"
+    },
+    {
+      "path": "docs/superpowers/reports/probe02-post-message-stop-ping-fix-successor-v1/post-terminal-ping-state-machine-fix-v1.json",
+      "status": "UNTRACKED",
+      "classification": "G",
+      "sha256": "f99921f7c2bff9b1706b0ce2697c92fca84838c5147e987e9cf3318c4c48ef08",
+      "origin_evidence": "Exact match to prior takeover hash-bound snapshot or sealed prior task report; mixed ping/error/capture work preserved",
+      "action": "PRESERVE"
+    },
+    {
+      "path": "docs/superpowers/reports/probe02-post-message-stop-ping-fix-successor-v1/preexecution-final-report-v1.md",
+      "status": "UNTRACKED",
+      "classification": "G",
+      "sha256": "ed624f717e6caca6a8aa5f0816f5e45f14de6860c9e598614f635213956a219d",
+      "origin_evidence": "Exact match to prior takeover hash-bound snapshot or sealed prior task report; mixed ping/error/capture work preserved",
+      "action": "PRESERVE"
+    },
+    {
+      "path": "docs/superpowers/reports/probe02-post-message-stop-ping-fix-successor-v1/probe02-event-sequence-v1.json",
+      "status": "UNTRACKED",
+      "classification": "G",
+      "sha256": "87e12c026a4775c0fd83702e5f6d0b6e9a06a48a0a5ff8c07f211c3a17195e46",
+      "origin_evidence": "Exact match to prior takeover hash-bound snapshot or sealed prior task report; mixed ping/error/capture work preserved",
+      "action": "PRESERVE"
+    },
+    {
+      "path": "docs/superpowers/reports/probe02-post-message-stop-ping-fix-successor-v1/probe02-exact-replay-after-fix-v1.json",
+      "status": "UNTRACKED",
+      "classification": "G",
+      "sha256": "a89f672808b02e704f6fc6474395e7a257d6f904f179d09e8375f78e91f675ce",
+      "origin_evidence": "Exact match to prior takeover hash-bound snapshot or sealed prior task report; mixed ping/error/capture work preserved",
+      "action": "PRESERVE"
+    },
+    {
+      "path": "docs/superpowers/reports/probe02-post-message-stop-ping-fix-successor-v1/probe02-exact-replay-before-fix-v1.json",
+      "status": "UNTRACKED",
+      "classification": "G",
+      "sha256": "b0e2bddd999d8202ae5902a1fef5a41f504d65997274387a25af507f69c7553d",
+      "origin_evidence": "Exact match to prior takeover hash-bound snapshot or sealed prior task report; mixed ping/error/capture work preserved",
+      "action": "PRESERVE"
+    },
+    {
+      "path": "docs/superpowers/reports/probe02-post-message-stop-ping-fix-successor-v1/probe02-workload-evidence-disposition-v1.json",
+      "status": "UNTRACKED",
+      "classification": "G",
+      "sha256": "49fb771cdba625225b5f8f51674a6ca51cd41fdb0ef89a51a1738ac484ac00f7",
+      "origin_evidence": "Exact match to prior takeover hash-bound snapshot or sealed prior task report; mixed ping/error/capture work preserved",
+      "action": "PRESERVE"
+    },
+    {
+      "path": "docs/superpowers/reports/probe02-post-message-stop-ping-fix-successor-v1/sha256-manifest-v1.json",
+      "status": "UNTRACKED",
+      "classification": "G",
+      "sha256": "1c6ff523c37870b36a88700e82d574e375a512fc42080fd2a32e03dce3edb94c",
+      "origin_evidence": "Exact match to prior takeover hash-bound snapshot or sealed prior task report; mixed ping/error/capture work preserved",
+      "action": "PRESERVE"
+    },
+    {
+      "path": "docs/superpowers/reports/probe02-post-message-stop-ping-fix-successor-v1/shared-protocol-blast-radius-review-v1.json",
+      "status": "UNTRACKED",
+      "classification": "G",
+      "sha256": "edf43bad118e11024eba13483116bc93d9b1f2bfee49161dabb941007f66c5e2",
+      "origin_evidence": "Exact match to prior takeover hash-bound snapshot or sealed prior task report; mixed ping/error/capture work preserved",
+      "action": "PRESERVE"
+    },
+    {
+      "path": "docs/superpowers/reports/probe02-post-message-stop-ping-fix-successor-v1/shared-protocol-request-zero-diff-v1.json",
+      "status": "UNTRACKED",
+      "classification": "G",
+      "sha256": "134561e64c96866a1fbdfd4f4aad8121f17694da03b71e2708af52dbb818a550",
+      "origin_evidence": "Exact match to prior takeover hash-bound snapshot or sealed prior task report; mixed ping/error/capture work preserved",
+      "action": "PRESERVE"
+    },
+    {
+      "path": "docs/superpowers/reports/probe02-post-message-stop-ping-fix-successor-v1/shared-protocol-response-regression-matrix-v1.json",
+      "status": "UNTRACKED",
+      "classification": "G",
+      "sha256": "8a7bc38d9a581d1decfed788e58d85ba7d31b8ae279bc3efd84e99c3339feeae",
+      "origin_evidence": "Exact match to prior takeover hash-bound snapshot or sealed prior task report; mixed ping/error/capture work preserved",
+      "action": "PRESERVE"
+    },
+    {
+      "path": "docs/superpowers/reports/probe02-post-message-stop-ping-fix-successor-v1/successor-probe-case-set-v1.json",
+      "status": "UNTRACKED",
+      "classification": "G",
+      "sha256": "2c9bef72b5b0e74df01febc84605c4660fdf38829db59aef8ce36539bffa48a7",
+      "origin_evidence": "Exact match to prior takeover hash-bound snapshot or sealed prior task report; mixed ping/error/capture work preserved",
+      "action": "PRESERVE"
+    },
+    {
+      "path": "docs/superpowers/specs/probe02-post-terminal-ping-successor-v1.md",
+      "status": "UNTRACKED",
+      "classification": "G",
+      "sha256": "3a443e74d4a2148654af79778973e70407520f192aaa48cfa6ab8582a25fcf9e",
+      "origin_evidence": "Exact match to prior takeover hash-bound snapshot or sealed prior task report; mixed ping/error/capture work preserved",
+      "action": "PRESERVE"
+    },
+    {
+      "path": "memory/narrative-contract.json",
+      "status": "UNTRACKED",
+      "classification": "H",
+      "sha256": "5ea7ec967bbbff669d70271e0eef3a0f779a1c7c0a487939b9be1a12679c7d41",
+      "origin_evidence": "Exact match to prior takeover hash-bound snapshot or sealed prior task report; mixed ping/error/capture work preserved",
+      "action": "PRESERVE"
+    },
+    {
+      "path": "src/novel_flywheel/execution_failure_architecture.py",
+      "status": "MODIFIED",
+      "classification": "D",
+      "sha256": "b3e3ad1033a3dd0ccba534389c3369d795d8779c8a04e19ec901aa139ea48cfc",
+      "origin_evidence": "Exact match to prior takeover hash-bound snapshot or sealed prior task report; mixed ping/error/capture work preserved",
+      "action": "PRESERVE"
+    },
+    {
+      "path": "src/novel_flywheel/external_workload_evidence.py",
+      "status": "MODIFIED",
+      "classification": "B",
+      "sha256": "0e801de04d60b4ee6f9b4d4179b9668602df16b574bddba2c83a1f1aeaefcc35",
+      "origin_evidence": "Exact match to prior takeover hash-bound snapshot or sealed prior task report; mixed ping/error/capture work preserved",
+      "action": "PRESERVE"
+    },
+    {
+      "path": "src/novel_flywheel/full_short_campaign_authorization.py",
+      "status": "MODIFIED",
+      "classification": "B",
+      "sha256": "4e81a75be0c6bdc295a6cb5c60d7413872525dfa5dab22ebc184368fa0219cf0",
+      "origin_evidence": "Exact match to prior takeover hash-bound snapshot or sealed prior task report; mixed ping/error/capture work preserved",
+      "action": "PRESERVE"
+    },
+    {
+      "path": "src/novel_flywheel/full_short_execution.py",
+      "status": "MODIFIED",
+      "classification": "B",
+      "sha256": "29bcd3e04faaa65a367657ae5b1142058a7cc47554f324a5d7edd5d966590ab3",
+      "origin_evidence": "Exact match to prior takeover hash-bound snapshot or sealed prior task report; mixed ping/error/capture work preserved",
+      "action": "PRESERVE"
+    },
+    {
+      "path": "src/novel_flywheel/full_short_probe_campaign.py",
+      "status": "MODIFIED",
+      "classification": "B",
+      "sha256": "42dbb28e6cbea4235a6253a8192520cc8e7e65c4309b896547b526730145ba2c",
+      "origin_evidence": "Exact match to prior takeover hash-bound snapshot or sealed prior task report; mixed ping/error/capture work preserved",
+      "action": "PRESERVE"
+    },
+    {
+      "path": "src/novel_flywheel/ping_successor.py",
+      "status": "UNTRACKED",
+      "classification": "B",
+      "sha256": "915418900d9d323826f327fc386ded4adf847799192256879bd496eb4f70709b",
+      "origin_evidence": "Exact match to prior takeover hash-bound snapshot or sealed prior task report; mixed ping/error/capture work preserved",
+      "action": "PRESERVE"
+    },
+    {
+      "path": "src/novel_flywheel/production_incidents.py",
+      "status": "MODIFIED",
+      "classification": "B",
+      "sha256": "b5be9313f974082800bd6de00a9db1e34d00622b4683376a912beb6600d6ba8f",
+      "origin_evidence": "Exact match to prior takeover hash-bound snapshot or sealed prior task report; mixed ping/error/capture work preserved",
+      "action": "PRESERVE"
+    },
+    {
+      "path": "src/novel_flywheel/provider_response_capture.py",
+      "status": "MODIFIED",
+      "classification": "B",
+      "sha256": "aea0e155f1ef7206683e40bbef6095d4bc60221700878c92c9dd2efb43831552",
+      "origin_evidence": "Exact match to prior takeover hash-bound snapshot or sealed prior task report; mixed ping/error/capture work preserved",
+      "action": "PRESERVE"
+    },
+    {
+      "path": "src/novel_flywheel/provider_stream_error.py",
+      "status": "UNTRACKED",
+      "classification": "D",
+      "sha256": "71c15b9f098c63dcd2d67ddc9a3aba16beee0a079c53b5b9f009a4655d6eebe1",
+      "origin_evidence": "Exact match to prior takeover hash-bound snapshot or sealed prior task report; mixed ping/error/capture work preserved",
+      "action": "PRESERVE"
+    },
+    {
+      "path": "src/novel_flywheel/providers/anthropic.py",
+      "status": "MODIFIED",
+      "classification": "B",
+      "sha256": "6ef0b1bbbb94d748b8d7fc25992cf5d5eda9f641c7fedfa1e1cec17ade6060ab",
+      "origin_evidence": "Exact match to prior takeover hash-bound snapshot or sealed prior task report; mixed ping/error/capture work preserved",
+      "action": "PRESERVE"
+    },
+    {
+      "path": "src/novel_flywheel/providers/http.py",
+      "status": "MODIFIED",
+      "classification": "D",
+      "sha256": "e3d107bef9ba7b0d7baac339ddc6a6704a81bff5841099b180c844a590de0393",
+      "origin_evidence": "Exact match to prior takeover hash-bound snapshot or sealed prior task report; mixed ping/error/capture work preserved",
+      "action": "PRESERVE"
+    },
+    {
+      "path": "tests/canary/test_anthropic_error_precedence.py",
+      "status": "UNTRACKED",
+      "classification": "F",
+      "sha256": "52c793e5e7b1102339a5529224d3ab8fc62ebf50fa382f21866adb8201b72cef",
+      "origin_evidence": "Exact match to prior takeover hash-bound snapshot or sealed prior task report; mixed ping/error/capture work preserved",
+      "action": "PRESERVE"
+    },
+    {
+      "path": "tests/providers/test_anthropic_error_hardening.py",
+      "status": "UNTRACKED",
+      "classification": "F",
+      "sha256": "25e0757b663cde7afa578fc65da6d73cf83f079dcd635a084d10f7da99eefbfc",
+      "origin_evidence": "Exact match to prior takeover hash-bound snapshot or sealed prior task report; mixed ping/error/capture work preserved",
+      "action": "PRESERVE"
+    },
+    {
+      "path": "tests/providers/test_anthropic_post_terminal_ping.py",
+      "status": "UNTRACKED",
+      "classification": "F",
+      "sha256": "9047fca892b16076fc0c86e1317e5b30869ec03fe45f7e2750fa8cc816294c18",
+      "origin_evidence": "Exact match to prior takeover hash-bound snapshot or sealed prior task report; mixed ping/error/capture work preserved",
+      "action": "PRESERVE"
+    },
+    {
+      "path": "tools/canary/execute_full_short_budget_unblocked_one_round.py",
+      "status": "MODIFIED",
+      "classification": "B",
+      "sha256": "37150edde702608ffc64f4838ca512f6f608bb7c36cba96621de97dd4d4c5d30",
+      "origin_evidence": "Exact match to prior takeover hash-bound snapshot or sealed prior task report; mixed ping/error/capture work preserved",
+      "action": "PRESERVE"
+    },
+    {
+      "path": "tools/canary/first_trustworthy_full_short_runner.py",
+      "status": "MODIFIED",
+      "classification": "B",
+      "sha256": "ba45a8a861536467653d8c4186f344f8953d8adf1025c79b9e10f7463c3b8029",
+      "origin_evidence": "Exact match to prior takeover hash-bound snapshot or sealed prior task report; mixed ping/error/capture work preserved",
+      "action": "PRESERVE"
+    },
+    {
+      "path": "tools/canary/full_short_budget_unblocked_campaign.py",
+      "status": "MODIFIED",
+      "classification": "B",
+      "sha256": "720c7bc6350ebb639a873b97261c92af92ddd4da55f6de7610c2fbff1b6b9556",
+      "origin_evidence": "Exact match to prior takeover hash-bound snapshot or sealed prior task report; mixed ping/error/capture work preserved",
+      "action": "PRESERVE"
+    },
+    {
+      "path": "tools/canary/ping_successor_binding.py",
+      "status": "UNTRACKED",
+      "classification": "B",
+      "sha256": "8049e589f4e1fb6ce2343268fdeaf248eca56b2aba6295d41ed385142e60f541",
+      "origin_evidence": "Exact match to prior takeover hash-bound snapshot or sealed prior task report; mixed ping/error/capture work preserved",
+      "action": "PRESERVE"
+    }
+  ],
+  "memory_origin": "Prior isolated exact two-test reproduction; source file remains identical"
+}

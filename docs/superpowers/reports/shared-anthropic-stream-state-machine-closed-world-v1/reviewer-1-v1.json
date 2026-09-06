@@ -1,0 +1,369 @@
+{
+  "schema": "IndependentClosedWorldArchitectureReviewV1",
+  "reviewer_id": "/root/closedworld_reviewer_1",
+  "reviewer_role": "Reviewer 1: protocol/state-machine completeness",
+  "fresh_clean_room": true,
+  "independence_claimed": true,
+  "conclusion": "ARCHITECTURE_REJECT",
+  "master_source_sha256": "58b91f4d35d03e6d01f21ba484629be50740af8d37a5ea358ba73cf8b43adfec",
+  "master_read_in_full": true,
+  "baseline_committed_head": "79a99a58ebe95b2be4d1e51a8d190070a2568574",
+  "repository_source_and_tests_modified": false,
+  "provider_calls": 0,
+  "network_calls": 0,
+  "scope": "Read-only architecture gate for shared response-side Anthropic SSE lifecycle. Later execution authorization, freeze, probes and Full Short phases are not rejection grounds.",
+  "reviewed_source_hashes": {
+    "src/novel_flywheel/anthropic_stream.py": "dff3ad231865abc52745d92047cff522381b18f714112772d17bb8ae1dff7c1b",
+    "src/novel_flywheel/providers/anthropic.py": "3c27185f2cb97c646cd4d1a27d5e1b75ed2ef605d2c095d366fc4f7460488fcb",
+    "src/novel_flywheel/providers/http.py": "2f2d69cace513a9c85ec48a3fe4e80bd227dad6948709af2f51eaf375aa883f6",
+    "src/novel_flywheel/provider_response_capture.py": "5e8128e336b81fa1881f144fadc26c511a9227453a8724a3cf2b50f8e9de9fb4",
+    "tests/providers/test_anthropic_closed_world_transitions.py": "8789ae65530267adc8fc0e81f63396cbd5985d07db99c8088d4b66ba2a6426fe",
+    "tests/providers/test_anthropic_closed_world_payload_guards.py": "8a24213bf25c7d1614dd67e2f0ed7002a5d56d1f7c23f601dcc1c62e444094e9",
+    "tests/providers/test_anthropic_closed_world_http.py": "5dfcb11f4ca6756a6a70b66fa348af61898e98e41eca72ed7e5368113b44a87e",
+    "AGENTS.md": "6d3fc98f4c2df3aa9e6a15b827ec1ac8614a388efb307d0f1040a23cf7ed55a1",
+    ".agents/skills/novel-dev-council/SKILL.md": "99d8ab1e8222823e575eeb7e650d670acec16432574d20a2efb0b296518482b6"
+  },
+  "reviewed_source_matches_domain_final_binding": true,
+  "reviewed_evidence_hashes": {
+    "domain-final/proof-summary-v1.json": "386cc9a0a9e00fd7c570e34a86121b4f7db6caa6df78bcd99b075a4d1b293d5d",
+    "domain-final/shared-anthropic-protocol-domain-v1.json": "5006fe10ce9b3f13dafd7fa66b01a2131bb0d60f9f9c8678f039fceb0c07f5c9",
+    "domain-final/shared-anthropic-transition-matrix-v1.json": "7589146f00cd5399ef561b9b1e4bb872733a596dce790a36bb3145419acd545b",
+    "domain-final/shared-completeness-contract-v1.json": "e2230a358e982450648c304c7c64a7598bdfcb26861bd86c03da10d3eb7b5383",
+    "domain-final/shared-stream-causal-precedence-contract-v1.json": "8a235484dc0280f60ceb4e6660062acba841196c8b360bfd0cc06cb30f44528b",
+    "research/authoritative-protocol-research-v1.json": "663cb9afcf266e352454395c9bd6bb457646df94b2c699f4b62c02391050f758",
+    "final-shared-local.xml": "9237f4c0f856a85ab044ca8421325a618646a4a92645a0310f0f069829cd24e3",
+    "domain-final/generated-transitions-current-v1.xml": "849bd48ae85ae222c6ccc6da8d67918492cd9846bdaf349b58507eb1870df34a"
+  },
+  "existing_test_receipts": {
+    "final-shared-local.xml": [
+      {
+        "name": "pytest",
+        "errors": "0",
+        "failures": "0",
+        "skipped": "0",
+        "tests": "977",
+        "time": "38.992",
+        "timestamp": "2026-09-05T22:34:48.791438+08:00",
+        "hostname": "LAPTOP-NG8MB02C"
+      }
+    ],
+    "domain-final/generated-transitions-current-v1.xml": [
+      {
+        "name": "pytest",
+        "errors": "0",
+        "failures": "0",
+        "skipped": "0",
+        "tests": "353",
+        "time": "0.824",
+        "timestamp": "2026-09-05T22:37:01.731993+08:00",
+        "hostname": "LAPTOP-NG8MB02C"
+      }
+    ]
+  },
+  "positive_observations": [
+    "Production TRANSITIONS explicitly spans 11 registered lifecycle states by 16 event classes (176 cells), with tests invoking reachable production states rather than direct state assignment.",
+    "Complete framed Provider errors remain primary, valid pings do not mutate semantic content/usage, and complete-frame timeout/cancellation paths are represented explicitly.",
+    "Cumulative usage replacement, payload type guards, internal event forgery rejection, tool JSON validation and separate capture acknowledgement are observable in source and tests.",
+    "The stricter versioned unknown-top-level-event policy is disclosed as a local compatibility policy and not incorrectly presented as official SDK equivalence."
+  ],
+  "findings": [
+    {
+      "id": "R1-F1",
+      "priority": "P1",
+      "title": "Framing finalization runs before the known transport cause, so interrupted open frames fabricate an earlier protocol terminal",
+      "locations": [
+        {
+          "path": "src/novel_flywheel/providers/anthropic.py",
+          "line": 60,
+          "end_line": 67
+        },
+        {
+          "path": "src/novel_flywheel/anthropic_stream.py",
+          "line": 490,
+          "end_line": 491
+        },
+        {
+          "path": "src/novel_flywheel/anthropic_stream.py",
+          "line": 123,
+          "end_line": 124
+        },
+        {
+          "path": "tests/providers/test_anthropic_closed_world_http.py",
+          "line": 80,
+          "end_line": 84
+        },
+        {
+          "path": "tests/providers/test_anthropic_closed_world_http.py",
+          "line": 230,
+          "end_line": 230
+        }
+      ],
+      "mechanism": "_consume_protocol_stream retains the actual iterator timeout/cancellation, but evaluate_bytes first calls decode_sse without transport-termination context. decode_sse finalizes pending data as InvalidFrame(EVENT_DELIMITER_MISSING). The absorbing PROTOCOL_INVALID state is installed before the stored TIMEOUT/CANCELLATION event is stepped.",
+      "reproduction": "Run .venv/Scripts/python.exe -B C:\\小说\\shared-anthropic-closed-world-offline-20260905-v1\\reviews\\reviewer-1-synthetic-repro.py from the repository root. It uses the production AnthropicAdapter.complete and httpx.MockTransport with only synthetic protocol bytes and a metadata-only capture observer.",
+      "observed_preterminal": "message_start + content_block_start + a content_block_delta truncated inside its text string, then ReadTimeout or CancelledError: public failure is ProviderResponseCaptureError(EVENT_DELIMITER_MISSING); owner.primary_cause is PROTOCOL_INVALID; original transport exception identity is lost.",
+      "observed_postterminal": "A fully closed valid message_stop followed by event: ping/data: {type:ping} lacking only the final delimiter, then ReadTimeout or CancelledError: trace first reaches SEMANTIC_SUCCESS_TERMINAL, then becomes PROTOCOL_INVALID_TERMINAL; no ModelResponse is returned; capture transport_complete is false.",
+      "expected": "An unfinished frame due to the known interrupted read needs an explicit source-grounded boundary decision. Before semantic terminal, timeout/cancellation remains the primary transport cause. An interrupted nonsemantic ping tail must not revoke the complete semantic result. A completed invalid semantic frame remains a separate fail-closed case.",
+      "master_requirements_violated": [
+        "0 precise failure-cause preservation",
+        "4 actual production protocol domain",
+        "7 post-terminal timeout/cancel invariants",
+        "8 D/E timeout/cancellation before terminal",
+        "11/14 generated state/fault proof completeness"
+      ],
+      "evidence_contract_contradiction": "domain-final/shared-stream-causal-precedence-contract-v1.json claims preterminal transport interruption preserves the original exception instance. Both preterminal reproductions contradict that claim.",
+      "coverage_gap": "The 176-cell matrix begins after framing. FaultWire divides bytes into 11-byte chunks but raises only after delivering the entire supplied raw buffer; the success fault cases supply delimiter-complete wire(COMPLETE + PING*n). Chunking alone does not test transport termination inside a frame. A 100_PERCENT state-machine fault claim cannot establish the shared framing/lifecycle boundary for these reachable inputs.",
+      "risk": "Ordinary timeout/cancellation can be misreported as a protocol defect; a fully available successful response can be discarded when only its ping tail is interrupted. This recreates the shared terminal-tail incident family despite green event-boundary tests.",
+      "disposition": "STOP. Shared boundary architecture proof is rejected. This review does not authorize a narrow patch or another patch-and-retry campaign."
+    }
+  ],
+  "synthetic_reproduction_sha256": "7b28363bc5637e6bbd85688bd742d532391c1cf873f875d0ed4000a9aa636a55",
+  "synthetic_reproduction_cases": [
+    {
+      "case": "preterminal_partial_content_delta",
+      "ending": "timeout",
+      "injected_failure_class": "ReadTimeout",
+      "response_present": false,
+      "failure_class": "ProviderResponseCaptureError",
+      "failure_code": "PROVIDER_RESPONSE_REPLAY_SSE_EVENT_DELIMITER_MISSING",
+      "original_transport_exception_preserved": false,
+      "owner": {
+        "state": "PROTOCOL_INVALID_TERMINAL",
+        "semantic_terminal_complete": false,
+        "terminal_capture_complete": false,
+        "transport_tail_closed_cleanly": false,
+        "primary_cause": "PROTOCOL_INVALID",
+        "post_terminal_ping_count": 0,
+        "tail_counts": {},
+        "unknown_event_policy": "anthropic_stream_v1_typed_fail_closed_without_semantic_mutation"
+      },
+      "trace": [
+        {
+          "from_state": "BEFORE_MESSAGE",
+          "event": "message_start",
+          "action": "ACCEPT_ADVANCE",
+          "next_state": "MESSAGE_ACTIVE"
+        },
+        {
+          "from_state": "MESSAGE_ACTIVE",
+          "event": "content_block_start",
+          "action": "ACCEPT_ADVANCE",
+          "next_state": "CONTENT_ACTIVE"
+        },
+        {
+          "from_state": "CONTENT_ACTIVE",
+          "event": "invalid_frame_or_payload",
+          "action": "FAIL_CLOSED_PROTOCOL_INVALID",
+          "next_state": "PROTOCOL_INVALID_TERMINAL"
+        },
+        {
+          "from_state": "PROTOCOL_INVALID_TERMINAL",
+          "event": "TIMEOUT",
+          "action": "FAIL_CLOSED_PROTOCOL_INVALID",
+          "next_state": "PROTOCOL_INVALID_TERMINAL"
+        }
+      ],
+      "capture_transport_complete": false
+    },
+    {
+      "case": "preterminal_partial_content_delta",
+      "ending": "cancel",
+      "injected_failure_class": "CancelledError",
+      "response_present": false,
+      "failure_class": "ProviderResponseCaptureError",
+      "failure_code": "PROVIDER_RESPONSE_REPLAY_SSE_EVENT_DELIMITER_MISSING",
+      "original_transport_exception_preserved": false,
+      "owner": {
+        "state": "PROTOCOL_INVALID_TERMINAL",
+        "semantic_terminal_complete": false,
+        "terminal_capture_complete": false,
+        "transport_tail_closed_cleanly": false,
+        "primary_cause": "PROTOCOL_INVALID",
+        "post_terminal_ping_count": 0,
+        "tail_counts": {},
+        "unknown_event_policy": "anthropic_stream_v1_typed_fail_closed_without_semantic_mutation"
+      },
+      "trace": [
+        {
+          "from_state": "BEFORE_MESSAGE",
+          "event": "message_start",
+          "action": "ACCEPT_ADVANCE",
+          "next_state": "MESSAGE_ACTIVE"
+        },
+        {
+          "from_state": "MESSAGE_ACTIVE",
+          "event": "content_block_start",
+          "action": "ACCEPT_ADVANCE",
+          "next_state": "CONTENT_ACTIVE"
+        },
+        {
+          "from_state": "CONTENT_ACTIVE",
+          "event": "invalid_frame_or_payload",
+          "action": "FAIL_CLOSED_PROTOCOL_INVALID",
+          "next_state": "PROTOCOL_INVALID_TERMINAL"
+        },
+        {
+          "from_state": "PROTOCOL_INVALID_TERMINAL",
+          "event": "CANCELLATION",
+          "action": "FAIL_CLOSED_PROTOCOL_INVALID",
+          "next_state": "PROTOCOL_INVALID_TERMINAL"
+        }
+      ],
+      "capture_transport_complete": false
+    },
+    {
+      "case": "postterminal_partial_ping",
+      "ending": "timeout",
+      "injected_failure_class": "ReadTimeout",
+      "response_present": false,
+      "failure_class": "ProviderResponseCaptureError",
+      "failure_code": "PROVIDER_RESPONSE_REPLAY_SSE_EVENT_DELIMITER_MISSING",
+      "original_transport_exception_preserved": false,
+      "owner": {
+        "state": "PROTOCOL_INVALID_TERMINAL",
+        "semantic_terminal_complete": false,
+        "terminal_capture_complete": false,
+        "transport_tail_closed_cleanly": false,
+        "primary_cause": "PROTOCOL_INVALID",
+        "post_terminal_ping_count": 0,
+        "tail_counts": {
+          "invalid_frame_or_payload": 1
+        },
+        "unknown_event_policy": "anthropic_stream_v1_typed_fail_closed_without_semantic_mutation"
+      },
+      "trace": [
+        {
+          "from_state": "BEFORE_MESSAGE",
+          "event": "message_start",
+          "action": "ACCEPT_ADVANCE",
+          "next_state": "MESSAGE_ACTIVE"
+        },
+        {
+          "from_state": "MESSAGE_ACTIVE",
+          "event": "content_block_start",
+          "action": "ACCEPT_ADVANCE",
+          "next_state": "CONTENT_ACTIVE"
+        },
+        {
+          "from_state": "CONTENT_ACTIVE",
+          "event": "content_block_delta",
+          "action": "ACCEPT_ADVANCE",
+          "next_state": "CONTENT_ACTIVE"
+        },
+        {
+          "from_state": "CONTENT_ACTIVE",
+          "event": "content_block_stop",
+          "action": "ACCEPT_ADVANCE",
+          "next_state": "CONTENT_COMPLETE"
+        },
+        {
+          "from_state": "CONTENT_COMPLETE",
+          "event": "message_delta",
+          "action": "ACCEPT_ADVANCE",
+          "next_state": "MESSAGE_DELTA"
+        },
+        {
+          "from_state": "MESSAGE_DELTA",
+          "event": "message_stop",
+          "action": "TERMINAL_SUCCESS",
+          "next_state": "SEMANTIC_SUCCESS_TERMINAL"
+        },
+        {
+          "from_state": "SEMANTIC_SUCCESS_TERMINAL",
+          "event": "invalid_frame_or_payload",
+          "action": "FAIL_CLOSED_PROTOCOL_INVALID",
+          "next_state": "PROTOCOL_INVALID_TERMINAL"
+        },
+        {
+          "from_state": "PROTOCOL_INVALID_TERMINAL",
+          "event": "TIMEOUT",
+          "action": "FAIL_CLOSED_PROTOCOL_INVALID",
+          "next_state": "PROTOCOL_INVALID_TERMINAL"
+        }
+      ],
+      "capture_transport_complete": false
+    },
+    {
+      "case": "postterminal_partial_ping",
+      "ending": "cancel",
+      "injected_failure_class": "CancelledError",
+      "response_present": false,
+      "failure_class": "ProviderResponseCaptureError",
+      "failure_code": "PROVIDER_RESPONSE_REPLAY_SSE_EVENT_DELIMITER_MISSING",
+      "original_transport_exception_preserved": false,
+      "owner": {
+        "state": "PROTOCOL_INVALID_TERMINAL",
+        "semantic_terminal_complete": false,
+        "terminal_capture_complete": false,
+        "transport_tail_closed_cleanly": false,
+        "primary_cause": "PROTOCOL_INVALID",
+        "post_terminal_ping_count": 0,
+        "tail_counts": {
+          "invalid_frame_or_payload": 1
+        },
+        "unknown_event_policy": "anthropic_stream_v1_typed_fail_closed_without_semantic_mutation"
+      },
+      "trace": [
+        {
+          "from_state": "BEFORE_MESSAGE",
+          "event": "message_start",
+          "action": "ACCEPT_ADVANCE",
+          "next_state": "MESSAGE_ACTIVE"
+        },
+        {
+          "from_state": "MESSAGE_ACTIVE",
+          "event": "content_block_start",
+          "action": "ACCEPT_ADVANCE",
+          "next_state": "CONTENT_ACTIVE"
+        },
+        {
+          "from_state": "CONTENT_ACTIVE",
+          "event": "content_block_delta",
+          "action": "ACCEPT_ADVANCE",
+          "next_state": "CONTENT_ACTIVE"
+        },
+        {
+          "from_state": "CONTENT_ACTIVE",
+          "event": "content_block_stop",
+          "action": "ACCEPT_ADVANCE",
+          "next_state": "CONTENT_COMPLETE"
+        },
+        {
+          "from_state": "CONTENT_COMPLETE",
+          "event": "message_delta",
+          "action": "ACCEPT_ADVANCE",
+          "next_state": "MESSAGE_DELTA"
+        },
+        {
+          "from_state": "MESSAGE_DELTA",
+          "event": "message_stop",
+          "action": "TERMINAL_SUCCESS",
+          "next_state": "SEMANTIC_SUCCESS_TERMINAL"
+        },
+        {
+          "from_state": "SEMANTIC_SUCCESS_TERMINAL",
+          "event": "invalid_frame_or_payload",
+          "action": "FAIL_CLOSED_PROTOCOL_INVALID",
+          "next_state": "PROTOCOL_INVALID_TERMINAL"
+        },
+        {
+          "from_state": "PROTOCOL_INVALID_TERMINAL",
+          "event": "CANCELLATION",
+          "action": "FAIL_CLOSED_PROTOCOL_INVALID",
+          "next_state": "PROTOCOL_INVALID_TERMINAL"
+        }
+      ],
+      "capture_transport_complete": false
+    }
+  ],
+  "limitations": [
+    "No real historical raw capture was re-replayed by this slice; that is assigned to Reviewer 5.",
+    "Existing shared test receipts were inspected, not rerun wholesale by this reviewer; the four independent production-seam counterexamples were executed three times.",
+    "Capture observer was metadata-only in the independent repro to avoid additional writes; no claim is made that a previously durable capture acknowledgement itself was downgraded. The observed semantic state and capture transport metadata downgrade are sufficient."
+  ],
+  "SHARED_ANTHROPIC_STREAM_STATE_MACHINE_CLOSED": "NO",
+  "EXACT_NEXT_GATE": "SHARED_ANTHROPIC_STREAM_STATE_MACHINE_ARCHITECTURE_REDESIGN_REQUIRED",
+  "baseline_regression_comparison_performed": false,
+  "SHARED_PROTOCOL_REGRESSION_COUNT": null,
+  "baseline_regression_classification": "NOT_MEASURED. Four reproduced failures violate the new closed-world hard contract; they are not asserted to be four baseline-green regressions.",
+  "independent_observed_contract_failure_count": 4
+}

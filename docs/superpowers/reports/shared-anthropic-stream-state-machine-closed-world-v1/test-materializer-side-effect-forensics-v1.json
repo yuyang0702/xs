@@ -1,0 +1,45 @@
+{
+  "schema": "TestMaterializerSideEffectForensicsV1",
+  "baseline_head": "79a99a58ebe95b2be4d1e51a8d190070a2568574",
+  "paths": {
+    "config/full_short_route_capability_registry_v1.json": {
+      "after_sha256": "20c8bf8186f23856f501380bea91f7d7b836f3841678bac81c49e63d608bc2be",
+      "committed_before_sha256": "740ea0641bfd26f6adf0cc7fae8c897311b44809046be7c855580b9a78b347bb",
+      "classification": "CONFIRMED_TEST_GENERATED_UNRELATED_SIDE_EFFECT_PRESERVE",
+      "original_task_initial_dirty": false,
+      "isolated_reproduction_sha256": "20c8bf8186f23856f501380bea91f7d7b836f3841678bac81c49e63d608bc2be",
+      "exact_generated_bytes_match": true
+    },
+    "docs/superpowers/reports/exact-ready-required-route-capability-evidence-closure-v1/baseline-binding-v1.json": {
+      "after_sha256": "ee47093e621b522b0d976ad61ac33c4f357231eae2ad7638577813eaf7b4f95a",
+      "committed_before_sha256": "80c843c9757ea18d30db8c3f2fbdf8b34d33ce3ad7470d31cbce73ad39385bc6",
+      "classification": "CONFIRMED_TEST_GENERATED_UNRELATED_SIDE_EFFECT_PRESERVE",
+      "original_task_initial_dirty": false,
+      "isolated_reproduction_sha256": "ee47093e621b522b0d976ad61ac33c4f357231eae2ad7638577813eaf7b4f95a",
+      "exact_generated_bytes_match": true
+    },
+    "docs/superpowers/reports/exact-ready-required-route-capability-evidence-closure-v1/sha256-manifest-v1.json": {
+      "after_sha256": "91ee9884692c87aeb338d77b8bf012a49f6f95613328a8e3c2768ee076b8c5e5",
+      "committed_before_sha256": "6666e20dee9366f9e3faab9b14560160d60edb58f45ff70679769ef4380e3924",
+      "classification": "CONFIRMED_TEST_GENERATED_UNRELATED_SIDE_EFFECT_PRESERVE",
+      "original_task_initial_dirty": false,
+      "isolated_reproduction_sha256": "91ee9884692c87aeb338d77b8bf012a49f6f95613328a8e3c2768ee076b8c5e5",
+      "exact_generated_bytes_match": true
+    }
+  },
+  "source_test": "tests/canary/test_exact_ready_route_capability_closure.py",
+  "source_materializer": "tools/diagnostics/materialize_exact_ready_route_capability_closure.py",
+  "source_test_sha256": "b341e3c35d2ac8716893c617e1d9e6346c53630549c71b3b671c6e998dd8fb30",
+  "source_materializer_sha256": "c75456043813aad262e35128e58957d78b3cb9c0148a2ab7980b03426989b603",
+  "affected_test_runs": [
+    "full-suite-current",
+    "related-runtime-final"
+  ],
+  "run_disposition": "STOPPED_BY_MAIN_CONTROL_C_NOT_COMPLETED_NOT_PASS",
+  "real_project_data_mutated": false,
+  "git_write": false,
+  "provider_calls": 0,
+  "reproduction_isolation": "Materializer writes only isolated external root; Git reads redirected to original source truth; no repository file rewritten during forensics.",
+  "source_unknown_path_count": 0,
+  "final_unrelated_dirty_paths_preserved_count": 3
+}

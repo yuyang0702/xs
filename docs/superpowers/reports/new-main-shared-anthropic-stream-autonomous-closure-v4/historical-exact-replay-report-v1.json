@@ -1,0 +1,555 @@
+{
+  "schema": "V4FinalExactReplayCandidateV1",
+  "source_bindings": {
+    "src/novel_flywheel/anthropic_stream.py": "f548433a92184b9769d1da163848b8c9b1c618c92cbe907e467f60fdaa548d78",
+    "src/novel_flywheel/anthropic_durable_stream.py": "41b7052aa7191a70ef8ec209285c747b8f00bac7b7c1939f1fcbef4f7937525f",
+    "src/novel_flywheel/provider_response_capture.py": "5e8128e336b81fa1881f144fadc26c511a9227453a8724a3cf2b50f8e9de9fb4",
+    "src/novel_flywheel/provider_stream_error.py": "71c15b9f098c63dcd2d67ddc9a3aba16beee0a079c53b5b9f009a4655d6eebe1",
+    "src/novel_flywheel/providers/anthropic.py": "ea63f7fd2a3e45525409bec1eeff935092c09648f8ea9b71e38e1c5de6ed7b51",
+    "src/novel_flywheel/full_short_stream_checkpoint.py": "858c3ab0fbfb5e6e93631b8dc3ee61f27934f8722f7843457fbc83622a1f7501"
+  },
+  "sources_unchanged": true,
+  "historical_count": 5,
+  "exact_raw_entities_replayed": 37,
+  "historical_regression_count": 0,
+  "rows": [
+    {
+      "raw_sha256": "0179f6aa2e1522fb22310b5016fcddae9e7e352a219b1358fdceb92bbcd255a1",
+      "raw_bytes": 19,
+      "historical": false,
+      "source_file_sha256": "e85714d3fb81f10326b0f1081233732e3ae3df15c3ed867f3a7654380311aac4",
+      "outcome": "typed_failure",
+      "exception_class": "AnthropicProviderTerminalError",
+      "reason_code": null,
+      "synthetic_oracle_status": "OBSERVED_TYPED_RESULT_NOT_HISTORICAL_PROOF"
+    },
+    {
+      "raw_sha256": "0375e4bd52200bd78d21b765b1c3a76649627aa6520afcf02b5f2e6b367d22fe",
+      "raw_bytes": 41,
+      "historical": false,
+      "source_file_sha256": "28576c526524c3953789d3d071ab894a6c236abdf52159a635ea31d3ced6d594",
+      "outcome": "typed_failure",
+      "exception_class": "AnthropicStreamProtocolError",
+      "reason_code": "ANTHROPIC_JSON_STOP_REASON_MISSING",
+      "synthetic_oracle_status": "OBSERVED_TYPED_RESULT_NOT_HISTORICAL_PROOF"
+    },
+    {
+      "raw_sha256": "04d96d8a91ea74aa0ec9adb2f390d4f025b3a4517bae57226f0903962de682b0",
+      "raw_bytes": 9,
+      "historical": false,
+      "source_file_sha256": "8879e3d1545b95dbb73b6a8504dd3eaa6746229599ae192a45793a27be0c537c",
+      "outcome": "typed_failure",
+      "exception_class": "ProviderResponseCaptureError",
+      "reason_code": null,
+      "synthetic_oracle_status": "OBSERVED_TYPED_RESULT_NOT_HISTORICAL_PROOF"
+    },
+    {
+      "raw_sha256": "0530caf36d9d36a3ad5e195a2c1c03bc5b4a5433d936339c357d487e6fe0f8dc",
+      "raw_bytes": 18,
+      "historical": false,
+      "source_file_sha256": "5cdbd28b0298328becf07fe0e13ba36b754b2ee664e05320801a8b08fbf0d742",
+      "outcome": "typed_failure",
+      "exception_class": "AnthropicStreamProtocolError",
+      "reason_code": "ANTHROPIC_JSON_CONTENT_INVALID",
+      "synthetic_oracle_status": "OBSERVED_TYPED_RESULT_NOT_HISTORICAL_PROOF"
+    },
+    {
+      "raw_sha256": "13e8dcbb0236ec7c3babc04f97501e3314b45e680aa7154e3e0ed8f52dbb028d",
+      "raw_bytes": 19,
+      "historical": false,
+      "source_file_sha256": "40ab2bc53afb89e2efc04c7dfbd9e8fc30fc8da51b234c3837442110cfd044c0",
+      "outcome": "typed_failure",
+      "exception_class": "AnthropicStreamProtocolError",
+      "reason_code": "ANTHROPIC_JSON_CONTENT_INVALID",
+      "synthetic_oracle_status": "OBSERVED_TYPED_RESULT_NOT_HISTORICAL_PROOF"
+    },
+    {
+      "raw_sha256": "16cfa6ba3d308e6c52a96d7d50018be09d175a518b74d5bcc6e39281ef75fa9b",
+      "raw_bytes": 14,
+      "historical": false,
+      "source_file_sha256": "4e9847a78ee391afe66ea5fe25b77495e488567b8803f114779580a58adc56a7",
+      "outcome": "typed_failure",
+      "exception_class": "AnthropicStreamProtocolError",
+      "reason_code": "ANTHROPIC_JSON_CONTENT_INVALID",
+      "synthetic_oracle_status": "OBSERVED_TYPED_RESULT_NOT_HISTORICAL_PROOF"
+    },
+    {
+      "raw_sha256": "195448a3427329947fc1c5d6c957525b739b9ed954fbf5c0a3a3cc6ad0362863",
+      "raw_bytes": 3329,
+      "historical": true,
+      "source_file_sha256": "ade40c696b0953bc202d22dcf897b631f1a7a0efdc3e513e73c95a33e732b624",
+      "outcome": "success",
+      "visible_sha256": "5691b4ce3c653338e76baf5e99cb038527162343296a49cd9b2b11ef3dca9599",
+      "visible_characters": 206,
+      "finish_reason": "end_turn",
+      "input_tokens": 137304,
+      "output_tokens": 64,
+      "post_terminal_ping_ignored_count": 3,
+      "historical_oracle_comparison": "PASS",
+      "usage_receipt": {
+        "schema": "ProviderReportedActualUsageV1",
+        "version": 1,
+        "protocol": "anthropic",
+        "input_tokens": 137304,
+        "output_tokens": 64,
+        "provider_entity_sha256": "195448a3427329947fc1c5d6c957525b739b9ed954fbf5c0a3a3cc6ad0362863",
+        "source_topologies": [
+          "event[0].message.usage",
+          "event[19].usage"
+        ],
+        "usage_record_count": 2,
+        "usage_receipt_sha256": "d7d228a3ba3868409da68c5ddb678b0e6519aa6892f4503f7f739e200d217384"
+      },
+      "anchors": [
+        {
+          "kind": "CAMPAIGN_FINAL_MANIFEST_FILE_HASH",
+          "status": "PREVIOUS_EXACT_MANIFEST_OR_COMMIT_ANCHOR_VERIFIED",
+          "anchor_source_sha256": "a21199fa62175015bebe16cdd1c5e881deff46af5d7a9e8c4d54ffb4f023fa88"
+        },
+        {
+          "kind": "CAMPAIGN_FINAL_MANIFEST_FILE_HASH",
+          "status": "PREVIOUS_EXACT_MANIFEST_OR_COMMIT_ANCHOR_VERIFIED",
+          "anchor_source_sha256": "a21199fa62175015bebe16cdd1c5e881deff46af5d7a9e8c4d54ffb4f023fa88"
+        }
+      ]
+    },
+    {
+      "raw_sha256": "1f8745f0d2d1387ec1af2211a3cf417b2e9e885e853472649c1d979d0e9370e3",
+      "raw_bytes": 65536,
+      "historical": false,
+      "source_file_sha256": "c90401fa5deae99e0d582f3329ea45951bb45695863cec0b92fcb6e1c08e7dbf",
+      "outcome": "typed_failure",
+      "exception_class": "ProviderResponseCaptureError",
+      "reason_code": null,
+      "synthetic_oracle_status": "OBSERVED_TYPED_RESULT_NOT_HISTORICAL_PROOF"
+    },
+    {
+      "raw_sha256": "2bbb495bf95bfcbbc14a44e278a884232ab6f7760d26663a7fb1f68339acbf7a",
+      "raw_bytes": 37,
+      "historical": false,
+      "source_file_sha256": "50ba226e6a7c2a2cc58fde0ca679f41495bdbf6e9334b92f0e17926e56b36b9a",
+      "outcome": "typed_failure",
+      "exception_class": "AnthropicProviderTerminalError",
+      "reason_code": null,
+      "synthetic_oracle_status": "OBSERVED_TYPED_RESULT_NOT_HISTORICAL_PROOF"
+    },
+    {
+      "raw_sha256": "350277025ddc26c9cb896eb59cdb2ca783a299da5dd2b99d3cae489bb1afa4ab",
+      "raw_bytes": 17,
+      "historical": false,
+      "source_file_sha256": "1cb39760c282e1ab8ad7639bf4046b9e7eb5fc59b8aafa3450229f6004ed51db",
+      "outcome": "typed_failure",
+      "exception_class": "ProviderResponseCaptureError",
+      "reason_code": null,
+      "synthetic_oracle_status": "OBSERVED_TYPED_RESULT_NOT_HISTORICAL_PROOF"
+    },
+    {
+      "raw_sha256": "3b249fd70e4d9d3cac97f0536f81a08d388f8a1aac82f17a00e1248aa2eb2797",
+      "raw_bytes": 47,
+      "historical": false,
+      "source_file_sha256": "5cfaa67f0b2477a01efd5c8210723907913ae6a61ca300a67d03ae7e96032e70",
+      "outcome": "typed_failure",
+      "exception_class": "AnthropicStreamProtocolError",
+      "reason_code": "ANTHROPIC_JSON_CONTENT_INVALID",
+      "synthetic_oracle_status": "OBSERVED_TYPED_RESULT_NOT_HISTORICAL_PROOF"
+    },
+    {
+      "raw_sha256": "4062edaf750fb8074e7e83e0c9028c94e32468a8b6f1614774328ef045150f93",
+      "raw_bytes": 11,
+      "historical": false,
+      "source_file_sha256": "e12909653b164ed92b48a6509d669cef87d641787b5710327f9fb2fc66a6c578",
+      "outcome": "typed_failure",
+      "exception_class": "AnthropicStreamProtocolError",
+      "reason_code": "ANTHROPIC_JSON_CONTENT_INVALID",
+      "synthetic_oracle_status": "OBSERVED_TYPED_RESULT_NOT_HISTORICAL_PROOF"
+    },
+    {
+      "raw_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+      "raw_bytes": 2,
+      "historical": false,
+      "source_file_sha256": "fc0e17f5c1cc464c15878ac9c9997e95683715e68a875aa519aaf6cee7f642b0",
+      "outcome": "typed_failure",
+      "exception_class": "AnthropicStreamProtocolError",
+      "reason_code": "ANTHROPIC_JSON_CONTENT_INVALID",
+      "synthetic_oracle_status": "OBSERVED_TYPED_RESULT_NOT_HISTORICAL_PROOF"
+    },
+    {
+      "raw_sha256": "4bb0489d3ed9d4cacefa495b5627931c21d2ef0878402da32572121350914879",
+      "raw_bytes": 192494,
+      "historical": true,
+      "source_file_sha256": "4c666c3cb1a384e1b20d20ed97d7a44235b73301def5ccb5a76e9184eeadb155",
+      "outcome": "success",
+      "visible_sha256": "82ec9df51e775b4f65eabf0abc475d57735fe32152e03f620f32191c914ff76a",
+      "visible_characters": 995,
+      "finish_reason": "end_turn",
+      "input_tokens": 18546,
+      "output_tokens": 1544,
+      "post_terminal_ping_ignored_count": 0,
+      "historical_oracle_comparison": "PASS",
+      "usage_receipt": {
+        "schema": "ProviderReportedActualUsageV1",
+        "version": 1,
+        "protocol": "anthropic",
+        "input_tokens": 18546,
+        "output_tokens": 1544,
+        "provider_entity_sha256": "4bb0489d3ed9d4cacefa495b5627931c21d2ef0878402da32572121350914879",
+        "source_topologies": [
+          "event[0].message.usage",
+          "event[1544].usage"
+        ],
+        "usage_record_count": 2,
+        "usage_receipt_sha256": "e501720fd1f27cb751d4fb3e082e3512acf896d81f53cc04a52a09d355ac5fbf"
+      },
+      "anchors": [
+        {
+          "kind": "EXTERNAL_DISPATCH_LEDGER_RECEIPT",
+          "receipt_sha256": "0382b304b5328d888045a46c7cceb8a1802a5fd648a42f1b4230296513a78643",
+          "status": "FULL_RECEIPT_DOCUMENT_RECOMPUTED_PASS"
+        }
+      ]
+    },
+    {
+      "raw_sha256": "52b9d52738b411875c8fa0233e4e2cabe4579f9609b84bfc58671eae2055df4e",
+      "raw_bytes": 13,
+      "historical": false,
+      "source_file_sha256": "e19b534025cde76d7cabdf80e5b44f323ef567556e0c25c594ae8b377d6b28e1",
+      "outcome": "typed_failure",
+      "exception_class": "AnthropicStreamProtocolError",
+      "reason_code": "ANTHROPIC_JSON_CONTENT_INVALID",
+      "synthetic_oracle_status": "OBSERVED_TYPED_RESULT_NOT_HISTORICAL_PROOF"
+    },
+    {
+      "raw_sha256": "59afe3d76435b3d2651da53c05f0bd96ea347a669474d3384f43acb7b64c2d7b",
+      "raw_bytes": 473171,
+      "historical": true,
+      "source_file_sha256": "af8e7bf62113336fdfeb3f1283c17a31e22156a77ead36a41753b32896cb6669",
+      "outcome": "success",
+      "visible_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "visible_characters": 0,
+      "finish_reason": "max_tokens",
+      "input_tokens": 18727,
+      "output_tokens": 3724,
+      "post_terminal_ping_ignored_count": 0,
+      "historical_oracle_comparison": "PASS",
+      "usage_receipt": {
+        "schema": "ProviderReportedActualUsageV1",
+        "version": 1,
+        "protocol": "anthropic",
+        "input_tokens": 18727,
+        "output_tokens": 3724,
+        "provider_entity_sha256": "59afe3d76435b3d2651da53c05f0bd96ea347a669474d3384f43acb7b64c2d7b",
+        "source_topologies": [
+          "event[0].message.usage",
+          "event[3717].usage"
+        ],
+        "usage_record_count": 2,
+        "usage_receipt_sha256": "dbf61cc0a2195a04c6fcf9b17229b84bba7a7a801771090784fae4c1c64b47df"
+      },
+      "anchors": [
+        {
+          "kind": "EXTERNAL_DISPATCH_LEDGER_RECEIPT",
+          "receipt_sha256": "85a3e8b99775db11c43f68ddd6773d829d85c029c555617217e2661d1ce08db0",
+          "status": "FULL_RECEIPT_DOCUMENT_RECOMPUTED_PASS"
+        }
+      ]
+    },
+    {
+      "raw_sha256": "62c3d6333853510aa1157554d8267d72d946554aed79472ad59570143b8c52eb",
+      "raw_bytes": 51,
+      "historical": false,
+      "source_file_sha256": "fd7701d7462318d39a480637bea0b2fd973e1ca10a5dd58368218bb09f8e41c5",
+      "outcome": "typed_failure",
+      "exception_class": "AnthropicStreamProtocolError",
+      "reason_code": "ANTHROPIC_SSE_MESSAGE_STOP_STATE_INVALID",
+      "synthetic_oracle_status": "OBSERVED_TYPED_RESULT_NOT_HISTORICAL_PROOF"
+    },
+    {
+      "raw_sha256": "689f6a627384c7dcb2dcc1487e540223e77bdf9dcd0d8be8a326eda65b0ce9a4",
+      "raw_bytes": 8,
+      "historical": false,
+      "source_file_sha256": "dbdf1690f2a64fcad00e42cb7e56f22bb74f5493f83fca3f3ff08d6fd8be0702",
+      "outcome": "typed_failure",
+      "exception_class": "ProviderResponseCaptureError",
+      "reason_code": null,
+      "synthetic_oracle_status": "OBSERVED_TYPED_RESULT_NOT_HISTORICAL_PROOF"
+    },
+    {
+      "raw_sha256": "69fa71957741789dc0b55fc509a490161eabced12a832004335f0ca0fffc6cc3",
+      "raw_bytes": 2379,
+      "historical": true,
+      "source_file_sha256": "053ee33f7a406ed26356b6050ad379f288f9d7af0649eef930e468ab7db3dc39",
+      "outcome": "success",
+      "visible_sha256": "a53be95c03509a81aa191a827f843579b90b4bd38cc2b64e79cb7e5f852c922c",
+      "visible_characters": 99,
+      "finish_reason": "end_turn",
+      "input_tokens": 89255,
+      "output_tokens": 25,
+      "post_terminal_ping_ignored_count": 0,
+      "historical_oracle_comparison": "PASS",
+      "usage_receipt": {
+        "schema": "ProviderReportedActualUsageV1",
+        "version": 1,
+        "protocol": "anthropic",
+        "input_tokens": 89255,
+        "output_tokens": 25,
+        "provider_entity_sha256": "69fa71957741789dc0b55fc509a490161eabced12a832004335f0ca0fffc6cc3",
+        "source_topologies": [
+          "event[0].message.usage",
+          "event[11].usage"
+        ],
+        "usage_record_count": 2,
+        "usage_receipt_sha256": "41f1850917fd744611c5f8671531842f365fde1e1f5354b1f560d6bdb8eadc65"
+      },
+      "anchors": [
+        {
+          "kind": "CAMPAIGN_FINAL_MANIFEST_FILE_HASH",
+          "status": "PREVIOUS_EXACT_MANIFEST_OR_COMMIT_ANCHOR_VERIFIED",
+          "anchor_source_sha256": "a21199fa62175015bebe16cdd1c5e881deff46af5d7a9e8c4d54ffb4f023fa88"
+        },
+        {
+          "kind": "CAMPAIGN_FINAL_MANIFEST_FILE_HASH",
+          "status": "PREVIOUS_EXACT_MANIFEST_OR_COMMIT_ANCHOR_VERIFIED",
+          "anchor_source_sha256": "a21199fa62175015bebe16cdd1c5e881deff46af5d7a9e8c4d54ffb4f023fa88"
+        },
+        {
+          "kind": "CAMPAIGN_FINAL_MANIFEST_FILE_HASH",
+          "status": "PREVIOUS_EXACT_MANIFEST_OR_COMMIT_ANCHOR_VERIFIED",
+          "anchor_source_sha256": "a21199fa62175015bebe16cdd1c5e881deff46af5d7a9e8c4d54ffb4f023fa88"
+        },
+        {
+          "kind": "CAMPAIGN_FINAL_MANIFEST_FILE_HASH",
+          "status": "PREVIOUS_EXACT_MANIFEST_OR_COMMIT_ANCHOR_VERIFIED",
+          "anchor_source_sha256": "a21199fa62175015bebe16cdd1c5e881deff46af5d7a9e8c4d54ffb4f023fa88"
+        },
+        {
+          "kind": "CAMPAIGN_FINAL_MANIFEST_FILE_HASH",
+          "status": "PREVIOUS_EXACT_MANIFEST_OR_COMMIT_ANCHOR_VERIFIED",
+          "anchor_source_sha256": "a21199fa62175015bebe16cdd1c5e881deff46af5d7a9e8c4d54ffb4f023fa88"
+        }
+      ]
+    },
+    {
+      "raw_sha256": "7d7c4082373176ab439c40b1bee4f7ab8c436d827214a55f9344d9a5bf4b5b7e",
+      "raw_bytes": 49,
+      "historical": false,
+      "source_file_sha256": "06a06920b6e6c71788ea092efdb88608522f2b0f2b0983388ea6b6a67e17f8cc",
+      "outcome": "typed_failure",
+      "exception_class": "AnthropicStreamProtocolError",
+      "reason_code": "ANTHROPIC_JSON_CONTENT_INVALID",
+      "synthetic_oracle_status": "OBSERVED_TYPED_RESULT_NOT_HISTORICAL_PROOF"
+    },
+    {
+      "raw_sha256": "8d5706cde045094a27e62ca6e2450d5961a1af1ef704c626199cb1aec16b908f",
+      "raw_bytes": 14,
+      "historical": false,
+      "source_file_sha256": "4d8551991963606e2b05dd940c21e234078df49e0636d8702d439a68437ad6bf",
+      "outcome": "typed_failure",
+      "exception_class": "AnthropicStreamProtocolError",
+      "reason_code": "ANTHROPIC_JSON_STOP_REASON_MISSING",
+      "synthetic_oracle_status": "OBSERVED_TYPED_RESULT_NOT_HISTORICAL_PROOF"
+    },
+    {
+      "raw_sha256": "90a04a819cfbd0a8904afc59b9389aa403098cc12dea305a4ec755f44e1674fc",
+      "raw_bytes": 22,
+      "historical": false,
+      "source_file_sha256": "7b35bd0e91ef0b9b2e2eb85d655ab345c8c530f95c3148066523761c8fb76279",
+      "outcome": "typed_failure",
+      "exception_class": "AnthropicStreamProtocolError",
+      "reason_code": "ANTHROPIC_JSON_CONTENT_INVALID",
+      "synthetic_oracle_status": "OBSERVED_TYPED_RESULT_NOT_HISTORICAL_PROOF"
+    },
+    {
+      "raw_sha256": "91744228888f42bddbb9eabd4dac99c966447b0f96ad6b7ba2fea3da877224b8",
+      "raw_bytes": 457,
+      "historical": false,
+      "source_file_sha256": "5ba5fe351f58fc8c329dc537d889a8255c0a34425e60e4d4fee5f57695005942",
+      "outcome": "success",
+      "visible_sha256": "41043ff2d8737062da6d53e494a76bb773bff4d4c3b9b13179decee47c688e6e",
+      "visible_characters": 20,
+      "finish_reason": "end_turn",
+      "input_tokens": 2,
+      "output_tokens": 3,
+      "post_terminal_ping_ignored_count": 0,
+      "synthetic_oracle_status": "OBSERVED_TYPED_RESULT_NOT_HISTORICAL_PROOF"
+    },
+    {
+      "raw_sha256": "91bd916a7af241419bf063018ac6440a62aab570b74e46832e6b7c8c3cdafebc",
+      "raw_bytes": 39,
+      "historical": false,
+      "source_file_sha256": "f1d737ef39c708a055550f3ef10c288a5bb493462b2eb97c0ce5e4ab107ed97d",
+      "outcome": "typed_failure",
+      "exception_class": "AnthropicProviderTerminalError",
+      "reason_code": null,
+      "synthetic_oracle_status": "OBSERVED_TYPED_RESULT_NOT_HISTORICAL_PROOF"
+    },
+    {
+      "raw_sha256": "96f8afe20ed9be488de0bdcc91a4d77e515e8520b692113a8c1f7e587098f0ad",
+      "raw_bytes": 38,
+      "historical": false,
+      "source_file_sha256": "ef16cce31468c2e53a0373c5175cb23781b86f950d243c12e0c45674f73c85a4",
+      "outcome": "typed_failure",
+      "exception_class": "AnthropicStreamProtocolError",
+      "reason_code": "ANTHROPIC_JSON_CONTENT_INVALID",
+      "synthetic_oracle_status": "OBSERVED_TYPED_RESULT_NOT_HISTORICAL_PROOF"
+    },
+    {
+      "raw_sha256": "a7937b64b8caa58f03721bb6bacf5c78cb235febe0e70b1b84cd99541461a08e",
+      "raw_bytes": 5,
+      "historical": false,
+      "source_file_sha256": "7622ef6967ff4b390bb1a4764372be90f23e1eaa91b228893d85215eb66f1b55",
+      "outcome": "typed_failure",
+      "exception_class": "ProviderResponseCaptureError",
+      "reason_code": null,
+      "synthetic_oracle_status": "OBSERVED_TYPED_RESULT_NOT_HISTORICAL_PROOF"
+    },
+    {
+      "raw_sha256": "bd8fd94ea5a0620ff5c23d6f6ef5be7a01b4d050e1878af4e647c78b6e88ef1c",
+      "raw_bytes": 30,
+      "historical": false,
+      "source_file_sha256": "1b68f97ea9d991e4dfba695ff076c24bdfa611c390168bd1ec2ec6e8b42e2fc8",
+      "outcome": "typed_failure",
+      "exception_class": "AnthropicStreamProtocolError",
+      "reason_code": "ANTHROPIC_JSON_CONTENT_INVALID",
+      "synthetic_oracle_status": "OBSERVED_TYPED_RESULT_NOT_HISTORICAL_PROOF"
+    },
+    {
+      "raw_sha256": "cbdf3b1f91ae32fe1ea292ac6cccf19222f97929f531523f0d15d885052c00c4",
+      "raw_bytes": 10,
+      "historical": false,
+      "source_file_sha256": "996509703ce5a34add7f27300a37510a7920a307d8b19e7cf61f2112e722c295",
+      "outcome": "typed_failure",
+      "exception_class": "ProviderResponseCaptureError",
+      "reason_code": null,
+      "synthetic_oracle_status": "OBSERVED_TYPED_RESULT_NOT_HISTORICAL_PROOF"
+    },
+    {
+      "raw_sha256": "ccbc6726842d83aea07933c211d212d83713fd67442f8d13bd743ad93fb89bc3",
+      "raw_bytes": 17,
+      "historical": false,
+      "source_file_sha256": "12decfca7f77c10d5c94a1ba99d9af5ca1503124a21647931228419cd781c0f3",
+      "outcome": "typed_failure",
+      "exception_class": "AnthropicStreamProtocolError",
+      "reason_code": "ANTHROPIC_JSON_CONTENT_INVALID",
+      "synthetic_oracle_status": "OBSERVED_TYPED_RESULT_NOT_HISTORICAL_PROOF"
+    },
+    {
+      "raw_sha256": "ced72decbb2443eb121506f8ecdc4efea3f204ab5bf9afd25fd050fb176a4350",
+      "raw_bytes": 146,
+      "historical": false,
+      "source_file_sha256": "e6ae88cd81f7e1cb13778fb51653db2f7272b16e6b1078d57b6b467f0fac8507",
+      "outcome": "success",
+      "visible_sha256": "70b702e9f58aa2929ec48ea2eedcf6fa5fbf1e1b59314a82c4f4fbd12d8efcc0",
+      "visible_characters": 18,
+      "finish_reason": "end_turn",
+      "input_tokens": 2,
+      "output_tokens": 3,
+      "post_terminal_ping_ignored_count": 0,
+      "synthetic_oracle_status": "OBSERVED_TYPED_RESULT_NOT_HISTORICAL_PROOF"
+    },
+    {
+      "raw_sha256": "dcfcd76e72d7609526154fab3c2e243c9151c8b236777ad2072f7e5386522cc5",
+      "raw_bytes": 36,
+      "historical": false,
+      "source_file_sha256": "486006932ecdb5f854e21d50a4d4eb212b532e155f3eb7921ff8bfc40a49ceeb",
+      "outcome": "typed_failure",
+      "exception_class": "ProviderResponseCaptureError",
+      "reason_code": null,
+      "synthetic_oracle_status": "OBSERVED_TYPED_RESULT_NOT_HISTORICAL_PROOF"
+    },
+    {
+      "raw_sha256": "de1cdf7b6eefcab2fa28f6bab664aad159be87d1d4e152250a77e61974bef713",
+      "raw_bytes": 1735,
+      "historical": true,
+      "source_file_sha256": "293e6057acddc91d0fddc9f28a1fece9e2f8c6d266d1736e6b8a65a50a4c6415",
+      "outcome": "success",
+      "visible_sha256": "fda564ba3f7a0f028106d468420f674898ed99ac5bf2765ac9586206e39d73c5",
+      "visible_characters": 32,
+      "finish_reason": "end_turn",
+      "input_tokens": 89255,
+      "output_tokens": 9,
+      "post_terminal_ping_ignored_count": 0,
+      "historical_oracle_comparison": "PASS",
+      "usage_receipt": {
+        "schema": "ProviderReportedActualUsageV1",
+        "version": 1,
+        "protocol": "anthropic",
+        "input_tokens": 89255,
+        "output_tokens": 9,
+        "provider_entity_sha256": "de1cdf7b6eefcab2fa28f6bab664aad159be87d1d4e152250a77e61974bef713",
+        "source_topologies": [
+          "event[0].message.usage",
+          "event[6].usage"
+        ],
+        "usage_record_count": 2,
+        "usage_receipt_sha256": "11f871e1dceb36d43cf4cbdfa5a3c575a2ca87e2bd3e47f1a560883d8d685bfd"
+      },
+      "anchors": [
+        {
+          "kind": "COMMITTED_HISTORICAL_FORENSIC_RAW_HASH",
+          "status": "PREVIOUS_EXACT_MANIFEST_OR_COMMIT_ANCHOR_VERIFIED",
+          "anchor_source_sha256": "d9d148b014acc989bb08514773875dda31bb3c21fb1ef74bf6430ffc9385f7f1"
+        }
+      ]
+    },
+    {
+      "raw_sha256": "e0f1187249029ffdcf94ee815429ce36d5217fcc6ddd3b1a95fc416a1c8792a1",
+      "raw_bytes": 13,
+      "historical": false,
+      "source_file_sha256": "fbdb1af87207c2b38233e4159c2414672ec692e1949ffc93b2605043845732b2",
+      "outcome": "typed_failure",
+      "exception_class": "AnthropicStreamProtocolError",
+      "reason_code": "ANTHROPIC_JSON_CONTENT_INVALID",
+      "synthetic_oracle_status": "OBSERVED_TYPED_RESULT_NOT_HISTORICAL_PROOF"
+    },
+    {
+      "raw_sha256": "e2a782dcf42c5c96de6665a2d065ebc908226c952f1e9e214c3c2408c35a399b",
+      "raw_bytes": 447,
+      "historical": false,
+      "source_file_sha256": "fcfd33e6b85a5f9f508c7ea93d6f1fa2880f956d0222667c388d6c3b08b20ffe",
+      "outcome": "success",
+      "visible_sha256": "ff69e91d6dbf7a0271490e4047327808c30cff53a51cc5f6e4bf4a3259d2f6a8",
+      "visible_characters": 10,
+      "finish_reason": "end_turn",
+      "input_tokens": 1,
+      "output_tokens": 1,
+      "post_terminal_ping_ignored_count": 0,
+      "synthetic_oracle_status": "OBSERVED_TYPED_RESULT_NOT_HISTORICAL_PROOF"
+    },
+    {
+      "raw_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "raw_bytes": 0,
+      "historical": false,
+      "source_file_sha256": "4c2a87ce28188aba9ed2921c3ee2357b4ac0bded492510a1f3c5f969b52124ba",
+      "outcome": "typed_failure",
+      "exception_class": "ProviderResponseCaptureError",
+      "reason_code": null,
+      "synthetic_oracle_status": "OBSERVED_TYPED_RESULT_NOT_HISTORICAL_PROOF"
+    },
+    {
+      "raw_sha256": "e4809a4220ea5778d03ac0076aae23d05c26ee61608a770f81ddf50b5a7c00a4",
+      "raw_bytes": 19,
+      "historical": false,
+      "source_file_sha256": "07734d289c3562c80277bb9a3ed68a5f3d7e12b783220adacd854e8f16d55c23",
+      "outcome": "typed_failure",
+      "exception_class": "ProviderResponseCaptureError",
+      "reason_code": null,
+      "synthetic_oracle_status": "OBSERVED_TYPED_RESULT_NOT_HISTORICAL_PROOF"
+    },
+    {
+      "raw_sha256": "f064fe61184cdf82c6a7754704652d8f30a7e465c4c9bbf55b2c4f8691faa170",
+      "raw_bytes": 14,
+      "historical": false,
+      "source_file_sha256": "9cb8994a9c5d907900ed1338fcbeb04b4dc57721d764f5d76a7fc8c3629749aa",
+      "outcome": "typed_failure",
+      "exception_class": "ProviderResponseCaptureError",
+      "reason_code": null,
+      "synthetic_oracle_status": "OBSERVED_TYPED_RESULT_NOT_HISTORICAL_PROOF"
+    }
+  ],
+  "network_calls": 0,
+  "paid_calls": 0,
+  "limitations": [
+    "Synthetic fixtures retain synthetic provenance. Parser success is not workflow acceptance.",
+    "Older forensic-only probe has inferred SSE media type; no missing HTTP metadata is invented."
+  ]
+}

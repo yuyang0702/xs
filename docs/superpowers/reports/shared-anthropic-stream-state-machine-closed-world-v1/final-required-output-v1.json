@@ -1,0 +1,111 @@
+{
+  "schema": "ClosedWorldStopRequiredOutputV1",
+  "master_sha256": "58b91f4d35d03e6d01f21ba484629be50740af8d37a5ea358ba73cf8b43adfec",
+  "fields": {
+    "BASELINE_COMMITTED_HEAD": "79a99a58ebe95b2be4d1e51a8d190070a2568574",
+    "INITIAL_WORKTREE_DIRTY": "YES",
+    "PRESERVED_IN_SCOPE_CHANGE_COUNT": 68,
+    "UNRELATED_DIRTY_PATH_COUNT": 3,
+    "REGISTERED_PROTOCOL_STATE_COUNT": 11,
+    "REGISTERED_EVENT_CLASS_COUNT": 16,
+    "TRANSITION_MATRIX_TOTAL_CELLS": 176,
+    "TRANSITION_MATRIX_UNSPECIFIED_CELL_COUNT": 0,
+    "TRANSITION_MATRIX_AMBIGUOUS_CELL_COUNT": 0,
+    "UNCLASSIFIED_SHARED_STREAM_EVENT_EXIT_COUNT": 0,
+    "GENERATED_TRANSITION_CASE_COUNT": 176,
+    "GENERATED_TRANSITION_PASS_COUNT": 176,
+    "GENERATED_TRANSITION_COVERAGE": "100_PERCENT_REGISTERED_CELLS_ONLY",
+    "STATE_MACHINE_FAULT_INJECTION_COVERAGE": "INCOMPLETE",
+    "POST_TERMINAL_TIMEOUT_DOWNGRADES_COMPLETE_CAPTURE_COUNT": 1,
+    "POST_TERMINAL_CANCELLATION_DOWNGRADES_COMPLETE_CAPTURE_COUNT": 1,
+    "PRE_TERMINAL_TIMEOUT_FALSE_SUCCESS_COUNT": 0,
+    "PRE_TERMINAL_CANCELLATION_FALSE_SUCCESS_COUNT": 0,
+    "PROVIDER_ERROR_LOST_TO_LATER_TIMEOUT_COUNT": 0,
+    "ATTRIBUTEERROR_FROM_SSE_ERROR_PAYLOAD_COUNT": 0,
+    "POST_TERMINAL_ERROR_IGNORED_COUNT": 0,
+    "GENERIC_INCOMPLETE_TERMINAL_REPLACEMENT_COUNT": 4,
+    "SHARED_PROTOCOL_REGRESSION_COUNT": 4,
+    "HISTORICAL_EXACT_REPLAY_REGRESSION_COUNT": 0,
+    "OUTBOUND_REQUEST_BODY_CHANGED_COUNT": 0,
+    "MODEL_VISIBLE_REQUEST_BYTES_CHANGED_COUNT": 0,
+    "ROUTE_BINDING_CHANGED_COUNT": 0,
+    "OUTPUT_CAP_CHANGED_COUNT": 0,
+    "REASONING_POLICY_CHANGED_COUNT": 0,
+    "REQUEST_BUILDER_SOURCE_DIFF": 0,
+    "PROBE01_EXACT_REPLAY": "PASS",
+    "PROBE02_EXACT_REPLAY": "PASS",
+    "PROBE02_CANONICAL_PROVIDER_INPUT_TOKENS": 137304,
+    "PROBE02_CANONICAL_PROVIDER_OUTPUT_TOKENS": 64,
+    "POST_TERMINAL_PING_IGNORED_COUNT": 3,
+    "SHARED_STREAM_STATE_MACHINE_REVIEW": "FAIL",
+    "SHARED_ANTHROPIC_STREAM_STATE_MACHINE_CLOSED": "NO",
+    "SUCCESSOR_REAL_PROBE_CASE_COUNT": 6,
+    "SUCCESSOR_PROBE_CASE_SET": [
+      3,
+      4,
+      5,
+      6,
+      7,
+      8
+    ],
+    "SUCCESSOR_FINAL_EXECUTION_HEAD": "NOT_FROZEN",
+    "WORKTREE": "DIRTY_PRESERVED",
+    "SUCCESSOR_CAMPAIGN_PREFLIGHT": "NOT_REACHED",
+    "SUCCESSOR_PROBE_ALL_REQUIRED_CASES_PASS": "NOT_REACHED",
+    "EXACT_READY_PROVEN_SAFE_PHYSICAL_ATTEMPT_SHAPES": null,
+    "EXACT_READY_UNPROVEN_PHYSICAL_ATTEMPT_COUNT": null,
+    "CAPACITY_ENGINEERING_LINE": "NOT_REACHED",
+    "FULL_SHORT_PRODUCTION_SHAPED_DRY_RUN": "NOT_REACHED",
+    "SIZE_MATRIX_SEGMENTATION_BEHAVIOR": "NOT_REACHED",
+    "STRICT_L3": "FAIL",
+    "SUCCESSOR_REAL_PROVIDER_REQUEST_ATTEMPTS": 0,
+    "SUCCESSOR_HTTP_POST_ATTEMPTS": 0,
+    "SUCCESSOR_NETWORK_CALLS": 0,
+    "SUCCESSOR_MODEL_CALLS": 0,
+    "SUCCESSOR_PAID_CALLS": 0,
+    "SUCCESSOR_TOTAL_INPUT_TOKENS": 0,
+    "SUCCESSOR_TOTAL_GENERATED_OUTPUT_TOKENS": 0,
+    "SUCCESSOR_COST_STATUS": "NO_PAID_CALLS_NO_PROVIDER_COST",
+    "SUCCESSOR_TOTAL_ELAPSED_SECONDS": 0,
+    "REAL_FULL_SHORT_EXECUTION_COUNT": 0,
+    "REAL_FULL_SHORT_TERMINAL": "NOT_REACHED",
+    "EXACT_NEXT_GATE": "SHARED_ANTHROPIC_STREAM_STATE_MACHINE_ARCHITECTURE_REDESIGN_REQUIRED"
+  },
+  "counter_scope": {
+    "regressions": "Four exact baseline/current MockTransport comparisons: original timeout/cancellation becomes framing error; not a completed full-suite regression census.",
+    "capture_downgrade": "One timeout and one cancellation case with complete message_stop prefix durably written and explicit True callback; owner and legacy completeness both incorrectly false after unfinished ping.",
+    "generic_incomplete_replacement": "Four primary transport causes replaced by PROVIDER_RESPONSE_REPLAY_SSE_EVENT_DELIMITER_MISSING.",
+    "zero_counts": "Observed registered tests/historical exact replays, not an assertion that untested variants are correct.",
+    "unknown_capacity_values": "Not recomputed after STOP; null is not zero and no 183/183 claim.",
+    "probe_case_count": "Authorized remaining set, zero cases dispatched.",
+    "unrelated_dirty_paths": "Initial unrelated=0; 3 later test-materializer outputs fully reproduced and preserved. Source-unknown count=0.",
+    "elapsed": "Successor execution elapsed only; no campaign was started."
+  },
+  "reviewers": [
+    {
+      "reviewer": 1,
+      "verdict": "ARCHITECTURE_REJECT",
+      "sha256": "bc50fdf28c0c171db27075ad2d71d6a0e190e30f4527c5b265704d25ae08212e"
+    },
+    {
+      "reviewer": 2,
+      "verdict": "ARCHITECTURE_REJECT",
+      "sha256": "a860aea9822896299016591bae972d3102674dc714be3459dddacb68109ce84c"
+    },
+    {
+      "reviewer": 3,
+      "verdict": "ARCHITECTURE_PASS",
+      "sha256": "b64627c2a06c26920dd75c0b8e16e8e63d5a50c6243240b24cbcf87fc5b80b55"
+    },
+    {
+      "reviewer": 4,
+      "verdict": "ARCHITECTURE_PASS",
+      "sha256": "b441feb1cad19014bbc63b19acba7c2897d8c42d3f8a7e48755460aa9f774abf"
+    },
+    {
+      "reviewer": 5,
+      "verdict": "ARCHITECTURE_REJECT",
+      "sha256": "409483afde7fff71cf153014fa4ad74280a8ec8c7f71b592a7adca4f66b1b82c"
+    }
+  ]
+}

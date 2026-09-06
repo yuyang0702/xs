@@ -21,6 +21,7 @@ from novel_flywheel.provider_response_capture import (
     provider_protocol_input_has_terminal_bytes_v1,
 )
 from novel_flywheel.recovery_engine import FailureClass, ReliabilityFailure
+from novel_flywheel.provider_stream_error import stream_error_evidence_v1
 
 
 class ToolCapabilityError(RuntimeError):
@@ -134,6 +135,12 @@ class SingleDispatchTransportPolicyV1:
 
 
 class HttpProvider:
+    @staticmethod
+    def _stream_error_diagnostic(primary: BaseException, **updates: Any) -> None:
+        evidence = stream_error_evidence_v1(primary)
+        if evidence is not None:
+            primary.provider_stream_error = evidence.model_copy(update=updates)
+
     def __init__(
         self,
         base_url: str,
@@ -261,14 +268,14 @@ class HttpProvider:
     def _capture_provider_protocol_input(
         self, data: bytes, *, status_code: int, content_type: str,
         encoding: str, transport_complete: bool,
-    ) -> None:
+    ) -> bool | None:
         if self.attempt_observer is None:
             return
         callback = getattr(
             self.attempt_observer, "capture_provider_protocol_input", None,
         )
         if callable(callback):
-            callback(
+            return callback(
                 data=data, status_code=status_code,
                 content_type=content_type or "application/octet-stream",
                 encoding=encoding or "utf-8",
@@ -305,6 +312,7 @@ class HttpProvider:
         data, content_type, encoding = captured
         return parse_provider_protocol_input_bytes_v1(
             data, content_type=content_type, encoding=encoding,
+            anthropic_errors=getattr(self, "DIAGNOSTIC_ADAPTER_ID", None) == "anthropic",
         )
 
     def transport_attempt_snapshot(self) -> dict[str, Any]:
@@ -408,6 +416,9 @@ class HttpProvider:
         max_attempts = self._transport_attempt_limit()
         for attempt in range(max_attempts):
             events: list[dict[str, Any]] = []
+            primary: BaseException | None = None
+            owned_stream = None
+            successful_stream = None
             request = self._build_http_post_request(
                 url=url, payload=payload, headers=request_headers,
             )
@@ -450,14 +461,29 @@ class HttpProvider:
 
                     content_type = response.headers.get("content-type", "")
                     encoding = response.encoding or "utf-8"
+                    consumer = getattr(self, '_consume_protocol_stream', None)
+                    if consumer is not None and 'text/event-stream' in content_type.lower():
+                        events, owned_stream = await consumer(response)
+                        if stream_error_evidence_v1(owned_stream.primary) is not None:
+                            primary = owned_stream.primary
+                            # Preserve the adapter's existing exception boundary;
+                            # the list carries the evaluated owner, not a reparse.
+                            self._aggregate_stream(events)
+                        owned_stream.body()
+                        self._after_http_response(response.status_code)
+                        # Only context-manager close can fail after this point.
+                        successful_stream = owned_stream
+                        return events, None
                     chunks: list[bytes] = []
                     try:
                         async for chunk in response.aiter_bytes():
                             chunks.append(chunk)
                     except (
-                        asyncio.CancelledError, httpx.TransportError,
+                        asyncio.CancelledError, Exception,
                     ) as exc:
                         partial = b"".join(chunks)
+                        if not isinstance(exc, (asyncio.CancelledError, httpx.TransportError)):
+                            raise  # Preserve the existing no-Provider-error path.
                         terminal_bytes_received = (
                             provider_protocol_input_has_terminal_bytes_v1(
                                 partial, content_type=content_type,
@@ -485,6 +511,7 @@ class HttpProvider:
                                     parse_provider_protocol_input_bytes_v1(
                                         partial, content_type=content_type,
                                         encoding=encoding,
+                                        anthropic_errors=getattr(self, "DIAGNOSTIC_ADAPTER_ID", None) == "anthropic",
                                     )
                                 )
                             except ProviderResponseCaptureError as exc:
@@ -511,6 +538,7 @@ class HttpProvider:
                         events, result = parse_provider_protocol_input_bytes_v1(
                             entity, content_type=content_type,
                             encoding=encoding,
+                            anthropic_errors=getattr(self, "DIAGNOSTIC_ADAPTER_ID", None) == "anthropic",
                         )
                     except ProviderResponseCaptureError as exc:
                         raise ProviderResponseError(
@@ -522,15 +550,40 @@ class HttpProvider:
                     self._after_http_response(response.status_code)
                     return events, result
             except httpx.TransportError as exc:
+                if successful_stream is not None:
+                    successful_stream.step(self._stream_tail_event(exc), failure=exc)
+                    return events, None
+                if primary is not None:
+                    owned_stream.step(self._stream_tail_event(exc), failure=exc)
+                    raise primary from None
                 self._after_http_failure(exc)
                 if (self.transport_policy is not None
                         or isinstance(exc, httpx.TimeoutException) or events or attempt):
                     raise
                 await asyncio.sleep(0.25)
             except asyncio.CancelledError as exc:
+                if successful_stream is not None:
+                    successful_stream.step(self._stream_tail_event(exc), failure=exc)
+                    return events, None
+                if primary is not None:
+                    owned_stream.step(self._stream_tail_event(exc), failure=exc)
+                    raise primary from None
                 self._after_http_failure(exc)
                 raise
             except Exception as exc:
+                if successful_stream is not None:
+                    successful_stream.step(self._stream_tail_event(exc), failure=exc)
+                    return events, None
+                if primary is not None:
+                    if exc is not primary:
+                        owned_stream.step(self._stream_tail_event(exc), failure=exc)
+                    try:
+                        self._after_http_failure(primary)
+                    except Exception:
+                        evidence = stream_error_evidence_v1(primary)
+                        self._stream_error_diagnostic(primary, secondary_post_error_observer_failure_count=
+                            evidence.secondary_post_error_observer_failure_count + 1)
+                    raise primary from None
                 self._after_http_failure(exc)
                 raise
         raise RuntimeError("unreachable")

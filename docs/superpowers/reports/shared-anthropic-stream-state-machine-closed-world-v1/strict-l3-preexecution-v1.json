@@ -1,0 +1,17 @@
+{
+  "status": "FAIL",
+  "scope": "Read-only diagnostic after mandatory STOP; not execution eligibility",
+  "master_sha256": "58b91f4d35d03e6d01f21ba484629be50740af8d37a5ea358ba73cf8b43adfec",
+  "warnings": [
+    "Forward-risk report resolution_status=unresolved; containment or an unresolved path cannot satisfy completion."
+  ],
+  "warning_count": 1,
+  "blockers": [],
+  "blocker_count": 0,
+  "mandatory_review_blockers": [
+    "partial_frame_transport_precedence",
+    "full_short_capture_ack_and_tail_persistence"
+  ],
+  "raw_diagnostic_sha256": "f7b199c37eaa3521e8f10bbee0e6890a0393f1c2a042923d05d5b7a6cc100885",
+  "real_provider_calls": 0
+}

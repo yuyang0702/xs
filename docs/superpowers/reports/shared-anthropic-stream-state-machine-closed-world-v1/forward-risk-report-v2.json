@@ -1,0 +1,594 @@
+{
+  "version": 2,
+  "original_requirement": "Master sections 0-31 require a shared finite Anthropic-compatible response state machine, mechanical transitions/fault evidence, exact historical replay and request invariance, followed by separately gated successor/capacity/Exact READY/production-length/full-flow execution. All 32 original sections are retained in constraint_traceability.",
+  "scope_classification": "closed_world",
+  "closed_world_justification": "The Master explicitly authorizes a finite shared protocol domain, currently 11 states x 16 classified events, with typed unknown-event policy. This classification does not narrow or waive the Master downstream full-flow and campaign requirements.",
+  "operational_definition": "Single response owner classifies all registered cells, preserves cumulative usage and Provider-primary errors, distinguishes semantic/capture/tail completeness, and leaves request/route/domain authority unchanged. Protocol-local evidence is demonstrated; full task acceptance is unresolved until remaining gates have evidence.",
+  "forbidden_narrowing": [
+    "Do not reduce the domain to probe-01/02, one Provider error string, one payload shape or successful EOF.",
+    "Do not equate semantic success, durable terminal capture and clean transport tail.",
+    "Do not treat protocol-local PASS as successful current-project or full-short continuation.",
+    "Do not resend consumed probes, change routes/models/requests, bypass domain validation, or invent review identities."
+  ],
+  "resolution_status": "unresolved",
+  "constraint_traceability": [
+    {
+      "requirement": "0. STRATEGIC DECISION",
+      "original_requirement": "======================================================================\n0. STRATEGIC DECISION\n======================================================================\n\nSTOP patch-by-patch treatment of individual Anthropic-compatible stream edge cases.\n\nThe recent failures all belong to the SAME shared protocol state-machine domain:\n\n- cumulative usage updates;\n- message_stop terminal semantics;\n- post-terminal ping;\n- Provider error precedence;\n- non-object error payloads;\n- post-terminal timeout;\n- post-terminal cancellation;\n- capture completeness;\n- precise failure-cause preservation.\n\nTherefore this task MUST close the shared Anthropic-compatible streaming state machine as a bounded,\nexplicit, mechanically testable CLOSED-WORLD protocol boundary.\n\nThe goal is NOT to enumerate every possible Python exception.\n\nThe goal IS:\n\nFor every protocol state and every supported/known event class that can cross this shared production\nstream boundary, the runtime has exactly one explicit source-grounded behavior:\n\n- ACCEPT / ADVANCE\n- IGNORE_TRANSPORT_KEEPALIVE\n- TERMINAL_SUCCESS\n- TERMINAL_PROVIDER_ERROR\n- TERMINAL_TRANSPORT_FAILURE\n- FAIL_CLOSED_PROTOCOL_INVALID\n- VERSIONED_UNKNOWN_EVENT_POLICY\n\nNo implicit fallthrough.\nNo generic \"anything after terminal is invalid\" shortcut.\nNo generic \"unknown child => transport.\"\nNo AttributeError from payload shape assumptions.\nNo post-terminal timeout/cancel downgrading an already complete result.\nNo later transport tail replacing an already observed Provider error.\n\nIf this closed-world proof fails, STOP.\nDo NOT return to another narrow patch task.",
+      "original_requirement_sha256": "0a962509b101a0d693f2e0a3d40f830a5840e660d4ca3b1a1678dd2cf05c504f",
+      "implementation": "Existing full_short_campaign_authorization.py, full_short_execution.py, full_short_probe_campaign.py, and external task-baseline/dirty-intake evidence; MAIN owns execution/freeze decisions.",
+      "test_paths": [
+        "tests/test_full_short_campaign_authorization.py",
+        "tests/test_full_short_execution.py",
+        "tests/test_full_short_probe_campaign.py"
+      ],
+      "evidence": "Scanned requirement and existing implementation/test targets only. No new authorization, commit, freeze, credential lookup, real request or completion claim performed by this subtask."
+    },
+    {
+      "requirement": "1. CURRENT BASELINE / PRESERVE WORKTREE",
+      "original_requirement": "======================================================================\n1. CURRENT BASELINE / PRESERVE WORKTREE\n======================================================================\n\nExpected branch:\nr1-ptr3/planning-repair-finding-propagation-20260817\n\nExpected committed HEAD:\n79a99a58ebe95b2be4d1e51a8d190070a2568574\n\nCurrent worktree is intentionally dirty with in-scope partial work from the prior probe-02 tasks.\n\nKnown latest takeover facts:\n- 53 changed files were previously preserved as in-scope;\n- memory/ was classified as test-generated;\n- probe-01 exact replay PASS;\n- probe-02 exact replay PASS;\n- probe-02 canonical Provider usage = 137304 / 64;\n- 3 post-message_stop pings ignored;\n- focused tests = 132 passed;\n- shared Provider tests = 267 passed, 2 failed;\n- the 2 failures are baseline-green regressions:\n  * complete terminal + later timeout downgrades capture completeness;\n  * complete terminal + later cancellation downgrades capture completeness;\n- no real Provider call in the latest task;\n- no real Full Short;\n- no final commit/freeze for this successor line.\n\nAt start:\n\ngit branch --show-current\ngit rev-parse HEAD\ngit status --short\ngit diff --stat\ngit diff\ngit ls-files --others --exclude-standard\n\nClassify every changed/untracked path:\n\nA. PRESERVE_PROTOCOL_STATE_MACHINE_IMPLEMENTATION\nB. PRESERVE_PING_FIX\nC. PRESERVE_USAGE_FIX\nD. PRESERVE_ERROR_HARDENING\nE. PRESERVE_CAPTURE_COMPLETENESS_WORK\nF. PRESERVE_IN_SCOPE_TEST\nG. PRESERVE_IN_SCOPE_EVIDENCE\nH. TEST_GENERATED_MEMORY_PATH\nI. UNRELATED_OR_UNKNOWN\n\nPreserve A-H.\n\nIf any I remains after mechanical investigation:\nSTOP.\n\nDO NOT:\n- reset\n- restore\n- checkout\n- stash\n- clean\n- discard\n- recreate existing in-scope work from memory",
+      "original_requirement_sha256": "2232a70aa5391e4e6c9bde23719080a3824059fbb5b6b60cab043afdf0a4efd7",
+      "implementation": "Existing full_short_campaign_authorization.py, full_short_execution.py, full_short_probe_campaign.py, and external task-baseline/dirty-intake evidence; MAIN owns execution/freeze decisions.",
+      "test_paths": [
+        "tests/test_full_short_campaign_authorization.py",
+        "tests/test_full_short_execution.py",
+        "tests/test_full_short_probe_campaign.py"
+      ],
+      "evidence": "Scanned requirement and existing implementation/test targets only. No new authorization, commit, freeze, credential lookup, real request or completion claim performed by this subtask."
+    },
+    {
+      "requirement": "2. USER AUTHORIZATION",
+      "original_requirement": "======================================================================\n2. USER AUTHORIZATION\n======================================================================\n\nThe user explicitly authorizes this ONE bounded successor campaign to proceed automatically without another\ninteractive authorization checkpoint, provided every mandatory gate below passes.\n\nAuthorized when eligible:\n\n1. authoritative protocol/source research;\n2. architecture consolidation of the shared response-side stream state machine;\n3. preservation and completion of current partial work;\n4. local tests / generated transition-matrix tests / exact historical replay;\n5. independent reviewers;\n6. commit all local source/test/evidence changes;\n7. freeze successor FINAL_EXECUTION_HEAD;\n8. materialize fresh successor authorization OUTSIDE Git;\n9. execute only still-required real probes sequentially;\n10. bounded credential/provider/network/model/paid usage for those probes;\n11. promote only workload evidence actually proved;\n12. recompute all 183 Exact READY physical request shapes;\n13. Exact READY offline Full Short dry run;\n14. 13K / 20K / 30K;\n15. Strict L3 and fresh reviewers;\n16. if every gate passes, execute exactly ONE real Full Short;\n17. bounded paid usage for that one Full Short;\n18. seal all evidence and stop.\n\nNot authorized:\n- second real Full Short;\n- open-ended probe retries;\n- route/model replacement;\n- Long;\n- Skill/Hybrid/Selective cutover;\n- unrelated external calls;\n- request-side redesign unless independently proven necessary.",
+      "original_requirement_sha256": "1355f90d1c7fd450a42d3c6b113c5ad20f8f203634a8609e91f129b2256f5c39",
+      "implementation": "Existing full_short_campaign_authorization.py, full_short_execution.py, full_short_probe_campaign.py, and external task-baseline/dirty-intake evidence; MAIN owns execution/freeze decisions.",
+      "test_paths": [
+        "tests/test_full_short_campaign_authorization.py",
+        "tests/test_full_short_execution.py",
+        "tests/test_full_short_probe_campaign.py"
+      ],
+      "evidence": "Scanned requirement and existing implementation/test targets only. No new authorization, commit, freeze, credential lookup, real request or completion claim performed by this subtask."
+    },
+    {
+      "requirement": "3. PARALLEL CODEX POLICY",
+      "original_requirement": "======================================================================\n3. PARALLEL CODEX POLICY\n======================================================================\n\nFresh child agents are allowed and encouraged for LOCAL/OFFLINE work.\n\nPrefer fork_turns=none where supported.\n\nParallel work may include:\n- protocol research;\n- state-machine extraction;\n- parser/source tracing;\n- historical raw replay;\n- transition-matrix generation;\n- property/fault tests;\n- capture model review;\n- request zero-diff review;\n- clean-room reviewers;\n- successor campaign planning;\n- post-run review.\n\nREAL PROVIDER REQUESTS MUST REMAIN SEQUENTIAL.\n\nDo not add new Provider/network concurrency.",
+      "original_requirement_sha256": "aff7b2e74bee162c42d44828782f48da671539f80a2af3fd7429bc8450b8c006",
+      "implementation": "Existing full_short_campaign_authorization.py, full_short_execution.py, full_short_probe_campaign.py, and external task-baseline/dirty-intake evidence; MAIN owns execution/freeze decisions.",
+      "test_paths": [
+        "tests/test_full_short_campaign_authorization.py",
+        "tests/test_full_short_execution.py",
+        "tests/test_full_short_probe_campaign.py"
+      ],
+      "evidence": "Scanned requirement and existing implementation/test targets only. No new authorization, commit, freeze, credential lookup, real request or completion claim performed by this subtask."
+    },
+    {
+      "requirement": "4. CLOSED-WORLD PROTOCOL DOMAIN",
+      "original_requirement": "======================================================================\n4. CLOSED-WORLD PROTOCOL DOMAIN\n======================================================================\n\nCodex must mechanically derive the actual shared production protocol domain from current source truth.\n\nAt minimum consider event classes equivalent to:\n\n- message_start\n- content_block_start\n- content_block_delta\n- content_block_stop\n- message_delta\n- message_stop\n- ping\n- error\n- unknown/versioned event\n- EOF / clean stream close\n- timeout\n- cancellation\n- transport exception\n\nAnd payload/semantic dimensions:\n\n- cumulative usage present/omitted/updated\n- visible final present/absent\n- tool/schema result\n- reasoning-only result\n- stop_reason=end_turn\n- stop_reason=max_tokens\n- Provider error object payload\n- non-object Provider error payload\n- malformed/raw error payload\n\nDo not assume this list is exhaustive.\nSOURCE WINS.\n\nProduce:\nshared-anthropic-protocol-domain-v1.json\n\nRequired:\nREGISTERED_PROTOCOL_STATE_COUNT=<n>\nREGISTERED_EVENT_CLASS_COUNT=<n>\nUNCLASSIFIED_SHARED_STREAM_EVENT_EXIT_COUNT=0",
+      "original_requirement_sha256": "89d99c9c9c89ddb4f927c1ca51d69d3e4375668b81071200cc0f6cdbf0ca003a",
+      "implementation": "src/novel_flywheel/anthropic_stream.py; providers/anthropic.py; providers/http.py; provider_response_capture.py",
+      "test_paths": [
+        "tests/providers/test_anthropic_closed_world_transitions.py",
+        "tests/providers/test_anthropic_closed_world_http.py"
+      ],
+      "evidence": "Local owner/HTTP assertions executed in local-proof.xml; authoritative source-research, durable matrix publication and formal reviewer gates must be separately bound before completion."
+    },
+    {
+      "requirement": "5. EXPLICIT STATE MACHINE",
+      "original_requirement": "======================================================================\n5. EXPLICIT STATE MACHINE\n======================================================================\n\nDerive an explicit state machine from current production semantics.\n\nDo not force these exact names if source truth uses better ones, but semantics must distinguish at least:\n\n- BEFORE_MESSAGE\n- MESSAGE_ACTIVE\n- CONTENT_ACTIVE / CONTENT_COMPLETE as needed\n- SEMANTIC_SUCCESS_TERMINAL\n- PROVIDER_ERROR_TERMINAL\n- TRANSPORT_FAILURE_TERMINAL\n- PROTOCOL_INVALID_TERMINAL\n- POST_TERMINAL_TRANSPORT_TAIL\n\nCritical semantic dimensions must not be hidden in booleans with contradictory combinations.\n\nFor every state/event pair in the registered domain, produce exactly one transition decision.\n\nCreate:\nshared-anthropic-transition-matrix-v1.json\n\nEach row:\n\nFROM_STATE\nEVENT_CLASS\nPAYLOAD_SHAPE_OR_VARIANT\nPRECONDITION\nACTION\nNEXT_STATE\nPRIMARY_CAUSE_EFFECT\nUSAGE_EFFECT\nCONTENT_EFFECT\nCAPTURE_EFFECT\nTAIL_DIAGNOSTIC_EFFECT\nEXPECTED_TERMINAL\nSOURCE_GROUNDING\n\nRequire:\n\nTRANSITION_MATRIX_TOTAL_CELLS=<n>\nTRANSITION_MATRIX_UNSPECIFIED_CELL_COUNT=0\nTRANSITION_MATRIX_AMBIGUOUS_CELL_COUNT=0",
+      "original_requirement_sha256": "768448213b60c87ba4ce202948f2b756ecb1ed34df760c68e51fba9559b142de",
+      "implementation": "src/novel_flywheel/anthropic_stream.py; providers/anthropic.py; providers/http.py; provider_response_capture.py",
+      "test_paths": [
+        "tests/providers/test_anthropic_closed_world_transitions.py",
+        "tests/providers/test_anthropic_closed_world_http.py"
+      ],
+      "evidence": "Local owner/HTTP assertions executed in local-proof.xml; authoritative source-research, durable matrix publication and formal reviewer gates must be separately bound before completion."
+    },
+    {
+      "requirement": "6. SOURCE-GROUNDED SEMANTIC RULES",
+      "original_requirement": "======================================================================\n6. SOURCE-GROUNDED SEMANTIC RULES\n======================================================================\n\nRe-check current authoritative Anthropic docs and official SDK behavior.\n\nSOURCE TRUTH WINS.\n\nAt minimum ground:\n\nA. USAGE\n- message_start usage semantics\n- message_delta cumulative usage semantics\n- omitted field behavior\n- canonical final usage selection\n\nB. PING\n- ping classification\n- ping handling before terminal\n- ping handling after semantic terminal\n- ping must not mutate semantic Message\n\nC. PROVIDER ERROR\n- SSE error is a Provider/API error\n- object/non-object/raw error handling\n- whether semantic consumption terminates immediately\n- safe normalization rules\n\nD. TERMINAL SUCCESS\n- message_stop / stop_reason semantics\n- end_turn\n- max_tokens\n- tool/schema terminal\n- reasoning-only terminal where applicable\n\nE. TRANSPORT TAIL\n- EOF\n- timeout\n- cancellation\n- behavior before vs after semantic terminal\n\nF. UNKNOWN/VERSIONED EVENT\n- supported forward-compatibility policy\n- when unknown event is ignorable vs typed fail-closed\n\nProduce:\nauthoritative-shared-protocol-semantics-v1.json",
+      "original_requirement_sha256": "00527bee5718bd497c1af19335492c2c80643a5f279e461e8cd34f9d4d25e979",
+      "implementation": "src/novel_flywheel/anthropic_stream.py; providers/anthropic.py; providers/http.py; provider_response_capture.py",
+      "test_paths": [
+        "tests/providers/test_anthropic_closed_world_transitions.py",
+        "tests/providers/test_anthropic_closed_world_http.py"
+      ],
+      "evidence": "Local owner/HTTP assertions executed in local-proof.xml; authoritative source-research, durable matrix publication and formal reviewer gates must be separately bound before completion."
+    },
+    {
+      "requirement": "7. THREE SEPARATE COMPLETENESS CONCEPTS",
+      "original_requirement": "======================================================================\n7. THREE SEPARATE COMPLETENESS CONCEPTS\n======================================================================\n\nMechanically separate:\n\n1. SEMANTIC_TERMINAL_COMPLETE\n   The semantic Provider response has reached a valid terminal state.\n\n2. TERMINAL_CAPTURE_COMPLETE\n   All bytes/events required to prove the terminal semantic result were durably captured.\n\n3. TRANSPORT_TAIL_CLOSED_CLEANLY\n   The underlying transport closed cleanly after terminal.\n\nIf current schema can represent these with existing fields, reuse it.\nDo not invent parallel state unnecessarily.\n\nRequired invariants:\n\n- post-terminal timeout/cancel must not downgrade an already complete semantic result/capture;\n- pre-terminal timeout/cancel remains failure;\n- Provider error already observed remains primary even if tail timeout occurs;\n- ping after terminal may be diagnostic/ignored only if source-grounded.\n\nCreate:\nshared-completeness-contract-v1.json",
+      "original_requirement_sha256": "fab613646702b97732bb67233f6c356e222b0bbc5a56e23b0ea13d6423e2962e",
+      "implementation": "src/novel_flywheel/anthropic_stream.py; providers/anthropic.py; providers/http.py; provider_response_capture.py",
+      "test_paths": [
+        "tests/providers/test_anthropic_closed_world_transitions.py",
+        "tests/providers/test_anthropic_closed_world_http.py"
+      ],
+      "evidence": "Local owner/HTTP assertions executed in local-proof.xml; authoritative source-research, durable matrix publication and formal reviewer gates must be separately bound before completion."
+    },
+    {
+      "requirement": "8. CAUSAL PRECEDENCE CONTRACT",
+      "original_requirement": "======================================================================\n8. CAUSAL PRECEDENCE CONTRACT\n======================================================================\n\nDefine explicit narrow precedence.\n\nExamples:\n\nA. Provider error -> ping -> timeout\nPRIMARY = Provider error\nTAIL = ping + timeout diagnostics\n\nB. message_stop complete -> ping -> timeout\nPRIMARY = successful semantic terminal\nTAIL = ping + timeout diagnostics\n\nC. message_stop complete -> cancellation\nPRIMARY = successful semantic terminal\nTAIL = cancellation diagnostic\n\nD. timeout before terminal\nPRIMARY = timeout/transport failure\n\nE. cancellation before terminal\nPRIMARY = cancellation/transport failure\n\nF. message_stop -> Provider error\nMust follow source-grounded policy and must NOT silently ignore the Provider error.\n\nDo not generalize \"first exception always wins\" outside this stream boundary.\n\nProduce:\nshared-stream-causal-precedence-contract-v1.json",
+      "original_requirement_sha256": "ec8e8e22a494fce57d981039e8ceeb3fe044198b01f39fcb8aeb584f4ddbcb2d",
+      "implementation": "src/novel_flywheel/anthropic_stream.py; providers/anthropic.py; providers/http.py; provider_response_capture.py",
+      "test_paths": [
+        "tests/providers/test_anthropic_closed_world_transitions.py",
+        "tests/providers/test_anthropic_closed_world_http.py"
+      ],
+      "evidence": "Local owner/HTTP assertions executed in local-proof.xml; authoritative source-research, durable matrix publication and formal reviewer gates must be separately bound before completion."
+    },
+    {
+      "requirement": "9. ERROR PAYLOAD NORMALIZATION",
+      "original_requirement": "======================================================================\n9. ERROR PAYLOAD NORMALIZATION\n======================================================================\n\nNo decoded error payload shape may trigger AttributeError.\n\nCover:\n\n- canonical object\n- unexpected object structure\n- JSON string\n- JSON number\n- JSON boolean\n- JSON array\n- JSON null\n- malformed/non-JSON raw text\n- empty error data\n\nEvery case must yield a typed Provider/error result or source-grounded typed malformed error.\n\nPersist privacy-safe:\n- payload shape\n- safe message\n- payload SHA/length\n- Provider error type if safely extractable\n\nNever persist secrets/raw novel prompt/prose.\n\nRequire:\nATTRIBUTEERROR_FROM_SSE_ERROR_PAYLOAD_COUNT=0",
+      "original_requirement_sha256": "543a130b863b5be2d7e04e9f6747fcb6d648b86c660a9e852d0e23505d4a4165",
+      "implementation": "src/novel_flywheel/anthropic_stream.py; providers/anthropic.py; providers/http.py; provider_response_capture.py",
+      "test_paths": [
+        "tests/providers/test_anthropic_closed_world_transitions.py",
+        "tests/providers/test_anthropic_closed_world_http.py"
+      ],
+      "evidence": "Local owner/HTTP assertions executed in local-proof.xml; authoritative source-research, durable matrix publication and formal reviewer gates must be separately bound before completion."
+    },
+    {
+      "requirement": "10. REQUEST ZERO-DIFF HARD GATE",
+      "original_requirement": "======================================================================\n10. REQUEST ZERO-DIFF HARD GATE\n======================================================================\n\nThis task is RESPONSE-SIDE / STATE-MACHINE-SIDE.\n\nAcross ALL active Anthropic-compatible production route families, compare PRE-FIX vs FINAL representative\noutbound requests.\n\nAt minimum source-truth equivalents of:\n\n- Happy Qwen\n- LingSuan GPT\n- LingSuan Sonnet\n- DeepSeek Official Anthropic-compatible\n- Happy Claude / other active Anthropic-compatible route(s)\n\nRequire:\n\nOUTBOUND_REQUEST_BODY_CHANGED_COUNT=0\nMODEL_VISIBLE_REQUEST_BYTES_CHANGED_COUNT=0\nROUTE_BINDING_CHANGED_COUNT=0\nOUTPUT_CAP_CHANGED_COUNT=0\nREASONING_POLICY_CHANGED_COUNT=0\nREQUEST_BUILDER_SOURCE_DIFF=0\n\nIf any nonzero:\nSTOP before real Provider execution.",
+      "original_requirement_sha256": "49de872819a25f825a1d0f8fe5051de850051514cb168f43f370bf315215d05a",
+      "implementation": "src/novel_flywheel/provider_payloads.py; providers/anthropic.py; provider_response_capture.py",
+      "test_paths": [
+        "tests/test_reasoning_finalization_recovery.py",
+        "tests/test_provider_response_capture.py"
+      ],
+      "evidence": "Existing replay/request-parity external evidence is a separate gate; this scan does not upgrade historical receipts into current-head PASS."
+    },
+    {
+      "requirement": "11. GENERATED TRANSITION TEST CAMPAIGN",
+      "original_requirement": "======================================================================\n11. GENERATED TRANSITION TEST CAMPAIGN\n======================================================================\n\nGenerate tests mechanically from the transition matrix.\n\nFor every registered state/event cell that is reachable or intentionally rejected:\n\n- construct deterministic safe event fixture;\n- assert exact action;\n- assert next state;\n- assert primary cause;\n- assert content/usage mutation rules;\n- assert capture state;\n- assert tail diagnostics;\n- assert typed terminal family.\n\nRequire:\n\nGENERATED_TRANSITION_CASE_COUNT=<n>\nGENERATED_TRANSITION_PASS_COUNT=<n>\nGENERATED_TRANSITION_COVERAGE=100_PERCENT\n\nNo proxy tests using constants that do not execute the owning parser/state-machine transition.",
+      "original_requirement_sha256": "e97fddf3a1feac721cf0f4e5825b25d0a3741cff36e03d1c1edf87b342e900c2",
+      "implementation": "src/novel_flywheel/anthropic_stream.py; providers/anthropic.py; providers/http.py; provider_response_capture.py",
+      "test_paths": [
+        "tests/providers/test_anthropic_closed_world_transitions.py",
+        "tests/providers/test_anthropic_closed_world_http.py"
+      ],
+      "evidence": "Local owner/HTTP assertions executed in local-proof.xml; authoritative source-research, durable matrix publication and formal reviewer gates must be separately bound before completion."
+    },
+    {
+      "requirement": "12. REQUIRED HISTORICAL/REGRESSION SCENARIOS",
+      "original_requirement": "======================================================================\n12. REQUIRED HISTORICAL/REGRESSION SCENARIOS\n======================================================================\n\nAt minimum include:\n\nSUCCESS / TAIL\n1. normal message_stop -> EOF\n2. ping before/during message\n3. message_stop -> ping -> EOF\n4. message_stop -> ping x3 -> EOF\n5. message_stop -> timeout\n6. message_stop -> ping -> timeout\n7. message_stop -> cancellation\n8. message_stop -> ping -> cancellation\n\nUSAGE\n9. cumulative input usage update\n10. cumulative output usage update\n11. omitted usage field retains prior value\n\nPROVIDER ERROR\n12. object error\n13. error -> ping\n14. error -> ping -> timeout\n15. error -> EOF\n16. error -> cancellation\n17. error -> semantic event\n18. error after message_stop\n\nERROR PAYLOAD SHAPES\n19. unexpected object\n20. string\n21. number\n22. boolean\n23. array\n24. null\n25. malformed/raw\n26. empty\n\nFAIL-CLOSED\n27. message_delta after message_stop\n28. content event after message_stop\n29. second message_stop if unsupported\n30. incomplete stream no terminal/error\n31. timeout before terminal\n32. cancellation before terminal\n33. unknown invalid semantic continuation\n\nHISTORICAL BUSINESS PATHS\n34. max_tokens terminal\n35. reasoning-only final-artifact path\n36. tool/schema path\n37. probe-01 raw capture exact replay\n38. probe-02 raw capture exact replay\n\nRequire zero:\n\nPOST_TERMINAL_TIMEOUT_DOWNGRADES_COMPLETE_CAPTURE_COUNT\nPOST_TERMINAL_CANCELLATION_DOWNGRADES_COMPLETE_CAPTURE_COUNT\nPRE_TERMINAL_TIMEOUT_FALSE_SUCCESS_COUNT\nPRE_TERMINAL_CANCELLATION_FALSE_SUCCESS_COUNT\nPROVIDER_ERROR_LOST_TO_LATER_TIMEOUT_COUNT\nATTRIBUTEERROR_FROM_SSE_ERROR_PAYLOAD_COUNT\nPOST_TERMINAL_ERROR_IGNORED_COUNT\nGENERIC_INCOMPLETE_TERMINAL_REPLACEMENT_COUNT\nSHARED_PROTOCOL_REGRESSION_COUNT",
+      "original_requirement_sha256": "a850cb7e5e340c263d0dba7c7c2999c27d41b548463d32b0053bef70c3f16204",
+      "implementation": "src/novel_flywheel/anthropic_stream.py; providers/anthropic.py; providers/http.py; provider_response_capture.py",
+      "test_paths": [
+        "tests/providers/test_anthropic_closed_world_transitions.py",
+        "tests/providers/test_anthropic_closed_world_http.py"
+      ],
+      "evidence": "Local owner/HTTP assertions executed in local-proof.xml; authoritative source-research, durable matrix publication and formal reviewer gates must be separately bound before completion."
+    },
+    {
+      "requirement": "13. EXACT HISTORICAL REPLAY",
+      "original_requirement": "======================================================================\n13. EXACT HISTORICAL REPLAY\n======================================================================\n\nRe-run every available exact raw historical capture for the shared parser, not only probe-01/02.\n\nAt minimum:\n\nPROBE01_EXACT_REPLAY=PASS\nPROBE02_EXACT_REPLAY=PASS\n\nProbe-02 must remain:\n\nPROBE02_CANONICAL_PROVIDER_INPUT_TOKENS=137304\nPROBE02_CANONICAL_PROVIDER_OUTPUT_TOKENS=64\nPOST_TERMINAL_PING_IGNORED_COUNT=3\n\nEnumerate all other exact captures and their result.\n\nRequire:\nHISTORICAL_EXACT_REPLAY_REGRESSION_COUNT=0",
+      "original_requirement_sha256": "08390a2973349681fadde29df90190150e038d9694d6971e0bb9f2005bf180a7",
+      "implementation": "src/novel_flywheel/provider_payloads.py; providers/anthropic.py; provider_response_capture.py",
+      "test_paths": [
+        "tests/test_reasoning_finalization_recovery.py",
+        "tests/test_provider_response_capture.py"
+      ],
+      "evidence": "Existing replay/request-parity external evidence is a separate gate; this scan does not upgrade historical receipts into current-head PASS."
+    },
+    {
+      "requirement": "14. FAULT INJECTION",
+      "original_requirement": "======================================================================\n14. FAULT INJECTION\n======================================================================\n\nGenerate fault cases from the state machine itself.\n\nInject at minimum:\n\n- timeout at each meaningful pre-terminal state\n- cancellation at each meaningful pre-terminal state\n- timeout after terminal\n- cancellation after terminal\n- Provider error at each meaningful state\n- ping at each meaningful state\n- malformed payload at each error path\n- duplicate terminal\n- semantic continuation after terminal\n- unknown event\n- EOF in each state\n\nRequire:\nSTATE_MACHINE_FAULT_INJECTION_COVERAGE=100_PERCENT\n\nNo real Provider call.",
+      "original_requirement_sha256": "949d3258160f01c081d118dcc03b9196ee1da12e453c0bdec897a16183b111d3",
+      "implementation": "src/novel_flywheel/anthropic_stream.py; providers/anthropic.py; providers/http.py; provider_response_capture.py",
+      "test_paths": [
+        "tests/providers/test_anthropic_closed_world_transitions.py",
+        "tests/providers/test_anthropic_closed_world_http.py"
+      ],
+      "evidence": "Local owner/HTTP assertions executed in local-proof.xml; authoritative source-research, durable matrix publication and formal reviewer gates must be separately bound before completion."
+    },
+    {
+      "requirement": "15. STOP-LOSS BEFORE COMMIT",
+      "original_requirement": "======================================================================\n15. STOP-LOSS BEFORE COMMIT\n======================================================================\n\nIf any of these remain nonzero:\n\nTRANSITION_MATRIX_UNSPECIFIED_CELL_COUNT\nTRANSITION_MATRIX_AMBIGUOUS_CELL_COUNT\nUNCLASSIFIED_SHARED_STREAM_EVENT_EXIT_COUNT\nPOST_TERMINAL_TIMEOUT_DOWNGRADES_COMPLETE_CAPTURE_COUNT\nPOST_TERMINAL_CANCELLATION_DOWNGRADES_COMPLETE_CAPTURE_COUNT\nPRE_TERMINAL_TIMEOUT_FALSE_SUCCESS_COUNT\nPRE_TERMINAL_CANCELLATION_FALSE_SUCCESS_COUNT\nPROVIDER_ERROR_LOST_TO_LATER_TIMEOUT_COUNT\nATTRIBUTEERROR_FROM_SSE_ERROR_PAYLOAD_COUNT\nPOST_TERMINAL_ERROR_IGNORED_COUNT\nGENERIC_INCOMPLETE_TERMINAL_REPLACEMENT_COUNT\nSHARED_PROTOCOL_REGRESSION_COUNT\nHISTORICAL_EXACT_REPLAY_REGRESSION_COUNT\n\nthen:\n\nSHARED_ANTHROPIC_STREAM_STATE_MACHINE_CLOSED=NO\n\nSTOP.\n\nDo NOT create another narrow patch task.\n\nReturn:\nEXACT_NEXT_GATE=\nSHARED_ANTHROPIC_STREAM_STATE_MACHINE_ARCHITECTURE_REDESIGN_REQUIRED",
+      "original_requirement_sha256": "c8f2392093d0242a288a3b48aff80f47e50eab6ac937e69e02fb67fe1b80c89a",
+      "implementation": "src/novel_flywheel/anthropic_stream.py; providers/anthropic.py; providers/http.py; provider_response_capture.py",
+      "test_paths": [
+        "tests/providers/test_anthropic_closed_world_transitions.py",
+        "tests/providers/test_anthropic_closed_world_http.py"
+      ],
+      "evidence": "Local owner/HTTP assertions executed in local-proof.xml; authoritative source-research, durable matrix publication and formal reviewer gates must be separately bound before completion."
+    },
+    {
+      "requirement": "16. INDEPENDENT CLEAN-ROOM REVIEW",
+      "original_requirement": "======================================================================\n16. INDEPENDENT CLEAN-ROOM REVIEW\n======================================================================\n\nLaunch at least FIVE fresh reviewers.\n\nReviewer 1:\nprotocol/state-machine completeness\n\nReviewer 2:\ncapture completeness / tail semantics\n\nReviewer 3:\nProvider error / payload-shape / causal precedence\n\nReviewer 4:\nrequest zero-diff / route/model/literary invariance\n\nReviewer 5:\nexact replay / fault injection / restart / exact-once\n\nAll must:\nARCHITECTURE_PASS\n\nRequire:\n\nSHARED_STREAM_STATE_MACHINE_REVIEW=PASS\n\nIf any reject:\nSTOP.",
+      "original_requirement_sha256": "5e95f991a76d49b768948ae709680543a4c27833c54e4457f8063340ebfad591",
+      "implementation": "Existing full_short_campaign_authorization.py, full_short_execution.py, full_short_probe_campaign.py, and external task-baseline/dirty-intake evidence; MAIN owns execution/freeze decisions.",
+      "test_paths": [
+        "tests/test_full_short_campaign_authorization.py",
+        "tests/test_full_short_execution.py",
+        "tests/test_full_short_probe_campaign.py"
+      ],
+      "evidence": "Scanned requirement and existing implementation/test targets only. No new authorization, commit, freeze, credential lookup, real request or completion claim performed by this subtask."
+    },
+    {
+      "requirement": "17. PRE-EXECUTION VALIDATION",
+      "original_requirement": "======================================================================\n17. PRE-EXECUTION VALIDATION\n======================================================================\n\nRun:\n\n- full generated transition matrix tests\n- full state-machine fault campaign\n- shared Provider/parser cluster\n- ping tests\n- usage tests\n- Provider error tests\n- non-object error tests\n- capture completeness tests\n- exact historical replay\n- request zero-diff tests\n- route identity\n- nonce/exact-once\n- capacity promotion\n- privacy\n- determinism\n- focused/related Runtime suites\n- Strict L3\n\nRequire:\n\nGENERATED_TRANSITION_COVERAGE=100_PERCENT\nSTATE_MACHINE_FAULT_INJECTION_COVERAGE=100_PERCENT\n\nNEW_REGRESSION_COUNT=0\nSHARED_PROTOCOL_REGRESSION_COUNT=0\n\nSTRICT_L3=PASS\nwarnings=0\nblockers=0",
+      "original_requirement_sha256": "3fc37b769ece07b6ebdf9449fe317866d661b3c0265812aeb2b142b4fa050d3c",
+      "implementation": "Existing full_short_campaign_authorization.py, full_short_execution.py, full_short_probe_campaign.py, and external task-baseline/dirty-intake evidence; MAIN owns execution/freeze decisions.",
+      "test_paths": [
+        "tests/test_full_short_campaign_authorization.py",
+        "tests/test_full_short_execution.py",
+        "tests/test_full_short_probe_campaign.py"
+      ],
+      "evidence": "Scanned requirement and existing implementation/test targets only. No new authorization, commit, freeze, credential lookup, real request or completion claim performed by this subtask."
+    },
+    {
+      "requirement": "18. COMMIT / FREEZE",
+      "original_requirement": "======================================================================\n18. COMMIT / FREEZE\n======================================================================\n\nOnly after all local gates PASS.\n\nCommit:\n\n- preserved existing partial fixes;\n- explicit shared stream state-machine closure;\n- tests;\n- committed preparation evidence.\n\nDo not commit unrelated files.\nDo not commit test-generated memory/ unless source truth requires it.\n\nThen:\n\nSUCCESSOR_FINAL_EXECUTION_HEAD=git rev-parse HEAD\nWORKTREE=CLEAN\n\nRequire:\nNO_GIT_WRITE_AFTER_SUCCESSOR_HEAD_FREEZE=YES\n\nAll later execution evidence:\nEXTERNAL / NON-GIT ONLY.",
+      "original_requirement_sha256": "72920b07f0a6a0d1b4a0420ed2f64ec860cb0fe036f78d226d5006ba8dc1a855",
+      "implementation": "Existing full_short_campaign_authorization.py, full_short_execution.py, full_short_probe_campaign.py, and external task-baseline/dirty-intake evidence; MAIN owns execution/freeze decisions.",
+      "test_paths": [
+        "tests/test_full_short_campaign_authorization.py",
+        "tests/test_full_short_execution.py",
+        "tests/test_full_short_probe_campaign.py"
+      ],
+      "evidence": "Scanned requirement and existing implementation/test targets only. No new authorization, commit, freeze, credential lookup, real request or completion claim performed by this subtask."
+    },
+    {
+      "requirement": "19. PROBE-01 / PROBE-02 DISPOSITION",
+      "original_requirement": "======================================================================\n19. PROBE-01 / PROBE-02 DISPOSITION\n======================================================================\n\nRequire:\n\nPROBE01_HISTORICAL_EVIDENCE_DISPOSITION=REPLAY_PROVEN_PASS\nPROBE02_HISTORICAL_EVIDENCE_DISPOSITION=REPLAY_PROVEN_PASS\n\nDo NOT resend 01/02.",
+      "original_requirement_sha256": "7ecf700bef0e52e906e87bf64a8d6edceaac6e82d11bce45c3ceab8731287234",
+      "implementation": "src/novel_flywheel/provider_payloads.py; providers/anthropic.py; provider_response_capture.py",
+      "test_paths": [
+        "tests/test_reasoning_finalization_recovery.py",
+        "tests/test_provider_response_capture.py"
+      ],
+      "evidence": "Existing replay/request-parity external evidence is a separate gate; this scan does not upgrade historical receipts into current-head PASS."
+    },
+    {
+      "requirement": "20. SUCCESSOR AUTHORIZATION",
+      "original_requirement": "======================================================================\n20. SUCCESSOR AUTHORIZATION\n======================================================================\n\nCreate outside Git:\n\nFullShortClosedWorldAnthropicStreamAndSuccessorExecutionAuthorizationV1\n\nBind:\n\n- this Master source/hash\n- transition matrix SHA\n- state-machine source identity\n- authoritative protocol evidence\n- completeness/causal/error contracts\n- request zero-diff proof\n- generated transition test receipt\n- fault injection receipt\n- reviewer receipts\n- probe-01/02 replay identity\n- SUCCESSOR_FINAL_EXECUTION_HEAD\n- exact still-required probe set/order\n- exact routes/destinations/models/fingerprints\n- fixtures/input envelopes/wire output caps\n- no retry/fallback/switch\n- exact capture\n- bounded workload evidence promotion\n- Exact READY project 2ad716...\n- Runtime Kernel\n- Baseline Skill\n- segmentation/windowing\n- capacity admission\n- authority gates\n- recovery policies\n- 13K/20K/30K\n- Strict L3\n- exactly ONE real Full Short\n- hard budgets\n- no Long/cutover\n\nSet:\nexecution_authorized=true\nnamed_approver=USER_PREAUTHORIZED_BY_THIS_MASTER\nusage_status=unused\n\nNever reuse old authorization/nonce.",
+      "original_requirement_sha256": "589518f76eeb241cf2ee70886ca825da815fb740bf646db605e16463203318c1",
+      "implementation": "Existing full_short_campaign_authorization.py, full_short_execution.py, full_short_probe_campaign.py, and external task-baseline/dirty-intake evidence; MAIN owns execution/freeze decisions.",
+      "test_paths": [
+        "tests/test_full_short_campaign_authorization.py",
+        "tests/test_full_short_execution.py",
+        "tests/test_full_short_probe_campaign.py"
+      ],
+      "evidence": "Scanned requirement and existing implementation/test targets only. No new authorization, commit, freeze, credential lookup, real request or completion claim performed by this subtask."
+    },
+    {
+      "requirement": "21. SUCCESSOR HARD CAPS",
+      "original_requirement": "======================================================================\n21. SUCCESSOR HARD CAPS\n======================================================================\n\nSUCCESSOR_ABSOLUTE_MAX_PROVIDER_REQUESTS=144\nSUCCESSOR_ABSOLUTE_MAX_HTTP_POST_ATTEMPTS=144\nSUCCESSOR_ABSOLUTE_MAX_NETWORK_REQUESTS=144\nSUCCESSOR_ABSOLUTE_MAX_INPUT_TOKENS=4000000\nSUCCESSOR_ABSOLUTE_MAX_GENERATED_OUTPUT_TOKENS=2000000\nSUCCESSOR_ABSOLUTE_MAX_OUTPUT_TOKENS_PER_PROVIDER_REQUEST=32000\nSUCCESSOR_ABSOLUTE_MAX_ELAPSED_SECONDS=36000\n\nUSD_HARD_CAP_IF_RELIABLY_METERABLE=60\nCNY_HARD_CAP_IF_RELIABLY_METERABLE=120\n\nDerive tighter plan caps before real dispatch.\nIf plan-derived input >4,000,000:\nSTOP.",
+      "original_requirement_sha256": "21b15c9f361b7613ec0d8fe4987b803aa5625ac781159e1eb9e8c745b93a28c9",
+      "implementation": "Existing full_short_campaign_authorization.py, full_short_execution.py, full_short_probe_campaign.py, and external task-baseline/dirty-intake evidence; MAIN owns execution/freeze decisions.",
+      "test_paths": [
+        "tests/test_full_short_campaign_authorization.py",
+        "tests/test_full_short_execution.py",
+        "tests/test_full_short_probe_campaign.py"
+      ],
+      "evidence": "Scanned requirement and existing implementation/test targets only. No new authorization, commit, freeze, credential lookup, real request or completion claim performed by this subtask."
+    },
+    {
+      "requirement": "22. SUCCESSOR PREFLIGHT",
+      "original_requirement": "======================================================================\n22. SUCCESSOR PREFLIGHT\n======================================================================\n\nRequire:\n\nSUCCESSOR_FINAL_EXECUTION_HEAD exact\nWORKTREE=CLEAN\nauthorization exact\n\nSHARED_ANTHROPIC_STREAM_STATE_MACHINE_CLOSED=YES\n\nrequest zero-diff exact\ngenerated transition coverage exact\nfault injection exact\nreviewers PASS\n\nprobe-01 replay PASS\nprobe-02 replay PASS\n\nsuccessor probe set exact\nall nonces absent\nsuccessor external counters=0\nREAL_FULL_SHORT_EXECUTION_COUNT=0\nbudget gate PASS\n\nRequire:\nSUCCESSOR_CAMPAIGN_PREFLIGHT=PASS",
+      "original_requirement_sha256": "416631b788844b9639ca674f6799c2a97a8bfba80e4597206c9bc733620b2073",
+      "implementation": "Existing full_short_campaign_authorization.py, full_short_execution.py, full_short_probe_campaign.py, and external task-baseline/dirty-intake evidence; MAIN owns execution/freeze decisions.",
+      "test_paths": [
+        "tests/test_full_short_campaign_authorization.py",
+        "tests/test_full_short_execution.py",
+        "tests/test_full_short_probe_campaign.py"
+      ],
+      "evidence": "Scanned requirement and existing implementation/test targets only. No new authorization, commit, freeze, credential lookup, real request or completion claim performed by this subtask."
+    },
+    {
+      "requirement": "23. EXECUTE ONLY STILL-REQUIRED REAL PROBES",
+      "original_requirement": "======================================================================\n23. EXECUTE ONLY STILL-REQUIRED REAL PROBES\n======================================================================\n\nSequential only.\n\nDo NOT resend 01/02.\n\nExecute only still-required cases 03–08.\n\nPer case:\n\n1. fresh single-use nonce\n2. exact credential lookup\n3. exact guarded route client\n4. retry=0\n5. fallback=0\n6. route switch=0\n7. one Provider request max\n8. raw capture before lossy conversion\n9. typed terminal classification\n10. seal evidence/nonce\n\nSTOP on first dispatched failure.\n\nNo automatic replacement.",
+      "original_requirement_sha256": "075c09ffc56f5b93ed02f9869eb5dc947b0fb520f839496a75571c1be660a866",
+      "implementation": "Existing full_short_campaign_authorization.py, full_short_execution.py, full_short_probe_campaign.py, and external task-baseline/dirty-intake evidence; MAIN owns execution/freeze decisions.",
+      "test_paths": [
+        "tests/test_full_short_campaign_authorization.py",
+        "tests/test_full_short_execution.py",
+        "tests/test_full_short_probe_campaign.py"
+      ],
+      "evidence": "Scanned requirement and existing implementation/test targets only. No new authorization, commit, freeze, credential lookup, real request or completion claim performed by this subtask."
+    },
+    {
+      "requirement": "24. CAPACITY CLOSURE",
+      "original_requirement": "======================================================================\n24. CAPACITY CLOSURE\n======================================================================\n\nAfter all required probes PASS:\n\nEXACT_READY_PROVEN_SAFE_PHYSICAL_ATTEMPT_SHAPES=183\n\nEXACT_READY_UNPROVEN_PHYSICAL_ATTEMPT_COUNT=0\n\nCAPACITY_ENGINEERING_LINE=CLOSED\n\nIf not:\nSTOP.",
+      "original_requirement_sha256": "babc1f265e3d78215e1108a7478127d7fdf8dace8d9b74a017102d9d4fd2211c",
+      "implementation": "Existing full_short_campaign_authorization.py, full_short_execution.py, full_short_probe_campaign.py, and external task-baseline/dirty-intake evidence; MAIN owns execution/freeze decisions.",
+      "test_paths": [
+        "tests/test_full_short_campaign_authorization.py",
+        "tests/test_full_short_execution.py",
+        "tests/test_full_short_probe_campaign.py"
+      ],
+      "evidence": "Scanned requirement and existing implementation/test targets only. No new authorization, commit, freeze, credential lookup, real request or completion claim performed by this subtask."
+    },
+    {
+      "requirement": "25. EXACT READY OFFLINE FULL SHORT",
+      "original_requirement": "======================================================================\n25. EXACT READY OFFLINE FULL SHORT\n======================================================================\n\nUsing SAME frozen HEAD, run actual READY-authority project 2ad716... end-to-end offline.\n\nStub only the lowest Provider/network seam.\n\nMust complete:\n\nPlanning\nDraft\nReview\nReader Review\nPolish\nFinal Review\nMaintenance\nStoryState\nCanon\nREADY\nFinal Artifact\nCheckpoint\nCompletion Receipt\n\nRequire:\n\nFULL_SHORT_PRODUCTION_SHAPED_DRY_RUN=PASS_EXACT_READY_TARGET",
+      "original_requirement_sha256": "41b3e0a03a2f4bf8a7b12e4f274eeea557f72e92dff02eac499c2fd373bccded",
+      "implementation": "src/novel_flywheel/workflows.py; full_short_execution.py; short_canonical_promotion.py",
+      "test_paths": [
+        "tests/test_workflows.py",
+        "tests/test_full_short_execution.py",
+        "tests/test_full_short_runtime_kernel.py"
+      ],
+      "evidence": "PENDING/NOT_REACHED in this snapshot: Exact READY private replay, 13K/20K/30K lowest-HTTP-seam flow, final Strict L3/review and real Full Short are not established by this report."
+    },
+    {
+      "requirement": "26. 13K / 20K / 30K",
+      "original_requirement": "======================================================================\n26. 13K / 20K / 30K\n======================================================================\n\nRun:\n\n13K\n20K\n30K\n\nRequire:\n\nSIZE_MATRIX_SEGMENTATION_BEHAVIOR=PASS\n\nSIZE_MATRIX_PHYSICAL_ENVELOPE_BOUNDED=YES",
+      "original_requirement_sha256": "9110a5368e4f1df52a8ffddc152fec0884f4cdb9bbf0c9b74a2f6c3d32c436c3",
+      "implementation": "src/novel_flywheel/workflows.py; full_short_execution.py; short_canonical_promotion.py",
+      "test_paths": [
+        "tests/test_workflows.py",
+        "tests/test_full_short_execution.py",
+        "tests/test_full_short_runtime_kernel.py"
+      ],
+      "evidence": "PENDING/NOT_REACHED in this snapshot: Exact READY private replay, 13K/20K/30K lowest-HTTP-seam flow, final Strict L3/review and real Full Short are not established by this report."
+    },
+    {
+      "requirement": "27. FINAL STRICT L3 / REVIEW",
+      "original_requirement": "======================================================================\n27. FINAL STRICT L3 / REVIEW\n======================================================================\n\nFresh final reviewers:\n\n1. shared stream protocol\n2. capacity/segmentation\n3. authority/StoryState/Canon\n4. exact-once/recovery/restart\n5. route/evidence/privacy/Baseline Skill\n\nAll:\nARCHITECTURE_PASS\n\nRequire:\nSTRICT_L3=PASS\nwarnings=0\nblockers=0",
+      "original_requirement_sha256": "5af454c516959e700a0bfc15b7c019342ecfd6d9ed2bfa61562e12aca42d3488",
+      "implementation": "src/novel_flywheel/workflows.py; full_short_execution.py; short_canonical_promotion.py",
+      "test_paths": [
+        "tests/test_workflows.py",
+        "tests/test_full_short_execution.py",
+        "tests/test_full_short_runtime_kernel.py"
+      ],
+      "evidence": "PENDING/NOT_REACHED in this snapshot: Exact READY private replay, 13K/20K/30K lowest-HTTP-seam flow, final Strict L3/review and real Full Short are not established by this report."
+    },
+    {
+      "requirement": "28. EXACTLY ONE REAL FULL SHORT",
+      "original_requirement": "======================================================================\n28. EXACTLY ONE REAL FULL SHORT\n======================================================================\n\nOnly if EVERY prior gate passes.\n\nBefore Full Short require:\n\nauthorization exact\nfrozen HEAD unchanged\nworktree clean\n\nSHARED_ANTHROPIC_STREAM_STATE_MACHINE_CLOSED=YES\ncapacity closed\ndry-run PASS\nsize matrix PASS\nStrict L3 PASS\nreviewers PASS\nremaining budgets sufficient\nREAL_FULL_SHORT_EXECUTION_COUNT=0\n\nCreate one fresh single-use Full Short nonce.\n\nExecute exactly ONE real Full Short through existing production runtime.\n\nPreserve:\n\n- current route/model scheduling\n- exact destinations\n- segmentation/windowing\n- bounded fallback/recovery\n- Planning reasoning\n- final-artifact recovery\n- response capture/replay\n- exact-once\n- StoryState/Canon/READY authority\n- Baseline Skill\n- current literary/model-visible semantics\n\nNo whole-run retry.\nNo second Full Short.\nNo automatic route/model change.\n\nOn failure:\nseal exact typed evidence and STOP.\n\nOn success:\nseal manuscript, completion receipt, artifact/stage/capture/provider/authority ledgers,\nusage/cost/elapsed, recovery events, StoryState/Canon/READY and checkpoint.",
+      "original_requirement_sha256": "f81bc8fe75e920dc2e245ca648e0b2ac0aa2ff8e4ad83c820ff09f388df88449",
+      "implementation": "src/novel_flywheel/workflows.py; full_short_execution.py; short_canonical_promotion.py",
+      "test_paths": [
+        "tests/test_workflows.py",
+        "tests/test_full_short_execution.py",
+        "tests/test_full_short_runtime_kernel.py"
+      ],
+      "evidence": "PENDING/NOT_REACHED in this snapshot: Exact READY private replay, 13K/20K/30K lowest-HTTP-seam flow, final Strict L3/review and real Full Short are not established by this report."
+    },
+    {
+      "requirement": "29. POST-RUN REVIEW",
+      "original_requirement": "======================================================================\n29. POST-RUN REVIEW\n======================================================================\n\nFresh child reviewers may inspect final evidence in parallel.\n\nNo new external model calls.\n\nPrepare:\n- runtime reliability review\n- authority integrity review\n- capacity/segmentation review\n- literary-quality evidence\n- AI-flavor / over-polish / stitching / templating review\n\nDo not automatically change production literary policy.",
+      "original_requirement_sha256": "025fcc65ebf72a0dbc8ef7f67c4f17ff68eeeff4f929739308fd099307c6ef82",
+      "implementation": "src/novel_flywheel/workflows.py; full_short_execution.py; short_canonical_promotion.py",
+      "test_paths": [
+        "tests/test_workflows.py",
+        "tests/test_full_short_execution.py",
+        "tests/test_full_short_runtime_kernel.py"
+      ],
+      "evidence": "PENDING/NOT_REACHED in this snapshot: Exact READY private replay, 13K/20K/30K lowest-HTTP-seam flow, final Strict L3/review and real Full Short are not established by this report."
+    },
+    {
+      "requirement": "30. PRE-FREEZE EVIDENCE ROOT",
+      "original_requirement": "======================================================================\n30. PRE-FREEZE EVIDENCE ROOT\n======================================================================\n\nCreate/commit:\n\ndocs/superpowers/reports/shared-anthropic-stream-state-machine-closed-world-v1/\n\nInclude at minimum:\n\nREADME.md\nbaseline-binding-v1.json\ndirty-worktree-intake-v1.json\n\nshared-anthropic-protocol-domain-v1.json\nauthoritative-shared-protocol-semantics-v1.json\nshared-anthropic-transition-matrix-v1.json\nshared-completeness-contract-v1.json\nshared-stream-causal-precedence-contract-v1.json\nerror-payload-normalization-contract-v1.json\n\ngenerated-transition-test-report-v1.json\nstate-machine-fault-injection-report-v1.json\nhistorical-exact-replay-report-v1.json\nshared-request-zero-diff-v1.json\n\nreviewer-1-v1.json\nreviewer-2-v1.json\nreviewer-3-v1.json\nreviewer-4-v1.json\nreviewer-5-v1.json\n\nfocused-tests-v1.json\nstrict-l3-preexecution-v1.json\nprivacy-v1.json\npreexecution-final-report-v1.md\nsha256-manifest-v1.json\n\nAll real successor execution evidence after freeze:\nEXTERNAL / NON-GIT ONLY.",
+      "original_requirement_sha256": "6d3e589a6f22bbe9c42bb191a1e4d4099cf7fb7e5844d5c64998c05b53385b1b",
+      "implementation": "Existing full_short_campaign_authorization.py, full_short_execution.py, full_short_probe_campaign.py, and external task-baseline/dirty-intake evidence; MAIN owns execution/freeze decisions.",
+      "test_paths": [
+        "tests/test_full_short_campaign_authorization.py",
+        "tests/test_full_short_execution.py",
+        "tests/test_full_short_probe_campaign.py"
+      ],
+      "evidence": "Scanned requirement and existing implementation/test targets only. No new authorization, commit, freeze, credential lookup, real request or completion claim performed by this subtask."
+    },
+    {
+      "requirement": "31. FINAL REQUIRED OUTPUT",
+      "original_requirement": "======================================================================\n31. FINAL REQUIRED OUTPUT\n======================================================================\n\nAlways report:\n\nBASELINE_COMMITTED_HEAD=<sha>\n\nINITIAL_WORKTREE_DIRTY=<YES/NO>\nPRESERVED_IN_SCOPE_CHANGE_COUNT=<n>\nUNRELATED_DIRTY_PATH_COUNT=<n>\n\nREGISTERED_PROTOCOL_STATE_COUNT=<n>\nREGISTERED_EVENT_CLASS_COUNT=<n>\n\nTRANSITION_MATRIX_TOTAL_CELLS=<n>\nTRANSITION_MATRIX_UNSPECIFIED_CELL_COUNT=<n>\nTRANSITION_MATRIX_AMBIGUOUS_CELL_COUNT=<n>\n\nUNCLASSIFIED_SHARED_STREAM_EVENT_EXIT_COUNT=<n>\n\nGENERATED_TRANSITION_CASE_COUNT=<n>\nGENERATED_TRANSITION_PASS_COUNT=<n>\nGENERATED_TRANSITION_COVERAGE=<value>\n\nSTATE_MACHINE_FAULT_INJECTION_COVERAGE=<value>\n\nPOST_TERMINAL_TIMEOUT_DOWNGRADES_COMPLETE_CAPTURE_COUNT=<n>\nPOST_TERMINAL_CANCELLATION_DOWNGRADES_COMPLETE_CAPTURE_COUNT=<n>\nPRE_TERMINAL_TIMEOUT_FALSE_SUCCESS_COUNT=<n>\nPRE_TERMINAL_CANCELLATION_FALSE_SUCCESS_COUNT=<n>\nPROVIDER_ERROR_LOST_TO_LATER_TIMEOUT_COUNT=<n>\nATTRIBUTEERROR_FROM_SSE_ERROR_PAYLOAD_COUNT=<n>\nPOST_TERMINAL_ERROR_IGNORED_COUNT=<n>\nGENERIC_INCOMPLETE_TERMINAL_REPLACEMENT_COUNT=<n>\n\nSHARED_PROTOCOL_REGRESSION_COUNT=<n>\nHISTORICAL_EXACT_REPLAY_REGRESSION_COUNT=<n>\n\nOUTBOUND_REQUEST_BODY_CHANGED_COUNT=<n>\nMODEL_VISIBLE_REQUEST_BYTES_CHANGED_COUNT=<n>\nROUTE_BINDING_CHANGED_COUNT=<n>\nOUTPUT_CAP_CHANGED_COUNT=<n>\nREASONING_POLICY_CHANGED_COUNT=<n>\nREQUEST_BUILDER_SOURCE_DIFF=<n>\n\nPROBE01_EXACT_REPLAY=<PASS/FAIL>\nPROBE02_EXACT_REPLAY=<PASS/FAIL>\n\nPROBE02_CANONICAL_PROVIDER_INPUT_TOKENS=<n>\nPROBE02_CANONICAL_PROVIDER_OUTPUT_TOKENS=<n>\nPOST_TERMINAL_PING_IGNORED_COUNT=<n>\n\nSHARED_STREAM_STATE_MACHINE_REVIEW=<PASS/FAIL>\n\nSHARED_ANTHROPIC_STREAM_STATE_MACHINE_CLOSED=<YES/NO>\n\nSUCCESSOR_REAL_PROBE_CASE_COUNT=<n>\nSUCCESSOR_PROBE_CASE_SET=<ids>\n\nSUCCESSOR_FINAL_EXECUTION_HEAD=<sha>\nWORKTREE=<state>\n\nSUCCESSOR_CAMPAIGN_PREFLIGHT=<PASS/FAIL/NOT_REACHED>\nSUCCESSOR_PROBE_ALL_REQUIRED_CASES_PASS=<YES/NO/NOT_REACHED>\n\nEXACT_READY_PROVEN_SAFE_PHYSICAL_ATTEMPT_SHAPES=<n>\nEXACT_READY_UNPROVEN_PHYSICAL_ATTEMPT_COUNT=<n>\nCAPACITY_ENGINEERING_LINE=<CLOSED/BLOCKED/NOT_REACHED>\n\nFULL_SHORT_PRODUCTION_SHAPED_DRY_RUN=<status>\nSIZE_MATRIX_SEGMENTATION_BEHAVIOR=<status>\nSTRICT_L3=<status>\n\nSUCCESSOR_REAL_PROVIDER_REQUEST_ATTEMPTS=<n>\nSUCCESSOR_HTTP_POST_ATTEMPTS=<n>\nSUCCESSOR_NETWORK_CALLS=<n>\nSUCCESSOR_MODEL_CALLS=<n>\nSUCCESSOR_PAID_CALLS=<n>\nSUCCESSOR_TOTAL_INPUT_TOKENS=<n>\nSUCCESSOR_TOTAL_GENERATED_OUTPUT_TOKENS=<n>\nSUCCESSOR_COST_STATUS=<status>\nSUCCESSOR_TOTAL_ELAPSED_SECONDS=<n>\n\nREAL_FULL_SHORT_EXECUTION_COUNT=<0 or 1>\nREAL_FULL_SHORT_TERMINAL=<SUCCESS|exact typed failure|NOT_REACHED>\n\nIf real Full Short succeeds:\n\nTRUSTWORTHY_FULL_SHORT_REAL_EXECUTION=PASS\nLITERARY_QUALITY_AUDIT_READY=YES\n\nEXACT_NEXT_GATE=\nFIRST_REAL_FULL_SHORT_LITERARY_AND_AI_FLAVOR_AUDIT\n\nIf shared state machine cannot close:\n\nREAL_FULL_SHORT_EXECUTION_COUNT=0\n\nEXACT_NEXT_GATE=\nSHARED_ANTHROPIC_STREAM_STATE_MACHINE_ARCHITECTURE_REDESIGN_REQUIRED\n\nIf another pre-Full-Short gate fails:\n\nREAL_FULL_SHORT_EXECUTION_COUNT=0\n\nEXACT_NEXT_GATE=<exact first failed gate>\n\nIf real Full Short fails:\n\nREAL_FULL_SHORT_EXECUTION_COUNT=1\n\nEXACT_NEXT_GATE=\nFIRST_REAL_FULL_SHORT_FAILURE_EVIDENCE_REVIEW\n\nSTOP.",
+      "original_requirement_sha256": "9f9e21c6a156b5494188b20f01e5afd4c4b1f5d869567e50ff1426173333d7cc",
+      "implementation": "Existing full_short_campaign_authorization.py, full_short_execution.py, full_short_probe_campaign.py, and external task-baseline/dirty-intake evidence; MAIN owns execution/freeze decisions.",
+      "test_paths": [
+        "tests/test_full_short_campaign_authorization.py",
+        "tests/test_full_short_execution.py",
+        "tests/test_full_short_probe_campaign.py"
+      ],
+      "evidence": "Scanned requirement and existing implementation/test targets only. No new authorization, commit, freeze, credential lookup, real request or completion claim performed by this subtask."
+    }
+  ],
+  "historical_incident_families_checked": [
+    "provider.semantic_transport_terminal_boundary",
+    "provider.cumulative_usage_accounting",
+    "provider.terminal_error_event",
+    "provider.route_rejected",
+    "provider.credentials_unavailable",
+    "runtime.stale_console_process",
+    "initialization.location_backlink_missing",
+    "initialization.location_reference_missing",
+    "initialization.relationship_inverse_mismatch",
+    "provider.connection_failed",
+    "model.context_capacity_indivisible_scope",
+    "planning.runtime_identity_echo_mismatch",
+    "planning.reviewed_dimensions_echo_conflict",
+    "planning.invariant_truth_set_shape",
+    "planning.execution_manifest_handoff_echo_mismatch",
+    "model.context_capacity_preflight",
+    "runtime.required_tool_output_missing",
+    "runtime.primary_error_masked",
+    "planning.typed_ir_scope_collision",
+    "parser.generated_artifact_shape",
+    "provider.reasoning_only_final_artifact_unavailable",
+    "model.output_truncated",
+    "provider.structured_output_business_incomplete",
+    "planning.causal_chain_invalid",
+    "planning.recovery_latent_issue_misattributed",
+    "planning.structure_drift",
+    "planning.review_evidence_semantic_mismatch",
+    "planning.review_evidence_binding_invalid",
+    "planning.review_protocol_route_exhausted",
+    "planning.plan_structure_validation_failed",
+    "planning.event_body_integrity",
+    "planning.presentation_normalized_ownership_revealed",
+    "planning.packet_merge_closedness",
+    "planning.participant_identity_realization_mismatch",
+    "planning.event_obligation_incomplete",
+    "planning.atomic_beat_scope_mismatch",
+    "planning.repair_anchor_collapse",
+    "narrative.first_person_contract_missing",
+    "draft.segment_integrity_failed",
+    "draft.split_merge_length_mismatch",
+    "draft.semantic_receipt_unsatisfied",
+    "polish.local_validation_failed",
+    "review.issue_ledger_not_refreshed",
+    "review.final_review_unavailable"
+  ],
+  "projected_failure_mechanisms": [
+    "causal coverage / exact prior-exit handoff / deterministic ordered ownership",
+    "context admission, unknown limits, output truncation, ownership-preserving packetization",
+    "identity/evidence/hash/ownership, scope collision, ambiguity, stale authority, partial checkpoint, collateral repair regression",
+    "missing graph target/backlink, inverse relationship conflict",
+    "narrator/participant identity must stay bound to project authority",
+    "open presentation versus closed machine control; typed IR and ambiguous ownership",
+    "partial/duplicate ownership, merged-parent length, text-bound semantic evidence",
+    "prose mutation regression, smallest safe ownership, preserved best complete candidate",
+    "route/credentials/connection failure; preserve route identity and bounded retry authority",
+    "semantic completion / cumulative usage / Provider-primary causal precedence / partial capture",
+    "stale issue identity/hash, evidence reduction, unavailable final review",
+    "stale process, missing machine receipt, wrapper exception masking"
+  ],
+  "why_previous_tests_missed": "Prior tests covered individual ping/usage/error corrections but the Master records two baseline-green regressions where terminal success followed by timeout/cancellation downgraded capture. Independent parser, transport-close, capture and usage projections could disagree. The fresh 745 cases execute real state transitions and HTTP/capture seams, but only complete framed events with later faults: they miss partial trailing SSE frame plus timeout/cancellation. MAIN reports Reviewer 1 reproduced both postterminal completeness downgrade and preterminal causal replacement at that interaction. Therefore a 100-percent registered state/event matrix is not proof of framing/transport product-domain closure. Narrative catalog tests classify history but are not successful workflow recovery evidence.",
+  "sibling_boundaries": [
+    {
+      "boundary": "shared Anthropic complete-frame test subdomain only; partial-frame domain remains unresolved",
+      "disposition": "fixed_and_tested",
+      "evidence": "src/novel_flywheel/anthropic_stream.py; providers/anthropic.py:_consume_protocol_stream; providers/http.py:post_stream; local-proof.xml executes the production owner, HTTP MockTransport and durable capture without parser/adapter mocks. 745 local cases pass including related catalog/capture tests. This disposition covers only the tested complete-frame subdomain. MAIN reports four partial-frame/tail counterexamples; entire stream closure and full workflow continuation remain unresolved."
+    },
+    {
+      "boundary": "initialization (domain-specific semantics)",
+      "disposition": "not_applicable",
+      "evidence": "src/novel_flywheel/skill_runtime.py:376 remains the domain owner; response consolidation makes no domain-validator edit here. tests=tests/test_skill_runtime.py (identified, fresh broad-runtime result not claimed). Stream susceptibility is NOT exempted: every Anthropic-selected call passes the shared boundary above through workflows.py:_stage. This not_applicable disposition applies only to implementing a separate domain-specific stream repair, not to downstream acceptance; current-project/complete-flow proof remains pending."
+    },
+    {
+      "boundary": "planning (domain-specific semantics)",
+      "disposition": "not_applicable",
+      "evidence": "src/novel_flywheel/workflows.py:11058 remains the domain owner; response consolidation makes no domain-validator edit here. tests=tests/test_planning_adaptation_workflow.py (identified, fresh broad-runtime result not claimed). Stream susceptibility is NOT exempted: every Anthropic-selected call passes the shared boundary above through workflows.py:_stage. This not_applicable disposition applies only to implementing a separate domain-specific stream repair, not to downstream acceptance; current-project/complete-flow proof remains pending."
+    },
+    {
+      "boundary": "causal_chain (domain-specific semantics)",
+      "disposition": "not_applicable",
+      "evidence": "src/novel_flywheel/workflows.py:15799 remains the domain owner; response consolidation makes no domain-validator edit here. tests=tests/test_semantic_packets.py (identified, fresh broad-runtime result not claimed). Stream susceptibility is NOT exempted: every Anthropic-selected call passes the shared boundary above through workflows.py:_stage. This not_applicable disposition applies only to implementing a separate domain-specific stream repair, not to downstream acceptance; current-project/complete-flow proof remains pending."
+    },
+    {
+      "boundary": "execution_manifest (domain-specific semantics)",
+      "disposition": "not_applicable",
+      "evidence": "src/novel_flywheel/workflows.py:16909 remains the domain owner; response consolidation makes no domain-validator edit here. tests=tests/test_execution_manifest_workflow.py (identified, fresh broad-runtime result not claimed). Stream susceptibility is NOT exempted: every Anthropic-selected call passes the shared boundary above through workflows.py:_stage. This not_applicable disposition applies only to implementing a separate domain-specific stream repair, not to downstream acceptance; current-project/complete-flow proof remains pending."
+    },
+    {
+      "boundary": "drafting (domain-specific semantics)",
+      "disposition": "not_applicable",
+      "evidence": "src/novel_flywheel/workflows.py:26730 remains the domain owner; response consolidation makes no domain-validator edit here. tests=tests/test_r1_d1_draft_workflow.py (identified, fresh broad-runtime result not claimed). Stream susceptibility is NOT exempted: every Anthropic-selected call passes the shared boundary above through workflows.py:_stage. This not_applicable disposition applies only to implementing a separate domain-specific stream repair, not to downstream acceptance; current-project/complete-flow proof remains pending."
+    },
+    {
+      "boundary": "split_merge (domain-specific semantics)",
+      "disposition": "not_applicable",
+      "evidence": "src/novel_flywheel/workflows.py:27219 remains the domain owner; response consolidation makes no domain-validator edit here. tests=tests/test_draft_split.py (identified, fresh broad-runtime result not claimed). Stream susceptibility is NOT exempted: every Anthropic-selected call passes the shared boundary above through workflows.py:_stage. This not_applicable disposition applies only to implementing a separate domain-specific stream repair, not to downstream acceptance; current-project/complete-flow proof remains pending."
+    },
+    {
+      "boundary": "polish (domain-specific semantics)",
+      "disposition": "not_applicable",
+      "evidence": "src/novel_flywheel/workflows.py:19264 remains the domain owner; response consolidation makes no domain-validator edit here. tests=tests/test_workflows.py (identified, fresh broad-runtime result not claimed). Stream susceptibility is NOT exempted: every Anthropic-selected call passes the shared boundary above through workflows.py:_stage. This not_applicable disposition applies only to implementing a separate domain-specific stream repair, not to downstream acceptance; current-project/complete-flow proof remains pending."
+    },
+    {
+      "boundary": "targeted_revision (domain-specific semantics)",
+      "disposition": "not_applicable",
+      "evidence": "src/novel_flywheel/workflows.py:3048 remains the domain owner; response consolidation makes no domain-validator edit here. tests=tests/test_revision.py (identified, fresh broad-runtime result not claimed). Stream susceptibility is NOT exempted: every Anthropic-selected call passes the shared boundary above through workflows.py:_stage. This not_applicable disposition applies only to implementing a separate domain-specific stream repair, not to downstream acceptance; current-project/complete-flow proof remains pending."
+    },
+    {
+      "boundary": "manual_revision (domain-specific semantics)",
+      "disposition": "not_applicable",
+      "evidence": "src/novel_flywheel/workflows.py:2249 remains the domain owner; response consolidation makes no domain-validator edit here. tests=tests/api/test_revisions.py (identified, fresh broad-runtime result not claimed). Stream susceptibility is NOT exempted: every Anthropic-selected call passes the shared boundary above through workflows.py:_stage. This not_applicable disposition applies only to implementing a separate domain-specific stream repair, not to downstream acceptance; current-project/complete-flow proof remains pending."
+    },
+    {
+      "boundary": "ai_issue_refresh (domain-specific semantics)",
+      "disposition": "not_applicable",
+      "evidence": "src/novel_flywheel/workflows.py:20753 remains the domain owner; response consolidation makes no domain-validator edit here. tests=tests/test_workflows.py (identified, fresh broad-runtime result not claimed). Stream susceptibility is NOT exempted: every Anthropic-selected call passes the shared boundary above through workflows.py:_stage. This not_applicable disposition applies only to implementing a separate domain-specific stream repair, not to downstream acceptance; current-project/complete-flow proof remains pending."
+    },
+    {
+      "boundary": "final_review (domain-specific semantics)",
+      "disposition": "not_applicable",
+      "evidence": "src/novel_flywheel/workflows.py:19960 remains the domain owner; response consolidation makes no domain-validator edit here. tests=tests/test_workflows.py (identified, fresh broad-runtime result not claimed). Stream susceptibility is NOT exempted: every Anthropic-selected call passes the shared boundary above through workflows.py:_stage. This not_applicable disposition applies only to implementing a separate domain-specific stream repair, not to downstream acceptance; current-project/complete-flow proof remains pending."
+    },
+    {
+      "boundary": "formal_promotion (domain-specific semantics)",
+      "disposition": "not_applicable",
+      "evidence": "src/novel_flywheel/short_canonical_promotion.py:177 remains the domain owner; response consolidation makes no domain-validator edit here. tests=tests/test_full_short_runtime_kernel.py (identified, fresh broad-runtime result not claimed). Stream susceptibility is NOT exempted: every Anthropic-selected call passes the shared boundary above through workflows.py:_stage. This not_applicable disposition applies only to implementing a separate domain-specific stream repair, not to downstream acceptance; current-project/complete-flow proof remains pending."
+    }
+  ],
+  "model_output_boundary_changed": true,
+  "model_output_variants_tested": [
+    "single multilingual text block",
+    "multiple text content blocks",
+    "thinking-only block with signature",
+    "redacted-thinking-only block",
+    "tool input assembled from fragmented JSON deltas",
+    "complete tool/schema input object with nested unknown container",
+    "mixed thinking followed by final text"
+  ],
+  "model_output_topology_classes_tested": [
+    "visible text block sequence",
+    "thinking/signature content block",
+    "redacted opaque thinking content block",
+    "tool_use with fragmented input_json_delta",
+    "tool_use with complete nested input object",
+    "heterogeneous thinking-plus-text sequence"
+  ],
+  "unseen_valid_variants_tested": [
+    "unseen_bundle: HTTP tool/schema payload preserved and replay-equivalent in test_valid_topologies_preserve_http_replay_and_cumulative_usage; absent from production source and committed production fixtures at scan time. These are opaque payload preservation cases, not acceptance of a new narrative schema.",
+    "unseen_archive: HTTP tool/schema payload preserved and replay-equivalent in test_valid_topologies_preserve_http_replay_and_cumulative_usage; absent from production source and committed production fixtures at scan time. These are opaque payload preservation cases, not acceptance of a new narrative schema."
+  ],
+  "unknown_variant_behavior": "Unknown wire event types and remote attempts to forge internal lifecycle signals enter the versioned typed fail-closed protocol path; arbitrary opaque tool input wrapper names are preserved without giving them control authority. Duplicate/late semantic events cannot become success; Provider error remains primary across later semantic/transport events.",
+  "invalid_output_variants_tested": [
+    "post-message_stop semantic event, second stop and unknown event: typed protocol failure",
+    "nonobject/malformed event and malformed tool JSON: atomic typed failure",
+    "nonobject/raw Provider error shapes: normalized Provider terminal cause, never AttributeError"
+  ],
+  "transport_capacity_variants_tested": [
+    "EOF/timeout/cancellation/transport/iterator failure in each meaningful preterminal state",
+    "timeout/cancellation/transport after success or Provider error, including aclose faults",
+    "capture persistence failure or non-acknowledging metadata callback",
+    "max_tokens on all seven HTTP content topologies: retained terminal status without claiming business completeness"
+  ],
+  "invariant_test_paths": [
+    "tests/providers/test_anthropic_closed_world_transitions.py",
+    "tests/providers/test_anthropic_closed_world_http.py",
+    "tests/canary/test_closed_world_stream_evidence.py"
+  ],
+  "production_shaped_tests": [
+    "tests/providers/test_anthropic_closed_world_http.py",
+    "tests/canary/test_closed_world_stream_evidence.py",
+    "tests/test_provider_response_capture.py"
+  ],
+  "next_authoritative_boundary_tests": [
+    "tests/canary/test_closed_world_stream_evidence.py",
+    "tests/test_provider_response_capture.py",
+    "tests/test_workflows.py"
+  ],
+  "test_path_semantics": "Paths identify tests and boundaries. Only local-proof receipt nodes are freshly executed here; tests/test_workflows.py and broader Runtime targets remain planned, not PASS.",
+  "remaining_risks": [
+    "STOP reported by MAIN after formal Reviewer 1: four lowest-HTTP-seam partial-frame cases show post-stop half-ping plus timeout/cancellation becomes InvalidFrame and downgrades semantic/capture completion; preterminal half-frame replaces original timeout/cancellation. This subtask did not rerun those reviewer cases. The 745 passing local cases omit this partial-frame/tail interaction and therefore do not close the state machine. Exact next gate: SHARED_ANTHROPIC_STREAM_STATE_MACHINE_ARCHITECTURE_REDESIGN_REQUIRED.",
+    "MAIN reports related/full suite sessions were interrupted, not completed: an existing capability-materializer test writes repository config and prior reports. No full-suite PASS or regression count may be derived; any future complete-suite attempt requires an isolated repository/data copy.",
+    "Related Runtime and complete pytest suite have not been executed by this report; broad source stability and historical-family behavioral regression claims remain pending.",
+    "Exact READY private current-project snapshot replay is NOT_REACHED here; sanitized synthetic tests cannot substitute for it.",
+    "13K/20K/30K lowest HTTP seam complete-flow tests are identified but not executed in this subtask. Do not use parser success or a higher-level perfect gateway as replacement.",
+    "Five fresh formal reviews, final core-tree binding, Strict L3 warnings=0/blockers=0, source freeze, successor capacity/probe gates and real Full Short are separate MAIN-owned gates; this report is not a reviewer receipt.",
+    "Shared response parser closure does not solve every historical narrative incident. Retained catalog resolutions and original authority validation remain mandatory.",
+    "The strict forward-risk schema has no pending disposition. Domain rows therefore describe only the absence of stage-owned stream repair changes; pending behavioral acceptance is explicitly retained here and in the full catalog map.",
+    "Any source change after local-proof invalidates the corresponding hash-bound local evidence; regenerate before final acceptance."
+  ],
+  "local_evidence": {
+    "status": "PASS",
+    "case_count": 745,
+    "failures": 0,
+    "skips": 0,
+    "source_changed_during_run": false,
+    "current_source_drift": [],
+    "network_attempts": 0,
+    "receipt_sha256": "957c815e44e78301e43413c6b47a6893558883d3f78527152b0f8c0880a98ee1",
+    "junit_sha256": "d398f09745b42af860eb8ea6fd698b2c1fe231363bc5a36ce963202e26af8859",
+    "scope": "Local protocol/capture/incidents only; not formal review or systemic workflow completion."
+  },
+  "master_sha256": "58b91f4d35d03e6d01f21ba484629be50740af8d37a5ea358ba73cf8b43adfec",
+  "catalog_sha256": "b5be9313f974082800bd6de00a9db1e34d00622b4683376a912beb6600d6ba8f",
+  "catalog_count": 44,
+  "baseline_head": "79a99a58ebe95b2be4d1e51a8d190070a2568574",
+  "formal_review_claimed": false,
+  "systemic_completion_claimed": false
+}

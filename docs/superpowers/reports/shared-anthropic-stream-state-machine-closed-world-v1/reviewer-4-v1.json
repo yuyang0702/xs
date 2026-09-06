@@ -1,0 +1,71 @@
+{
+  "schema": "SharedAnthropicClosedWorldIndependentReviewV1",
+  "reviewer_id": "/root/closedworld_reviewer_4",
+  "reviewer_number": 4,
+  "review_scope": "request zero-diff / route-model-output-cap-reasoning / literary policy invariance",
+  "independence_claimed": true,
+  "other_reviewer_conclusions_read": false,
+  "delegation_count": 0,
+  "status": "ARCHITECTURE_PASS",
+  "master_source_sha256": "58b91f4d35d03e6d01f21ba484629be50740af8d37a5ea358ba73cf8b43adfec",
+  "master_source_verified_against_original_attachment": true,
+  "committed_head": "79a99a58ebe95b2be4d1e51a8d190070a2568574",
+  "branch": "r1-ptr3/planning-repair-finding-propagation-20260817",
+  "source_tree_sha256": "ba5b9531303f3e4ea35e59b20a807bdefbb2f81a0d8b9600f02d936c49d3994c",
+  "source_tree_digest_definition": "SHA256 of UTF-8 canonical JSON mapping all src/**/*.py relative paths to exact file SHA256; same definition as request-parity helper",
+  "source_hashes": {
+    "src/novel_flywheel/anthropic_stream.py": "dff3ad231865abc52745d92047cff522381b18f714112772d17bb8ae1dff7c1b",
+    "src/novel_flywheel/providers/anthropic.py": "3c27185f2cb97c646cd4d1a27d5e1b75ed2ef605d2c095d366fc4f7460488fcb",
+    "src/novel_flywheel/providers/http.py": "2f2d69cace513a9c85ec48a3fe4e80bd227dad6948709af2f51eaf375aa883f6",
+    "src/novel_flywheel/provider_payloads.py": "053fae9bf07119e8c6b8ab163d7a6089d790a983738709fcd36d208320016b60",
+    "src/novel_flywheel/provider_reasoning_policy.py": "a2f2bfb0546b12f04da10bba95c10051101252937e4cd90e4f7f915996e8e846",
+    "src/novel_flywheel/providers/registry.py": "c710f2a119bec72ac7bb8de9f6548d813b47095cfe6a0fcd9667b32de468d07d",
+    "src/novel_flywheel/workflows.py": "ca78867511d729284ef509d7b10c5f13985a5994edc6157f71e559b52471b98c"
+  },
+  "evidence": [
+    "Master read in full, original attachment hash independently verified; project AGENTS.md and novel-dev-council skill and references reviewed; check_project_scope.py returned ok=true.",
+    "Read request_parity.py, comparator, all three inventory bindings, source trees and initial intake; independently compared entire request_rows lists for HEAD/current and initial/current rather than trusting report counts.",
+    "Verified all inventory artifact hashes, helper hash, every current src file against proof, complete source-set equality, all three source snapshot hash maps, initial source intake hashes and live read-only public route projection.",
+    "120 representative requests per source, 6 enabled Anthropic-compatible providers, 15 configured models, four request modes and two transport policies. Exact synthetic payloads, wire bytes, routes, bindings, configured/effective caps, reasoning and timeout/retry fields agree.",
+    "Independently reran field-mutation comparator checks on the current 120-request inventory and missing-route check; all detected. Reviewed existing duplicate-route rejection self-check.",
+    "AST and source review: AnthropicAdapter.complete is wholly unchanged against HEAD; its request prefix is identical across HEAD/initial/current. HttpProvider.__init__, _build_http_post_request, _bind_model_request and _transport_attempt_limit are unchanged. post_stream changes occur in response consumption and tail handling, with request construction retained.",
+    "22 protected source paths compared against HEAD and task-initial snapshots, including payloads, reasoning policy, route registry, stage capacity, workflow orchestration, prompts, prose policy, runtime Skills, StoryState, narrative contracts, planning, split/packet logic and generated artifact validation. Only newline normalization applied for these file equivalence checks.",
+    "Read shared provider local receipt and XML: 977 tests, 0 failures, 0 errors, 0 skipped; recorded zero real provider calls. This is shared-cluster evidence, not a complete-suite receipt.",
+    "Read actual canary test calling materialize(repo), materializer registry writer and HEAD/current config diff: only source_locator/source_evidence_sha256 and derived capability/registry hashes differ for the Doubao record; model, destination and numeric caps do not differ. Parent-reported interrupted suites explain the observed side effect, and source confirms the writer path. Reviewer did not execute that test or materializer."
+  ],
+  "request_invariance": {
+    "OUTBOUND_REQUEST_BODY_CHANGED_COUNT": 0,
+    "MODEL_VISIBLE_REQUEST_BYTES_CHANGED_COUNT": 0,
+    "ROUTE_BINDING_CHANGED_COUNT": 0,
+    "OUTPUT_CAP_CHANGED_COUNT": 0,
+    "REASONING_POLICY_CHANGED_COUNT": 0,
+    "REQUEST_BUILDER_SOURCE_DIFF": 0,
+    "active_provider_count": 6,
+    "active_model_count": 15,
+    "representative_request_count_per_source": 120,
+    "scope": "reviewed candidate at bound source digest; no final execution freeze claim"
+  },
+  "findings": [],
+  "observations": [
+    {
+      "id": "R4-OBS-01",
+      "type": "separate_evidence_binding_obligation",
+      "message": "Worktree remains dirty. The canary materializer side effect changed the Doubao evidence locator and three derived/evidence hashes, plus two historical evidence files reported by MAIN. It is not a request-builder, destination, model or output-cap change, but downstream hash-bound capacity evidence must be reconciled before freeze/preflight. Do not label it clean or silently discard it."
+    }
+  ],
+  "limitations": [
+    "Approval covers this requested architecture slice only. No approval of final freeze, complete-suite completion, Strict L3, capacity closure, real probes or Full Short is implied.",
+    "pre-review-v1 explicitly labels itself candidate-only. A final-source/frozen-HEAD request proof and fresh binding checks remain required by the Master before dispatch.",
+    "Synthetic request equality and unchanged literary-policy source establish input/policy invariance, not equivalence of stochastic generated novels or proof of literary quality. Final manuscript quality audit remains a later gate.",
+    "Helper applies one captured current public route projection to each source version; the separate historical-before inventory comparison and unchanged route/policy sources support preservation. It does not create an independent historical database backup."
+  ],
+  "verification_artifact": "reviews/reviewer-4-verification-v1.json",
+  "verification_script": "reviews/reviewer4_verify.py",
+  "request_proof_path": "request-parity/pre-review-v1/shared-request-zero-diff-v1.json",
+  "request_proof_sha256": "23121533077742615e7c9b7d99c6c9bfd09efb50292ea7833eda430cb09af612",
+  "source_modified_by_reviewer": false,
+  "credential_lookups_by_reviewer": 0,
+  "real_provider_requests_by_reviewer": 0,
+  "final_source_freeze_claimed": false,
+  "worktree_clean_claimed": false
+}

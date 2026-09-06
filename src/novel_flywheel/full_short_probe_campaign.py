@@ -18,7 +18,40 @@ import json
 import math
 import secrets
 import time
-from typing import Callable, Iterable, Mapping, Sequence
+from typing import Annotated, Callable, Iterable, Literal, Mapping, Sequence
+
+from pydantic import BaseModel, ConfigDict, Field, ValidationError
+
+from novel_flywheel.provider_stream_error import StreamProviderErrorEvidenceV1
+
+
+class ProbeStreamOutcomeEvidenceV1(BaseModel):
+    """Closed, redacted projection of the stream owner, never model output."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True, strict=True)
+    version: Literal[1] = 1
+    state: Literal["BEFORE_MESSAGE", "MESSAGE_ACTIVE", "CONTENT_ACTIVE", "CONTENT_COMPLETE",
+                   "MESSAGE_DELTA", "SEMANTIC_SUCCESS_TERMINAL", "SUCCESS_TRANSPORT_TAIL",
+                   "PROVIDER_ERROR_TERMINAL", "PROVIDER_ERROR_TRANSPORT_TAIL",
+                   "TRANSPORT_FAILURE_TERMINAL", "PROTOCOL_INVALID_TERMINAL"]
+    semantic_terminal_complete: bool
+    terminal_capture_complete: bool
+    transport_tail_closed_cleanly: bool | None
+    primary_cause: Literal["PROVIDER_ERROR", "PROTOCOL_INVALID", "TRANSPORT_FAILURE",
+                           "CAPTURE_FAILURE", "SUCCESS", "NONE"]
+    post_terminal_ping_count: int = Field(ge=0)
+    tail_counts: dict[Literal["message_start", "content_block_start", "content_block_delta",
+                              "content_block_stop", "message_delta", "message_stop", "ping", "error",
+                              "unknown_versioned_event", "invalid_frame_or_payload", "EOF", "TIMEOUT",
+                              "CANCELLATION", "TRANSPORT_EXCEPTION", "CAPTURE_COMMITTED", "CAPTURE_FAILED"],
+                      Annotated[int, Field(ge=0)]]
+    unknown_event_policy: Literal["anthropic_stream_v1_typed_fail_closed_without_semantic_mutation"]
+    provider_id_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    route_fingerprint_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    request_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    request_family_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    case_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    provider_entity_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
 
 
 SCHEMA = "FullShortEightProbeCampaignV1"
@@ -161,6 +194,36 @@ class ProbeCampaignPlan:
 
 
 @dataclass(frozen=True)
+class SelectedSuccessorProbePlan(ProbeCampaignPlan):
+    """Only authorized remaining cases; historical nonces remain excluded."""
+    forbidden_nonce_sha256s: tuple[str, ...] = ()
+
+    def __post_init__(self) -> None:
+        start = 9 - len(self.cases)
+        _require(start in {2, 3}, "SUCCESSOR_SELECTION_INVALID")
+        _require(tuple(c.ordinal for c in self.cases) == tuple(range(start, 9)), "SUCCESSOR_SELECTION_INVALID")
+        _require(len({c.case_id for c in self.cases}) == len(self.cases), "CASE_ID_DUPLICATE")
+        covered = [n for c in self.cases for n in c.blocked_shape_ordinals]
+        _require(len(covered) == len(set(covered)) == (99 if start == 2 else 75), "SUCCESSOR_COVERAGE_INVALID")
+        _require(tuple(sorted(covered)) == self.source_blocked_shape_ordinals, "SUCCESSOR_COVERAGE_INVALID")
+        _require(len(self.forbidden_nonce_sha256s) == 2
+            and len(set(self.forbidden_nonce_sha256s)) == 2
+            and all(isinstance(n, str) and _hex64(n) for n in self.forbidden_nonce_sha256s),
+            "SUCCESSOR_HISTORICAL_NONCE_SET_INVALID")
+        _require(self.limits.provider_requests == len(self.cases)
+            and self.limits.http_post_attempts == len(self.cases)
+            and self.limits.network_requests == len(self.cases), "SUCCESSOR_PROBE_CALL_CAP_INVALID")
+        _require(all(c.wire_requested_output_cap <= self.limits.output_tokens_per_request
+            for c in self.cases), "CASE_OUTPUT_CAP_EXCEEDS_GLOBAL_CAP")
+        _require(sum(c.estimated_input_tokens for c in self.cases) <= self.limits.input_tokens,
+            "SEALED_PLAN_INPUT_EXCEEDS_GLOBAL_CAP")
+
+    @property
+    def plan_sha256(self) -> str:
+        return canonical_sha256("full-short-selected-successor-probe-plan-v1", asdict(self))
+
+
+@dataclass(frozen=True)
 class DispatchRequest:
     plan_sha256: str
     case_sha256: str
@@ -175,8 +238,18 @@ class DispatchResult:
     raw_response: bytes
     generated_output_tokens: int | None
     actual_input_tokens: int | None = None
+    provider_stream_error: StreamProviderErrorEvidenceV1 | None = None
+    stream_outcome_v1: ProbeStreamOutcomeEvidenceV1 | None = None
 
     def __post_init__(self) -> None:
+        for value, model in ((self.provider_stream_error, StreamProviderErrorEvidenceV1),
+                             (self.stream_outcome_v1, ProbeStreamOutcomeEvidenceV1)):
+            if value is not None:
+                _require(isinstance(value, model), "RESULT_STREAM_EVIDENCE_INVALID")
+                try:
+                    model.model_validate(value.model_dump(mode="json"))
+                except ValidationError:
+                    raise ProbeCampaignError("RESULT_STREAM_EVIDENCE_INVALID") from None
         _require(bool(self.typed_code), "RESULT_TYPED_CODE_EMPTY")
         _require(isinstance(self.raw_response, bytes), "RAW_RESPONSE_NOT_BYTES")
         _require(
@@ -271,11 +344,12 @@ class FullShortProbeCampaign:
 
     @property
     def records(self) -> tuple[Mapping[str, object], ...]:
-        return tuple(dict(record) for record in self._records)
+        return tuple(json.loads(json.dumps(record)) for record in self._records)
 
     def _body(self) -> dict[str, object]:
         return {
-            "schema": STATE_SCHEMA,
+            "schema": ("FullShortSelectedSuccessorProbeCampaignStateV1"
+                if isinstance(self.plan, SelectedSuccessorProbePlan) else STATE_SCHEMA),
             "version": 1,
             "plan_sha256": self.plan.plan_sha256,
             "absolute_deadline_unix_seconds": (
@@ -329,15 +403,17 @@ class FullShortProbeCampaign:
             and hmac.compare_digest(supplied_hmac, expected_hmac),
             "STATE_HMAC_MISMATCH",
         )
-        _require(body.get("schema") == STATE_SCHEMA and body.get("version") == 1, "STATE_SCHEMA_INVALID")
+        expected_schema = ("FullShortSelectedSuccessorProbeCampaignStateV1"
+            if isinstance(plan, SelectedSuccessorProbePlan) else STATE_SCHEMA)
+        _require(body.get("schema") == expected_schema and body.get("version") == 1, "STATE_SCHEMA_INVALID")
         _require(body.get("plan_sha256") == plan.plan_sha256, "STATE_PLAN_SHA256_MISMATCH")
         campaign = cls(plan, **kwargs)
         records = body.get("records")
         counters = body.get("counters")
-        _require(isinstance(records, list) and len(records) == CASE_COUNT, "STATE_RECORDS_INVALID")
+        _require(isinstance(records, list) and len(records) == len(plan.cases), "STATE_RECORDS_INVALID")
         _require(isinstance(counters, dict), "STATE_COUNTERS_INVALID")
         campaign._records = [dict(record) for record in records if isinstance(record, dict)]
-        _require(len(campaign._records) == CASE_COUNT, "STATE_RECORDS_INVALID")
+        _require(len(campaign._records) == len(plan.cases), "STATE_RECORDS_INVALID")
         campaign._counters = dict(counters)
         campaign._halt_code = body.get("halt_code") if isinstance(body.get("halt_code"), str) else None
         _require(
@@ -360,6 +436,8 @@ class FullShortProbeCampaign:
                 state = NonceState(str(record.get("state")))
             except ValueError as exc:
                 raise ProbeCampaignError("NONCE_STATE_INVALID") from exc
+            if any(name in record for name in ("provider_stream_error", "stream_outcome_v1")):
+                _require(state.value.endswith("_CONSUMED"), "STATE_STREAM_EVIDENCE_NOT_TERMINAL")
             if stop_seen:
                 _require(state is NonceState.UNUSED, "STATE_AFTER_TERMINAL_NOT_UNUSED")
             debited_input = record.get("debited_input_tokens")
@@ -382,6 +460,7 @@ class FullShortProbeCampaign:
             nonce_sha = record.get("nonce_sha256")
             _require(isinstance(nonce_sha, str) and _hex64(nonce_sha), "NONCE_SHA256_INVALID")
             _require(nonce_sha not in seen_nonce, "NONCE_REUSED")
+            _require(nonce_sha not in getattr(self.plan, "forbidden_nonce_sha256s", ()), "HISTORICAL_NONCE_REUSED")
             seen_nonce.add(nonce_sha)
             if state in {NonceState.RESERVED_PRE_CREDENTIAL, NonceState.DISPATCH_ATTEMPTED}:
                 if state is NonceState.RESERVED_PRE_CREDENTIAL:
@@ -411,6 +490,21 @@ class FullShortProbeCampaign:
                 _require(isinstance(encoded, str), "RAW_RESPONSE_CAPTURE_MISSING")
                 raw = base64.b64decode(encoded, validate=True)
                 _require(hashlib.sha256(raw).hexdigest() == record.get("raw_response_sha256"), "RAW_RESPONSE_CAPTURE_TAMPERED")
+            for field, model in (("provider_stream_error", StreamProviderErrorEvidenceV1),
+                                 ("stream_outcome_v1", ProbeStreamOutcomeEvidenceV1)):
+                if field in record:
+                    _require(state.value.endswith("_CONSUMED"), "STATE_STREAM_EVIDENCE_NOT_TERMINAL")
+                    try:
+                        model.model_validate(record[field])
+                    except ValidationError:
+                        raise ProbeCampaignError("STATE_STREAM_EVIDENCE_INVALID") from None
+            outcome = record.get("stream_outcome_v1")
+            if outcome is not None:
+                _require(outcome["case_sha256"] == record["case_sha256"]
+                         and outcome["provider_entity_sha256"] == record["raw_response_sha256"]
+                         and outcome["request_sha256"] == self.plan.cases[index].input_envelope_sha256
+                         and outcome["route_fingerprint_sha256"] == self.plan.cases[index].route.route_fingerprint,
+                         "STATE_STREAM_EVIDENCE_BINDING_MISMATCH")
         _require(non_unused_seen or all(r["state"] == NonceState.UNUSED for r in self._records), "STATE_SEQUENCE_INVALID")
         attempted = sum(record["state"] in {
             NonceState.DISPATCH_ATTEMPTED.value,
@@ -478,6 +572,7 @@ class FullShortProbeCampaign:
             _require(isinstance(nonce, str) and bool(nonce), "NONCE_FACTORY_INVALID")
             nonce_sha = canonical_sha256("full-short-probe-nonce-v1", nonce)
             _require(nonce_sha not in {r.get("nonce_sha256") for r in self._records}, "NONCE_REUSED")
+            _require(nonce_sha not in getattr(self.plan, "forbidden_nonce_sha256s", ()), "HISTORICAL_NONCE_REUSED")
             record.update(state=NonceState.RESERVED_PRE_CREDENTIAL.value, nonce_sha256=nonce_sha)
             self._checkpoint()
 
@@ -546,6 +641,10 @@ class FullShortProbeCampaign:
                 raw_response_base64=base64.b64encode(result.raw_response).decode("ascii"),
                 raw_response_sha256=raw_sha,
             )
+            for name in ("provider_stream_error", "stream_outcome_v1"):
+                evidence = getattr(result, name)
+                if evidence is not None:
+                    record[name] = evidence.model_dump(mode="json")
             self._counters["elapsed_seconds"] = self._elapsed()
             self._started = self._clock()
             if (
@@ -582,6 +681,7 @@ def build_probe_campaign_plan(
 __all__ = [
     "BLOCKED_SHAPE_COUNT", "CASE_COUNT", "CampaignLimits", "DispatchRequest",
     "DispatchResult", "FullShortProbeCampaign", "NonceState", "ProbeCampaignError",
+    "ProbeStreamOutcomeEvidenceV1",
     "ProbeCampaignPlan", "ProbeCase", "ProbeResultKind", "ProbeRouteIdentity",
     "build_probe_campaign_plan", "canonical_sha256",
 ]

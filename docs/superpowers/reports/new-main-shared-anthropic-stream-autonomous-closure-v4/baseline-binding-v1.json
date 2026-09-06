@@ -1,0 +1,561 @@
+{
+  "version": 1,
+  "repository": "C:\\小说\\novel-flywheel-console",
+  "state": {
+    "config/full_short_route_capability_registry_v1.json": {
+      "exists": true,
+      "kind": "file",
+      "sha256": "20c8bf8186f23856f501380bea91f7d7b836f3841678bac81c49e63d608bc2be"
+    },
+    "docs/maintenance.md": {
+      "exists": true,
+      "kind": "file",
+      "sha256": "45a8f383ff12f86f278cf959005a87c974af8f533cd1b53f6bde3d57891c2116"
+    },
+    "docs/superpowers/reports/exact-ready-required-route-capability-evidence-closure-v1/baseline-binding-v1.json": {
+      "exists": true,
+      "kind": "file",
+      "sha256": "ee47093e621b522b0d976ad61ac33c4f357231eae2ad7638577813eaf7b4f95a"
+    },
+    "docs/superpowers/reports/exact-ready-required-route-capability-evidence-closure-v1/sha256-manifest-v1.json": {
+      "exists": true,
+      "kind": "file",
+      "sha256": "91ee9884692c87aeb338d77b8bf012a49f6f95613328a8e3c2768ee076b8c5e5"
+    },
+    "docs/superpowers/reports/new-main-takeover-probe02-error-hardening-successor-v1/README.md": {
+      "exists": true,
+      "kind": "file",
+      "sha256": "309970c1d54a2a58aed42d656f4d6a8ea4841990d55b85c9b54329182fbdb3a8"
+    },
+    "docs/superpowers/reports/new-main-takeover-probe02-error-hardening-successor-v1/authoritative-error-event-semantics-v1.json": {
+      "exists": true,
+      "kind": "file",
+      "sha256": "43ea2397788ac417f7ed300cd30c2527f5a78a388ab983aab37c3dd94c41c0ef"
+    },
+    "docs/superpowers/reports/new-main-takeover-probe02-error-hardening-successor-v1/baseline-binding-v1.json": {
+      "exists": true,
+      "kind": "file",
+      "sha256": "de408aba15904dfc8cf0a9cfa3afdad92cb5a373dd5c981be714e8c45b93a428"
+    },
+    "docs/superpowers/reports/new-main-takeover-probe02-error-hardening-successor-v1/baseline-full-suite-recovery-v1.json": {
+      "exists": true,
+      "kind": "file",
+      "sha256": "51ed2e5b242a2662592d7115c613d58e57b70dcc5999a3b5169665f9b1a2e727"
+    },
+    "docs/superpowers/reports/new-main-takeover-probe02-error-hardening-successor-v1/focused-tests-v1.json": {
+      "exists": true,
+      "kind": "file",
+      "sha256": "045dd92c7e96fa67e04914805765fe5e7f9445502d23337ee2f7d8db28eaf964"
+    },
+    "docs/superpowers/reports/new-main-takeover-probe02-error-hardening-successor-v1/memory-path-origin-v1.json": {
+      "exists": true,
+      "kind": "file",
+      "sha256": "b88506c127f925d9d87d9ae09bf259cef8eeecc828266115b8ae2f17d8946f3d"
+    },
+    "docs/superpowers/reports/new-main-takeover-probe02-error-hardening-successor-v1/old-main-child-work-recovery-v1.json": {
+      "exists": true,
+      "kind": "file",
+      "sha256": "5b2609d8f31f528d60a00466e245b6097b0c6478d92f76cc4c2639e1453a54cb"
+    },
+    "docs/superpowers/reports/new-main-takeover-probe02-error-hardening-successor-v1/preexecution-final-report-v1.md": {
+      "exists": true,
+      "kind": "file",
+      "sha256": "ca32ccdabfc2b2f94b8f78b51dc6ae13f8cd928dba7d9608a61394c7117b3224"
+    },
+    "docs/superpowers/reports/new-main-takeover-probe02-error-hardening-successor-v1/privacy-v1.json": {
+      "exists": true,
+      "kind": "file",
+      "sha256": "b2774f4ccf4a0b352a2af9dd4d4a3235c34f293c975ffbf7ffb7570143d11cdf"
+    },
+    "docs/superpowers/reports/new-main-takeover-probe02-error-hardening-successor-v1/probe02-current-worktree-replay-v1.json": {
+      "exists": true,
+      "kind": "file",
+      "sha256": "ccd6b388576de66addc31a49959a0359265d818820dfc8643d95b8dc604a1c06"
+    },
+    "docs/superpowers/reports/new-main-takeover-probe02-error-hardening-successor-v1/sha256-manifest-v1.json": {
+      "exists": true,
+      "kind": "file",
+      "sha256": "4715f01e6e1091b5005fd71b5afbefc83f96a09de0745c0e4bb941c209c0ccb4"
+    },
+    "docs/superpowers/reports/new-main-takeover-probe02-error-hardening-successor-v1/shared-response-regression-matrix-v1.json": {
+      "exists": true,
+      "kind": "file",
+      "sha256": "53a519a3dd967395d88916b2b9b2da3469249b4749374238ee0346a23f78dc2f"
+    },
+    "docs/superpowers/reports/new-main-takeover-probe02-error-hardening-successor-v1/stop-required-output-v1.json": {
+      "exists": true,
+      "kind": "file",
+      "sha256": "0ca7876e99584833da44fe89778385505533a4b92592898d3173c58d4609440b"
+    },
+    "docs/superpowers/reports/new-main-takeover-probe02-error-hardening-successor-v1/strict-l3-preexecution-v1.json": {
+      "exists": true,
+      "kind": "file",
+      "sha256": "7a5a0c0433b6c0ffc39e377e1548651d824b5f81167d0616e532fb61fedfd975"
+    },
+    "docs/superpowers/reports/new-main-takeover-probe02-error-hardening-successor-v1/takeover-worktree-intake-v1.json": {
+      "exists": true,
+      "kind": "file",
+      "sha256": "793a299508b8fe0c6c2397fc985c8c3af35ec0bc42401705d5067e72ed60276f"
+    },
+    "docs/superpowers/reports/probe02-anthropic-error-hardening-successor-v1/agent-a-authoritative-error-semantics-v1.json": {
+      "exists": true,
+      "kind": "file",
+      "sha256": "c88ace4b8b70e859402dd3e387e3d461fef28bf22ee337d6ccb21f3f42dad4c3"
+    },
+    "docs/superpowers/reports/probe02-anthropic-error-hardening-successor-v1/agent-b-error-precedence-root-cause-v1.json": {
+      "exists": true,
+      "kind": "file",
+      "sha256": "47b94b1f2020fa4fcd9eb40db40f6b3ef5f2bd4fff35c6584c66f013d9ee5f5d"
+    },
+    "docs/superpowers/reports/probe02-anthropic-error-hardening-successor-v1/agent-c-nonobject-error-root-cause-v1.json": {
+      "exists": true,
+      "kind": "file",
+      "sha256": "27985055905b444c92a99a0a6924e72c3a7680eec4110a33424ce76f838eb7fe"
+    },
+    "docs/superpowers/reports/probe02-anthropic-error-hardening-successor-v1/authoritative-error-event-semantics-v1.json": {
+      "exists": true,
+      "kind": "file",
+      "sha256": "c88ace4b8b70e859402dd3e387e3d461fef28bf22ee337d6ccb21f3f42dad4c3"
+    },
+    "docs/superpowers/reports/probe02-anthropic-error-hardening-successor-v1/baseline-binding-v1.json": {
+      "exists": true,
+      "kind": "file",
+      "sha256": "c76fafec0209e881a344ea82d79f208e2c7d9bcd1c98ce2dc947b4ed7557e354"
+    },
+    "docs/superpowers/reports/probe02-anthropic-error-hardening-successor-v1/change-contract-v1.json": {
+      "exists": true,
+      "kind": "file",
+      "sha256": "aaf43e55a1bab380f6177bb2d004e478eb29d27be62c7c90be84c456ef071135"
+    },
+    "docs/superpowers/reports/probe02-anthropic-error-hardening-successor-v1/dirty-worktree-intake-v1.json": {
+      "exists": true,
+      "kind": "file",
+      "sha256": "dfaa80d276300fcf8017e58220b3797759329335bfc38089b0173a87abc05c69"
+    },
+    "docs/superpowers/reports/probe02-anthropic-error-hardening-successor-v1/probe02-current-worktree-replay-v1.json": {
+      "exists": true,
+      "kind": "file",
+      "sha256": "372ed0b6bf8b70b4ed3051f74d1b2d9ddf0ab43c36be0832792bb35b7416c1aa"
+    },
+    "docs/superpowers/reports/probe02-post-message-stop-ping-fix-successor-v1/README.md": {
+      "exists": true,
+      "kind": "file",
+      "sha256": "f03c3d9f71795eec70c693503f4df80501db7b5e9647c103f18e502c29216912"
+    },
+    "docs/superpowers/reports/probe02-post-message-stop-ping-fix-successor-v1/agent-a-authoritative-ping-semantics-v1.json": {
+      "exists": true,
+      "kind": "file",
+      "sha256": "492bd76100f41f4a69b689909739ca6e1f6d5052a61010140902b28161b2b190"
+    },
+    "docs/superpowers/reports/probe02-post-message-stop-ping-fix-successor-v1/agent-b-probe02-raw-forensics-v1.json": {
+      "exists": true,
+      "kind": "file",
+      "sha256": "938c5f2bb9dd4bd8e6ba496034bf1a3055d383b788b603a9dabea74c4198c5b5"
+    },
+    "docs/superpowers/reports/probe02-post-message-stop-ping-fix-successor-v1/agent-c-state-machine-root-cause-v1.json": {
+      "exists": true,
+      "kind": "file",
+      "sha256": "b68320784d2f8f6a5e53fa170fee19c3121249aac80a73f681478da8c5d3ca28"
+    },
+    "docs/superpowers/reports/probe02-post-message-stop-ping-fix-successor-v1/agent-d-shared-protocol-blast-radius-v1.json": {
+      "exists": true,
+      "kind": "file",
+      "sha256": "d5bbbd1658e969c0c557eaae73163380207d9d7fa5dd6bcfe95eb2d456a4cc8b"
+    },
+    "docs/superpowers/reports/probe02-post-message-stop-ping-fix-successor-v1/agent-e-usage-disposition-v1.json": {
+      "exists": true,
+      "kind": "file",
+      "sha256": "958d48cf549a1c5414a0bf9a782bc21fe2a136ff3b0ed095fc8fe9624c177d1f"
+    },
+    "docs/superpowers/reports/probe02-post-message-stop-ping-fix-successor-v1/agent-f-successor-campaign-v1.json": {
+      "exists": true,
+      "kind": "file",
+      "sha256": "bc387f6d0f057cc30d237025c35ae6b987691b2e1c71bae5e9180650cc33a5aa"
+    },
+    "docs/superpowers/reports/probe02-post-message-stop-ping-fix-successor-v1/authoritative-ping-semantics-v1.json": {
+      "exists": true,
+      "kind": "file",
+      "sha256": "492bd76100f41f4a69b689909739ca6e1f6d5052a61010140902b28161b2b190"
+    },
+    "docs/superpowers/reports/probe02-post-message-stop-ping-fix-successor-v1/baseline-binding-v1.json": {
+      "exists": true,
+      "kind": "file",
+      "sha256": "871d59c1ac5ba32dd8586af7fb26020495569fbf163be8c2b612adbdfc9af38a"
+    },
+    "docs/superpowers/reports/probe02-post-message-stop-ping-fix-successor-v1/change-contract-v1.json": {
+      "exists": true,
+      "kind": "file",
+      "sha256": "b2d4d7ff1e14ceae40d657317214c1b1dc992c3bb3e8246398309754ebc16bf0"
+    },
+    "docs/superpowers/reports/probe02-post-message-stop-ping-fix-successor-v1/complete-production-incident-catalog-scan-v1.json": {
+      "exists": true,
+      "kind": "file",
+      "sha256": "621c7c06a3ca433c70b4edb44f29440a027bd8b5cbf6a49adf217d44e28c09a3"
+    },
+    "docs/superpowers/reports/probe02-post-message-stop-ping-fix-successor-v1/historical-manifest-verification-v1.json": {
+      "exists": true,
+      "kind": "file",
+      "sha256": "6365da21f441a0ff8941b998f58c3ec459e0d3bf2d0eac7909ca2c47b05c5a89"
+    },
+    "docs/superpowers/reports/probe02-post-message-stop-ping-fix-successor-v1/historical-workload-admission-v1.json": {
+      "exists": true,
+      "kind": "file",
+      "sha256": "3377fe863ba9ed952ee4fa3f28d3c0a79bb17d75bf3ab23270073d8195e386e2"
+    },
+    "docs/superpowers/reports/probe02-post-message-stop-ping-fix-successor-v1/post-terminal-ping-state-machine-fix-v1.json": {
+      "exists": true,
+      "kind": "file",
+      "sha256": "f99921f7c2bff9b1706b0ce2697c92fca84838c5147e987e9cf3318c4c48ef08"
+    },
+    "docs/superpowers/reports/probe02-post-message-stop-ping-fix-successor-v1/preexecution-final-report-v1.md": {
+      "exists": true,
+      "kind": "file",
+      "sha256": "ed624f717e6caca6a8aa5f0816f5e45f14de6860c9e598614f635213956a219d"
+    },
+    "docs/superpowers/reports/probe02-post-message-stop-ping-fix-successor-v1/probe02-event-sequence-v1.json": {
+      "exists": true,
+      "kind": "file",
+      "sha256": "87e12c026a4775c0fd83702e5f6d0b6e9a06a48a0a5ff8c07f211c3a17195e46"
+    },
+    "docs/superpowers/reports/probe02-post-message-stop-ping-fix-successor-v1/probe02-exact-replay-after-fix-v1.json": {
+      "exists": true,
+      "kind": "file",
+      "sha256": "a89f672808b02e704f6fc6474395e7a257d6f904f179d09e8375f78e91f675ce"
+    },
+    "docs/superpowers/reports/probe02-post-message-stop-ping-fix-successor-v1/probe02-exact-replay-before-fix-v1.json": {
+      "exists": true,
+      "kind": "file",
+      "sha256": "b0e2bddd999d8202ae5902a1fef5a41f504d65997274387a25af507f69c7553d"
+    },
+    "docs/superpowers/reports/probe02-post-message-stop-ping-fix-successor-v1/probe02-workload-evidence-disposition-v1.json": {
+      "exists": true,
+      "kind": "file",
+      "sha256": "49fb771cdba625225b5f8f51674a6ca51cd41fdb0ef89a51a1738ac484ac00f7"
+    },
+    "docs/superpowers/reports/probe02-post-message-stop-ping-fix-successor-v1/sha256-manifest-v1.json": {
+      "exists": true,
+      "kind": "file",
+      "sha256": "1c6ff523c37870b36a88700e82d574e375a512fc42080fd2a32e03dce3edb94c"
+    },
+    "docs/superpowers/reports/probe02-post-message-stop-ping-fix-successor-v1/shared-protocol-blast-radius-review-v1.json": {
+      "exists": true,
+      "kind": "file",
+      "sha256": "edf43bad118e11024eba13483116bc93d9b1f2bfee49161dabb941007f66c5e2"
+    },
+    "docs/superpowers/reports/probe02-post-message-stop-ping-fix-successor-v1/shared-protocol-request-zero-diff-v1.json": {
+      "exists": true,
+      "kind": "file",
+      "sha256": "134561e64c96866a1fbdfd4f4aad8121f17694da03b71e2708af52dbb818a550"
+    },
+    "docs/superpowers/reports/probe02-post-message-stop-ping-fix-successor-v1/shared-protocol-response-regression-matrix-v1.json": {
+      "exists": true,
+      "kind": "file",
+      "sha256": "8a7bc38d9a581d1decfed788e58d85ba7d31b8ae279bc3efd84e99c3339feeae"
+    },
+    "docs/superpowers/reports/probe02-post-message-stop-ping-fix-successor-v1/successor-probe-case-set-v1.json": {
+      "exists": true,
+      "kind": "file",
+      "sha256": "2c9bef72b5b0e74df01febc84605c4660fdf38829db59aef8ce36539bffa48a7"
+    },
+    "docs/superpowers/reports/shared-anthropic-stream-architecture-autonomous-closure-v1/baseline-binding-v1.json": {
+      "exists": true,
+      "kind": "file",
+      "sha256": "828c39f6e81ad1eb85c144075534f0522df82352098c7b45edb7a821554c3dcf"
+    },
+    "docs/superpowers/reports/shared-anthropic-stream-architecture-autonomous-closure-v1/change-contract-v3.json": {
+      "exists": true,
+      "kind": "file",
+      "sha256": "29e78ba914e789fc2494756373a6784f9b9ce99ac2d80cf7e3f13257a04ca960"
+    },
+    "docs/superpowers/reports/shared-anthropic-stream-architecture-autonomous-closure-v1/closure-loop-history-v1.json": {
+      "exists": true,
+      "kind": "file",
+      "sha256": "d9b20e51c76fb872f663af25d95cd9e865447a6927c657923a0cdeb917c174b4"
+    },
+    "docs/superpowers/reports/shared-anthropic-stream-architecture-autonomous-closure-v1/dirty-worktree-intake-v1.json": {
+      "exists": true,
+      "kind": "file",
+      "sha256": "dacdf852895e0983d7a25001525476dde41aad44bd00e5e74c74b1419ec6304a"
+    },
+    "docs/superpowers/reports/shared-anthropic-stream-state-machine-closed-world-v1/README.md": {
+      "exists": true,
+      "kind": "file",
+      "sha256": "11aaedb692f3b7afc954c0923d6770a057ac7f0751c4ad13e095b19390e74c13"
+    },
+    "docs/superpowers/reports/shared-anthropic-stream-state-machine-closed-world-v1/authoritative-shared-protocol-semantics-v1.json": {
+      "exists": true,
+      "kind": "file",
+      "sha256": "663cb9afcf266e352454395c9bd6bb457646df94b2c699f4b62c02391050f758"
+    },
+    "docs/superpowers/reports/shared-anthropic-stream-state-machine-closed-world-v1/baseline-binding-v1.json": {
+      "exists": true,
+      "kind": "file",
+      "sha256": "26409f2c85e1ac0a5502970baa7a0f6af54db06ae2e058a715a5f286435fd2a3"
+    },
+    "docs/superpowers/reports/shared-anthropic-stream-state-machine-closed-world-v1/change-contract-v1.json": {
+      "exists": true,
+      "kind": "file",
+      "sha256": "5fda4b5f5b4470b741008b0f4c31c3d7b7f0e7312aea02b9cbf51629baf29bfe"
+    },
+    "docs/superpowers/reports/shared-anthropic-stream-state-machine-closed-world-v1/dirty-worktree-intake-v1.json": {
+      "exists": true,
+      "kind": "file",
+      "sha256": "961b7adb31e899a738e47dc40d03cc377e238a58567028df8ec77494b94bfd0d"
+    },
+    "docs/superpowers/reports/shared-anthropic-stream-state-machine-closed-world-v1/durable-partial-tail-counterexamples-v1.json": {
+      "exists": true,
+      "kind": "file",
+      "sha256": "5a062e9bc88362700de0089ac191377f7b02b74d51a90b19a1f85780e1c9fcb7"
+    },
+    "docs/superpowers/reports/shared-anthropic-stream-state-machine-closed-world-v1/error-payload-normalization-contract-v1.json": {
+      "exists": true,
+      "kind": "file",
+      "sha256": "de54da587cd97eaa29a22ec347870244f3951922595ad1f86bc37895e75586a2"
+    },
+    "docs/superpowers/reports/shared-anthropic-stream-state-machine-closed-world-v1/final-required-output-v1.json": {
+      "exists": true,
+      "kind": "file",
+      "sha256": "eeb837ad178cc198c76fd2b305d9c3ab6758f00c7c31b6e0c18c2c9cfb3f7e90"
+    },
+    "docs/superpowers/reports/shared-anthropic-stream-state-machine-closed-world-v1/focused-tests-v1.json": {
+      "exists": true,
+      "kind": "file",
+      "sha256": "92639bc65bff1ae9815bef30f445a09366a67b6074a28e5ff6d9d05b63346c32"
+    },
+    "docs/superpowers/reports/shared-anthropic-stream-state-machine-closed-world-v1/forward-risk-report-v2.json": {
+      "exists": true,
+      "kind": "file",
+      "sha256": "4a83daaaf216abaef21612ae56401b6df2c10ee443a4a0adeb83f02d496d4411"
+    },
+    "docs/superpowers/reports/shared-anthropic-stream-state-machine-closed-world-v1/generated-transition-test-report-v1.json": {
+      "exists": true,
+      "kind": "file",
+      "sha256": "2f0a717739f7744b3db8e4db54569ca01dc777d9845f83b7dee488513cf52f7b"
+    },
+    "docs/superpowers/reports/shared-anthropic-stream-state-machine-closed-world-v1/historical-exact-replay-report-v1.json": {
+      "exists": true,
+      "kind": "file",
+      "sha256": "9eb085570a7e2633f9e78795514d83dc7db03e0c44bf7d552a1d79a0ccb0c23a"
+    },
+    "docs/superpowers/reports/shared-anthropic-stream-state-machine-closed-world-v1/partial-frame-baseline-comparison-v1.json": {
+      "exists": true,
+      "kind": "file",
+      "sha256": "90af1ee97e3c0b6b109440a956badd5f430f482652a2731f187ac9326791b04c"
+    },
+    "docs/superpowers/reports/shared-anthropic-stream-state-machine-closed-world-v1/partial-frame-current-comparison-v1.json": {
+      "exists": true,
+      "kind": "file",
+      "sha256": "452cd01cb9486be3bc9edac417da83e11cdd4ce3be0710e0f918cf5ee7fcbcbd"
+    },
+    "docs/superpowers/reports/shared-anthropic-stream-state-machine-closed-world-v1/preexecution-final-report-v1.md": {
+      "exists": true,
+      "kind": "file",
+      "sha256": "18a41a2289dda0d47219db3cabbe892910b069fea84eeed3ee17373e6fffc313"
+    },
+    "docs/superpowers/reports/shared-anthropic-stream-state-machine-closed-world-v1/privacy-v1.json": {
+      "exists": true,
+      "kind": "file",
+      "sha256": "e8bb2d49c5684641eae813d5fed56016f823213242cb73a8f46b2e8b7cb891ad"
+    },
+    "docs/superpowers/reports/shared-anthropic-stream-state-machine-closed-world-v1/reviewer-1-v1.json": {
+      "exists": true,
+      "kind": "file",
+      "sha256": "bc50fdf28c0c171db27075ad2d71d6a0e190e30f4527c5b265704d25ae08212e"
+    },
+    "docs/superpowers/reports/shared-anthropic-stream-state-machine-closed-world-v1/reviewer-2-v1.json": {
+      "exists": true,
+      "kind": "file",
+      "sha256": "a860aea9822896299016591bae972d3102674dc714be3459dddacb68109ce84c"
+    },
+    "docs/superpowers/reports/shared-anthropic-stream-state-machine-closed-world-v1/reviewer-3-v1.json": {
+      "exists": true,
+      "kind": "file",
+      "sha256": "b64627c2a06c26920dd75c0b8e16e8e63d5a50c6243240b24cbcf87fc5b80b55"
+    },
+    "docs/superpowers/reports/shared-anthropic-stream-state-machine-closed-world-v1/reviewer-4-v1.json": {
+      "exists": true,
+      "kind": "file",
+      "sha256": "b441feb1cad19014bbc63b19acba7c2897d8c42d3f8a7e48755460aa9f774abf"
+    },
+    "docs/superpowers/reports/shared-anthropic-stream-state-machine-closed-world-v1/reviewer-5-v1.json": {
+      "exists": true,
+      "kind": "file",
+      "sha256": "409483afde7fff71cf153014fa4ad74280a8ec8c7f71b592a7adca4f66b1b82c"
+    },
+    "docs/superpowers/reports/shared-anthropic-stream-state-machine-closed-world-v1/sha256-manifest-v1.json": {
+      "exists": true,
+      "kind": "file",
+      "sha256": "6bc8988ad94e3333e40823915b242e5c31b6523bb036c93ecb99bd5c7aefe6f5"
+    },
+    "docs/superpowers/reports/shared-anthropic-stream-state-machine-closed-world-v1/shared-anthropic-protocol-domain-v1.json": {
+      "exists": true,
+      "kind": "file",
+      "sha256": "5006fe10ce9b3f13dafd7fa66b01a2131bb0d60f9f9c8678f039fceb0c07f5c9"
+    },
+    "docs/superpowers/reports/shared-anthropic-stream-state-machine-closed-world-v1/shared-anthropic-transition-matrix-v1.json": {
+      "exists": true,
+      "kind": "file",
+      "sha256": "7589146f00cd5399ef561b9b1e4bb872733a596dce790a36bb3145419acd545b"
+    },
+    "docs/superpowers/reports/shared-anthropic-stream-state-machine-closed-world-v1/shared-completeness-contract-v1.json": {
+      "exists": true,
+      "kind": "file",
+      "sha256": "e2230a358e982450648c304c7c64a7598bdfcb26861bd86c03da10d3eb7b5383"
+    },
+    "docs/superpowers/reports/shared-anthropic-stream-state-machine-closed-world-v1/shared-request-zero-diff-v1.json": {
+      "exists": true,
+      "kind": "file",
+      "sha256": "23121533077742615e7c9b7d99c6c9bfd09efb50292ea7833eda430cb09af612"
+    },
+    "docs/superpowers/reports/shared-anthropic-stream-state-machine-closed-world-v1/shared-stream-causal-precedence-contract-v1.json": {
+      "exists": true,
+      "kind": "file",
+      "sha256": "8a235484dc0280f60ceb4e6660062acba841196c8b360bfd0cc06cb30f44528b"
+    },
+    "docs/superpowers/reports/shared-anthropic-stream-state-machine-closed-world-v1/state-machine-fault-injection-report-v1.json": {
+      "exists": true,
+      "kind": "file",
+      "sha256": "cdf71026fe877fcfd04b1c2d7c22e504077836120be25337f6703dfc605f939b"
+    },
+    "docs/superpowers/reports/shared-anthropic-stream-state-machine-closed-world-v1/strict-l3-preexecution-v1.json": {
+      "exists": true,
+      "kind": "file",
+      "sha256": "89a3a814a158958841236702424f0302f1f08b8e1aa0d1050ffc7cbbdb264d16"
+    },
+    "docs/superpowers/reports/shared-anthropic-stream-state-machine-closed-world-v1/test-materializer-side-effect-forensics-v1.json": {
+      "exists": true,
+      "kind": "file",
+      "sha256": "058590db218a67597d4bb2729f80e302e4c0cc517c87a691a228859745fca485"
+    },
+    "docs/superpowers/specs/probe02-post-terminal-ping-successor-v1.md": {
+      "exists": true,
+      "kind": "file",
+      "sha256": "3a443e74d4a2148654af79778973e70407520f192aaa48cfa6ab8582a25fcf9e"
+    },
+    "docs/superpowers/specs/shared-anthropic-stream-closed-world-v1.md": {
+      "exists": true,
+      "kind": "file",
+      "sha256": "b8a6f9eeea5acb2da3c616315e51a643cd5f2cd9fdd5b31c89d9cd72b91da4f4"
+    },
+    "memory/narrative-contract.json": {
+      "exists": true,
+      "kind": "file",
+      "sha256": "5ea7ec967bbbff669d70271e0eef3a0f779a1c7c0a487939b9be1a12679c7d41"
+    },
+    "src/novel_flywheel/anthropic_stream.py": {
+      "exists": true,
+      "kind": "file",
+      "sha256": "dff3ad231865abc52745d92047cff522381b18f714112772d17bb8ae1dff7c1b"
+    },
+    "src/novel_flywheel/execution_failure_architecture.py": {
+      "exists": true,
+      "kind": "file",
+      "sha256": "b3e3ad1033a3dd0ccba534389c3369d795d8779c8a04e19ec901aa139ea48cfc"
+    },
+    "src/novel_flywheel/external_workload_evidence.py": {
+      "exists": true,
+      "kind": "file",
+      "sha256": "0e801de04d60b4ee6f9b4d4179b9668602df16b574bddba2c83a1f1aeaefcc35"
+    },
+    "src/novel_flywheel/full_short_campaign_authorization.py": {
+      "exists": true,
+      "kind": "file",
+      "sha256": "4e81a75be0c6bdc295a6cb5c60d7413872525dfa5dab22ebc184368fa0219cf0"
+    },
+    "src/novel_flywheel/full_short_execution.py": {
+      "exists": true,
+      "kind": "file",
+      "sha256": "29bcd3e04faaa65a367657ae5b1142058a7cc47554f324a5d7edd5d966590ab3"
+    },
+    "src/novel_flywheel/full_short_probe_campaign.py": {
+      "exists": true,
+      "kind": "file",
+      "sha256": "0645b3f61c4c8c990b62f915c71b3c2f9124a7f8282fc6b22302aa58e121ef9b"
+    },
+    "src/novel_flywheel/ping_successor.py": {
+      "exists": true,
+      "kind": "file",
+      "sha256": "915418900d9d323826f327fc386ded4adf847799192256879bd496eb4f70709b"
+    },
+    "src/novel_flywheel/production_incidents.py": {
+      "exists": true,
+      "kind": "file",
+      "sha256": "b5be9313f974082800bd6de00a9db1e34d00622b4683376a912beb6600d6ba8f"
+    },
+    "src/novel_flywheel/provider_response_capture.py": {
+      "exists": true,
+      "kind": "file",
+      "sha256": "5e8128e336b81fa1881f144fadc26c511a9227453a8724a3cf2b50f8e9de9fb4"
+    },
+    "src/novel_flywheel/provider_stream_error.py": {
+      "exists": true,
+      "kind": "file",
+      "sha256": "71c15b9f098c63dcd2d67ddc9a3aba16beee0a079c53b5b9f009a4655d6eebe1"
+    },
+    "src/novel_flywheel/providers/anthropic.py": {
+      "exists": true,
+      "kind": "file",
+      "sha256": "3c27185f2cb97c646cd4d1a27d5e1b75ed2ef605d2c095d366fc4f7460488fcb"
+    },
+    "src/novel_flywheel/providers/http.py": {
+      "exists": true,
+      "kind": "file",
+      "sha256": "2f2d69cace513a9c85ec48a3fe4e80bd227dad6948709af2f51eaf375aa883f6"
+    },
+    "tests/canary/test_anthropic_error_precedence.py": {
+      "exists": true,
+      "kind": "file",
+      "sha256": "52c793e5e7b1102339a5529224d3ab8fc62ebf50fa382f21866adb8201b72cef"
+    },
+    "tests/canary/test_closed_world_stream_evidence.py": {
+      "exists": true,
+      "kind": "file",
+      "sha256": "ced6995c090dee25b5348d22948f07db2193f5b287fd5b1621c1364cf5698a77"
+    },
+    "tests/providers/test_anthropic_closed_world_http.py": {
+      "exists": true,
+      "kind": "file",
+      "sha256": "5dfcb11f4ca6756a6a70b66fa348af61898e98e41eca72ed7e5368113b44a87e"
+    },
+    "tests/providers/test_anthropic_closed_world_payload_guards.py": {
+      "exists": true,
+      "kind": "file",
+      "sha256": "8a24213bf25c7d1614dd67e2f0ed7002a5d56d1f7c23f601dcc1c62e444094e9"
+    },
+    "tests/providers/test_anthropic_closed_world_transitions.py": {
+      "exists": true,
+      "kind": "file",
+      "sha256": "8789ae65530267adc8fc0e81f63396cbd5985d07db99c8088d4b66ba2a6426fe"
+    },
+    "tests/providers/test_anthropic_error_hardening.py": {
+      "exists": true,
+      "kind": "file",
+      "sha256": "25e0757b663cde7afa578fc65da6d73cf83f079dcd635a084d10f7da99eefbfc"
+    },
+    "tests/providers/test_anthropic_post_terminal_ping.py": {
+      "exists": true,
+      "kind": "file",
+      "sha256": "9047fca892b16076fc0c86e1317e5b30869ec03fe45f7e2750fa8cc816294c18"
+    },
+    "tools/canary/execute_full_short_budget_unblocked_one_round.py": {
+      "exists": true,
+      "kind": "file",
+      "sha256": "978183a4b65017821c3c92863bede1f03a320142ba94b0da8e96ea9f36f60d3a"
+    },
+    "tools/canary/first_trustworthy_full_short_runner.py": {
+      "exists": true,
+      "kind": "file",
+      "sha256": "ba45a8a861536467653d8c4186f344f8953d8adf1025c79b9e10f7463c3b8029"
+    },
+    "tools/canary/full_short_budget_unblocked_campaign.py": {
+      "exists": true,
+      "kind": "file",
+      "sha256": "f2ddf396819eb42ab31bc7d4adf937f1f9adf28425837434e1ac37d58fc2babc"
+    },
+    "tools/canary/ping_successor_binding.py": {
+      "exists": true,
+      "kind": "file",
+      "sha256": "8049e589f4e1fb6ce2343268fdeaf248eca56b2aba6295d41ed385142e60f541"
+    }
+  }
+}

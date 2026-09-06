@@ -1,0 +1,94 @@
+{
+  "schema": "SharedAnthropicIndependentArchitectureReviewV1",
+  "reviewer": "closedworld_reviewer_5",
+  "reviewer_identity": "/root/closedworld_reviewer_5",
+  "role": "exact historical replay / fault injection / restart / exact-once",
+  "independence_claimed": true,
+  "other_reviewer_conclusions_read": false,
+  "delegated": false,
+  "verdict": "ARCHITECTURE_REJECT",
+  "master_source_path": "C:/Users/yuyan/.codex/attachments/e445d0f3-a49b-42d6-b3ce-207ad3c1e206/pasted-text.txt",
+  "master_source_sha256": "58b91f4d35d03e6d01f21ba484629be50740af8d37a5ea358ba73cf8b43adfec",
+  "baseline_committed_head": "79a99a58ebe95b2be4d1e51a8d190070a2568574",
+  "source_sha256": {
+    "src/novel_flywheel/anthropic_stream.py": "dff3ad231865abc52745d92047cff522381b18f714112772d17bb8ae1dff7c1b",
+    "src/novel_flywheel/providers/anthropic.py": "3c27185f2cb97c646cd4d1a27d5e1b75ed2ef605d2c095d366fc4f7460488fcb",
+    "src/novel_flywheel/providers/http.py": "2f2d69cace513a9c85ec48a3fe4e80bd227dad6948709af2f51eaf375aa883f6",
+    "src/novel_flywheel/provider_response_capture.py": "5e8128e336b81fa1881f144fadc26c511a9227453a8724a3cf2b50f8e9de9fb4",
+    "src/novel_flywheel/provider_stream_error.py": "71c15b9f098c63dcd2d67ddc9a3aba16beee0a079c53b5b9f009a4655d6eebe1",
+    "src/novel_flywheel/full_short_execution.py": "29bcd3e04faaa65a367657ae5b1142058a7cc47554f324a5d7edd5d966590ab3",
+    "src/novel_flywheel/full_short_probe_campaign.py": "0645b3f61c4c8c990b62f915c71b3c2f9124a7f8282fc6b22302aa58e121ef9b",
+    "tools/canary/full_short_budget_unblocked_campaign.py": "f2ddf396819eb42ab31bc7d4adf937f1f9adf28425837434e1ac37d58fc2babc",
+    "tests/providers/test_anthropic_closed_world_transitions.py": "8789ae65530267adc8fc0e81f63396cbd5985d07db99c8088d4b66ba2a6426fe",
+    "tests/providers/test_anthropic_closed_world_http.py": "5dfcb11f4ca6756a6a70b66fa348af61898e98e41eca72ed7e5368113b44a87e",
+    "tests/canary/test_closed_world_stream_evidence.py": "ced6995c090dee25b5348d22948f07db2193f5b287fd5b1621c1364cf5698a77"
+  },
+  "findings": [
+    {
+      "id": "R5-001",
+      "priority": "P1",
+      "title": "Production Full Short capture observer does not acknowledge the new durable capture contract",
+      "file": "src/novel_flywheel/full_short_execution.py",
+      "line": 6156,
+      "end_line": 6233,
+      "evidence": [
+        "FullShortDispatchLedgerObserverV1.capture_provider_protocol_input persists raw bytes, independent capture anchor and ledger receipt, but its successful path returns None; AST independently confirms zero Return nodes.",
+        "AnthropicAdapter._consume_protocol_stream at lines 65-73 only emits Event.CAPTURE_COMMITTED when capture_ack is exactly True.",
+        "The production runner constructs this observer at tools/canary/first_trustworthy_full_short_runner.py:1987.",
+        "The HTTP fault test CaptureObserver returns True and the probe durable test persist_bytes returns True. Neither exercises this actual Full Short observer return contract."
+      ],
+      "impact": "Even a successfully persisted normal Full Short Anthropic response leaves the sole stream owner's capture_state NOT_ATTEMPTED and terminal_capture_complete false. The new three-concept contract is not integrated across the existing production owner boundary; this is a present source defect, not an objection that the future real Full Short has not run.",
+      "required_resolution": "Have the existing Full Short observer explicitly acknowledge successful durable capture only after its required persistence and validation chain completes; add an offline integration fixture retaining this observer, capture store and ledger, replacing only the HTTP network seam, then verify complete-success and Provider-error captures plus post-terminal timeout/cancel and restart."
+    },
+    {
+      "id": "R5-002",
+      "priority": "P1",
+      "title": "Full Short drops the final stream outcome before the durable restart boundary",
+      "file": "src/novel_flywheel/providers/anthropic.py",
+      "line": 277,
+      "end_line": 286,
+      "evidence": [
+        "AnthropicStream.body adds _shared_stream_state from snapshot(), but AnthropicAdapter._model_response_from_body does not carry that field into ModelResponse.provider_state.",
+        "GuardedProviderDispatch explicitly extracts _last_stream_outcome_v1 after closing the client and persists ProbeStreamOutcomeEvidenceV1; this integration is probe-specific.",
+        "FullShortDispatchLedgerObserverV1 and first_trustworthy_full_short_runner have no stream_outcome, shared_stream, tail_counts or terminal_capture_complete persistence consumer.",
+        "Full Short capture metadata stores only legacy transport_complete. Success plus tail timeout deliberately sets this True, making its saved metadata identical in that dimension to clean success.",
+        "replay_full_short_provider_attempt_v1 reparses receipt-anchored bytes. A timeout/cancel after the last received byte cannot be reconstructed from those bytes."
+      ],
+      "impact": "A Full Short restart can prove raw entity integrity and prevent redispatch, but cannot recover the third completeness concept or final transport-tail diagnostics of the already observed result. Probe-only durability tests do not close the required shared production persistence boundary.",
+      "required_resolution": "Persist a typed hash-bound final owner outcome through the existing Full Short ledger/evidence owner after stream and client closure, preserving immutable raw capture receipts and the separate tail state. Prove save/reload parity for clean success, success plus timeout/cancel and Provider error plus tail, without changing request or nonce policy."
+    }
+  ],
+  "positive_evidence": {
+    "independently_executed_exact_raw_entities": 37,
+    "independently_executed_real_historical_entities": 5,
+    "independent_replay_mismatch_count": 0,
+    "probe02_input_tokens": 137304,
+    "probe02_output_tokens": 64,
+    "probe02_post_terminal_ping_ignored_count": 3,
+    "historical_evidence": "Historical inventory distinguishes 32 generated entities from 5 genuine captures; exact hashes and source file hashes were independently checked. The report binds two original Full Short captures to external ledger receipts, successor captures to final manifests and the oldest raw SSE to committed forensic hash evidence. Missing historical bytes are explicitly not PASS.",
+    "fault_evidence": "Read independent literal 11x16 transition oracles and 353-case report, actual AnthropicAdapter MockTransport 223-case fault report, 89-case durable probe evidence and 977-case shared receipt. Tests cover iterator/aclose faults, payload shapes, typed primary precedence and durable acknowledgement, but replace the production Full Short observer.",
+    "exact_once": "FullShortProbeCampaign reserves/checkpoints before dispatch, debits conservatively, restores only authenticated states and skips PASS_CONSUMED; failure prevents later dispatch. Full Short durable replay uses external signed capture anchors and denies new session dispatch after a consumed nonce. No demonstrated duplicate request defect was found in these inspected paths.",
+    "existing_restart_tests_read": "tests/test_full_short_execution.py:1873,1893,1934 plus capture publication reconciliation tests; tests/test_provider_response_capture.py:447,479. These establish existing receipt and nonce mechanics, not final owner tail persistence."
+  },
+  "independent_execution": {
+    "script": "reviews/reviewer-5-synthetic.py",
+    "script_sha256": "167a1b1996b2e49fb942130911e9892c720069fff0a7f41d5100e502ebcc0185",
+    "exit_code": 0,
+    "source_binding_unchanged": true,
+    "capture_observer_return_nodes": 0,
+    "socket_and_http_send_blocked": true,
+    "provider_calls": 0,
+    "network_calls": 0,
+    "paid_calls": 0,
+    "full_suite_run": false,
+    "materializer_run": false
+  },
+  "limitations": [
+    "No claim that the whole Master campaign is completed; later execution, Exact READY dry run, size matrix, Strict L3 and final review remain separate gates.",
+    "No rejection based merely on unexecuted future Full Short or the intentionally stopped full suite.",
+    "Findings are existing production integration defects established by source tracing; no live Full Short was dispatched to reproduce them."
+  ],
+  "writes": ["reviews/reviewer-5-synthetic.py", "reviews/reviewer-5-v1.json"],
+  "source_or_test_or_old_evidence_mutated": false,
+  "exact_next_gate": "SHARED_ANTHROPIC_STREAM_STATE_MACHINE_ARCHITECTURE_REDESIGN_REQUIRED"
+}

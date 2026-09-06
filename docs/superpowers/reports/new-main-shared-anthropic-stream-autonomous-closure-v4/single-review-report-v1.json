@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "review_mode": "single_agent_clean_room",
+  "independence_claimed": false,
+  "scope": "shared Anthropic stream owner projection and capture-failure causal precedence",
+  "core_paths": [
+    "tools/canary/full_short_budget_unblocked_campaign.py",
+    "docs/maintenance.md"
+  ],
+  "raw_request": "pasted-text.txt",
+  "baseline": "C:\\小说\\zero-to-final-autonomous-e2e-v2-ledger\\task-baseline-20260906-current.json",
+  "focused_test": "tests/canary/test_closed_world_stream_evidence.py: 44 passed",
+  "related_test": "fresh isolated related suite: 1469 passed, 0 failed",
+  "full_suite_context": "6536 collected; 5837 passed, 355 failed, 297 errors; no shared-stream failures; unrelated legacy domains remain unresolved",
+  "forward_risk_report": "docs/superpowers/reports/new-main-shared-anthropic-stream-autonomous-closure-v4/forward-risk-v2.json",
+  "findings": [],
+  "status": "PASS_FOR_SCOPED_SHARED_STREAM_BOUNDARY",
+  "real_provider_calls": 0
+}

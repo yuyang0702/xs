@@ -1,5 +1,23 @@
 # Novel Flywheel Maintenance
 
+## Shared Anthropic stream closure candidate
+
+Anthropic SSE lifecycle, cumulative usage, terminal precedence and interruption
+handling now delegate to `novel_flywheel.anthropic_stream`. The finite registry
+contains 11 states and 16 event classes, including capture acknowledgement and
+failure. Structural guards reject invalid payloads before terminal authority.
+Unknown events use the explicit v1 fail-closed policy. Provider errors retain
+their typed primary cause through later transport faults; valid success retains
+semantic completeness through timeout/cancellation after message_stop.
+
+Capture completeness requires an explicit durable raw-byte acknowledgement,
+separate from clean transport closure and ModelResponse projection. Optional
+typed diagnostics persist with probe terminal records; old records remain
+reloadable and consumed nonces remain consumed. The closure candidate is still
+subject to the Master review and execution gates; offline test success alone
+does not authorize dispatch or prove a completed Full Short. See the shared
+Anthropic closed-world specification and its preparation evidence directory.
+
 ## Skill V3 pilot guidance provenance
 
 Planning's ordinary layered-context rendering remains byte-for-byte unchanged.
@@ -2665,3 +2683,14 @@ The Anthropic response adapter and exact capture extractor now share a protocol-
 Probe failures retain the existing precise capture/protocol families and safe child reason codes. Explicit Provider errors remain Provider errors, including after usage updates. Local request estimates remain workload bounds under the same estimator; Provider token counts are separate realized measurements. An accepted request is no longer rejected solely because its tokenizer reports fewer tokens than the local estimate. Partial/ambiguous accounting retains every known larger usage value and any necessary output reserve. Missing usage remains an estimate/reserve, never verified actual spend.
 
 The shared-usage successor authorization is a separate closed schema bound to the fresh Master and committed protocol, exact-replay, request-identity and regression evidence. The historical campaign and consumed nonces remain immutable. This successor uses one replacement probe 01 because the old capture lacks HTTP-status provenance, followed by cases 02–08, serially. New response metadata is sealed outside Git against the exact raw hash, request, route, authorization and consumed nonce. All existing capacity, Exact READY, size, Strict L3 and exactly-once Full Short gates still apply.
+# Probe-02 semantic terminal and transport ping recovery
+
+The shared Anthropic response parser accepts only ping keepalives after a complete `message_stop`, recording diagnostic counts without modifying the completed Message. Post-stop errors stay typed Provider failures; semantic events, duplicate stops and unknown events remain rejected. Capture terminal detection recognizes the same trailing-ping shape while retaining exact delimiter checks and strict adapter replay. Usage cannot be supplied by pings or post-terminal semantic events.
+
+The bounded ping-recovery successor separates eight capacity obligations from the six/seven fresh dispatch cases. Historical evidence retains its original authorization/head/nonce and is admitted explicitly for capacity only. It does not reset a consumed case or count as a successor request. See `docs/superpowers/specs/probe02-post-terminal-ping-successor-v1.md` and the corresponding preparation report directory for proof and gate status.
+
+### Shared Anthropic durable stream V4 candidate
+
+The response path now uses an incremental SSE framer and one checkpoint owner. Full Short persists signed generations under its existing external execution authority, with an explicit typed ACK and read-only rehydration. Partial tails preserve accepted semantic terminals; pre-terminal timeout and cancellation preserve their own cause. The final raw capture remains single-use. Requests and narrative authority are unchanged. See docs/superpowers/specs/shared-anthropic-durable-stream-v4.md; closure gates remain pending in the V4 report directory.
+
+The Full Short probe observer now projects the canonical durable owner through its semantic snapshot when producing `stream_outcome_v1`; persistence-only owner fields remain in the signed checkpoint and are not copied into the strict public probe schema. Provider error evidence and capture-failure precedence are taken from that same owner after client close, so terminal causes and transport-tail diagnostics survive the observer boundary without a second dispatch. The current production-shaped evidence matrix passes 44/44 cases, and the isolated related stream/provider/checkpoint selection passes 1469/1469 with zero original-repository mutation or outbound network activity.

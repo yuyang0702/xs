@@ -1,0 +1,307 @@
+{
+  "schema": "SharedStreamCausalPrecedenceContractV1",
+  "master_source_sha256": "58b91f4d35d03e6d01f21ba484629be50740af8d37a5ea358ba73cf8b43adfec",
+  "authoritative_research_sha256": "663cb9afcf266e352454395c9bd6bb457646df94b2c699f4b62c02391050f758",
+  "source_sha256": {
+    "src/novel_flywheel/anthropic_stream.py": "dff3ad231865abc52745d92047cff522381b18f714112772d17bb8ae1dff7c1b",
+    "src/novel_flywheel/providers/anthropic.py": "3c27185f2cb97c646cd4d1a27d5e1b75ed2ef605d2c095d366fc4f7460488fcb",
+    "src/novel_flywheel/providers/http.py": "2f2d69cace513a9c85ec48a3fe4e80bd227dad6948709af2f51eaf375aa883f6",
+    "src/novel_flywheel/provider_response_capture.py": "5e8128e336b81fa1881f144fadc26c511a9227453a8724a3cf2b50f8e9de9fb4",
+    "src/novel_flywheel/provider_stream_error.py": "71c15b9f098c63dcd2d67ddc9a3aba16beee0a079c53b5b9f009a4655d6eebe1",
+    "src/novel_flywheel/full_short_execution.py": "29bcd3e04faaa65a367657ae5b1142058a7cc47554f324a5d7edd5d966590ab3",
+    "src/novel_flywheel/provider_output.py": "15dcad2180064ba7cc5c2906330465d4ec53a72927502629b75e39a4a666746d",
+    "src/novel_flywheel/models.py": "0a900d7a337b1fe8ac700c8016c7953b736109c6b1f40b6261452fddc5f77a33",
+    "src/novel_flywheel/provider_payloads.py": "053fae9bf07119e8c6b8ab163d7a6089d790a983738709fcd36d208320016b60",
+    "src/novel_flywheel/providers/registry.py": "c710f2a119bec72ac7bb8de9f6548d813b47095cfe6a0fcd9667b32de468d07d",
+    "tests/providers/test_anthropic_closed_world_transitions.py": "8789ae65530267adc8fc0e81f63396cbd5985d07db99c8088d4b66ba2a6426fe"
+  },
+  "scope": "Only this response-side ordered stream boundary; no general first-exception-wins application policy",
+  "rules": [
+    "An earlier rejected prefix cannot be skipped to choose a later error.",
+    "Explicit Provider error supersedes prior success and remains primary through all later diagnostics.",
+    "Valid success survives transport tails but rejects semantic continuation and duplicate terminal.",
+    "Capture failure is an orthogonal durable-acceptance failure; Provider error remains primary if already observed.",
+    "Preterminal transport interruption preserves the original exception instance; clean EOF uses typed missing-terminal failure."
+  ],
+  "executed_scenarios": [
+    {
+      "scenario": "provider_error_ping_timeout",
+      "source_state": "PROVIDER_ERROR_TERMINAL",
+      "events": [
+        "ping",
+        "TIMEOUT"
+      ],
+      "before": {
+        "state": "PROVIDER_ERROR_TERMINAL",
+        "semantic_terminal_complete": false,
+        "terminal_capture_complete": true,
+        "transport_tail_closed_cleanly": null,
+        "primary_cause": "PROVIDER_ERROR",
+        "post_terminal_ping_count": 0,
+        "tail_counts": {
+          "CAPTURE_COMMITTED": 1
+        },
+        "unknown_event_policy": "anthropic_stream_v1_typed_fail_closed_without_semantic_mutation"
+      },
+      "after": {
+        "state": "PROVIDER_ERROR_TRANSPORT_TAIL",
+        "semantic_terminal_complete": false,
+        "terminal_capture_complete": true,
+        "transport_tail_closed_cleanly": false,
+        "primary_cause": "PROVIDER_ERROR",
+        "post_terminal_ping_count": 0,
+        "tail_counts": {
+          "CAPTURE_COMMITTED": 1,
+          "ping": 1,
+          "TIMEOUT": 1
+        },
+        "unknown_event_policy": "anthropic_stream_v1_typed_fail_closed_without_semantic_mutation"
+      },
+      "terminal_exception_class": "AnthropicProviderTerminalError"
+    },
+    {
+      "scenario": "success_ping_timeout",
+      "source_state": "SEMANTIC_SUCCESS_TERMINAL",
+      "events": [
+        "ping",
+        "TIMEOUT"
+      ],
+      "before": {
+        "state": "SEMANTIC_SUCCESS_TERMINAL",
+        "semantic_terminal_complete": true,
+        "terminal_capture_complete": true,
+        "transport_tail_closed_cleanly": null,
+        "primary_cause": "SUCCESS",
+        "post_terminal_ping_count": 0,
+        "tail_counts": {
+          "CAPTURE_COMMITTED": 1
+        },
+        "unknown_event_policy": "anthropic_stream_v1_typed_fail_closed_without_semantic_mutation"
+      },
+      "after": {
+        "state": "SUCCESS_TRANSPORT_TAIL",
+        "semantic_terminal_complete": true,
+        "terminal_capture_complete": true,
+        "transport_tail_closed_cleanly": false,
+        "primary_cause": "SUCCESS",
+        "post_terminal_ping_count": 1,
+        "tail_counts": {
+          "CAPTURE_COMMITTED": 1,
+          "ping": 1,
+          "TIMEOUT": 1
+        },
+        "unknown_event_policy": "anthropic_stream_v1_typed_fail_closed_without_semantic_mutation"
+      },
+      "terminal_exception_class": null
+    },
+    {
+      "scenario": "success_cancellation",
+      "source_state": "SEMANTIC_SUCCESS_TERMINAL",
+      "events": [
+        "CANCELLATION"
+      ],
+      "before": {
+        "state": "SEMANTIC_SUCCESS_TERMINAL",
+        "semantic_terminal_complete": true,
+        "terminal_capture_complete": true,
+        "transport_tail_closed_cleanly": null,
+        "primary_cause": "SUCCESS",
+        "post_terminal_ping_count": 0,
+        "tail_counts": {
+          "CAPTURE_COMMITTED": 1
+        },
+        "unknown_event_policy": "anthropic_stream_v1_typed_fail_closed_without_semantic_mutation"
+      },
+      "after": {
+        "state": "SUCCESS_TRANSPORT_TAIL",
+        "semantic_terminal_complete": true,
+        "terminal_capture_complete": true,
+        "transport_tail_closed_cleanly": false,
+        "primary_cause": "SUCCESS",
+        "post_terminal_ping_count": 0,
+        "tail_counts": {
+          "CAPTURE_COMMITTED": 1,
+          "CANCELLATION": 1
+        },
+        "unknown_event_policy": "anthropic_stream_v1_typed_fail_closed_without_semantic_mutation"
+      },
+      "terminal_exception_class": null
+    },
+    {
+      "scenario": "preterminal_timeout",
+      "source_state": "CONTENT_ACTIVE",
+      "events": [
+        "TIMEOUT"
+      ],
+      "before": {
+        "state": "CONTENT_ACTIVE",
+        "semantic_terminal_complete": false,
+        "terminal_capture_complete": false,
+        "transport_tail_closed_cleanly": null,
+        "primary_cause": "NONE",
+        "post_terminal_ping_count": 0,
+        "tail_counts": {},
+        "unknown_event_policy": "anthropic_stream_v1_typed_fail_closed_without_semantic_mutation"
+      },
+      "after": {
+        "state": "TRANSPORT_FAILURE_TERMINAL",
+        "semantic_terminal_complete": false,
+        "terminal_capture_complete": false,
+        "transport_tail_closed_cleanly": false,
+        "primary_cause": "TRANSPORT_FAILURE",
+        "post_terminal_ping_count": 0,
+        "tail_counts": {},
+        "unknown_event_policy": "anthropic_stream_v1_typed_fail_closed_without_semantic_mutation"
+      },
+      "terminal_exception_class": "ReadTimeout"
+    },
+    {
+      "scenario": "preterminal_cancellation",
+      "source_state": "MESSAGE_DELTA",
+      "events": [
+        "CANCELLATION"
+      ],
+      "before": {
+        "state": "MESSAGE_DELTA",
+        "semantic_terminal_complete": false,
+        "terminal_capture_complete": false,
+        "transport_tail_closed_cleanly": null,
+        "primary_cause": "NONE",
+        "post_terminal_ping_count": 0,
+        "tail_counts": {},
+        "unknown_event_policy": "anthropic_stream_v1_typed_fail_closed_without_semantic_mutation"
+      },
+      "after": {
+        "state": "TRANSPORT_FAILURE_TERMINAL",
+        "semantic_terminal_complete": false,
+        "terminal_capture_complete": false,
+        "transport_tail_closed_cleanly": false,
+        "primary_cause": "TRANSPORT_FAILURE",
+        "post_terminal_ping_count": 0,
+        "tail_counts": {},
+        "unknown_event_policy": "anthropic_stream_v1_typed_fail_closed_without_semantic_mutation"
+      },
+      "terminal_exception_class": "CancelledError"
+    },
+    {
+      "scenario": "success_provider_error",
+      "source_state": "SEMANTIC_SUCCESS_TERMINAL",
+      "events": [
+        "error"
+      ],
+      "before": {
+        "state": "SEMANTIC_SUCCESS_TERMINAL",
+        "semantic_terminal_complete": true,
+        "terminal_capture_complete": true,
+        "transport_tail_closed_cleanly": null,
+        "primary_cause": "SUCCESS",
+        "post_terminal_ping_count": 0,
+        "tail_counts": {
+          "CAPTURE_COMMITTED": 1
+        },
+        "unknown_event_policy": "anthropic_stream_v1_typed_fail_closed_without_semantic_mutation"
+      },
+      "after": {
+        "state": "PROVIDER_ERROR_TERMINAL",
+        "semantic_terminal_complete": false,
+        "terminal_capture_complete": true,
+        "transport_tail_closed_cleanly": null,
+        "primary_cause": "PROVIDER_ERROR",
+        "post_terminal_ping_count": 0,
+        "tail_counts": {
+          "CAPTURE_COMMITTED": 1,
+          "error": 1
+        },
+        "unknown_event_policy": "anthropic_stream_v1_typed_fail_closed_without_semantic_mutation"
+      },
+      "terminal_exception_class": "AnthropicProviderTerminalError"
+    },
+    {
+      "scenario": "provider_error_semantic_continuation",
+      "source_state": "PROVIDER_ERROR_TERMINAL",
+      "events": [
+        "message_delta"
+      ],
+      "before": {
+        "state": "PROVIDER_ERROR_TERMINAL",
+        "semantic_terminal_complete": false,
+        "terminal_capture_complete": true,
+        "transport_tail_closed_cleanly": null,
+        "primary_cause": "PROVIDER_ERROR",
+        "post_terminal_ping_count": 0,
+        "tail_counts": {
+          "CAPTURE_COMMITTED": 1
+        },
+        "unknown_event_policy": "anthropic_stream_v1_typed_fail_closed_without_semantic_mutation"
+      },
+      "after": {
+        "state": "PROVIDER_ERROR_TRANSPORT_TAIL",
+        "semantic_terminal_complete": false,
+        "terminal_capture_complete": true,
+        "transport_tail_closed_cleanly": null,
+        "primary_cause": "PROVIDER_ERROR",
+        "post_terminal_ping_count": 0,
+        "tail_counts": {
+          "CAPTURE_COMMITTED": 1,
+          "message_delta": 1
+        },
+        "unknown_event_policy": "anthropic_stream_v1_typed_fail_closed_without_semantic_mutation"
+      },
+      "terminal_exception_class": "AnthropicProviderTerminalError"
+    },
+    {
+      "scenario": "invalid_prefix_provider_error",
+      "source_state": "PROTOCOL_INVALID_TERMINAL",
+      "events": [
+        "error"
+      ],
+      "before": {
+        "state": "PROTOCOL_INVALID_TERMINAL",
+        "semantic_terminal_complete": false,
+        "terminal_capture_complete": false,
+        "transport_tail_closed_cleanly": null,
+        "primary_cause": "PROTOCOL_INVALID",
+        "post_terminal_ping_count": 0,
+        "tail_counts": {},
+        "unknown_event_policy": "anthropic_stream_v1_typed_fail_closed_without_semantic_mutation"
+      },
+      "after": {
+        "state": "PROTOCOL_INVALID_TERMINAL",
+        "semantic_terminal_complete": false,
+        "terminal_capture_complete": false,
+        "transport_tail_closed_cleanly": null,
+        "primary_cause": "PROTOCOL_INVALID",
+        "post_terminal_ping_count": 0,
+        "tail_counts": {},
+        "unknown_event_policy": "anthropic_stream_v1_typed_fail_closed_without_semantic_mutation"
+      },
+      "terminal_exception_class": "AnthropicStreamProtocolError"
+    }
+  ],
+  "source_grounding": [
+    {
+      "path": "src/novel_flywheel/anthropic_stream.py",
+      "symbol": "_registered_rule",
+      "line": 121,
+      "end_line": 167,
+      "file_sha256": "dff3ad231865abc52745d92047cff522381b18f714112772d17bb8ae1dff7c1b",
+      "symbol_ast_sha256": "d57d9ce70994026e43b0f2900662ecc85d3066788bc39d6d5ad3b65c0274f359"
+    },
+    {
+      "path": "src/novel_flywheel/anthropic_stream.py",
+      "symbol": "AnthropicStream.step",
+      "line": 226,
+      "end_line": 285,
+      "file_sha256": "dff3ad231865abc52745d92047cff522381b18f714112772d17bb8ae1dff7c1b",
+      "symbol_ast_sha256": "6ba512ef861eb9e304f03a43f8efe21ef63e9e71051b8f1342eb79cb6dd3047b"
+    },
+    {
+      "path": "src/novel_flywheel/anthropic_stream.py",
+      "symbol": "AnthropicStream._error_tail",
+      "line": 287,
+      "end_line": 308,
+      "file_sha256": "dff3ad231865abc52745d92047cff522381b18f714112772d17bb8ae1dff7c1b",
+      "symbol_ast_sha256": "e98c14a243c477bed90444157744441739b067bb0aecd4e0ca9d81bcab803517"
+    }
+  ]
+}

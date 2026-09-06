@@ -1,0 +1,995 @@
+{
+  "schema": "SharedAnthropicGeneratedTransitionSliceV1",
+  "status": "PASS",
+  "review_claim": "NONE_IMPLEMENTATION_TEST_SLICE_ONLY",
+  "source_sha256": "dff3ad231865abc52745d92047cff522381b18f714112772d17bb8ae1dff7c1b",
+  "test_source_sha256": "8789ae65530267adc8fc0e81f63396cbd5985d07db99c8088d4b66ba2a6426fe",
+  "junit_sha256": "849bd48ae85ae222c6ccc6da8d67918492cd9846bdaf349b58507eb1870df34a",
+  "REGISTERED_PROTOCOL_STATE_COUNT": 11,
+  "REGISTERED_EVENT_CLASS_COUNT": 16,
+  "GENERATED_TRANSITION_CASE_COUNT": 176,
+  "GENERATED_TRANSITION_PASS_COUNT": 176,
+  "GENERATED_TRANSITION_COVERAGE": "100_PERCENT",
+  "FAULT_CAPTURE_ACKNOWLEDGED_CASE_COUNT": 63,
+  "FAULT_CAPTURE_ACKNOWLEDGED_PASS_COUNT": 63,
+  "STATE_MACHINE_FAULT_INJECTION_COVERAGE": "100_PERCENT",
+  "fault_scope": "Registered owner state/event cells plus 9 reachable states x 7 fault classes after capture acknowledgement; does not claim HTTP/observer seam coverage",
+  "TOTAL_CASE_COUNT": 353,
+  "TOTAL_PASS_COUNT": 353,
+  "TOTAL_FAILURE_COUNT": 0,
+  "TOTAL_SKIP_COUNT": 0,
+  "oracle": "Independent literal 11 by 16 normative table; all states reached with real safe prefixes; no state assignment and no TRANSITIONS import",
+  "assertion_dimensions": [
+    "action",
+    "next_state",
+    "primary_cause",
+    "semantic_completion",
+    "terminal_capture",
+    "transport_tail",
+    "usage",
+    "content",
+    "primary_exception_identity"
+  ],
+  "failed_cases": [],
+  "matrix_cases": [
+    {
+      "name": "test_every_registered_state_event_transition[B-message_start]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[B-content_block_start]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[B-content_block_delta]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[B-content_block_stop]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[B-message_delta]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[B-message_stop]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[B-ping]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[B-error]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[B-unknown_versioned_event]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[B-invalid_frame_or_payload]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[B-EOF]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[B-TIMEOUT]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[B-CANCELLATION]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[B-TRANSPORT_EXCEPTION]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[B-CAPTURE_COMMITTED]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[B-CAPTURE_FAILED]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[M-message_start]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[M-content_block_start]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[M-content_block_delta]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[M-content_block_stop]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[M-message_delta]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[M-message_stop]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[M-ping]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[M-error]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[M-unknown_versioned_event]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[M-invalid_frame_or_payload]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[M-EOF]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[M-TIMEOUT]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[M-CANCELLATION]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[M-TRANSPORT_EXCEPTION]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[M-CAPTURE_COMMITTED]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[M-CAPTURE_FAILED]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[C-message_start]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[C-content_block_start]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[C-content_block_delta]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[C-content_block_stop]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[C-message_delta]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[C-message_stop]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[C-ping]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[C-error]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[C-unknown_versioned_event]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[C-invalid_frame_or_payload]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[C-EOF]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[C-TIMEOUT]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[C-CANCELLATION]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[C-TRANSPORT_EXCEPTION]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[C-CAPTURE_COMMITTED]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[C-CAPTURE_FAILED]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[D-message_start]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[D-content_block_start]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[D-content_block_delta]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[D-content_block_stop]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[D-message_delta]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[D-message_stop]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[D-ping]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[D-error]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[D-unknown_versioned_event]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[D-invalid_frame_or_payload]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[D-EOF]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[D-TIMEOUT]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[D-CANCELLATION]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[D-TRANSPORT_EXCEPTION]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[D-CAPTURE_COMMITTED]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[D-CAPTURE_FAILED]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[U-message_start]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[U-content_block_start]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[U-content_block_delta]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[U-content_block_stop]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[U-message_delta]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[U-message_stop]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[U-ping]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[U-error]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[U-unknown_versioned_event]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[U-invalid_frame_or_payload]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[U-EOF]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[U-TIMEOUT]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[U-CANCELLATION]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[U-TRANSPORT_EXCEPTION]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[U-CAPTURE_COMMITTED]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[U-CAPTURE_FAILED]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[S-message_start]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[S-content_block_start]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[S-content_block_delta]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[S-content_block_stop]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[S-message_delta]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[S-message_stop]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[S-ping]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[S-error]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[S-unknown_versioned_event]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[S-invalid_frame_or_payload]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[S-EOF]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[S-TIMEOUT]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[S-CANCELLATION]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[S-TRANSPORT_EXCEPTION]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[S-CAPTURE_COMMITTED]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[S-CAPTURE_FAILED]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[ST-message_start]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[ST-content_block_start]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[ST-content_block_delta]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[ST-content_block_stop]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[ST-message_delta]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[ST-message_stop]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[ST-ping]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[ST-error]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[ST-unknown_versioned_event]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[ST-invalid_frame_or_payload]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[ST-EOF]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[ST-TIMEOUT]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[ST-CANCELLATION]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[ST-TRANSPORT_EXCEPTION]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[ST-CAPTURE_COMMITTED]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[ST-CAPTURE_FAILED]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[P-message_start]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[P-content_block_start]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[P-content_block_delta]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[P-content_block_stop]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[P-message_delta]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[P-message_stop]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[P-ping]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[P-error]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[P-unknown_versioned_event]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[P-invalid_frame_or_payload]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[P-EOF]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[P-TIMEOUT]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[P-CANCELLATION]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[P-TRANSPORT_EXCEPTION]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[P-CAPTURE_COMMITTED]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[P-CAPTURE_FAILED]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[PT-message_start]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[PT-content_block_start]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[PT-content_block_delta]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[PT-content_block_stop]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[PT-message_delta]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[PT-message_stop]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[PT-ping]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[PT-error]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[PT-unknown_versioned_event]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[PT-invalid_frame_or_payload]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[PT-EOF]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[PT-TIMEOUT]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[PT-CANCELLATION]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[PT-TRANSPORT_EXCEPTION]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[PT-CAPTURE_COMMITTED]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[PT-CAPTURE_FAILED]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[T-message_start]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[T-content_block_start]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[T-content_block_delta]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[T-content_block_stop]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[T-message_delta]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[T-message_stop]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[T-ping]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[T-error]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[T-unknown_versioned_event]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[T-invalid_frame_or_payload]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[T-EOF]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[T-TIMEOUT]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[T-CANCELLATION]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[T-TRANSPORT_EXCEPTION]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[T-CAPTURE_COMMITTED]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[T-CAPTURE_FAILED]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[I-message_start]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[I-content_block_start]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[I-content_block_delta]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[I-content_block_stop]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[I-message_delta]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[I-message_stop]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[I-ping]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[I-error]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[I-unknown_versioned_event]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[I-invalid_frame_or_payload]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[I-EOF]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[I-TIMEOUT]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[I-CANCELLATION]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[I-TRANSPORT_EXCEPTION]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[I-CAPTURE_COMMITTED]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_every_registered_state_event_transition[I-CAPTURE_FAILED]",
+      "result": "PASS"
+    }
+  ],
+  "fault_cases": [
+    {
+      "name": "test_fault_campaign_with_capture_acknowledged_first[EOF-B]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_fault_campaign_with_capture_acknowledged_first[EOF-M]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_fault_campaign_with_capture_acknowledged_first[EOF-C]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_fault_campaign_with_capture_acknowledged_first[EOF-D]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_fault_campaign_with_capture_acknowledged_first[EOF-U]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_fault_campaign_with_capture_acknowledged_first[EOF-S]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_fault_campaign_with_capture_acknowledged_first[EOF-ST]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_fault_campaign_with_capture_acknowledged_first[EOF-P]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_fault_campaign_with_capture_acknowledged_first[EOF-PT]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_fault_campaign_with_capture_acknowledged_first[TIMEOUT-B]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_fault_campaign_with_capture_acknowledged_first[TIMEOUT-M]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_fault_campaign_with_capture_acknowledged_first[TIMEOUT-C]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_fault_campaign_with_capture_acknowledged_first[TIMEOUT-D]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_fault_campaign_with_capture_acknowledged_first[TIMEOUT-U]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_fault_campaign_with_capture_acknowledged_first[TIMEOUT-S]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_fault_campaign_with_capture_acknowledged_first[TIMEOUT-ST]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_fault_campaign_with_capture_acknowledged_first[TIMEOUT-P]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_fault_campaign_with_capture_acknowledged_first[TIMEOUT-PT]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_fault_campaign_with_capture_acknowledged_first[CANCELLATION-B]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_fault_campaign_with_capture_acknowledged_first[CANCELLATION-M]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_fault_campaign_with_capture_acknowledged_first[CANCELLATION-C]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_fault_campaign_with_capture_acknowledged_first[CANCELLATION-D]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_fault_campaign_with_capture_acknowledged_first[CANCELLATION-U]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_fault_campaign_with_capture_acknowledged_first[CANCELLATION-S]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_fault_campaign_with_capture_acknowledged_first[CANCELLATION-ST]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_fault_campaign_with_capture_acknowledged_first[CANCELLATION-P]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_fault_campaign_with_capture_acknowledged_first[CANCELLATION-PT]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_fault_campaign_with_capture_acknowledged_first[TRANSPORT_EXCEPTION-B]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_fault_campaign_with_capture_acknowledged_first[TRANSPORT_EXCEPTION-M]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_fault_campaign_with_capture_acknowledged_first[TRANSPORT_EXCEPTION-C]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_fault_campaign_with_capture_acknowledged_first[TRANSPORT_EXCEPTION-D]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_fault_campaign_with_capture_acknowledged_first[TRANSPORT_EXCEPTION-U]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_fault_campaign_with_capture_acknowledged_first[TRANSPORT_EXCEPTION-S]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_fault_campaign_with_capture_acknowledged_first[TRANSPORT_EXCEPTION-ST]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_fault_campaign_with_capture_acknowledged_first[TRANSPORT_EXCEPTION-P]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_fault_campaign_with_capture_acknowledged_first[TRANSPORT_EXCEPTION-PT]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_fault_campaign_with_capture_acknowledged_first[ping-B]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_fault_campaign_with_capture_acknowledged_first[ping-M]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_fault_campaign_with_capture_acknowledged_first[ping-C]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_fault_campaign_with_capture_acknowledged_first[ping-D]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_fault_campaign_with_capture_acknowledged_first[ping-U]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_fault_campaign_with_capture_acknowledged_first[ping-S]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_fault_campaign_with_capture_acknowledged_first[ping-ST]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_fault_campaign_with_capture_acknowledged_first[ping-P]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_fault_campaign_with_capture_acknowledged_first[ping-PT]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_fault_campaign_with_capture_acknowledged_first[error-B]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_fault_campaign_with_capture_acknowledged_first[error-M]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_fault_campaign_with_capture_acknowledged_first[error-C]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_fault_campaign_with_capture_acknowledged_first[error-D]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_fault_campaign_with_capture_acknowledged_first[error-U]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_fault_campaign_with_capture_acknowledged_first[error-S]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_fault_campaign_with_capture_acknowledged_first[error-ST]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_fault_campaign_with_capture_acknowledged_first[error-P]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_fault_campaign_with_capture_acknowledged_first[error-PT]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_fault_campaign_with_capture_acknowledged_first[invalid_frame_or_payload-B]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_fault_campaign_with_capture_acknowledged_first[invalid_frame_or_payload-M]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_fault_campaign_with_capture_acknowledged_first[invalid_frame_or_payload-C]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_fault_campaign_with_capture_acknowledged_first[invalid_frame_or_payload-D]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_fault_campaign_with_capture_acknowledged_first[invalid_frame_or_payload-U]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_fault_campaign_with_capture_acknowledged_first[invalid_frame_or_payload-S]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_fault_campaign_with_capture_acknowledged_first[invalid_frame_or_payload-ST]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_fault_campaign_with_capture_acknowledged_first[invalid_frame_or_payload-P]",
+      "result": "PASS"
+    },
+    {
+      "name": "test_fault_campaign_with_capture_acknowledged_first[invalid_frame_or_payload-PT]",
+      "result": "PASS"
+    }
+  ],
+  "provider_calls": 0
+}

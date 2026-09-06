@@ -1,0 +1,53 @@
+{
+  "schema": "DurablePartialTailStopCounterexamplesV1",
+  "scope": "Stop evidence only; no code correction",
+  "cases": [
+    {
+      "ending": "timeout",
+      "durable_file_sha256": "3728c57a5d78eb10dade630068b2aa0cf4571840dfff3111de3ef80708e13c46",
+      "terminal_prefix_sha256": "ac43cc60e4ce9eb7c3a7976b4ad6e02c092638db4a54f8fef99dd982b0ac9670",
+      "durable_terminal_prefix_present": true,
+      "capture_callback_ack": true,
+      "owner": {
+        "state": "PROTOCOL_INVALID_TERMINAL",
+        "semantic_terminal_complete": false,
+        "terminal_capture_complete": false,
+        "transport_tail_closed_cleanly": false,
+        "primary_cause": "PROTOCOL_INVALID",
+        "post_terminal_ping_count": 0,
+        "tail_counts": {
+          "invalid_frame_or_payload": 1
+        },
+        "unknown_event_policy": "anthropic_stream_v1_typed_fail_closed_without_semantic_mutation"
+      },
+      "capture_transport_complete": false,
+      "failure_class": "ProviderResponseCaptureError",
+      "response_present": false
+    },
+    {
+      "ending": "cancel",
+      "durable_file_sha256": "3728c57a5d78eb10dade630068b2aa0cf4571840dfff3111de3ef80708e13c46",
+      "terminal_prefix_sha256": "ac43cc60e4ce9eb7c3a7976b4ad6e02c092638db4a54f8fef99dd982b0ac9670",
+      "durable_terminal_prefix_present": true,
+      "capture_callback_ack": true,
+      "owner": {
+        "state": "PROTOCOL_INVALID_TERMINAL",
+        "semantic_terminal_complete": false,
+        "terminal_capture_complete": false,
+        "transport_tail_closed_cleanly": false,
+        "primary_cause": "PROTOCOL_INVALID",
+        "post_terminal_ping_count": 0,
+        "tail_counts": {
+          "invalid_frame_or_payload": 1
+        },
+        "unknown_event_policy": "anthropic_stream_v1_typed_fail_closed_without_semantic_mutation"
+      },
+      "capture_transport_complete": false,
+      "failure_class": "ProviderResponseCaptureError",
+      "response_present": false
+    }
+  ],
+  "provider_calls": 0,
+  "test_source_sha256": "5dfcb11f4ca6756a6a70b66fa348af61898e98e41eca72ed7e5368113b44a87e",
+  "owner_sha256": "dff3ad231865abc52745d92047cff522381b18f714112772d17bb8ae1dff7c1b"
+}

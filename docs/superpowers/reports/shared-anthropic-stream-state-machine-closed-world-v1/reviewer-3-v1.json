@@ -1,0 +1,102 @@
+{
+  "schema": "SharedAnthropicIndependentReviewV1",
+  "reviewer_id": "reviewer-3",
+  "reviewer_identity": "/root/closedworld_reviewer_3",
+  "fresh_independent_agent": true,
+  "independence_claimed": true,
+  "other_reviewer_conclusions_read": false,
+  "delegated": false,
+  "status": "ARCHITECTURE_PASS",
+  "verdict": "ARCHITECTURE_PASS",
+  "review_scope": "Provider error payload shapes and ordered causal precedence through shared stream, HTTP adapter and durable probe evidence; local offline read-only review.",
+  "master_source": "C:\\Users\\yuyan\\.codex\\attachments\\e445d0f3-a49b-42d6-b3ce-207ad3c1e206\\pasted-text.txt",
+  "master_source_sha256": "58b91f4d35d03e6d01f21ba484629be50740af8d37a5ea358ba73cf8b43adfec",
+  "baseline_committed_head": "79a99a58ebe95b2be4d1e51a8d190070a2568574",
+  "source_sha256": {
+    "src/novel_flywheel/provider_stream_error.py": "71c15b9f098c63dcd2d67ddc9a3aba16beee0a079c53b5b9f009a4655d6eebe1",
+    "src/novel_flywheel/anthropic_stream.py": "dff3ad231865abc52745d92047cff522381b18f714112772d17bb8ae1dff7c1b",
+    "src/novel_flywheel/providers/anthropic.py": "3c27185f2cb97c646cd4d1a27d5e1b75ed2ef605d2c095d366fc4f7460488fcb",
+    "src/novel_flywheel/providers/http.py": "2f2d69cace513a9c85ec48a3fe4e80bd227dad6948709af2f51eaf375aa883f6",
+    "src/novel_flywheel/provider_response_capture.py": "5e8128e336b81fa1881f144fadc26c511a9227453a8724a3cf2b50f8e9de9fb4",
+    "src/novel_flywheel/full_short_probe_campaign.py": "0645b3f61c4c8c990b62f915c71b3c2f9124a7f8282fc6b22302aa58e121ef9b",
+    "src/novel_flywheel/execution_failure_architecture.py": "b3e3ad1033a3dd0ccba534389c3369d795d8779c8a04e19ec901aa139ea48cfc",
+    "tools/canary/full_short_budget_unblocked_campaign.py": "f2ddf396819eb42ab31bc7d4adf937f1f9adf28425837434e1ac37d58fc2babc",
+    "tests/providers/test_anthropic_error_hardening.py": "25e0757b663cde7afa578fc65da6d73cf83f079dcd635a084d10f7da99eefbfc",
+    "tests/providers/test_anthropic_closed_world_http.py": "5dfcb11f4ca6756a6a70b66fa348af61898e98e41eca72ed7e5368113b44a87e",
+    "tests/providers/test_anthropic_closed_world_payload_guards.py": "8a24213bf25c7d1614dd67e2f0ed7002a5d56d1f7c23f601dcc1c62e444094e9",
+    "tests/providers/test_anthropic_closed_world_transitions.py": "8789ae65530267adc8fc0e81f63396cbd5985d07db99c8088d4b66ba2a6426fe",
+    "tests/canary/test_closed_world_stream_evidence.py": "ced6995c090dee25b5348d22948f07db2193f5b287fd5b1621c1364cf5698a77"
+  },
+  "domain_source_binding_matches": true,
+  "source_edits": 0,
+  "real_provider_calls": 0,
+  "external_requests": 0,
+  "credentials_accessed": 0,
+  "findings": [],
+  "evidence": [
+    {
+      "invariant": "Every supported error payload shape yields safe typed Provider evidence without mapping assumptions or AttributeError.",
+      "tests": [
+        "test_raw_empty_and_unrecognized_error_shapes",
+        "test_nested_nonobject_and_falsy_errors_never_escape",
+        "test_safe_public_evidence_never_retains_provider_text_or_forged_metadata"
+      ],
+      "source": [
+        "src/novel_flywheel/provider_stream_error.py:52",
+        "src/novel_flywheel/provider_stream_error.py:68",
+        "src/novel_flywheel/anthropic_stream.py:447"
+      ]
+    },
+    {
+      "invariant": "An ordered Provider error overrides prior valid success, freezes semantics, and remains primary through ping, malformed/semantic/error tails, timeout, cancellation and capture failure; an earlier fatal prefix is not skipped.",
+      "tests": [
+        "test_later_error_cannot_skip_a_fatal_prefix",
+        "test_error_after_message_stop_is_not_ignored",
+        "test_error_at_each_meaningful_state_remains_primary",
+        "test_provider_error_survives_iterator_and_aclose_faults",
+        "test_capture_callback_failure_is_secondary_to_provider_error"
+      ],
+      "source": [
+        "src/novel_flywheel/anthropic_stream.py:121",
+        "src/novel_flywheel/anthropic_stream.py:251",
+        "src/novel_flywheel/anthropic_stream.py:287",
+        "src/novel_flywheel/providers/http.py:467",
+        "src/novel_flywheel/providers/http.py:553"
+      ]
+    },
+    {
+      "invariant": "Durable error and outcome evidence is captured after adapter/client tail handling, bound to request/route/entity identity, persisted on consumed record and remains identical after restore without redispatch.",
+      "tests": [
+        "test_provider_error_typed_evidence_is_durable_primary_and_reload_safe",
+        "test_capture_completeness_requires_durable_byte_ack",
+        "test_provider_error_client_close_tail_is_sealed_after_capture",
+        "test_legacy_no_optional_fields_reload_is_idempotent"
+      ],
+      "source": [
+        "tools/canary/full_short_budget_unblocked_campaign.py:900",
+        "tools/canary/full_short_budget_unblocked_campaign.py:945",
+        "src/novel_flywheel/full_short_probe_campaign.py:493",
+        "src/novel_flywheel/full_short_probe_campaign.py:644",
+        "src/novel_flywheel/execution_failure_architecture.py:800"
+      ]
+    }
+  ],
+  "validation": {
+    "initial_attempt": "reviewer-3-synthetic.xml is INVALID_RUNNER evidence only: my first socket guard blocked Windows asyncio socketpair, producing fixture/setup errors. Corrected local loopback exception and reran all 718 cases successfully; no product changes.",
+    "test_receipt_sha256": "4392638005b7ee65ea7039d5b247514e56cd90c74b9ef88d4b4b549055854d95",
+    "passed": 718,
+    "errors": 0,
+    "network_boundary": "MockTransport only; non-loopback socket connect blocked; Windows asyncio loopback socketpair allowed",
+    "failures": 0,
+    "warnings": 0,
+    "seconds": 22.05,
+    "test_receipt": "reviewer-3-synthetic-final.xml",
+    "project_scope_check": "PASS"
+  },
+  "limitations": [
+    "This is the bounded module review required by Master section 16, not campaign preflight or permission to execute. Future commit/freeze, Strict L3 and execution gates are outside this review verdict.",
+    "Authoritative semantics were read from the existing local research record; no external source retrieval occurred in this reviewer.",
+    "Source is the preserved dirty worktree bound by exact file hashes, not an assertion of a committed successor execution HEAD."
+  ],
+  "reviewed_at_utc": "2026-09-05T14:58:48.0983075Z"
+}

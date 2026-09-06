@@ -1,0 +1,32 @@
+{
+  "schema": "ClosedWorldFocusedTestsV1",
+  "master_sha256": "58b91f4d35d03e6d01f21ba484629be50740af8d37a5ea358ba73cf8b43adfec",
+  "status": "PASS",
+  "tests": 977,
+  "failures": [],
+  "junit_sha256": "9237f4c0f856a85ab044ca8421325a618646a4a92645a0310f0f069829cd24e3",
+  "source_binding": {
+    "schema": "SharedAnthropicSourceProofBindingV1",
+    "master_source_sha256": "58b91f4d35d03e6d01f21ba484629be50740af8d37a5ea358ba73cf8b43adfec",
+    "authoritative_research_sha256": "663cb9afcf266e352454395c9bd6bb457646df94b2c699f4b62c02391050f758",
+    "source_sha256": {
+      "src/novel_flywheel/anthropic_stream.py": "dff3ad231865abc52745d92047cff522381b18f714112772d17bb8ae1dff7c1b",
+      "src/novel_flywheel/providers/anthropic.py": "3c27185f2cb97c646cd4d1a27d5e1b75ed2ef605d2c095d366fc4f7460488fcb",
+      "src/novel_flywheel/providers/http.py": "2f2d69cace513a9c85ec48a3fe4e80bd227dad6948709af2f51eaf375aa883f6",
+      "src/novel_flywheel/provider_response_capture.py": "5e8128e336b81fa1881f144fadc26c511a9227453a8724a3cf2b50f8e9de9fb4",
+      "src/novel_flywheel/provider_stream_error.py": "71c15b9f098c63dcd2d67ddc9a3aba16beee0a079c53b5b9f009a4655d6eebe1",
+      "src/novel_flywheel/full_short_execution.py": "29bcd3e04faaa65a367657ae5b1142058a7cc47554f324a5d7edd5d966590ab3",
+      "src/novel_flywheel/provider_output.py": "15dcad2180064ba7cc5c2906330465d4ec53a72927502629b75e39a4a666746d",
+      "src/novel_flywheel/models.py": "0a900d7a337b1fe8ac700c8016c7953b736109c6b1f40b6261452fddc5f77a33",
+      "src/novel_flywheel/provider_payloads.py": "053fae9bf07119e8c6b8ab163d7a6089d790a983738709fcd36d208320016b60",
+      "src/novel_flywheel/providers/registry.py": "c710f2a119bec72ac7bb8de9f6548d813b47095cfe6a0fcd9667b32de468d07d",
+      "tests/providers/test_anthropic_closed_world_transitions.py": "8789ae65530267adc8fc0e81f63396cbd5985d07db99c8088d4b66ba2a6426fe"
+    },
+    "scope": "Implementation proof extraction, not independent review or campaign authorization",
+    "source_stable_during_generation": true,
+    "owner_import_matches_captured_source": true
+  },
+  "scope": "Providers, payload guards, generated transitions, HTTP fault seams, capture, Provider error precedence and durable terminal records; not full Runtime/Strict L3",
+  "full_suite_status": "RUNNING_DEVELOPMENT_SNAPSHOT_SOURCE_CHANGED_AFTER_COLLECTION_NOT_FINAL_PROOF",
+  "provider_calls": 0
+}

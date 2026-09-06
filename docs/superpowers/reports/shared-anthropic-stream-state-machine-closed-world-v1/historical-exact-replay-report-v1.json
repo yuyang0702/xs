@@ -1,0 +1,260 @@
+{
+  "baseline_head": "79a99a58ebe95b2be4d1e51a8d190070a2568574",
+  "external_anchor_unresolved_count": 0,
+  "helper_sha256": "8c37fa2feac00def31abf10a80e9576e75c4e42618f40ff40c221b4971474611",
+  "historical_exact_available_count": 5,
+  "historical_exact_replay_regression_count": 0,
+  "known_earlier_missing_raw": {
+    "historical_state_unchanged": true,
+    "prior_disposition_path": "C:\\小说\\novel-flywheel-console\\docs\\superpowers\\reports\\first-trustworthy-full-short-captured-response-and-skill-source-disposition-v1\\historical-replay-requirement-disposition-v1.json",
+    "prior_disposition_sha256": "d5746ed90ce33844379e69c247e1565666b3746070754f8f5a9f2bb0ce03f7ae",
+    "status": "UNAVAILABLE_NOT_REPLAYED_NOT_PASS"
+  },
+  "network_calls": 0,
+  "paid_calls": 0,
+  "provider_calls": 0,
+  "raw_prose_or_secrets_persisted": false,
+  "results": [
+    {
+      "anchors": [
+        {
+          "file": "campaign/probe-state-0005.json",
+          "kind": "CAMPAIGN_FINAL_MANIFEST_FILE_HASH",
+          "path": "C:\\小说\\full-short-shared-usage-successor-20260905-v1\\final-manifest-v1.json",
+          "source_sha256": "a21199fa62175015bebe16cdd1c5e881deff46af5d7a9e8c4d54ffb4f023fa88",
+          "status": "PASS"
+        },
+        {
+          "file": "campaign/probe-terminal-state-v1.json",
+          "kind": "CAMPAIGN_FINAL_MANIFEST_FILE_HASH",
+          "path": "C:\\小说\\full-short-shared-usage-successor-20260905-v1\\final-manifest-v1.json",
+          "source_sha256": "a21199fa62175015bebe16cdd1c5e881deff46af5d7a9e8c4d54ffb4f023fa88",
+          "status": "PASS"
+        }
+      ],
+      "baseline": {
+        "error_text_sha256": "7fb5b87347175e523270265102fdac96cbcb5e378b42faf4f382994bd275f2b3",
+        "exception_type": "AnthropicStreamProtocolError",
+        "historical_non_test_source_available": true,
+        "raw_capture_bytes": 3329,
+        "raw_capture_sha256": "195448a3427329947fc1c5d6c957525b739b9ed954fbf5c0a3a3cc6ad0362863",
+        "replay_status": "TYPED_OR_RUNTIME_FAILURE",
+        "safe_code": "ANTHROPIC_SSE_EVENT_AFTER_MESSAGE_STOP"
+      },
+      "business_success_claimed": false,
+      "comparison": "IMPROVED_PROTOCOL_ACCEPTANCE",
+      "current": {
+        "finish_reason": "end_turn",
+        "historical_non_test_source_available": true,
+        "input_tokens": 137304,
+        "output_tokens": 64,
+        "post_terminal_ping_ignored_count": 3,
+        "raw_capture_bytes": 3329,
+        "raw_capture_sha256": "195448a3427329947fc1c5d6c957525b739b9ed954fbf5c0a3a3cc6ad0362863",
+        "replay_status": "PARSED_RESPONSE",
+        "visible_characters": 206,
+        "visible_sha256": "5691b4ce3c653338e76baf5e99cb038527162343296a49cd9b2b11ef3dca9599"
+      },
+      "external_anchor_status": "PASS",
+      "raw_capture_bytes": 3329,
+      "raw_capture_sha256": "195448a3427329947fc1c5d6c957525b739b9ed954fbf5c0a3a3cc6ad0362863"
+    },
+    {
+      "anchors": [
+        {
+          "attempt_indices": [
+            0
+          ],
+          "kind": "EXTERNAL_DISPATCH_LEDGER_RECEIPT",
+          "path": "C:\\小说\\first-trustworthy-full-short-authorization-0c975f076ca2-store-v1\\ed1c46c736f470558184eb937e4a1f4a914dc4eefe3a6d610ee9dde9bd26e9ef.ledger.json",
+          "receipt_sha256": "0382b304b5328d888045a46c7cceb8a1802a5fd648a42f1b4230296513a78643",
+          "source_sha256": "a3d9389695890ae93666ca8e50a3401b254e6c7928e4b65d30440b582548461d",
+          "status": "PASS"
+        }
+      ],
+      "baseline": {
+        "finish_reason": "end_turn",
+        "historical_non_test_source_available": true,
+        "input_tokens": 18546,
+        "output_tokens": 1544,
+        "post_terminal_ping_ignored_count": null,
+        "raw_capture_bytes": 192494,
+        "raw_capture_sha256": "4bb0489d3ed9d4cacefa495b5627931c21d2ef0878402da32572121350914879",
+        "replay_status": "PARSED_RESPONSE",
+        "visible_characters": 995,
+        "visible_sha256": "82ec9df51e775b4f65eabf0abc475d57735fe32152e03f620f32191c914ff76a"
+      },
+      "business_success_claimed": false,
+      "comparison": "PRESERVED",
+      "current": {
+        "finish_reason": "end_turn",
+        "historical_non_test_source_available": true,
+        "input_tokens": 18546,
+        "output_tokens": 1544,
+        "post_terminal_ping_ignored_count": 0,
+        "raw_capture_bytes": 192494,
+        "raw_capture_sha256": "4bb0489d3ed9d4cacefa495b5627931c21d2ef0878402da32572121350914879",
+        "replay_status": "PARSED_RESPONSE",
+        "visible_characters": 995,
+        "visible_sha256": "82ec9df51e775b4f65eabf0abc475d57735fe32152e03f620f32191c914ff76a"
+      },
+      "external_anchor_status": "PASS",
+      "raw_capture_bytes": 192494,
+      "raw_capture_sha256": "4bb0489d3ed9d4cacefa495b5627931c21d2ef0878402da32572121350914879"
+    },
+    {
+      "anchors": [
+        {
+          "attempt_indices": [
+            1
+          ],
+          "kind": "EXTERNAL_DISPATCH_LEDGER_RECEIPT",
+          "path": "C:\\小说\\first-trustworthy-full-short-authorization-0c975f076ca2-store-v1\\ed1c46c736f470558184eb937e4a1f4a914dc4eefe3a6d610ee9dde9bd26e9ef.ledger.json",
+          "receipt_sha256": "85a3e8b99775db11c43f68ddd6773d829d85c029c555617217e2661d1ce08db0",
+          "source_sha256": "a3d9389695890ae93666ca8e50a3401b254e6c7928e4b65d30440b582548461d",
+          "status": "PASS"
+        }
+      ],
+      "baseline": {
+        "finish_reason": "max_tokens",
+        "historical_non_test_source_available": true,
+        "input_tokens": 18727,
+        "output_tokens": 3724,
+        "post_terminal_ping_ignored_count": null,
+        "raw_capture_bytes": 473171,
+        "raw_capture_sha256": "59afe3d76435b3d2651da53c05f0bd96ea347a669474d3384f43acb7b64c2d7b",
+        "replay_status": "PARSED_RESPONSE",
+        "visible_characters": 0,
+        "visible_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "business_success_claimed": false,
+      "comparison": "PRESERVED",
+      "current": {
+        "finish_reason": "max_tokens",
+        "historical_non_test_source_available": true,
+        "input_tokens": 18727,
+        "output_tokens": 3724,
+        "post_terminal_ping_ignored_count": 0,
+        "raw_capture_bytes": 473171,
+        "raw_capture_sha256": "59afe3d76435b3d2651da53c05f0bd96ea347a669474d3384f43acb7b64c2d7b",
+        "replay_status": "PARSED_RESPONSE",
+        "visible_characters": 0,
+        "visible_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "external_anchor_status": "PASS",
+      "raw_capture_bytes": 473171,
+      "raw_capture_sha256": "59afe3d76435b3d2651da53c05f0bd96ea347a669474d3384f43acb7b64c2d7b"
+    },
+    {
+      "anchors": [
+        {
+          "file": "campaign/probe-state-0002.json",
+          "kind": "CAMPAIGN_FINAL_MANIFEST_FILE_HASH",
+          "path": "C:\\小说\\full-short-shared-usage-successor-20260905-v1\\final-manifest-v1.json",
+          "source_sha256": "a21199fa62175015bebe16cdd1c5e881deff46af5d7a9e8c4d54ffb4f023fa88",
+          "status": "PASS"
+        },
+        {
+          "file": "campaign/probe-state-0003.json",
+          "kind": "CAMPAIGN_FINAL_MANIFEST_FILE_HASH",
+          "path": "C:\\小说\\full-short-shared-usage-successor-20260905-v1\\final-manifest-v1.json",
+          "source_sha256": "a21199fa62175015bebe16cdd1c5e881deff46af5d7a9e8c4d54ffb4f023fa88",
+          "status": "PASS"
+        },
+        {
+          "file": "campaign/probe-state-0004.json",
+          "kind": "CAMPAIGN_FINAL_MANIFEST_FILE_HASH",
+          "path": "C:\\小说\\full-short-shared-usage-successor-20260905-v1\\final-manifest-v1.json",
+          "source_sha256": "a21199fa62175015bebe16cdd1c5e881deff46af5d7a9e8c4d54ffb4f023fa88",
+          "status": "PASS"
+        },
+        {
+          "file": "campaign/probe-state-0005.json",
+          "kind": "CAMPAIGN_FINAL_MANIFEST_FILE_HASH",
+          "path": "C:\\小说\\full-short-shared-usage-successor-20260905-v1\\final-manifest-v1.json",
+          "source_sha256": "a21199fa62175015bebe16cdd1c5e881deff46af5d7a9e8c4d54ffb4f023fa88",
+          "status": "PASS"
+        },
+        {
+          "file": "campaign/probe-terminal-state-v1.json",
+          "kind": "CAMPAIGN_FINAL_MANIFEST_FILE_HASH",
+          "path": "C:\\小说\\full-short-shared-usage-successor-20260905-v1\\final-manifest-v1.json",
+          "source_sha256": "a21199fa62175015bebe16cdd1c5e881deff46af5d7a9e8c4d54ffb4f023fa88",
+          "status": "PASS"
+        }
+      ],
+      "baseline": {
+        "finish_reason": "end_turn",
+        "historical_non_test_source_available": true,
+        "input_tokens": 89255,
+        "output_tokens": 25,
+        "post_terminal_ping_ignored_count": null,
+        "raw_capture_bytes": 2379,
+        "raw_capture_sha256": "69fa71957741789dc0b55fc509a490161eabced12a832004335f0ca0fffc6cc3",
+        "replay_status": "PARSED_RESPONSE",
+        "visible_characters": 99,
+        "visible_sha256": "a53be95c03509a81aa191a827f843579b90b4bd38cc2b64e79cb7e5f852c922c"
+      },
+      "business_success_claimed": false,
+      "comparison": "PRESERVED",
+      "current": {
+        "finish_reason": "end_turn",
+        "historical_non_test_source_available": true,
+        "input_tokens": 89255,
+        "output_tokens": 25,
+        "post_terminal_ping_ignored_count": 0,
+        "raw_capture_bytes": 2379,
+        "raw_capture_sha256": "69fa71957741789dc0b55fc509a490161eabced12a832004335f0ca0fffc6cc3",
+        "replay_status": "PARSED_RESPONSE",
+        "visible_characters": 99,
+        "visible_sha256": "a53be95c03509a81aa191a827f843579b90b4bd38cc2b64e79cb7e5f852c922c"
+      },
+      "external_anchor_status": "PASS",
+      "raw_capture_bytes": 2379,
+      "raw_capture_sha256": "69fa71957741789dc0b55fc509a490161eabced12a832004335f0ca0fffc6cc3"
+    },
+    {
+      "anchors": [
+        {
+          "git_commit": "79a99a58ebe95b2be4d1e51a8d190070a2568574",
+          "kind": "COMMITTED_HISTORICAL_FORENSIC_RAW_HASH",
+          "limitations": "Original HTTP status/content-type/encoding/transport flag were not persisted; replay content-type and encoding inferred from exact raw SSE entity.",
+          "path": "docs/superpowers/reports/full-short-probe01-terminal-evidence-root-cause-and-successor-v1/agent-a-raw-capture-forensics-v1.json",
+          "source_sha256": "d9d148b014acc989bb08514773875dda31bb3c21fb1ef74bf6430ffc9385f7f1",
+          "status": "PASS"
+        }
+      ],
+      "baseline": {
+        "finish_reason": "end_turn",
+        "historical_non_test_source_available": true,
+        "input_tokens": 89255,
+        "output_tokens": 9,
+        "post_terminal_ping_ignored_count": null,
+        "raw_capture_bytes": 1735,
+        "raw_capture_sha256": "de1cdf7b6eefcab2fa28f6bab664aad159be87d1d4e152250a77e61974bef713",
+        "replay_status": "PARSED_RESPONSE",
+        "visible_characters": 32,
+        "visible_sha256": "fda564ba3f7a0f028106d468420f674898ed99ac5bf2765ac9586206e39d73c5"
+      },
+      "business_success_claimed": false,
+      "comparison": "PRESERVED",
+      "current": {
+        "finish_reason": "end_turn",
+        "historical_non_test_source_available": true,
+        "input_tokens": 89255,
+        "output_tokens": 9,
+        "post_terminal_ping_ignored_count": 0,
+        "raw_capture_bytes": 1735,
+        "raw_capture_sha256": "de1cdf7b6eefcab2fa28f6bab664aad159be87d1d4e152250a77e61974bef713",
+        "replay_status": "PARSED_RESPONSE",
+        "visible_characters": 32,
+        "visible_sha256": "fda564ba3f7a0f028106d468420f674898ed99ac5bf2765ac9586206e39d73c5"
+      },
+      "external_anchor_status": "PASS",
+      "raw_capture_bytes": 1735,
+      "raw_capture_sha256": "de1cdf7b6eefcab2fa28f6bab664aad159be87d1d4e152250a77e61974bef713"
+    }
+  ],
+  "schema": "SharedAnthropicHistoricalReplayComparisonV1",
+  "test_generated_unique_count": 32
+}

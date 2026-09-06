@@ -1,0 +1,549 @@
+{
+  "schema": "ClosedWorldChangeContractV1",
+  "master_sha256": "58b91f4d35d03e6d01f21ba484629be50740af8d37a5ea358ba73cf8b43adfec",
+  "baseline_head": "79a99a58ebe95b2be4d1e51a8d190070a2568574",
+  "risk": "L3",
+  "authorization": "Explicit fresh Master including independent review and bounded successor campaign",
+  "scope": "closed_world_protocol",
+  "current_failure": "Two baseline-green complete-message timeout/cancel capture regressions; distributed lifecycle authority",
+  "selected_architecture": "Single explicit finite lifecycle owner with structural guards, typed outcomes and orthogonal capture/tail facts",
+  "preserved": [
+    "requests",
+    "routes",
+    "models",
+    "retry/fallback schedule",
+    "usage receipt identity",
+    "literary semantics",
+    "StoryState/Canon",
+    "existing captures and nonces"
+  ],
+  "rollback": "External task-baseline and initial-snapshot; no destructive Git operations",
+  "tests": [
+    "generated transitions",
+    "fault injection",
+    "all available exact raw replay",
+    "shared Provider cluster",
+    "request zero-diff",
+    "related Runtime",
+    "complete suite",
+    "Strict L3"
+  ],
+  "requirements": [
+    {
+      "original_heading": "0. STRATEGIC DECISION",
+      "original_requirement_sha256": "7fc0ada1bb6f6ba89dbf103592e37e1c761ffce89f1ef164e59c9790db2334e2",
+      "scope": "closed_world_protocol_or_bounded_campaign",
+      "forbidden_narrowing": "No omitted mandatory state/event/shape/route/capture/gate; no proxy coverage or assumed PASS",
+      "implementation_phase": "preservation_or_campaign",
+      "status": "PENDING"
+    },
+    {
+      "original_heading": "1. CURRENT BASELINE / PRESERVE WORKTREE",
+      "original_requirement_sha256": "7b59d95dc08584d3b4729a8cf194300a0555b918de42560bb458be37d73a38eb",
+      "scope": "closed_world_protocol_or_bounded_campaign",
+      "forbidden_narrowing": "No omitted mandatory state/event/shape/route/capture/gate; no proxy coverage or assumed PASS",
+      "implementation_phase": "preservation_or_campaign",
+      "status": "PENDING"
+    },
+    {
+      "original_heading": "2. USER AUTHORIZATION",
+      "original_requirement_sha256": "2edf853c9400d7d90f2da136d36042e1fd7f3b683798f76f2ae327c8cbf04b38",
+      "scope": "closed_world_protocol_or_bounded_campaign",
+      "forbidden_narrowing": "No omitted mandatory state/event/shape/route/capture/gate; no proxy coverage or assumed PASS",
+      "implementation_phase": "preservation_or_campaign",
+      "status": "PENDING"
+    },
+    {
+      "original_heading": "13. Exact READY offline Full Short dry run;",
+      "original_requirement_sha256": "98af60dadf22439a0b5d2efe122d098407f48f9d59a4cedbd9bd43ad0ccee97e",
+      "scope": "closed_world_protocol_or_bounded_campaign",
+      "forbidden_narrowing": "No omitted mandatory state/event/shape/route/capture/gate; no proxy coverage or assumed PASS",
+      "implementation_phase": "protocol",
+      "status": "PENDING"
+    },
+    {
+      "original_heading": "15. Strict L3 and fresh reviewers;",
+      "original_requirement_sha256": "8dbf348c3d3c355c54304bb27b0ff857386f3dd54b2cdd4abfce4ba4c3e298c9",
+      "scope": "closed_world_protocol_or_bounded_campaign",
+      "forbidden_narrowing": "No omitted mandatory state/event/shape/route/capture/gate; no proxy coverage or assumed PASS",
+      "implementation_phase": "protocol",
+      "status": "PENDING"
+    },
+    {
+      "original_heading": "3. PARALLEL CODEX POLICY",
+      "original_requirement_sha256": "c114afb53412002257515b743e8e14350df8328877fd462f2b97792d4b49f4a3",
+      "scope": "closed_world_protocol_or_bounded_campaign",
+      "forbidden_narrowing": "No omitted mandatory state/event/shape/route/capture/gate; no proxy coverage or assumed PASS",
+      "implementation_phase": "preservation_or_campaign",
+      "status": "PENDING"
+    },
+    {
+      "original_heading": "4. CLOSED-WORLD PROTOCOL DOMAIN",
+      "original_requirement_sha256": "1e1a5ac9bc7caafb447fa7f938084535a5bedd9f0837fa3ba6e8ba36a0ec3c41",
+      "scope": "closed_world_protocol_or_bounded_campaign",
+      "forbidden_narrowing": "No omitted mandatory state/event/shape/route/capture/gate; no proxy coverage or assumed PASS",
+      "implementation_phase": "protocol",
+      "status": "PENDING"
+    },
+    {
+      "original_heading": "5. EXPLICIT STATE MACHINE",
+      "original_requirement_sha256": "1c9f46d18ef85bf0d92bc612bd4f389a79a7a6cb3ec857b821e7e1842f6f0061",
+      "scope": "closed_world_protocol_or_bounded_campaign",
+      "forbidden_narrowing": "No omitted mandatory state/event/shape/route/capture/gate; no proxy coverage or assumed PASS",
+      "implementation_phase": "protocol",
+      "status": "PENDING"
+    },
+    {
+      "original_heading": "6. SOURCE-GROUNDED SEMANTIC RULES",
+      "original_requirement_sha256": "f0d2b8516d31610fdc13c75460a7ef19eb0b6155905db2fc2364a71a5ef3d496",
+      "scope": "closed_world_protocol_or_bounded_campaign",
+      "forbidden_narrowing": "No omitted mandatory state/event/shape/route/capture/gate; no proxy coverage or assumed PASS",
+      "implementation_phase": "protocol",
+      "status": "PENDING"
+    },
+    {
+      "original_heading": "7. THREE SEPARATE COMPLETENESS CONCEPTS",
+      "original_requirement_sha256": "4591f460e7705ac95da36c13b63284cbd049e9c82e2b001c3fb448d101ece915",
+      "scope": "closed_world_protocol_or_bounded_campaign",
+      "forbidden_narrowing": "No omitted mandatory state/event/shape/route/capture/gate; no proxy coverage or assumed PASS",
+      "implementation_phase": "protocol",
+      "status": "PENDING"
+    },
+    {
+      "original_heading": "1. SEMANTIC_TERMINAL_COMPLETE",
+      "original_requirement_sha256": "525290c98c271274b866a6ef044db76d907379116a3ea51ee2d9518583c7a503",
+      "scope": "closed_world_protocol_or_bounded_campaign",
+      "forbidden_narrowing": "No omitted mandatory state/event/shape/route/capture/gate; no proxy coverage or assumed PASS",
+      "implementation_phase": "preservation_or_campaign",
+      "status": "PENDING"
+    },
+    {
+      "original_heading": "2. TERMINAL_CAPTURE_COMPLETE",
+      "original_requirement_sha256": "973eb92ac9219b0987f0c18dabfdda7e84e0c120433efd1f8fd2a24fe85c1545",
+      "scope": "closed_world_protocol_or_bounded_campaign",
+      "forbidden_narrowing": "No omitted mandatory state/event/shape/route/capture/gate; no proxy coverage or assumed PASS",
+      "implementation_phase": "preservation_or_campaign",
+      "status": "PENDING"
+    },
+    {
+      "original_heading": "3. TRANSPORT_TAIL_CLOSED_CLEANLY",
+      "original_requirement_sha256": "d255d32ef126b8efdb88e1c9c1b01bed7b226ea8fbc85e87899dabbd19019a55",
+      "scope": "closed_world_protocol_or_bounded_campaign",
+      "forbidden_narrowing": "No omitted mandatory state/event/shape/route/capture/gate; no proxy coverage or assumed PASS",
+      "implementation_phase": "preservation_or_campaign",
+      "status": "PENDING"
+    },
+    {
+      "original_heading": "8. CAUSAL PRECEDENCE CONTRACT",
+      "original_requirement_sha256": "fedb7851fe866e73d8b6980fd95403cd86aa3544fff40fc1bac6a5d0bd65fd0d",
+      "scope": "closed_world_protocol_or_bounded_campaign",
+      "forbidden_narrowing": "No omitted mandatory state/event/shape/route/capture/gate; no proxy coverage or assumed PASS",
+      "implementation_phase": "protocol",
+      "status": "PENDING"
+    },
+    {
+      "original_heading": "9. ERROR PAYLOAD NORMALIZATION",
+      "original_requirement_sha256": "9babe992505efc9fa850f6da09cda3efda29f3e3b10711b282441e6a32553083",
+      "scope": "closed_world_protocol_or_bounded_campaign",
+      "forbidden_narrowing": "No omitted mandatory state/event/shape/route/capture/gate; no proxy coverage or assumed PASS",
+      "implementation_phase": "protocol",
+      "status": "PENDING"
+    },
+    {
+      "original_heading": "10. REQUEST ZERO-DIFF HARD GATE",
+      "original_requirement_sha256": "d776f98eb6c322fd59c00058ea8a4974f368acca1727c04cc1c64d53cb959009",
+      "scope": "closed_world_protocol_or_bounded_campaign",
+      "forbidden_narrowing": "No omitted mandatory state/event/shape/route/capture/gate; no proxy coverage or assumed PASS",
+      "implementation_phase": "protocol",
+      "status": "PENDING"
+    },
+    {
+      "original_heading": "11. GENERATED TRANSITION TEST CAMPAIGN",
+      "original_requirement_sha256": "1237d507b2e3d597cd1e8e488310b14168ac196b84e52ca5b79f65202dab5b71",
+      "scope": "closed_world_protocol_or_bounded_campaign",
+      "forbidden_narrowing": "No omitted mandatory state/event/shape/route/capture/gate; no proxy coverage or assumed PASS",
+      "implementation_phase": "protocol",
+      "status": "PENDING"
+    },
+    {
+      "original_heading": "12. REQUIRED HISTORICAL/REGRESSION SCENARIOS",
+      "original_requirement_sha256": "38e7d2448c8a63694a6ab9c731dee346cb4f7366bdd566a3df0c223b7e1fd790",
+      "scope": "closed_world_protocol_or_bounded_campaign",
+      "forbidden_narrowing": "No omitted mandatory state/event/shape/route/capture/gate; no proxy coverage or assumed PASS",
+      "implementation_phase": "protocol",
+      "status": "PENDING"
+    },
+    {
+      "original_heading": "13. EXACT HISTORICAL REPLAY",
+      "original_requirement_sha256": "1a2ffb7bfce1b43f4bb6ea1550843e64796e49ea97aa3db880440ebeeb40d481",
+      "scope": "closed_world_protocol_or_bounded_campaign",
+      "forbidden_narrowing": "No omitted mandatory state/event/shape/route/capture/gate; no proxy coverage or assumed PASS",
+      "implementation_phase": "protocol",
+      "status": "PENDING"
+    },
+    {
+      "original_heading": "14. FAULT INJECTION",
+      "original_requirement_sha256": "63f9b05ffa9500e05ea817b11e3ad0c64cf89e2b709c71beac763ea1b6bc2cd3",
+      "scope": "closed_world_protocol_or_bounded_campaign",
+      "forbidden_narrowing": "No omitted mandatory state/event/shape/route/capture/gate; no proxy coverage or assumed PASS",
+      "implementation_phase": "protocol",
+      "status": "PENDING"
+    },
+    {
+      "original_heading": "15. STOP-LOSS BEFORE COMMIT",
+      "original_requirement_sha256": "58b2aa0cfd1649a13160e1b2a6224d848e29018b0886b9f30d0011ddf127007b",
+      "scope": "closed_world_protocol_or_bounded_campaign",
+      "forbidden_narrowing": "No omitted mandatory state/event/shape/route/capture/gate; no proxy coverage or assumed PASS",
+      "implementation_phase": "protocol",
+      "status": "PENDING"
+    },
+    {
+      "original_heading": "16. INDEPENDENT CLEAN-ROOM REVIEW",
+      "original_requirement_sha256": "72a7610870cbaa679fe30f07d4b46a6e39362703a6eeaa4d43af7083cbf18d81",
+      "scope": "closed_world_protocol_or_bounded_campaign",
+      "forbidden_narrowing": "No omitted mandatory state/event/shape/route/capture/gate; no proxy coverage or assumed PASS",
+      "implementation_phase": "protocol",
+      "status": "PENDING"
+    },
+    {
+      "original_heading": "17. PRE-EXECUTION VALIDATION",
+      "original_requirement_sha256": "1df7b84c583da974ebfe7a3aac577341effc1983322382f129fe7e663986334a",
+      "scope": "closed_world_protocol_or_bounded_campaign",
+      "forbidden_narrowing": "No omitted mandatory state/event/shape/route/capture/gate; no proxy coverage or assumed PASS",
+      "implementation_phase": "protocol",
+      "status": "PENDING"
+    },
+    {
+      "original_heading": "18. COMMIT / FREEZE",
+      "original_requirement_sha256": "4cd474790fa6de1b0965d7cbaa3bd9348b100828ee5dbf3cc7460206c119a74c",
+      "scope": "closed_world_protocol_or_bounded_campaign",
+      "forbidden_narrowing": "No omitted mandatory state/event/shape/route/capture/gate; no proxy coverage or assumed PASS",
+      "implementation_phase": "preservation_or_campaign",
+      "status": "PENDING"
+    },
+    {
+      "original_heading": "19. PROBE-01 / PROBE-02 DISPOSITION",
+      "original_requirement_sha256": "c88ae730b3b94bb2b6de90155ec4b55a4a0c9f6298031fa75f6400c6f3a1b8b3",
+      "scope": "closed_world_protocol_or_bounded_campaign",
+      "forbidden_narrowing": "No omitted mandatory state/event/shape/route/capture/gate; no proxy coverage or assumed PASS",
+      "implementation_phase": "preservation_or_campaign",
+      "status": "PENDING"
+    },
+    {
+      "original_heading": "20. SUCCESSOR AUTHORIZATION",
+      "original_requirement_sha256": "7bcc9bc7d0e737368cc9b0cfb9f9fc540cbca9e57fc851b4567e8d39aa1e7264",
+      "scope": "closed_world_protocol_or_bounded_campaign",
+      "forbidden_narrowing": "No omitted mandatory state/event/shape/route/capture/gate; no proxy coverage or assumed PASS",
+      "implementation_phase": "preservation_or_campaign",
+      "status": "PENDING"
+    },
+    {
+      "original_heading": "21. SUCCESSOR HARD CAPS",
+      "original_requirement_sha256": "08feae50d0d1d5b50ae02860beb21788f336f40ff36e3bfad1bc487d3963b6c9",
+      "scope": "closed_world_protocol_or_bounded_campaign",
+      "forbidden_narrowing": "No omitted mandatory state/event/shape/route/capture/gate; no proxy coverage or assumed PASS",
+      "implementation_phase": "preservation_or_campaign",
+      "status": "PENDING"
+    },
+    {
+      "original_heading": "22. SUCCESSOR PREFLIGHT",
+      "original_requirement_sha256": "19c7d8dd80f64ab2ed5b1520d59ac080c0a9460367a8dc326745512d32342af2",
+      "scope": "closed_world_protocol_or_bounded_campaign",
+      "forbidden_narrowing": "No omitted mandatory state/event/shape/route/capture/gate; no proxy coverage or assumed PASS",
+      "implementation_phase": "preservation_or_campaign",
+      "status": "PENDING"
+    },
+    {
+      "original_heading": "23. EXECUTE ONLY STILL-REQUIRED REAL PROBES",
+      "original_requirement_sha256": "34dddebd6046fc91d9a3a78bfac1d7f899028592916680d5a562a651c9038385",
+      "scope": "closed_world_protocol_or_bounded_campaign",
+      "forbidden_narrowing": "No omitted mandatory state/event/shape/route/capture/gate; no proxy coverage or assumed PASS",
+      "implementation_phase": "preservation_or_campaign",
+      "status": "PENDING"
+    },
+    {
+      "original_heading": "24. CAPACITY CLOSURE",
+      "original_requirement_sha256": "c3f3d3b3caacedea2ad7c4db58b469b09fb105d589597ae6680add554567d216",
+      "scope": "closed_world_protocol_or_bounded_campaign",
+      "forbidden_narrowing": "No omitted mandatory state/event/shape/route/capture/gate; no proxy coverage or assumed PASS",
+      "implementation_phase": "preservation_or_campaign",
+      "status": "PENDING"
+    },
+    {
+      "original_heading": "25. EXACT READY OFFLINE FULL SHORT",
+      "original_requirement_sha256": "f63cf9c7070adb7ad183ebbb33ca4f5399e40f2e3f3cb46ca40cc8b373a3a91f",
+      "scope": "closed_world_protocol_or_bounded_campaign",
+      "forbidden_narrowing": "No omitted mandatory state/event/shape/route/capture/gate; no proxy coverage or assumed PASS",
+      "implementation_phase": "preservation_or_campaign",
+      "status": "PENDING"
+    },
+    {
+      "original_heading": "27. FINAL STRICT L3 / REVIEW",
+      "original_requirement_sha256": "7c543a240bf956020aca5cf57dd60e5bf33a1ddc526b79ab94a9628c3f747711",
+      "scope": "closed_world_protocol_or_bounded_campaign",
+      "forbidden_narrowing": "No omitted mandatory state/event/shape/route/capture/gate; no proxy coverage or assumed PASS",
+      "implementation_phase": "preservation_or_campaign",
+      "status": "PENDING"
+    },
+    {
+      "original_heading": "28. EXACTLY ONE REAL FULL SHORT",
+      "original_requirement_sha256": "fa3db06644cefac0afb3fa0998cacc1af66f37164a6a8016a0d329d03e1a1664",
+      "scope": "closed_world_protocol_or_bounded_campaign",
+      "forbidden_narrowing": "No omitted mandatory state/event/shape/route/capture/gate; no proxy coverage or assumed PASS",
+      "implementation_phase": "preservation_or_campaign",
+      "status": "PENDING"
+    },
+    {
+      "original_heading": "29. POST-RUN REVIEW",
+      "original_requirement_sha256": "7fd39df06b7b0707a0f430e538c092f4407a08b2dfe5a71904f4f9c449e785e0",
+      "scope": "closed_world_protocol_or_bounded_campaign",
+      "forbidden_narrowing": "No omitted mandatory state/event/shape/route/capture/gate; no proxy coverage or assumed PASS",
+      "implementation_phase": "preservation_or_campaign",
+      "status": "PENDING"
+    },
+    {
+      "original_heading": "30. PRE-FREEZE EVIDENCE ROOT",
+      "original_requirement_sha256": "190871e364ed5cb8b0dd4d18224c1262113e4e981c0f373e9b2fa6ebad18f936",
+      "scope": "closed_world_protocol_or_bounded_campaign",
+      "forbidden_narrowing": "No omitted mandatory state/event/shape/route/capture/gate; no proxy coverage or assumed PASS",
+      "implementation_phase": "preservation_or_campaign",
+      "status": "PENDING"
+    },
+    {
+      "original_heading": "31. FINAL REQUIRED OUTPUT",
+      "original_requirement_sha256": "7cb7c4825750b76dff47059d918d7fcb9a13d981d46944b6b7c49fee25e0b173",
+      "scope": "closed_world_protocol_or_bounded_campaign",
+      "forbidden_narrowing": "No omitted mandatory state/event/shape/route/capture/gate; no proxy coverage or assumed PASS",
+      "implementation_phase": "preservation_or_campaign",
+      "status": "PENDING"
+    }
+  ],
+  "completion": "PENDING",
+  "master_sections": [
+    {
+      "section": 0,
+      "heading": "STRATEGIC DECISION",
+      "original_text": "STOP patch-by-patch treatment of individual Anthropic-compatible stream edge cases.\n\nThe recent failures all belong to the SAME shared protocol state-machine domain:\n\n- cumulative usage updates;\n- message_stop terminal semantics;\n- post-terminal ping;\n- Provider error precedence;\n- non-object error payloads;\n- post-terminal timeout;\n- post-terminal cancellation;\n- capture completeness;\n- precise failure-cause preservation.\n\nTherefore this task MUST close the shared Anthropic-compatible streaming state machine as a bounded,\nexplicit, mechanically testable CLOSED-WORLD protocol boundary.\n\nThe goal is NOT to enumerate every possible Python exception.\n\nThe goal IS:\n\nFor every protocol state and every supported/known event class that can cross this shared production\nstream boundary, the runtime has exactly one explicit source-grounded behavior:\n\n- ACCEPT / ADVANCE\n- IGNORE_TRANSPORT_KEEPALIVE\n- TERMINAL_SUCCESS\n- TERMINAL_PROVIDER_ERROR\n- TERMINAL_TRANSPORT_FAILURE\n- FAIL_CLOSED_PROTOCOL_INVALID\n- VERSIONED_UNKNOWN_EVENT_POLICY\n\nNo implicit fallthrough.\nNo generic \"anything after terminal is invalid\" shortcut.\nNo generic \"unknown child => transport.\"\nNo AttributeError from payload shape assumptions.\nNo post-terminal timeout/cancel downgrading an already complete result.\nNo later transport tail replacing an already observed Provider error.\n\nIf this closed-world proof fails, STOP.\nDo NOT return to another narrow patch task.",
+      "scope": "closed_world",
+      "status": "NOT_ALL_GATES_COMPLETE"
+    },
+    {
+      "section": 1,
+      "heading": "CURRENT BASELINE / PRESERVE WORKTREE",
+      "original_text": "Expected branch:\nr1-ptr3/planning-repair-finding-propagation-20260817\n\nExpected committed HEAD:\n79a99a58ebe95b2be4d1e51a8d190070a2568574\n\nCurrent worktree is intentionally dirty with in-scope partial work from the prior probe-02 tasks.\n\nKnown latest takeover facts:\n- 53 changed files were previously preserved as in-scope;\n- memory/ was classified as test-generated;\n- probe-01 exact replay PASS;\n- probe-02 exact replay PASS;\n- probe-02 canonical Provider usage = 137304 / 64;\n- 3 post-message_stop pings ignored;\n- focused tests = 132 passed;\n- shared Provider tests = 267 passed, 2 failed;\n- the 2 failures are baseline-green regressions:\n  * complete terminal + later timeout downgrades capture completeness;\n  * complete terminal + later cancellation downgrades capture completeness;\n- no real Provider call in the latest task;\n- no real Full Short;\n- no final commit/freeze for this successor line.\n\nAt start:\n\ngit branch --show-current\ngit rev-parse HEAD\ngit status --short\ngit diff --stat\ngit diff\ngit ls-files --others --exclude-standard\n\nClassify every changed/untracked path:\n\nA. PRESERVE_PROTOCOL_STATE_MACHINE_IMPLEMENTATION\nB. PRESERVE_PING_FIX\nC. PRESERVE_USAGE_FIX\nD. PRESERVE_ERROR_HARDENING\nE. PRESERVE_CAPTURE_COMPLETENESS_WORK\nF. PRESERVE_IN_SCOPE_TEST\nG. PRESERVE_IN_SCOPE_EVIDENCE\nH. TEST_GENERATED_MEMORY_PATH\nI. UNRELATED_OR_UNKNOWN\n\nPreserve A-H.\n\nIf any I remains after mechanical investigation:\nSTOP.\n\nDO NOT:\n- reset\n- restore\n- checkout\n- stash\n- clean\n- discard\n- recreate existing in-scope work from memory",
+      "scope": "closed_world",
+      "status": "NOT_ALL_GATES_COMPLETE"
+    },
+    {
+      "section": 2,
+      "heading": "USER AUTHORIZATION",
+      "original_text": "The user explicitly authorizes this ONE bounded successor campaign to proceed automatically without another\ninteractive authorization checkpoint, provided every mandatory gate below passes.\n\nAuthorized when eligible:\n\n1. authoritative protocol/source research;\n2. architecture consolidation of the shared response-side stream state machine;\n3. preservation and completion of current partial work;\n4. local tests / generated transition-matrix tests / exact historical replay;\n5. independent reviewers;\n6. commit all local source/test/evidence changes;\n7. freeze successor FINAL_EXECUTION_HEAD;\n8. materialize fresh successor authorization OUTSIDE Git;\n9. execute only still-required real probes sequentially;\n10. bounded credential/provider/network/model/paid usage for those probes;\n11. promote only workload evidence actually proved;\n12. recompute all 183 Exact READY physical request shapes;\n13. Exact READY offline Full Short dry run;\n14. 13K / 20K / 30K;\n15. Strict L3 and fresh reviewers;\n16. if every gate passes, execute exactly ONE real Full Short;\n17. bounded paid usage for that one Full Short;\n18. seal all evidence and stop.\n\nNot authorized:\n- second real Full Short;\n- open-ended probe retries;\n- route/model replacement;\n- Long;\n- Skill/Hybrid/Selective cutover;\n- unrelated external calls;\n- request-side redesign unless independently proven necessary.",
+      "scope": "closed_world",
+      "status": "NOT_ALL_GATES_COMPLETE"
+    },
+    {
+      "section": 3,
+      "heading": "PARALLEL CODEX POLICY",
+      "original_text": "Fresh child agents are allowed and encouraged for LOCAL/OFFLINE work.\n\nPrefer fork_turns=none where supported.\n\nParallel work may include:\n- protocol research;\n- state-machine extraction;\n- parser/source tracing;\n- historical raw replay;\n- transition-matrix generation;\n- property/fault tests;\n- capture model review;\n- request zero-diff review;\n- clean-room reviewers;\n- successor campaign planning;\n- post-run review.\n\nREAL PROVIDER REQUESTS MUST REMAIN SEQUENTIAL.\n\nDo not add new Provider/network concurrency.",
+      "scope": "closed_world",
+      "status": "NOT_ALL_GATES_COMPLETE"
+    },
+    {
+      "section": 4,
+      "heading": "CLOSED-WORLD PROTOCOL DOMAIN",
+      "original_text": "Codex must mechanically derive the actual shared production protocol domain from current source truth.\n\nAt minimum consider event classes equivalent to:\n\n- message_start\n- content_block_start\n- content_block_delta\n- content_block_stop\n- message_delta\n- message_stop\n- ping\n- error\n- unknown/versioned event\n- EOF / clean stream close\n- timeout\n- cancellation\n- transport exception\n\nAnd payload/semantic dimensions:\n\n- cumulative usage present/omitted/updated\n- visible final present/absent\n- tool/schema result\n- reasoning-only result\n- stop_reason=end_turn\n- stop_reason=max_tokens\n- Provider error object payload\n- non-object Provider error payload\n- malformed/raw error payload\n\nDo not assume this list is exhaustive.\nSOURCE WINS.\n\nProduce:\nshared-anthropic-protocol-domain-v1.json\n\nRequired:\nREGISTERED_PROTOCOL_STATE_COUNT=<n>\nREGISTERED_EVENT_CLASS_COUNT=<n>\nUNCLASSIFIED_SHARED_STREAM_EVENT_EXIT_COUNT=0",
+      "scope": "closed_world",
+      "status": "NOT_ALL_GATES_COMPLETE"
+    },
+    {
+      "section": 5,
+      "heading": "EXPLICIT STATE MACHINE",
+      "original_text": "Derive an explicit state machine from current production semantics.\n\nDo not force these exact names if source truth uses better ones, but semantics must distinguish at least:\n\n- BEFORE_MESSAGE\n- MESSAGE_ACTIVE\n- CONTENT_ACTIVE / CONTENT_COMPLETE as needed\n- SEMANTIC_SUCCESS_TERMINAL\n- PROVIDER_ERROR_TERMINAL\n- TRANSPORT_FAILURE_TERMINAL\n- PROTOCOL_INVALID_TERMINAL\n- POST_TERMINAL_TRANSPORT_TAIL\n\nCritical semantic dimensions must not be hidden in booleans with contradictory combinations.\n\nFor every state/event pair in the registered domain, produce exactly one transition decision.\n\nCreate:\nshared-anthropic-transition-matrix-v1.json\n\nEach row:\n\nFROM_STATE\nEVENT_CLASS\nPAYLOAD_SHAPE_OR_VARIANT\nPRECONDITION\nACTION\nNEXT_STATE\nPRIMARY_CAUSE_EFFECT\nUSAGE_EFFECT\nCONTENT_EFFECT\nCAPTURE_EFFECT\nTAIL_DIAGNOSTIC_EFFECT\nEXPECTED_TERMINAL\nSOURCE_GROUNDING\n\nRequire:\n\nTRANSITION_MATRIX_TOTAL_CELLS=<n>\nTRANSITION_MATRIX_UNSPECIFIED_CELL_COUNT=0\nTRANSITION_MATRIX_AMBIGUOUS_CELL_COUNT=0",
+      "scope": "closed_world",
+      "status": "NOT_ALL_GATES_COMPLETE"
+    },
+    {
+      "section": 6,
+      "heading": "SOURCE-GROUNDED SEMANTIC RULES",
+      "original_text": "Re-check current authoritative Anthropic docs and official SDK behavior.\n\nSOURCE TRUTH WINS.\n\nAt minimum ground:\n\nA. USAGE\n- message_start usage semantics\n- message_delta cumulative usage semantics\n- omitted field behavior\n- canonical final usage selection\n\nB. PING\n- ping classification\n- ping handling before terminal\n- ping handling after semantic terminal\n- ping must not mutate semantic Message\n\nC. PROVIDER ERROR\n- SSE error is a Provider/API error\n- object/non-object/raw error handling\n- whether semantic consumption terminates immediately\n- safe normalization rules\n\nD. TERMINAL SUCCESS\n- message_stop / stop_reason semantics\n- end_turn\n- max_tokens\n- tool/schema terminal\n- reasoning-only terminal where applicable\n\nE. TRANSPORT TAIL\n- EOF\n- timeout\n- cancellation\n- behavior before vs after semantic terminal\n\nF. UNKNOWN/VERSIONED EVENT\n- supported forward-compatibility policy\n- when unknown event is ignorable vs typed fail-closed\n\nProduce:\nauthoritative-shared-protocol-semantics-v1.json",
+      "scope": "closed_world",
+      "status": "NOT_ALL_GATES_COMPLETE"
+    },
+    {
+      "section": 7,
+      "heading": "THREE SEPARATE COMPLETENESS CONCEPTS",
+      "original_text": "Mechanically separate:\n\n1. SEMANTIC_TERMINAL_COMPLETE\n   The semantic Provider response has reached a valid terminal state.\n\n2. TERMINAL_CAPTURE_COMPLETE\n   All bytes/events required to prove the terminal semantic result were durably captured.\n\n3. TRANSPORT_TAIL_CLOSED_CLEANLY\n   The underlying transport closed cleanly after terminal.\n\nIf current schema can represent these with existing fields, reuse it.\nDo not invent parallel state unnecessarily.\n\nRequired invariants:\n\n- post-terminal timeout/cancel must not downgrade an already complete semantic result/capture;\n- pre-terminal timeout/cancel remains failure;\n- Provider error already observed remains primary even if tail timeout occurs;\n- ping after terminal may be diagnostic/ignored only if source-grounded.\n\nCreate:\nshared-completeness-contract-v1.json",
+      "scope": "closed_world",
+      "status": "NOT_ALL_GATES_COMPLETE"
+    },
+    {
+      "section": 8,
+      "heading": "CAUSAL PRECEDENCE CONTRACT",
+      "original_text": "Define explicit narrow precedence.\n\nExamples:\n\nA. Provider error -> ping -> timeout\nPRIMARY = Provider error\nTAIL = ping + timeout diagnostics\n\nB. message_stop complete -> ping -> timeout\nPRIMARY = successful semantic terminal\nTAIL = ping + timeout diagnostics\n\nC. message_stop complete -> cancellation\nPRIMARY = successful semantic terminal\nTAIL = cancellation diagnostic\n\nD. timeout before terminal\nPRIMARY = timeout/transport failure\n\nE. cancellation before terminal\nPRIMARY = cancellation/transport failure\n\nF. message_stop -> Provider error\nMust follow source-grounded policy and must NOT silently ignore the Provider error.\n\nDo not generalize \"first exception always wins\" outside this stream boundary.\n\nProduce:\nshared-stream-causal-precedence-contract-v1.json",
+      "scope": "closed_world",
+      "status": "NOT_ALL_GATES_COMPLETE"
+    },
+    {
+      "section": 9,
+      "heading": "ERROR PAYLOAD NORMALIZATION",
+      "original_text": "No decoded error payload shape may trigger AttributeError.\n\nCover:\n\n- canonical object\n- unexpected object structure\n- JSON string\n- JSON number\n- JSON boolean\n- JSON array\n- JSON null\n- malformed/non-JSON raw text\n- empty error data\n\nEvery case must yield a typed Provider/error result or source-grounded typed malformed error.\n\nPersist privacy-safe:\n- payload shape\n- safe message\n- payload SHA/length\n- Provider error type if safely extractable\n\nNever persist secrets/raw novel prompt/prose.\n\nRequire:\nATTRIBUTEERROR_FROM_SSE_ERROR_PAYLOAD_COUNT=0",
+      "scope": "closed_world",
+      "status": "NOT_ALL_GATES_COMPLETE"
+    },
+    {
+      "section": 10,
+      "heading": "REQUEST ZERO-DIFF HARD GATE",
+      "original_text": "This task is RESPONSE-SIDE / STATE-MACHINE-SIDE.\n\nAcross ALL active Anthropic-compatible production route families, compare PRE-FIX vs FINAL representative\noutbound requests.\n\nAt minimum source-truth equivalents of:\n\n- Happy Qwen\n- LingSuan GPT\n- LingSuan Sonnet\n- DeepSeek Official Anthropic-compatible\n- Happy Claude / other active Anthropic-compatible route(s)\n\nRequire:\n\nOUTBOUND_REQUEST_BODY_CHANGED_COUNT=0\nMODEL_VISIBLE_REQUEST_BYTES_CHANGED_COUNT=0\nROUTE_BINDING_CHANGED_COUNT=0\nOUTPUT_CAP_CHANGED_COUNT=0\nREASONING_POLICY_CHANGED_COUNT=0\nREQUEST_BUILDER_SOURCE_DIFF=0\n\nIf any nonzero:\nSTOP before real Provider execution.",
+      "scope": "closed_world",
+      "status": "NOT_ALL_GATES_COMPLETE"
+    },
+    {
+      "section": 11,
+      "heading": "GENERATED TRANSITION TEST CAMPAIGN",
+      "original_text": "Generate tests mechanically from the transition matrix.\n\nFor every registered state/event cell that is reachable or intentionally rejected:\n\n- construct deterministic safe event fixture;\n- assert exact action;\n- assert next state;\n- assert primary cause;\n- assert content/usage mutation rules;\n- assert capture state;\n- assert tail diagnostics;\n- assert typed terminal family.\n\nRequire:\n\nGENERATED_TRANSITION_CASE_COUNT=<n>\nGENERATED_TRANSITION_PASS_COUNT=<n>\nGENERATED_TRANSITION_COVERAGE=100_PERCENT\n\nNo proxy tests using constants that do not execute the owning parser/state-machine transition.",
+      "scope": "closed_world",
+      "status": "NOT_ALL_GATES_COMPLETE"
+    },
+    {
+      "section": 12,
+      "heading": "REQUIRED HISTORICAL/REGRESSION SCENARIOS",
+      "original_text": "At minimum include:\n\nSUCCESS / TAIL\n1. normal message_stop -> EOF\n2. ping before/during message\n3. message_stop -> ping -> EOF\n4. message_stop -> ping x3 -> EOF\n5. message_stop -> timeout\n6. message_stop -> ping -> timeout\n7. message_stop -> cancellation\n8. message_stop -> ping -> cancellation\n\nUSAGE\n9. cumulative input usage update\n10. cumulative output usage update\n11. omitted usage field retains prior value\n\nPROVIDER ERROR\n12. object error\n13. error -> ping\n14. error -> ping -> timeout\n15. error -> EOF\n16. error -> cancellation\n17. error -> semantic event\n18. error after message_stop\n\nERROR PAYLOAD SHAPES\n19. unexpected object\n20. string\n21. number\n22. boolean\n23. array\n24. null\n25. malformed/raw\n26. empty\n\nFAIL-CLOSED\n27. message_delta after message_stop\n28. content event after message_stop\n29. second message_stop if unsupported\n30. incomplete stream no terminal/error\n31. timeout before terminal\n32. cancellation before terminal\n33. unknown invalid semantic continuation\n\nHISTORICAL BUSINESS PATHS\n34. max_tokens terminal\n35. reasoning-only final-artifact path\n36. tool/schema path\n37. probe-01 raw capture exact replay\n38. probe-02 raw capture exact replay\n\nRequire zero:\n\nPOST_TERMINAL_TIMEOUT_DOWNGRADES_COMPLETE_CAPTURE_COUNT\nPOST_TERMINAL_CANCELLATION_DOWNGRADES_COMPLETE_CAPTURE_COUNT\nPRE_TERMINAL_TIMEOUT_FALSE_SUCCESS_COUNT\nPRE_TERMINAL_CANCELLATION_FALSE_SUCCESS_COUNT\nPROVIDER_ERROR_LOST_TO_LATER_TIMEOUT_COUNT\nATTRIBUTEERROR_FROM_SSE_ERROR_PAYLOAD_COUNT\nPOST_TERMINAL_ERROR_IGNORED_COUNT\nGENERIC_INCOMPLETE_TERMINAL_REPLACEMENT_COUNT\nSHARED_PROTOCOL_REGRESSION_COUNT",
+      "scope": "closed_world",
+      "status": "NOT_ALL_GATES_COMPLETE"
+    },
+    {
+      "section": 13,
+      "heading": "EXACT HISTORICAL REPLAY",
+      "original_text": "Re-run every available exact raw historical capture for the shared parser, not only probe-01/02.\n\nAt minimum:\n\nPROBE01_EXACT_REPLAY=PASS\nPROBE02_EXACT_REPLAY=PASS\n\nProbe-02 must remain:\n\nPROBE02_CANONICAL_PROVIDER_INPUT_TOKENS=137304\nPROBE02_CANONICAL_PROVIDER_OUTPUT_TOKENS=64\nPOST_TERMINAL_PING_IGNORED_COUNT=3\n\nEnumerate all other exact captures and their result.\n\nRequire:\nHISTORICAL_EXACT_REPLAY_REGRESSION_COUNT=0",
+      "scope": "closed_world",
+      "status": "NOT_ALL_GATES_COMPLETE"
+    },
+    {
+      "section": 14,
+      "heading": "FAULT INJECTION",
+      "original_text": "Generate fault cases from the state machine itself.\n\nInject at minimum:\n\n- timeout at each meaningful pre-terminal state\n- cancellation at each meaningful pre-terminal state\n- timeout after terminal\n- cancellation after terminal\n- Provider error at each meaningful state\n- ping at each meaningful state\n- malformed payload at each error path\n- duplicate terminal\n- semantic continuation after terminal\n- unknown event\n- EOF in each state\n\nRequire:\nSTATE_MACHINE_FAULT_INJECTION_COVERAGE=100_PERCENT\n\nNo real Provider call.",
+      "scope": "closed_world",
+      "status": "NOT_ALL_GATES_COMPLETE"
+    },
+    {
+      "section": 15,
+      "heading": "STOP-LOSS BEFORE COMMIT",
+      "original_text": "If any of these remain nonzero:\n\nTRANSITION_MATRIX_UNSPECIFIED_CELL_COUNT\nTRANSITION_MATRIX_AMBIGUOUS_CELL_COUNT\nUNCLASSIFIED_SHARED_STREAM_EVENT_EXIT_COUNT\nPOST_TERMINAL_TIMEOUT_DOWNGRADES_COMPLETE_CAPTURE_COUNT\nPOST_TERMINAL_CANCELLATION_DOWNGRADES_COMPLETE_CAPTURE_COUNT\nPRE_TERMINAL_TIMEOUT_FALSE_SUCCESS_COUNT\nPRE_TERMINAL_CANCELLATION_FALSE_SUCCESS_COUNT\nPROVIDER_ERROR_LOST_TO_LATER_TIMEOUT_COUNT\nATTRIBUTEERROR_FROM_SSE_ERROR_PAYLOAD_COUNT\nPOST_TERMINAL_ERROR_IGNORED_COUNT\nGENERIC_INCOMPLETE_TERMINAL_REPLACEMENT_COUNT\nSHARED_PROTOCOL_REGRESSION_COUNT\nHISTORICAL_EXACT_REPLAY_REGRESSION_COUNT\n\nthen:\n\nSHARED_ANTHROPIC_STREAM_STATE_MACHINE_CLOSED=NO\n\nSTOP.\n\nDo NOT create another narrow patch task.\n\nReturn:\nEXACT_NEXT_GATE=\nSHARED_ANTHROPIC_STREAM_STATE_MACHINE_ARCHITECTURE_REDESIGN_REQUIRED",
+      "scope": "closed_world",
+      "status": "NOT_ALL_GATES_COMPLETE"
+    },
+    {
+      "section": 16,
+      "heading": "INDEPENDENT CLEAN-ROOM REVIEW",
+      "original_text": "Launch at least FIVE fresh reviewers.\n\nReviewer 1:\nprotocol/state-machine completeness\n\nReviewer 2:\ncapture completeness / tail semantics\n\nReviewer 3:\nProvider error / payload-shape / causal precedence\n\nReviewer 4:\nrequest zero-diff / route/model/literary invariance\n\nReviewer 5:\nexact replay / fault injection / restart / exact-once\n\nAll must:\nARCHITECTURE_PASS\n\nRequire:\n\nSHARED_STREAM_STATE_MACHINE_REVIEW=PASS\n\nIf any reject:\nSTOP.",
+      "scope": "closed_world",
+      "status": "NOT_ALL_GATES_COMPLETE"
+    },
+    {
+      "section": 17,
+      "heading": "PRE-EXECUTION VALIDATION",
+      "original_text": "Run:\n\n- full generated transition matrix tests\n- full state-machine fault campaign\n- shared Provider/parser cluster\n- ping tests\n- usage tests\n- Provider error tests\n- non-object error tests\n- capture completeness tests\n- exact historical replay\n- request zero-diff tests\n- route identity\n- nonce/exact-once\n- capacity promotion\n- privacy\n- determinism\n- focused/related Runtime suites\n- Strict L3\n\nRequire:\n\nGENERATED_TRANSITION_COVERAGE=100_PERCENT\nSTATE_MACHINE_FAULT_INJECTION_COVERAGE=100_PERCENT\n\nNEW_REGRESSION_COUNT=0\nSHARED_PROTOCOL_REGRESSION_COUNT=0\n\nSTRICT_L3=PASS\nwarnings=0\nblockers=0",
+      "scope": "closed_world",
+      "status": "NOT_ALL_GATES_COMPLETE"
+    },
+    {
+      "section": 18,
+      "heading": "COMMIT / FREEZE",
+      "original_text": "Only after all local gates PASS.\n\nCommit:\n\n- preserved existing partial fixes;\n- explicit shared stream state-machine closure;\n- tests;\n- committed preparation evidence.\n\nDo not commit unrelated files.\nDo not commit test-generated memory/ unless source truth requires it.\n\nThen:\n\nSUCCESSOR_FINAL_EXECUTION_HEAD=git rev-parse HEAD\nWORKTREE=CLEAN\n\nRequire:\nNO_GIT_WRITE_AFTER_SUCCESSOR_HEAD_FREEZE=YES\n\nAll later execution evidence:\nEXTERNAL / NON-GIT ONLY.",
+      "scope": "closed_world",
+      "status": "NOT_ALL_GATES_COMPLETE"
+    },
+    {
+      "section": 19,
+      "heading": "PROBE-01 / PROBE-02 DISPOSITION",
+      "original_text": "Require:\n\nPROBE01_HISTORICAL_EVIDENCE_DISPOSITION=REPLAY_PROVEN_PASS\nPROBE02_HISTORICAL_EVIDENCE_DISPOSITION=REPLAY_PROVEN_PASS\n\nDo NOT resend 01/02.",
+      "scope": "closed_world",
+      "status": "NOT_ALL_GATES_COMPLETE"
+    },
+    {
+      "section": 20,
+      "heading": "SUCCESSOR AUTHORIZATION",
+      "original_text": "Create outside Git:\n\nFullShortClosedWorldAnthropicStreamAndSuccessorExecutionAuthorizationV1\n\nBind:\n\n- this Master source/hash\n- transition matrix SHA\n- state-machine source identity\n- authoritative protocol evidence\n- completeness/causal/error contracts\n- request zero-diff proof\n- generated transition test receipt\n- fault injection receipt\n- reviewer receipts\n- probe-01/02 replay identity\n- SUCCESSOR_FINAL_EXECUTION_HEAD\n- exact still-required probe set/order\n- exact routes/destinations/models/fingerprints\n- fixtures/input envelopes/wire output caps\n- no retry/fallback/switch\n- exact capture\n- bounded workload evidence promotion\n- Exact READY project 2ad716...\n- Runtime Kernel\n- Baseline Skill\n- segmentation/windowing\n- capacity admission\n- authority gates\n- recovery policies\n- 13K/20K/30K\n- Strict L3\n- exactly ONE real Full Short\n- hard budgets\n- no Long/cutover\n\nSet:\nexecution_authorized=true\nnamed_approver=USER_PREAUTHORIZED_BY_THIS_MASTER\nusage_status=unused\n\nNever reuse old authorization/nonce.",
+      "scope": "closed_world",
+      "status": "NOT_ALL_GATES_COMPLETE"
+    },
+    {
+      "section": 21,
+      "heading": "SUCCESSOR HARD CAPS",
+      "original_text": "SUCCESSOR_ABSOLUTE_MAX_PROVIDER_REQUESTS=144\nSUCCESSOR_ABSOLUTE_MAX_HTTP_POST_ATTEMPTS=144\nSUCCESSOR_ABSOLUTE_MAX_NETWORK_REQUESTS=144\nSUCCESSOR_ABSOLUTE_MAX_INPUT_TOKENS=4000000\nSUCCESSOR_ABSOLUTE_MAX_GENERATED_OUTPUT_TOKENS=2000000\nSUCCESSOR_ABSOLUTE_MAX_OUTPUT_TOKENS_PER_PROVIDER_REQUEST=32000\nSUCCESSOR_ABSOLUTE_MAX_ELAPSED_SECONDS=36000\n\nUSD_HARD_CAP_IF_RELIABLY_METERABLE=60\nCNY_HARD_CAP_IF_RELIABLY_METERABLE=120\n\nDerive tighter plan caps before real dispatch.\nIf plan-derived input >4,000,000:\nSTOP.",
+      "scope": "closed_world",
+      "status": "NOT_ALL_GATES_COMPLETE"
+    },
+    {
+      "section": 22,
+      "heading": "SUCCESSOR PREFLIGHT",
+      "original_text": "Require:\n\nSUCCESSOR_FINAL_EXECUTION_HEAD exact\nWORKTREE=CLEAN\nauthorization exact\n\nSHARED_ANTHROPIC_STREAM_STATE_MACHINE_CLOSED=YES\n\nrequest zero-diff exact\ngenerated transition coverage exact\nfault injection exact\nreviewers PASS\n\nprobe-01 replay PASS\nprobe-02 replay PASS\n\nsuccessor probe set exact\nall nonces absent\nsuccessor external counters=0\nREAL_FULL_SHORT_EXECUTION_COUNT=0\nbudget gate PASS\n\nRequire:\nSUCCESSOR_CAMPAIGN_PREFLIGHT=PASS",
+      "scope": "closed_world",
+      "status": "NOT_ALL_GATES_COMPLETE"
+    },
+    {
+      "section": 23,
+      "heading": "EXECUTE ONLY STILL-REQUIRED REAL PROBES",
+      "original_text": "Sequential only.\n\nDo NOT resend 01/02.\n\nExecute only still-required cases 03–08.\n\nPer case:\n\n1. fresh single-use nonce\n2. exact credential lookup\n3. exact guarded route client\n4. retry=0\n5. fallback=0\n6. route switch=0\n7. one Provider request max\n8. raw capture before lossy conversion\n9. typed terminal classification\n10. seal evidence/nonce\n\nSTOP on first dispatched failure.\n\nNo automatic replacement.",
+      "scope": "closed_world",
+      "status": "NOT_ALL_GATES_COMPLETE"
+    },
+    {
+      "section": 24,
+      "heading": "CAPACITY CLOSURE",
+      "original_text": "After all required probes PASS:\n\nEXACT_READY_PROVEN_SAFE_PHYSICAL_ATTEMPT_SHAPES=183\n\nEXACT_READY_UNPROVEN_PHYSICAL_ATTEMPT_COUNT=0\n\nCAPACITY_ENGINEERING_LINE=CLOSED\n\nIf not:\nSTOP.",
+      "scope": "closed_world",
+      "status": "NOT_ALL_GATES_COMPLETE"
+    },
+    {
+      "section": 25,
+      "heading": "EXACT READY OFFLINE FULL SHORT",
+      "original_text": "Using SAME frozen HEAD, run actual READY-authority project 2ad716... end-to-end offline.\n\nStub only the lowest Provider/network seam.\n\nMust complete:\n\nPlanning\nDraft\nReview\nReader Review\nPolish\nFinal Review\nMaintenance\nStoryState\nCanon\nREADY\nFinal Artifact\nCheckpoint\nCompletion Receipt\n\nRequire:\n\nFULL_SHORT_PRODUCTION_SHAPED_DRY_RUN=PASS_EXACT_READY_TARGET",
+      "scope": "closed_world",
+      "status": "NOT_ALL_GATES_COMPLETE"
+    },
+    {
+      "section": 26,
+      "heading": "13K / 20K / 30K",
+      "original_text": "Run:\n\n13K\n20K\n30K\n\nRequire:\n\nSIZE_MATRIX_SEGMENTATION_BEHAVIOR=PASS\n\nSIZE_MATRIX_PHYSICAL_ENVELOPE_BOUNDED=YES",
+      "scope": "closed_world",
+      "status": "NOT_ALL_GATES_COMPLETE"
+    },
+    {
+      "section": 27,
+      "heading": "FINAL STRICT L3 / REVIEW",
+      "original_text": "Fresh final reviewers:\n\n1. shared stream protocol\n2. capacity/segmentation\n3. authority/StoryState/Canon\n4. exact-once/recovery/restart\n5. route/evidence/privacy/Baseline Skill\n\nAll:\nARCHITECTURE_PASS\n\nRequire:\nSTRICT_L3=PASS\nwarnings=0\nblockers=0",
+      "scope": "closed_world",
+      "status": "NOT_ALL_GATES_COMPLETE"
+    },
+    {
+      "section": 28,
+      "heading": "EXACTLY ONE REAL FULL SHORT",
+      "original_text": "Only if EVERY prior gate passes.\n\nBefore Full Short require:\n\nauthorization exact\nfrozen HEAD unchanged\nworktree clean\n\nSHARED_ANTHROPIC_STREAM_STATE_MACHINE_CLOSED=YES\ncapacity closed\ndry-run PASS\nsize matrix PASS\nStrict L3 PASS\nreviewers PASS\nremaining budgets sufficient\nREAL_FULL_SHORT_EXECUTION_COUNT=0\n\nCreate one fresh single-use Full Short nonce.\n\nExecute exactly ONE real Full Short through existing production runtime.\n\nPreserve:\n\n- current route/model scheduling\n- exact destinations\n- segmentation/windowing\n- bounded fallback/recovery\n- Planning reasoning\n- final-artifact recovery\n- response capture/replay\n- exact-once\n- StoryState/Canon/READY authority\n- Baseline Skill\n- current literary/model-visible semantics\n\nNo whole-run retry.\nNo second Full Short.\nNo automatic route/model change.\n\nOn failure:\nseal exact typed evidence and STOP.\n\nOn success:\nseal manuscript, completion receipt, artifact/stage/capture/provider/authority ledgers,\nusage/cost/elapsed, recovery events, StoryState/Canon/READY and checkpoint.",
+      "scope": "closed_world",
+      "status": "NOT_ALL_GATES_COMPLETE"
+    },
+    {
+      "section": 29,
+      "heading": "POST-RUN REVIEW",
+      "original_text": "Fresh child reviewers may inspect final evidence in parallel.\n\nNo new external model calls.\n\nPrepare:\n- runtime reliability review\n- authority integrity review\n- capacity/segmentation review\n- literary-quality evidence\n- AI-flavor / over-polish / stitching / templating review\n\nDo not automatically change production literary policy.",
+      "scope": "closed_world",
+      "status": "NOT_ALL_GATES_COMPLETE"
+    },
+    {
+      "section": 30,
+      "heading": "PRE-FREEZE EVIDENCE ROOT",
+      "original_text": "Create/commit:\n\ndocs/superpowers/reports/shared-anthropic-stream-state-machine-closed-world-v1/\n\nInclude at minimum:\n\nREADME.md\nbaseline-binding-v1.json\ndirty-worktree-intake-v1.json\n\nshared-anthropic-protocol-domain-v1.json\nauthoritative-shared-protocol-semantics-v1.json\nshared-anthropic-transition-matrix-v1.json\nshared-completeness-contract-v1.json\nshared-stream-causal-precedence-contract-v1.json\nerror-payload-normalization-contract-v1.json\n\ngenerated-transition-test-report-v1.json\nstate-machine-fault-injection-report-v1.json\nhistorical-exact-replay-report-v1.json\nshared-request-zero-diff-v1.json\n\nreviewer-1-v1.json\nreviewer-2-v1.json\nreviewer-3-v1.json\nreviewer-4-v1.json\nreviewer-5-v1.json\n\nfocused-tests-v1.json\nstrict-l3-preexecution-v1.json\nprivacy-v1.json\npreexecution-final-report-v1.md\nsha256-manifest-v1.json\n\nAll real successor execution evidence after freeze:\nEXTERNAL / NON-GIT ONLY.",
+      "scope": "closed_world",
+      "status": "NOT_ALL_GATES_COMPLETE"
+    },
+    {
+      "section": 31,
+      "heading": "FINAL REQUIRED OUTPUT",
+      "original_text": "Always report:\n\nBASELINE_COMMITTED_HEAD=<sha>\n\nINITIAL_WORKTREE_DIRTY=<YES/NO>\nPRESERVED_IN_SCOPE_CHANGE_COUNT=<n>\nUNRELATED_DIRTY_PATH_COUNT=<n>\n\nREGISTERED_PROTOCOL_STATE_COUNT=<n>\nREGISTERED_EVENT_CLASS_COUNT=<n>\n\nTRANSITION_MATRIX_TOTAL_CELLS=<n>\nTRANSITION_MATRIX_UNSPECIFIED_CELL_COUNT=<n>\nTRANSITION_MATRIX_AMBIGUOUS_CELL_COUNT=<n>\n\nUNCLASSIFIED_SHARED_STREAM_EVENT_EXIT_COUNT=<n>\n\nGENERATED_TRANSITION_CASE_COUNT=<n>\nGENERATED_TRANSITION_PASS_COUNT=<n>\nGENERATED_TRANSITION_COVERAGE=<value>\n\nSTATE_MACHINE_FAULT_INJECTION_COVERAGE=<value>\n\nPOST_TERMINAL_TIMEOUT_DOWNGRADES_COMPLETE_CAPTURE_COUNT=<n>\nPOST_TERMINAL_CANCELLATION_DOWNGRADES_COMPLETE_CAPTURE_COUNT=<n>\nPRE_TERMINAL_TIMEOUT_FALSE_SUCCESS_COUNT=<n>\nPRE_TERMINAL_CANCELLATION_FALSE_SUCCESS_COUNT=<n>\nPROVIDER_ERROR_LOST_TO_LATER_TIMEOUT_COUNT=<n>\nATTRIBUTEERROR_FROM_SSE_ERROR_PAYLOAD_COUNT=<n>\nPOST_TERMINAL_ERROR_IGNORED_COUNT=<n>\nGENERIC_INCOMPLETE_TERMINAL_REPLACEMENT_COUNT=<n>\n\nSHARED_PROTOCOL_REGRESSION_COUNT=<n>\nHISTORICAL_EXACT_REPLAY_REGRESSION_COUNT=<n>\n\nOUTBOUND_REQUEST_BODY_CHANGED_COUNT=<n>\nMODEL_VISIBLE_REQUEST_BYTES_CHANGED_COUNT=<n>\nROUTE_BINDING_CHANGED_COUNT=<n>\nOUTPUT_CAP_CHANGED_COUNT=<n>\nREASONING_POLICY_CHANGED_COUNT=<n>\nREQUEST_BUILDER_SOURCE_DIFF=<n>\n\nPROBE01_EXACT_REPLAY=<PASS/FAIL>\nPROBE02_EXACT_REPLAY=<PASS/FAIL>\n\nPROBE02_CANONICAL_PROVIDER_INPUT_TOKENS=<n>\nPROBE02_CANONICAL_PROVIDER_OUTPUT_TOKENS=<n>\nPOST_TERMINAL_PING_IGNORED_COUNT=<n>\n\nSHARED_STREAM_STATE_MACHINE_REVIEW=<PASS/FAIL>\n\nSHARED_ANTHROPIC_STREAM_STATE_MACHINE_CLOSED=<YES/NO>\n\nSUCCESSOR_REAL_PROBE_CASE_COUNT=<n>\nSUCCESSOR_PROBE_CASE_SET=<ids>\n\nSUCCESSOR_FINAL_EXECUTION_HEAD=<sha>\nWORKTREE=<state>\n\nSUCCESSOR_CAMPAIGN_PREFLIGHT=<PASS/FAIL/NOT_REACHED>\nSUCCESSOR_PROBE_ALL_REQUIRED_CASES_PASS=<YES/NO/NOT_REACHED>\n\nEXACT_READY_PROVEN_SAFE_PHYSICAL_ATTEMPT_SHAPES=<n>\nEXACT_READY_UNPROVEN_PHYSICAL_ATTEMPT_COUNT=<n>\nCAPACITY_ENGINEERING_LINE=<CLOSED/BLOCKED/NOT_REACHED>\n\nFULL_SHORT_PRODUCTION_SHAPED_DRY_RUN=<status>\nSIZE_MATRIX_SEGMENTATION_BEHAVIOR=<status>\nSTRICT_L3=<status>\n\nSUCCESSOR_REAL_PROVIDER_REQUEST_ATTEMPTS=<n>\nSUCCESSOR_HTTP_POST_ATTEMPTS=<n>\nSUCCESSOR_NETWORK_CALLS=<n>\nSUCCESSOR_MODEL_CALLS=<n>\nSUCCESSOR_PAID_CALLS=<n>\nSUCCESSOR_TOTAL_INPUT_TOKENS=<n>\nSUCCESSOR_TOTAL_GENERATED_OUTPUT_TOKENS=<n>\nSUCCESSOR_COST_STATUS=<status>\nSUCCESSOR_TOTAL_ELAPSED_SECONDS=<n>\n\nREAL_FULL_SHORT_EXECUTION_COUNT=<0 or 1>\nREAL_FULL_SHORT_TERMINAL=<SUCCESS|exact typed failure|NOT_REACHED>\n\nIf real Full Short succeeds:\n\nTRUSTWORTHY_FULL_SHORT_REAL_EXECUTION=PASS\nLITERARY_QUALITY_AUDIT_READY=YES\n\nEXACT_NEXT_GATE=\nFIRST_REAL_FULL_SHORT_LITERARY_AND_AI_FLAVOR_AUDIT\n\nIf shared state machine cannot close:\n\nREAL_FULL_SHORT_EXECUTION_COUNT=0\n\nEXACT_NEXT_GATE=\nSHARED_ANTHROPIC_STREAM_STATE_MACHINE_ARCHITECTURE_REDESIGN_REQUIRED\n\nIf another pre-Full-Short gate fails:\n\nREAL_FULL_SHORT_EXECUTION_COUNT=0\n\nEXACT_NEXT_GATE=<exact first failed gate>\n\nIf real Full Short fails:\n\nREAL_FULL_SHORT_EXECUTION_COUNT=1\n\nEXACT_NEXT_GATE=\nFIRST_REAL_FULL_SHORT_FAILURE_EVIDENCE_REVIEW\n\nSTOP.",
+      "scope": "closed_world",
+      "status": "NOT_ALL_GATES_COMPLETE"
+    }
+  ],
+  "section_extraction": "Equals-delimited Master chapters; ordered exact 0..31; original text retained."
+}

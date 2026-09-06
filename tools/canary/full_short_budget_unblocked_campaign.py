@@ -40,6 +40,7 @@ from novel_flywheel.full_short_probe_campaign import (
     FullShortProbeCampaign,
     ProbeCase,
     ProbeResultKind,
+    ProbeStreamOutcomeEvidenceV1,
     ProbeRouteIdentity,
     build_probe_campaign_plan,
 )
@@ -61,6 +62,9 @@ from novel_flywheel.providers.anthropic import (
     AnthropicStreamProtocolError,
 )
 from novel_flywheel.providers.registry import ProviderRegistry
+from novel_flywheel.anthropic_stream import AnthropicStream, Event
+from novel_flywheel.anthropic_durable_stream import DurableAnthropicStreamV1
+from novel_flywheel.provider_stream_error import StreamProviderErrorEvidenceV1
 
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
@@ -117,6 +121,18 @@ def _precise_response_failure_code(exc: Exception) -> str | None:
                          "cache_read_input_tokens"}:
                 code += "." + field
         return code
+    return None
+
+
+def _provider_terminal_cause(exc: BaseException) -> AnthropicProviderTerminalError | None:
+    """Only explicit, typed Provider causes qualify; never classify raw text."""
+    seen: set[int] = set()
+    current: BaseException | None = exc
+    while current is not None and id(current) not in seen:
+        seen.add(id(current))
+        if isinstance(current, AnthropicProviderTerminalError):
+            return current
+        current = current.__cause__ or (None if current.__suppress_context__ else current.__context__)
     return None
 
 
@@ -720,6 +736,7 @@ class GuardedProviderDispatch:
         self, fixtures: Sequence[SyntheticProbeFixture], registry: ProviderRegistry,
         *, deadline_guard: Callable[[], None] | None = None,
         capture_metadata_persist: Callable[[Mapping[str, Any]], None] | None = None,
+        raw_capture_persist: Callable[[bytes, Mapping[str, Any]], bool] | None = None,
     ) -> None:
         if registry.transport_policy != SingleDispatchTransportPolicyV1.phase_b():
             _fail("SINGLE_DISPATCH_TRANSPORT_POLICY_REQUIRED")
@@ -732,6 +749,9 @@ class GuardedProviderDispatch:
         self._registry = registry
         self._deadline_guard = deadline_guard or (lambda: None)
         self._capture_metadata_persist = capture_metadata_persist
+        self._raw_capture_persist = raw_capture_persist
+        self._stream_outcome_v1: ProbeStreamOutcomeEvidenceV1 | None = None
+        self._provider_stream_error: StreamProviderErrorEvidenceV1 | None = None
         self._fixtures = {fixture.case.case_sha256: fixture for fixture in fixtures}
         if len(self._fixtures) != 8:
             _fail("SYNTHETIC_FIXTURE_CASE_IDENTITY_INVALID")
@@ -830,7 +850,7 @@ class GuardedProviderDispatch:
     def capture_provider_protocol_input(
         self, *, data: bytes, status_code: int, content_type: str,
         encoding: str, transport_complete: bool,
-    ) -> None:
+    ) -> bool:
         self._require_active()
         if self._raw_response is not None or not isinstance(data, bytes):
             _fail("MULTIPLE_PROVIDER_RESPONSES_REJECTED")
@@ -838,19 +858,25 @@ class GuardedProviderDispatch:
         self._status_code = status_code
         self._response_complete = bool(transport_complete)
         self._provider_reported_usage = None
+        fixture = self._require_active()
+        metadata = {
+            "case_sha256": fixture.case.case_sha256,
+            "request_sha256": fixture.request_sha256,
+            "route_fingerprint": fixture.route.route_fingerprint,
+            "provider_entity_sha256": hashlib.sha256(data).hexdigest(),
+            "provider_entity_bytes": len(data),
+            "status_code": status_code,
+            "content_type": content_type,
+            "encoding": encoding,
+            "transport_complete": bool(transport_complete),
+        }
+        durable = False
+        if self._raw_capture_persist is not None:
+            durable = self._raw_capture_persist(data, metadata) is True
+            if not durable:
+                _fail("PROVIDER_RAW_CAPTURE_NOT_ACKNOWLEDGED")
         if self._capture_metadata_persist is not None:
-            fixture = self._require_active()
-            self._capture_metadata_persist({
-                "case_sha256": fixture.case.case_sha256,
-                "request_sha256": fixture.request_sha256,
-                "route_fingerprint": fixture.route.route_fingerprint,
-                "provider_entity_sha256": hashlib.sha256(data).hexdigest(),
-                "provider_entity_bytes": len(data),
-                "status_code": status_code,
-                "content_type": content_type,
-                "encoding": encoding,
-                "transport_complete": bool(transport_complete),
-            })
+            self._capture_metadata_persist(metadata)
         if transport_complete and 200 <= status_code < 300:
             try:
                 self._provider_reported_usage = (
@@ -865,6 +891,7 @@ class GuardedProviderDispatch:
                 # Keep the child cause; do not throw from the observer and mask
                 # a more specific Provider error from the adapter afterwards.
                 self._usage_failure_code = _precise_response_failure_code(exc)
+        return durable
 
     def _require_active(self) -> SyntheticProbeFixture:
         if self._active is None:
@@ -872,17 +899,74 @@ class GuardedProviderDispatch:
         return self._active
 
     @staticmethod
-    async def _complete_and_close(adapter: Any, request: ModelRequest) -> ModelResponse:
+    async def _complete_and_close(
+        adapter: Any, request: ModelRequest, *, outcome_observer: Any = None,
+    ) -> ModelResponse:
+        primary = None
         try:
             response = await adapter.complete(request)
+        except (Exception, asyncio.CancelledError) as exc:
+            primary = _provider_terminal_cause(exc)
+            if primary is not None:
+                raise primary from None
+            raise
         finally:
-            client = getattr(adapter, "client", None)
-            close = getattr(client, "aclose", None)
-            if callable(close):
-                await close()
+            owner = getattr(adapter, "_last_stream_outcome_v1", None)
+            try:
+                client = getattr(adapter, "client", None)
+                close = getattr(client, "aclose", None)
+                if callable(close):
+                    try:
+                        await close()
+                    except (Exception, asyncio.CancelledError) as close_exc:
+                        if isinstance(owner, (AnthropicStream, DurableAnthropicStreamV1)):
+                            event = (Event.TIMEOUT if isinstance(close_exc, httpx.TimeoutException)
+                                     else Event.CANCELLATION if isinstance(close_exc, asyncio.CancelledError)
+                                     else Event.TRANSPORT_EXCEPTION)
+                            owner.step(event, failure=close_exc)
+                            if primary is None and not owner.semantic_terminal_complete:
+                                if owner.primary is not None:
+                                    raise owner.primary from None
+                                raise
+                        elif primary is None:
+                            raise
+                        else:
+                            evidence = primary.provider_stream_error
+                            primary.provider_stream_error = evidence.model_copy(update={
+                                "secondary_post_error_transport_present": True,
+                                "secondary_post_error_timeout_present": evidence.secondary_post_error_timeout_present or isinstance(close_exc, httpx.TimeoutException),
+                            })
+            finally:
+                if outcome_observer is not None:
+                    outcome_observer._capture_stream_outcome(owner, primary)
         if not isinstance(response, ModelResponse):
             _fail("PROVIDER_RESPONSE_TYPE_INVALID")
         return response
+
+    def _capture_stream_outcome(self, owner: Any, primary: Any) -> None:
+        fixture = self._require_active()
+        binding = {
+            "provider_id_sha256": hashlib.sha256(fixture.route.provider_id.encode()).hexdigest(),
+            "route_fingerprint_sha256": fixture.route.route_fingerprint,
+        }
+        if isinstance(owner, (AnthropicStream, DurableAnthropicStreamV1)):
+            semantic_snapshot = (
+                owner.semantic.snapshot()
+                if isinstance(owner, DurableAnthropicStreamV1)
+                else owner.snapshot()
+            )
+            self._stream_outcome_v1 = ProbeStreamOutcomeEvidenceV1.model_validate({
+                **semantic_snapshot, **binding,
+                "request_sha256": fixture.request_sha256,
+                "request_family_sha256": fixture.request_family_sha256,
+                "case_sha256": fixture.case.case_sha256,
+                "provider_entity_sha256": hashlib.sha256(self._raw_response or b"").hexdigest(),
+            })
+            primary = _provider_terminal_cause(owner.primary) if owner.primary is not None else primary
+        if primary is not None:
+            self._provider_stream_error = StreamProviderErrorEvidenceV1.model_validate({
+                **primary.provider_stream_error.model_dump(mode="json"), **binding,
+            })
 
     @staticmethod
     def _response_is_accepted(
@@ -931,6 +1015,8 @@ class GuardedProviderDispatch:
         self._status_code = None
         self._provider_reported_usage = None
         self._usage_failure_code = None
+        self._stream_outcome_v1 = None
+        self._provider_stream_error = None
         self._case_http_posts = 0
         self._case_network_requests = 0
         try:
@@ -949,7 +1035,7 @@ class GuardedProviderDispatch:
             ):
                 _fail("RESOLVED_ROUTE_SWITCH_REJECTED")
             response = asyncio.run(
-                self._complete_and_close(resolved.adapter, fixture.request)
+                self._complete_and_close(resolved.adapter, fixture.request, outcome_observer=self)
             )
             content_accepted = self._response_is_accepted(fixture, response)
             provider_usage = self._provider_reported_usage
@@ -1003,6 +1089,8 @@ class GuardedProviderDispatch:
                         max(0, actual_input_tokens)
                         if provider_usage is not None else None
                     ),
+                    provider_stream_error=self._provider_stream_error,
+                    stream_outcome_v1=self._stream_outcome_v1,
                 )
             self._input_tokens_by_case[
                 fixture.case.case_sha256
@@ -1013,27 +1101,52 @@ class GuardedProviderDispatch:
             return DispatchResult(
                 ProbeResultKind.PASS, "probe.provider.accepted",
                 self._raw_response, actual_output_tokens, actual_input_tokens,
+                provider_stream_error=self._provider_stream_error,
+                stream_outcome_v1=self._stream_outcome_v1,
             )
         except CampaignFixtureError:
+            if (self._stream_outcome_v1 is not None
+                    and self._stream_outcome_v1.primary_cause == "CAPTURE_FAILURE"):
+                return DispatchResult(
+                    ProbeResultKind.FAILED, "probe.provider.capture_failure",
+                    self._raw_response or b"", None,
+                    provider_stream_error=self._provider_stream_error,
+                    stream_outcome_v1=self._stream_outcome_v1,
+                )
             raise
-        except Exception as exc:
+        except (Exception, asyncio.CancelledError) as exc:
             raw = self._raw_response or b""
+            primary = _provider_terminal_cause(exc)
+            capture_failed = (
+                self._stream_outcome_v1 is not None
+                and self._stream_outcome_v1.primary_cause == "CAPTURE_FAILURE"
+            )
             kind = (
                 ProbeResultKind.FAILED
-                if self._case_network_requests == 0 or self._response_complete
+                if capture_failed or primary is not None
+                or self._case_network_requests == 0 or self._response_complete
                 else ProbeResultKind.AMBIGUOUS
             )
             code = (
-                "probe.provider.terminal_failure"
+                "probe.provider.capture_failure"
+                if capture_failed
+                else "probe.provider.terminal_failure"
                 if kind is ProbeResultKind.FAILED
                 else "probe.provider.ambiguous_transport"
             )
-            code = _precise_response_failure_code(exc) or self._usage_failure_code or code
+            if not capture_failed:
+                code = (
+                    _precise_response_failure_code(primary or exc)
+                    or self._usage_failure_code
+                    or code
+                )
             usage = self._provider_reported_usage
             return DispatchResult(
                 kind, code, raw,
                 int(usage["output_tokens"]) if usage is not None else None,
                 int(usage["input_tokens"]) if usage is not None else None,
+                provider_stream_error=self._provider_stream_error,
+                stream_outcome_v1=self._stream_outcome_v1,
             )
         finally:
             self._active = None
@@ -1109,6 +1222,8 @@ def _run_guarded_campaign_with_registry_v1(
     absolute_deadline_unix_seconds: float | None = None,
     wall_clock: Callable[[], float] | None = None,
     capture_metadata_persist: Callable[[Mapping[str, Any]], None] | None = None,
+    raw_capture_persist: Callable[[bytes, Mapping[str, Any]], bool] | None = None,
+    selected_successor_plan: Any | None = None,
 ) -> GuardedRealCampaignResult:
     """Exercise an already-constructed registry under the closed probe plan.
 
@@ -1144,6 +1259,7 @@ def _run_guarded_campaign_with_registry_v1(
     observer = GuardedProviderDispatch(
         fixtures, registry, deadline_guard=require_deadline,
         capture_metadata_persist=capture_metadata_persist,
+        raw_capture_persist=raw_capture_persist,
     )
     for fixture in fixtures:
         if _bind_public_route(registry, fixture.definition) != fixture.route:
@@ -1152,10 +1268,12 @@ def _run_guarded_campaign_with_registry_v1(
         ordinal for fixture in fixtures
         for ordinal in fixture.definition.blocked_shape_ordinals
     ))
-    plan = build_probe_campaign_plan(
+    plan = selected_successor_plan or build_probe_campaign_plan(
         (fixture.case for fixture in fixtures), CampaignLimits(),
         source_blocked_shape_ordinals=source_ordinals,
     )
+    if tuple(plan.cases) != tuple(fixture.case for fixture in fixtures):
+        _fail("SELECTED_SUCCESSOR_PLAN_FIXTURE_DRIFT")
     campaign = FullShortProbeCampaign(
         plan, integrity_key=signing_key, persist=persist,
         absolute_deadline_unix_seconds=absolute_deadline_unix_seconds,

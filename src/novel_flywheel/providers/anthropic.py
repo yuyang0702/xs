@@ -1,4 +1,10 @@
+import asyncio
 import json
+import httpx
+
+from novel_flywheel.provider_stream_error import (
+    ProviderErrorEventV1, StreamProviderErrorEvidenceV1, normalize_stream_error_v1,
+)
 
 from novel_flywheel.domain.models import ModelRequest, ModelResponse, ToolCall
 from novel_flywheel.provider_response_capture import (
@@ -29,54 +35,65 @@ from novel_flywheel.provider_output import (
 from novel_flywheel.provider_payloads import anthropic_payload_v1
 
 
-class AnthropicStreamProtocolError(RuntimeError):
-    """A complete HTTP entity violates the Anthropic SSE state contract."""
-
-    def __init__(self, reason_code: str) -> None:
-        self.reason_code = reason_code
-        self.reliability_failure = ReliabilityFailure(
-            code="anthropic_sse_protocol_invalid",
-            failure_class=FailureClass.SYNTAX_PROTOCOL,
-            boundary="anthropic_sse_state_machine",
-            message=reason_code,
-            retryable=False,
-        )
-        super().__init__(reason_code)
-
-
-class AnthropicStreamIncompleteError(RuntimeError):
-    """The captured entity ended without the provider's terminal message."""
-
-    def __init__(self, reason_code: str) -> None:
-        self.reason_code = reason_code
-        self.reliability_failure = ReliabilityFailure(
-            code="anthropic_sse_terminal_missing",
-            failure_class=FailureClass.TRANSPORT,
-            boundary="anthropic_sse_state_machine",
-            message=reason_code,
-            retryable=False,
-        )
-        super().__init__(reason_code)
-
-
-class AnthropicProviderTerminalError(RuntimeError):
-    """The provider emitted an explicit terminal error event."""
-
-    def __init__(self, error_type: str) -> None:
-        self.error_type = error_type or "provider_error"
-        self.reliability_failure = ReliabilityFailure(
-            code="anthropic_provider_terminal_error",
-            failure_class=FailureClass.UNKNOWN,
-            boundary="anthropic_sse_state_machine",
-            message=self.error_type,
-            retryable=False,
-        )
-        super().__init__("provider emitted an explicit terminal error")
+from novel_flywheel.anthropic_stream import (
+    AnthropicStreamProtocolError, AnthropicStreamIncompleteError, AnthropicProviderTerminalError,
+    aggregate_events, evaluate_bytes, Event, OwnedStreamEvents,
+)
 
 
 class AnthropicAdapter(HttpProvider):
     DIAGNOSTIC_ADAPTER_ID = "anthropic"
     DIAGNOSTIC_ADAPTER_VERSION = 1
+
+    async def _consume_protocol_stream(self, response):
+        """Advance the shared owner before requesting the next network chunk."""
+        from novel_flywheel.anthropic_durable_stream import DurableAnthropicStreamV1
+        encoding = response.encoding or 'utf-8'
+        factory = getattr(self.attempt_observer, 'create_anthropic_stream_owner_v1', None)
+        stream = (factory(encoding=encoding) if callable(factory) else
+                  DurableAnthropicStreamV1(owner_id='adapter-local', encoding=encoding))
+        self._last_stream_outcome_v1 = stream
+        tail_error = None
+        try:
+            async for chunk in response.aiter_bytes():
+                stream.ingest(chunk)
+        except (asyncio.CancelledError, Exception) as exc:
+            tail_error = exc
+        stream.finish(tail_error)
+        # httpx closes on clean iterator exhaustion. Explicitly close interrupted
+        # iterators here so the final checkpoint/capture includes close failures.
+        try:
+            await response.aclose()
+        except (asyncio.CancelledError, Exception) as exc:
+            stream.finish(exc)
+        raw = stream.raw
+        content_type = response.headers.get('content-type', '')
+        legacy_complete = stream.semantic_terminal_complete or tail_error is None
+        try:
+            capture_ack = self._capture_provider_protocol_input(raw,
+                status_code=response.status_code, content_type=content_type,
+                encoding=encoding, transport_complete=legacy_complete)
+        except Exception as exc:
+            stream.step(Event.CAPTURE_FAILED, failure=exc)
+        else:
+            # Compatibility observers acknowledge their one raw capture only.
+            # Production Full Short durability comes exclusively from typed
+            # checkpoint acknowledgements, never this legacy return value.
+            if stream.sink is None and capture_ack is True:
+                stream.step(Event.CAPTURE_COMMITTED)
+        if stream.semantic_terminal_complete:
+            self._last_protocol_input_v1 = (raw, content_type, encoding)
+        return OwnedStreamEvents(stream.events, stream), stream
+
+    @staticmethod
+    def _stream_tail_event(exc):
+        if exc is None:
+            return Event.EOF
+        if isinstance(exc, httpx.TimeoutException):
+            return Event.TIMEOUT
+        if isinstance(exc, asyncio.CancelledError):
+            return Event.CANCELLATION
+        return Event.TRANSPORT_EXCEPTION
 
     async def complete(self, request: ModelRequest) -> ModelResponse:
         self._bind_model_request("anthropic", request)
@@ -274,6 +291,8 @@ class AnthropicAdapter(HttpProvider):
                 ),
                 "protocol_terminal_event": body.get("_terminal_event"),
                 "raw_finish_reason": body.get("stop_reason"),
+                "POST_TERMINAL_PING_COUNT": body.get("_post_terminal_ping_count", 0),
+                "POST_TERMINAL_PING_IGNORED_COUNT": body.get("_post_terminal_ping_count", 0),
                 **(provider_state_extra or {}),
             },
         )
@@ -285,7 +304,7 @@ class AnthropicAdapter(HttpProvider):
         """Replay immutable response bytes without a client or network seam."""
 
         events, body = parse_provider_protocol_input_bytes_v1(
-            data, content_type=content_type, encoding=encoding,
+            data, content_type=content_type, encoding=encoding, anthropic_errors=True,
         )
         if body is None:
             body = cls._aggregate_stream(events)
@@ -302,9 +321,7 @@ class AnthropicAdapter(HttpProvider):
                 "ANTHROPIC_JSON_RESPONSE_OBJECT_REQUIRED"
             )
         if "error" in body:
-            error = body.get("error")
-            error_type = error.get("type") if isinstance(error, dict) else ""
-            raise AnthropicProviderTerminalError(str(error_type or ""))
+            raise AnthropicProviderTerminalError(evidence=normalize_stream_error_v1(body))
         if not isinstance(body.get("content"), list):
             raise AnthropicStreamProtocolError(
                 "ANTHROPIC_JSON_CONTENT_INVALID"
@@ -391,22 +408,32 @@ class AnthropicAdapter(HttpProvider):
         request_id = None
         finish_reason = None
         for event in events:
+            if not isinstance(event, dict):
+                continue
             kind = event.get("type")
             if kind == "message_start":
-                request_id = (event.get("message") or {}).get("id") or request_id
+                message = event.get("message")
+                if isinstance(message, dict) and isinstance(message.get("id"), str):
+                    request_id = message["id"] or request_id
             elif kind == "content_block_start":
                 index = event.get("index", len(blocks))
-                block = dict(event.get("content_block") or {})
+                block = event.get("content_block")
+                if type(index) is not int or not isinstance(block, dict):
+                    continue
                 blocks[index] = block
                 if block.get("type") == "tool_use":
                     arguments[index] = []
             elif kind == "content_block_delta":
                 index = event.get("index", 0)
                 delta = event.get("delta") or {}
-                if delta.get("type") == "input_json_delta":
-                    arguments.setdefault(index, []).append(delta.get("partial_json", ""))
+                if type(index) is int and isinstance(delta, dict) and delta.get("type") == "input_json_delta":
+                    part = delta.get("partial_json", "")
+                    if isinstance(part, str):
+                        arguments.setdefault(index, []).append(part)
             elif kind == "message_delta":
-                finish_reason = (event.get("delta") or {}).get("stop_reason") or finish_reason
+                delta = event.get("delta")
+                if isinstance(delta, dict) and isinstance(delta.get("stop_reason"), str):
+                    finish_reason = delta["stop_reason"] or finish_reason
         calls = []
         for index, block in sorted(blocks.items()):
             if block.get("type") != "tool_use":
@@ -436,176 +463,8 @@ class AnthropicAdapter(HttpProvider):
 
     @staticmethod
     def _aggregate_stream(events: list[dict]) -> dict:
-        message_id = None
-        usage_snapshot: dict[str, int] = {}
-        stop_reason = None
-        blocks: dict[int, dict] = {}
-        tool_json: dict[int, list[str]] = {}
-        open_blocks: set[int] = set()
-        message_started = False
-        message_stopped = False
-        message_delta_seen = False
-        for event in events:
-            kind = event.get("type")
-            if message_stopped:
-                raise AnthropicStreamProtocolError(
-                    "ANTHROPIC_SSE_EVENT_AFTER_MESSAGE_STOP"
-                )
-            if message_delta_seen and kind not in {"ping", "message_delta", "message_stop", "error"}:
-                raise AnthropicStreamProtocolError(
-                    "ANTHROPIC_SSE_EVENT_AFTER_MESSAGE_DELTA"
-                )
-            if kind == "error":
-                error = event.get("error") or {}
-                raise AnthropicProviderTerminalError(str(error.get("type") or ""))
-            if kind == "message_start":
-                if message_started:
-                    raise AnthropicStreamProtocolError(
-                        "ANTHROPIC_SSE_DUPLICATE_MESSAGE_START"
-                    )
-                message_started = True
-                message = event.get("message") or {}
-                message_id = message.get("id")
-                usage_snapshot = merge_anthropic_usage_snapshot_v1(
-                    {}, message.get("usage") or {},
-                )
-            elif kind == "content_block_start":
-                if not message_started:
-                    raise AnthropicStreamProtocolError(
-                        "ANTHROPIC_SSE_BLOCK_BEFORE_MESSAGE_START"
-                    )
-                index = event.get("index")
-                if type(index) is not int or index < 0:
-                    raise AnthropicStreamProtocolError(
-                        "ANTHROPIC_SSE_CONTENT_BLOCK_INDEX_INVALID"
-                    )
-                if index in blocks or index in open_blocks:
-                    raise AnthropicStreamProtocolError(
-                        "ANTHROPIC_SSE_DUPLICATE_CONTENT_BLOCK"
-                    )
-                if index != len(blocks):
-                    raise AnthropicStreamProtocolError(
-                        "ANTHROPIC_SSE_CONTENT_BLOCK_INDEX_NONCONTIGUOUS"
-                    )
-                if open_blocks:
-                    raise AnthropicStreamProtocolError(
-                        "ANTHROPIC_SSE_CONTENT_BLOCK_START_BEFORE_STOP"
-                    )
-                raw_block = event.get("content_block")
-                if not isinstance(raw_block, dict):
-                    raise AnthropicStreamProtocolError(
-                        "ANTHROPIC_SSE_CONTENT_BLOCK_INVALID"
-                    )
-                block = dict(raw_block)
-                if block.get("type") not in {
-                    "text", "tool_use", "thinking", "redacted_thinking",
-                }:
-                    raise AnthropicStreamProtocolError(
-                        "ANTHROPIC_SSE_CONTENT_BLOCK_TYPE_UNSUPPORTED"
-                    )
-                if block.get("type") == "tool_use" and (
-                    not isinstance(block.get("id"), str)
-                    or not block["id"]
-                    or not isinstance(block.get("name"), str)
-                    or not block["name"]
-                ):
-                    raise AnthropicStreamProtocolError(
-                        "ANTHROPIC_SSE_TOOL_USE_FIELDS_INVALID"
-                    )
-                blocks[index] = block
-                open_blocks.add(index)
-                if block.get("type") == "tool_use":
-                    tool_json[index] = []
-            elif kind == "content_block_delta":
-                index = event.get("index")
-                if type(index) is not int or index < 0:
-                    raise AnthropicStreamProtocolError(
-                        "ANTHROPIC_SSE_CONTENT_BLOCK_INDEX_INVALID"
-                    )
-                if index not in open_blocks:
-                    raise AnthropicStreamProtocolError(
-                        "ANTHROPIC_SSE_DELTA_OUTSIDE_CONTENT_BLOCK"
-                    )
-                delta = event.get("delta")
-                if not isinstance(delta, dict):
-                    raise AnthropicStreamProtocolError(
-                        "ANTHROPIC_SSE_CONTENT_DELTA_INVALID"
-                    )
-                block_type = blocks[index].get("type")
-                delta_type = delta.get("type")
-                allowed_deltas = {
-                    "text": {"text_delta"},
-                    "tool_use": {"input_json_delta"},
-                    "thinking": {"thinking_delta", "signature_delta"},
-                    "redacted_thinking": set(),
-                }
-                if delta_type not in allowed_deltas[block_type]:
-                    raise AnthropicStreamProtocolError(
-                        "ANTHROPIC_SSE_CONTENT_DELTA_TYPE_MISMATCH"
-                    )
-                if delta_type == "text_delta":
-                    blocks[index]["text"] = (
-                        str(blocks[index].get("text") or "")
-                        + str(delta.get("text") or "")
-                    )
-                elif delta_type == "input_json_delta":
-                    partial_json = delta.get("partial_json")
-                    if not isinstance(partial_json, str):
-                        raise AnthropicStreamProtocolError(
-                            "ANTHROPIC_SSE_TOOL_ARGUMENT_DELTA_INVALID"
-                        )
-                    tool_json.setdefault(index, []).append(partial_json)
-            elif kind == "content_block_stop":
-                index = event.get("index")
-                if type(index) is not int or index < 0:
-                    raise AnthropicStreamProtocolError(
-                        "ANTHROPIC_SSE_CONTENT_BLOCK_INDEX_INVALID"
-                    )
-                if index not in open_blocks:
-                    raise AnthropicStreamProtocolError(
-                        "ANTHROPIC_SSE_CONTENT_BLOCK_STOP_UNBALANCED"
-                    )
-                open_blocks.remove(index)
-            elif kind == "message_delta":
-                if not message_started or open_blocks:
-                    raise AnthropicStreamProtocolError(
-                        "ANTHROPIC_SSE_MESSAGE_DELTA_STATE_INVALID"
-                    )
-                message_delta_seen = True
-                stop_reason = (event.get("delta") or {}).get("stop_reason") or stop_reason
-                usage_snapshot = merge_anthropic_usage_snapshot_v1(
-                    usage_snapshot, event.get("usage") or {},
-                )
-            elif kind == "message_stop":
-                if (
-                    not message_started or open_blocks or not message_delta_seen
-                    or not stop_reason
-                ):
-                    raise AnthropicStreamProtocolError(
-                        "ANTHROPIC_SSE_MESSAGE_STOP_STATE_INVALID"
-                    )
-                message_stopped = True
-            elif kind != "ping":
-                raise AnthropicStreamProtocolError(
-                    "ANTHROPIC_SSE_EVENT_TYPE_UNSUPPORTED"
-                )
-        if not message_stopped:
-            raise AnthropicStreamIncompleteError(
-                "ANTHROPIC_SSE_MESSAGE_STOP_MISSING"
-            )
-        for index, parts in tool_json.items():
-            raw = "".join(parts)
-            if raw:
-                try:
-                    blocks[index]["input"] = json.loads(raw)
-                except ValueError as exc:
-                    raise AnthropicStreamProtocolError(
-                        "ANTHROPIC_SSE_TOOL_ARGUMENT_JSON_INVALID"
-                    ) from exc
-        return {
-            "id": message_id, "content": [blocks[index] for index in sorted(blocks)],
-            "stop_reason": stop_reason,
-            "usage": usage_snapshot,
-            "_protocol_complete": True,
-            "_terminal_event": "message_stop",
-        }
+        if isinstance(events, OwnedStreamEvents):
+            return events.owner.body()
+        stream = aggregate_events(events)
+        stream.step(Event.EOF)
+        return stream.body()

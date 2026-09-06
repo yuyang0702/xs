@@ -1,0 +1,150 @@
+{
+  "schema": "SharedAnthropicCleanRoomArchitectureReviewV1",
+  "reviewer_id": "/root/closedworld_reviewer_2",
+  "reviewer_number": 2,
+  "review_slice": "capture completeness / transport tail semantics",
+  "independence_claimed": true,
+  "clean_room": true,
+  "verdict": "ARCHITECTURE_REJECT",
+  "master_source_sha256": "58b91f4d35d03e6d01f21ba484629be50740af8d37a5ea358ba73cf8b43adfec",
+  "baseline_committed_head": "79a99a58ebe95b2be4d1e51a8d190070a2568574",
+  "reviewed_source_hashes": {
+    "AGENTS.md": "6d3fc98f4c2df3aa9e6a15b827ec1ac8614a388efb307d0f1040a23cf7ed55a1",
+    ".agents/skills/novel-dev-council/SKILL.md": "99d8ab1e8222823e575eeb7e650d670acec16432574d20a2efb0b296518482b6",
+    "src/novel_flywheel/anthropic_stream.py": "dff3ad231865abc52745d92047cff522381b18f714112772d17bb8ae1dff7c1b",
+    "src/novel_flywheel/providers/anthropic.py": "3c27185f2cb97c646cd4d1a27d5e1b75ed2ef605d2c095d366fc4f7460488fcb",
+    "src/novel_flywheel/providers/http.py": "2f2d69cace513a9c85ec48a3fe4e80bd227dad6948709af2f51eaf375aa883f6",
+    "src/novel_flywheel/provider_response_capture.py": "5e8128e336b81fa1881f144fadc26c511a9227453a8724a3cf2b50f8e9de9fb4",
+    "src/novel_flywheel/full_short_probe_campaign.py": "0645b3f61c4c8c990b62f915c71b3c2f9124a7f8282fc6b22302aa58e121ef9b",
+    "src/novel_flywheel/full_short_execution.py": "29bcd3e04faaa65a367657ae5b1142058a7cc47554f324a5d7edd5d966590ab3",
+    "tools/canary/full_short_budget_unblocked_campaign.py": "f2ddf396819eb42ab31bc7d4adf937f1f9adf28425837434e1ac37d58fc2babc",
+    "tools/canary/execute_full_short_budget_unblocked_one_round.py": "978183a4b65017821c3c92863bede1f03a320142ba94b0da8e96ea9f36f60d3a",
+    "tests/providers/test_anthropic_closed_world_http.py": "5dfcb11f4ca6756a6a70b66fa348af61898e98e41eca72ed7e5368113b44a87e",
+    "tests/providers/test_anthropic_closed_world_transitions.py": "8789ae65530267adc8fc0e81f63396cbd5985d07db99c8088d4b66ba2a6426fe",
+    "tests/canary/test_closed_world_stream_evidence.py": "ced6995c090dee25b5348d22948f07db2193f5b287fd5b1621c1364cf5698a77",
+    "tests/test_full_short_execution.py": "f8c29b5571c7881c68bd03212851c6a7a720caf82fc1ff904d2a786be195f3f6",
+    "tests/test_provider_response_capture.py": "af147111bbe6e98c618c82d3ba3dcb734e7ecd34c78a8322cf219c27b444ea99"
+  },
+  "evidence_hashes": {
+    "domain-final/shared-completeness-contract-v1.json": "e2230a358e982450648c304c7c64a7598bdfcb26861bd86c03da10d3eb7b5383",
+    "domain-final/shared-stream-causal-precedence-contract-v1.json": "8a235484dc0280f60ceb4e6660062acba841196c8b360bfd0cc06cb30f44528b",
+    "domain-final/shared-anthropic-transition-matrix-v1.json": "7589146f00cd5399ef561b9b1e4bb872733a596dce790a36bb3145419acd545b",
+    "final-shared-local-receipt.json": "867838554d11cbb94b4e7b726b6109dec674c68b1ca4fa1d49e062a1924407ba",
+    "final-shared-local.xml": "9237f4c0f856a85ab044ca8421325a618646a4a92645a0310f0f069829cd24e3",
+    "http-faults-durable-ack-receipt.json": "2301d94700b20745d42541a7fa151e14c18d87c1981d55d81e4c81a05194af8f",
+    "http-faults-durable-ack.xml": "9f204a08f6e148f97427a10a59c07e5ea4ffe3e3be94309413bb4a2d4312daa4",
+    "durable-evidence/final-receipt.json": "93d00facc03da06fdba668ecfc93470f93ef9d70b709c46faf88fcb34cf71cad",
+    "durable-evidence/final.xml": "1691bf1eea6d03659784d9c2e200fb4575e49a93b30a8b52455d18f1bbb86f4b",
+    "historical/historical-exact-replay-report-v1.json": "9eb085570a7e2633f9e78795514d83dc7db03e0c44bf7d552a1d79a0ccb0c23a",
+    "reviews/reviewer-2-repro.py": "9ae8b56c5883283ad9b323f763035d8ca866fb38b6a3624c1800551b886ac144",
+    "reviews/reviewer-2-repro-result.json": "2716cf332e523462474901d00b488bbe682d100f67bc8f4781669d8d17b840c5"
+  },
+  "supplied_test_evidence": {
+    "final-shared-local.xml": {
+      "cases": 977,
+      "failures": 0,
+      "errors": 0
+    },
+    "http-faults-durable-ack.xml": {
+      "cases": 223,
+      "failures": 0,
+      "errors": 0
+    },
+    "durable-evidence/final.xml": {
+      "cases": 89,
+      "failures": 0,
+      "errors": 0
+    }
+  },
+  "independent_reproduction": {
+    "command": ".venv/Scripts/python.exe C:/小说/shared-anthropic-closed-world-offline-20260905-v1/reviews/reviewer-2-repro.py",
+    "result": "2/2 deterministic cases reproduce present production observer mismatch",
+    "boundary": "real AnthropicAdapter.post_stream -> real FullShortDispatchLedgerObserverV1 -> real capture store and external receipt audit; MockTransport is the only network replacement",
+    "real_provider_calls": 0,
+    "paid_calls": 0,
+    "external_network_blocked_attempts": 0,
+    "note": "Synthetic offline authorization/store fixtures only. No real successor authorization or nonce created."
+  },
+  "findings": [
+    {
+      "id": "R2-CAPTURE-ACK-001",
+      "priority": "P1",
+      "status": "OPEN",
+      "title": "Production Full Short durable observer never acknowledges the new capture-complete transition",
+      "locations": [
+        {
+          "file": "src/novel_flywheel/providers/anthropic.py",
+          "line": 71,
+          "end_line": 72
+        },
+        {
+          "file": "src/novel_flywheel/full_short_execution.py",
+          "line": 6156,
+          "end_line": 6160
+        },
+        {
+          "file": "src/novel_flywheel/full_short_execution.py",
+          "line": 6236,
+          "end_line": 6254
+        }
+      ],
+      "trigger": "Complete valid SSE message_stop with either clean EOF or a later ReadTimeout, using current FullShortDispatchLedgerObserverV1 as attempt_observer.",
+      "observed": "The real observer writes exact bytes, creates the independent anchor, and records a receipt, then implicitly returns None. The new adapter requires capture_ack is True. In both independently executed cases the receipt audit is authoritative and observer.provider_protocol_capture_complete() is True, while owner.terminal_capture_complete is False and its trace has no CAPTURE_COMMITTED.",
+      "expected": "A completed and independently anchored production capture must acknowledge the same capture state used by the shared stream owner. The contract explicitly names this Full Short observer as a durable boundary.",
+      "impact": "The advertised shared completeness representation is false on the actual durable production observer. Synthetic observers that explicitly return True do not establish this production integration. This is a current source behavior, not a rejection because a future Full Short has not run.",
+      "master_requirements": [
+        "7 THREE SEPARATE COMPLETENESS CONCEPTS",
+        "16 Reviewer 2 capture completeness"
+      ],
+      "reproduction": "reviews/reviewer-2-repro-result.json: clean and timeout cases, reproduced_missing_durable_ack=true; persisted_capture_authoritatively_audited=true",
+      "required_boundary": "Wire the real durable observer acknowledgment to the owner and verify both complete-success tail and Provider-error cases through the production durable observer. No automatic fix performed."
+    },
+    {
+      "id": "R2-TAIL-EVIDENCE-002",
+      "priority": "P1",
+      "status": "OPEN",
+      "title": "Full Short loses the distinct unclean transport-tail observation at durable projection",
+      "locations": [
+        {
+          "file": "src/novel_flywheel/providers/anthropic.py",
+          "line": 64,
+          "end_line": 67
+        },
+        {
+          "file": "src/novel_flywheel/providers/anthropic.py",
+          "line": 277,
+          "end_line": 287
+        },
+        {
+          "file": "src/novel_flywheel/full_short_execution.py",
+          "line": 6201,
+          "end_line": 6225
+        }
+      ],
+      "trigger": "Same complete successful response followed by ReadTimeout through the real Full Short observer.",
+      "observed": "The owner correctly observes transport_tail_closed_cleanly=False and tail_counts.TIMEOUT=1, but the persisted capture metadata and attempt keep only transport_complete=True. _model_response_from_body omits body._shared_stream_state, and the Full Short attempt contains no tail/outcome fields. The clean EOF and timeout cases therefore have the same persisted completeness semantics even though their owner outcomes differ.",
+      "expected": "Keep terminal success and durable capture accepted while retaining the separately typed unclean transport tail at the actual execution evidence boundary, as the probe campaign already does with stream_outcome_v1.",
+      "impact": "Restart or post-run evidence review cannot recover whether this production response ended in EOF or a suppressed tail timeout. Exact response bytes cannot reconstruct a transport exception; the observation exists only on the transient adapter. The three-way contract is not preserved through this existing production durable boundary.",
+      "master_requirements": [
+        "7 THREE SEPARATE COMPLETENESS CONCEPTS",
+        "8 CAUSAL PRECEDENCE: success primary plus timeout diagnostic",
+        "28 seal capture/provider ledgers"
+      ],
+      "reproduction": "reviews/reviewer-2-repro-result.json: timeout owner is unclean; projected_provider_state_keys and persisted_attempt_tail_keys show no persisted tail representation.",
+      "required_boundary": "Carry and seal the owner outcome after response/transport close in the production execution ledger, separately from legacy transport_complete; verify reload preserves it. No automatic fix performed."
+    }
+  ],
+  "positive_findings": [
+    "The probe-specific path acknowledges raw capture only after an explicit True durable callback, then persists bounded stream outcome and typed Provider-error evidence in the consumed-nonce snapshot.",
+    "Capture store replay requires independent receipt anchors and verifies metadata, byte hash, and exact receipt identity. Independent reproduction used audit_all with the durable attempt receipt.",
+    "Provided 977-case shared local XML is green; supplied HTTP and durable tests cover whole-frame successful and Provider-error tails. They do not cover the real Full Short observer return contract found here.",
+    "Historical report records five available exact captures and zero regression; probe-02 preserves 137304 input / 64 output and three ignored pings. This reviewer did not rerun the private historical corpus."
+  ],
+  "review_limitations": [
+    "Review is of the present response/capture architecture slice, not future successor authorization, capacity, literary quality, or Full Short execution gates.",
+    "No source changes, Git writes, provider requests, or delegated child reviews were performed.",
+    "Parent subsequently reported a separate Reviewer1 partial-frame finding; it is not used as independent evidence for either finding above."
+  ],
+  "stop_required": true,
+  "exact_next_gate": "SHARED_ANTHROPIC_STREAM_STATE_MACHINE_ARCHITECTURE_REDESIGN_REQUIRED"
+}

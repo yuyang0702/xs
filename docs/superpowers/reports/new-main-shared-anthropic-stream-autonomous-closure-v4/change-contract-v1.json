@@ -1,0 +1,483 @@
+{
+  "schema": "SharedAnthropicV4ChangeContract",
+  "risk_level": "L3",
+  "master_sha256": "c7bd165377cb94d22b1b806950c024666c44f38c46a694d215d4c8568a56dc8a",
+  "sections": [
+    {
+      "original_requirement": "This task must attempt to SOLVE AND CLOSE the entire shared Anthropic-compatible stream architecture in one MAIN task.\n\nDo NOT stop and return to the user merely because:\n- a local test fails;\n- a reviewer rejects;\n- a generated transition cell fails;\n- a byte/chunk fault seed fails;\n- reload/live continuation diverges;\n- an owner mismatch is found;\n- capture completeness regresses;\n- Strict L3 reports an in-domain warning;\n- an isolated suite finds another same-domain defect;\n- a larger internal refactor is needed.\n\nThose are work items inside this task. MAIN must use its own engineering judgment, modify the response-side architecture, add regression coverage, rerun proof, and continue until closure or a TRUE non-recoverable boundary is reached.\n\nThe target is:\nSHARED_ANTHROPIC_STREAM_ARCHITECTURE_CLOSED=YES\n\nAfter that, if all later gates pass, continue automatically to remaining probes 03-08, Capacity closure, Exact READY dry-run, 13K/20K/30K, Strict L3, and exactly ONE real Full Short.",
+      "heading": "PRIMARY DIRECTIVE",
+      "scope": "all active shared Anthropic-compatible response routes",
+      "forbidden_narrowing": "No substitution of decoded-only tests for raw, persistence, integration, replay and full suites; every final metric requires measured evidence.",
+      "status": "PENDING",
+      "implementation_boundary": "shared stream owner and persistence port",
+      "test_paths": [
+        "tests/providers/test_anthropic_durable_stream_v4.py"
+      ],
+      "completion_evidence": []
+    },
+    {
+      "original_requirement": "Last fully reported committed baseline HEAD:\n79a99a58ebe95b2be4d1e51a8d190070a2568574\n\nLast sealed architecture-stop facts before the abandoned V3 MAIN:\n- worktree dirty by design;\n- 68 in-scope changes preserved;\n- 3 source-confirmed test side effects preserved;\n- memory/narrative-contract.json preserved at its original SHA;\n- semantic state/event slice: 11 states x 16 event classes = 176 registered cells;\n- 176/176 registered transition tests passed;\n- full fault campaign remained INCOMPLETE;\n- post-terminal timeout downgrade count = 1;\n- post-terminal cancellation downgrade count = 1;\n- generic incomplete-terminal replacement count = 4;\n- shared protocol regression count = 4;\n- Provider-error-lost-to-later-timeout count = 0;\n- AttributeError from SSE error payload count = 0;\n- post-terminal error ignored count = 0;\n- historical exact replay regression count = 0;\n- probe-01 exact replay PASS;\n- probe-02 exact replay PASS;\n- probe-02 usage = 137304 input / 64 output;\n- probe-02 ignored post-terminal ping count = 3;\n- request identity six-way zero diff;\n- prior architecture review had 3 rejects / 2 passes;\n- Strict L3 unresolved;\n- Capacity NOT_RECOMPUTED;\n- real external calls = 0;\n- real Full Short = 0;\n- sealed external root: C:\\小说\\cw-final-stop-v1\n\nThe abandoned V3 MAIN may have made additional local changes. Recover exact current truth; do not assume no progress occurred.",
+      "heading": "KNOWN SEALED BASELINE",
+      "scope": "all active shared Anthropic-compatible response routes",
+      "forbidden_narrowing": "No substitution of decoded-only tests for raw, persistence, integration, replay and full suites; every final metric requires measured evidence.",
+      "status": "PENDING",
+      "implementation_boundary": "shared stream owner and persistence port",
+      "test_paths": [
+        "tests/providers/test_anthropic_durable_stream_v4.py"
+      ],
+      "completion_evidence": []
+    },
+    {
+      "original_requirement": "At start capture:\n- git branch --show-current\n- git rev-parse HEAD\n- git status --short\n- git diff --stat\n- git diff\n- git ls-files --others --exclude-standard\n\nInspect current source, local evidence, external evidence, child-agent artifacts, test receipts, transition matrices, fault seeds, architecture records, isolated-suite directories, and mtimes where useful.\n\nClassify every changed/untracked path as one of:\nA V3 architecture redesign implementation\nB raw/framing work\nC semantic reducer work\nD durable owner/ack work\nE rehydration work\nF usage/ping/error hardening\nG capture completeness work\nH in-scope test\nI in-scope evidence\nJ confirmed test side effect\nK unknown/unrelated\n\nPreserve A-J. Investigate K mechanically. Only a K path that remains genuinely unattributable and risky to user/project data is a true stop.\n\nForbidden:\nreset / restore / checkout / stash / clean / discard / delete merely to obtain a clean tree.",
+      "heading": "NEW MAIN TAKEOVER",
+      "scope": "all active shared Anthropic-compatible response routes",
+      "forbidden_narrowing": "No substitution of decoded-only tests for raw, persistence, integration, replay and full suites; every final metric requires measured evidence.",
+      "status": "PENDING",
+      "implementation_boundary": "shared stream owner and persistence port",
+      "test_paths": [
+        "tests/providers/test_anthropic_durable_stream_v4.py"
+      ],
+      "completion_evidence": []
+    },
+    {
+      "original_requirement": "Do not restart from zero. For each area classify current state as ABSENT / PARTIAL / COMPLETE_UNVERIFIED / COMPLETE_VERIFIED:\n- raw/framing state machine;\n- semantic reducer;\n- durable-prefix contract;\n- single durable owner;\n- Full Short observer ack alignment;\n- rehydration/restart;\n- causal precedence;\n- generated transition tests;\n- byte/chunk fault campaign;\n- Full Short observer integration;\n- historical exact replay;\n- request zero-diff;\n- isolated related suite;\n- isolated full suite;\n- independent review;\n- Strict L3.\n\nDo not recreate work already present.",
+      "heading": "RECOVER ABANDONED V3 PROGRESS",
+      "scope": "all active shared Anthropic-compatible response routes",
+      "forbidden_narrowing": "No substitution of decoded-only tests for raw, persistence, integration, replay and full suites; every final metric requires measured evidence.",
+      "status": "PENDING",
+      "implementation_boundary": "shared stream owner and persistence port",
+      "test_paths": [
+        "tests/providers/test_anthropic_durable_stream_v4.py"
+      ],
+      "completion_evidence": []
+    },
+    {
+      "original_requirement": "Do not keep critical execution state only in the conversation.\nCreate an external/non-Git takeover ledger, preferably:\nC:\\小说\\shared-anthropic-v4-takeover-ledger\\\n(or another source-grounded external path if unavailable).\n\nAfter every major closure-loop iteration persist:\n- timestamp;\n- current HEAD;\n- worktree manifest/hash;\n- architecture decision summary;\n- closed findings;\n- open findings;\n- test/replay/fault/reviewer status;\n- child-agent conclusions;\n- next local action;\n- real external-call counters;\n- freeze status.\n\nThis ledger must make future context compaction non-fatal.",
+      "heading": "CONTEXT-COMPACTION RESILIENCE",
+      "scope": "all active shared Anthropic-compatible response routes",
+      "forbidden_narrowing": "No substitution of decoded-only tests for raw, persistence, integration, replay and full suites; every final metric requires measured evidence.",
+      "status": "PENDING",
+      "implementation_boundary": "shared stream owner and persistence port",
+      "test_paths": [
+        "tests/providers/test_anthropic_durable_stream_v4.py"
+      ],
+      "completion_evidence": []
+    },
+    {
+      "original_requirement": "Any related/full suite capable of mutating the repo must run only in an isolated byte-identical source copy.\nProcedure:\n1 hash original source;\n2 create isolated copy;\n3 verify byte identity;\n4 run suite in isolation;\n5 save logs/receipts;\n6 hash original again;\n7 prove original was untouched.\n\nFinal targets:\nISOLATED_SUITE_SOURCE_IDENTITY=PASS\nORIGINAL_REPO_MUTATION_FROM_ISOLATED_SUITE_COUNT=0\n\nIf isolation itself is defective, fix it and rerun. Do not stop on first isolation failure.",
+      "heading": "TEST ISOLATION",
+      "scope": "all active shared Anthropic-compatible response routes",
+      "forbidden_narrowing": "No substitution of decoded-only tests for raw, persistence, integration, replay and full suites; every final metric requires measured evidence.",
+      "status": "PENDING",
+      "implementation_boundary": "shared stream owner and persistence port",
+      "test_paths": [
+        "tests/providers/test_anthropic_durable_stream_v4.py"
+      ],
+      "completion_evidence": []
+    },
+    {
+      "original_requirement": "Converge to exactly ONE authoritative owner of durable stream progress and terminal truth.\n\nTarget architecture may use different names but must be equivalent to:\nRAW BYTE INGESTION\n -> INCREMENTAL SSE FRAMER\n -> NORMALIZED EVENT DECODER\n -> SEMANTIC REDUCER\n -> SINGLE DURABLE STREAM OWNER\n      -> DURABLE CHECKPOINT\n      -> FULL SHORT OBSERVER ACK\n      -> REHYDRATION / RESTART\n      -> FINAL TYPED RESULT\n\nThe durable owner must persist enough information to determine:\n- highest durable raw prefix;\n- highest complete framed-event prefix;\n- highest semantically accepted prefix;\n- pending partial-frame state where required;\n- semantic success terminal identity;\n- Provider-error terminal identity;\n- terminal-evidence durability;\n- post-terminal tail diagnostics;\n- restart/resume cursor;\n- rehydrated state;\n- final-result eligibility.\n\nFinal invariants:\nDURABLE_STREAM_OWNER_COUNT=1\nOWNER_MISMATCH_COUNT=0\nFULL_SHORT_OBSERVER_AND_SHARED_OWNER_CONSISTENT=YES\nDURABLE_ACK_SEMANTICS_UNAMBIGUOUS=YES",
+      "heading": "ARCHITECTURE TARGET",
+      "scope": "all active shared Anthropic-compatible response routes",
+      "forbidden_narrowing": "No substitution of decoded-only tests for raw, persistence, integration, replay and full suites; every final metric requires measured evidence.",
+      "status": "PENDING",
+      "implementation_boundary": "shared stream owner and persistence port",
+      "test_paths": [
+        "tests/providers/test_anthropic_durable_stream_v4.py"
+      ],
+      "completion_evidence": []
+    },
+    {
+      "original_requirement": "Launch at least 8 fresh child agents, preferably fork_turns=none:\nA raw/framing\nB semantic terminal\nC durable ack\nD rehydration\nE causality\nF historical replay\nG Full Short integration\nH test isolation\n\nEach must inspect current source and V3 partial work, identify exact owning symbols, and persist concise findings. MAIN chooses the architecture without asking the user.",
+      "heading": "PARALLEL ARCHITECTURE INVESTIGATION",
+      "scope": "all active shared Anthropic-compatible response routes",
+      "forbidden_narrowing": "No substitution of decoded-only tests for raw, persistence, integration, replay and full suites; every final metric requires measured evidence.",
+      "status": "PENDING",
+      "implementation_boundary": "shared stream owner and persistence port",
+      "test_paths": [
+        "tests/providers/test_anthropic_durable_stream_v4.py"
+      ],
+      "completion_evidence": []
+    },
+    {
+      "original_requirement": "Explicitly model source-truth equivalents of:\nFRAME_EMPTY\nFRAME_PARTIAL\nFRAME_COMPLETE_NOT_DECODED\nFRAME_DECODED\nSTREAM_CLOSED\n\nInputs at minimum:\nBYTES\nEVENT_DELIMITER\nEOF\nTIMEOUT\nCANCELLATION\nTRANSPORT_ERROR\n\nFor every registered state/input pair define:\nFROM_STATE / INPUT_CLASS / BUFFER_PRECONDITION / ACTION / BUFFER_EFFECT / DURABLE_RAW_PREFIX_EFFECT / EMITTED_FRAME_OR_EVENT / PRIMARY_CAUSE_EFFECT / SECONDARY_DIAGNOSTIC_EFFECT / NEXT_STATE / TERMINAL_ELIGIBILITY / SOURCE_GROUNDING.\n\nFinal:\nFRAMING_MATRIX_UNSPECIFIED_CELL_COUNT=0\nFRAMING_MATRIX_AMBIGUOUS_CELL_COUNT=0\n\nInitial failures are repair targets, not stop signals.",
+      "heading": "RAW / FRAMING STATE MACHINE",
+      "scope": "all active shared Anthropic-compatible response routes",
+      "forbidden_narrowing": "No substitution of decoded-only tests for raw, persistence, integration, replay and full suites; every final metric requires measured evidence.",
+      "status": "PENDING",
+      "implementation_boundary": "shared stream owner and persistence port",
+      "test_paths": [
+        "tests/providers/test_anthropic_durable_stream_v4.py"
+      ],
+      "completion_evidence": []
+    },
+    {
+      "original_requirement": "Separately model decoded SSE semantics:\nmessage_start\ncontent_block_start\ncontent_block_delta\ncontent_block_stop\nmessage_delta\nmessage_stop\nping\nerror\nunknown/versioned event\n\nRaw timeout/cancel/framing failures must not leak into semantic interpretation unless an explicit normalization boundary defines them.\n\nFinal:\nSEMANTIC_MATRIX_UNSPECIFIED_CELL_COUNT=0\nSEMANTIC_MATRIX_AMBIGUOUS_CELL_COUNT=0",
+      "heading": "SEMANTIC REDUCER",
+      "scope": "all active shared Anthropic-compatible response routes",
+      "forbidden_narrowing": "No substitution of decoded-only tests for raw, persistence, integration, replay and full suites; every final metric requires measured evidence.",
+      "status": "PENDING",
+      "implementation_boundary": "shared stream owner and persistence port",
+      "test_paths": [
+        "tests/providers/test_anthropic_durable_stream_v4.py"
+      ],
+      "completion_evidence": []
+    },
+    {
+      "original_requirement": "Distinguish equivalents of:\nRAW_DURABLE_PREFIX\nFRAMED_EVENT_DURABLE_PREFIX\nSEMANTIC_ACCEPTED_PREFIX\nTERMINAL_EVENT_IDENTITY\nTERMINAL_EVIDENCE_DURABLE\nTAIL_DIAGNOSTIC_PROGRESS\n\nInvariants:\n1 durable raw progress never moves backward;\n2 framed-event durable progress never moves backward;\n3 semantic accepted progress never moves backward;\n4 durably proven success cannot be revoked by later tail framing/timeout/cancel;\n5 durably proven Provider error cannot be replaced by later tail framing/timeout/cancel;\n6 partial frame after durable terminal belongs to tail diagnostics;\n7 partial frame before terminal may block completion;\n8 terminal identity is immutable after durable commit except under an explicit source-grounded fatal rule.",
+      "heading": "MONOTONIC DURABLE PREFIX",
+      "scope": "all active shared Anthropic-compatible response routes",
+      "forbidden_narrowing": "No substitution of decoded-only tests for raw, persistence, integration, replay and full suites; every final metric requires measured evidence.",
+      "status": "PENDING",
+      "implementation_boundary": "shared stream owner and persistence port",
+      "test_paths": [
+        "tests/providers/test_anthropic_durable_stream_v4.py"
+      ],
+      "completion_evidence": []
+    },
+    {
+      "original_requirement": "A half-frame -> timeout before terminal: primary timeout/transport failure, partial framing secondary.\nB half-frame -> cancellation before terminal: primary cancellation, partial framing secondary.\nC durable message_stop -> half ping -> timeout: primary semantic success, tail diagnostic only; do not revoke success.\nD durable message_stop -> half ping -> cancellation: primary semantic success, tail diagnostic only.\nE durable Provider error -> half frame -> timeout: primary Provider error, tail secondary.\nF timeout/cancel before terminal: must not become success.\nG post-terminal semantic event: source-grounded strict policy; ping exception must not generalize.",
+      "heading": "REQUIRED CAUSAL OUTCOMES",
+      "scope": "all active shared Anthropic-compatible response routes",
+      "forbidden_narrowing": "No substitution of decoded-only tests for raw, persistence, integration, replay and full suites; every final metric requires measured evidence.",
+      "status": "PENDING",
+      "implementation_boundary": "shared stream owner and persistence port",
+      "test_paths": [
+        "tests/providers/test_anthropic_durable_stream_v4.py"
+      ],
+      "completion_evidence": []
+    },
+    {
+      "original_requirement": "Define one explicit durable ack contract:\n- acknowledgement unit;\n- owner;\n- emit point;\n- persistence transaction boundary;\n- observer semantics;\n- restart semantics;\n- tail persistence;\n- final-result eligibility.\n\nIf the observer uses incompatible legacy return values, migrate it in this task.\n\nFinal:\nDURABLE_STREAM_OWNER_COUNT=1\nOWNER_MISMATCH_COUNT=0\nFULL_SHORT_OBSERVER_AND_SHARED_OWNER_CONSISTENT=YES\nDURABLE_ACK_SEMANTICS_UNAMBIGUOUS=YES",
+      "heading": "DURABLE ACK / FULL SHORT OBSERVER",
+      "scope": "all active shared Anthropic-compatible response routes",
+      "forbidden_narrowing": "No substitution of decoded-only tests for raw, persistence, integration, replay and full suites; every final metric requires measured evidence.",
+      "status": "PENDING",
+      "implementation_boundary": "shared stream owner and persistence port",
+      "test_paths": [
+        "tests/providers/test_anthropic_durable_stream_v4.py"
+      ],
+      "completion_evidence": []
+    },
+    {
+      "original_requirement": "For every persistable state:\nLIVE_CONTINUATION_RESULT = RELOAD_THEN_CONTINUE_RESULT\nfor identical remaining input.\n\nTest at least:\n- before message_start;\n- mid-content;\n- after usage update;\n- partial frame before terminal if persisted;\n- after Provider error durable commit;\n- after message_stop durable commit;\n- terminal + ping;\n- terminal + partial ping;\n- terminal + timeout diagnostic;\n- terminal + cancellation diagnostic.\n\nFinal:\nREHYDRATION_STATE_COVERAGE=100_PERCENT_REGISTERED_PERSISTABLE_STATES\nRELOAD_CONTINUATION_DIVERGENCE_COUNT=0\nTAIL_STATE_RELOAD_GAP_COUNT=0\n\nIf state is missing, add/migrate it and rerun.",
+      "heading": "REHYDRATION EQUIVALENCE",
+      "scope": "all active shared Anthropic-compatible response routes",
+      "forbidden_narrowing": "No substitution of decoded-only tests for raw, persistence, integration, replay and full suites; every final metric requires measured evidence.",
+      "status": "PENDING",
+      "implementation_boundary": "shared stream owner and persistence port",
+      "test_paths": [
+        "tests/providers/test_anthropic_durable_stream_v4.py"
+      ],
+      "completion_evidence": []
+    },
+    {
+      "original_requirement": "Final:\nPROVIDER_ERROR_LOST_TO_LATER_TIMEOUT_COUNT=0\nATTRIBUTEERROR_FROM_SSE_ERROR_PAYLOAD_COUNT=0\nPOST_TERMINAL_ERROR_IGNORED_COUNT=0\n\nCumulative usage must remain correct.\nProbe-02 must remain:\nINPUT=137304\nOUTPUT=64\nPOST_TERMINAL_PING_IGNORED_COUNT=3\n\nAny redesign regression must be repaired in this task.",
+      "heading": "PRESERVE ALREADY-CLOSED SUBPROBLEMS",
+      "scope": "all active shared Anthropic-compatible response routes",
+      "forbidden_narrowing": "No substitution of decoded-only tests for raw, persistence, integration, replay and full suites; every final metric requires measured evidence.",
+      "status": "PENDING",
+      "implementation_boundary": "shared stream owner and persistence port",
+      "test_paths": [
+        "tests/providers/test_anthropic_durable_stream_v4.py"
+      ],
+      "completion_evidence": []
+    },
+    {
+      "original_requirement": "This is response-side architecture work.\nAcross all active Anthropic-compatible routes final values must be:\nOUTBOUND_REQUEST_BODY_CHANGED_COUNT=0\nMODEL_VISIBLE_REQUEST_BYTES_CHANGED_COUNT=0\nROUTE_BINDING_CHANGED_COUNT=0\nOUTPUT_CAP_CHANGED_COUNT=0\nREASONING_POLICY_CHANGED_COUNT=0\nREQUEST_BUILDER_SOURCE_DIFF=0\n\nIf internal redesign changes request behavior, redesign/revert that portion. Do not ask the user to approve request-side changes.",
+      "heading": "REQUEST ZERO-DIFF HARD BOUNDARY",
+      "scope": "all active shared Anthropic-compatible response routes",
+      "forbidden_narrowing": "No substitution of decoded-only tests for raw, persistence, integration, replay and full suites; every final metric requires measured evidence.",
+      "status": "PENDING",
+      "implementation_boundary": "shared stream owner and persistence port",
+      "test_paths": [
+        "tests/providers/test_anthropic_durable_stream_v4.py"
+      ],
+      "completion_evidence": []
+    },
+    {
+      "original_requirement": "Generate tests from:\nA framing matrix\nB semantic matrix\nC durable owner/ack\nD rehydration\nE cross-layer integration\n\nFinal:\nFRAMING_GENERATED_TEST_COVERAGE=100_PERCENT\nSEMANTIC_GENERATED_TEST_COVERAGE=100_PERCENT\nDURABILITY_GENERATED_TEST_COVERAGE=100_PERCENT\nREHYDRATION_GENERATED_TEST_COVERAGE=100_PERCENT\n\nTests must execute the real owning implementation.\nAny same-domain failure: fix and rerun.",
+      "heading": "GENERATED MULTI-LAYER TEST CAMPAIGN",
+      "scope": "all active shared Anthropic-compatible response routes",
+      "forbidden_narrowing": "No substitution of decoded-only tests for raw, persistence, integration, replay and full suites; every final metric requires measured evidence.",
+      "status": "PENDING",
+      "implementation_boundary": "shared stream owner and persistence port",
+      "test_paths": [
+        "tests/providers/test_anthropic_durable_stream_v4.py"
+      ],
+      "completion_evidence": []
+    },
+    {
+      "original_requirement": "Inject timeout/cancel/EOF/transport faults at raw byte/chunk boundaries including:\n- before event field;\n- inside event field;\n- inside data payload;\n- before newline;\n- between CR/LF where relevant;\n- before blank-line delimiter;\n- immediately after complete message_stop;\n- inside post-terminal ping;\n- after Provider error;\n- arbitrary UTF-8-safe chunk boundaries.\n\nFinal:\nBYTE_BOUNDARY_FAULT_COVERAGE=100_PERCENT_GENERATED_POINTS\n\nPersist every failing seed into the regression corpus. Fix same-domain failures and rerun until green.",
+      "heading": "BYTE / CHUNK FAULT CAMPAIGN",
+      "scope": "all active shared Anthropic-compatible response routes",
+      "forbidden_narrowing": "No substitution of decoded-only tests for raw, persistence, integration, replay and full suites; every final metric requires measured evidence.",
+      "status": "PENDING",
+      "implementation_boundary": "shared stream owner and persistence port",
+      "test_paths": [
+        "tests/providers/test_anthropic_durable_stream_v4.py"
+      ],
+      "completion_evidence": []
+    },
+    {
+      "original_requirement": "Architecture is not closed until the actual production Full Short path uses the same durable owner.\n\nProduction-shaped OFFLINE proof must establish:\nshared parser terminal result\n= durable owner checkpoint\n= observer ack interpretation\n= rehydrated state\n= failure envelope/final workflow interpretation\n\nFinal:\nFULL_SHORT_OBSERVER_OWNER_INTEGRATION=PASS\nFULL_SHORT_DURABLE_ACK_CONSISTENCY=PASS\nFULL_SHORT_REHYDRATION_EQUIVALENCE=PASS",
+      "heading": "FULL SHORT OBSERVER INTEGRATION",
+      "scope": "all active shared Anthropic-compatible response routes",
+      "forbidden_narrowing": "No substitution of decoded-only tests for raw, persistence, integration, replay and full suites; every final metric requires measured evidence.",
+      "status": "PENDING",
+      "implementation_boundary": "shared stream owner and persistence port",
+      "test_paths": [
+        "tests/providers/test_anthropic_durable_stream_v4.py"
+      ],
+      "completion_evidence": []
+    },
+    {
+      "original_requirement": "Replay every available exact historical shared-protocol capture.\nAt minimum:\nPROBE01_EXACT_REPLAY=PASS\nPROBE02_EXACT_REPLAY=PASS\nProbe-02 remains 137304 / 64 with 3 ignored post-terminal pings.\n\nFinal:\nHISTORICAL_EXACT_REPLAY_REGRESSION_COUNT=0",
+      "heading": "HISTORICAL EXACT REPLAY",
+      "scope": "all active shared Anthropic-compatible response routes",
+      "forbidden_narrowing": "No substitution of decoded-only tests for raw, persistence, integration, replay and full suites; every final metric requires measured evidence.",
+      "status": "PENDING",
+      "implementation_boundary": "shared stream owner and persistence port",
+      "test_paths": [
+        "tests/providers/test_anthropic_durable_stream_v4.py"
+      ],
+      "completion_evidence": []
+    },
+    {
+      "original_requirement": "Run mutation-capable suites only in isolated copies.\n\nFinal:\nISOLATED_SUITE_SOURCE_IDENTITY=PASS\nORIGINAL_REPO_MUTATION_FROM_ISOLATED_SUITE_COUNT=0\nRELATED_SUITE_COMPLETED=YES\nFULL_SUITE_COMPLETED=YES\nNEW_REGRESSION_COUNT_ATTRIBUTABLE_TO_THIS_TASK=0\n\nIf an in-domain defect is found, fix original source, rebuild isolation, rerun.\nIf an unrelated historical failure appears, classify it; do not rewrite history merely to force green.",
+      "heading": "ISOLATED RELATED / FULL SUITES",
+      "scope": "all active shared Anthropic-compatible response routes",
+      "forbidden_narrowing": "No substitution of decoded-only tests for raw, persistence, integration, replay and full suites; every final metric requires measured evidence.",
+      "status": "PENDING",
+      "implementation_boundary": "shared stream owner and persistence port",
+      "test_paths": [
+        "tests/providers/test_anthropic_durable_stream_v4.py"
+      ],
+      "completion_evidence": []
+    },
+    {
+      "original_requirement": "After each implementation round:\n1 focused tests;\n2 generated framing/semantic/durability/rehydration tests;\n3 byte/chunk fault campaign;\n4 Full Short observer integration;\n5 historical replay;\n6 isolated related/full suites as appropriate;\n7 fresh independent reviewers;\n8 update external closure ledger.\n\nIf any VALID in-scope finding fails:\n- classify it;\n- identify owning layer;\n- update architecture/implementation;\n- add regression fixture;\n- rerun impacted proof;\n- repeat.\n\nDo NOT return to user for ordinary local findings.\nUse engineering judgment. Larger internal refactor is allowed within this response-side domain.",
+      "heading": "AUTONOMOUS CLOSURE LOOP",
+      "scope": "all active shared Anthropic-compatible response routes",
+      "forbidden_narrowing": "No substitution of decoded-only tests for raw, persistence, integration, replay and full suites; every final metric requires measured evidence.",
+      "status": "PENDING",
+      "implementation_boundary": "shared stream owner and persistence port",
+      "test_paths": [
+        "tests/providers/test_anthropic_durable_stream_v4.py"
+      ],
+      "completion_evidence": []
+    },
+    {
+      "original_requirement": "For each final candidate launch at least 6 fresh clean-room reviewers:\n1 raw/framing\n2 semantic reducer/protocol\n3 durable owner/ack\n4 rehydration/restart\n5 causal provenance/historical replay/fault campaign\n6 Full Short integration/request-zero-diff/production safety\n\nReviewer rejection is not terminal during closure loop. Fix valid findings, rebut invalid findings with evidence, then launch fresh final reviewers.\n\nFinal:\nSHARED_STREAM_ARCHITECTURE_REVIEW=PASS",
+      "heading": "INDEPENDENT REVIEW",
+      "scope": "all active shared Anthropic-compatible response routes",
+      "forbidden_narrowing": "No substitution of decoded-only tests for raw, persistence, integration, replay and full suites; every final metric requires measured evidence.",
+      "status": "PENDING",
+      "implementation_boundary": "shared stream owner and persistence port",
+      "test_paths": [
+        "tests/providers/test_anthropic_durable_stream_v4.py"
+      ],
+      "completion_evidence": []
+    },
+    {
+      "original_requirement": "All final mandatory values:\nFRAMING_MATRIX_UNSPECIFIED_CELL_COUNT=0\nFRAMING_MATRIX_AMBIGUOUS_CELL_COUNT=0\nSEMANTIC_MATRIX_UNSPECIFIED_CELL_COUNT=0\nSEMANTIC_MATRIX_AMBIGUOUS_CELL_COUNT=0\nDURABLE_STREAM_OWNER_COUNT=1\nOWNER_MISMATCH_COUNT=0\nFULL_SHORT_OBSERVER_AND_SHARED_OWNER_CONSISTENT=YES\nDURABLE_ACK_SEMANTICS_UNAMBIGUOUS=YES\nRELOAD_CONTINUATION_DIVERGENCE_COUNT=0\nTAIL_STATE_RELOAD_GAP_COUNT=0\nPOST_TERMINAL_TIMEOUT_DOWNGRADES_COMPLETE_CAPTURE_COUNT=0\nPOST_TERMINAL_CANCELLATION_DOWNGRADES_COMPLETE_CAPTURE_COUNT=0\nPRE_TERMINAL_TIMEOUT_FALSE_SUCCESS_COUNT=0\nPRE_TERMINAL_CANCELLATION_FALSE_SUCCESS_COUNT=0\nPROVIDER_ERROR_LOST_TO_LATER_TIMEOUT_COUNT=0\nATTRIBUTEERROR_FROM_SSE_ERROR_PAYLOAD_COUNT=0\nPOST_TERMINAL_ERROR_IGNORED_COUNT=0\nGENERIC_INCOMPLETE_TERMINAL_REPLACEMENT_COUNT=0\nHISTORICAL_EXACT_REPLAY_REGRESSION_COUNT=0\nOUTBOUND_REQUEST_BODY_CHANGED_COUNT=0\nMODEL_VISIBLE_REQUEST_BYTES_CHANGED_COUNT=0\nROUTE_BINDING_CHANGED_COUNT=0\nOUTPUT_CAP_CHANGED_COUNT=0\nREASONING_POLICY_CHANGED_COUNT=0\nREQUEST_BUILDER_SOURCE_DIFF=0\nFRAMING_GENERATED_TEST_COVERAGE=100_PERCENT\nSEMANTIC_GENERATED_TEST_COVERAGE=100_PERCENT\nDURABILITY_GENERATED_TEST_COVERAGE=100_PERCENT\nREHYDRATION_GENERATED_TEST_COVERAGE=100_PERCENT\nBYTE_BOUNDARY_FAULT_COVERAGE=100_PERCENT_GENERATED_POINTS\nFULL_SHORT_OBSERVER_OWNER_INTEGRATION=PASS\nFULL_SHORT_DURABLE_ACK_CONSISTENCY=PASS\nFULL_SHORT_REHYDRATION_EQUIVALENCE=PASS\nISOLATED_SUITE_SOURCE_IDENTITY=PASS\nORIGINAL_REPO_MUTATION_FROM_ISOLATED_SUITE_COUNT=0\nRELATED_SUITE_COMPLETED=YES\nFULL_SUITE_COMPLETED=YES\nSHARED_STREAM_ARCHITECTURE_REVIEW=PASS\n\nOnly then:\nSHARED_ANTHROPIC_STREAM_ARCHITECTURE_CLOSED=YES",
+      "heading": "ARCHITECTURE CLOSURE GATE",
+      "scope": "all active shared Anthropic-compatible response routes",
+      "forbidden_narrowing": "No substitution of decoded-only tests for raw, persistence, integration, replay and full suites; every final metric requires measured evidence.",
+      "status": "PENDING",
+      "implementation_boundary": "shared stream owner and persistence port",
+      "test_paths": [
+        "tests/providers/test_anthropic_durable_stream_v4.py"
+      ],
+      "completion_evidence": []
+    },
+    {
+      "original_requirement": "After closure candidate exists, run Strict L3.\nFinal:\nSTRICT_L3=PASS\nSTRICT_L3_WARNINGS=0\nSTRICT_L3_BLOCKERS=0\nSTRICT_L3_RESOLUTION_STATUS=resolved\n\nIf an in-domain Strict L3 issue appears: fix and rerun. First failure is not a handoff point.",
+      "heading": "STRICT L3",
+      "scope": "all active shared Anthropic-compatible response routes",
+      "forbidden_narrowing": "No substitution of decoded-only tests for raw, persistence, integration, replay and full suites; every final metric requires measured evidence.",
+      "status": "PENDING",
+      "implementation_boundary": "shared stream owner and persistence port",
+      "test_paths": [
+        "tests/providers/test_anthropic_durable_stream_v4.py"
+      ],
+      "completion_evidence": []
+    },
+    {
+      "original_requirement": "Only after architecture closure + final reviewer PASS + Strict L3 PASS.\nCommit all in-scope source/tests/evidence.\nDo not commit unrelated/test-generated side effects unless intentionally promoted.\n\nThen:\nSUCCESSOR_FINAL_EXECUTION_HEAD=git rev-parse HEAD\nWORKTREE=CLEAN\nNO_GIT_WRITE_AFTER_SUCCESSOR_HEAD_FREEZE=YES\n\nAll later real execution evidence is EXTERNAL/NON-GIT.",
+      "heading": "COMMIT / FREEZE",
+      "scope": "all active shared Anthropic-compatible response routes",
+      "forbidden_narrowing": "No substitution of decoded-only tests for raw, persistence, integration, replay and full suites; every final metric requires measured evidence.",
+      "status": "PENDING",
+      "implementation_boundary": "shared stream owner and persistence port",
+      "test_paths": [
+        "tests/providers/test_anthropic_durable_stream_v4.py"
+      ],
+      "completion_evidence": []
+    },
+    {
+      "original_requirement": "Require:\nPROBE01_HISTORICAL_EVIDENCE_DISPOSITION=REPLAY_PROVEN_PASS\nPROBE02_HISTORICAL_EVIDENCE_DISPOSITION=REPLAY_PROVEN_PASS\n\nDo NOT resend 01 or 02.",
+      "heading": "PROBE-01 / PROBE-02",
+      "scope": "all active shared Anthropic-compatible response routes",
+      "forbidden_narrowing": "No substitution of decoded-only tests for raw, persistence, integration, replay and full suites; every final metric requires measured evidence.",
+      "status": "PENDING",
+      "implementation_boundary": "shared stream owner and persistence port",
+      "test_paths": [
+        "tests/providers/test_anthropic_durable_stream_v4.py"
+      ],
+      "completion_evidence": []
+    },
+    {
+      "original_requirement": "Create outside Git:\nFullShortNewMainAnthropicStreamAutonomousClosureSuccessorAuthorizationV1\n\nBind final architecture contracts, takeover ledger, matrices, tests, fault campaign, observer integration, isolated suites, request-zero-diff, historical replay, reviewers, Strict L3, final frozen HEAD, exact cases 03-08, exact routes/models/fingerprints, fixtures/input envelopes/output caps, retry=0/fallback=0/route-switch=0, Exact READY project 2ad716..., Runtime Kernel, Baseline Skill, segmentation/windowing, authority/recovery policies, size matrix, and exactly ONE real Full Short.\n\nSet:\nexecution_authorized=true\nnamed_approver=USER_PREAUTHORIZED_BY_THIS_MASTER\nusage_status=unused\n\nNever reuse old authorization/nonce.",
+      "heading": "FRESH SUCCESSOR AUTHORIZATION",
+      "scope": "all active shared Anthropic-compatible response routes",
+      "forbidden_narrowing": "No substitution of decoded-only tests for raw, persistence, integration, replay and full suites; every final metric requires measured evidence.",
+      "status": "PENDING",
+      "implementation_boundary": "shared stream owner and persistence port",
+      "test_paths": [
+        "tests/providers/test_anthropic_durable_stream_v4.py"
+      ],
+      "completion_evidence": []
+    },
+    {
+      "original_requirement": "Provider requests <=144\nHTTP POST <=144\nnetwork calls <=144\ninput tokens <=4,000,000\ngenerated output tokens <=2,000,000\noutput/request <=32,000\nelapsed <=36,000 seconds\nUSD <=60 if reliably meterable\nCNY <=120 if reliably meterable\n\nDerive tighter plan caps before dispatch.\nIf first plan exceeds caps, re-plan within current authorized routes/fixtures if possible.",
+      "heading": "SUCCESSOR HARD CAPS",
+      "scope": "all active shared Anthropic-compatible response routes",
+      "forbidden_narrowing": "No substitution of decoded-only tests for raw, persistence, integration, replay and full suites; every final metric requires measured evidence.",
+      "status": "PENDING",
+      "implementation_boundary": "shared stream owner and persistence port",
+      "test_paths": [
+        "tests/providers/test_anthropic_durable_stream_v4.py"
+      ],
+      "completion_evidence": []
+    },
+    {
+      "original_requirement": "Require:\nSUCCESSOR_FINAL_EXECUTION_HEAD exact\nWORKTREE=CLEAN\nSHARED_ANTHROPIC_STREAM_ARCHITECTURE_CLOSED=YES\nauthorization exact\nrequest zero-diff exact\nhistorical replay exact\nisolated suites complete\nreviewers PASS\nStrict L3 PASS\nprobe-01/02 replay PASS\nsuccessor cases exact\nall nonces absent\nsuccessor external counters=0\nREAL_FULL_SHORT_EXECUTION_COUNT=0\nbudget gate PASS\n\nRequire:\nSUCCESSOR_CAMPAIGN_PREFLIGHT=PASS",
+      "heading": "SUCCESSOR PREFLIGHT",
+      "scope": "all active shared Anthropic-compatible response routes",
+      "forbidden_narrowing": "No substitution of decoded-only tests for raw, persistence, integration, replay and full suites; every final metric requires measured evidence.",
+      "status": "PENDING",
+      "implementation_boundary": "shared stream owner and persistence port",
+      "test_paths": [
+        "tests/providers/test_anthropic_durable_stream_v4.py"
+      ],
+      "completion_evidence": []
+    },
+    {
+      "original_requirement": "Sequential only.\nDo NOT resend 01/02.\nExecute only 03,04,05,06,07,08, each at most once.\n\nPer case:\n1 fresh nonce\n2 exact authorized credential lookup\n3 exact guarded route\n4 retry=0\n5 fallback=0\n6 route switch=0\n7 one Provider request max\n8 raw capture before lossy conversion\n9 typed terminal classification\n10 seal evidence/nonce\n\nA real dispatched probe failure is a true stop. Do not automatically resend.",
+      "heading": "REAL PROBES 03-08",
+      "scope": "all active shared Anthropic-compatible response routes",
+      "forbidden_narrowing": "No substitution of decoded-only tests for raw, persistence, integration, replay and full suites; every final metric requires measured evidence.",
+      "status": "PENDING",
+      "implementation_boundary": "shared stream owner and persistence port",
+      "test_paths": [
+        "tests/providers/test_anthropic_durable_stream_v4.py"
+      ],
+      "completion_evidence": []
+    },
+    {
+      "original_requirement": "After all required probes PASS, recompute all 183 Exact READY physical attempt shapes from CURRENT source/evidence.\n\nRequire:\nEXACT_READY_PROVEN_SAFE_PHYSICAL_ATTEMPT_SHAPES=183\nEXACT_READY_UNPROVEN_PHYSICAL_ATTEMPT_COUNT=0\nCAPACITY_ENGINEERING_LINE=CLOSED\n\nLocal evidence/computation bugs should be fixed and rerun inside this task.",
+      "heading": "CAPACITY CLOSURE",
+      "scope": "all active shared Anthropic-compatible response routes",
+      "forbidden_narrowing": "No substitution of decoded-only tests for raw, persistence, integration, replay and full suites; every final metric requires measured evidence.",
+      "status": "PENDING",
+      "implementation_boundary": "shared stream owner and persistence port",
+      "test_paths": [
+        "tests/providers/test_anthropic_durable_stream_v4.py"
+      ],
+      "completion_evidence": []
+    },
+    {
+      "original_requirement": "Using SAME frozen HEAD, run actual READY-authority project 2ad716... end-to-end OFFLINE.\nMust complete Planning, Draft, Review, Reader Review, Polish, Final Review, Maintenance, StoryState, Canon, READY, Final Artifact, Checkpoint, Completion Receipt.\n\nRequire:\nFULL_SHORT_PRODUCTION_SHAPED_DRY_RUN=PASS_EXACT_READY_TARGET\n\nThen run 13K / 20K / 30K.\nRequire:\nSIZE_MATRIX_SEGMENTATION_BEHAVIOR=PASS\nSIZE_MATRIX_PHYSICAL_ENVELOPE_BOUNDED=YES\n\nThen fresh final reviewers across shared stream, capacity, authority, exact-once/recovery/restart, route/evidence/privacy/Baseline Skill.\nAll ARCHITECTURE_PASS.\nRun final Strict L3 with PASS, 0 warnings, 0 blockers, resolved.\n\nLocal in-domain failures here should be repaired and rerun where safe.",
+      "heading": "EXACT READY + SIZE MATRIX + FINAL REVIEW",
+      "scope": "all active shared Anthropic-compatible response routes",
+      "forbidden_narrowing": "No substitution of decoded-only tests for raw, persistence, integration, replay and full suites; every final metric requires measured evidence.",
+      "status": "PENDING",
+      "implementation_boundary": "shared stream owner and persistence port",
+      "test_paths": [
+        "tests/providers/test_anthropic_durable_stream_v4.py"
+      ],
+      "completion_evidence": []
+    },
+    {
+      "original_requirement": "Only if every prior gate passes.\nBefore Full Short require:\nauthorization exact\nfrozen HEAD unchanged\nworktree clean\narchitecture closed\ncapacity closed\nExact READY dry-run PASS\nsize matrix PASS\nStrict L3 PASS\nreviewers PASS\nremaining budgets sufficient\nREAL_FULL_SHORT_EXECUTION_COUNT=0\n\nCreate one fresh single-use Full Short nonce.\nExecute exactly ONE real Full Short through existing production runtime.\n\nPreserve current route/model scheduling, destinations, segmentation/windowing, bounded fallback/recovery, Planning reasoning, final-artifact recovery, capture/replay, exact-once, StoryState/Canon/READY authority, Baseline Skill, and literary/model-visible semantics.\n\nNo whole-run retry.\nNo second Full Short.\nNo automatic route/model change.\n\nOn failure: seal exact typed evidence and STOP.\nOn success: seal manuscript, completion receipt, artifact/stage/capture/provider/authority ledgers, usage/cost/elapsed, recovery events, StoryState/Canon/READY, final checkpoint.",
+      "heading": "EXACTLY ONE REAL FULL SHORT",
+      "scope": "all active shared Anthropic-compatible response routes",
+      "forbidden_narrowing": "No substitution of decoded-only tests for raw, persistence, integration, replay and full suites; every final metric requires measured evidence.",
+      "status": "PENDING",
+      "implementation_boundary": "shared stream owner and persistence port",
+      "test_paths": [
+        "tests/providers/test_anthropic_durable_stream_v4.py"
+      ],
+      "completion_evidence": []
+    },
+    {
+      "original_requirement": "Only these justify stopping before architecture closure:\n1 UNKNOWN_OR_UNRELATED_USER_DATA_RISK\n2 AUTHORITATIVE_PROTOCOL_CONTRADICTION\n3 REQUIRED_EXTERNAL_EVIDENCE_UNAVAILABLE\n4 FORBIDDEN_REQUEST_SIDE_CHANGE_REQUIRED\n5 UNSAFE_PERSISTED_DATA_MIGRATION\n6 TOOL_OR_ENVIRONMENT_UNRECOVERABLE\n7 REAL_EXTERNAL_EXECUTION_FAILURE\n8 HARD_BUDGET_OR_AUTHORIZATION_BOUNDARY\n\nNOT valid stop reasons:\nreviewer rejection; local test failure; transition failure; fault seed failure; reload divergence; owner mismatch; capture regression; Strict L3 in-domain warning; isolated same-domain regression; new same-domain edge case; need for larger internal refactor; old MAIN context compaction.",
+      "heading": "TRUE NON-RECOVERABLE STOP CLASSES",
+      "scope": "all active shared Anthropic-compatible response routes",
+      "forbidden_narrowing": "No substitution of decoded-only tests for raw, persistence, integration, replay and full suites; every final metric requires measured evidence.",
+      "status": "PENDING",
+      "implementation_boundary": "shared stream owner and persistence port",
+      "test_paths": [
+        "tests/providers/test_anthropic_durable_stream_v4.py"
+      ],
+      "completion_evidence": []
+    },
+    {
+      "original_requirement": "Create/commit:\ndocs/superpowers/reports/new-main-shared-anthropic-stream-autonomous-closure-v4/\n\nInclude at minimum:\nREADME.md\nbaseline-binding-v1.json\ntakeover-worktree-intake-v1.json\nabandoned-v3-progress-recovery-v1.json\ncontext-compaction-resilience-v1.json\ntest-isolation-contract-v1.json\narchitecture-decision-record-v1.md\nsse-framing-transition-matrix-v1.json\nsemantic-stream-transition-matrix-v2.json\ndurable-prefix-commit-contract-v1.json\ndurable-stream-owner-contract-v1.json\nrehydration-equivalence-contract-v1.json\nterminal-prefix-evidence-contract-v1.json\ncausal-precedence-contract-v1.json\ngenerated-framing-test-report-v1.json\ngenerated-semantic-test-report-v1.json\ngenerated-durability-test-report-v1.json\ngenerated-rehydration-test-report-v1.json\nbyte-boundary-fault-report-v1.json\nproduction-observer-integration-v1.json\nclosure-loop-history-v1.json\nhistorical-exact-replay-report-v1.json\nshared-request-zero-diff-v1.json\nisolated-related-suite-v1.json\nisolated-full-suite-v1.json\nreviewer-final-1-v1.json\nreviewer-final-2-v1.json\nreviewer-final-3-v1.json\nreviewer-final-4-v1.json\nreviewer-final-5-v1.json\nreviewer-final-6-v1.json\nstrict-l3-preexecution-v1.json\nprivacy-v1.json\npreexecution-final-report-v1.md\nsha256-manifest-v1.json\n\nAll real successor evidence after freeze: EXTERNAL/NON-GIT ONLY.",
+      "heading": "PRE-FREEZE EVIDENCE ROOT",
+      "scope": "all active shared Anthropic-compatible response routes",
+      "forbidden_narrowing": "No substitution of decoded-only tests for raw, persistence, integration, replay and full suites; every final metric requires measured evidence.",
+      "status": "PENDING",
+      "implementation_boundary": "shared stream owner and persistence port",
+      "test_paths": [
+        "tests/providers/test_anthropic_durable_stream_v4.py"
+      ],
+      "completion_evidence": []
+    },
+    {
+      "original_requirement": "Always report:\nTAKEOVER_MAIN=NEW_MAIN_V4\nBASELINE_COMMITTED_HEAD=<sha>\nTAKEOVER_START_HEAD=<sha>\nINITIAL_WORKTREE_DIRTY=<YES/NO>\nPRESERVED_IN_SCOPE_CHANGE_COUNT=<n>\nCONFIRMED_TEST_SIDE_EFFECT_COUNT=<n>\nUNKNOWN_OR_UNRELATED_DIRTY_PATH_COUNT=<n>\nABANDONED_V3_PROGRESS_RECOVERED=<YES/NO>\nAUTONOMOUS_CLOSURE_LOOP_ITERATION_COUNT=<n>\nVALID_REVIEWER_FINDING_COUNT_TOTAL=<n>\nVALID_REVIEWER_FINDING_COUNT_CLOSED=<n>\nDURABLE_STREAM_OWNER_COUNT=<n>\nOWNER_MISMATCH_COUNT=<n>\nFULL_SHORT_OBSERVER_AND_SHARED_OWNER_CONSISTENT=<YES/NO>\nDURABLE_ACK_SEMANTICS_UNAMBIGUOUS=<YES/NO>\nFRAMING_MATRIX_UNSPECIFIED_CELL_COUNT=<n>\nFRAMING_MATRIX_AMBIGUOUS_CELL_COUNT=<n>\nSEMANTIC_MATRIX_UNSPECIFIED_CELL_COUNT=<n>\nSEMANTIC_MATRIX_AMBIGUOUS_CELL_COUNT=<n>\nFRAMING_GENERATED_TEST_COVERAGE=<value>\nSEMANTIC_GENERATED_TEST_COVERAGE=<value>\nDURABILITY_GENERATED_TEST_COVERAGE=<value>\nREHYDRATION_GENERATED_TEST_COVERAGE=<value>\nBYTE_BOUNDARY_FAULT_POINT_COUNT=<n>\nBYTE_BOUNDARY_FAULT_PASS_COUNT=<n>\nBYTE_BOUNDARY_FAULT_COVERAGE=<value>\nFULL_SHORT_OBSERVER_OWNER_INTEGRATION=<PASS/FAIL>\nFULL_SHORT_DURABLE_ACK_CONSISTENCY=<PASS/FAIL>\nFULL_SHORT_REHYDRATION_EQUIVALENCE=<PASS/FAIL>\nREHYDRATION_STATE_COVERAGE=<value>\nRELOAD_CONTINUATION_DIVERGENCE_COUNT=<n>\nTAIL_STATE_RELOAD_GAP_COUNT=<n>\nPOST_TERMINAL_TIMEOUT_DOWNGRADES_COMPLETE_CAPTURE_COUNT=<n>\nPOST_TERMINAL_CANCELLATION_DOWNGRADES_COMPLETE_CAPTURE_COUNT=<n>\nPRE_TERMINAL_TIMEOUT_FALSE_SUCCESS_COUNT=<n>\nPRE_TERMINAL_CANCELLATION_FALSE_SUCCESS_COUNT=<n>\nPROVIDER_ERROR_LOST_TO_LATER_TIMEOUT_COUNT=<n>\nATTRIBUTEERROR_FROM_SSE_ERROR_PAYLOAD_COUNT=<n>\nPOST_TERMINAL_ERROR_IGNORED_COUNT=<n>\nGENERIC_INCOMPLETE_TERMINAL_REPLACEMENT_COUNT=<n>\nHISTORICAL_EXACT_REPLAY_REGRESSION_COUNT=<n>\nOUTBOUND_REQUEST_BODY_CHANGED_COUNT=<n>\nMODEL_VISIBLE_REQUEST_BYTES_CHANGED_COUNT=<n>\nROUTE_BINDING_CHANGED_COUNT=<n>\nOUTPUT_CAP_CHANGED_COUNT=<n>\nREASONING_POLICY_CHANGED_COUNT=<n>\nREQUEST_BUILDER_SOURCE_DIFF=<n>\nPROBE01_EXACT_REPLAY=<PASS/FAIL>\nPROBE02_EXACT_REPLAY=<PASS/FAIL>\nPROBE02_CANONICAL_PROVIDER_INPUT_TOKENS=<n>\nPROBE02_CANONICAL_PROVIDER_OUTPUT_TOKENS=<n>\nPOST_TERMINAL_PING_IGNORED_COUNT=<n>\nISOLATED_SUITE_SOURCE_IDENTITY=<PASS/FAIL>\nORIGINAL_REPO_MUTATION_FROM_ISOLATED_SUITE_COUNT=<n>\nRELATED_SUITE_COMPLETED=<YES/NO>\nRELATED_SUITE_RESULT=<exact>\nFULL_SUITE_COMPLETED=<YES/NO>\nFULL_SUITE_RESULT=<exact>\nSHARED_STREAM_ARCHITECTURE_REVIEW=<PASS/FAIL>\nSHARED_ANTHROPIC_STREAM_ARCHITECTURE_CLOSED=<YES/NO>\nSTRICT_L3=<status>\nSTRICT_L3_WARNINGS=<n>\nSTRICT_L3_BLOCKERS=<n>\nSTRICT_L3_RESOLUTION_STATUS=<value>\nSUCCESSOR_FINAL_EXECUTION_HEAD=<sha>\nWORKTREE=<state>\nSUCCESSOR_CAMPAIGN_PREFLIGHT=<PASS/FAIL/NOT_REACHED>\nSUCCESSOR_REAL_PROBE_CASE_COUNT=<n>\nSUCCESSOR_PROBE_CASE_SET=<ids>\nSUCCESSOR_PROBE_ALL_REQUIRED_CASES_PASS=<YES/NO/NOT_REACHED>\nEXACT_READY_PROVEN_SAFE_PHYSICAL_ATTEMPT_SHAPES=<n or NOT_RECOMPUTED>\nEXACT_READY_UNPROVEN_PHYSICAL_ATTEMPT_COUNT=<n or NOT_RECOMPUTED>\nCAPACITY_ENGINEERING_LINE=<CLOSED/BLOCKED/NOT_REACHED>\nFULL_SHORT_PRODUCTION_SHAPED_DRY_RUN=<status>\nSIZE_MATRIX_SEGMENTATION_BEHAVIOR=<status>\nSUCCESSOR_REAL_PROVIDER_REQUEST_ATTEMPTS=<n>\nSUCCESSOR_HTTP_POST_ATTEMPTS=<n>\nSUCCESSOR_NETWORK_CALLS=<n>\nSUCCESSOR_MODEL_CALLS=<n>\nSUCCESSOR_PAID_CALLS=<n>\nSUCCESSOR_TOTAL_INPUT_TOKENS=<n>\nSUCCESSOR_TOTAL_GENERATED_OUTPUT_TOKENS=<n>\nSUCCESSOR_COST_STATUS=<status>\nSUCCESSOR_TOTAL_ELAPSED_SECONDS=<n>\nREAL_FULL_SHORT_EXECUTION_COUNT=<0 or 1>\nREAL_FULL_SHORT_TERMINAL=<SUCCESS|exact typed failure|NOT_REACHED>\n\nIf architecture closes:\nSHARED_ANTHROPIC_STREAM_ARCHITECTURE_CLOSED=YES\n\nIf a true non-recoverable architecture boundary remains:\nSHARED_ANTHROPIC_STREAM_ARCHITECTURE_CLOSED=NO\nNON_RECOVERABLE_STOP_CLASS=<one valid class above>\nNON_RECOVERABLE_STOP_EVIDENCE=<exact>\nDo not use reviewer rejection/local regression/context compaction as a non-recoverable stop.\n\nIf real Full Short succeeds:\nTRUSTWORTHY_FULL_SHORT_REAL_EXECUTION=PASS\nLITERARY_QUALITY_AUDIT_READY=YES\nEXACT_NEXT_GATE=FIRST_REAL_FULL_SHORT_LITERARY_AND_AI_FLAVOR_AUDIT\n\nIf a real dispatched probe fails:\nREAL_FULL_SHORT_EXECUTION_COUNT=0\nEXACT_NEXT_GATE=SUCCESSOR_REAL_PROBE_FAILURE_EVIDENCE_REVIEW\n\nIf the one real Full Short fails:\nREAL_FULL_SHORT_EXECUTION_COUNT=1\nLITERARY_QUALITY_AUDIT_READY=NO\nEXACT_NEXT_GATE=FIRST_REAL_FULL_SHORT_FAILURE_EVIDENCE_REVIEW\n\nSTOP.",
+      "heading": "FINAL REQUIRED OUTPUT",
+      "scope": "all active shared Anthropic-compatible response routes",
+      "forbidden_narrowing": "No substitution of decoded-only tests for raw, persistence, integration, replay and full suites; every final metric requires measured evidence.",
+      "status": "PENDING",
+      "implementation_boundary": "shared stream owner and persistence port",
+      "test_paths": [
+        "tests/providers/test_anthropic_durable_stream_v4.py"
+      ],
+      "completion_evidence": []
+    }
+  ],
+  "resolution_status": "unresolved",
+  "allowed_changes": [
+    "response framing/reduction/persistence/replay",
+    "Full Short observer response checkpoint port",
+    "tests and evidence"
+  ],
+  "protected": [
+    "request builders/bytes",
+    "routes/models/output caps/reasoning",
+    "StoryState/Canon/narrative and Baseline Skill",
+    "memory/narrative-contract.json original bytes",
+    "no real calls before gated freeze"
+  ],
+  "rollback": "Exact external start snapshot retained; surgical source rollback only, no reset/restore/clean/stash.",
+  "architecture": "Incremental byte framer; existing validated semantic reducer retained behind normalization; one durable owner serializes deterministic journal and prefixes; signed append-only checkpoints under existing Full Short store/signing authority; typed acknowledgements validate exact checkpoint identity. Final legacy capture remains once per attempt after transport closure.",
+  "current_failures": [
+    "partial framing overwrites transport",
+    "partial tail revokes semantic success",
+    "boolean/None ack disagreement",
+    "rehydration missing"
+  ],
+  "test_plan": [
+    "isolated focused baseline",
+    "generated framing/semantic/durability/restore",
+    "byte faults",
+    "production observer",
+    "historical exact replay",
+    "isolated related/full",
+    "fresh reviewers",
+    "Strict L3"
+  ],
+  "user_decisions_required": []
+}

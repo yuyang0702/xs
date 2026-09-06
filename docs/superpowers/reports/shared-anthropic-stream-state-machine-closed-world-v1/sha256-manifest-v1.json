@@ -1,0 +1,123 @@
+{
+  "schema": "ClosedWorldStopPreparationManifestV1",
+  "master_sha256": "58b91f4d35d03e6d01f21ba484629be50740af8d37a5ea358ba73cf8b43adfec",
+  "status": "STOP_NOT_CLOSED",
+  "files": {
+    "authoritative-shared-protocol-semantics-v1.json": {
+      "sha256": "663cb9afcf266e352454395c9bd6bb457646df94b2c699f4b62c02391050f758",
+      "bytes": 13911
+    },
+    "baseline-binding-v1.json": {
+      "sha256": "26409f2c85e1ac0a5502970baa7a0f6af54db06ae2e058a715a5f286435fd2a3",
+      "bytes": 299
+    },
+    "change-contract-v1.json": {
+      "sha256": "5fda4b5f5b4470b741008b0f4c31c3d7b7f0e7312aea02b9cbf51629baf29bfe",
+      "bytes": 49022
+    },
+    "dirty-worktree-intake-v1.json": {
+      "sha256": "961b7adb31e899a738e47dc40d03cc377e238a58567028df8ec77494b94bfd0d",
+      "bytes": 30594
+    },
+    "durable-partial-tail-counterexamples-v1.json": {
+      "sha256": "5a062e9bc88362700de0089ac191377f7b02b74d51a90b19a1f85780e1c9fcb7",
+      "bytes": 2215
+    },
+    "error-payload-normalization-contract-v1.json": {
+      "sha256": "de54da587cd97eaa29a22ec347870244f3951922595ad1f86bc37895e75586a2",
+      "bytes": 16493
+    },
+    "final-required-output-v1.json": {
+      "sha256": "eeb837ad178cc198c76fd2b305d9c3ab6758f00c7c31b6e0c18c2c9cfb3f7e90",
+      "bytes": 5174
+    },
+    "focused-tests-v1.json": {
+      "sha256": "92639bc65bff1ae9815bef30f445a09366a67b6074a28e5ff6d9d05b63346c32",
+      "bytes": 2412
+    },
+    "forward-risk-report-v2.json": {
+      "sha256": "4a83daaaf216abaef21612ae56401b6df2c10ee443a4a0adeb83f02d496d4411",
+      "bytes": 76137
+    },
+    "generated-transition-test-report-v1.json": {
+      "sha256": "2f0a717739f7744b3db8e4db54569ca01dc777d9845f83b7dee488513cf52f7b",
+      "bytes": 30477
+    },
+    "historical-exact-replay-report-v1.json": {
+      "sha256": "9eb085570a7e2633f9e78795514d83dc7db03e0c44bf7d552a1d79a0ccb0c23a",
+      "bytes": 12080
+    },
+    "partial-frame-baseline-comparison-v1.json": {
+      "sha256": "90af1ee97e3c0b6b109440a956badd5f430f482652a2731f187ac9326791b04c",
+      "bytes": 3191
+    },
+    "partial-frame-current-comparison-v1.json": {
+      "sha256": "452cd01cb9486be3bc9edac417da83e11cdd4ce3be0710e0f918cf5ee7fcbcbd",
+      "bytes": 3491
+    },
+    "preexecution-final-report-v1.md": {
+      "sha256": "18a41a2289dda0d47219db3cabbe892910b069fea84eeed3ee17373e6fffc313",
+      "bytes": 4815
+    },
+    "privacy-v1.json": {
+      "sha256": "e8bb2d49c5684641eae813d5fed56016f823213242cb73a8f46b2e8b7cb891ad",
+      "bytes": 411
+    },
+    "README.md": {
+      "sha256": "11aaedb692f3b7afc954c0923d6770a057ac7f0751c4ad13e095b19390e74c13",
+      "bytes": 316
+    },
+    "reviewer-1-v1.json": {
+      "sha256": "bc50fdf28c0c171db27075ad2d71d6a0e190e30f4527c5b265704d25ae08212e",
+      "bytes": 18082
+    },
+    "reviewer-2-v1.json": {
+      "sha256": "a860aea9822896299016591bae972d3102674dc714be3459dddacb68109ce84c",
+      "bytes": 10937
+    },
+    "reviewer-3-v1.json": {
+      "sha256": "b64627c2a06c26920dd75c0b8e16e8e63d5a50c6243240b24cbcf87fc5b80b55",
+      "bytes": 6338
+    },
+    "reviewer-4-v1.json": {
+      "sha256": "b441feb1cad19014bbc63b19acba7c2897d8c42d3f8a7e48755460aa9f774abf",
+      "bytes": 6701
+    },
+    "reviewer-5-v1.json": {
+      "sha256": "409483afde7fff71cf153014fa4ad74280a8ec8c7f71b592a7adca4f66b1b82c",
+      "bytes": 8536
+    },
+    "shared-anthropic-protocol-domain-v1.json": {
+      "sha256": "5006fe10ce9b3f13dafd7fa66b01a2131bb0d60f9f9c8678f039fceb0c07f5c9",
+      "bytes": 100047
+    },
+    "shared-anthropic-transition-matrix-v1.json": {
+      "sha256": "7589146f00cd5399ef561b9b1e4bb872733a596dce790a36bb3145419acd545b",
+      "bytes": 774609
+    },
+    "shared-completeness-contract-v1.json": {
+      "sha256": "e2230a358e982450648c304c7c64a7598bdfcb26861bd86c03da10d3eb7b5383",
+      "bytes": 7473
+    },
+    "shared-request-zero-diff-v1.json": {
+      "sha256": "23121533077742615e7c9b7d99c6c9bfd09efb50292ea7833eda430cb09af612",
+      "bytes": 22594
+    },
+    "shared-stream-causal-precedence-contract-v1.json": {
+      "sha256": "8a235484dc0280f60ceb4e6660062acba841196c8b360bfd0cc06cb30f44528b",
+      "bytes": 12469
+    },
+    "state-machine-fault-injection-report-v1.json": {
+      "sha256": "cdf71026fe877fcfd04b1c2d7c22e504077836120be25337f6703dfc605f939b",
+      "bytes": 33573
+    },
+    "strict-l3-preexecution-v1.json": {
+      "sha256": "89a3a814a158958841236702424f0302f1f08b8e1aa0d1050ffc7cbbdb264d16",
+      "bytes": 663
+    },
+    "test-materializer-side-effect-forensics-v1.json": {
+      "sha256": "058590db218a67597d4bb2729f80e302e4c0cc517c87a691a228859745fca485",
+      "bytes": 2763
+    }
+  }
+}

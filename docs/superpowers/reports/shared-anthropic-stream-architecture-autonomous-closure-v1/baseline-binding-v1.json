@@ -1,0 +1,9 @@
+{
+  "schema": "AutonomousClosureBaselineV1",
+  "head": "79a99a58ebe95b2be4d1e51a8d190070a2568574",
+  "master_sha256": "f14ffbec7941d0d4756e3ba705188ba28db5e4cfa45371f51cd2000b3fd02899",
+  "initial_status_sha256": "a49d816ef6009032771482b8a0bcde7f62c2ee97bdf380db0aab10cadc15fef6",
+  "initial_intake_sha256": "dacdf852895e0983d7a25001525476dde41aad44bd00e5e74c74b1419ec6304a",
+  "status": "SOURCE_VERIFIED",
+  "provider_calls": 0
+}

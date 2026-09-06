@@ -1,0 +1,18 @@
+{
+  "schema": "V4GeneratedRehydrationReportV1",
+  "source_bindings": {
+    "src/novel_flywheel/anthropic_stream.py": "f548433a92184b9769d1da163848b8c9b1c618c92cbe907e467f60fdaa548d78",
+    "src/novel_flywheel/anthropic_durable_stream.py": "41b7052aa7191a70ef8ec209285c747b8f00bac7b7c1939f1fcbef4f7937525f",
+    "src/novel_flywheel/full_short_stream_checkpoint.py": "858c3ab0fbfb5e6e93631b8dc3ee61f27934f8722f7843457fbc83622a1f7501",
+    "src/novel_flywheel/full_short_execution.py": "e17cf42b1c4c571b31f4227944f6b618d249b7ba4f59f06acb2fb3e3d6a5c0ea",
+    "src/novel_flywheel/providers/anthropic.py": "ea63f7fd2a3e45525409bec1eeff935092c09648f8ea9b71e38e1c5de6ed7b51"
+  },
+  "closure_status": "CANDIDATE_NOT_CLOSED",
+  "request_behavior_changed": false,
+  "real_external_calls": 0,
+  "registered_persistable_state_variants": 22,
+  "coverage": "100_PERCENT",
+  "additional_coverage": "Every byte cut in valid LF/CR/CRLF success+ping+partial stream; canonical fault subclasses; signed FullShort store reload; capture and persistence failures.",
+  "status": "PASS",
+  "divergences": 0
+}

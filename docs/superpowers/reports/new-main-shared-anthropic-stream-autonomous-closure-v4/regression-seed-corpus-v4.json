@@ -1,0 +1,114 @@
+{
+  "schema": "V4ClosureRegressionSeedsV1",
+  "private_remote_payloads_included": false,
+  "seeds": [
+    {
+      "id": "baseline-partial-timeout-before-terminal",
+      "input": "partial SSE frame followed by ReadTimeout before message_stop",
+      "expected": "transport primary; framing secondary",
+      "status": "FIXED_AND_REGRESSED_CANDIDATE09"
+    },
+    {
+      "id": "baseline-partial-cancel-before-terminal",
+      "input": "partial SSE frame followed by CancelledError before message_stop",
+      "expected": "cancellation primary; framing secondary",
+      "status": "FIXED_AND_REGRESSED_CANDIDATE09"
+    },
+    {
+      "id": "baseline-partial-timeout-after-terminal",
+      "input": "durable message_stop then partial ping then ReadTimeout",
+      "expected": "success; diagnostic tail",
+      "status": "FIXED_AND_REGRESSED_CANDIDATE09"
+    },
+    {
+      "id": "baseline-partial-cancel-after-terminal",
+      "input": "durable message_stop then partial ping then CancelledError",
+      "expected": "success; diagnostic tail",
+      "status": "FIXED_AND_REGRESSED_CANDIDATE09"
+    },
+    {
+      "id": "capture-control-restore",
+      "input": "terminal followed by CAPTURE_FAILED; persist and reload",
+      "expected": "same typed result and capture state",
+      "status": "FIXED_AND_REGRESSED_CANDIDATE09"
+    },
+    {
+      "id": "provider-error-storage-failure",
+      "input": "Provider error followed by sink exception",
+      "expected": "Provider error primary",
+      "status": "FIXED_AND_REGRESSED_CANDIDATE09"
+    },
+    {
+      "id": "signed-head-ledger-tamper",
+      "input": "replace ledger checkpoint pointer with older signed checkpoint without updating ledger seal",
+      "expected": "LEDGER_SHA256_MISMATCH",
+      "status": "FIXED_AND_REGRESSED_CANDIDATE09"
+    },
+    {
+      "id": "committed-ack-lost",
+      "input": "sink commits generation but fails ACK twice; next commit",
+      "expected": "confirm identical checkpoint then append suffix",
+      "status": "FIXED_AND_REGRESSED_CANDIDATE09"
+    },
+    {
+      "id": "read-only-reload-terminal",
+      "input": "persist before message_stop; reload without sink; ingest message_stop",
+      "expected": "new terminal ineligible without persistence",
+      "status": "FIXED_AND_REGRESSED_CANDIDATE09"
+    },
+    {
+      "id": "sse-colonless-event",
+      "input": "event: error\nevent\ndata: valid message_start\n\n",
+      "expected": "event empty reset; no false Provider error",
+      "status": "FIXED_AND_REGRESSED_CANDIDATE09"
+    },
+    {
+      "id": "sse-colonless-data-tail",
+      "input": "complete success then data\n\n",
+      "expected": "closed empty payload rejected",
+      "status": "FIXED_AND_REGRESSED_CANDIDATE09"
+    },
+    {
+      "id": "sse-invalid-ignored-event-utf8",
+      "input_hex": "6576656e743a20ff0a0a",
+      "expected": "typed encoding error cannot become success",
+      "status": "FIXED_AND_REGRESSED_CANDIDATE09"
+    },
+    {
+      "id": "sse-invalid-overwritten-event-utf8",
+      "input": "invalid UTF8 event then valid overriding event in same closed frame",
+      "expected": "typed encoding error",
+      "status": "FIXED_AND_REGRESSED_CANDIDATE09"
+    },
+    {
+      "id": "test-oracle-crlf-final-cr",
+      "input": "CRLF synthetic success cut at byte655 before optional lastLF",
+      "expected": "CR already completes delimiter; fixed test oracle",
+      "status": "FIXED_AND_REGRESSED_CANDIDATE09"
+    },
+    {
+      "id": "test-fixture-timeout-message",
+      "input": "httpx.ReadTimeout constructed without required message",
+      "expected": "fixture supplies synthetic message",
+      "status": "FIXED_AND_REGRESSED_CANDIDATE09"
+    },
+    {
+      "id": "derived-timeout-reload",
+      "input": "subclass of httpx.ReadTimeout serialized then reloaded",
+      "expected": "same normalized TIMEOUT category",
+      "status": "FIXED_AND_REGRESSED_CANDIDATE09"
+    },
+    {
+      "id": "derived-cancel-reload",
+      "input": "subclass of asyncio.CancelledError serialized then reloaded",
+      "expected": "same normalized CANCELLATION category",
+      "status": "FIXED_AND_REGRESSED_CANDIDATE09"
+    },
+    {
+      "id": "error-after-durable-success-unpersisted",
+      "input": "durable success; later Provider error; error checkpoint unavailable",
+      "expected": "Provider error primary but error terminal evidence not durable",
+      "status": "FIXED_AND_REGRESSED_CANDIDATE09"
+    }
+  ]
+}

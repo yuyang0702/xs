@@ -1,0 +1,7 @@
+{
+  "head": "79a99a58ebe95b2be4d1e51a8d190070a2568574",
+  "master_sha256": "58b91f4d35d03e6d01f21ba484629be50740af8d37a5ea358ba73cf8b43adfec",
+  "dirty_paths": 68,
+  "unknown_paths": 0,
+  "prior_stop": "Two baseline-green capture completeness regressions; fresh Master authorizes redesign"
+}

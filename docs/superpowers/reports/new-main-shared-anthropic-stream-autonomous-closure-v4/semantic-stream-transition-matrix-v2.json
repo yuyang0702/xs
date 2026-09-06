@@ -1,0 +1,1000 @@
+{
+  "schema": "SemanticStreamTransitionMatrixV2",
+  "cells": [
+    {
+      "from_state": "BEFORE_MESSAGE",
+      "input_class": "message_start",
+      "action": "ACCEPT_ADVANCE",
+      "next_state": "MESSAGE_ACTIVE",
+      "reason": "",
+      "payload_precondition": "valid decoded payload for event; guard failures take typed protocol-invalid transition",
+      "source_grounding": "src/novel_flywheel/anthropic_stream.py:TRANSITIONS/AnthropicStream.step/_apply"
+    },
+    {
+      "from_state": "BEFORE_MESSAGE",
+      "input_class": "content_block_start",
+      "action": "FAIL_CLOSED_PROTOCOL_INVALID",
+      "next_state": "PROTOCOL_INVALID_TERMINAL",
+      "reason": "ANTHROPIC_SSE_BLOCK_BEFORE_MESSAGE_START",
+      "payload_precondition": "valid decoded payload for event; guard failures take typed protocol-invalid transition",
+      "source_grounding": "src/novel_flywheel/anthropic_stream.py:TRANSITIONS/AnthropicStream.step/_apply"
+    },
+    {
+      "from_state": "BEFORE_MESSAGE",
+      "input_class": "content_block_delta",
+      "action": "FAIL_CLOSED_PROTOCOL_INVALID",
+      "next_state": "PROTOCOL_INVALID_TERMINAL",
+      "reason": "ANTHROPIC_SSE_DELTA_OUTSIDE_CONTENT_BLOCK",
+      "payload_precondition": "valid decoded payload for event; guard failures take typed protocol-invalid transition",
+      "source_grounding": "src/novel_flywheel/anthropic_stream.py:TRANSITIONS/AnthropicStream.step/_apply"
+    },
+    {
+      "from_state": "BEFORE_MESSAGE",
+      "input_class": "content_block_stop",
+      "action": "FAIL_CLOSED_PROTOCOL_INVALID",
+      "next_state": "PROTOCOL_INVALID_TERMINAL",
+      "reason": "ANTHROPIC_SSE_CONTENT_BLOCK_STOP_UNBALANCED",
+      "payload_precondition": "valid decoded payload for event; guard failures take typed protocol-invalid transition",
+      "source_grounding": "src/novel_flywheel/anthropic_stream.py:TRANSITIONS/AnthropicStream.step/_apply"
+    },
+    {
+      "from_state": "BEFORE_MESSAGE",
+      "input_class": "message_delta",
+      "action": "FAIL_CLOSED_PROTOCOL_INVALID",
+      "next_state": "PROTOCOL_INVALID_TERMINAL",
+      "reason": "ANTHROPIC_SSE_MESSAGE_DELTA_STATE_INVALID",
+      "payload_precondition": "valid decoded payload for event; guard failures take typed protocol-invalid transition",
+      "source_grounding": "src/novel_flywheel/anthropic_stream.py:TRANSITIONS/AnthropicStream.step/_apply"
+    },
+    {
+      "from_state": "BEFORE_MESSAGE",
+      "input_class": "message_stop",
+      "action": "FAIL_CLOSED_PROTOCOL_INVALID",
+      "next_state": "PROTOCOL_INVALID_TERMINAL",
+      "reason": "ANTHROPIC_SSE_MESSAGE_STOP_STATE_INVALID",
+      "payload_precondition": "valid decoded payload for event; guard failures take typed protocol-invalid transition",
+      "source_grounding": "src/novel_flywheel/anthropic_stream.py:TRANSITIONS/AnthropicStream.step/_apply"
+    },
+    {
+      "from_state": "BEFORE_MESSAGE",
+      "input_class": "ping",
+      "action": "IGNORE_TRANSPORT_KEEPALIVE",
+      "next_state": "BEFORE_MESSAGE",
+      "reason": "",
+      "payload_precondition": "valid decoded payload for event; guard failures take typed protocol-invalid transition",
+      "source_grounding": "src/novel_flywheel/anthropic_stream.py:TRANSITIONS/AnthropicStream.step/_apply"
+    },
+    {
+      "from_state": "BEFORE_MESSAGE",
+      "input_class": "error",
+      "action": "TERMINAL_PROVIDER_ERROR",
+      "next_state": "PROVIDER_ERROR_TERMINAL",
+      "reason": "",
+      "payload_precondition": "valid decoded payload for event; guard failures take typed protocol-invalid transition",
+      "source_grounding": "src/novel_flywheel/anthropic_stream.py:TRANSITIONS/AnthropicStream.step/_apply"
+    },
+    {
+      "from_state": "BEFORE_MESSAGE",
+      "input_class": "unknown_versioned_event",
+      "action": "VERSIONED_UNKNOWN_EVENT_POLICY",
+      "next_state": "PROTOCOL_INVALID_TERMINAL",
+      "reason": "ANTHROPIC_SSE_EVENT_TYPE_UNSUPPORTED",
+      "payload_precondition": "valid decoded payload for event; guard failures take typed protocol-invalid transition",
+      "source_grounding": "src/novel_flywheel/anthropic_stream.py:TRANSITIONS/AnthropicStream.step/_apply"
+    },
+    {
+      "from_state": "BEFORE_MESSAGE",
+      "input_class": "invalid_frame_or_payload",
+      "action": "FAIL_CLOSED_PROTOCOL_INVALID",
+      "next_state": "PROTOCOL_INVALID_TERMINAL",
+      "reason": "ANTHROPIC_SSE_FRAME_OR_PAYLOAD_INVALID",
+      "payload_precondition": "valid decoded payload for event; guard failures take typed protocol-invalid transition",
+      "source_grounding": "src/novel_flywheel/anthropic_stream.py:TRANSITIONS/AnthropicStream.step/_apply"
+    },
+    {
+      "from_state": "MESSAGE_ACTIVE",
+      "input_class": "message_start",
+      "action": "FAIL_CLOSED_PROTOCOL_INVALID",
+      "next_state": "PROTOCOL_INVALID_TERMINAL",
+      "reason": "ANTHROPIC_SSE_DUPLICATE_MESSAGE_START",
+      "payload_precondition": "valid decoded payload for event; guard failures take typed protocol-invalid transition",
+      "source_grounding": "src/novel_flywheel/anthropic_stream.py:TRANSITIONS/AnthropicStream.step/_apply"
+    },
+    {
+      "from_state": "MESSAGE_ACTIVE",
+      "input_class": "content_block_start",
+      "action": "ACCEPT_ADVANCE",
+      "next_state": "CONTENT_ACTIVE",
+      "reason": "",
+      "payload_precondition": "valid decoded payload for event; guard failures take typed protocol-invalid transition",
+      "source_grounding": "src/novel_flywheel/anthropic_stream.py:TRANSITIONS/AnthropicStream.step/_apply"
+    },
+    {
+      "from_state": "MESSAGE_ACTIVE",
+      "input_class": "content_block_delta",
+      "action": "FAIL_CLOSED_PROTOCOL_INVALID",
+      "next_state": "PROTOCOL_INVALID_TERMINAL",
+      "reason": "ANTHROPIC_SSE_DELTA_OUTSIDE_CONTENT_BLOCK",
+      "payload_precondition": "valid decoded payload for event; guard failures take typed protocol-invalid transition",
+      "source_grounding": "src/novel_flywheel/anthropic_stream.py:TRANSITIONS/AnthropicStream.step/_apply"
+    },
+    {
+      "from_state": "MESSAGE_ACTIVE",
+      "input_class": "content_block_stop",
+      "action": "FAIL_CLOSED_PROTOCOL_INVALID",
+      "next_state": "PROTOCOL_INVALID_TERMINAL",
+      "reason": "ANTHROPIC_SSE_CONTENT_BLOCK_STOP_UNBALANCED",
+      "payload_precondition": "valid decoded payload for event; guard failures take typed protocol-invalid transition",
+      "source_grounding": "src/novel_flywheel/anthropic_stream.py:TRANSITIONS/AnthropicStream.step/_apply"
+    },
+    {
+      "from_state": "MESSAGE_ACTIVE",
+      "input_class": "message_delta",
+      "action": "ACCEPT_ADVANCE",
+      "next_state": "MESSAGE_DELTA",
+      "reason": "",
+      "payload_precondition": "valid decoded payload for event; guard failures take typed protocol-invalid transition",
+      "source_grounding": "src/novel_flywheel/anthropic_stream.py:TRANSITIONS/AnthropicStream.step/_apply"
+    },
+    {
+      "from_state": "MESSAGE_ACTIVE",
+      "input_class": "message_stop",
+      "action": "FAIL_CLOSED_PROTOCOL_INVALID",
+      "next_state": "PROTOCOL_INVALID_TERMINAL",
+      "reason": "ANTHROPIC_SSE_MESSAGE_STOP_STATE_INVALID",
+      "payload_precondition": "valid decoded payload for event; guard failures take typed protocol-invalid transition",
+      "source_grounding": "src/novel_flywheel/anthropic_stream.py:TRANSITIONS/AnthropicStream.step/_apply"
+    },
+    {
+      "from_state": "MESSAGE_ACTIVE",
+      "input_class": "ping",
+      "action": "IGNORE_TRANSPORT_KEEPALIVE",
+      "next_state": "MESSAGE_ACTIVE",
+      "reason": "",
+      "payload_precondition": "valid decoded payload for event; guard failures take typed protocol-invalid transition",
+      "source_grounding": "src/novel_flywheel/anthropic_stream.py:TRANSITIONS/AnthropicStream.step/_apply"
+    },
+    {
+      "from_state": "MESSAGE_ACTIVE",
+      "input_class": "error",
+      "action": "TERMINAL_PROVIDER_ERROR",
+      "next_state": "PROVIDER_ERROR_TERMINAL",
+      "reason": "",
+      "payload_precondition": "valid decoded payload for event; guard failures take typed protocol-invalid transition",
+      "source_grounding": "src/novel_flywheel/anthropic_stream.py:TRANSITIONS/AnthropicStream.step/_apply"
+    },
+    {
+      "from_state": "MESSAGE_ACTIVE",
+      "input_class": "unknown_versioned_event",
+      "action": "VERSIONED_UNKNOWN_EVENT_POLICY",
+      "next_state": "PROTOCOL_INVALID_TERMINAL",
+      "reason": "ANTHROPIC_SSE_EVENT_TYPE_UNSUPPORTED",
+      "payload_precondition": "valid decoded payload for event; guard failures take typed protocol-invalid transition",
+      "source_grounding": "src/novel_flywheel/anthropic_stream.py:TRANSITIONS/AnthropicStream.step/_apply"
+    },
+    {
+      "from_state": "MESSAGE_ACTIVE",
+      "input_class": "invalid_frame_or_payload",
+      "action": "FAIL_CLOSED_PROTOCOL_INVALID",
+      "next_state": "PROTOCOL_INVALID_TERMINAL",
+      "reason": "ANTHROPIC_SSE_FRAME_OR_PAYLOAD_INVALID",
+      "payload_precondition": "valid decoded payload for event; guard failures take typed protocol-invalid transition",
+      "source_grounding": "src/novel_flywheel/anthropic_stream.py:TRANSITIONS/AnthropicStream.step/_apply"
+    },
+    {
+      "from_state": "CONTENT_ACTIVE",
+      "input_class": "message_start",
+      "action": "FAIL_CLOSED_PROTOCOL_INVALID",
+      "next_state": "PROTOCOL_INVALID_TERMINAL",
+      "reason": "ANTHROPIC_SSE_DUPLICATE_MESSAGE_START",
+      "payload_precondition": "valid decoded payload for event; guard failures take typed protocol-invalid transition",
+      "source_grounding": "src/novel_flywheel/anthropic_stream.py:TRANSITIONS/AnthropicStream.step/_apply"
+    },
+    {
+      "from_state": "CONTENT_ACTIVE",
+      "input_class": "content_block_start",
+      "action": "FAIL_CLOSED_PROTOCOL_INVALID",
+      "next_state": "PROTOCOL_INVALID_TERMINAL",
+      "reason": "ANTHROPIC_SSE_CONTENT_BLOCK_START_BEFORE_STOP",
+      "payload_precondition": "valid decoded payload for event; guard failures take typed protocol-invalid transition",
+      "source_grounding": "src/novel_flywheel/anthropic_stream.py:TRANSITIONS/AnthropicStream.step/_apply"
+    },
+    {
+      "from_state": "CONTENT_ACTIVE",
+      "input_class": "content_block_delta",
+      "action": "ACCEPT_ADVANCE",
+      "next_state": "CONTENT_ACTIVE",
+      "reason": "",
+      "payload_precondition": "valid decoded payload for event; guard failures take typed protocol-invalid transition",
+      "source_grounding": "src/novel_flywheel/anthropic_stream.py:TRANSITIONS/AnthropicStream.step/_apply"
+    },
+    {
+      "from_state": "CONTENT_ACTIVE",
+      "input_class": "content_block_stop",
+      "action": "ACCEPT_ADVANCE",
+      "next_state": "CONTENT_COMPLETE",
+      "reason": "",
+      "payload_precondition": "valid decoded payload for event; guard failures take typed protocol-invalid transition",
+      "source_grounding": "src/novel_flywheel/anthropic_stream.py:TRANSITIONS/AnthropicStream.step/_apply"
+    },
+    {
+      "from_state": "CONTENT_ACTIVE",
+      "input_class": "message_delta",
+      "action": "FAIL_CLOSED_PROTOCOL_INVALID",
+      "next_state": "PROTOCOL_INVALID_TERMINAL",
+      "reason": "ANTHROPIC_SSE_MESSAGE_DELTA_STATE_INVALID",
+      "payload_precondition": "valid decoded payload for event; guard failures take typed protocol-invalid transition",
+      "source_grounding": "src/novel_flywheel/anthropic_stream.py:TRANSITIONS/AnthropicStream.step/_apply"
+    },
+    {
+      "from_state": "CONTENT_ACTIVE",
+      "input_class": "message_stop",
+      "action": "FAIL_CLOSED_PROTOCOL_INVALID",
+      "next_state": "PROTOCOL_INVALID_TERMINAL",
+      "reason": "ANTHROPIC_SSE_MESSAGE_STOP_STATE_INVALID",
+      "payload_precondition": "valid decoded payload for event; guard failures take typed protocol-invalid transition",
+      "source_grounding": "src/novel_flywheel/anthropic_stream.py:TRANSITIONS/AnthropicStream.step/_apply"
+    },
+    {
+      "from_state": "CONTENT_ACTIVE",
+      "input_class": "ping",
+      "action": "IGNORE_TRANSPORT_KEEPALIVE",
+      "next_state": "CONTENT_ACTIVE",
+      "reason": "",
+      "payload_precondition": "valid decoded payload for event; guard failures take typed protocol-invalid transition",
+      "source_grounding": "src/novel_flywheel/anthropic_stream.py:TRANSITIONS/AnthropicStream.step/_apply"
+    },
+    {
+      "from_state": "CONTENT_ACTIVE",
+      "input_class": "error",
+      "action": "TERMINAL_PROVIDER_ERROR",
+      "next_state": "PROVIDER_ERROR_TERMINAL",
+      "reason": "",
+      "payload_precondition": "valid decoded payload for event; guard failures take typed protocol-invalid transition",
+      "source_grounding": "src/novel_flywheel/anthropic_stream.py:TRANSITIONS/AnthropicStream.step/_apply"
+    },
+    {
+      "from_state": "CONTENT_ACTIVE",
+      "input_class": "unknown_versioned_event",
+      "action": "VERSIONED_UNKNOWN_EVENT_POLICY",
+      "next_state": "PROTOCOL_INVALID_TERMINAL",
+      "reason": "ANTHROPIC_SSE_EVENT_TYPE_UNSUPPORTED",
+      "payload_precondition": "valid decoded payload for event; guard failures take typed protocol-invalid transition",
+      "source_grounding": "src/novel_flywheel/anthropic_stream.py:TRANSITIONS/AnthropicStream.step/_apply"
+    },
+    {
+      "from_state": "CONTENT_ACTIVE",
+      "input_class": "invalid_frame_or_payload",
+      "action": "FAIL_CLOSED_PROTOCOL_INVALID",
+      "next_state": "PROTOCOL_INVALID_TERMINAL",
+      "reason": "ANTHROPIC_SSE_FRAME_OR_PAYLOAD_INVALID",
+      "payload_precondition": "valid decoded payload for event; guard failures take typed protocol-invalid transition",
+      "source_grounding": "src/novel_flywheel/anthropic_stream.py:TRANSITIONS/AnthropicStream.step/_apply"
+    },
+    {
+      "from_state": "CONTENT_COMPLETE",
+      "input_class": "message_start",
+      "action": "FAIL_CLOSED_PROTOCOL_INVALID",
+      "next_state": "PROTOCOL_INVALID_TERMINAL",
+      "reason": "ANTHROPIC_SSE_DUPLICATE_MESSAGE_START",
+      "payload_precondition": "valid decoded payload for event; guard failures take typed protocol-invalid transition",
+      "source_grounding": "src/novel_flywheel/anthropic_stream.py:TRANSITIONS/AnthropicStream.step/_apply"
+    },
+    {
+      "from_state": "CONTENT_COMPLETE",
+      "input_class": "content_block_start",
+      "action": "ACCEPT_ADVANCE",
+      "next_state": "CONTENT_ACTIVE",
+      "reason": "",
+      "payload_precondition": "valid decoded payload for event; guard failures take typed protocol-invalid transition",
+      "source_grounding": "src/novel_flywheel/anthropic_stream.py:TRANSITIONS/AnthropicStream.step/_apply"
+    },
+    {
+      "from_state": "CONTENT_COMPLETE",
+      "input_class": "content_block_delta",
+      "action": "FAIL_CLOSED_PROTOCOL_INVALID",
+      "next_state": "PROTOCOL_INVALID_TERMINAL",
+      "reason": "ANTHROPIC_SSE_DELTA_OUTSIDE_CONTENT_BLOCK",
+      "payload_precondition": "valid decoded payload for event; guard failures take typed protocol-invalid transition",
+      "source_grounding": "src/novel_flywheel/anthropic_stream.py:TRANSITIONS/AnthropicStream.step/_apply"
+    },
+    {
+      "from_state": "CONTENT_COMPLETE",
+      "input_class": "content_block_stop",
+      "action": "FAIL_CLOSED_PROTOCOL_INVALID",
+      "next_state": "PROTOCOL_INVALID_TERMINAL",
+      "reason": "ANTHROPIC_SSE_CONTENT_BLOCK_STOP_UNBALANCED",
+      "payload_precondition": "valid decoded payload for event; guard failures take typed protocol-invalid transition",
+      "source_grounding": "src/novel_flywheel/anthropic_stream.py:TRANSITIONS/AnthropicStream.step/_apply"
+    },
+    {
+      "from_state": "CONTENT_COMPLETE",
+      "input_class": "message_delta",
+      "action": "ACCEPT_ADVANCE",
+      "next_state": "MESSAGE_DELTA",
+      "reason": "",
+      "payload_precondition": "valid decoded payload for event; guard failures take typed protocol-invalid transition",
+      "source_grounding": "src/novel_flywheel/anthropic_stream.py:TRANSITIONS/AnthropicStream.step/_apply"
+    },
+    {
+      "from_state": "CONTENT_COMPLETE",
+      "input_class": "message_stop",
+      "action": "FAIL_CLOSED_PROTOCOL_INVALID",
+      "next_state": "PROTOCOL_INVALID_TERMINAL",
+      "reason": "ANTHROPIC_SSE_MESSAGE_STOP_STATE_INVALID",
+      "payload_precondition": "valid decoded payload for event; guard failures take typed protocol-invalid transition",
+      "source_grounding": "src/novel_flywheel/anthropic_stream.py:TRANSITIONS/AnthropicStream.step/_apply"
+    },
+    {
+      "from_state": "CONTENT_COMPLETE",
+      "input_class": "ping",
+      "action": "IGNORE_TRANSPORT_KEEPALIVE",
+      "next_state": "CONTENT_COMPLETE",
+      "reason": "",
+      "payload_precondition": "valid decoded payload for event; guard failures take typed protocol-invalid transition",
+      "source_grounding": "src/novel_flywheel/anthropic_stream.py:TRANSITIONS/AnthropicStream.step/_apply"
+    },
+    {
+      "from_state": "CONTENT_COMPLETE",
+      "input_class": "error",
+      "action": "TERMINAL_PROVIDER_ERROR",
+      "next_state": "PROVIDER_ERROR_TERMINAL",
+      "reason": "",
+      "payload_precondition": "valid decoded payload for event; guard failures take typed protocol-invalid transition",
+      "source_grounding": "src/novel_flywheel/anthropic_stream.py:TRANSITIONS/AnthropicStream.step/_apply"
+    },
+    {
+      "from_state": "CONTENT_COMPLETE",
+      "input_class": "unknown_versioned_event",
+      "action": "VERSIONED_UNKNOWN_EVENT_POLICY",
+      "next_state": "PROTOCOL_INVALID_TERMINAL",
+      "reason": "ANTHROPIC_SSE_EVENT_TYPE_UNSUPPORTED",
+      "payload_precondition": "valid decoded payload for event; guard failures take typed protocol-invalid transition",
+      "source_grounding": "src/novel_flywheel/anthropic_stream.py:TRANSITIONS/AnthropicStream.step/_apply"
+    },
+    {
+      "from_state": "CONTENT_COMPLETE",
+      "input_class": "invalid_frame_or_payload",
+      "action": "FAIL_CLOSED_PROTOCOL_INVALID",
+      "next_state": "PROTOCOL_INVALID_TERMINAL",
+      "reason": "ANTHROPIC_SSE_FRAME_OR_PAYLOAD_INVALID",
+      "payload_precondition": "valid decoded payload for event; guard failures take typed protocol-invalid transition",
+      "source_grounding": "src/novel_flywheel/anthropic_stream.py:TRANSITIONS/AnthropicStream.step/_apply"
+    },
+    {
+      "from_state": "MESSAGE_DELTA",
+      "input_class": "message_start",
+      "action": "FAIL_CLOSED_PROTOCOL_INVALID",
+      "next_state": "PROTOCOL_INVALID_TERMINAL",
+      "reason": "ANTHROPIC_SSE_EVENT_AFTER_MESSAGE_DELTA",
+      "payload_precondition": "valid decoded payload for event; guard failures take typed protocol-invalid transition",
+      "source_grounding": "src/novel_flywheel/anthropic_stream.py:TRANSITIONS/AnthropicStream.step/_apply"
+    },
+    {
+      "from_state": "MESSAGE_DELTA",
+      "input_class": "content_block_start",
+      "action": "FAIL_CLOSED_PROTOCOL_INVALID",
+      "next_state": "PROTOCOL_INVALID_TERMINAL",
+      "reason": "ANTHROPIC_SSE_EVENT_AFTER_MESSAGE_DELTA",
+      "payload_precondition": "valid decoded payload for event; guard failures take typed protocol-invalid transition",
+      "source_grounding": "src/novel_flywheel/anthropic_stream.py:TRANSITIONS/AnthropicStream.step/_apply"
+    },
+    {
+      "from_state": "MESSAGE_DELTA",
+      "input_class": "content_block_delta",
+      "action": "FAIL_CLOSED_PROTOCOL_INVALID",
+      "next_state": "PROTOCOL_INVALID_TERMINAL",
+      "reason": "ANTHROPIC_SSE_EVENT_AFTER_MESSAGE_DELTA",
+      "payload_precondition": "valid decoded payload for event; guard failures take typed protocol-invalid transition",
+      "source_grounding": "src/novel_flywheel/anthropic_stream.py:TRANSITIONS/AnthropicStream.step/_apply"
+    },
+    {
+      "from_state": "MESSAGE_DELTA",
+      "input_class": "content_block_stop",
+      "action": "FAIL_CLOSED_PROTOCOL_INVALID",
+      "next_state": "PROTOCOL_INVALID_TERMINAL",
+      "reason": "ANTHROPIC_SSE_EVENT_AFTER_MESSAGE_DELTA",
+      "payload_precondition": "valid decoded payload for event; guard failures take typed protocol-invalid transition",
+      "source_grounding": "src/novel_flywheel/anthropic_stream.py:TRANSITIONS/AnthropicStream.step/_apply"
+    },
+    {
+      "from_state": "MESSAGE_DELTA",
+      "input_class": "message_delta",
+      "action": "ACCEPT_ADVANCE",
+      "next_state": "MESSAGE_DELTA",
+      "reason": "",
+      "payload_precondition": "valid decoded payload for event; guard failures take typed protocol-invalid transition",
+      "source_grounding": "src/novel_flywheel/anthropic_stream.py:TRANSITIONS/AnthropicStream.step/_apply"
+    },
+    {
+      "from_state": "MESSAGE_DELTA",
+      "input_class": "message_stop",
+      "action": "TERMINAL_SUCCESS",
+      "next_state": "SEMANTIC_SUCCESS_TERMINAL",
+      "reason": "",
+      "payload_precondition": "valid decoded payload for event; guard failures take typed protocol-invalid transition",
+      "source_grounding": "src/novel_flywheel/anthropic_stream.py:TRANSITIONS/AnthropicStream.step/_apply"
+    },
+    {
+      "from_state": "MESSAGE_DELTA",
+      "input_class": "ping",
+      "action": "IGNORE_TRANSPORT_KEEPALIVE",
+      "next_state": "MESSAGE_DELTA",
+      "reason": "",
+      "payload_precondition": "valid decoded payload for event; guard failures take typed protocol-invalid transition",
+      "source_grounding": "src/novel_flywheel/anthropic_stream.py:TRANSITIONS/AnthropicStream.step/_apply"
+    },
+    {
+      "from_state": "MESSAGE_DELTA",
+      "input_class": "error",
+      "action": "TERMINAL_PROVIDER_ERROR",
+      "next_state": "PROVIDER_ERROR_TERMINAL",
+      "reason": "",
+      "payload_precondition": "valid decoded payload for event; guard failures take typed protocol-invalid transition",
+      "source_grounding": "src/novel_flywheel/anthropic_stream.py:TRANSITIONS/AnthropicStream.step/_apply"
+    },
+    {
+      "from_state": "MESSAGE_DELTA",
+      "input_class": "unknown_versioned_event",
+      "action": "VERSIONED_UNKNOWN_EVENT_POLICY",
+      "next_state": "PROTOCOL_INVALID_TERMINAL",
+      "reason": "ANTHROPIC_SSE_EVENT_AFTER_MESSAGE_DELTA",
+      "payload_precondition": "valid decoded payload for event; guard failures take typed protocol-invalid transition",
+      "source_grounding": "src/novel_flywheel/anthropic_stream.py:TRANSITIONS/AnthropicStream.step/_apply"
+    },
+    {
+      "from_state": "MESSAGE_DELTA",
+      "input_class": "invalid_frame_or_payload",
+      "action": "FAIL_CLOSED_PROTOCOL_INVALID",
+      "next_state": "PROTOCOL_INVALID_TERMINAL",
+      "reason": "ANTHROPIC_SSE_FRAME_OR_PAYLOAD_INVALID",
+      "payload_precondition": "valid decoded payload for event; guard failures take typed protocol-invalid transition",
+      "source_grounding": "src/novel_flywheel/anthropic_stream.py:TRANSITIONS/AnthropicStream.step/_apply"
+    },
+    {
+      "from_state": "SEMANTIC_SUCCESS_TERMINAL",
+      "input_class": "message_start",
+      "action": "FAIL_CLOSED_PROTOCOL_INVALID",
+      "next_state": "PROTOCOL_INVALID_TERMINAL",
+      "reason": "ANTHROPIC_SSE_EVENT_AFTER_MESSAGE_STOP",
+      "payload_precondition": "valid decoded payload for event; guard failures take typed protocol-invalid transition",
+      "source_grounding": "src/novel_flywheel/anthropic_stream.py:TRANSITIONS/AnthropicStream.step/_apply"
+    },
+    {
+      "from_state": "SEMANTIC_SUCCESS_TERMINAL",
+      "input_class": "content_block_start",
+      "action": "FAIL_CLOSED_PROTOCOL_INVALID",
+      "next_state": "PROTOCOL_INVALID_TERMINAL",
+      "reason": "ANTHROPIC_SSE_EVENT_AFTER_MESSAGE_STOP",
+      "payload_precondition": "valid decoded payload for event; guard failures take typed protocol-invalid transition",
+      "source_grounding": "src/novel_flywheel/anthropic_stream.py:TRANSITIONS/AnthropicStream.step/_apply"
+    },
+    {
+      "from_state": "SEMANTIC_SUCCESS_TERMINAL",
+      "input_class": "content_block_delta",
+      "action": "FAIL_CLOSED_PROTOCOL_INVALID",
+      "next_state": "PROTOCOL_INVALID_TERMINAL",
+      "reason": "ANTHROPIC_SSE_EVENT_AFTER_MESSAGE_STOP",
+      "payload_precondition": "valid decoded payload for event; guard failures take typed protocol-invalid transition",
+      "source_grounding": "src/novel_flywheel/anthropic_stream.py:TRANSITIONS/AnthropicStream.step/_apply"
+    },
+    {
+      "from_state": "SEMANTIC_SUCCESS_TERMINAL",
+      "input_class": "content_block_stop",
+      "action": "FAIL_CLOSED_PROTOCOL_INVALID",
+      "next_state": "PROTOCOL_INVALID_TERMINAL",
+      "reason": "ANTHROPIC_SSE_EVENT_AFTER_MESSAGE_STOP",
+      "payload_precondition": "valid decoded payload for event; guard failures take typed protocol-invalid transition",
+      "source_grounding": "src/novel_flywheel/anthropic_stream.py:TRANSITIONS/AnthropicStream.step/_apply"
+    },
+    {
+      "from_state": "SEMANTIC_SUCCESS_TERMINAL",
+      "input_class": "message_delta",
+      "action": "FAIL_CLOSED_PROTOCOL_INVALID",
+      "next_state": "PROTOCOL_INVALID_TERMINAL",
+      "reason": "ANTHROPIC_SSE_EVENT_AFTER_MESSAGE_STOP",
+      "payload_precondition": "valid decoded payload for event; guard failures take typed protocol-invalid transition",
+      "source_grounding": "src/novel_flywheel/anthropic_stream.py:TRANSITIONS/AnthropicStream.step/_apply"
+    },
+    {
+      "from_state": "SEMANTIC_SUCCESS_TERMINAL",
+      "input_class": "message_stop",
+      "action": "FAIL_CLOSED_PROTOCOL_INVALID",
+      "next_state": "PROTOCOL_INVALID_TERMINAL",
+      "reason": "ANTHROPIC_SSE_EVENT_AFTER_MESSAGE_STOP",
+      "payload_precondition": "valid decoded payload for event; guard failures take typed protocol-invalid transition",
+      "source_grounding": "src/novel_flywheel/anthropic_stream.py:TRANSITIONS/AnthropicStream.step/_apply"
+    },
+    {
+      "from_state": "SEMANTIC_SUCCESS_TERMINAL",
+      "input_class": "ping",
+      "action": "IGNORE_TRANSPORT_KEEPALIVE",
+      "next_state": "SUCCESS_TRANSPORT_TAIL",
+      "reason": "",
+      "payload_precondition": "valid decoded payload for event; guard failures take typed protocol-invalid transition",
+      "source_grounding": "src/novel_flywheel/anthropic_stream.py:TRANSITIONS/AnthropicStream.step/_apply"
+    },
+    {
+      "from_state": "SEMANTIC_SUCCESS_TERMINAL",
+      "input_class": "error",
+      "action": "TERMINAL_PROVIDER_ERROR",
+      "next_state": "PROVIDER_ERROR_TERMINAL",
+      "reason": "",
+      "payload_precondition": "valid decoded payload for event; guard failures take typed protocol-invalid transition",
+      "source_grounding": "src/novel_flywheel/anthropic_stream.py:TRANSITIONS/AnthropicStream.step/_apply"
+    },
+    {
+      "from_state": "SEMANTIC_SUCCESS_TERMINAL",
+      "input_class": "unknown_versioned_event",
+      "action": "VERSIONED_UNKNOWN_EVENT_POLICY",
+      "next_state": "PROTOCOL_INVALID_TERMINAL",
+      "reason": "ANTHROPIC_SSE_EVENT_AFTER_MESSAGE_STOP",
+      "payload_precondition": "valid decoded payload for event; guard failures take typed protocol-invalid transition",
+      "source_grounding": "src/novel_flywheel/anthropic_stream.py:TRANSITIONS/AnthropicStream.step/_apply"
+    },
+    {
+      "from_state": "SEMANTIC_SUCCESS_TERMINAL",
+      "input_class": "invalid_frame_or_payload",
+      "action": "FAIL_CLOSED_PROTOCOL_INVALID",
+      "next_state": "PROTOCOL_INVALID_TERMINAL",
+      "reason": "ANTHROPIC_SSE_FRAME_OR_PAYLOAD_INVALID",
+      "payload_precondition": "valid decoded payload for event; guard failures take typed protocol-invalid transition",
+      "source_grounding": "src/novel_flywheel/anthropic_stream.py:TRANSITIONS/AnthropicStream.step/_apply"
+    },
+    {
+      "from_state": "SUCCESS_TRANSPORT_TAIL",
+      "input_class": "message_start",
+      "action": "FAIL_CLOSED_PROTOCOL_INVALID",
+      "next_state": "PROTOCOL_INVALID_TERMINAL",
+      "reason": "ANTHROPIC_SSE_EVENT_AFTER_MESSAGE_STOP",
+      "payload_precondition": "valid decoded payload for event; guard failures take typed protocol-invalid transition",
+      "source_grounding": "src/novel_flywheel/anthropic_stream.py:TRANSITIONS/AnthropicStream.step/_apply"
+    },
+    {
+      "from_state": "SUCCESS_TRANSPORT_TAIL",
+      "input_class": "content_block_start",
+      "action": "FAIL_CLOSED_PROTOCOL_INVALID",
+      "next_state": "PROTOCOL_INVALID_TERMINAL",
+      "reason": "ANTHROPIC_SSE_EVENT_AFTER_MESSAGE_STOP",
+      "payload_precondition": "valid decoded payload for event; guard failures take typed protocol-invalid transition",
+      "source_grounding": "src/novel_flywheel/anthropic_stream.py:TRANSITIONS/AnthropicStream.step/_apply"
+    },
+    {
+      "from_state": "SUCCESS_TRANSPORT_TAIL",
+      "input_class": "content_block_delta",
+      "action": "FAIL_CLOSED_PROTOCOL_INVALID",
+      "next_state": "PROTOCOL_INVALID_TERMINAL",
+      "reason": "ANTHROPIC_SSE_EVENT_AFTER_MESSAGE_STOP",
+      "payload_precondition": "valid decoded payload for event; guard failures take typed protocol-invalid transition",
+      "source_grounding": "src/novel_flywheel/anthropic_stream.py:TRANSITIONS/AnthropicStream.step/_apply"
+    },
+    {
+      "from_state": "SUCCESS_TRANSPORT_TAIL",
+      "input_class": "content_block_stop",
+      "action": "FAIL_CLOSED_PROTOCOL_INVALID",
+      "next_state": "PROTOCOL_INVALID_TERMINAL",
+      "reason": "ANTHROPIC_SSE_EVENT_AFTER_MESSAGE_STOP",
+      "payload_precondition": "valid decoded payload for event; guard failures take typed protocol-invalid transition",
+      "source_grounding": "src/novel_flywheel/anthropic_stream.py:TRANSITIONS/AnthropicStream.step/_apply"
+    },
+    {
+      "from_state": "SUCCESS_TRANSPORT_TAIL",
+      "input_class": "message_delta",
+      "action": "FAIL_CLOSED_PROTOCOL_INVALID",
+      "next_state": "PROTOCOL_INVALID_TERMINAL",
+      "reason": "ANTHROPIC_SSE_EVENT_AFTER_MESSAGE_STOP",
+      "payload_precondition": "valid decoded payload for event; guard failures take typed protocol-invalid transition",
+      "source_grounding": "src/novel_flywheel/anthropic_stream.py:TRANSITIONS/AnthropicStream.step/_apply"
+    },
+    {
+      "from_state": "SUCCESS_TRANSPORT_TAIL",
+      "input_class": "message_stop",
+      "action": "FAIL_CLOSED_PROTOCOL_INVALID",
+      "next_state": "PROTOCOL_INVALID_TERMINAL",
+      "reason": "ANTHROPIC_SSE_EVENT_AFTER_MESSAGE_STOP",
+      "payload_precondition": "valid decoded payload for event; guard failures take typed protocol-invalid transition",
+      "source_grounding": "src/novel_flywheel/anthropic_stream.py:TRANSITIONS/AnthropicStream.step/_apply"
+    },
+    {
+      "from_state": "SUCCESS_TRANSPORT_TAIL",
+      "input_class": "ping",
+      "action": "IGNORE_TRANSPORT_KEEPALIVE",
+      "next_state": "SUCCESS_TRANSPORT_TAIL",
+      "reason": "",
+      "payload_precondition": "valid decoded payload for event; guard failures take typed protocol-invalid transition",
+      "source_grounding": "src/novel_flywheel/anthropic_stream.py:TRANSITIONS/AnthropicStream.step/_apply"
+    },
+    {
+      "from_state": "SUCCESS_TRANSPORT_TAIL",
+      "input_class": "error",
+      "action": "TERMINAL_PROVIDER_ERROR",
+      "next_state": "PROVIDER_ERROR_TERMINAL",
+      "reason": "",
+      "payload_precondition": "valid decoded payload for event; guard failures take typed protocol-invalid transition",
+      "source_grounding": "src/novel_flywheel/anthropic_stream.py:TRANSITIONS/AnthropicStream.step/_apply"
+    },
+    {
+      "from_state": "SUCCESS_TRANSPORT_TAIL",
+      "input_class": "unknown_versioned_event",
+      "action": "VERSIONED_UNKNOWN_EVENT_POLICY",
+      "next_state": "PROTOCOL_INVALID_TERMINAL",
+      "reason": "ANTHROPIC_SSE_EVENT_AFTER_MESSAGE_STOP",
+      "payload_precondition": "valid decoded payload for event; guard failures take typed protocol-invalid transition",
+      "source_grounding": "src/novel_flywheel/anthropic_stream.py:TRANSITIONS/AnthropicStream.step/_apply"
+    },
+    {
+      "from_state": "SUCCESS_TRANSPORT_TAIL",
+      "input_class": "invalid_frame_or_payload",
+      "action": "FAIL_CLOSED_PROTOCOL_INVALID",
+      "next_state": "PROTOCOL_INVALID_TERMINAL",
+      "reason": "ANTHROPIC_SSE_FRAME_OR_PAYLOAD_INVALID",
+      "payload_precondition": "valid decoded payload for event; guard failures take typed protocol-invalid transition",
+      "source_grounding": "src/novel_flywheel/anthropic_stream.py:TRANSITIONS/AnthropicStream.step/_apply"
+    },
+    {
+      "from_state": "PROVIDER_ERROR_TERMINAL",
+      "input_class": "message_start",
+      "action": "TERMINAL_PROVIDER_ERROR",
+      "next_state": "PROVIDER_ERROR_TRANSPORT_TAIL",
+      "reason": "",
+      "payload_precondition": "valid decoded payload for event; guard failures take typed protocol-invalid transition",
+      "source_grounding": "src/novel_flywheel/anthropic_stream.py:TRANSITIONS/AnthropicStream.step/_apply"
+    },
+    {
+      "from_state": "PROVIDER_ERROR_TERMINAL",
+      "input_class": "content_block_start",
+      "action": "TERMINAL_PROVIDER_ERROR",
+      "next_state": "PROVIDER_ERROR_TRANSPORT_TAIL",
+      "reason": "",
+      "payload_precondition": "valid decoded payload for event; guard failures take typed protocol-invalid transition",
+      "source_grounding": "src/novel_flywheel/anthropic_stream.py:TRANSITIONS/AnthropicStream.step/_apply"
+    },
+    {
+      "from_state": "PROVIDER_ERROR_TERMINAL",
+      "input_class": "content_block_delta",
+      "action": "TERMINAL_PROVIDER_ERROR",
+      "next_state": "PROVIDER_ERROR_TRANSPORT_TAIL",
+      "reason": "",
+      "payload_precondition": "valid decoded payload for event; guard failures take typed protocol-invalid transition",
+      "source_grounding": "src/novel_flywheel/anthropic_stream.py:TRANSITIONS/AnthropicStream.step/_apply"
+    },
+    {
+      "from_state": "PROVIDER_ERROR_TERMINAL",
+      "input_class": "content_block_stop",
+      "action": "TERMINAL_PROVIDER_ERROR",
+      "next_state": "PROVIDER_ERROR_TRANSPORT_TAIL",
+      "reason": "",
+      "payload_precondition": "valid decoded payload for event; guard failures take typed protocol-invalid transition",
+      "source_grounding": "src/novel_flywheel/anthropic_stream.py:TRANSITIONS/AnthropicStream.step/_apply"
+    },
+    {
+      "from_state": "PROVIDER_ERROR_TERMINAL",
+      "input_class": "message_delta",
+      "action": "TERMINAL_PROVIDER_ERROR",
+      "next_state": "PROVIDER_ERROR_TRANSPORT_TAIL",
+      "reason": "",
+      "payload_precondition": "valid decoded payload for event; guard failures take typed protocol-invalid transition",
+      "source_grounding": "src/novel_flywheel/anthropic_stream.py:TRANSITIONS/AnthropicStream.step/_apply"
+    },
+    {
+      "from_state": "PROVIDER_ERROR_TERMINAL",
+      "input_class": "message_stop",
+      "action": "TERMINAL_PROVIDER_ERROR",
+      "next_state": "PROVIDER_ERROR_TRANSPORT_TAIL",
+      "reason": "",
+      "payload_precondition": "valid decoded payload for event; guard failures take typed protocol-invalid transition",
+      "source_grounding": "src/novel_flywheel/anthropic_stream.py:TRANSITIONS/AnthropicStream.step/_apply"
+    },
+    {
+      "from_state": "PROVIDER_ERROR_TERMINAL",
+      "input_class": "ping",
+      "action": "TERMINAL_PROVIDER_ERROR",
+      "next_state": "PROVIDER_ERROR_TRANSPORT_TAIL",
+      "reason": "",
+      "payload_precondition": "valid decoded payload for event; guard failures take typed protocol-invalid transition",
+      "source_grounding": "src/novel_flywheel/anthropic_stream.py:TRANSITIONS/AnthropicStream.step/_apply"
+    },
+    {
+      "from_state": "PROVIDER_ERROR_TERMINAL",
+      "input_class": "error",
+      "action": "TERMINAL_PROVIDER_ERROR",
+      "next_state": "PROVIDER_ERROR_TRANSPORT_TAIL",
+      "reason": "",
+      "payload_precondition": "valid decoded payload for event; guard failures take typed protocol-invalid transition",
+      "source_grounding": "src/novel_flywheel/anthropic_stream.py:TRANSITIONS/AnthropicStream.step/_apply"
+    },
+    {
+      "from_state": "PROVIDER_ERROR_TERMINAL",
+      "input_class": "unknown_versioned_event",
+      "action": "TERMINAL_PROVIDER_ERROR",
+      "next_state": "PROVIDER_ERROR_TRANSPORT_TAIL",
+      "reason": "",
+      "payload_precondition": "valid decoded payload for event; guard failures take typed protocol-invalid transition",
+      "source_grounding": "src/novel_flywheel/anthropic_stream.py:TRANSITIONS/AnthropicStream.step/_apply"
+    },
+    {
+      "from_state": "PROVIDER_ERROR_TERMINAL",
+      "input_class": "invalid_frame_or_payload",
+      "action": "TERMINAL_PROVIDER_ERROR",
+      "next_state": "PROVIDER_ERROR_TRANSPORT_TAIL",
+      "reason": "",
+      "payload_precondition": "valid decoded payload for event; guard failures take typed protocol-invalid transition",
+      "source_grounding": "src/novel_flywheel/anthropic_stream.py:TRANSITIONS/AnthropicStream.step/_apply"
+    },
+    {
+      "from_state": "PROVIDER_ERROR_TRANSPORT_TAIL",
+      "input_class": "message_start",
+      "action": "TERMINAL_PROVIDER_ERROR",
+      "next_state": "PROVIDER_ERROR_TRANSPORT_TAIL",
+      "reason": "",
+      "payload_precondition": "valid decoded payload for event; guard failures take typed protocol-invalid transition",
+      "source_grounding": "src/novel_flywheel/anthropic_stream.py:TRANSITIONS/AnthropicStream.step/_apply"
+    },
+    {
+      "from_state": "PROVIDER_ERROR_TRANSPORT_TAIL",
+      "input_class": "content_block_start",
+      "action": "TERMINAL_PROVIDER_ERROR",
+      "next_state": "PROVIDER_ERROR_TRANSPORT_TAIL",
+      "reason": "",
+      "payload_precondition": "valid decoded payload for event; guard failures take typed protocol-invalid transition",
+      "source_grounding": "src/novel_flywheel/anthropic_stream.py:TRANSITIONS/AnthropicStream.step/_apply"
+    },
+    {
+      "from_state": "PROVIDER_ERROR_TRANSPORT_TAIL",
+      "input_class": "content_block_delta",
+      "action": "TERMINAL_PROVIDER_ERROR",
+      "next_state": "PROVIDER_ERROR_TRANSPORT_TAIL",
+      "reason": "",
+      "payload_precondition": "valid decoded payload for event; guard failures take typed protocol-invalid transition",
+      "source_grounding": "src/novel_flywheel/anthropic_stream.py:TRANSITIONS/AnthropicStream.step/_apply"
+    },
+    {
+      "from_state": "PROVIDER_ERROR_TRANSPORT_TAIL",
+      "input_class": "content_block_stop",
+      "action": "TERMINAL_PROVIDER_ERROR",
+      "next_state": "PROVIDER_ERROR_TRANSPORT_TAIL",
+      "reason": "",
+      "payload_precondition": "valid decoded payload for event; guard failures take typed protocol-invalid transition",
+      "source_grounding": "src/novel_flywheel/anthropic_stream.py:TRANSITIONS/AnthropicStream.step/_apply"
+    },
+    {
+      "from_state": "PROVIDER_ERROR_TRANSPORT_TAIL",
+      "input_class": "message_delta",
+      "action": "TERMINAL_PROVIDER_ERROR",
+      "next_state": "PROVIDER_ERROR_TRANSPORT_TAIL",
+      "reason": "",
+      "payload_precondition": "valid decoded payload for event; guard failures take typed protocol-invalid transition",
+      "source_grounding": "src/novel_flywheel/anthropic_stream.py:TRANSITIONS/AnthropicStream.step/_apply"
+    },
+    {
+      "from_state": "PROVIDER_ERROR_TRANSPORT_TAIL",
+      "input_class": "message_stop",
+      "action": "TERMINAL_PROVIDER_ERROR",
+      "next_state": "PROVIDER_ERROR_TRANSPORT_TAIL",
+      "reason": "",
+      "payload_precondition": "valid decoded payload for event; guard failures take typed protocol-invalid transition",
+      "source_grounding": "src/novel_flywheel/anthropic_stream.py:TRANSITIONS/AnthropicStream.step/_apply"
+    },
+    {
+      "from_state": "PROVIDER_ERROR_TRANSPORT_TAIL",
+      "input_class": "ping",
+      "action": "TERMINAL_PROVIDER_ERROR",
+      "next_state": "PROVIDER_ERROR_TRANSPORT_TAIL",
+      "reason": "",
+      "payload_precondition": "valid decoded payload for event; guard failures take typed protocol-invalid transition",
+      "source_grounding": "src/novel_flywheel/anthropic_stream.py:TRANSITIONS/AnthropicStream.step/_apply"
+    },
+    {
+      "from_state": "PROVIDER_ERROR_TRANSPORT_TAIL",
+      "input_class": "error",
+      "action": "TERMINAL_PROVIDER_ERROR",
+      "next_state": "PROVIDER_ERROR_TRANSPORT_TAIL",
+      "reason": "",
+      "payload_precondition": "valid decoded payload for event; guard failures take typed protocol-invalid transition",
+      "source_grounding": "src/novel_flywheel/anthropic_stream.py:TRANSITIONS/AnthropicStream.step/_apply"
+    },
+    {
+      "from_state": "PROVIDER_ERROR_TRANSPORT_TAIL",
+      "input_class": "unknown_versioned_event",
+      "action": "TERMINAL_PROVIDER_ERROR",
+      "next_state": "PROVIDER_ERROR_TRANSPORT_TAIL",
+      "reason": "",
+      "payload_precondition": "valid decoded payload for event; guard failures take typed protocol-invalid transition",
+      "source_grounding": "src/novel_flywheel/anthropic_stream.py:TRANSITIONS/AnthropicStream.step/_apply"
+    },
+    {
+      "from_state": "PROVIDER_ERROR_TRANSPORT_TAIL",
+      "input_class": "invalid_frame_or_payload",
+      "action": "TERMINAL_PROVIDER_ERROR",
+      "next_state": "PROVIDER_ERROR_TRANSPORT_TAIL",
+      "reason": "",
+      "payload_precondition": "valid decoded payload for event; guard failures take typed protocol-invalid transition",
+      "source_grounding": "src/novel_flywheel/anthropic_stream.py:TRANSITIONS/AnthropicStream.step/_apply"
+    },
+    {
+      "from_state": "TRANSPORT_FAILURE_TERMINAL",
+      "input_class": "message_start",
+      "action": "TERMINAL_TRANSPORT_FAILURE",
+      "next_state": "TRANSPORT_FAILURE_TERMINAL",
+      "reason": "",
+      "payload_precondition": "valid decoded payload for event; guard failures take typed protocol-invalid transition",
+      "source_grounding": "src/novel_flywheel/anthropic_stream.py:TRANSITIONS/AnthropicStream.step/_apply"
+    },
+    {
+      "from_state": "TRANSPORT_FAILURE_TERMINAL",
+      "input_class": "content_block_start",
+      "action": "TERMINAL_TRANSPORT_FAILURE",
+      "next_state": "TRANSPORT_FAILURE_TERMINAL",
+      "reason": "",
+      "payload_precondition": "valid decoded payload for event; guard failures take typed protocol-invalid transition",
+      "source_grounding": "src/novel_flywheel/anthropic_stream.py:TRANSITIONS/AnthropicStream.step/_apply"
+    },
+    {
+      "from_state": "TRANSPORT_FAILURE_TERMINAL",
+      "input_class": "content_block_delta",
+      "action": "TERMINAL_TRANSPORT_FAILURE",
+      "next_state": "TRANSPORT_FAILURE_TERMINAL",
+      "reason": "",
+      "payload_precondition": "valid decoded payload for event; guard failures take typed protocol-invalid transition",
+      "source_grounding": "src/novel_flywheel/anthropic_stream.py:TRANSITIONS/AnthropicStream.step/_apply"
+    },
+    {
+      "from_state": "TRANSPORT_FAILURE_TERMINAL",
+      "input_class": "content_block_stop",
+      "action": "TERMINAL_TRANSPORT_FAILURE",
+      "next_state": "TRANSPORT_FAILURE_TERMINAL",
+      "reason": "",
+      "payload_precondition": "valid decoded payload for event; guard failures take typed protocol-invalid transition",
+      "source_grounding": "src/novel_flywheel/anthropic_stream.py:TRANSITIONS/AnthropicStream.step/_apply"
+    },
+    {
+      "from_state": "TRANSPORT_FAILURE_TERMINAL",
+      "input_class": "message_delta",
+      "action": "TERMINAL_TRANSPORT_FAILURE",
+      "next_state": "TRANSPORT_FAILURE_TERMINAL",
+      "reason": "",
+      "payload_precondition": "valid decoded payload for event; guard failures take typed protocol-invalid transition",
+      "source_grounding": "src/novel_flywheel/anthropic_stream.py:TRANSITIONS/AnthropicStream.step/_apply"
+    },
+    {
+      "from_state": "TRANSPORT_FAILURE_TERMINAL",
+      "input_class": "message_stop",
+      "action": "TERMINAL_TRANSPORT_FAILURE",
+      "next_state": "TRANSPORT_FAILURE_TERMINAL",
+      "reason": "",
+      "payload_precondition": "valid decoded payload for event; guard failures take typed protocol-invalid transition",
+      "source_grounding": "src/novel_flywheel/anthropic_stream.py:TRANSITIONS/AnthropicStream.step/_apply"
+    },
+    {
+      "from_state": "TRANSPORT_FAILURE_TERMINAL",
+      "input_class": "ping",
+      "action": "TERMINAL_TRANSPORT_FAILURE",
+      "next_state": "TRANSPORT_FAILURE_TERMINAL",
+      "reason": "",
+      "payload_precondition": "valid decoded payload for event; guard failures take typed protocol-invalid transition",
+      "source_grounding": "src/novel_flywheel/anthropic_stream.py:TRANSITIONS/AnthropicStream.step/_apply"
+    },
+    {
+      "from_state": "TRANSPORT_FAILURE_TERMINAL",
+      "input_class": "error",
+      "action": "TERMINAL_TRANSPORT_FAILURE",
+      "next_state": "TRANSPORT_FAILURE_TERMINAL",
+      "reason": "",
+      "payload_precondition": "valid decoded payload for event; guard failures take typed protocol-invalid transition",
+      "source_grounding": "src/novel_flywheel/anthropic_stream.py:TRANSITIONS/AnthropicStream.step/_apply"
+    },
+    {
+      "from_state": "TRANSPORT_FAILURE_TERMINAL",
+      "input_class": "unknown_versioned_event",
+      "action": "TERMINAL_TRANSPORT_FAILURE",
+      "next_state": "TRANSPORT_FAILURE_TERMINAL",
+      "reason": "",
+      "payload_precondition": "valid decoded payload for event; guard failures take typed protocol-invalid transition",
+      "source_grounding": "src/novel_flywheel/anthropic_stream.py:TRANSITIONS/AnthropicStream.step/_apply"
+    },
+    {
+      "from_state": "TRANSPORT_FAILURE_TERMINAL",
+      "input_class": "invalid_frame_or_payload",
+      "action": "TERMINAL_TRANSPORT_FAILURE",
+      "next_state": "TRANSPORT_FAILURE_TERMINAL",
+      "reason": "",
+      "payload_precondition": "valid decoded payload for event; guard failures take typed protocol-invalid transition",
+      "source_grounding": "src/novel_flywheel/anthropic_stream.py:TRANSITIONS/AnthropicStream.step/_apply"
+    },
+    {
+      "from_state": "PROTOCOL_INVALID_TERMINAL",
+      "input_class": "message_start",
+      "action": "FAIL_CLOSED_PROTOCOL_INVALID",
+      "next_state": "PROTOCOL_INVALID_TERMINAL",
+      "reason": "",
+      "payload_precondition": "valid decoded payload for event; guard failures take typed protocol-invalid transition",
+      "source_grounding": "src/novel_flywheel/anthropic_stream.py:TRANSITIONS/AnthropicStream.step/_apply"
+    },
+    {
+      "from_state": "PROTOCOL_INVALID_TERMINAL",
+      "input_class": "content_block_start",
+      "action": "FAIL_CLOSED_PROTOCOL_INVALID",
+      "next_state": "PROTOCOL_INVALID_TERMINAL",
+      "reason": "",
+      "payload_precondition": "valid decoded payload for event; guard failures take typed protocol-invalid transition",
+      "source_grounding": "src/novel_flywheel/anthropic_stream.py:TRANSITIONS/AnthropicStream.step/_apply"
+    },
+    {
+      "from_state": "PROTOCOL_INVALID_TERMINAL",
+      "input_class": "content_block_delta",
+      "action": "FAIL_CLOSED_PROTOCOL_INVALID",
+      "next_state": "PROTOCOL_INVALID_TERMINAL",
+      "reason": "",
+      "payload_precondition": "valid decoded payload for event; guard failures take typed protocol-invalid transition",
+      "source_grounding": "src/novel_flywheel/anthropic_stream.py:TRANSITIONS/AnthropicStream.step/_apply"
+    },
+    {
+      "from_state": "PROTOCOL_INVALID_TERMINAL",
+      "input_class": "content_block_stop",
+      "action": "FAIL_CLOSED_PROTOCOL_INVALID",
+      "next_state": "PROTOCOL_INVALID_TERMINAL",
+      "reason": "",
+      "payload_precondition": "valid decoded payload for event; guard failures take typed protocol-invalid transition",
+      "source_grounding": "src/novel_flywheel/anthropic_stream.py:TRANSITIONS/AnthropicStream.step/_apply"
+    },
+    {
+      "from_state": "PROTOCOL_INVALID_TERMINAL",
+      "input_class": "message_delta",
+      "action": "FAIL_CLOSED_PROTOCOL_INVALID",
+      "next_state": "PROTOCOL_INVALID_TERMINAL",
+      "reason": "",
+      "payload_precondition": "valid decoded payload for event; guard failures take typed protocol-invalid transition",
+      "source_grounding": "src/novel_flywheel/anthropic_stream.py:TRANSITIONS/AnthropicStream.step/_apply"
+    },
+    {
+      "from_state": "PROTOCOL_INVALID_TERMINAL",
+      "input_class": "message_stop",
+      "action": "FAIL_CLOSED_PROTOCOL_INVALID",
+      "next_state": "PROTOCOL_INVALID_TERMINAL",
+      "reason": "",
+      "payload_precondition": "valid decoded payload for event; guard failures take typed protocol-invalid transition",
+      "source_grounding": "src/novel_flywheel/anthropic_stream.py:TRANSITIONS/AnthropicStream.step/_apply"
+    },
+    {
+      "from_state": "PROTOCOL_INVALID_TERMINAL",
+      "input_class": "ping",
+      "action": "FAIL_CLOSED_PROTOCOL_INVALID",
+      "next_state": "PROTOCOL_INVALID_TERMINAL",
+      "reason": "",
+      "payload_precondition": "valid decoded payload for event; guard failures take typed protocol-invalid transition",
+      "source_grounding": "src/novel_flywheel/anthropic_stream.py:TRANSITIONS/AnthropicStream.step/_apply"
+    },
+    {
+      "from_state": "PROTOCOL_INVALID_TERMINAL",
+      "input_class": "error",
+      "action": "FAIL_CLOSED_PROTOCOL_INVALID",
+      "next_state": "PROTOCOL_INVALID_TERMINAL",
+      "reason": "",
+      "payload_precondition": "valid decoded payload for event; guard failures take typed protocol-invalid transition",
+      "source_grounding": "src/novel_flywheel/anthropic_stream.py:TRANSITIONS/AnthropicStream.step/_apply"
+    },
+    {
+      "from_state": "PROTOCOL_INVALID_TERMINAL",
+      "input_class": "unknown_versioned_event",
+      "action": "FAIL_CLOSED_PROTOCOL_INVALID",
+      "next_state": "PROTOCOL_INVALID_TERMINAL",
+      "reason": "",
+      "payload_precondition": "valid decoded payload for event; guard failures take typed protocol-invalid transition",
+      "source_grounding": "src/novel_flywheel/anthropic_stream.py:TRANSITIONS/AnthropicStream.step/_apply"
+    },
+    {
+      "from_state": "PROTOCOL_INVALID_TERMINAL",
+      "input_class": "invalid_frame_or_payload",
+      "action": "FAIL_CLOSED_PROTOCOL_INVALID",
+      "next_state": "PROTOCOL_INVALID_TERMINAL",
+      "reason": "",
+      "payload_precondition": "valid decoded payload for event; guard failures take typed protocol-invalid transition",
+      "source_grounding": "src/novel_flywheel/anthropic_stream.py:TRANSITIONS/AnthropicStream.step/_apply"
+    }
+  ],
+  "unspecified": 0,
+  "ambiguous": 0,
+  "coverage_status": "PENDING_SOURCE_BOUND_REPORT",
+  "normalization_boundary": "DurableAnthropicStreamV1.finish/step normalizes transport and storage control; these are not remote semantic event names.",
+  "independent_oracle": "tests/providers/test_anthropic_closed_world_transitions.py:ORACLE_ROWS (176 cells; semantic subset 110)"
+}

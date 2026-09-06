@@ -1,0 +1,497 @@
+{
+  "schema": "V4FullIncidentCatalogProjectionDraftV2",
+  "catalog_sha256": "b5be9313f974082800bd6de00a9db1e34d00622b4683376a912beb6600d6ba8f",
+  "catalog_count": 44,
+  "rows": [
+    {
+      "family": "provider.semantic_transport_terminal_boundary",
+      "catalog_line": 24,
+      "relation": "direct response boundary",
+      "projected_mechanism": "Partial framing, transport failure, terminal precedence, usage evidence or persistence can misclassify an otherwise preserved response.",
+      "planned_evidence": [
+        "tests/providers/test_anthropic_durable_stream_v4.py",
+        "tests/providers/test_anthropic_closed_world_http.py",
+        "tests/test_full_short_stream_checkpoint_v4.py"
+      ],
+      "verification_status": "PENDING_FINAL_SOURCE_BOUND_PROOF"
+    },
+    {
+      "family": "provider.cumulative_usage_accounting",
+      "catalog_line": 33,
+      "relation": "direct response boundary",
+      "projected_mechanism": "Partial framing, transport failure, terminal precedence, usage evidence or persistence can misclassify an otherwise preserved response.",
+      "planned_evidence": [
+        "tests/providers/test_anthropic_durable_stream_v4.py",
+        "tests/providers/test_anthropic_closed_world_http.py",
+        "tests/test_full_short_stream_checkpoint_v4.py"
+      ],
+      "verification_status": "PENDING_FINAL_SOURCE_BOUND_PROOF"
+    },
+    {
+      "family": "provider.terminal_error_event",
+      "catalog_line": 43,
+      "relation": "direct response boundary",
+      "projected_mechanism": "Partial framing, transport failure, terminal precedence, usage evidence or persistence can misclassify an otherwise preserved response.",
+      "planned_evidence": [
+        "tests/providers/test_anthropic_durable_stream_v4.py",
+        "tests/providers/test_anthropic_closed_world_http.py",
+        "tests/test_full_short_stream_checkpoint_v4.py"
+      ],
+      "verification_status": "PENDING_FINAL_SOURCE_BOUND_PROOF"
+    },
+    {
+      "family": "provider.route_rejected",
+      "catalog_line": 52,
+      "relation": "sibling route, capacity and runtime identity boundary",
+      "projected_mechanism": "Response refactor must not change request bytes, route binding, capacity authority, credential selection or runtime identity.",
+      "planned_evidence": [
+        "request_zero_diff_round3.json",
+        "tests/test_full_short_execution.py"
+      ],
+      "verification_status": "PENDING_FINAL_SOURCE_BOUND_PROOF"
+    },
+    {
+      "family": "provider.credentials_unavailable",
+      "catalog_line": 62,
+      "relation": "sibling route, capacity and runtime identity boundary",
+      "projected_mechanism": "Response refactor must not change request bytes, route binding, capacity authority, credential selection or runtime identity.",
+      "planned_evidence": [
+        "request_zero_diff_round3.json",
+        "tests/test_full_short_execution.py"
+      ],
+      "verification_status": "PENDING_FINAL_SOURCE_BOUND_PROOF"
+    },
+    {
+      "family": "runtime.stale_console_process",
+      "catalog_line": 73,
+      "relation": "sibling route, capacity and runtime identity boundary",
+      "projected_mechanism": "Response refactor must not change request bytes, route binding, capacity authority, credential selection or runtime identity.",
+      "planned_evidence": [
+        "request_zero_diff_round3.json",
+        "tests/test_full_short_execution.py"
+      ],
+      "verification_status": "PENDING_FINAL_SOURCE_BOUND_PROOF"
+    },
+    {
+      "family": "initialization.location_backlink_missing",
+      "catalog_line": 84,
+      "relation": "unchanged narrative, stage or artifact authority boundary",
+      "projected_mechanism": "The shared decoder can supply bytes but cannot approve narrative truth, repair scope, stage receipt, StoryState/Canon/READY or final artifact.",
+      "planned_evidence": [
+        "tests/test_workflows.py",
+        "tools/canary/first_trustworthy_full_short_dry_run.py"
+      ],
+      "verification_status": "PENDING_FINAL_SOURCE_BOUND_PROOF"
+    },
+    {
+      "family": "initialization.location_reference_missing",
+      "catalog_line": 95,
+      "relation": "unchanged narrative, stage or artifact authority boundary",
+      "projected_mechanism": "The shared decoder can supply bytes but cannot approve narrative truth, repair scope, stage receipt, StoryState/Canon/READY or final artifact.",
+      "planned_evidence": [
+        "tests/test_workflows.py",
+        "tools/canary/first_trustworthy_full_short_dry_run.py"
+      ],
+      "verification_status": "PENDING_FINAL_SOURCE_BOUND_PROOF"
+    },
+    {
+      "family": "initialization.relationship_inverse_mismatch",
+      "catalog_line": 105,
+      "relation": "unchanged narrative, stage or artifact authority boundary",
+      "projected_mechanism": "The shared decoder can supply bytes but cannot approve narrative truth, repair scope, stage receipt, StoryState/Canon/READY or final artifact.",
+      "planned_evidence": [
+        "tests/test_workflows.py",
+        "tools/canary/first_trustworthy_full_short_dry_run.py"
+      ],
+      "verification_status": "PENDING_FINAL_SOURCE_BOUND_PROOF"
+    },
+    {
+      "family": "provider.connection_failed",
+      "catalog_line": 115,
+      "relation": "direct response boundary",
+      "projected_mechanism": "Partial framing, transport failure, terminal precedence, usage evidence or persistence can misclassify an otherwise preserved response.",
+      "planned_evidence": [
+        "tests/providers/test_anthropic_durable_stream_v4.py",
+        "tests/providers/test_anthropic_closed_world_http.py",
+        "tests/test_full_short_stream_checkpoint_v4.py"
+      ],
+      "verification_status": "PENDING_FINAL_SOURCE_BOUND_PROOF"
+    },
+    {
+      "family": "model.context_capacity_indivisible_scope",
+      "catalog_line": 126,
+      "relation": "sibling route, capacity and runtime identity boundary",
+      "projected_mechanism": "Response refactor must not change request bytes, route binding, capacity authority, credential selection or runtime identity.",
+      "planned_evidence": [
+        "request_zero_diff_round3.json",
+        "tests/test_full_short_execution.py"
+      ],
+      "verification_status": "PENDING_FINAL_SOURCE_BOUND_PROOF"
+    },
+    {
+      "family": "planning.runtime_identity_echo_mismatch",
+      "catalog_line": 136,
+      "relation": "unchanged narrative, stage or artifact authority boundary",
+      "projected_mechanism": "The shared decoder can supply bytes but cannot approve narrative truth, repair scope, stage receipt, StoryState/Canon/READY or final artifact.",
+      "planned_evidence": [
+        "tests/test_workflows.py",
+        "tools/canary/first_trustworthy_full_short_dry_run.py"
+      ],
+      "verification_status": "PENDING_FINAL_SOURCE_BOUND_PROOF"
+    },
+    {
+      "family": "planning.reviewed_dimensions_echo_conflict",
+      "catalog_line": 146,
+      "relation": "unchanged narrative, stage or artifact authority boundary",
+      "projected_mechanism": "The shared decoder can supply bytes but cannot approve narrative truth, repair scope, stage receipt, StoryState/Canon/READY or final artifact.",
+      "planned_evidence": [
+        "tests/test_workflows.py",
+        "tools/canary/first_trustworthy_full_short_dry_run.py"
+      ],
+      "verification_status": "PENDING_FINAL_SOURCE_BOUND_PROOF"
+    },
+    {
+      "family": "planning.invariant_truth_set_shape",
+      "catalog_line": 156,
+      "relation": "unchanged narrative, stage or artifact authority boundary",
+      "projected_mechanism": "The shared decoder can supply bytes but cannot approve narrative truth, repair scope, stage receipt, StoryState/Canon/READY or final artifact.",
+      "planned_evidence": [
+        "tests/test_workflows.py",
+        "tools/canary/first_trustworthy_full_short_dry_run.py"
+      ],
+      "verification_status": "PENDING_FINAL_SOURCE_BOUND_PROOF"
+    },
+    {
+      "family": "planning.execution_manifest_handoff_echo_mismatch",
+      "catalog_line": 166,
+      "relation": "unchanged narrative, stage or artifact authority boundary",
+      "projected_mechanism": "The shared decoder can supply bytes but cannot approve narrative truth, repair scope, stage receipt, StoryState/Canon/READY or final artifact.",
+      "planned_evidence": [
+        "tests/test_workflows.py",
+        "tools/canary/first_trustworthy_full_short_dry_run.py"
+      ],
+      "verification_status": "PENDING_FINAL_SOURCE_BOUND_PROOF"
+    },
+    {
+      "family": "model.context_capacity_preflight",
+      "catalog_line": 176,
+      "relation": "sibling route, capacity and runtime identity boundary",
+      "projected_mechanism": "Response refactor must not change request bytes, route binding, capacity authority, credential selection or runtime identity.",
+      "planned_evidence": [
+        "request_zero_diff_round3.json",
+        "tests/test_full_short_execution.py"
+      ],
+      "verification_status": "PENDING_FINAL_SOURCE_BOUND_PROOF"
+    },
+    {
+      "family": "runtime.required_tool_output_missing",
+      "catalog_line": 192,
+      "relation": "unchanged narrative, stage or artifact authority boundary",
+      "projected_mechanism": "The shared decoder can supply bytes but cannot approve narrative truth, repair scope, stage receipt, StoryState/Canon/READY or final artifact.",
+      "planned_evidence": [
+        "tests/test_workflows.py",
+        "tools/canary/first_trustworthy_full_short_dry_run.py"
+      ],
+      "verification_status": "PENDING_FINAL_SOURCE_BOUND_PROOF"
+    },
+    {
+      "family": "runtime.primary_error_masked",
+      "catalog_line": 202,
+      "relation": "direct response boundary",
+      "projected_mechanism": "Partial framing, transport failure, terminal precedence, usage evidence or persistence can misclassify an otherwise preserved response.",
+      "planned_evidence": [
+        "tests/providers/test_anthropic_durable_stream_v4.py",
+        "tests/providers/test_anthropic_closed_world_http.py",
+        "tests/test_full_short_stream_checkpoint_v4.py"
+      ],
+      "verification_status": "PENDING_FINAL_SOURCE_BOUND_PROOF"
+    },
+    {
+      "family": "planning.typed_ir_scope_collision",
+      "catalog_line": 212,
+      "relation": "unchanged narrative, stage or artifact authority boundary",
+      "projected_mechanism": "The shared decoder can supply bytes but cannot approve narrative truth, repair scope, stage receipt, StoryState/Canon/READY or final artifact.",
+      "planned_evidence": [
+        "tests/test_workflows.py",
+        "tools/canary/first_trustworthy_full_short_dry_run.py"
+      ],
+      "verification_status": "PENDING_FINAL_SOURCE_BOUND_PROOF"
+    },
+    {
+      "family": "parser.generated_artifact_shape",
+      "catalog_line": 224,
+      "relation": "downstream model-output acceptance boundary",
+      "projected_mechanism": "SSE assembly must preserve text/thinking/tool/schema content and finish reason so existing business validation and recovery retain authority.",
+      "planned_evidence": [
+        "tests/providers/test_anthropic_closed_world_http.py",
+        "tests/test_workflows.py"
+      ],
+      "verification_status": "PENDING_FINAL_SOURCE_BOUND_PROOF"
+    },
+    {
+      "family": "provider.reasoning_only_final_artifact_unavailable",
+      "catalog_line": 243,
+      "relation": "downstream model-output acceptance boundary",
+      "projected_mechanism": "SSE assembly must preserve text/thinking/tool/schema content and finish reason so existing business validation and recovery retain authority.",
+      "planned_evidence": [
+        "tests/providers/test_anthropic_closed_world_http.py",
+        "tests/test_workflows.py"
+      ],
+      "verification_status": "PENDING_FINAL_SOURCE_BOUND_PROOF"
+    },
+    {
+      "family": "model.output_truncated",
+      "catalog_line": 254,
+      "relation": "downstream model-output acceptance boundary",
+      "projected_mechanism": "SSE assembly must preserve text/thinking/tool/schema content and finish reason so existing business validation and recovery retain authority.",
+      "planned_evidence": [
+        "tests/providers/test_anthropic_closed_world_http.py",
+        "tests/test_workflows.py"
+      ],
+      "verification_status": "PENDING_FINAL_SOURCE_BOUND_PROOF"
+    },
+    {
+      "family": "provider.structured_output_business_incomplete",
+      "catalog_line": 266,
+      "relation": "downstream model-output acceptance boundary",
+      "projected_mechanism": "SSE assembly must preserve text/thinking/tool/schema content and finish reason so existing business validation and recovery retain authority.",
+      "planned_evidence": [
+        "tests/providers/test_anthropic_closed_world_http.py",
+        "tests/test_workflows.py"
+      ],
+      "verification_status": "PENDING_FINAL_SOURCE_BOUND_PROOF"
+    },
+    {
+      "family": "planning.causal_chain_invalid",
+      "catalog_line": 277,
+      "relation": "unchanged narrative, stage or artifact authority boundary",
+      "projected_mechanism": "The shared decoder can supply bytes but cannot approve narrative truth, repair scope, stage receipt, StoryState/Canon/READY or final artifact.",
+      "planned_evidence": [
+        "tests/test_workflows.py",
+        "tools/canary/first_trustworthy_full_short_dry_run.py"
+      ],
+      "verification_status": "PENDING_FINAL_SOURCE_BOUND_PROOF"
+    },
+    {
+      "family": "planning.recovery_latent_issue_misattributed",
+      "catalog_line": 287,
+      "relation": "unchanged narrative, stage or artifact authority boundary",
+      "projected_mechanism": "The shared decoder can supply bytes but cannot approve narrative truth, repair scope, stage receipt, StoryState/Canon/READY or final artifact.",
+      "planned_evidence": [
+        "tests/test_workflows.py",
+        "tools/canary/first_trustworthy_full_short_dry_run.py"
+      ],
+      "verification_status": "PENDING_FINAL_SOURCE_BOUND_PROOF"
+    },
+    {
+      "family": "planning.structure_drift",
+      "catalog_line": 297,
+      "relation": "unchanged narrative, stage or artifact authority boundary",
+      "projected_mechanism": "The shared decoder can supply bytes but cannot approve narrative truth, repair scope, stage receipt, StoryState/Canon/READY or final artifact.",
+      "planned_evidence": [
+        "tests/test_workflows.py",
+        "tools/canary/first_trustworthy_full_short_dry_run.py"
+      ],
+      "verification_status": "PENDING_FINAL_SOURCE_BOUND_PROOF"
+    },
+    {
+      "family": "planning.review_evidence_semantic_mismatch",
+      "catalog_line": 310,
+      "relation": "unchanged narrative, stage or artifact authority boundary",
+      "projected_mechanism": "The shared decoder can supply bytes but cannot approve narrative truth, repair scope, stage receipt, StoryState/Canon/READY or final artifact.",
+      "planned_evidence": [
+        "tests/test_workflows.py",
+        "tools/canary/first_trustworthy_full_short_dry_run.py"
+      ],
+      "verification_status": "PENDING_FINAL_SOURCE_BOUND_PROOF"
+    },
+    {
+      "family": "planning.review_evidence_binding_invalid",
+      "catalog_line": 320,
+      "relation": "unchanged narrative, stage or artifact authority boundary",
+      "projected_mechanism": "The shared decoder can supply bytes but cannot approve narrative truth, repair scope, stage receipt, StoryState/Canon/READY or final artifact.",
+      "planned_evidence": [
+        "tests/test_workflows.py",
+        "tools/canary/first_trustworthy_full_short_dry_run.py"
+      ],
+      "verification_status": "PENDING_FINAL_SOURCE_BOUND_PROOF"
+    },
+    {
+      "family": "planning.review_protocol_route_exhausted",
+      "catalog_line": 332,
+      "relation": "unchanged narrative, stage or artifact authority boundary",
+      "projected_mechanism": "The shared decoder can supply bytes but cannot approve narrative truth, repair scope, stage receipt, StoryState/Canon/READY or final artifact.",
+      "planned_evidence": [
+        "tests/test_workflows.py",
+        "tools/canary/first_trustworthy_full_short_dry_run.py"
+      ],
+      "verification_status": "PENDING_FINAL_SOURCE_BOUND_PROOF"
+    },
+    {
+      "family": "planning.plan_structure_validation_failed",
+      "catalog_line": 342,
+      "relation": "unchanged narrative, stage or artifact authority boundary",
+      "projected_mechanism": "The shared decoder can supply bytes but cannot approve narrative truth, repair scope, stage receipt, StoryState/Canon/READY or final artifact.",
+      "planned_evidence": [
+        "tests/test_workflows.py",
+        "tools/canary/first_trustworthy_full_short_dry_run.py"
+      ],
+      "verification_status": "PENDING_FINAL_SOURCE_BOUND_PROOF"
+    },
+    {
+      "family": "planning.event_body_integrity",
+      "catalog_line": 352,
+      "relation": "unchanged narrative, stage or artifact authority boundary",
+      "projected_mechanism": "The shared decoder can supply bytes but cannot approve narrative truth, repair scope, stage receipt, StoryState/Canon/READY or final artifact.",
+      "planned_evidence": [
+        "tests/test_workflows.py",
+        "tools/canary/first_trustworthy_full_short_dry_run.py"
+      ],
+      "verification_status": "PENDING_FINAL_SOURCE_BOUND_PROOF"
+    },
+    {
+      "family": "planning.presentation_normalized_ownership_revealed",
+      "catalog_line": 361,
+      "relation": "unchanged narrative, stage or artifact authority boundary",
+      "projected_mechanism": "The shared decoder can supply bytes but cannot approve narrative truth, repair scope, stage receipt, StoryState/Canon/READY or final artifact.",
+      "planned_evidence": [
+        "tests/test_workflows.py",
+        "tools/canary/first_trustworthy_full_short_dry_run.py"
+      ],
+      "verification_status": "PENDING_FINAL_SOURCE_BOUND_PROOF"
+    },
+    {
+      "family": "planning.packet_merge_closedness",
+      "catalog_line": 370,
+      "relation": "unchanged narrative, stage or artifact authority boundary",
+      "projected_mechanism": "The shared decoder can supply bytes but cannot approve narrative truth, repair scope, stage receipt, StoryState/Canon/READY or final artifact.",
+      "planned_evidence": [
+        "tests/test_workflows.py",
+        "tools/canary/first_trustworthy_full_short_dry_run.py"
+      ],
+      "verification_status": "PENDING_FINAL_SOURCE_BOUND_PROOF"
+    },
+    {
+      "family": "planning.participant_identity_realization_mismatch",
+      "catalog_line": 380,
+      "relation": "unchanged narrative, stage or artifact authority boundary",
+      "projected_mechanism": "The shared decoder can supply bytes but cannot approve narrative truth, repair scope, stage receipt, StoryState/Canon/READY or final artifact.",
+      "planned_evidence": [
+        "tests/test_workflows.py",
+        "tools/canary/first_trustworthy_full_short_dry_run.py"
+      ],
+      "verification_status": "PENDING_FINAL_SOURCE_BOUND_PROOF"
+    },
+    {
+      "family": "planning.event_obligation_incomplete",
+      "catalog_line": 390,
+      "relation": "unchanged narrative, stage or artifact authority boundary",
+      "projected_mechanism": "The shared decoder can supply bytes but cannot approve narrative truth, repair scope, stage receipt, StoryState/Canon/READY or final artifact.",
+      "planned_evidence": [
+        "tests/test_workflows.py",
+        "tools/canary/first_trustworthy_full_short_dry_run.py"
+      ],
+      "verification_status": "PENDING_FINAL_SOURCE_BOUND_PROOF"
+    },
+    {
+      "family": "planning.atomic_beat_scope_mismatch",
+      "catalog_line": 400,
+      "relation": "unchanged narrative, stage or artifact authority boundary",
+      "projected_mechanism": "The shared decoder can supply bytes but cannot approve narrative truth, repair scope, stage receipt, StoryState/Canon/READY or final artifact.",
+      "planned_evidence": [
+        "tests/test_workflows.py",
+        "tools/canary/first_trustworthy_full_short_dry_run.py"
+      ],
+      "verification_status": "PENDING_FINAL_SOURCE_BOUND_PROOF"
+    },
+    {
+      "family": "planning.repair_anchor_collapse",
+      "catalog_line": 409,
+      "relation": "unchanged narrative, stage or artifact authority boundary",
+      "projected_mechanism": "The shared decoder can supply bytes but cannot approve narrative truth, repair scope, stage receipt, StoryState/Canon/READY or final artifact.",
+      "planned_evidence": [
+        "tests/test_workflows.py",
+        "tools/canary/first_trustworthy_full_short_dry_run.py"
+      ],
+      "verification_status": "PENDING_FINAL_SOURCE_BOUND_PROOF"
+    },
+    {
+      "family": "narrative.first_person_contract_missing",
+      "catalog_line": 420,
+      "relation": "unchanged narrative, stage or artifact authority boundary",
+      "projected_mechanism": "The shared decoder can supply bytes but cannot approve narrative truth, repair scope, stage receipt, StoryState/Canon/READY or final artifact.",
+      "planned_evidence": [
+        "tests/test_workflows.py",
+        "tools/canary/first_trustworthy_full_short_dry_run.py"
+      ],
+      "verification_status": "PENDING_FINAL_SOURCE_BOUND_PROOF"
+    },
+    {
+      "family": "draft.segment_integrity_failed",
+      "catalog_line": 431,
+      "relation": "unchanged narrative, stage or artifact authority boundary",
+      "projected_mechanism": "The shared decoder can supply bytes but cannot approve narrative truth, repair scope, stage receipt, StoryState/Canon/READY or final artifact.",
+      "planned_evidence": [
+        "tests/test_workflows.py",
+        "tools/canary/first_trustworthy_full_short_dry_run.py"
+      ],
+      "verification_status": "PENDING_FINAL_SOURCE_BOUND_PROOF"
+    },
+    {
+      "family": "draft.split_merge_length_mismatch",
+      "catalog_line": 441,
+      "relation": "unchanged narrative, stage or artifact authority boundary",
+      "projected_mechanism": "The shared decoder can supply bytes but cannot approve narrative truth, repair scope, stage receipt, StoryState/Canon/READY or final artifact.",
+      "planned_evidence": [
+        "tests/test_workflows.py",
+        "tools/canary/first_trustworthy_full_short_dry_run.py"
+      ],
+      "verification_status": "PENDING_FINAL_SOURCE_BOUND_PROOF"
+    },
+    {
+      "family": "draft.semantic_receipt_unsatisfied",
+      "catalog_line": 451,
+      "relation": "unchanged narrative, stage or artifact authority boundary",
+      "projected_mechanism": "The shared decoder can supply bytes but cannot approve narrative truth, repair scope, stage receipt, StoryState/Canon/READY or final artifact.",
+      "planned_evidence": [
+        "tests/test_workflows.py",
+        "tools/canary/first_trustworthy_full_short_dry_run.py"
+      ],
+      "verification_status": "PENDING_FINAL_SOURCE_BOUND_PROOF"
+    },
+    {
+      "family": "polish.local_validation_failed",
+      "catalog_line": 461,
+      "relation": "unchanged narrative, stage or artifact authority boundary",
+      "projected_mechanism": "The shared decoder can supply bytes but cannot approve narrative truth, repair scope, stage receipt, StoryState/Canon/READY or final artifact.",
+      "planned_evidence": [
+        "tests/test_workflows.py",
+        "tools/canary/first_trustworthy_full_short_dry_run.py"
+      ],
+      "verification_status": "PENDING_FINAL_SOURCE_BOUND_PROOF"
+    },
+    {
+      "family": "review.issue_ledger_not_refreshed",
+      "catalog_line": 472,
+      "relation": "unchanged narrative, stage or artifact authority boundary",
+      "projected_mechanism": "The shared decoder can supply bytes but cannot approve narrative truth, repair scope, stage receipt, StoryState/Canon/READY or final artifact.",
+      "planned_evidence": [
+        "tests/test_workflows.py",
+        "tools/canary/first_trustworthy_full_short_dry_run.py"
+      ],
+      "verification_status": "PENDING_FINAL_SOURCE_BOUND_PROOF"
+    },
+    {
+      "family": "review.final_review_unavailable",
+      "catalog_line": 482,
+      "relation": "unchanged narrative, stage or artifact authority boundary",
+      "projected_mechanism": "The shared decoder can supply bytes but cannot approve narrative truth, repair scope, stage receipt, StoryState/Canon/READY or final artifact.",
+      "planned_evidence": [
+        "tests/test_workflows.py",
+        "tools/canary/first_trustworthy_full_short_dry_run.py"
+      ],
+      "verification_status": "PENDING_FINAL_SOURCE_BOUND_PROOF"
+    }
+  ],
+  "not_claimed": "No unresolved downstream incident is declared fixed by the stream change."
+}

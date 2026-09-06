@@ -1,0 +1,9 @@
+{
+  "schema": "ClosedWorldPreparationPrivacyV1",
+  "status": "PASS",
+  "files_scanned": 28,
+  "credential_pattern_hit_files": [],
+  "scope": "New preparation evidence only; fixed safe error messages, source hashes and synthetic test data. This is a bounded pattern check, not a universal secret detector.",
+  "historical_raw_capture_copied_into_git": false,
+  "real_provider_credentials_read": false
+}

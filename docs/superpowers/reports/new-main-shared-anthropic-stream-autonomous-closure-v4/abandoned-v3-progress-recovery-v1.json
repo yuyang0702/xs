@@ -1,0 +1,23 @@
+{
+  "schema": "V4AbandonedProgressRecoveryV1",
+  "recovered": true,
+  "source_finding": "V3 added four architecture evidence files but no source changes beyond sealed prior snapshot; eight fresh V4 investigations verified owning source hashes.",
+  "at_takeover": {
+    "raw_framing": "PARTIAL",
+    "semantic_reducer": "PARTIAL",
+    "durable_prefix_contract": "ABSENT",
+    "single_durable_owner": "ABSENT",
+    "observer_ack_alignment": "ABSENT",
+    "rehydration_restart": "ABSENT",
+    "causal_precedence": "PARTIAL",
+    "generated_transition_tests": "COMPLETE_VERIFIED",
+    "byte_chunk_fault_campaign": "PARTIAL",
+    "full_short_observer_integration": "ABSENT",
+    "historical_exact_replay": "COMPLETE_UNVERIFIED",
+    "request_zero_diff": "COMPLETE_UNVERIFIED",
+    "isolated_related_suite": "ABSENT",
+    "isolated_full_suite": "ABSENT",
+    "independent_review": "PARTIAL",
+    "strict_l3": "PARTIAL"
+  }
+}

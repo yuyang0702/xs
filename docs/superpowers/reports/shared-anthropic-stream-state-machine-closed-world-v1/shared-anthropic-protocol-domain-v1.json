@@ -1,0 +1,2068 @@
+{
+  "schema": "SharedAnthropicProtocolDomainV1",
+  "master_source_sha256": "58b91f4d35d03e6d01f21ba484629be50740af8d37a5ea358ba73cf8b43adfec",
+  "authoritative_research_sha256": "663cb9afcf266e352454395c9bd6bb457646df94b2c699f4b62c02391050f758",
+  "source_sha256": {
+    "src/novel_flywheel/anthropic_stream.py": "dff3ad231865abc52745d92047cff522381b18f714112772d17bb8ae1dff7c1b",
+    "src/novel_flywheel/providers/anthropic.py": "3c27185f2cb97c646cd4d1a27d5e1b75ed2ef605d2c095d366fc4f7460488fcb",
+    "src/novel_flywheel/providers/http.py": "2f2d69cace513a9c85ec48a3fe4e80bd227dad6948709af2f51eaf375aa883f6",
+    "src/novel_flywheel/provider_response_capture.py": "5e8128e336b81fa1881f144fadc26c511a9227453a8724a3cf2b50f8e9de9fb4",
+    "src/novel_flywheel/provider_stream_error.py": "71c15b9f098c63dcd2d67ddc9a3aba16beee0a079c53b5b9f009a4655d6eebe1",
+    "src/novel_flywheel/full_short_execution.py": "29bcd3e04faaa65a367657ae5b1142058a7cc47554f324a5d7edd5d966590ab3",
+    "src/novel_flywheel/provider_output.py": "15dcad2180064ba7cc5c2906330465d4ec53a72927502629b75e39a4a666746d",
+    "src/novel_flywheel/models.py": "0a900d7a337b1fe8ac700c8016c7953b736109c6b1f40b6261452fddc5f77a33",
+    "src/novel_flywheel/provider_payloads.py": "053fae9bf07119e8c6b8ab163d7a6089d790a983738709fcd36d208320016b60",
+    "src/novel_flywheel/providers/registry.py": "c710f2a119bec72ac7bb8de9f6548d813b47095cfe6a0fcd9667b32de468d07d",
+    "tests/providers/test_anthropic_closed_world_transitions.py": "8789ae65530267adc8fc0e81f63396cbd5985d07db99c8088d4b66ba2a6426fe"
+  },
+  "scope": "Implementation proof extraction, not independent review or campaign authorization",
+  "REGISTERED_PROTOCOL_STATE_COUNT": 11,
+  "REGISTERED_EVENT_CLASS_COUNT": 16,
+  "states": [
+    {
+      "name": "BEFORE_MESSAGE",
+      "value": "BEFORE_MESSAGE"
+    },
+    {
+      "name": "MESSAGE_ACTIVE",
+      "value": "MESSAGE_ACTIVE"
+    },
+    {
+      "name": "CONTENT_ACTIVE",
+      "value": "CONTENT_ACTIVE"
+    },
+    {
+      "name": "CONTENT_COMPLETE",
+      "value": "CONTENT_COMPLETE"
+    },
+    {
+      "name": "MESSAGE_DELTA",
+      "value": "MESSAGE_DELTA"
+    },
+    {
+      "name": "SUCCESS",
+      "value": "SEMANTIC_SUCCESS_TERMINAL"
+    },
+    {
+      "name": "SUCCESS_TAIL",
+      "value": "SUCCESS_TRANSPORT_TAIL"
+    },
+    {
+      "name": "PROVIDER_ERROR",
+      "value": "PROVIDER_ERROR_TERMINAL"
+    },
+    {
+      "name": "ERROR_TAIL",
+      "value": "PROVIDER_ERROR_TRANSPORT_TAIL"
+    },
+    {
+      "name": "TRANSPORT_FAILURE",
+      "value": "TRANSPORT_FAILURE_TERMINAL"
+    },
+    {
+      "name": "PROTOCOL_INVALID",
+      "value": "PROTOCOL_INVALID_TERMINAL"
+    }
+  ],
+  "events": [
+    {
+      "name": "MESSAGE_START",
+      "value": "message_start"
+    },
+    {
+      "name": "CONTENT_START",
+      "value": "content_block_start"
+    },
+    {
+      "name": "CONTENT_DELTA",
+      "value": "content_block_delta"
+    },
+    {
+      "name": "CONTENT_STOP",
+      "value": "content_block_stop"
+    },
+    {
+      "name": "MESSAGE_DELTA",
+      "value": "message_delta"
+    },
+    {
+      "name": "MESSAGE_STOP",
+      "value": "message_stop"
+    },
+    {
+      "name": "PING",
+      "value": "ping"
+    },
+    {
+      "name": "ERROR",
+      "value": "error"
+    },
+    {
+      "name": "UNKNOWN",
+      "value": "unknown_versioned_event"
+    },
+    {
+      "name": "INVALID",
+      "value": "invalid_frame_or_payload"
+    },
+    {
+      "name": "EOF",
+      "value": "EOF"
+    },
+    {
+      "name": "TIMEOUT",
+      "value": "TIMEOUT"
+    },
+    {
+      "name": "CANCELLATION",
+      "value": "CANCELLATION"
+    },
+    {
+      "name": "TRANSPORT_EXCEPTION",
+      "value": "TRANSPORT_EXCEPTION"
+    },
+    {
+      "name": "CAPTURE_COMMITTED",
+      "value": "CAPTURE_COMMITTED"
+    },
+    {
+      "name": "CAPTURE_FAILED",
+      "value": "CAPTURE_FAILED"
+    }
+  ],
+  "capture_states": [
+    {
+      "name": "NOT_ATTEMPTED",
+      "value": "NOT_ATTEMPTED"
+    },
+    {
+      "name": "COMPLETE",
+      "value": "COMPLETE"
+    },
+    {
+      "name": "FAILED",
+      "value": "FAILED"
+    }
+  ],
+  "state_count_scope": "11 lifecycle states; capture enum is orthogonal durability, not Message lifecycle. 176 canonical cells do not claim all payload/capture-state Cartesian combinations.",
+  "UNCLASSIFIED_SHARED_STREAM_EVENT_EXIT_COUNT": 0,
+  "extraction_method": "Python AST discovers every explicit Return/Raise/Assert/ExceptHandler and implicit final fallthrough in the selected production owning functions. Every row is classified by an explicit source-owned boundary policy. Unknown discovered owner or tail-event callsite is counted rather than default accepted.",
+  "extraction_limit": "Bounded protocol-domain proof, not enumeration of every possible Python exception, implicit library exception, process shutdown, or every application callsite outside the response boundary.",
+  "owning_paths": [
+    {
+      "path": "src/novel_flywheel/anthropic_stream.py",
+      "symbol": "AnthropicStream.step",
+      "line": 226,
+      "end_line": 285,
+      "file_sha256": "dff3ad231865abc52745d92047cff522381b18f714112772d17bb8ae1dff7c1b",
+      "symbol_ast_sha256": "6ba512ef861eb9e304f03a43f8efe21ef63e9e71051b8f1342eb79cb6dd3047b"
+    },
+    {
+      "path": "src/novel_flywheel/anthropic_stream.py",
+      "symbol": "AnthropicStream._apply",
+      "line": 320,
+      "end_line": 418,
+      "file_sha256": "dff3ad231865abc52745d92047cff522381b18f714112772d17bb8ae1dff7c1b",
+      "symbol_ast_sha256": "32ed0caa74c97b5ee9f2a3a6e9310522f451420ee96b4254578f4911e49f1b64"
+    },
+    {
+      "path": "src/novel_flywheel/anthropic_stream.py",
+      "symbol": "decode_sse",
+      "line": 428,
+      "end_line": 492,
+      "file_sha256": "dff3ad231865abc52745d92047cff522381b18f714112772d17bb8ae1dff7c1b",
+      "symbol_ast_sha256": "3ff63af5139074d5dbf06500b663a7d088cdca31ffa3a16e3f0da4a0d69012b2"
+    },
+    {
+      "path": "src/novel_flywheel/anthropic_stream.py",
+      "symbol": "usage_containers",
+      "line": 500,
+      "end_line": 531,
+      "file_sha256": "dff3ad231865abc52745d92047cff522381b18f714112772d17bb8ae1dff7c1b",
+      "symbol_ast_sha256": "96d5e53e159338891b0c65405ac656e28196cf52eefafccc48a08423d078f51f"
+    },
+    {
+      "path": "src/novel_flywheel/providers/anthropic.py",
+      "symbol": "AnthropicAdapter._consume_protocol_stream",
+      "line": 48,
+      "end_line": 76,
+      "file_sha256": "3c27185f2cb97c646cd4d1a27d5e1b75ed2ef605d2c095d366fc4f7460488fcb",
+      "symbol_ast_sha256": "aef1e4120a6b37d83ff085122a90d3619de4d04509fbff4926aa2d569a8a1b07"
+    },
+    {
+      "path": "src/novel_flywheel/providers/http.py",
+      "symbol": "HttpProvider.post_stream",
+      "line": 411,
+      "end_line": 589,
+      "file_sha256": "2f2d69cace513a9c85ec48a3fe4e80bd227dad6948709af2f51eaf375aa883f6",
+      "symbol_ast_sha256": "9c2bbeb428699f3e676a2a5d45a238106cd23885dcf2fdd0360cf5747531eb48"
+    }
+  ],
+  "source_exit_inventory": [
+    {
+      "path": "src/novel_flywheel/anthropic_stream.py",
+      "symbol": "AnthropicProviderTerminalError.__init__",
+      "line": 53,
+      "kind": "IMPLICIT_FUNCTION_FALLTHROUGH",
+      "classification": "TYPED_PROVIDER_FAILURE_CONSTRUCTION",
+      "file_sha256": "dff3ad231865abc52745d92047cff522381b18f714112772d17bb8ae1dff7c1b"
+    },
+    {
+      "path": "src/novel_flywheel/anthropic_stream.py",
+      "symbol": "AnthropicStream.__init__",
+      "line": 203,
+      "kind": "IMPLICIT_FUNCTION_FALLTHROUGH",
+      "classification": "STATE_INITIALIZATION",
+      "file_sha256": "dff3ad231865abc52745d92047cff522381b18f714112772d17bb8ae1dff7c1b"
+    },
+    {
+      "path": "src/novel_flywheel/anthropic_stream.py",
+      "symbol": "AnthropicStream._apply",
+      "line": 411,
+      "kind": "ExceptHandler",
+      "classification": "ATOMIC_STRUCTURAL_PAYLOAD_GUARD",
+      "expression": "ValueError",
+      "ast_sha256": "d367fe1f6327ff3d625badadb3c9bd164b696f98e2ea3db566c8827a9d78ad7c",
+      "file_sha256": "dff3ad231865abc52745d92047cff522381b18f714112772d17bb8ae1dff7c1b"
+    },
+    {
+      "path": "src/novel_flywheel/anthropic_stream.py",
+      "symbol": "AnthropicStream._apply",
+      "line": 412,
+      "kind": "Raise",
+      "classification": "ATOMIC_STRUCTURAL_PAYLOAD_GUARD",
+      "expression": "AnthropicStreamProtocolError('ANTHROPIC_SSE_TOOL_ARGUMENT_JSON_INVALID')",
+      "ast_sha256": "6e374d5345a3d0371a556c3f4ba8f4db0c387d5b5019aa906326eed4af4b46bb",
+      "file_sha256": "dff3ad231865abc52745d92047cff522381b18f714112772d17bb8ae1dff7c1b"
+    },
+    {
+      "path": "src/novel_flywheel/anthropic_stream.py",
+      "symbol": "AnthropicStream._apply",
+      "line": 418,
+      "kind": "IMPLICIT_FUNCTION_FALLTHROUGH",
+      "classification": "ATOMIC_STRUCTURAL_PAYLOAD_GUARD",
+      "file_sha256": "dff3ad231865abc52745d92047cff522381b18f714112772d17bb8ae1dff7c1b"
+    },
+    {
+      "path": "src/novel_flywheel/anthropic_stream.py",
+      "symbol": "AnthropicStream._apply.reject",
+      "line": 324,
+      "kind": "Raise",
+      "classification": "TYPED_PROTOCOL_REJECTION",
+      "expression": "AnthropicStreamProtocolError('ANTHROPIC_SSE_' + reason)",
+      "ast_sha256": "c6e7068c10ebbeecda36d1f47bf80f971da7a18e61421e0833df0e703dcee8ba",
+      "file_sha256": "dff3ad231865abc52745d92047cff522381b18f714112772d17bb8ae1dff7c1b"
+    },
+    {
+      "path": "src/novel_flywheel/anthropic_stream.py",
+      "symbol": "AnthropicStream._error_tail",
+      "line": 288,
+      "kind": "Assert",
+      "classification": "PROVIDER_PRIMARY_PRESERVING_TAIL_DIAGNOSTIC",
+      "expression": "isinstance(self.primary, AnthropicProviderTerminalError)",
+      "ast_sha256": "0241dd952f2141cae81d9b2d72fde2cbb9c7fa4e46b403c3cd66b92953a16ea0",
+      "file_sha256": "dff3ad231865abc52745d92047cff522381b18f714112772d17bb8ae1dff7c1b"
+    },
+    {
+      "path": "src/novel_flywheel/anthropic_stream.py",
+      "symbol": "AnthropicStream._error_tail",
+      "line": 308,
+      "kind": "IMPLICIT_FUNCTION_FALLTHROUGH",
+      "classification": "PROVIDER_PRIMARY_PRESERVING_TAIL_DIAGNOSTIC",
+      "file_sha256": "dff3ad231865abc52745d92047cff522381b18f714112772d17bb8ae1dff7c1b"
+    },
+    {
+      "path": "src/novel_flywheel/anthropic_stream.py",
+      "symbol": "AnthropicStream.body",
+      "line": 312,
+      "kind": "Raise",
+      "classification": "PRIMARY_TYPED_RAISE_OR_COMPLETED_ENVELOPE",
+      "expression": "self.primary",
+      "ast_sha256": "b556e47189df8f2c456065b7e91e9fefc2d2f2cfa5f0ce805b4cad4af1aecf19",
+      "file_sha256": "dff3ad231865abc52745d92047cff522381b18f714112772d17bb8ae1dff7c1b"
+    },
+    {
+      "path": "src/novel_flywheel/anthropic_stream.py",
+      "symbol": "AnthropicStream.body",
+      "line": 314,
+      "kind": "Raise",
+      "classification": "PRIMARY_TYPED_RAISE_OR_COMPLETED_ENVELOPE",
+      "expression": "AnthropicStreamIncompleteError('ANTHROPIC_SSE_MESSAGE_STOP_MISSING')",
+      "ast_sha256": "8331cf4673ec35df267d8eb072c737f7b169f5a83aa2cd25370a99dfd49d6bb8",
+      "file_sha256": "dff3ad231865abc52745d92047cff522381b18f714112772d17bb8ae1dff7c1b"
+    },
+    {
+      "path": "src/novel_flywheel/anthropic_stream.py",
+      "symbol": "AnthropicStream.body",
+      "line": 315,
+      "kind": "Return",
+      "classification": "PRIMARY_TYPED_RAISE_OR_COMPLETED_ENVELOPE",
+      "expression": "{'id': self.message_id, 'content': [self.blocks[i] for i in sorted(self.blocks)], 'stop_reason': self.stop_reason, 'usage': dict(self.usage), '_protocol_complete': True, '_terminal_event': 'message_stop', '_post_terminal_ping_count': self.post_terminal_ping_count, '_shared_stream_state': self.snapshot()}",
+      "ast_sha256": "e143809619838de29ab86c0ba556d46fd82cf6db48e3688ea3cd9e19b5439af1",
+      "file_sha256": "dff3ad231865abc52745d92047cff522381b18f714112772d17bb8ae1dff7c1b"
+    },
+    {
+      "path": "src/novel_flywheel/anthropic_stream.py",
+      "symbol": "AnthropicStream.semantic_terminal_complete",
+      "line": 207,
+      "kind": "Return",
+      "classification": "SEMANTIC_COMPLETION_PROJECTION",
+      "expression": "self.state in SUCCESS_STATES and (not self.usage_projection)",
+      "ast_sha256": "6ce530b8d5ee4bc361774138a74d5e22737b81747fc81a2ec03ac2a22c1dc2ba",
+      "file_sha256": "dff3ad231865abc52745d92047cff522381b18f714112772d17bb8ae1dff7c1b"
+    },
+    {
+      "path": "src/novel_flywheel/anthropic_stream.py",
+      "symbol": "AnthropicStream.snapshot",
+      "line": 214,
+      "kind": "Return",
+      "classification": "SAFE_STATE_OBSERVATION",
+      "expression": "{'state': self.state.value, 'semantic_terminal_complete': self.semantic_terminal_complete, 'terminal_capture_complete': self.terminal_capture_complete, 'transport_tail_closed_cleanly': self.tail_closed_cleanly, 'primary_cause': 'PROVIDER_ERROR' if isinstance(self.primary, AnthropicProviderTerminalError) else 'PROTOCOL_INVALID' if self.state == State.PROTOCOL_INVALID else 'TRANSPORT_FAILURE' if self.state == State.TRANSPORT_FAILURE else 'CAPTURE_FAILURE' if self.capture_state == CaptureState.FAILED else 'SUCCESS' if self.state in SUCCESS_STATES else 'NONE', 'post_terminal_ping_count': self.post_terminal_ping_count, 'tail_counts': dict(self.tail_counts), 'unknown_event_policy': UNKNOWN_EVENT_POLICY}",
+      "ast_sha256": "b96d9621741ac296245e3803d5b3e9f942701bf7d601e72ea47af468c3fc4e8e",
+      "file_sha256": "dff3ad231865abc52745d92047cff522381b18f714112772d17bb8ae1dff7c1b"
+    },
+    {
+      "path": "src/novel_flywheel/anthropic_stream.py",
+      "symbol": "AnthropicStream.step",
+      "line": 244,
+      "kind": "ExceptHandler",
+      "classification": "OWNED_TRANSITION_OR_TYPED_PAYLOAD_FAILURE",
+      "expression": "(ValueError, TypeError)",
+      "ast_sha256": "fb791c378d96e4c1c01018850f79bf130ebe21602816457b16a86a4e27bb9978",
+      "file_sha256": "dff3ad231865abc52745d92047cff522381b18f714112772d17bb8ae1dff7c1b"
+    },
+    {
+      "path": "src/novel_flywheel/anthropic_stream.py",
+      "symbol": "AnthropicStream.step",
+      "line": 276,
+      "kind": "ExceptHandler",
+      "classification": "OWNED_TRANSITION_OR_TYPED_PAYLOAD_FAILURE",
+      "expression": "Exception",
+      "ast_sha256": "4fc2c2fab431335f1cc446c20f95575f2077c90bd93541c386cc9f12e1b110b4",
+      "file_sha256": "dff3ad231865abc52745d92047cff522381b18f714112772d17bb8ae1dff7c1b"
+    },
+    {
+      "path": "src/novel_flywheel/anthropic_stream.py",
+      "symbol": "AnthropicStream.step",
+      "line": 285,
+      "kind": "Return",
+      "classification": "OWNED_TRANSITION_OR_TYPED_PAYLOAD_FAILURE",
+      "expression": "rule",
+      "ast_sha256": "c616534db69f5a4e3eaf88ac92a2fe9ff3ec721f70e0481d93a8041e5d584ed7",
+      "file_sha256": "dff3ad231865abc52745d92047cff522381b18f714112772d17bb8ae1dff7c1b"
+    },
+    {
+      "path": "src/novel_flywheel/anthropic_stream.py",
+      "symbol": "AnthropicStream.terminal_capture_complete",
+      "line": 211,
+      "kind": "Return",
+      "classification": "CAPTURE_ACK_PROJECTION",
+      "expression": "self.capture_state == CaptureState.COMPLETE",
+      "ast_sha256": "ed50462bfd25211c675211e409c58b37d85aa215aa405a1c1a2510d8ab0b7a34",
+      "file_sha256": "dff3ad231865abc52745d92047cff522381b18f714112772d17bb8ae1dff7c1b"
+    },
+    {
+      "path": "src/novel_flywheel/anthropic_stream.py",
+      "symbol": "AnthropicStreamIncompleteError.__init__",
+      "line": 36,
+      "kind": "IMPLICIT_FUNCTION_FALLTHROUGH",
+      "classification": "TYPED_INCOMPLETE_FAILURE_CONSTRUCTION",
+      "file_sha256": "dff3ad231865abc52745d92047cff522381b18f714112772d17bb8ae1dff7c1b"
+    },
+    {
+      "path": "src/novel_flywheel/anthropic_stream.py",
+      "symbol": "AnthropicStreamProtocolError.__init__",
+      "line": 27,
+      "kind": "IMPLICIT_FUNCTION_FALLTHROUGH",
+      "classification": "TYPED_PROTOCOL_FAILURE_CONSTRUCTION",
+      "file_sha256": "dff3ad231865abc52745d92047cff522381b18f714112772d17bb8ae1dff7c1b"
+    },
+    {
+      "path": "src/novel_flywheel/anthropic_stream.py",
+      "symbol": "InvalidFrame.__init__",
+      "line": 178,
+      "kind": "IMPLICIT_FUNCTION_FALLTHROUGH",
+      "classification": "UNFORGEABLE_TYPED_FRAMING_PROVENANCE",
+      "file_sha256": "dff3ad231865abc52745d92047cff522381b18f714112772d17bb8ae1dff7c1b"
+    },
+    {
+      "path": "src/novel_flywheel/anthropic_stream.py",
+      "symbol": "OwnedStreamEvents.__init__",
+      "line": 185,
+      "kind": "IMPLICIT_FUNCTION_FALLTHROUGH",
+      "classification": "ALREADY_EVALUATED_OWNER_VIEW",
+      "file_sha256": "dff3ad231865abc52745d92047cff522381b18f714112772d17bb8ae1dff7c1b"
+    },
+    {
+      "path": "src/novel_flywheel/anthropic_stream.py",
+      "symbol": "_registered_rule",
+      "line": 124,
+      "kind": "Return",
+      "classification": "REGISTERED_TRANSITION_DECISION",
+      "expression": "Rule(Action.INVALID if state == State.PROTOCOL_INVALID else Action.TRANSPORT_FAILURE, state)",
+      "ast_sha256": "7a7b2da095c198466287b6095c9d882a1e0e65a4e2fdad012ce93573cb1d3d32",
+      "file_sha256": "dff3ad231865abc52745d92047cff522381b18f714112772d17bb8ae1dff7c1b"
+    },
+    {
+      "path": "src/novel_flywheel/anthropic_stream.py",
+      "symbol": "_registered_rule",
+      "line": 126,
+      "kind": "Return",
+      "classification": "REGISTERED_TRANSITION_DECISION",
+      "expression": "Rule(Action.CAPTURE, state)",
+      "ast_sha256": "720eed72936604b9de311a7dea59f6f7ea20ea892a61ee1dea8d7c1e49796997",
+      "file_sha256": "dff3ad231865abc52745d92047cff522381b18f714112772d17bb8ae1dff7c1b"
+    },
+    {
+      "path": "src/novel_flywheel/anthropic_stream.py",
+      "symbol": "_registered_rule",
+      "line": 128,
+      "kind": "Return",
+      "classification": "REGISTERED_TRANSITION_DECISION",
+      "expression": "Rule(Action.PROVIDER_ERROR, State.ERROR_TAIL)",
+      "ast_sha256": "b5596b38e1ffcd1068b8e43f804667f2ae6ac0f50ff4d534ba448eec68d24224",
+      "file_sha256": "dff3ad231865abc52745d92047cff522381b18f714112772d17bb8ae1dff7c1b"
+    },
+    {
+      "path": "src/novel_flywheel/anthropic_stream.py",
+      "symbol": "_registered_rule",
+      "line": 130,
+      "kind": "Return",
+      "classification": "REGISTERED_TRANSITION_DECISION",
+      "expression": "Rule(Action.CAPTURE_FAILURE, state, 'ANTHROPIC_CAPTURE_PERSISTENCE_FAILED')",
+      "ast_sha256": "852930217c384c705718a2ad79c27139d9c01b32911cb88a0b1041940ee9ba4c",
+      "file_sha256": "dff3ad231865abc52745d92047cff522381b18f714112772d17bb8ae1dff7c1b"
+    },
+    {
+      "path": "src/novel_flywheel/anthropic_stream.py",
+      "symbol": "_registered_rule",
+      "line": 132,
+      "kind": "Return",
+      "classification": "REGISTERED_TRANSITION_DECISION",
+      "expression": "Rule(Action.PROVIDER_ERROR, State.PROVIDER_ERROR)",
+      "ast_sha256": "98dc443cba6cde4745eda5156e0299ec08c9bfa07420d6bcb61ae05a043ed6ac",
+      "file_sha256": "dff3ad231865abc52745d92047cff522381b18f714112772d17bb8ae1dff7c1b"
+    },
+    {
+      "path": "src/novel_flywheel/anthropic_stream.py",
+      "symbol": "_registered_rule",
+      "line": 134,
+      "kind": "Return",
+      "classification": "REGISTERED_TRANSITION_DECISION",
+      "expression": "Rule(Action.KEEPALIVE, State.SUCCESS_TAIL if state in SUCCESS_STATES else state)",
+      "ast_sha256": "bd9341b7803a675b0ba82989d0efda3e4c19d33c20d7da5a57e74037e8bea24f",
+      "file_sha256": "dff3ad231865abc52745d92047cff522381b18f714112772d17bb8ae1dff7c1b"
+    },
+    {
+      "path": "src/novel_flywheel/anthropic_stream.py",
+      "symbol": "_registered_rule",
+      "line": 137,
+      "kind": "Return",
+      "classification": "REGISTERED_TRANSITION_DECISION",
+      "expression": "Rule(Action.SUCCESS, State.SUCCESS_TAIL)",
+      "ast_sha256": "609ec9cb189c6f726a48dacaf8c89929fd96bec14240c965c873d78ed27673e6",
+      "file_sha256": "dff3ad231865abc52745d92047cff522381b18f714112772d17bb8ae1dff7c1b"
+    },
+    {
+      "path": "src/novel_flywheel/anthropic_stream.py",
+      "symbol": "_registered_rule",
+      "line": 138,
+      "kind": "Return",
+      "classification": "REGISTERED_TRANSITION_DECISION",
+      "expression": "Rule(Action.TRANSPORT_FAILURE, State.TRANSPORT_FAILURE, 'ANTHROPIC_SSE_MESSAGE_STOP_MISSING')",
+      "ast_sha256": "bbca64423e8436e193379f66a8fbcb9384f845c689913595c5aab6d413cdbc13",
+      "file_sha256": "dff3ad231865abc52745d92047cff522381b18f714112772d17bb8ae1dff7c1b"
+    },
+    {
+      "path": "src/novel_flywheel/anthropic_stream.py",
+      "symbol": "_registered_rule",
+      "line": 140,
+      "kind": "Return",
+      "classification": "REGISTERED_TRANSITION_DECISION",
+      "expression": "Rule(Action.UNKNOWN, State.PROTOCOL_INVALID, 'ANTHROPIC_SSE_EVENT_AFTER_MESSAGE_STOP' if state in SUCCESS_STATES else 'ANTHROPIC_SSE_EVENT_AFTER_MESSAGE_DELTA' if state == State.MESSAGE_DELTA else 'ANTHROPIC_SSE_EVENT_TYPE_UNSUPPORTED')",
+      "ast_sha256": "5e00f7716301787dba0e8fc47943ada962d0e41613eb65c1b66f25ee2c3bc75d",
+      "file_sha256": "dff3ad231865abc52745d92047cff522381b18f714112772d17bb8ae1dff7c1b"
+    },
+    {
+      "path": "src/novel_flywheel/anthropic_stream.py",
+      "symbol": "_registered_rule",
+      "line": 145,
+      "kind": "Return",
+      "classification": "REGISTERED_TRANSITION_DECISION",
+      "expression": "Rule(Action.INVALID, State.PROTOCOL_INVALID, 'ANTHROPIC_SSE_FRAME_OR_PAYLOAD_INVALID')",
+      "ast_sha256": "b12d7dbe29f9f506ee87ea9d6ac44a7a70cdd6de61d75f1c861cfe3cb61086bb",
+      "file_sha256": "dff3ad231865abc52745d92047cff522381b18f714112772d17bb8ae1dff7c1b"
+    },
+    {
+      "path": "src/novel_flywheel/anthropic_stream.py",
+      "symbol": "_registered_rule",
+      "line": 147,
+      "kind": "Return",
+      "classification": "REGISTERED_TRANSITION_DECISION",
+      "expression": "Rule(Action.INVALID, State.PROTOCOL_INVALID, 'ANTHROPIC_SSE_EVENT_AFTER_MESSAGE_STOP')",
+      "ast_sha256": "790b3655918fea9be11b1f88930aab7a1e5ea6061fd796f306d00a732513dd43",
+      "file_sha256": "dff3ad231865abc52745d92047cff522381b18f714112772d17bb8ae1dff7c1b"
+    },
+    {
+      "path": "src/novel_flywheel/anthropic_stream.py",
+      "symbol": "_registered_rule",
+      "line": 156,
+      "kind": "Return",
+      "classification": "REGISTERED_TRANSITION_DECISION",
+      "expression": "Rule(Action.SUCCESS if event == Event.MESSAGE_STOP else Action.ADVANCE, allowed[state][event])",
+      "ast_sha256": "a9be5a73a782ee5ffaed85280b31d8807a011244c5e86abeedae51472a2e0f1f",
+      "file_sha256": "dff3ad231865abc52745d92047cff522381b18f714112772d17bb8ae1dff7c1b"
+    },
+    {
+      "path": "src/novel_flywheel/anthropic_stream.py",
+      "symbol": "_registered_rule",
+      "line": 167,
+      "kind": "Return",
+      "classification": "REGISTERED_TRANSITION_DECISION",
+      "expression": "Rule(Action.INVALID, State.PROTOCOL_INVALID, reason)",
+      "ast_sha256": "c6a86b2d6a5eb5aecaf7964064b9197e1cfb7fc35d6ab19a8ee685ed9f67eedd",
+      "file_sha256": "dff3ad231865abc52745d92047cff522381b18f714112772d17bb8ae1dff7c1b"
+    },
+    {
+      "path": "src/novel_flywheel/anthropic_stream.py",
+      "symbol": "aggregate_events",
+      "line": 425,
+      "kind": "Return",
+      "classification": "ORDERED_OWNER_EVALUATION",
+      "expression": "stream",
+      "ast_sha256": "45b987a3c0fd92ce44a6c40da16fc93d603dea48c559f82614b9886588826aa9",
+      "file_sha256": "dff3ad231865abc52745d92047cff522381b18f714112772d17bb8ae1dff7c1b"
+    },
+    {
+      "path": "src/novel_flywheel/anthropic_stream.py",
+      "symbol": "decode_sse",
+      "line": 488,
+      "kind": "ExceptHandler",
+      "classification": "FRAMING_TO_ORDERED_TYPED_EVENTS",
+      "expression": "(UnicodeError, LookupError)",
+      "ast_sha256": "2b42f0130a2d6d26a82b501dd22feedf304f7e44d5acff445338547ff69e4853",
+      "file_sha256": "dff3ad231865abc52745d92047cff522381b18f714112772d17bb8ae1dff7c1b"
+    },
+    {
+      "path": "src/novel_flywheel/anthropic_stream.py",
+      "symbol": "decode_sse",
+      "line": 492,
+      "kind": "Return",
+      "classification": "FRAMING_TO_ORDERED_TYPED_EVENTS",
+      "expression": "events",
+      "ast_sha256": "89eed6425163de59298436189171a5b6b61fd09c77c136b7e165d4341a19278e",
+      "file_sha256": "dff3ad231865abc52745d92047cff522381b18f714112772d17bb8ae1dff7c1b"
+    },
+    {
+      "path": "src/novel_flywheel/anthropic_stream.py",
+      "symbol": "decode_sse.dispatch",
+      "line": 453,
+      "kind": "ExceptHandler",
+      "classification": "CLOSED_FRAME_ERROR_NORMALIZATION_OR_INVALID_FRAME",
+      "expression": "ValueError",
+      "ast_sha256": "e0d587dec9778b36185af69495652d2f0c68dd204c96cc19254db640f0643d3a",
+      "file_sha256": "dff3ad231865abc52745d92047cff522381b18f714112772d17bb8ae1dff7c1b"
+    },
+    {
+      "path": "src/novel_flywheel/anthropic_stream.py",
+      "symbol": "decode_sse.dispatch",
+      "line": 455,
+      "kind": "Raise",
+      "classification": "CLOSED_FRAME_ERROR_NORMALIZATION_OR_INVALID_FRAME",
+      "expression": "ProviderResponseCaptureError('PROVIDER_RESPONSE_REPLAY_SSE_JSON_INVALID')",
+      "ast_sha256": "24c19ec04f624e08ba709c907257eb5dc6937f6441d46934b503f3dd4a5561bf",
+      "file_sha256": "dff3ad231865abc52745d92047cff522381b18f714112772d17bb8ae1dff7c1b"
+    },
+    {
+      "path": "src/novel_flywheel/anthropic_stream.py",
+      "symbol": "decode_sse.dispatch",
+      "line": 460,
+      "kind": "Return",
+      "classification": "CLOSED_FRAME_ERROR_NORMALIZATION_OR_INVALID_FRAME",
+      "expression": "bare propagation / void return",
+      "ast_sha256": "d3ec646650be52e3f5b5700447f19313b1bab9ed1bd27c2483960d5d0bcaf584",
+      "file_sha256": "dff3ad231865abc52745d92047cff522381b18f714112772d17bb8ae1dff7c1b"
+    },
+    {
+      "path": "src/novel_flywheel/anthropic_stream.py",
+      "symbol": "decode_sse.dispatch",
+      "line": 462,
+      "kind": "Raise",
+      "classification": "CLOSED_FRAME_ERROR_NORMALIZATION_OR_INVALID_FRAME",
+      "expression": "ProviderResponseCaptureError('PROVIDER_RESPONSE_REPLAY_SSE_OBJECT_REQUIRED')",
+      "ast_sha256": "92d78d9486033654af69d5a6ede4fb4c8bf1663bae58b290ca542c0466270f7f",
+      "file_sha256": "dff3ad231865abc52745d92047cff522381b18f714112772d17bb8ae1dff7c1b"
+    },
+    {
+      "path": "src/novel_flywheel/anthropic_stream.py",
+      "symbol": "decode_sse.dispatch",
+      "line": 464,
+      "kind": "Raise",
+      "classification": "CLOSED_FRAME_ERROR_NORMALIZATION_OR_INVALID_FRAME",
+      "expression": "ProviderResponseCaptureError('PROVIDER_RESPONSE_REPLAY_SSE_EVENT_DATA_CONFLICT')",
+      "ast_sha256": "84c7e887007601c47ea14b2b0e4131a5119c9c7b2b19b9056166aae81ff84f70",
+      "file_sha256": "dff3ad231865abc52745d92047cff522381b18f714112772d17bb8ae1dff7c1b"
+    },
+    {
+      "path": "src/novel_flywheel/anthropic_stream.py",
+      "symbol": "decode_sse.dispatch",
+      "line": 466,
+      "kind": "ExceptHandler",
+      "classification": "CLOSED_FRAME_ERROR_NORMALIZATION_OR_INVALID_FRAME",
+      "expression": "(UnicodeError, LookupError)",
+      "ast_sha256": "0bf9f3db420c90c3c63a0112139dbae9f8e3beb5c9de5f107c8dd1dfd9318388",
+      "file_sha256": "dff3ad231865abc52745d92047cff522381b18f714112772d17bb8ae1dff7c1b"
+    },
+    {
+      "path": "src/novel_flywheel/anthropic_stream.py",
+      "symbol": "decode_sse.dispatch",
+      "line": 468,
+      "kind": "ExceptHandler",
+      "classification": "CLOSED_FRAME_ERROR_NORMALIZATION_OR_INVALID_FRAME",
+      "expression": "ProviderResponseCaptureError",
+      "ast_sha256": "e5510e87ef842d09645500f270b33fda2aaf8f1b2317c9b979a6189dfeae93a9",
+      "file_sha256": "dff3ad231865abc52745d92047cff522381b18f714112772d17bb8ae1dff7c1b"
+    },
+    {
+      "path": "src/novel_flywheel/anthropic_stream.py",
+      "symbol": "decode_sse.dispatch",
+      "line": 469,
+      "kind": "IMPLICIT_FUNCTION_FALLTHROUGH",
+      "classification": "CLOSED_FRAME_ERROR_NORMALIZATION_OR_INVALID_FRAME",
+      "file_sha256": "dff3ad231865abc52745d92047cff522381b18f714112772d17bb8ae1dff7c1b"
+    },
+    {
+      "path": "src/novel_flywheel/anthropic_stream.py",
+      "symbol": "evaluate_bytes",
+      "line": 497,
+      "kind": "Return",
+      "classification": "EXACT_BYTES_OWNER_EVALUATION",
+      "expression": "(events, aggregate_events(events, usage_projection=usage_projection))",
+      "ast_sha256": "46faf52b01a34958cccd998eff4c2f9730634e6d36b1f6965a89f562f5725f84",
+      "file_sha256": "dff3ad231865abc52745d92047cff522381b18f714112772d17bb8ae1dff7c1b"
+    },
+    {
+      "path": "src/novel_flywheel/anthropic_stream.py",
+      "symbol": "usage_containers",
+      "line": 515,
+      "kind": "Raise",
+      "classification": "ACCOUNTING_PROJECTION_WITHOUT_MESSAGE_ACCEPTANCE",
+      "expression": "ProviderResponseCaptureError('PROVIDER_REPORTED_USAGE_PROVIDER_ERROR')",
+      "ast_sha256": "e8a2456845b7a068dade82b8c918c6c40a4fe2a7a91a090e5fcb9794a6abfa97",
+      "file_sha256": "dff3ad231865abc52745d92047cff522381b18f714112772d17bb8ae1dff7c1b"
+    },
+    {
+      "path": "src/novel_flywheel/anthropic_stream.py",
+      "symbol": "usage_containers",
+      "line": 517,
+      "kind": "Raise",
+      "classification": "ACCOUNTING_PROJECTION_WITHOUT_MESSAGE_ACCEPTANCE",
+      "expression": "ProviderResponseCaptureError('PROVIDER_REPORTED_USAGE_EVENT_AFTER_MESSAGE_STOP')",
+      "ast_sha256": "74c14f43adc396ebf63d53a8706d2ff4c10048fae9d20ee277aee5c638895da0",
+      "file_sha256": "dff3ad231865abc52745d92047cff522381b18f714112772d17bb8ae1dff7c1b"
+    },
+    {
+      "path": "src/novel_flywheel/anthropic_stream.py",
+      "symbol": "usage_containers",
+      "line": 519,
+      "kind": "Raise",
+      "classification": "ACCOUNTING_PROJECTION_WITHOUT_MESSAGE_ACCEPTANCE",
+      "expression": "stream.primary",
+      "ast_sha256": "f5a9efa789998232119f3b91542bb3d7c389eb30fe2f23a7b4207b99a6f7e153",
+      "file_sha256": "dff3ad231865abc52745d92047cff522381b18f714112772d17bb8ae1dff7c1b"
+    },
+    {
+      "path": "src/novel_flywheel/anthropic_stream.py",
+      "symbol": "usage_containers",
+      "line": 530,
+      "kind": "Raise",
+      "classification": "ACCOUNTING_PROJECTION_WITHOUT_MESSAGE_ACCEPTANCE",
+      "expression": "ProviderResponseCaptureError('PROVIDER_REPORTED_USAGE_SSE_TERMINAL_MISSING')",
+      "ast_sha256": "edc029299e5e99cc4e4aa7dfb0a2725a251c0c78d3255cf30a30c2fe15041ddb",
+      "file_sha256": "dff3ad231865abc52745d92047cff522381b18f714112772d17bb8ae1dff7c1b"
+    },
+    {
+      "path": "src/novel_flywheel/anthropic_stream.py",
+      "symbol": "usage_containers",
+      "line": 531,
+      "kind": "Return",
+      "classification": "ACCOUNTING_PROJECTION_WITHOUT_MESSAGE_ACCEPTANCE",
+      "expression": "containers",
+      "ast_sha256": "c184355b48b421d32f1823c092470794cd8ce95969b8012c71dddfe7e0b0e80f",
+      "file_sha256": "dff3ad231865abc52745d92047cff522381b18f714112772d17bb8ae1dff7c1b"
+    },
+    {
+      "path": "src/novel_flywheel/providers/anthropic.py",
+      "symbol": "AnthropicAdapter._aggregate_stream",
+      "line": 457,
+      "kind": "Return",
+      "classification": "DELEGATE_TO_OWNED_RESULT_OR_SAME_OWNER",
+      "expression": "events.owner.body()",
+      "ast_sha256": "53a632d2d75f5fbeafb1c536fc5be4dae570b6ef65f67428e15570acaa73fc2a",
+      "file_sha256": "3c27185f2cb97c646cd4d1a27d5e1b75ed2ef605d2c095d366fc4f7460488fcb"
+    },
+    {
+      "path": "src/novel_flywheel/providers/anthropic.py",
+      "symbol": "AnthropicAdapter._aggregate_stream",
+      "line": 460,
+      "kind": "Return",
+      "classification": "DELEGATE_TO_OWNED_RESULT_OR_SAME_OWNER",
+      "expression": "stream.body()",
+      "ast_sha256": "ac08cbfcc4f4dcad21dc641b5c3416d89197944566febc189e1ca4aa93649f20",
+      "file_sha256": "3c27185f2cb97c646cd4d1a27d5e1b75ed2ef605d2c095d366fc4f7460488fcb"
+    },
+    {
+      "path": "src/novel_flywheel/providers/anthropic.py",
+      "symbol": "AnthropicAdapter._consume_protocol_stream",
+      "line": 55,
+      "kind": "ExceptHandler",
+      "classification": "ITERATOR_FAULT_CAPTURE_ACK_AND_OWNER_RESULT",
+      "expression": "(asyncio.CancelledError, Exception)",
+      "ast_sha256": "43103fcb3090a81a214b5af1f101f3c9f9a0067b74f6482b2e6815d3d6da8318",
+      "file_sha256": "3c27185f2cb97c646cd4d1a27d5e1b75ed2ef605d2c095d366fc4f7460488fcb"
+    },
+    {
+      "path": "src/novel_flywheel/providers/anthropic.py",
+      "symbol": "AnthropicAdapter._consume_protocol_stream",
+      "line": 68,
+      "kind": "ExceptHandler",
+      "classification": "ITERATOR_FAULT_CAPTURE_ACK_AND_OWNER_RESULT",
+      "expression": "Exception",
+      "ast_sha256": "b74218d573ea47dd82749aefa31715f5d9956006da2a007a9269ae353a4da55e",
+      "file_sha256": "3c27185f2cb97c646cd4d1a27d5e1b75ed2ef605d2c095d366fc4f7460488fcb"
+    },
+    {
+      "path": "src/novel_flywheel/providers/anthropic.py",
+      "symbol": "AnthropicAdapter._consume_protocol_stream",
+      "line": 76,
+      "kind": "Return",
+      "classification": "ITERATOR_FAULT_CAPTURE_ACK_AND_OWNER_RESULT",
+      "expression": "(OwnedStreamEvents(events, stream), stream)",
+      "ast_sha256": "93382b56b38da334a5d1effbdd0162bc523b5ec4adcd8f26052354f6df271143",
+      "file_sha256": "3c27185f2cb97c646cd4d1a27d5e1b75ed2ef605d2c095d366fc4f7460488fcb"
+    },
+    {
+      "path": "src/novel_flywheel/providers/anthropic.py",
+      "symbol": "AnthropicAdapter._model_response_from_body",
+      "line": 262,
+      "kind": "Return",
+      "classification": "VALIDATED_MODEL_RESPONSE_PROJECTION",
+      "expression": "ModelResponse(text=''.join((part.get('text', '') for part in content if isinstance(part, dict) and part.get('type') == 'text')), tool_calls=[ToolCall(id=part['id'], name=part['name'], arguments=part.get('input') or {}) for part in content if isinstance(part, dict) and part.get('type') == 'tool_use'], finish_reason=body.get('stop_reason'), input_tokens=input_tokens if input_tokens is not None else 0, output_tokens=output_tokens if output_tokens is not None else 0, raw_request_id=body.get('id'), provider_state={'content': content, 'transport_complete': bool(body.get('_protocol_complete', body.get('stop_reason') is not None)), 'protocol_terminal_event': body.get('_terminal_event'), 'raw_finish_reason': body.get('stop_reason'), 'POST_TERMINAL_PING_COUNT': body.get('_post_terminal_ping_count', 0), 'POST_TERMINAL_PING_IGNORED_COUNT': body.get('_post_terminal_ping_count', 0), **(provider_state_extra or {})})",
+      "ast_sha256": "182c94b8522bad5f73aca0d0d0dc327d5211f514a839ed328cdcc2c1707993d0",
+      "file_sha256": "3c27185f2cb97c646cd4d1a27d5e1b75ed2ef605d2c095d366fc4f7460488fcb"
+    },
+    {
+      "path": "src/novel_flywheel/providers/anthropic.py",
+      "symbol": "AnthropicAdapter._replay_complete_valid_capture",
+      "line": 369,
+      "kind": "Return",
+      "classification": "EXISTING_EXACT_LOCAL_REPLAY_ELIGIBILITY_NO_DISPATCH",
+      "expression": "None",
+      "ast_sha256": "353401809590fce03527be76d16055befec3bf00b4443d2e1a26c5300e3da6a4",
+      "file_sha256": "3c27185f2cb97c646cd4d1a27d5e1b75ed2ef605d2c095d366fc4f7460488fcb"
+    },
+    {
+      "path": "src/novel_flywheel/providers/anthropic.py",
+      "symbol": "AnthropicAdapter._replay_complete_valid_capture",
+      "line": 372,
+      "kind": "ExceptHandler",
+      "classification": "EXISTING_EXACT_LOCAL_REPLAY_ELIGIBILITY_NO_DISPATCH",
+      "expression": "ProviderResponseCaptureError",
+      "ast_sha256": "222e3e3f38b2db4822044587b433548f6e95eb3207bb6ce2136dcb31e7e3af26",
+      "file_sha256": "3c27185f2cb97c646cd4d1a27d5e1b75ed2ef605d2c095d366fc4f7460488fcb"
+    },
+    {
+      "path": "src/novel_flywheel/providers/anthropic.py",
+      "symbol": "AnthropicAdapter._replay_complete_valid_capture",
+      "line": 373,
+      "kind": "Return",
+      "classification": "EXISTING_EXACT_LOCAL_REPLAY_ELIGIBILITY_NO_DISPATCH",
+      "expression": "None",
+      "ast_sha256": "353401809590fce03527be76d16055befec3bf00b4443d2e1a26c5300e3da6a4",
+      "file_sha256": "3c27185f2cb97c646cd4d1a27d5e1b75ed2ef605d2c095d366fc4f7460488fcb"
+    },
+    {
+      "path": "src/novel_flywheel/providers/anthropic.py",
+      "symbol": "AnthropicAdapter._replay_complete_valid_capture",
+      "line": 375,
+      "kind": "Return",
+      "classification": "EXISTING_EXACT_LOCAL_REPLAY_ELIGIBILITY_NO_DISPATCH",
+      "expression": "None",
+      "ast_sha256": "353401809590fce03527be76d16055befec3bf00b4443d2e1a26c5300e3da6a4",
+      "file_sha256": "3c27185f2cb97c646cd4d1a27d5e1b75ed2ef605d2c095d366fc4f7460488fcb"
+    },
+    {
+      "path": "src/novel_flywheel/providers/anthropic.py",
+      "symbol": "AnthropicAdapter._replay_complete_valid_capture",
+      "line": 382,
+      "kind": "ExceptHandler",
+      "classification": "EXISTING_EXACT_LOCAL_REPLAY_ELIGIBILITY_NO_DISPATCH",
+      "expression": "(AnthropicStreamProtocolError, AnthropicStreamIncompleteError, AnthropicProviderTerminalError)",
+      "ast_sha256": "a862c53c1d23f5d23135c0e6f137c78ab1edfa8ec01c4b34b1a45ec00d9cffb3",
+      "file_sha256": "3c27185f2cb97c646cd4d1a27d5e1b75ed2ef605d2c095d366fc4f7460488fcb"
+    },
+    {
+      "path": "src/novel_flywheel/providers/anthropic.py",
+      "symbol": "AnthropicAdapter._replay_complete_valid_capture",
+      "line": 387,
+      "kind": "Return",
+      "classification": "EXISTING_EXACT_LOCAL_REPLAY_ELIGIBILITY_NO_DISPATCH",
+      "expression": "None",
+      "ast_sha256": "353401809590fce03527be76d16055befec3bf00b4443d2e1a26c5300e3da6a4",
+      "file_sha256": "3c27185f2cb97c646cd4d1a27d5e1b75ed2ef605d2c095d366fc4f7460488fcb"
+    },
+    {
+      "path": "src/novel_flywheel/providers/anthropic.py",
+      "symbol": "AnthropicAdapter._replay_complete_valid_capture",
+      "line": 392,
+      "kind": "Return",
+      "classification": "EXISTING_EXACT_LOCAL_REPLAY_ELIGIBILITY_NO_DISPATCH",
+      "expression": "None",
+      "ast_sha256": "353401809590fce03527be76d16055befec3bf00b4443d2e1a26c5300e3da6a4",
+      "file_sha256": "3c27185f2cb97c646cd4d1a27d5e1b75ed2ef605d2c095d366fc4f7460488fcb"
+    },
+    {
+      "path": "src/novel_flywheel/providers/anthropic.py",
+      "symbol": "AnthropicAdapter._replay_complete_valid_capture",
+      "line": 393,
+      "kind": "Return",
+      "classification": "EXISTING_EXACT_LOCAL_REPLAY_ELIGIBILITY_NO_DISPATCH",
+      "expression": "(replay_events, replay_body)",
+      "ast_sha256": "c857d2965e6e8e6f5adec1d50eee5608572de8c65db910d12538602e3b263ccd",
+      "file_sha256": "3c27185f2cb97c646cd4d1a27d5e1b75ed2ef605d2c095d366fc4f7460488fcb"
+    },
+    {
+      "path": "src/novel_flywheel/providers/anthropic.py",
+      "symbol": "AnthropicAdapter._stream_exception_snapshot",
+      "line": 439,
+      "kind": "Return",
+      "classification": "NONAUTHORITATIVE_DIAGNOSTIC_OBSERVATION",
+      "expression": "provider_tool_shape_snapshot(adapter_id=self.DIAGNOSTIC_ADAPTER_ID, adapter_version=self.DIAGNOSTIC_ADAPTER_VERSION, provider_body=events, provider_request_id=request_id, content_block_count=len(blocks), text_present=any((block.get('type') == 'text' for block in blocks.values())), tool_use_present=bool(calls), finish_reason=finish_reason, calls=calls, snapshot_status='adapter_exception_with_snapshot')",
+      "ast_sha256": "1a0608d5b2a55e3b3df073f4e0b72eef3d54e179236081e1ddc6f1d921ae2c81",
+      "file_sha256": "3c27185f2cb97c646cd4d1a27d5e1b75ed2ef605d2c095d366fc4f7460488fcb"
+    },
+    {
+      "path": "src/novel_flywheel/providers/anthropic.py",
+      "symbol": "AnthropicAdapter._stream_tail_event",
+      "line": 81,
+      "kind": "Return",
+      "classification": "RESPONSE_ITERATOR_OR_RESPONSE_CLOSE_OPERATION_CLASSIFICATION",
+      "expression": "Event.EOF",
+      "ast_sha256": "08a392874f24199260144911b69d04913e7b1f8e1b8582dcd921d0668e7a6fb9",
+      "file_sha256": "3c27185f2cb97c646cd4d1a27d5e1b75ed2ef605d2c095d366fc4f7460488fcb"
+    },
+    {
+      "path": "src/novel_flywheel/providers/anthropic.py",
+      "symbol": "AnthropicAdapter._stream_tail_event",
+      "line": 83,
+      "kind": "Return",
+      "classification": "RESPONSE_ITERATOR_OR_RESPONSE_CLOSE_OPERATION_CLASSIFICATION",
+      "expression": "Event.TIMEOUT",
+      "ast_sha256": "78083bb609f9c575d98a5243d835e6d031dda0ead71bb5fe056ae7df510c1ad8",
+      "file_sha256": "3c27185f2cb97c646cd4d1a27d5e1b75ed2ef605d2c095d366fc4f7460488fcb"
+    },
+    {
+      "path": "src/novel_flywheel/providers/anthropic.py",
+      "symbol": "AnthropicAdapter._stream_tail_event",
+      "line": 85,
+      "kind": "Return",
+      "classification": "RESPONSE_ITERATOR_OR_RESPONSE_CLOSE_OPERATION_CLASSIFICATION",
+      "expression": "Event.CANCELLATION",
+      "ast_sha256": "7be37fab4124e53623aa9154c1f84ed73ae773fe3795b9dcc4ecf36b53bdb47b",
+      "file_sha256": "3c27185f2cb97c646cd4d1a27d5e1b75ed2ef605d2c095d366fc4f7460488fcb"
+    },
+    {
+      "path": "src/novel_flywheel/providers/anthropic.py",
+      "symbol": "AnthropicAdapter._stream_tail_event",
+      "line": 86,
+      "kind": "Return",
+      "classification": "RESPONSE_ITERATOR_OR_RESPONSE_CLOSE_OPERATION_CLASSIFICATION",
+      "expression": "Event.TRANSPORT_EXCEPTION",
+      "ast_sha256": "a15de1b18bb34cbe65bab355415132996f6dfeb4fd33dbbf24bbdada0e630062",
+      "file_sha256": "3c27185f2cb97c646cd4d1a27d5e1b75ed2ef605d2c095d366fc4f7460488fcb"
+    },
+    {
+      "path": "src/novel_flywheel/providers/anthropic.py",
+      "symbol": "AnthropicAdapter._validate_json_body",
+      "line": 310,
+      "kind": "Raise",
+      "classification": "SIBLING_NON_SSE_JSON_VALIDATION",
+      "expression": "AnthropicStreamProtocolError('ANTHROPIC_JSON_RESPONSE_OBJECT_REQUIRED')",
+      "ast_sha256": "24230e69b70c25fde67b3f0e70cfe7d2a83a986bd83ea2330c049bc8e0aef060",
+      "file_sha256": "3c27185f2cb97c646cd4d1a27d5e1b75ed2ef605d2c095d366fc4f7460488fcb"
+    },
+    {
+      "path": "src/novel_flywheel/providers/anthropic.py",
+      "symbol": "AnthropicAdapter._validate_json_body",
+      "line": 314,
+      "kind": "Raise",
+      "classification": "SIBLING_NON_SSE_JSON_VALIDATION",
+      "expression": "AnthropicProviderTerminalError(evidence=normalize_stream_error_v1(body))",
+      "ast_sha256": "402310ba3901fcfa09c9505faab94187a17ed722cad761b73d9b20407e47c2e1",
+      "file_sha256": "3c27185f2cb97c646cd4d1a27d5e1b75ed2ef605d2c095d366fc4f7460488fcb"
+    },
+    {
+      "path": "src/novel_flywheel/providers/anthropic.py",
+      "symbol": "AnthropicAdapter._validate_json_body",
+      "line": 316,
+      "kind": "Raise",
+      "classification": "SIBLING_NON_SSE_JSON_VALIDATION",
+      "expression": "AnthropicStreamProtocolError('ANTHROPIC_JSON_CONTENT_INVALID')",
+      "ast_sha256": "6b7a1f8f8cb43ae4db0dadaa709a99e78b9b7812052336bd2689b31c59810321",
+      "file_sha256": "3c27185f2cb97c646cd4d1a27d5e1b75ed2ef605d2c095d366fc4f7460488fcb"
+    },
+    {
+      "path": "src/novel_flywheel/providers/anthropic.py",
+      "symbol": "AnthropicAdapter._validate_json_body",
+      "line": 321,
+      "kind": "Raise",
+      "classification": "SIBLING_NON_SSE_JSON_VALIDATION",
+      "expression": "AnthropicStreamProtocolError('ANTHROPIC_JSON_STOP_REASON_MISSING')",
+      "ast_sha256": "53ef7b048101f0c7377ef1819b8a180ccce828171b1d4569e2a29921a62a6ed8",
+      "file_sha256": "3c27185f2cb97c646cd4d1a27d5e1b75ed2ef605d2c095d366fc4f7460488fcb"
+    },
+    {
+      "path": "src/novel_flywheel/providers/anthropic.py",
+      "symbol": "AnthropicAdapter._validate_json_body",
+      "line": 326,
+      "kind": "Raise",
+      "classification": "SIBLING_NON_SSE_JSON_VALIDATION",
+      "expression": "AnthropicStreamProtocolError('ANTHROPIC_JSON_USAGE_INVALID')",
+      "ast_sha256": "9298687ee4f243e1027cc3f6679e2eb2f8cfb44327224bdb5d14f0140f1c8d11",
+      "file_sha256": "3c27185f2cb97c646cd4d1a27d5e1b75ed2ef605d2c095d366fc4f7460488fcb"
+    },
+    {
+      "path": "src/novel_flywheel/providers/anthropic.py",
+      "symbol": "AnthropicAdapter._validate_json_body",
+      "line": 331,
+      "kind": "Raise",
+      "classification": "SIBLING_NON_SSE_JSON_VALIDATION",
+      "expression": "AnthropicStreamProtocolError('ANTHROPIC_JSON_CONTENT_BLOCK_INVALID')",
+      "ast_sha256": "89d3937bac967c804ec4a78647b289ea3e4fe3e8520205b905de7873543f620d",
+      "file_sha256": "3c27185f2cb97c646cd4d1a27d5e1b75ed2ef605d2c095d366fc4f7460488fcb"
+    },
+    {
+      "path": "src/novel_flywheel/providers/anthropic.py",
+      "symbol": "AnthropicAdapter._validate_json_body",
+      "line": 342,
+      "kind": "Raise",
+      "classification": "SIBLING_NON_SSE_JSON_VALIDATION",
+      "expression": "AnthropicStreamProtocolError('ANTHROPIC_SSE_TOOL_USE_FIELDS_INVALID')",
+      "ast_sha256": "eba74887574e6af3b87c0903034683a193aba2c0689cf3c91ed57064becfb3c5",
+      "file_sha256": "3c27185f2cb97c646cd4d1a27d5e1b75ed2ef605d2c095d366fc4f7460488fcb"
+    },
+    {
+      "path": "src/novel_flywheel/providers/anthropic.py",
+      "symbol": "AnthropicAdapter._validate_json_body",
+      "line": 346,
+      "kind": "Raise",
+      "classification": "SIBLING_NON_SSE_JSON_VALIDATION",
+      "expression": "AnthropicStreamProtocolError('ANTHROPIC_SSE_TOOL_ARGUMENTS_INVALID')",
+      "ast_sha256": "bb180451c899fbb9a51b24c2cc4718c42cee7342fc46f44f92cd83d4a3a251e2",
+      "file_sha256": "3c27185f2cb97c646cd4d1a27d5e1b75ed2ef605d2c095d366fc4f7460488fcb"
+    },
+    {
+      "path": "src/novel_flywheel/providers/anthropic.py",
+      "symbol": "AnthropicAdapter._validate_json_body",
+      "line": 352,
+      "kind": "Raise",
+      "classification": "SIBLING_NON_SSE_JSON_VALIDATION",
+      "expression": "AnthropicStreamProtocolError('ANTHROPIC_JSON_TEXT_BLOCK_INVALID')",
+      "ast_sha256": "dca286b618c6d6e19d00f013adc09f4dc4a55eca17c6d29668a8657e0aae239b",
+      "file_sha256": "3c27185f2cb97c646cd4d1a27d5e1b75ed2ef605d2c095d366fc4f7460488fcb"
+    },
+    {
+      "path": "src/novel_flywheel/providers/anthropic.py",
+      "symbol": "AnthropicAdapter._validate_json_body",
+      "line": 354,
+      "kind": "IMPLICIT_FUNCTION_FALLTHROUGH",
+      "classification": "SIBLING_NON_SSE_JSON_VALIDATION",
+      "file_sha256": "3c27185f2cb97c646cd4d1a27d5e1b75ed2ef605d2c095d366fc4f7460488fcb"
+    },
+    {
+      "path": "src/novel_flywheel/providers/anthropic.py",
+      "symbol": "AnthropicAdapter.complete",
+      "line": 105,
+      "kind": "ExceptHandler",
+      "classification": "OWNED_RESPONSE_PROJECTION_WITH_EXISTING_LOCAL_REPLAY",
+      "expression": "Exception",
+      "ast_sha256": "d2468b12a68fb77172aa4258a5191aefdf6e8b8da3ef68b9c81fdd62a3e901ca",
+      "file_sha256": "3c27185f2cb97c646cd4d1a27d5e1b75ed2ef605d2c095d366fc4f7460488fcb"
+    },
+    {
+      "path": "src/novel_flywheel/providers/anthropic.py",
+      "symbol": "AnthropicAdapter.complete",
+      "line": 115,
+      "kind": "ExceptHandler",
+      "classification": "OWNED_RESPONSE_PROJECTION_WITH_EXISTING_LOCAL_REPLAY",
+      "expression": "Exception",
+      "ast_sha256": "ba1d72ad9a41e608098b5cf064c566879c2ab22f8b9eabcb5aae5a114ffcbe44",
+      "file_sha256": "3c27185f2cb97c646cd4d1a27d5e1b75ed2ef605d2c095d366fc4f7460488fcb"
+    },
+    {
+      "path": "src/novel_flywheel/providers/anthropic.py",
+      "symbol": "AnthropicAdapter.complete",
+      "line": 121,
+      "kind": "Raise",
+      "classification": "OWNED_RESPONSE_PROJECTION_WITH_EXISTING_LOCAL_REPLAY",
+      "expression": "bare propagation / void return",
+      "ast_sha256": "ba28128c14dfbd0a9062c0dbab42ad6c52ecf0767df6b67576deb1dbbfdd038d",
+      "file_sha256": "3c27185f2cb97c646cd4d1a27d5e1b75ed2ef605d2c095d366fc4f7460488fcb"
+    },
+    {
+      "path": "src/novel_flywheel/providers/anthropic.py",
+      "symbol": "AnthropicAdapter.complete",
+      "line": 127,
+      "kind": "Raise",
+      "classification": "OWNED_RESPONSE_PROJECTION_WITH_EXISTING_LOCAL_REPLAY",
+      "expression": "bare propagation / void return",
+      "ast_sha256": "ba28128c14dfbd0a9062c0dbab42ad6c52ecf0767df6b67576deb1dbbfdd038d",
+      "file_sha256": "3c27185f2cb97c646cd4d1a27d5e1b75ed2ef605d2c095d366fc4f7460488fcb"
+    },
+    {
+      "path": "src/novel_flywheel/providers/anthropic.py",
+      "symbol": "AnthropicAdapter.complete",
+      "line": 223,
+      "kind": "Return",
+      "classification": "OWNED_RESPONSE_PROJECTION_WITH_EXISTING_LOCAL_REPLAY",
+      "expression": "project_response(body)",
+      "ast_sha256": "3d67e4a7ba076ef1004fbbbbcfbcc2073a43e45f60f900ba2735ccca3f7becd9",
+      "file_sha256": "3c27185f2cb97c646cd4d1a27d5e1b75ed2ef605d2c095d366fc4f7460488fcb"
+    },
+    {
+      "path": "src/novel_flywheel/providers/anthropic.py",
+      "symbol": "AnthropicAdapter.complete",
+      "line": 224,
+      "kind": "ExceptHandler",
+      "classification": "OWNED_RESPONSE_PROJECTION_WITH_EXISTING_LOCAL_REPLAY",
+      "expression": "Exception",
+      "ast_sha256": "6c5de406ce7bf571c197234f9cd152c17e5005bce13c49728c8e636f4be30e82",
+      "file_sha256": "3c27185f2cb97c646cd4d1a27d5e1b75ed2ef605d2c095d366fc4f7460488fcb"
+    },
+    {
+      "path": "src/novel_flywheel/providers/anthropic.py",
+      "symbol": "AnthropicAdapter.complete",
+      "line": 229,
+      "kind": "Return",
+      "classification": "OWNED_RESPONSE_PROJECTION_WITH_EXISTING_LOCAL_REPLAY",
+      "expression": "project_response(replay_body)",
+      "ast_sha256": "49d4a3376e9fa122e1bc21978faaff66e2e7e63f9db2faacb4ff44db26cfa92d",
+      "file_sha256": "3c27185f2cb97c646cd4d1a27d5e1b75ed2ef605d2c095d366fc4f7460488fcb"
+    },
+    {
+      "path": "src/novel_flywheel/providers/anthropic.py",
+      "symbol": "AnthropicAdapter.complete",
+      "line": 230,
+      "kind": "ExceptHandler",
+      "classification": "OWNED_RESPONSE_PROJECTION_WITH_EXISTING_LOCAL_REPLAY",
+      "expression": "Exception",
+      "ast_sha256": "0a4651193b513edf5fc63b07b0937a40738d16cfe0df78ece8cd24d93616e37f",
+      "file_sha256": "3c27185f2cb97c646cd4d1a27d5e1b75ed2ef605d2c095d366fc4f7460488fcb"
+    },
+    {
+      "path": "src/novel_flywheel/providers/anthropic.py",
+      "symbol": "AnthropicAdapter.complete",
+      "line": 241,
+      "kind": "Raise",
+      "classification": "OWNED_RESPONSE_PROJECTION_WITH_EXISTING_LOCAL_REPLAY",
+      "expression": "bare propagation / void return",
+      "ast_sha256": "ba28128c14dfbd0a9062c0dbab42ad6c52ecf0767df6b67576deb1dbbfdd038d",
+      "file_sha256": "3c27185f2cb97c646cd4d1a27d5e1b75ed2ef605d2c095d366fc4f7460488fcb"
+    },
+    {
+      "path": "src/novel_flywheel/providers/anthropic.py",
+      "symbol": "AnthropicAdapter.complete",
+      "line": 250,
+      "kind": "Raise",
+      "classification": "OWNED_RESPONSE_PROJECTION_WITH_EXISTING_LOCAL_REPLAY",
+      "expression": "bare propagation / void return",
+      "ast_sha256": "ba28128c14dfbd0a9062c0dbab42ad6c52ecf0767df6b67576deb1dbbfdd038d",
+      "file_sha256": "3c27185f2cb97c646cd4d1a27d5e1b75ed2ef605d2c095d366fc4f7460488fcb"
+    },
+    {
+      "path": "src/novel_flywheel/providers/anthropic.py",
+      "symbol": "AnthropicAdapter.complete",
+      "line": 250,
+      "kind": "IMPLICIT_FUNCTION_FALLTHROUGH",
+      "classification": "OWNED_RESPONSE_PROJECTION_WITH_EXISTING_LOCAL_REPLAY",
+      "file_sha256": "3c27185f2cb97c646cd4d1a27d5e1b75ed2ef605d2c095d366fc4f7460488fcb"
+    },
+    {
+      "path": "src/novel_flywheel/providers/anthropic.py",
+      "symbol": "AnthropicAdapter.complete.project_response",
+      "line": 218,
+      "kind": "ExceptHandler",
+      "classification": "MODEL_RESPONSE_AND_NONAUTHORITATIVE_SNAPSHOT",
+      "expression": "Exception",
+      "ast_sha256": "8e7b1ed8f690a9d36ad90fef15cd89d966c372ba41fcbedd66f1ddf99332a6ce",
+      "file_sha256": "3c27185f2cb97c646cd4d1a27d5e1b75ed2ef605d2c095d366fc4f7460488fcb"
+    },
+    {
+      "path": "src/novel_flywheel/providers/anthropic.py",
+      "symbol": "AnthropicAdapter.complete.project_response",
+      "line": 220,
+      "kind": "Return",
+      "classification": "MODEL_RESPONSE_AND_NONAUTHORITATIVE_SNAPSHOT",
+      "expression": "response",
+      "ast_sha256": "01c282a956d1434c0d5fb65019230c8681dec974a11da4e99ae35e884f07125f",
+      "file_sha256": "3c27185f2cb97c646cd4d1a27d5e1b75ed2ef605d2c095d366fc4f7460488fcb"
+    },
+    {
+      "path": "src/novel_flywheel/providers/anthropic.py",
+      "symbol": "AnthropicAdapter.replay_protocol_input_bytes_v1",
+      "line": 303,
+      "kind": "Return",
+      "classification": "EXACT_OFFLINE_REPLAY_SAME_OWNER",
+      "expression": "response.model_copy(update={'output_shape': shape})",
+      "ast_sha256": "df7823e1e7f050b1474e433d728638b1ac1f12c9ec419df566a8c7d81e27a7b2",
+      "file_sha256": "3c27185f2cb97c646cd4d1a27d5e1b75ed2ef605d2c095d366fc4f7460488fcb"
+    },
+    {
+      "path": "src/novel_flywheel/provider_response_capture.py",
+      "symbol": "_usage_int",
+      "line": 754,
+      "kind": "Raise",
+      "classification": "EXACT_NONNEGATIVE_INT_COUNTER_VALIDATION",
+      "expression": "ProviderResponseCaptureError(f'PROVIDER_REPORTED_USAGE_FIELD_INVALID:{field}')",
+      "ast_sha256": "56657e07a19e97c678da2cfd48a4f3b8728ab55de240019f84cb97089757772b",
+      "file_sha256": "5e8128e336b81fa1881f144fadc26c511a9227453a8724a3cf2b50f8e9de9fb4"
+    },
+    {
+      "path": "src/novel_flywheel/provider_response_capture.py",
+      "symbol": "_usage_int",
+      "line": 757,
+      "kind": "Return",
+      "classification": "EXACT_NONNEGATIVE_INT_COUNTER_VALIDATION",
+      "expression": "value",
+      "ast_sha256": "88b203970aef225f077e527420a8aa37d7bea48c022a704b48a144448b80ec78",
+      "file_sha256": "5e8128e336b81fa1881f144fadc26c511a9227453a8724a3cf2b50f8e9de9fb4"
+    },
+    {
+      "path": "src/novel_flywheel/provider_response_capture.py",
+      "symbol": "canonical_anthropic_usage_v1",
+      "line": 811,
+      "kind": "Return",
+      "classification": "CACHE_INCLUSIVE_COUNTER_PROJECTION",
+      "expression": "(sum(inputs) if inputs else None, snapshot.get('output_tokens'))",
+      "ast_sha256": "4d3d1e9decaf72f7c8de9a0b5bd4c0a02ff48bcb811f056c92824f08daa1074b",
+      "file_sha256": "5e8128e336b81fa1881f144fadc26c511a9227453a8724a3cf2b50f8e9de9fb4"
+    },
+    {
+      "path": "src/novel_flywheel/provider_response_capture.py",
+      "symbol": "extract_provider_reported_actual_usage_v1",
+      "line": 860,
+      "kind": "Raise",
+      "classification": "ACCOUNTING_DELEGATES_ANTHROPIC_LIFECYCLE_TO_OWNER",
+      "expression": "ProviderResponseCaptureError('PROVIDER_REPORTED_USAGE_PROTOCOL_UNSUPPORTED')",
+      "ast_sha256": "4aefb2e0fba3b5977f27169598da4dc75f70f81cadc1c364b719cd513cefea04",
+      "file_sha256": "5e8128e336b81fa1881f144fadc26c511a9227453a8724a3cf2b50f8e9de9fb4"
+    },
+    {
+      "path": "src/novel_flywheel/provider_response_capture.py",
+      "symbol": "extract_provider_reported_actual_usage_v1",
+      "line": 871,
+      "kind": "Raise",
+      "classification": "ACCOUNTING_DELEGATES_ANTHROPIC_LIFECYCLE_TO_OWNER",
+      "expression": "ProviderResponseCaptureError('PROVIDER_REPORTED_USAGE_SSE_TERMINAL_MISSING')",
+      "ast_sha256": "edc029299e5e99cc4e4aa7dfb0a2725a251c0c78d3255cf30a30c2fe15041ddb",
+      "file_sha256": "5e8128e336b81fa1881f144fadc26c511a9227453a8724a3cf2b50f8e9de9fb4"
+    },
+    {
+      "path": "src/novel_flywheel/provider_response_capture.py",
+      "symbol": "extract_provider_reported_actual_usage_v1",
+      "line": 897,
+      "kind": "Raise",
+      "classification": "ACCOUNTING_DELEGATES_ANTHROPIC_LIFECYCLE_TO_OWNER",
+      "expression": "ProviderResponseCaptureError('PROVIDER_REPORTED_USAGE_MISSING')",
+      "ast_sha256": "e629e8d68ba228a7dc2c2aa3455c3c94e33b111325bed1d20fe856b17de33f52",
+      "file_sha256": "5e8128e336b81fa1881f144fadc26c511a9227453a8724a3cf2b50f8e9de9fb4"
+    },
+    {
+      "path": "src/novel_flywheel/provider_response_capture.py",
+      "symbol": "extract_provider_reported_actual_usage_v1",
+      "line": 917,
+      "kind": "Raise",
+      "classification": "ACCOUNTING_DELEGATES_ANTHROPIC_LIFECYCLE_TO_OWNER",
+      "expression": "ProviderResponseCaptureError('PROVIDER_REPORTED_USAGE_MISSING')",
+      "ast_sha256": "e629e8d68ba228a7dc2c2aa3455c3c94e33b111325bed1d20fe856b17de33f52",
+      "file_sha256": "5e8128e336b81fa1881f144fadc26c511a9227453a8724a3cf2b50f8e9de9fb4"
+    },
+    {
+      "path": "src/novel_flywheel/provider_response_capture.py",
+      "symbol": "extract_provider_reported_actual_usage_v1",
+      "line": 923,
+      "kind": "Raise",
+      "classification": "ACCOUNTING_DELEGATES_ANTHROPIC_LIFECYCLE_TO_OWNER",
+      "expression": "ProviderResponseCaptureError('PROVIDER_REPORTED_USAGE_INCOMPLETE')",
+      "ast_sha256": "3f47e9e4d07ad180301a64fc46022b0dd6c63794fd2db06e1950b4dd7cb99f70",
+      "file_sha256": "5e8128e336b81fa1881f144fadc26c511a9227453a8724a3cf2b50f8e9de9fb4"
+    },
+    {
+      "path": "src/novel_flywheel/provider_response_capture.py",
+      "symbol": "extract_provider_reported_actual_usage_v1",
+      "line": 927,
+      "kind": "Raise",
+      "classification": "ACCOUNTING_DELEGATES_ANTHROPIC_LIFECYCLE_TO_OWNER",
+      "expression": "ProviderResponseCaptureError('PROVIDER_REPORTED_USAGE_INPUT_CONFLICT')",
+      "ast_sha256": "5ea944faed9e4ba03ec76067c1c968995036600b9a07cc205f754d6dadd60873",
+      "file_sha256": "5e8128e336b81fa1881f144fadc26c511a9227453a8724a3cf2b50f8e9de9fb4"
+    },
+    {
+      "path": "src/novel_flywheel/provider_response_capture.py",
+      "symbol": "extract_provider_reported_actual_usage_v1",
+      "line": 931,
+      "kind": "Raise",
+      "classification": "ACCOUNTING_DELEGATES_ANTHROPIC_LIFECYCLE_TO_OWNER",
+      "expression": "ProviderResponseCaptureError('PROVIDER_REPORTED_USAGE_OUTPUT_NON_MONOTONIC')",
+      "ast_sha256": "43f5e6a55f6737f438e1588b55ad3b65dd7475e55870970b655ded7109665614",
+      "file_sha256": "5e8128e336b81fa1881f144fadc26c511a9227453a8724a3cf2b50f8e9de9fb4"
+    },
+    {
+      "path": "src/novel_flywheel/provider_response_capture.py",
+      "symbol": "extract_provider_reported_actual_usage_v1",
+      "line": 937,
+      "kind": "Raise",
+      "classification": "ACCOUNTING_DELEGATES_ANTHROPIC_LIFECYCLE_TO_OWNER",
+      "expression": "ProviderResponseCaptureError('PROVIDER_REPORTED_USAGE_NOT_POSITIVE')",
+      "ast_sha256": "b742f39f294f37866d8cf6a9a6997d280a8ac6b75feb3e409fb016990786cde3",
+      "file_sha256": "5e8128e336b81fa1881f144fadc26c511a9227453a8724a3cf2b50f8e9de9fb4"
+    },
+    {
+      "path": "src/novel_flywheel/provider_response_capture.py",
+      "symbol": "extract_provider_reported_actual_usage_v1",
+      "line": 950,
+      "kind": "Return",
+      "classification": "ACCOUNTING_DELEGATES_ANTHROPIC_LIFECYCLE_TO_OWNER",
+      "expression": "{**body, 'usage_receipt_sha256': domain_sha256('novel-flywheel-provider-reported-actual-usage-v1', body)}",
+      "ast_sha256": "443dbece991353f651ee7eb655305224ba159ce293ffe818f0d5095315f0a6ec",
+      "file_sha256": "5e8128e336b81fa1881f144fadc26c511a9227453a8724a3cf2b50f8e9de9fb4"
+    },
+    {
+      "path": "src/novel_flywheel/provider_response_capture.py",
+      "symbol": "merge_anthropic_usage_snapshot_v1",
+      "line": 794,
+      "kind": "Raise",
+      "classification": "CANONICAL_CUMULATIVE_COUNTER_REDUCER",
+      "expression": "ProviderResponseCaptureError('PROVIDER_REPORTED_USAGE_OBJECT_INVALID')",
+      "ast_sha256": "9b947eedb2807dfad3f8516648a116440542260bd6c0676e0dde6429757193dd",
+      "file_sha256": "5e8128e336b81fa1881f144fadc26c511a9227453a8724a3cf2b50f8e9de9fb4"
+    },
+    {
+      "path": "src/novel_flywheel/provider_response_capture.py",
+      "symbol": "merge_anthropic_usage_snapshot_v1",
+      "line": 802,
+      "kind": "Return",
+      "classification": "CANONICAL_CUMULATIVE_COUNTER_REDUCER",
+      "expression": "result",
+      "ast_sha256": "7b1d642d8354b03513d85ddd38bf4e4911c5b147b5b68f50fd12c2072903af3e",
+      "file_sha256": "5e8128e336b81fa1881f144fadc26c511a9227453a8724a3cf2b50f8e9de9fb4"
+    },
+    {
+      "path": "src/novel_flywheel/provider_response_capture.py",
+      "symbol": "parse_provider_protocol_input_bytes_v1",
+      "line": 645,
+      "kind": "Raise",
+      "classification": "ANTHROPIC_DELEGATE_OR_OTHER_PROTOCOL_FRAMING",
+      "expression": "outcome.primary",
+      "ast_sha256": "26aefa32202a467005ff7ec475ffcd6021bac964db3cf43bec1a04b9b0f5d7ec",
+      "file_sha256": "5e8128e336b81fa1881f144fadc26c511a9227453a8724a3cf2b50f8e9de9fb4"
+    },
+    {
+      "path": "src/novel_flywheel/provider_response_capture.py",
+      "symbol": "parse_provider_protocol_input_bytes_v1",
+      "line": 646,
+      "kind": "Return",
+      "classification": "ANTHROPIC_DELEGATE_OR_OTHER_PROTOCOL_FRAMING",
+      "expression": "(events, None)",
+      "ast_sha256": "aac21b9980721760b1a6e828c2da381f44b464e733e3ba1d4bc12454228e231e",
+      "file_sha256": "5e8128e336b81fa1881f144fadc26c511a9227453a8724a3cf2b50f8e9de9fb4"
+    },
+    {
+      "path": "src/novel_flywheel/provider_response_capture.py",
+      "symbol": "parse_provider_protocol_input_bytes_v1",
+      "line": 649,
+      "kind": "ExceptHandler",
+      "classification": "ANTHROPIC_DELEGATE_OR_OTHER_PROTOCOL_FRAMING",
+      "expression": "(LookupError, UnicodeError)",
+      "ast_sha256": "abcff0dce1d31c871a0065eb8f338d828072d239cd697933f73cbcab759fa372",
+      "file_sha256": "5e8128e336b81fa1881f144fadc26c511a9227453a8724a3cf2b50f8e9de9fb4"
+    },
+    {
+      "path": "src/novel_flywheel/provider_response_capture.py",
+      "symbol": "parse_provider_protocol_input_bytes_v1",
+      "line": 650,
+      "kind": "Raise",
+      "classification": "ANTHROPIC_DELEGATE_OR_OTHER_PROTOCOL_FRAMING",
+      "expression": "ProviderResponseCaptureError('PROVIDER_RESPONSE_REPLAY_ENCODING_INVALID')",
+      "ast_sha256": "97b27d58678dda490f91029f3c4a88f83ceb74cc9adbf40332e7d6dbbdc0bd91",
+      "file_sha256": "5e8128e336b81fa1881f144fadc26c511a9227453a8724a3cf2b50f8e9de9fb4"
+    },
+    {
+      "path": "src/novel_flywheel/provider_response_capture.py",
+      "symbol": "parse_provider_protocol_input_bytes_v1",
+      "line": 652,
+      "kind": "Return",
+      "classification": "ANTHROPIC_DELEGATE_OR_OTHER_PROTOCOL_FRAMING",
+      "expression": "(events, None)",
+      "ast_sha256": "aac21b9980721760b1a6e828c2da381f44b464e733e3ba1d4bc12454228e231e",
+      "file_sha256": "5e8128e336b81fa1881f144fadc26c511a9227453a8724a3cf2b50f8e9de9fb4"
+    },
+    {
+      "path": "src/novel_flywheel/provider_response_capture.py",
+      "symbol": "parse_provider_protocol_input_bytes_v1",
+      "line": 655,
+      "kind": "ExceptHandler",
+      "classification": "ANTHROPIC_DELEGATE_OR_OTHER_PROTOCOL_FRAMING",
+      "expression": "(LookupError, UnicodeError)",
+      "ast_sha256": "abcff0dce1d31c871a0065eb8f338d828072d239cd697933f73cbcab759fa372",
+      "file_sha256": "5e8128e336b81fa1881f144fadc26c511a9227453a8724a3cf2b50f8e9de9fb4"
+    },
+    {
+      "path": "src/novel_flywheel/provider_response_capture.py",
+      "symbol": "parse_provider_protocol_input_bytes_v1",
+      "line": 656,
+      "kind": "Raise",
+      "classification": "ANTHROPIC_DELEGATE_OR_OTHER_PROTOCOL_FRAMING",
+      "expression": "ProviderResponseCaptureError('PROVIDER_RESPONSE_REPLAY_ENCODING_INVALID')",
+      "ast_sha256": "97b27d58678dda490f91029f3c4a88f83ceb74cc9adbf40332e7d6dbbdc0bd91",
+      "file_sha256": "5e8128e336b81fa1881f144fadc26c511a9227453a8724a3cf2b50f8e9de9fb4"
+    },
+    {
+      "path": "src/novel_flywheel/provider_response_capture.py",
+      "symbol": "parse_provider_protocol_input_bytes_v1",
+      "line": 661,
+      "kind": "ExceptHandler",
+      "classification": "ANTHROPIC_DELEGATE_OR_OTHER_PROTOCOL_FRAMING",
+      "expression": "ValueError",
+      "ast_sha256": "289eba2e980eace76cda0b78e748e22dfa04a1d65499d817b561c54cc77c9447",
+      "file_sha256": "5e8128e336b81fa1881f144fadc26c511a9227453a8724a3cf2b50f8e9de9fb4"
+    },
+    {
+      "path": "src/novel_flywheel/provider_response_capture.py",
+      "symbol": "parse_provider_protocol_input_bytes_v1",
+      "line": 662,
+      "kind": "Raise",
+      "classification": "ANTHROPIC_DELEGATE_OR_OTHER_PROTOCOL_FRAMING",
+      "expression": "ProviderResponseCaptureError('PROVIDER_RESPONSE_REPLAY_JSON_INVALID')",
+      "ast_sha256": "61c601fcb02b315fab3b60944b1e1aa914f55266fb215cbc4feca796394eb35a",
+      "file_sha256": "5e8128e336b81fa1881f144fadc26c511a9227453a8724a3cf2b50f8e9de9fb4"
+    },
+    {
+      "path": "src/novel_flywheel/provider_response_capture.py",
+      "symbol": "parse_provider_protocol_input_bytes_v1",
+      "line": 664,
+      "kind": "Raise",
+      "classification": "ANTHROPIC_DELEGATE_OR_OTHER_PROTOCOL_FRAMING",
+      "expression": "ProviderResponseCaptureError('PROVIDER_RESPONSE_REPLAY_JSON_OBJECT_REQUIRED')",
+      "ast_sha256": "de8e45ce3f4a7d6def1f1a314552c1498a8a941b08e76725428124a4bb7fe9c2",
+      "file_sha256": "5e8128e336b81fa1881f144fadc26c511a9227453a8724a3cf2b50f8e9de9fb4"
+    },
+    {
+      "path": "src/novel_flywheel/provider_response_capture.py",
+      "symbol": "parse_provider_protocol_input_bytes_v1",
+      "line": 665,
+      "kind": "Return",
+      "classification": "ANTHROPIC_DELEGATE_OR_OTHER_PROTOCOL_FRAMING",
+      "expression": "([], value)",
+      "ast_sha256": "0181c4087f77b68224c85623eadb7a7808bf08ccc4cef62bacdc778009df60bd",
+      "file_sha256": "5e8128e336b81fa1881f144fadc26c511a9227453a8724a3cf2b50f8e9de9fb4"
+    },
+    {
+      "path": "src/novel_flywheel/provider_response_capture.py",
+      "symbol": "provider_protocol_input_has_terminal_bytes_v1",
+      "line": 724,
+      "kind": "Return",
+      "classification": "NON_ANTHROPIC_PRODUCTION_HINT_LEGACY_PUBLIC_COMPATIBILITY",
+      "expression": "False",
+      "ast_sha256": "dd863ea504e8543d2fb185a820aa7e2cf2d0ceddec9c835185a3510fc2ab463d",
+      "file_sha256": "5e8128e336b81fa1881f144fadc26c511a9227453a8724a3cf2b50f8e9de9fb4"
+    },
+    {
+      "path": "src/novel_flywheel/provider_response_capture.py",
+      "symbol": "provider_protocol_input_has_terminal_bytes_v1",
+      "line": 728,
+      "kind": "ExceptHandler",
+      "classification": "NON_ANTHROPIC_PRODUCTION_HINT_LEGACY_PUBLIC_COMPATIBILITY",
+      "expression": "(LookupError, UnicodeError, ProviderResponseCaptureError)",
+      "ast_sha256": "dd5ad941453b5ac0ea5e53b4f7fc759ba57d6409d1a20be196360dee0f0e73bd",
+      "file_sha256": "5e8128e336b81fa1881f144fadc26c511a9227453a8724a3cf2b50f8e9de9fb4"
+    },
+    {
+      "path": "src/novel_flywheel/provider_response_capture.py",
+      "symbol": "provider_protocol_input_has_terminal_bytes_v1",
+      "line": 729,
+      "kind": "Return",
+      "classification": "NON_ANTHROPIC_PRODUCTION_HINT_LEGACY_PUBLIC_COMPATIBILITY",
+      "expression": "False",
+      "ast_sha256": "dd863ea504e8543d2fb185a820aa7e2cf2d0ceddec9c835185a3510fc2ab463d",
+      "file_sha256": "5e8128e336b81fa1881f144fadc26c511a9227453a8724a3cf2b50f8e9de9fb4"
+    },
+    {
+      "path": "src/novel_flywheel/provider_response_capture.py",
+      "symbol": "provider_protocol_input_has_terminal_bytes_v1",
+      "line": 731,
+      "kind": "Return",
+      "classification": "NON_ANTHROPIC_PRODUCTION_HINT_LEGACY_PUBLIC_COMPATIBILITY",
+      "expression": "True",
+      "ast_sha256": "4a8ef490a01d3017cb999fbea58c2adfb60a40ad736e0d23eceb176a236b14c3",
+      "file_sha256": "5e8128e336b81fa1881f144fadc26c511a9227453a8724a3cf2b50f8e9de9fb4"
+    },
+    {
+      "path": "src/novel_flywheel/provider_response_capture.py",
+      "symbol": "provider_protocol_input_has_terminal_bytes_v1",
+      "line": 733,
+      "kind": "Return",
+      "classification": "NON_ANTHROPIC_PRODUCTION_HINT_LEGACY_PUBLIC_COMPATIBILITY",
+      "expression": "False",
+      "ast_sha256": "dd863ea504e8543d2fb185a820aa7e2cf2d0ceddec9c835185a3510fc2ab463d",
+      "file_sha256": "5e8128e336b81fa1881f144fadc26c511a9227453a8724a3cf2b50f8e9de9fb4"
+    },
+    {
+      "path": "src/novel_flywheel/provider_response_capture.py",
+      "symbol": "provider_protocol_input_has_terminal_bytes_v1",
+      "line": 742,
+      "kind": "Return",
+      "classification": "NON_ANTHROPIC_PRODUCTION_HINT_LEGACY_PUBLIC_COMPATIBILITY",
+      "expression": "index >= 0 and events[index].get('type') == 'message_stop'",
+      "ast_sha256": "970067357f906fa19d994acd1fb0f180f80f4bbf7fbb5e3c76070ed916cfb8f6",
+      "file_sha256": "5e8128e336b81fa1881f144fadc26c511a9227453a8724a3cf2b50f8e9de9fb4"
+    },
+    {
+      "path": "src/novel_flywheel/provider_response_capture.py",
+      "symbol": "provider_protocol_input_has_terminal_bytes_v1",
+      "line": 743,
+      "kind": "Return",
+      "classification": "NON_ANTHROPIC_PRODUCTION_HINT_LEGACY_PUBLIC_COMPATIBILITY",
+      "expression": "terminal_type in {'error', 'message_stop', 'response.completed', 'response.failed', 'response.incomplete'}",
+      "ast_sha256": "8ca8932696fe85ebd7a3fed75869166ec3fe1beafa6040e1c920f90f84111440",
+      "file_sha256": "5e8128e336b81fa1881f144fadc26c511a9227453a8724a3cf2b50f8e9de9fb4"
+    },
+    {
+      "path": "src/novel_flywheel/provider_stream_error.py",
+      "symbol": "ProviderErrorEventV1.__init__",
+      "line": 86,
+      "kind": "IMPLICIT_FUNCTION_FALLTHROUGH",
+      "classification": "UNFORGEABLE_PROVIDER_ERROR_PROVENANCE",
+      "file_sha256": "71c15b9f098c63dcd2d67ddc9a3aba16beee0a079c53b5b9f009a4655d6eebe1"
+    },
+    {
+      "path": "src/novel_flywheel/provider_stream_error.py",
+      "symbol": "normalize_stream_error_v1",
+      "line": 73,
+      "kind": "Return",
+      "classification": "GUARDED_SAFE_PROVIDER_ERROR_NORMALIZATION",
+      "expression": "StreamProviderErrorEvidenceV1(payload_shape=shape or payload_shape(value), nested_error_shape=nested_shape, provider_error_type=candidate if isinstance(candidate, str) and candidate in _KNOWN_TYPES else 'provider_error', raw_payload_sha256=hashlib.sha256(raw).hexdigest(), raw_payload_length=len(raw), payload_hash_domain=hash_domain, event_ordinal=ordinal, event_data_type_conflict=conflict)",
+      "ast_sha256": "3480ac0e1a1b8caa7bf97e243dbca13afc8aaf1ad69aa4943a1c36635edd3730",
+      "file_sha256": "71c15b9f098c63dcd2d67ddc9a3aba16beee0a079c53b5b9f009a4655d6eebe1"
+    },
+    {
+      "path": "src/novel_flywheel/provider_stream_error.py",
+      "symbol": "payload_shape",
+      "line": 52,
+      "kind": "Return",
+      "classification": "JSON_SHAPE_CLASSIFICATION",
+      "expression": "'null'",
+      "ast_sha256": "2425c9bf2b1f1af76bd12a5d42fd4635087332849df76bcaa90940c3449556cc",
+      "file_sha256": "71c15b9f098c63dcd2d67ddc9a3aba16beee0a079c53b5b9f009a4655d6eebe1"
+    },
+    {
+      "path": "src/novel_flywheel/provider_stream_error.py",
+      "symbol": "payload_shape",
+      "line": 54,
+      "kind": "Return",
+      "classification": "JSON_SHAPE_CLASSIFICATION",
+      "expression": "'boolean'",
+      "ast_sha256": "241a82ca290b8065d52cb4dbe32fe7dc566a10b857e74b4ace2a591ca885d357",
+      "file_sha256": "71c15b9f098c63dcd2d67ddc9a3aba16beee0a079c53b5b9f009a4655d6eebe1"
+    },
+    {
+      "path": "src/novel_flywheel/provider_stream_error.py",
+      "symbol": "payload_shape",
+      "line": 56,
+      "kind": "Return",
+      "classification": "JSON_SHAPE_CLASSIFICATION",
+      "expression": "'object'",
+      "ast_sha256": "833607391ea963c7f01334fc55dbfb3232ccdd2b75058dba440ed418df2cad1d",
+      "file_sha256": "71c15b9f098c63dcd2d67ddc9a3aba16beee0a079c53b5b9f009a4655d6eebe1"
+    },
+    {
+      "path": "src/novel_flywheel/provider_stream_error.py",
+      "symbol": "payload_shape",
+      "line": 58,
+      "kind": "Return",
+      "classification": "JSON_SHAPE_CLASSIFICATION",
+      "expression": "'string'",
+      "ast_sha256": "1a9627ed2d0f51df9873b43a65fe8d72e2e73f31ce7657b75ec89b34bc8dde8b",
+      "file_sha256": "71c15b9f098c63dcd2d67ddc9a3aba16beee0a079c53b5b9f009a4655d6eebe1"
+    },
+    {
+      "path": "src/novel_flywheel/provider_stream_error.py",
+      "symbol": "payload_shape",
+      "line": 60,
+      "kind": "Return",
+      "classification": "JSON_SHAPE_CLASSIFICATION",
+      "expression": "'array'",
+      "ast_sha256": "33c91c607c691770fc3bf60086c41fef3c56839fec44e62d295be55a46f19601",
+      "file_sha256": "71c15b9f098c63dcd2d67ddc9a3aba16beee0a079c53b5b9f009a4655d6eebe1"
+    },
+    {
+      "path": "src/novel_flywheel/provider_stream_error.py",
+      "symbol": "payload_shape",
+      "line": 61,
+      "kind": "Return",
+      "classification": "JSON_SHAPE_CLASSIFICATION",
+      "expression": "'number'",
+      "ast_sha256": "aaf80bcfca7cbb65a68acf4c9ecfaadb615a0b90c36312349adf19f6a561cd95",
+      "file_sha256": "71c15b9f098c63dcd2d67ddc9a3aba16beee0a079c53b5b9f009a4655d6eebe1"
+    },
+    {
+      "path": "src/novel_flywheel/provider_stream_error.py",
+      "symbol": "stream_error_evidence_v1",
+      "line": 91,
+      "kind": "Return",
+      "classification": "TYPED_EVIDENCE_PROJECTION",
+      "expression": "evidence if isinstance(evidence, StreamProviderErrorEvidenceV1) else None",
+      "ast_sha256": "68dc98afdae755556419e1c9dc4f6420b1800403a819c00b0a2fad005835d40a",
+      "file_sha256": "71c15b9f098c63dcd2d67ddc9a3aba16beee0a079c53b5b9f009a4655d6eebe1"
+    },
+    {
+      "path": "src/novel_flywheel/providers/http.py",
+      "symbol": "HttpProvider._capture_provider_protocol_input",
+      "line": 273,
+      "kind": "Return",
+      "classification": "CAPTURE_CALLBACK_ACK_ONLY_ON_SUCCESS",
+      "expression": "bare propagation / void return",
+      "ast_sha256": "d3ec646650be52e3f5b5700447f19313b1bab9ed1bd27c2483960d5d0bcaf584",
+      "file_sha256": "2f2d69cace513a9c85ec48a3fe4e80bd227dad6948709af2f51eaf375aa883f6"
+    },
+    {
+      "path": "src/novel_flywheel/providers/http.py",
+      "symbol": "HttpProvider._capture_provider_protocol_input",
+      "line": 278,
+      "kind": "Return",
+      "classification": "CAPTURE_CALLBACK_ACK_ONLY_ON_SUCCESS",
+      "expression": "callback(data=data, status_code=status_code, content_type=content_type or 'application/octet-stream', encoding=encoding or 'utf-8', transport_complete=transport_complete)",
+      "ast_sha256": "5163743140149ec1d51315927a76609923dd236b062195960b823ba867baf254",
+      "file_sha256": "2f2d69cace513a9c85ec48a3fe4e80bd227dad6948709af2f51eaf375aa883f6"
+    },
+    {
+      "path": "src/novel_flywheel/providers/http.py",
+      "symbol": "HttpProvider._capture_provider_protocol_input",
+      "line": 283,
+      "kind": "IMPLICIT_FUNCTION_FALLTHROUGH",
+      "classification": "CAPTURE_CALLBACK_ACK_ONLY_ON_SUCCESS",
+      "file_sha256": "2f2d69cace513a9c85ec48a3fe4e80bd227dad6948709af2f51eaf375aa883f6"
+    },
+    {
+      "path": "src/novel_flywheel/providers/http.py",
+      "symbol": "HttpProvider._stream_error_diagnostic",
+      "line": 142,
+      "kind": "IMPLICIT_FUNCTION_FALLTHROUGH",
+      "classification": "SAFE_PROVIDER_ERROR_OBSERVER_DIAGNOSTIC",
+      "file_sha256": "2f2d69cace513a9c85ec48a3fe4e80bd227dad6948709af2f51eaf375aa883f6"
+    },
+    {
+      "path": "src/novel_flywheel/providers/http.py",
+      "symbol": "HttpProvider.post_stream",
+      "line": 449,
+      "kind": "Return",
+      "classification": "HTTP_STATUS_SIBLING_OR_OWNED_SSE_RETURN_OR_PRIMARY_PRESERVING_CLOSE_EXIT",
+      "expression": "await self.post_stream(path, payload=fallback, headers=headers)",
+      "ast_sha256": "10f04bedec390a26f94487205313205201c990e847498324f659654a02f543cf",
+      "file_sha256": "2f2d69cace513a9c85ec48a3fe4e80bd227dad6948709af2f51eaf375aa883f6"
+    },
+    {
+      "path": "src/novel_flywheel/providers/http.py",
+      "symbol": "HttpProvider.post_stream",
+      "line": 455,
+      "kind": "Return",
+      "classification": "HTTP_STATUS_SIBLING_OR_OWNED_SSE_RETURN_OR_PRIMARY_PRESERVING_CLOSE_EXIT",
+      "expression": "([], await self.post(path, payload=fallback, headers=headers))",
+      "ast_sha256": "825ccfcb0f8243513b49a71a9ecac28dad7fc01dc4095682fd50ab69eba2e2d2",
+      "file_sha256": "2f2d69cace513a9c85ec48a3fe4e80bd227dad6948709af2f51eaf375aa883f6"
+    },
+    {
+      "path": "src/novel_flywheel/providers/http.py",
+      "symbol": "HttpProvider.post_stream",
+      "line": 459,
+      "kind": "Raise",
+      "classification": "HTTP_STATUS_SIBLING_OR_OWNED_SSE_RETURN_OR_PRIMARY_PRESERVING_CLOSE_EXIT",
+      "expression": "ToolCapabilityError(response.text[:500])",
+      "ast_sha256": "f1752b3652584ad6946ef0d48f608e1207da838e521d94fb19a7e3aef59ccefa",
+      "file_sha256": "2f2d69cace513a9c85ec48a3fe4e80bd227dad6948709af2f51eaf375aa883f6"
+    },
+    {
+      "path": "src/novel_flywheel/providers/http.py",
+      "symbol": "HttpProvider.post_stream",
+      "line": 476,
+      "kind": "Return",
+      "classification": "HTTP_STATUS_SIBLING_OR_OWNED_SSE_RETURN_OR_PRIMARY_PRESERVING_CLOSE_EXIT",
+      "expression": "(events, None)",
+      "ast_sha256": "aac21b9980721760b1a6e828c2da381f44b464e733e3ba1d4bc12454228e231e",
+      "file_sha256": "2f2d69cace513a9c85ec48a3fe4e80bd227dad6948709af2f51eaf375aa883f6"
+    },
+    {
+      "path": "src/novel_flywheel/providers/http.py",
+      "symbol": "HttpProvider.post_stream",
+      "line": 481,
+      "kind": "ExceptHandler",
+      "classification": "HTTP_STATUS_SIBLING_OR_OWNED_SSE_RETURN_OR_PRIMARY_PRESERVING_CLOSE_EXIT",
+      "expression": "(asyncio.CancelledError, Exception)",
+      "ast_sha256": "0d663a532fd5cdfba9caa572cb9a2a7352a36bdf8ece50de2dbf73e2c2f44c25",
+      "file_sha256": "2f2d69cace513a9c85ec48a3fe4e80bd227dad6948709af2f51eaf375aa883f6"
+    },
+    {
+      "path": "src/novel_flywheel/providers/http.py",
+      "symbol": "HttpProvider.post_stream",
+      "line": 486,
+      "kind": "Raise",
+      "classification": "HTTP_STATUS_SIBLING_OR_OWNED_SSE_RETURN_OR_PRIMARY_PRESERVING_CLOSE_EXIT",
+      "expression": "bare propagation / void return",
+      "ast_sha256": "ba28128c14dfbd0a9062c0dbab42ad6c52ecf0767df6b67576deb1dbbfdd038d",
+      "file_sha256": "2f2d69cace513a9c85ec48a3fe4e80bd227dad6948709af2f51eaf375aa883f6"
+    },
+    {
+      "path": "src/novel_flywheel/providers/http.py",
+      "symbol": "HttpProvider.post_stream",
+      "line": 517,
+      "kind": "ExceptHandler",
+      "classification": "HTTP_STATUS_SIBLING_OR_OWNED_SSE_RETURN_OR_PRIMARY_PRESERVING_CLOSE_EXIT",
+      "expression": "ProviderResponseCaptureError",
+      "ast_sha256": "027957d78b1f4b72bcc31c1146d1a046ed870bbf8414cfa56c42826b5c1e41e8",
+      "file_sha256": "2f2d69cace513a9c85ec48a3fe4e80bd227dad6948709af2f51eaf375aa883f6"
+    },
+    {
+      "path": "src/novel_flywheel/providers/http.py",
+      "symbol": "HttpProvider.post_stream",
+      "line": 518,
+      "kind": "Raise",
+      "classification": "HTTP_STATUS_SIBLING_OR_OWNED_SSE_RETURN_OR_PRIMARY_PRESERVING_CLOSE_EXIT",
+      "expression": "ProviderResponseError(f'Provider returned invalid terminal response bytes (content-type={_bounded_content_type_provenance(content_type)}) from {response.url}')",
+      "ast_sha256": "b366e1cba6bc5d84ebef866135b75051548706fd996e94937d64cacf783f05c6",
+      "file_sha256": "2f2d69cace513a9c85ec48a3fe4e80bd227dad6948709af2f51eaf375aa883f6"
+    },
+    {
+      "path": "src/novel_flywheel/providers/http.py",
+      "symbol": "HttpProvider.post_stream",
+      "line": 526,
+      "kind": "Return",
+      "classification": "HTTP_STATUS_SIBLING_OR_OWNED_SSE_RETURN_OR_PRIMARY_PRESERVING_CLOSE_EXIT",
+      "expression": "(events, result)",
+      "ast_sha256": "f59299c6af602617894e307cf8118cecfa04b1f67b1862af620349f584bae2d8",
+      "file_sha256": "2f2d69cace513a9c85ec48a3fe4e80bd227dad6948709af2f51eaf375aa883f6"
+    },
+    {
+      "path": "src/novel_flywheel/providers/http.py",
+      "symbol": "HttpProvider.post_stream",
+      "line": 527,
+      "kind": "Raise",
+      "classification": "HTTP_STATUS_SIBLING_OR_OWNED_SSE_RETURN_OR_PRIMARY_PRESERVING_CLOSE_EXIT",
+      "expression": "bare propagation / void return",
+      "ast_sha256": "ba28128c14dfbd0a9062c0dbab42ad6c52ecf0767df6b67576deb1dbbfdd038d",
+      "file_sha256": "2f2d69cace513a9c85ec48a3fe4e80bd227dad6948709af2f51eaf375aa883f6"
+    },
+    {
+      "path": "src/novel_flywheel/providers/http.py",
+      "symbol": "HttpProvider.post_stream",
+      "line": 543,
+      "kind": "ExceptHandler",
+      "classification": "HTTP_STATUS_SIBLING_OR_OWNED_SSE_RETURN_OR_PRIMARY_PRESERVING_CLOSE_EXIT",
+      "expression": "ProviderResponseCaptureError",
+      "ast_sha256": "d196934501670c54094c6992fe384c83537756c9752a2e4521bec5334b1750b5",
+      "file_sha256": "2f2d69cace513a9c85ec48a3fe4e80bd227dad6948709af2f51eaf375aa883f6"
+    },
+    {
+      "path": "src/novel_flywheel/providers/http.py",
+      "symbol": "HttpProvider.post_stream",
+      "line": 544,
+      "kind": "Raise",
+      "classification": "HTTP_STATUS_SIBLING_OR_OWNED_SSE_RETURN_OR_PRIMARY_PRESERVING_CLOSE_EXIT",
+      "expression": "ProviderResponseError(f'Provider returned invalid response bytes (content-type={_bounded_content_type_provenance(content_type)}) from {response.url}')",
+      "ast_sha256": "1a52342eac101d593a864400b029cbe6787cd29a80e727958d50a8cf509a84de",
+      "file_sha256": "2f2d69cace513a9c85ec48a3fe4e80bd227dad6948709af2f51eaf375aa883f6"
+    },
+    {
+      "path": "src/novel_flywheel/providers/http.py",
+      "symbol": "HttpProvider.post_stream",
+      "line": 551,
+      "kind": "Return",
+      "classification": "HTTP_STATUS_SIBLING_OR_OWNED_SSE_RETURN_OR_PRIMARY_PRESERVING_CLOSE_EXIT",
+      "expression": "(events, result)",
+      "ast_sha256": "f59299c6af602617894e307cf8118cecfa04b1f67b1862af620349f584bae2d8",
+      "file_sha256": "2f2d69cace513a9c85ec48a3fe4e80bd227dad6948709af2f51eaf375aa883f6"
+    },
+    {
+      "path": "src/novel_flywheel/providers/http.py",
+      "symbol": "HttpProvider.post_stream",
+      "line": 552,
+      "kind": "ExceptHandler",
+      "classification": "HTTP_STATUS_SIBLING_OR_OWNED_SSE_RETURN_OR_PRIMARY_PRESERVING_CLOSE_EXIT",
+      "expression": "httpx.TransportError",
+      "ast_sha256": "3e1a835f776e993a798d36b84003b9a9c055dda70c24f0ab2cc2990638414ea8",
+      "file_sha256": "2f2d69cace513a9c85ec48a3fe4e80bd227dad6948709af2f51eaf375aa883f6"
+    },
+    {
+      "path": "src/novel_flywheel/providers/http.py",
+      "symbol": "HttpProvider.post_stream",
+      "line": 555,
+      "kind": "Return",
+      "classification": "HTTP_STATUS_SIBLING_OR_OWNED_SSE_RETURN_OR_PRIMARY_PRESERVING_CLOSE_EXIT",
+      "expression": "(events, None)",
+      "ast_sha256": "aac21b9980721760b1a6e828c2da381f44b464e733e3ba1d4bc12454228e231e",
+      "file_sha256": "2f2d69cace513a9c85ec48a3fe4e80bd227dad6948709af2f51eaf375aa883f6"
+    },
+    {
+      "path": "src/novel_flywheel/providers/http.py",
+      "symbol": "HttpProvider.post_stream",
+      "line": 558,
+      "kind": "Raise",
+      "classification": "HTTP_STATUS_SIBLING_OR_OWNED_SSE_RETURN_OR_PRIMARY_PRESERVING_CLOSE_EXIT",
+      "expression": "primary",
+      "ast_sha256": "e06733d94dc7bca93e448438af46a82dccb710f8418690714ff5873a45a9feaa",
+      "file_sha256": "2f2d69cace513a9c85ec48a3fe4e80bd227dad6948709af2f51eaf375aa883f6"
+    },
+    {
+      "path": "src/novel_flywheel/providers/http.py",
+      "symbol": "HttpProvider.post_stream",
+      "line": 562,
+      "kind": "Raise",
+      "classification": "HTTP_STATUS_SIBLING_OR_OWNED_SSE_RETURN_OR_PRIMARY_PRESERVING_CLOSE_EXIT",
+      "expression": "bare propagation / void return",
+      "ast_sha256": "ba28128c14dfbd0a9062c0dbab42ad6c52ecf0767df6b67576deb1dbbfdd038d",
+      "file_sha256": "2f2d69cace513a9c85ec48a3fe4e80bd227dad6948709af2f51eaf375aa883f6"
+    },
+    {
+      "path": "src/novel_flywheel/providers/http.py",
+      "symbol": "HttpProvider.post_stream",
+      "line": 564,
+      "kind": "ExceptHandler",
+      "classification": "HTTP_STATUS_SIBLING_OR_OWNED_SSE_RETURN_OR_PRIMARY_PRESERVING_CLOSE_EXIT",
+      "expression": "asyncio.CancelledError",
+      "ast_sha256": "71cb9ae99d632218f164719a45e21e2a3a477213417d5fe5ef52ea2f48f8f3b2",
+      "file_sha256": "2f2d69cace513a9c85ec48a3fe4e80bd227dad6948709af2f51eaf375aa883f6"
+    },
+    {
+      "path": "src/novel_flywheel/providers/http.py",
+      "symbol": "HttpProvider.post_stream",
+      "line": 567,
+      "kind": "Return",
+      "classification": "HTTP_STATUS_SIBLING_OR_OWNED_SSE_RETURN_OR_PRIMARY_PRESERVING_CLOSE_EXIT",
+      "expression": "(events, None)",
+      "ast_sha256": "aac21b9980721760b1a6e828c2da381f44b464e733e3ba1d4bc12454228e231e",
+      "file_sha256": "2f2d69cace513a9c85ec48a3fe4e80bd227dad6948709af2f51eaf375aa883f6"
+    },
+    {
+      "path": "src/novel_flywheel/providers/http.py",
+      "symbol": "HttpProvider.post_stream",
+      "line": 570,
+      "kind": "Raise",
+      "classification": "HTTP_STATUS_SIBLING_OR_OWNED_SSE_RETURN_OR_PRIMARY_PRESERVING_CLOSE_EXIT",
+      "expression": "primary",
+      "ast_sha256": "e06733d94dc7bca93e448438af46a82dccb710f8418690714ff5873a45a9feaa",
+      "file_sha256": "2f2d69cace513a9c85ec48a3fe4e80bd227dad6948709af2f51eaf375aa883f6"
+    },
+    {
+      "path": "src/novel_flywheel/providers/http.py",
+      "symbol": "HttpProvider.post_stream",
+      "line": 572,
+      "kind": "Raise",
+      "classification": "HTTP_STATUS_SIBLING_OR_OWNED_SSE_RETURN_OR_PRIMARY_PRESERVING_CLOSE_EXIT",
+      "expression": "bare propagation / void return",
+      "ast_sha256": "ba28128c14dfbd0a9062c0dbab42ad6c52ecf0767df6b67576deb1dbbfdd038d",
+      "file_sha256": "2f2d69cace513a9c85ec48a3fe4e80bd227dad6948709af2f51eaf375aa883f6"
+    },
+    {
+      "path": "src/novel_flywheel/providers/http.py",
+      "symbol": "HttpProvider.post_stream",
+      "line": 573,
+      "kind": "ExceptHandler",
+      "classification": "HTTP_STATUS_SIBLING_OR_OWNED_SSE_RETURN_OR_PRIMARY_PRESERVING_CLOSE_EXIT",
+      "expression": "Exception",
+      "ast_sha256": "9afaff2cf2a13f2fc0638b0d8659b4992459a6a61730db168c919a1fbe286740",
+      "file_sha256": "2f2d69cace513a9c85ec48a3fe4e80bd227dad6948709af2f51eaf375aa883f6"
+    },
+    {
+      "path": "src/novel_flywheel/providers/http.py",
+      "symbol": "HttpProvider.post_stream",
+      "line": 576,
+      "kind": "Return",
+      "classification": "HTTP_STATUS_SIBLING_OR_OWNED_SSE_RETURN_OR_PRIMARY_PRESERVING_CLOSE_EXIT",
+      "expression": "(events, None)",
+      "ast_sha256": "aac21b9980721760b1a6e828c2da381f44b464e733e3ba1d4bc12454228e231e",
+      "file_sha256": "2f2d69cace513a9c85ec48a3fe4e80bd227dad6948709af2f51eaf375aa883f6"
+    },
+    {
+      "path": "src/novel_flywheel/providers/http.py",
+      "symbol": "HttpProvider.post_stream",
+      "line": 582,
+      "kind": "ExceptHandler",
+      "classification": "HTTP_STATUS_SIBLING_OR_OWNED_SSE_RETURN_OR_PRIMARY_PRESERVING_CLOSE_EXIT",
+      "expression": "Exception",
+      "ast_sha256": "e2bc12875bd923dc7fb583d02f05ad9f62896fa9ede0f6c66cd16b3da09a7463",
+      "file_sha256": "2f2d69cace513a9c85ec48a3fe4e80bd227dad6948709af2f51eaf375aa883f6"
+    },
+    {
+      "path": "src/novel_flywheel/providers/http.py",
+      "symbol": "HttpProvider.post_stream",
+      "line": 586,
+      "kind": "Raise",
+      "classification": "HTTP_STATUS_SIBLING_OR_OWNED_SSE_RETURN_OR_PRIMARY_PRESERVING_CLOSE_EXIT",
+      "expression": "primary",
+      "ast_sha256": "e06733d94dc7bca93e448438af46a82dccb710f8418690714ff5873a45a9feaa",
+      "file_sha256": "2f2d69cace513a9c85ec48a3fe4e80bd227dad6948709af2f51eaf375aa883f6"
+    },
+    {
+      "path": "src/novel_flywheel/providers/http.py",
+      "symbol": "HttpProvider.post_stream",
+      "line": 588,
+      "kind": "Raise",
+      "classification": "HTTP_STATUS_SIBLING_OR_OWNED_SSE_RETURN_OR_PRIMARY_PRESERVING_CLOSE_EXIT",
+      "expression": "bare propagation / void return",
+      "ast_sha256": "ba28128c14dfbd0a9062c0dbab42ad6c52ecf0767df6b67576deb1dbbfdd038d",
+      "file_sha256": "2f2d69cace513a9c85ec48a3fe4e80bd227dad6948709af2f51eaf375aa883f6"
+    },
+    {
+      "path": "src/novel_flywheel/providers/http.py",
+      "symbol": "HttpProvider.post_stream",
+      "line": 589,
+      "kind": "Raise",
+      "classification": "HTTP_STATUS_SIBLING_OR_OWNED_SSE_RETURN_OR_PRIMARY_PRESERVING_CLOSE_EXIT",
+      "expression": "RuntimeError('unreachable')",
+      "ast_sha256": "a4d65c7ae080eaa8ec90c418a44088ce9328afc9c9b8d81d200486f596d5913f",
+      "file_sha256": "2f2d69cace513a9c85ec48a3fe4e80bd227dad6948709af2f51eaf375aa883f6"
+    }
+  ],
+  "transport_classification_callsites": [
+    {
+      "path": "src/novel_flywheel/providers/anthropic.py",
+      "line": 61,
+      "caller": "AnthropicAdapter._consume_protocol_stream",
+      "input": "tail_error",
+      "classification": "RESPONSE_ITERATOR_OR_CLOSE_OPERATION",
+      "evidence": "Adapter catches aiter_bytes; HTTP uses successful_stream or observed Provider primary after its response context. Exceptions remain original primary objects before terminal; after terminal they are bounded diagnostics."
+    },
+    {
+      "path": "src/novel_flywheel/providers/http.py",
+      "line": 554,
+      "caller": "HttpProvider.post_stream",
+      "input": "exc",
+      "classification": "RESPONSE_ITERATOR_OR_CLOSE_OPERATION",
+      "evidence": "Adapter catches aiter_bytes; HTTP uses successful_stream or observed Provider primary after its response context. Exceptions remain original primary objects before terminal; after terminal they are bounded diagnostics."
+    },
+    {
+      "path": "src/novel_flywheel/providers/http.py",
+      "line": 557,
+      "caller": "HttpProvider.post_stream",
+      "input": "exc",
+      "classification": "RESPONSE_ITERATOR_OR_CLOSE_OPERATION",
+      "evidence": "Adapter catches aiter_bytes; HTTP uses successful_stream or observed Provider primary after its response context. Exceptions remain original primary objects before terminal; after terminal they are bounded diagnostics."
+    },
+    {
+      "path": "src/novel_flywheel/providers/http.py",
+      "line": 566,
+      "caller": "HttpProvider.post_stream",
+      "input": "exc",
+      "classification": "RESPONSE_ITERATOR_OR_CLOSE_OPERATION",
+      "evidence": "Adapter catches aiter_bytes; HTTP uses successful_stream or observed Provider primary after its response context. Exceptions remain original primary objects before terminal; after terminal they are bounded diagnostics."
+    },
+    {
+      "path": "src/novel_flywheel/providers/http.py",
+      "line": 569,
+      "caller": "HttpProvider.post_stream",
+      "input": "exc",
+      "classification": "RESPONSE_ITERATOR_OR_CLOSE_OPERATION",
+      "evidence": "Adapter catches aiter_bytes; HTTP uses successful_stream or observed Provider primary after its response context. Exceptions remain original primary objects before terminal; after terminal they are bounded diagnostics."
+    },
+    {
+      "path": "src/novel_flywheel/providers/http.py",
+      "line": 575,
+      "caller": "HttpProvider.post_stream",
+      "input": "exc",
+      "classification": "RESPONSE_ITERATOR_OR_CLOSE_OPERATION",
+      "evidence": "Adapter catches aiter_bytes; HTTP uses successful_stream or observed Provider primary after its response context. Exceptions remain original primary objects before terminal; after terminal they are bounded diagnostics."
+    },
+    {
+      "path": "src/novel_flywheel/providers/http.py",
+      "line": 579,
+      "caller": "HttpProvider.post_stream",
+      "input": "exc",
+      "classification": "RESPONSE_ITERATOR_OR_CLOSE_OPERATION",
+      "evidence": "Adapter catches aiter_bytes; HTTP uses successful_stream or observed Provider primary after its response context. Exceptions remain original primary objects before terminal; after terminal they are bounded diagnostics."
+    }
+  ],
+  "unclassified": [],
+  "supported_content_types": [
+    "text",
+    "tool_use",
+    "thinking",
+    "redacted_thinking"
+  ],
+  "supported_delta_types": [
+    "text_delta",
+    "input_json_delta",
+    "thinking_delta",
+    "signature_delta"
+  ],
+  "payload_guard_partitions": [
+    {
+      "line": 324,
+      "reason_expression": "AnthropicStreamProtocolError('ANTHROPIC_SSE_' + reason)",
+      "behavior": "Typed payload failure; no semantic success"
+    },
+    {
+      "line": 329,
+      "reason": "MESSAGE_OBJECT_INVALID",
+      "behavior": "Guard rejection overrides lifecycle acceptance with typed PROTOCOL_INVALID without committing partial mutation"
+    },
+    {
+      "line": 333,
+      "reason": "MESSAGE_ID_INVALID",
+      "behavior": "Guard rejection overrides lifecycle acceptance with typed PROTOCOL_INVALID without committing partial mutation"
+    },
+    {
+      "line": 338,
+      "reason": "CONTENT_BLOCK_INDEX_INVALID",
+      "behavior": "Guard rejection overrides lifecycle acceptance with typed PROTOCOL_INVALID without committing partial mutation"
+    },
+    {
+      "line": 340,
+      "reason": "DUPLICATE_CONTENT_BLOCK",
+      "behavior": "Guard rejection overrides lifecycle acceptance with typed PROTOCOL_INVALID without committing partial mutation"
+    },
+    {
+      "line": 342,
+      "reason": "CONTENT_BLOCK_INDEX_NONCONTIGUOUS",
+      "behavior": "Guard rejection overrides lifecycle acceptance with typed PROTOCOL_INVALID without committing partial mutation"
+    },
+    {
+      "line": 345,
+      "reason": "CONTENT_BLOCK_INVALID",
+      "behavior": "Guard rejection overrides lifecycle acceptance with typed PROTOCOL_INVALID without committing partial mutation"
+    },
+    {
+      "line": 349,
+      "reason": "CONTENT_BLOCK_TYPE_UNSUPPORTED",
+      "behavior": "Guard rejection overrides lifecycle acceptance with typed PROTOCOL_INVALID without committing partial mutation"
+    },
+    {
+      "line": 351,
+      "reason": "TEXT_BLOCK_INVALID",
+      "behavior": "Guard rejection overrides lifecycle acceptance with typed PROTOCOL_INVALID without committing partial mutation"
+    },
+    {
+      "line": 354,
+      "reason": "TOOL_USE_FIELDS_INVALID",
+      "behavior": "Guard rejection overrides lifecycle acceptance with typed PROTOCOL_INVALID without committing partial mutation"
+    },
+    {
+      "line": 361,
+      "reason": "CONTENT_BLOCK_INDEX_INVALID",
+      "behavior": "Guard rejection overrides lifecycle acceptance with typed PROTOCOL_INVALID without committing partial mutation"
+    },
+    {
+      "line": 363,
+      "reason": "DELTA_OUTSIDE_CONTENT_BLOCK",
+      "behavior": "Guard rejection overrides lifecycle acceptance with typed PROTOCOL_INVALID without committing partial mutation"
+    },
+    {
+      "line": 366,
+      "reason": "CONTENT_DELTA_INVALID",
+      "behavior": "Guard rejection overrides lifecycle acceptance with typed PROTOCOL_INVALID without committing partial mutation"
+    },
+    {
+      "line": 372,
+      "reason": "CONTENT_DELTA_TYPE_MISMATCH",
+      "behavior": "Guard rejection overrides lifecycle acceptance with typed PROTOCOL_INVALID without committing partial mutation"
+    },
+    {
+      "line": 376,
+      "reason": "TEXT_DELTA_INVALID",
+      "behavior": "Guard rejection overrides lifecycle acceptance with typed PROTOCOL_INVALID without committing partial mutation"
+    },
+    {
+      "line": 381,
+      "reason": "TOOL_ARGUMENT_DELTA_INVALID",
+      "behavior": "Guard rejection overrides lifecycle acceptance with typed PROTOCOL_INVALID without committing partial mutation"
+    },
+    {
+      "line": 387,
+      "reason": "CONTENT_BLOCK_INDEX_INVALID",
+      "behavior": "Guard rejection overrides lifecycle acceptance with typed PROTOCOL_INVALID without committing partial mutation"
+    },
+    {
+      "line": 389,
+      "reason": "CONTENT_BLOCK_STOP_UNBALANCED",
+      "behavior": "Guard rejection overrides lifecycle acceptance with typed PROTOCOL_INVALID without committing partial mutation"
+    },
+    {
+      "line": 395,
+      "reason": "MESSAGE_DELTA_OBJECT_INVALID",
+      "behavior": "Guard rejection overrides lifecycle acceptance with typed PROTOCOL_INVALID without committing partial mutation"
+    },
+    {
+      "line": 400,
+      "reason": "STOP_REASON_INVALID",
+      "behavior": "Guard rejection overrides lifecycle acceptance with typed PROTOCOL_INVALID without committing partial mutation"
+    },
+    {
+      "line": 404,
+      "reason": "MESSAGE_STOP_STATE_INVALID",
+      "behavior": "Guard rejection overrides lifecycle acceptance with typed PROTOCOL_INVALID without committing partial mutation"
+    },
+    {
+      "line": 412,
+      "reason_expression": "AnthropicStreamProtocolError('ANTHROPIC_SSE_TOOL_ARGUMENT_JSON_INVALID')",
+      "behavior": "Typed payload failure; no semantic success"
+    },
+    {
+      "line": 414,
+      "reason": "TOOL_ARGUMENTS_INVALID",
+      "behavior": "Guard rejection overrides lifecycle acceptance with typed PROTOCOL_INVALID without committing partial mutation"
+    },
+    {
+      "line": 417,
+      "reason": "TOOL_ARGUMENTS_INVALID",
+      "behavior": "Guard rejection overrides lifecycle acceptance with typed PROTOCOL_INVALID without committing partial mutation"
+    }
+  ],
+  "outside_sse_lifecycle": [
+    {
+      "boundary": "request_build_dispatch_guard_route_payload",
+      "effect": "preserve existing typed request/dispatch failure; no response-side redesign",
+      "source": {
+        "path": "src/novel_flywheel/providers/http.py",
+        "symbol": "HttpProvider.post_stream",
+        "line": 411,
+        "end_line": 589,
+        "file_sha256": "2f2d69cace513a9c85ec48a3fe4e80bd227dad6948709af2f51eaf375aa883f6",
+        "symbol_ast_sha256": "9c2bbeb428699f3e676a2a5d45a238106cd23885dcf2fdd0360cf5747531eb48"
+      }
+    },
+    {
+      "boundary": "HTTP status >=400",
+      "effect": "existing captured status/capability failure and authorized default stream fallback remain sibling behavior"
+    },
+    {
+      "boundary": "non-SSE JSON",
+      "effect": "existing JSON object/envelope validation remains separate from SSE lifecycle"
+    },
+    {
+      "boundary": "KeyboardInterrupt/SystemExit",
+      "effect": "process-control BaseException propagates; never recovered as protocol success"
+    },
+    {
+      "boundary": "diagnostic snapshot",
+      "effect": "observation cannot grant acceptance or replace typed terminal"
+    }
+  ],
+  "unknown_event_policy": "anthropic_stream_v1_typed_fail_closed_without_semantic_mutation",
+  "unknown_policy_source_deviation": "Local versioned policy rejects unknown top-level events. Official SDK filters them and the research recommends diagnostic ignore. This local stricter choice must remain explicit, source-grounded as a repository compatibility policy, and independently reviewed; it is not asserted to match SDK behavior.",
+  "duplicate_authority_disposition": {
+    "semantic_lifecycle": "AnthropicStream.step only",
+    "adapter_aggregate": "delegates; OwnedStreamEvents reuses owner",
+    "framing": "decode_sse emits ordered typed data, does not select terminal precedence",
+    "usage": "usage_containers calls same step in explicit non-Message projection mode",
+    "terminal_byte_hint": "legacy public generic helper remains for non-Anthropic production path; Anthropic branch returns via owner before generic loop",
+    "capture": "only durable callback acknowledgement; no semantic inference from mere receipt presence"
+  }
+}

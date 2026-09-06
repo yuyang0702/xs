@@ -1,0 +1,61 @@
+{
+  "mode": "current",
+  "baseline_head": "79a99a58ebe95b2be4d1e51a8d190070a2568574",
+  "loaded_sources": {
+    "src/novel_flywheel/__init__.py": "854fd883f6330f524658876829969134b0d6a50d29b3e5747c653b78013aec5f",
+    "src/novel_flywheel/domain/__init__.py": "638e6b5118486ed33a6024c6cd2bb8955a4ff8e8f77c55730e51a3c9f5a033cb",
+    "src/novel_flywheel/domain/models.py": "d7a26af04ef7a5cb33078ddbfcb0c7c658ad9580fda7df298f90829c9eca12af",
+    "src/novel_flywheel/providers/__init__.py": "c48ea209dfe5ec8fb834dd9958472c583078184acc7b853ae0ebbb393a1b5b29",
+    "src/novel_flywheel/provider_stream_error.py": "71c15b9f098c63dcd2d67ddc9a3aba16beee0a079c53b5b9f009a4655d6eebe1",
+    "src/novel_flywheel/runtime_fingerprint_build.py": "98cd17df0b6a2056be5f1cf0254b1e139b9df19aea991963cbb4b27415a5a29c",
+    "src/novel_flywheel/recovery_engine.py": "d55cdb0f3f790ed5b602d3638f95282501c39c8cd63e0db14146fa8f4c208470",
+    "src/novel_flywheel/provider_response_capture.py": "5e8128e336b81fa1881f144fadc26c511a9227453a8724a3cf2b50f8e9de9fb4",
+    "src/novel_flywheel/model_diagnostics.py": "ae1747507075795d6cdded9f6634dde71d4c5bdc07419b772a8822b7222ad79f",
+    "src/novel_flywheel/planning_repair_diagnostics.py": "61a4430d93ba030f94092cddc4d4ee818076cfad94d501316ba7f6286209087d",
+    "src/novel_flywheel/failure_boundary.py": "85415e2f445e06790a7a574c28e72f1468e7636f47b414176d8ddbcbda83b4ac",
+    "src/novel_flywheel/full_short_reason_catalog.py": "c80378f3bdb1931e253c4222c6db9276f97d61c68d872e62fd36f100ef91f314",
+    "src/novel_flywheel/full_short_runtime_kernel.py": "10042342609cf250e5a22c935ba16d3643969cb2c271556f022c7e8e77b7269e",
+    "src/novel_flywheel/execution_failure_architecture.py": "b3e3ad1033a3dd0ccba534389c3369d795d8779c8a04e19ec901aa139ea48cfc",
+    "src/novel_flywheel/providers/http.py": "2f2d69cace513a9c85ec48a3fe4e80bd227dad6948709af2f51eaf375aa883f6",
+    "src/novel_flywheel/provider_output.py": "15dcad2180064ba7cc5c2906330465d4ec53a72927502629b75e39a4a666746d",
+    "src/novel_flywheel/provider_payloads.py": "053fae9bf07119e8c6b8ab163d7a6089d790a983738709fcd36d208320016b60",
+    "src/novel_flywheel/anthropic_stream.py": "dff3ad231865abc52745d92047cff522381b18f714112772d17bb8ae1dff7c1b",
+    "src/novel_flywheel/providers/anthropic.py": "3c27185f2cb97c646cd4d1a27d5e1b75ed2ef605d2c095d366fc4f7460488fcb"
+  },
+  "cases": [
+    {
+      "prefix": "preterminal",
+      "ending": "timeout",
+      "original_exception_preserved": false,
+      "response_present": false,
+      "failure_class": "ProviderResponseCaptureError",
+      "capture_transport_complete": false
+    },
+    {
+      "prefix": "preterminal",
+      "ending": "cancellation",
+      "original_exception_preserved": false,
+      "response_present": false,
+      "failure_class": "ProviderResponseCaptureError",
+      "capture_transport_complete": false
+    },
+    {
+      "prefix": "postterminal",
+      "ending": "timeout",
+      "original_exception_preserved": false,
+      "response_present": false,
+      "failure_class": "ProviderResponseCaptureError",
+      "capture_transport_complete": false
+    },
+    {
+      "prefix": "postterminal",
+      "ending": "cancellation",
+      "original_exception_preserved": false,
+      "response_present": false,
+      "failure_class": "ProviderResponseCaptureError",
+      "capture_transport_complete": false
+    }
+  ],
+  "real_provider_calls": 0,
+  "seam": "actual adapter/HTTP; MockTransport only"
+}
