@@ -1281,11 +1281,20 @@ class _CapturedResponseReplayTransportFactory:
                 maximum=maximum, payload=payload, system=system, user=user,
             )
             if observed != source:
+                differing_fields = {
+                    key: {
+                        "expected_sha256": _domain(source.get(key)),
+                        "observed_sha256": _domain(observed.get(key)),
+                    }
+                    for key in sorted(set(source) | set(observed))
+                    if source.get(key) != observed.get(key)
+                }
                 self.failure = {
                     "reason_code": "FULL_SHORT_CAPTURE_REPLAY_REQUEST_DRIFT",
                     "ordinal": ordinal,
                     "expected_sha256": _domain(source),
                     "observed_sha256": _domain(observed),
+                    "differing_fields": differing_fields,
                 }
                 raise RuntimeError("FULL_SHORT_CAPTURE_REPLAY_REQUEST_DRIFT")
             self.call_plan.append(observed)
