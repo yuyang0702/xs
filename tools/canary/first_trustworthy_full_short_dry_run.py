@@ -2667,8 +2667,33 @@ def persist_full_short_isolated_dry_run_evidence_v1(
                 target / f"maintenance-authority-{index:02d}.json", raw,
             ),
         })
-    maintenance_model_receipt = run_root / "receipts" / "maintenance.json"
-    maintenance_output = run_root / "outputs" / "maintenance.md"
+    inventory_modes = {
+        json.loads(path.read_text(encoding="utf-8")).get("source_mode")
+        for path in maintenance_paths
+        if path.name.startswith("maintenance-inventory-")
+    }
+    reduction_present = any(
+        path.name.startswith("maintenance-reduction-")
+        for path in maintenance_paths
+    )
+    reduction_path = next(
+        (path for path in maintenance_paths
+         if path.name.startswith("maintenance-reduction-")),
+        None,
+    )
+    completed_maintenance = [
+        item for item in (ledger.get("completed_stage_receipts") or [])
+        if item.get("role") == "maintenance"
+    ]
+    if reduction_present and not (run_root / "receipts" / "maintenance.json").is_file():
+        if not completed_maintenance:
+            raise RuntimeError("FULL_SHORT_DRY_GATE_MAINTENANCE_INVALID")
+        maintenance_stage = str(completed_maintenance[0].get("stage") or "")
+        maintenance_model_receipt = run_root / "receipts" / f"{maintenance_stage}.json"
+        maintenance_output = run_root / "outputs" / f"{maintenance_stage}.md"
+    else:
+        maintenance_model_receipt = run_root / "receipts" / "maintenance.json"
+        maintenance_output = run_root / "outputs" / "maintenance.md"
     try:
         model_receipt_value = json.loads(
             maintenance_model_receipt.read_text(encoding="utf-8")
@@ -2679,21 +2704,19 @@ def persist_full_short_isolated_dry_run_evidence_v1(
     except (OSError, UnicodeError, ValueError) as exc:
         raise RuntimeError("FULL_SHORT_DRY_GATE_MAINTENANCE_INVALID") from exc
     try:
-        validate_short_maintenance_business_complete_v2(
-            maintenance_output_value,
-            expected_manuscript_sha256=source_hashes["final_artifact_text"],
-        )
+        if reduction_present and reduction_path is not None:
+            validate_maintenance_reduction(
+                json.loads(reduction_path.read_text(encoding="utf-8")),
+                manuscript=manuscript_text,
+                source_state_sha256=maintenance_source_state_sha256,
+            )
+        else:
+            validate_short_maintenance_business_complete_v2(
+                maintenance_output_value,
+                expected_manuscript_sha256=source_hashes["final_artifact_text"],
+            )
     except (TypeError, ValueError) as exc:
         raise RuntimeError("FULL_SHORT_DRY_GATE_MAINTENANCE_INVALID") from exc
-    inventory_modes = {
-        json.loads(path.read_text(encoding="utf-8")).get("source_mode")
-        for path in maintenance_paths
-        if path.name.startswith("maintenance-inventory-")
-    }
-    reduction_present = any(
-        path.name.startswith("maintenance-reduction-")
-        for path in maintenance_paths
-    )
     normal_lane_exact = bool(
         "normal" in inventory_modes
         and isinstance(model_receipt_value, dict)
@@ -2701,11 +2724,9 @@ def persist_full_short_isolated_dry_run_evidence_v1(
         and model_receipt_value["model"].get("role") == "maintenance"
         and isinstance(maintenance_output_value, dict)
     )
-    completed_maintenance = [
-        item for item in (ledger.get("completed_stage_receipts") or [])
-        if item.get("role") == "maintenance"
-    ]
-    if len(completed_maintenance) != 1:
+    if not completed_maintenance or (
+        not reduction_present and len(completed_maintenance) != 1
+    ):
         raise RuntimeError("FULL_SHORT_DRY_GATE_MAINTENANCE_INVALID")
     completed_maintenance_receipt = completed_maintenance[0]
     accepted_attempt = [
