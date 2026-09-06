@@ -35,6 +35,7 @@ from novel_flywheel.full_short_execution import (
     replay_full_short_provider_attempt_v1,
     render_full_short_canonical_authorization_v1,
     validate_full_short_canonical_authorization_v1,
+    validate_full_short_logical_stage_plan_v1,
     validate_full_short_preflight_v1,
     verify_full_short_actual_usage_v1,
     validate_policy_v1,
@@ -231,6 +232,45 @@ def _logical_stage_plan(
             "requested_output_tokens": output_tokens,
         })
     return tuple(result)
+
+
+def test_logical_stage_plan_accepts_retry_identity_extension() -> None:
+    base = dict(_logical_stage_plan()[0])
+    first = {
+        **base,
+        "contract_attempt_index": 1,
+        "contract_route": "primary",
+        "contract_route_attempt": 1,
+        "stage_role": "NORMAL",
+    }
+    second = {
+        **first,
+        "ordinal": 2,
+        "contract_attempt_index": 2,
+        "contract_route_attempt": 2,
+    }
+
+    validated = validate_full_short_logical_stage_plan_v1([first, second])
+
+    assert validated[0]["logical_stage_id"] == "planning"
+    assert validated[1]["logical_stage_id"] == "planning"
+
+
+def test_logical_stage_plan_rejects_retry_without_prior_attempt() -> None:
+    base = dict(_logical_stage_plan()[0])
+    invalid = {
+        **base,
+        "contract_attempt_index": 2,
+        "contract_route": "primary",
+        "contract_route_attempt": 2,
+        "stage_role": "NORMAL",
+    }
+
+    with pytest.raises(
+        FullShortExecutionBoundaryError,
+        match="LOGICAL_STAGE_PLAN_IDENTITY_INVALID",
+    ):
+        validate_full_short_logical_stage_plan_v1([invalid])
 
 
 def _policy(

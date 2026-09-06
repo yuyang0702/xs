@@ -241,6 +241,11 @@ _LOGICAL_STAGE_PLAN_KEYS = frozenset({
     "contract_schema_sha256",
     "contract_runtime_input_required", "requested_output_tokens",
 })
+_LOGICAL_STAGE_PLAN_EXTENDED_KEYS = frozenset({
+    *_LOGICAL_STAGE_PLAN_KEYS,
+    "contract_attempt_index", "contract_route", "contract_route_attempt",
+    "stage_role",
+})
 _CLOSED_LOCAL_ATTEMPT_STATES = frozenset({
     "LOCAL_STAGE_COMPLETE", "LOCAL_ATTEMPT_REJECTED",
 })
@@ -1700,19 +1705,64 @@ def validate_full_short_logical_stage_plan_v1(value: Any) -> list[dict[str, Any]
     for expected_ordinal, raw in enumerate(value, 1):
         _require(isinstance(raw, Mapping), "LOGICAL_STAGE_PLAN_INVALID")
         item = dict(raw)
-        _require(set(item) == _LOGICAL_STAGE_PLAN_KEYS,
-                 "LOGICAL_STAGE_PLAN_KEYS_INVALID")
+        item_keys = set(item)
+        _require(
+            item_keys in {
+                _LOGICAL_STAGE_PLAN_KEYS,
+                _LOGICAL_STAGE_PLAN_EXTENDED_KEYS,
+            },
+            "LOGICAL_STAGE_PLAN_KEYS_INVALID",
+        )
+        extended = item_keys == _LOGICAL_STAGE_PLAN_EXTENDED_KEYS
         _require(item.get("ordinal") == expected_ordinal,
                  "LOGICAL_STAGE_PLAN_ORDER_INVALID")
         stage_id = str(item.get("stage_id") or "")
         base_id = str(item.get("logical_stage_base_id") or "")
         _require(stage_id == base_id and _ID.fullmatch(base_id) is not None,
                  "LOGICAL_STAGE_PLAN_STAGE_INVALID")
+        contract_attempt_index = item.get("contract_attempt_index")
+        contract_route = item.get("contract_route")
+        contract_route_attempt = item.get("contract_route_attempt")
+        stage_role = item.get("stage_role")
+        if extended:
+            _require(
+                all(value is None for value in (
+                    contract_attempt_index, contract_route,
+                    contract_route_attempt,
+                ))
+                or (
+                    type(contract_attempt_index) is int
+                    and contract_attempt_index > 0
+                    and contract_route in {
+                        "primary", "configured_fallback",
+                    }
+                    and type(contract_route_attempt) is int
+                    and 0 < contract_route_attempt <= contract_attempt_index
+                ),
+                "CONTRACT_ATTEMPT_IDENTITY_INVALID",
+            )
+            _require(
+                isinstance(stage_role, str)
+                and _ID.fullmatch(stage_role) is not None,
+                "STAGE_ROLE_INVALID",
+            )
         occurrences[base_id] = occurrences.get(base_id, 0) + 1
+        expected_logical_stage_id = full_short_logical_stage_id_v1(
+            base_id, occurrences[base_id],
+        )
+        if extended and (
+            type(contract_attempt_index) is int
+            and contract_attempt_index > 1
+        ):
+            prior = [
+                prior_item for prior_item in plan
+                if prior_item["logical_stage_base_id"] == base_id
+            ]
+            _require(bool(prior), "LOGICAL_STAGE_PLAN_IDENTITY_INVALID")
+            expected_logical_stage_id = prior[-1]["logical_stage_id"]
+            occurrences[base_id] -= 1
         _require(
-            item.get("logical_stage_id") == full_short_logical_stage_id_v1(
-                base_id, occurrences[base_id],
-            ),
+            item.get("logical_stage_id") == expected_logical_stage_id,
             "LOGICAL_STAGE_PLAN_IDENTITY_INVALID",
         )
         _require(_ID.fullmatch(str(item.get("role") or "")) is not None,
@@ -1735,8 +1785,25 @@ def validate_full_short_logical_stage_plan_v1(value: Any) -> list[dict[str, Any]
                  and int(item["requested_output_tokens"]) > 0,
                  "LOGICAL_STAGE_PLAN_OUTPUT_CAP_INVALID")
         plan.append(deepcopy(item))
-    _require(len({item["logical_stage_id"] for item in plan}) == len(plan),
-             "LOGICAL_STAGE_PLAN_IDENTITY_DUPLICATE")
+    seen_logical_ids: dict[str, dict[str, Any]] = {}
+    for item in plan:
+        logical_id = str(item["logical_stage_id"])
+        prior = seen_logical_ids.get(logical_id)
+        if prior is None:
+            seen_logical_ids[logical_id] = item
+            continue
+        _require(
+            "contract_attempt_index" in item
+            and type(item.get("contract_attempt_index")) is int
+            and item["contract_attempt_index"] > 1
+            and item.get("logical_stage_base_id")
+            == prior.get("logical_stage_base_id")
+            and type(prior.get("contract_attempt_index")) is int
+            and item["contract_attempt_index"]
+            == prior["contract_attempt_index"] + 1,
+            "LOGICAL_STAGE_PLAN_IDENTITY_DUPLICATE",
+        )
+        seen_logical_ids[logical_id] = item
     return plan
 
 
@@ -1754,7 +1821,10 @@ def full_short_workload_request_family_id_v1(
 
     item = dict(value)
     _require(
-        set(item) == _LOGICAL_STAGE_PLAN_KEYS,
+        set(item) in {
+            _LOGICAL_STAGE_PLAN_KEYS,
+            _LOGICAL_STAGE_PLAN_EXTENDED_KEYS,
+        },
         "WORKLOAD_REQUEST_FAMILY_KEYS_INVALID",
     )
     _require(
