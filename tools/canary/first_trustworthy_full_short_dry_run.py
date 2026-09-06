@@ -2367,6 +2367,9 @@ def persist_full_short_isolated_dry_run_evidence_v1(
         quality_checkpoint = json.loads(
             source_bytes["quality_checkpoint"].decode("utf-8")
         )
+        source_hashes["final_artifact_text"] = hashlib.sha256(
+            source_bytes["final_artifact"].decode("utf-8").encode("utf-8")
+        ).hexdigest()
     except (UnicodeError, ValueError, TypeError) as exc:
         raise RuntimeError("FULL_SHORT_DRY_GATE_AUTHORITY_FILE_INVALID") from exc
     narrative_integrity_reference = quality_checkpoint.get(
@@ -2428,7 +2431,7 @@ def persist_full_short_isolated_dry_run_evidence_v1(
     artifact_binding_checks = {
         "completion.manuscript_sha256": (
             final_bindings.get("manuscript_sha256"),
-            source_hashes["final_artifact"],
+            source_hashes["final_artifact_text"],
         ),
         "completion.chapter_sha256": (
             final_bindings.get("chapter_sha256"), source_hashes["chapter"],
@@ -2437,7 +2440,7 @@ def persist_full_short_isolated_dry_run_evidence_v1(
             final_bindings.get("canon_sha256"), source_hashes["canon"],
         ),
         "terminal.final_manuscript_sha256": (
-            terminal.get("final_manuscript_sha256"), source_hashes["final_artifact"],
+            terminal.get("final_manuscript_sha256"), source_hashes["final_artifact_text"],
         ),
         "journal.ready_receipt_sha256": (
             journal.post_commit_gate.receipt_sha256, source_hashes["ready"],
@@ -2453,11 +2456,11 @@ def persist_full_short_isolated_dry_run_evidence_v1(
         ),
         "quality.manuscript_hash": (
             quality_checkpoint.get("manuscript_hash") if isinstance(quality_checkpoint, dict) else None,
-            source_hashes["final_artifact"],
+            source_hashes["final_artifact_text"],
         ),
         "quality.terminal_reviewed_hash": (
             quality_checkpoint.get("terminal_reviewed_hash") if isinstance(quality_checkpoint, dict) else None,
-            source_hashes["final_artifact"],
+            source_hashes["final_artifact_text"],
         ),
         "completion.quality_checkpoint_sha256": (
             final_bindings.get("quality_checkpoint_sha256"), source_hashes["quality_checkpoint"],
@@ -2474,13 +2477,13 @@ def persist_full_short_isolated_dry_run_evidence_v1(
     }
     if (
         artifact_binding_drift
-        or final_bindings.get("manuscript_sha256") != source_hashes["final_artifact"]
+        or final_bindings.get("manuscript_sha256") != source_hashes["final_artifact_text"]
         or final_bindings.get("chapter_sha256") != source_hashes["chapter"]
         or final_bindings.get("canon_sha256") != source_hashes["canon"]
         or final_bindings.get("terminal_verification_sha256")
         != terminal["verification_receipt_sha256"]
         or terminal.get("final_manuscript_sha256")
-        != source_hashes["final_artifact"]
+        != source_hashes["final_artifact_text"]
         or terminal.get("completion_goal_outcome") != COMPLETION_GOAL
         or journal.post_commit_gate.receipt_sha256 != source_hashes["ready"]
         or source_hashes["project"]
@@ -2497,9 +2500,9 @@ def persist_full_short_isolated_dry_run_evidence_v1(
         != project_workload.get("target_words")
         or not isinstance(quality_checkpoint, dict)
         or quality_checkpoint.get("manuscript_hash")
-        != source_hashes["final_artifact"]
+        != source_hashes["final_artifact_text"]
         or quality_checkpoint.get("terminal_reviewed_hash")
-        != source_hashes["final_artifact"]
+        != source_hashes["final_artifact_text"]
         or final_bindings.get("quality_checkpoint_sha256")
         != source_hashes["quality_checkpoint"]
         or (terminal.get("final_checkpoint") or {}).get("checkpoint_sha256")
@@ -2639,7 +2642,7 @@ def persist_full_short_isolated_dry_run_evidence_v1(
                     inventory.complete is not True
                     or inventory.coverage_gaps
                     or inventory.source_artifact_hash
-                    != source_hashes["final_artifact"]
+                    != source_hashes["final_artifact_text"]
                     or inventory.base_authority_revision != base_revision
                     or inventory.base_authority_hash != base_authority_sha256
                 ):
@@ -2676,7 +2679,7 @@ def persist_full_short_isolated_dry_run_evidence_v1(
     try:
         validate_short_maintenance_business_complete_v2(
             maintenance_output_value,
-            expected_manuscript_sha256=source_hashes["final_artifact"],
+            expected_manuscript_sha256=source_hashes["final_artifact_text"],
         )
     except (TypeError, ValueError) as exc:
         raise RuntimeError("FULL_SHORT_DRY_GATE_MAINTENANCE_INVALID") from exc
