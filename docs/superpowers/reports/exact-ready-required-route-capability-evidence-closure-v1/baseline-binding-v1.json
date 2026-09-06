@@ -14,10 +14,13 @@
     "real_provider_request_attempts": 0,
     "real_secret_read_count": 0
   },
-  "initial_worktree_clean": true,
-  "materialization_head": "897ed45473046f9c70054b31694eb76e9b416a0d",
+  "initial_worktree_clean": false,
+  "initial_worktree_status_sha256": "0f1f957380a1ad17497d981b4d3e6507c865e860ca8ba6fcdba0733dfafe8304",
+  "materialization_head": "79a99a58ebe95b2be4d1e51a8d190070a2568574",
+  "materialization_kind": "OFFLINE_DIAGNOSTIC_NOT_EXECUTION_AUTHORIZATION",
   "schema": "ExactReadyRouteCapabilityClosureBaselineV1",
   "start_head_is_ancestor": true,
   "status": "PASS",
-  "version": 1
+  "version": 1,
+  "worktree_state_measured": true
 }

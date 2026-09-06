@@ -64,7 +64,9 @@ def contains_potential_secret(value: object) -> bool:
 
     # Compatibility normalization is detection-only: full-width labels must
     # not bypass the exact same credential rules as their ASCII forms.
-    text = unicodedata.normalize("NFKC", str(value or ""))
+    original = unicodedata.normalize("NFC", str(value or ""))
+    text = unicodedata.normalize("NFKC", original)
+    normalized = text
     folded = text.casefold()
     if any((
         _SECRET_ASSIGNMENT.search(text), _BEARER_VALUE.search(text),
@@ -90,7 +92,9 @@ def contains_potential_secret(value: object) -> bool:
 def redact_potential_secrets(value: object) -> str:
     """Deterministically remove common credentials and opaque secret material."""
 
-    text = unicodedata.normalize("NFKC", str(value or ""))
+    original = unicodedata.normalize("NFC", str(value or ""))
+    normalized = unicodedata.normalize("NFKC", original)
+    text = normalized
     text = _SECRET_ASSIGNMENT.sub(
         lambda match: f"{match.group(1)}=<redacted>", text,
     )
@@ -113,7 +117,9 @@ def redact_potential_secrets(value: object) -> str:
         ),
         text,
     )
-    return text
+    # Compatibility folding is an internal detection aid, not a reason to
+    # rewrite harmless user-visible punctuation.
+    return original if text == normalized else text
 
 
 class SafeFailureEnvelopeV1(BaseModel):

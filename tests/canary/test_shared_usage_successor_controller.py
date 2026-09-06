@@ -14,7 +14,7 @@ from novel_flywheel.providers.anthropic import AnthropicAdapter
 from novel_flywheel.providers import registry as registry_module
 from novel_flywheel.secrets import MemorySecretStore
 from tools.canary import execute_full_short_budget_unblocked_one_round as controller
-from canary.test_full_short_budget_unblocked_orchestrator import KEY, KEY_ID, _materialized
+from tests.canary.test_full_short_budget_unblocked_orchestrator import KEY, KEY_ID, _materialized
 
 
 def _proof_repo(tmp_path):

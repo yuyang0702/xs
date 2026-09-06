@@ -315,9 +315,13 @@ class ProviderResponseCaptureStoreV1:
 
     @staticmethod
     def _write_exclusive_crash_safe(path: Path, payload: bytes) -> None:
+        from novel_flywheel.storage import _windows_extended_path
+
         temporary = path.with_name(f".{path.name}.{secrets.token_hex(8)}.tmp")
+        system_temporary = _windows_extended_path(temporary)
+        system_path = _windows_extended_path(path)
         flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_BINARY", 0)
-        descriptor = os.open(temporary, flags, 0o600)
+        descriptor = os.open(system_temporary, flags, 0o600)
         try:
             offset = 0
             while offset < len(payload):
@@ -333,14 +337,14 @@ class ProviderResponseCaptureStoreV1:
         try:
             # Hard-link publication is atomic and refuses to replace a prior
             # capture.  The temporary is fully flushed before it becomes live.
-            os.link(temporary, path)
+            os.link(system_temporary, system_path)
         except FileExistsError as exc:
             raise ProviderResponseCaptureError(
                 "PROVIDER_RESPONSE_CAPTURE_DUPLICATE"
             ) from exc
         finally:
             try:
-                temporary.unlink()
+                system_temporary.unlink()
             except FileNotFoundError:
                 pass
 
@@ -627,29 +631,48 @@ class ProviderResponseCaptureStoreV1:
 
 def parse_provider_protocol_input_bytes_v1(
     data: bytes, *, content_type: str, encoding: str = "utf-8",
+    anthropic_errors: bool = False,
 ) -> tuple[list[dict[str, Any]], dict[str, Any] | None]:
     """Parse exact captured HTTP entity bytes at the production protocol seam."""
 
+    if "text/event-stream" in content_type.lower():
+        if anthropic_errors:
+            from novel_flywheel.anthropic_stream import (
+                aggregate_events, decode_sse, InvalidFrame,
+            )
+            events = decode_sse(data, encoding=encoding)
+            # Surface framing faults through the original public typed API.
+            # Ordered terminal precedence is decided exclusively by the owner.
+            if any(isinstance(event, InvalidFrame) for event in events):
+                outcome = aggregate_events(events)
+                if isinstance(outcome.primary, ProviderResponseCaptureError):
+                    raise outcome.primary
+            return events, None
+        try:
+            text = data.decode(encoding)
+        except (LookupError, UnicodeError) as exc:
+            raise ProviderResponseCaptureError(
+                "PROVIDER_RESPONSE_REPLAY_ENCODING_INVALID"
+            ) from exc
+        events, _done_seen = _parse_sse_events_v1(text)
+        return events, None
     try:
         text = data.decode(encoding)
     except (LookupError, UnicodeError) as exc:
         raise ProviderResponseCaptureError(
             "PROVIDER_RESPONSE_REPLAY_ENCODING_INVALID"
         ) from exc
-    if "text/event-stream" not in content_type.lower():
-        try:
-            value = json.loads(text)
-        except ValueError as exc:
-            raise ProviderResponseCaptureError(
-                "PROVIDER_RESPONSE_REPLAY_JSON_INVALID"
-            ) from exc
-        if not isinstance(value, dict):
-            raise ProviderResponseCaptureError(
-                "PROVIDER_RESPONSE_REPLAY_JSON_OBJECT_REQUIRED"
-            )
-        return [], value
-    events, _done_seen = _parse_sse_events_v1(text)
-    return events, None
+    try:
+        value = json.loads(text)
+    except ValueError as exc:
+        raise ProviderResponseCaptureError(
+            "PROVIDER_RESPONSE_REPLAY_JSON_INVALID"
+        ) from exc
+    if not isinstance(value, dict):
+        raise ProviderResponseCaptureError(
+            "PROVIDER_RESPONSE_REPLAY_JSON_OBJECT_REQUIRED"
+        )
+    return [], value
 
 
 def _parse_sse_events_v1(
@@ -719,6 +742,12 @@ def provider_protocol_input_has_terminal_bytes_v1(
     if not events:
         return False
     terminal_type = events[-1].get("type")
+    if terminal_type == "ping":
+        # Only Anthropic's message_stop admits a trailing keepalive suffix.
+        index = len(events) - 1
+        while index >= 0 and events[index].get("type") == "ping":
+            index -= 1
+        return index >= 0 and events[index].get("type") == "message_stop"
     return terminal_type in {
         "error",
         "message_stop",
@@ -841,9 +870,10 @@ def extract_provider_reported_actual_usage_v1(
         )
     events, document = parse_provider_protocol_input_bytes_v1(
         data, content_type=content_type, encoding=encoding,
+        anthropic_errors=canonical_protocol == "anthropic",
     )
     is_sse = "text/event-stream" in content_type.lower()
-    if is_sse and not provider_protocol_input_has_terminal_bytes_v1(
+    if is_sse and canonical_protocol != "anthropic" and not provider_protocol_input_has_terminal_bytes_v1(
         data, content_type=content_type, encoding=encoding,
     ):
         raise ProviderResponseCaptureError(
@@ -851,19 +881,12 @@ def extract_provider_reported_actual_usage_v1(
         )
     containers: list[tuple[str, Mapping[str, Any]]] = []
     values = events if is_sse else [document]
+    if canonical_protocol == "anthropic" and is_sse:
+        from novel_flywheel.anthropic_stream import usage_containers
+        containers = usage_containers(events)
+        values = []
     for index, value in enumerate(values):
         if not isinstance(value, Mapping):
-            continue
-        if canonical_protocol == "anthropic" and is_sse:
-            if value.get("type") == "message_start":
-                message = value.get("message")
-                nested = message.get("usage") if isinstance(message, Mapping) else None
-                if isinstance(nested, Mapping):
-                    containers.append((f"event[{index}].message.usage", nested))
-            elif value.get("type") == "message_delta":
-                direct = value.get("usage")
-                if isinstance(direct, Mapping):
-                    containers.append((f"event[{index}].usage", direct))
             continue
         direct = value.get("usage")
         if isinstance(direct, Mapping):

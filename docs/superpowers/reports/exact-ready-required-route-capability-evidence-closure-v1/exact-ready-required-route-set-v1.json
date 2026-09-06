@@ -93,7 +93,7 @@
       "route_fingerprint": "4a9f19e78d8101d0bc82aa664582c775741b59d5d9953c73a5624de03b2a539c"
     },
     {
-      "capability_sha256": "d26567c044e8f3f8dbea3f8e765ea9bcb77a03c89fc6da943270fe6201efa304",
+      "capability_sha256": "2bf26b8094fcb073ffe7732e6bfa4d8de1244c59c1ee8e1fb8722b4250c618f2",
       "capability_status": "VERIFIED_PUBLIC_DOCUMENTATION",
       "context_window_tokens": 128000,
       "destination": "https://ark.cn-beijing.volces.com:443/api/v3/responses",

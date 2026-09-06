@@ -1,5 +1,13 @@
 # Novel Flywheel Maintenance
 
+## Durable stream storage on Windows
+
+Full Short stream checkpoints, ledger replacements, and provider-response
+captures publish through Win32 extended-length paths on Windows. This keeps
+atomic exact-once persistence valid when pytest or isolated evidence roots
+push temporary filenames beyond the legacy 260-character path limit; the
+stored JSON and hashes remain unchanged.
+
 ## Shared Anthropic stream closure candidate
 
 Anthropic SSE lifecycle, cumulative usage, terminal precedence and interruption
