@@ -2129,14 +2129,19 @@ async def _execute_full_short_control_plane_with_capability(
 
         def commit_after_saga_cleanup() -> dict[str, Any]:
             try:
-                completion = runtime_kernel.execute_boundary_sync(
-                    "FS.TERMINAL.VERIFY_COMMIT",
-                    lambda: store.commit_completion(
-                        execution_id=execution_id,
-                        policy=policy,
-                        receipt=receipt,
-                    ),
-                )
+                # ``commit_completion`` marks the durable runtime journal
+                # completed through the active kernel.  The supervisor invokes
+                # this callback after the workflow context has unwound, so
+                # restore the same kernel context around the commit boundary.
+                with activate_full_short_kernel_v1(runtime_kernel):
+                    completion = runtime_kernel.execute_boundary_sync(
+                        "FS.TERMINAL.VERIFY_COMMIT",
+                        lambda: store.commit_completion(
+                            execution_id=execution_id,
+                            policy=policy,
+                            receipt=receipt,
+                        ),
+                    )
             except Exception as exc:
                 closure_state["terminal_failure"] = _safe_failure_metadata(
                     exc, boundary="full_short.completion_commit",
