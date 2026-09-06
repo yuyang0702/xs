@@ -7251,7 +7251,7 @@ def build_full_short_completion_receipt_v1(
     completed_plan = []
     for stage_receipt in receipts:
         attempt = attempts[stage_receipt["ordinal"] - 1]
-        completed_plan.append({
+        completed_item = {
             "ordinal": stage_receipt.get("logical_stage_ordinal"),
             "stage_id": attempt.get("stage"),
             "logical_stage_base_id": attempt.get("logical_stage_base_id"),
@@ -7269,7 +7269,22 @@ def build_full_short_completion_receipt_v1(
                 "contract_runtime_input_required"
             ),
             "requested_output_tokens": attempt.get("requested_output_tokens"),
-        })
+        }
+        expected_item = validated["logical_stage_plan"][
+            int(stage_receipt["logical_stage_ordinal"]) - 1
+        ]
+        if "contract_attempt_index" in expected_item:
+            completed_item.update({
+                "contract_attempt_index": attempt.get(
+                    "contract_attempt_index"
+                ),
+                "contract_route": attempt.get("contract_route"),
+                "contract_route_attempt": attempt.get(
+                    "contract_route_attempt"
+                ),
+                "stage_role": attempt.get("stage_role", "NORMAL"),
+            })
+        completed_plan.append(completed_item)
     _require(
         completed_plan == validated["logical_stage_plan"]
         and full_short_logical_stage_plan_sha256_v1(completed_plan)
