@@ -2653,7 +2653,7 @@ def persist_full_short_isolated_dry_run_evidence_v1(
             elif value.get("version") == "maintenance-reduction-v1":
                 validate_maintenance_reduction(
                     value,
-                    manuscript=source_bytes["final_artifact"].decode("utf-8"),
+                    manuscript=manuscript_text,
                     source_state_sha256=maintenance_source_state_sha256,
                 )
                 kind = "MaintenanceReductionV1"
