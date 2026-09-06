@@ -2425,8 +2425,56 @@ def persist_full_short_isolated_dry_run_evidence_v1(
         "data": base_story_state_data,
         "authority_sha256": base_authority_sha256,
     }
+    artifact_binding_checks = {
+        "completion.manuscript_sha256": (
+            final_bindings.get("manuscript_sha256"),
+            source_hashes["final_artifact"],
+        ),
+        "completion.chapter_sha256": (
+            final_bindings.get("chapter_sha256"), source_hashes["chapter"],
+        ),
+        "completion.canon_sha256": (
+            final_bindings.get("canon_sha256"), source_hashes["canon"],
+        ),
+        "terminal.final_manuscript_sha256": (
+            terminal.get("final_manuscript_sha256"), source_hashes["final_artifact"],
+        ),
+        "journal.ready_receipt_sha256": (
+            journal.post_commit_gate.receipt_sha256, source_hashes["ready"],
+        ),
+        "project.runtime_authority": (
+            source_hashes["project"], base_runtime_authority.get("project_json_sha256"),
+        ),
+        "project.workload": (
+            source_hashes["project"], project_workload.get("project_json_sha256"),
+        ),
+        "constraints.workload": (
+            source_hashes["constraints"], project_workload.get("constraints_sha256"),
+        ),
+        "quality.manuscript_hash": (
+            quality_checkpoint.get("manuscript_hash") if isinstance(quality_checkpoint, dict) else None,
+            source_hashes["final_artifact"],
+        ),
+        "quality.terminal_reviewed_hash": (
+            quality_checkpoint.get("terminal_reviewed_hash") if isinstance(quality_checkpoint, dict) else None,
+            source_hashes["final_artifact"],
+        ),
+        "completion.quality_checkpoint_sha256": (
+            final_bindings.get("quality_checkpoint_sha256"), source_hashes["quality_checkpoint"],
+        ),
+        "terminal.final_checkpoint_sha256": (
+            (terminal.get("final_checkpoint") or {}).get("checkpoint_sha256"),
+            source_hashes["quality_checkpoint"],
+        ),
+    }
+    artifact_binding_drift = {
+        key: {"observed_sha256": _domain(observed), "expected_sha256": _domain(expected)}
+        for key, (observed, expected) in artifact_binding_checks.items()
+        if observed != expected
+    }
     if (
-        final_bindings.get("manuscript_sha256") != source_hashes["final_artifact"]
+        artifact_binding_drift
+        or final_bindings.get("manuscript_sha256") != source_hashes["final_artifact"]
         or final_bindings.get("chapter_sha256") != source_hashes["chapter"]
         or final_bindings.get("canon_sha256") != source_hashes["canon"]
         or final_bindings.get("terminal_verification_sha256")
@@ -2457,7 +2505,10 @@ def persist_full_short_isolated_dry_run_evidence_v1(
         or (terminal.get("final_checkpoint") or {}).get("checkpoint_sha256")
         != source_hashes["quality_checkpoint"]
     ):
-        raise RuntimeError("FULL_SHORT_DRY_GATE_ARTIFACT_BINDING_DRIFT")
+        raise RuntimeError(
+            "FULL_SHORT_DRY_GATE_ARTIFACT_BINDING_DRIFT:"
+            + json.dumps(artifact_binding_drift, ensure_ascii=True, sort_keys=True)
+        )
 
     references: dict[str, Any] = {
         "completion": _exclusive_evidence_write_v1(
