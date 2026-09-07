@@ -1375,10 +1375,23 @@ class _LogicalStagePlanDiscoveryObserver:
     def bind_stage_context(self, **value: Any) -> None:
         stage_id = str(value["stage_id"])
         contract_attempt_index = value.get("contract_attempt_index")
+        contract_route = value.get("contract_route")
+        contract_route_attempt = value.get("contract_route_attempt")
         prior_stage_attempts = [
             item for item in self.logical_stage_plan
             if item["logical_stage_base_id"] == stage_id
         ]
+        # Discovery observes only provider dispatches. A contract may consume
+        # local attempts before its first dispatch, while runtime completion
+        # canonicalizes that dispatched fallback as attempt 1.
+        if (
+            not prior_stage_attempts
+            and contract_route == "configured_fallback"
+            and contract_route_attempt == 1
+            and type(contract_attempt_index) is int
+            and contract_attempt_index > 1
+        ):
+            contract_attempt_index = 1
         if (
             type(contract_attempt_index) is int
             and contract_attempt_index > 1
@@ -1407,8 +1420,8 @@ class _LogicalStagePlanDiscoveryObserver:
                 value.get("contract_runtime_input_required")
             ),
             "contract_attempt_index": contract_attempt_index,
-            "contract_route": value.get("contract_route"),
-            "contract_route_attempt": value.get("contract_route_attempt"),
+            "contract_route": contract_route,
+            "contract_route_attempt": contract_route_attempt,
             "stage_role": str(value.get("stage_role") or "NORMAL"),
         }
 

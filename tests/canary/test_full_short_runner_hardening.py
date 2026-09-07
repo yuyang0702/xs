@@ -1229,6 +1229,44 @@ def test_discovery_preserves_contract_retry_identity() -> None:
     assert second["stage_role"] == "NORMAL"
 
 
+def test_discovery_normalizes_fallback_first_dispatch_identity() -> None:
+    from types import SimpleNamespace
+
+    from tools.canary.first_trustworthy_full_short_dry_run import (
+        _LogicalStagePlanDiscoveryObserver,
+    )
+
+    observer = _LogicalStagePlanDiscoveryObserver()
+    observer.bind_stage_context(
+        stage_id="planning-semantic",
+        contract_name="planning_semantic_v2",
+        contract_version=2,
+        contract_schema_sha256="a" * 64,
+        contract_runtime_input_required=True,
+        contract_attempt_index=3,
+        contract_route="configured_fallback",
+        contract_route_attempt=1,
+        stage_role="NORMAL",
+    )
+    observer.bind_route(
+        role="planning", lane="fallback", provider_id="provider",
+        model_id="model", route_fingerprint="f" * 64,
+    )
+    observer.bind_model_request(
+        protocol="anthropic",
+        request=SimpleNamespace(
+            response_schema={"schema": {}}, max_output_tokens=8328,
+        ),
+    )
+    observer.before_http_dispatch()
+
+    item = observer.logical_stage_plan[0]
+    assert item["logical_stage_id"] == "planning-semantic"
+    assert item["contract_attempt_index"] == 1
+    assert item["contract_route"] == "configured_fallback"
+    assert item["contract_route_attempt"] == 1
+
+
 def test_dry_run_adapter_fault_is_one_local_projection_only() -> None:
     from tools.canary.first_trustworthy_full_short_dry_run import (
         _OfflineHttpTransportFactory,

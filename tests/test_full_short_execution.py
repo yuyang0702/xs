@@ -273,7 +273,7 @@ def test_logical_stage_plan_rejects_retry_without_prior_attempt() -> None:
         validate_full_short_logical_stage_plan_v1([invalid])
 
 
-def test_logical_stage_plan_accepts_fallback_first_dispatch_after_local_attempts() -> None:
+def test_logical_stage_plan_rejects_fallback_first_dispatch_after_local_attempts() -> None:
     base = dict(_logical_stage_plan()[0])
     fallback_first = {
         **base,
@@ -283,9 +283,11 @@ def test_logical_stage_plan_accepts_fallback_first_dispatch_after_local_attempts
         "stage_role": "NORMAL",
     }
 
-    validated = validate_full_short_logical_stage_plan_v1([fallback_first])
-
-    assert validated[0]["logical_stage_id"] == "planning"
+    with pytest.raises(
+        FullShortExecutionBoundaryError,
+        match="LOGICAL_STAGE_PLAN_IDENTITY_INVALID",
+    ):
+        validate_full_short_logical_stage_plan_v1([fallback_first])
 
 
 def _policy(
