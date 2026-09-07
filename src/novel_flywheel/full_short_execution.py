@@ -1758,9 +1758,19 @@ def validate_full_short_logical_stage_plan_v1(value: Any) -> list[dict[str, Any]
                 prior_item for prior_item in plan
                 if prior_item["logical_stage_base_id"] == base_id
             ]
-            _require(bool(prior), "LOGICAL_STAGE_PLAN_IDENTITY_INVALID")
-            expected_logical_stage_id = prior[-1]["logical_stage_id"]
-            occurrences[base_id] -= 1
+            if prior:
+                expected_logical_stage_id = prior[-1]["logical_stage_id"]
+                occurrences[base_id] -= 1
+            else:
+                # A contract can consume local attempts before the first
+                # provider dispatch.  Discovery records only dispatched
+                # requests, so a configured fallback may legitimately arrive
+                # with a higher runtime attempt index and no prior plan item.
+                _require(
+                    contract_route == "configured_fallback"
+                    and contract_route_attempt == 1,
+                    "LOGICAL_STAGE_PLAN_IDENTITY_INVALID",
+                )
         _require(
             item.get("logical_stage_id") == expected_logical_stage_id,
             "LOGICAL_STAGE_PLAN_IDENTITY_INVALID",

@@ -1,5 +1,15 @@
 # Novel Flywheel Maintenance
 
+## Fallback-first logical-stage discovery
+
+Logical-stage discovery records provider dispatches, not local contract
+attempts that were rejected before dispatch. A first dispatched request on the
+configured fallback may therefore carry a higher runtime
+`contract_attempt_index` while having no earlier discovery entry. The shared
+plan validator accepts this shape only when `contract_route` is
+`configured_fallback` and `contract_route_attempt` is `1`; ordinary retries
+still require a contiguous prior attempt and shared logical-stage identity.
+
 ## Durable stream storage on Windows
 
 Full Short stream checkpoints, ledger replacements, and provider-response

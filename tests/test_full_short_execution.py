@@ -273,6 +273,21 @@ def test_logical_stage_plan_rejects_retry_without_prior_attempt() -> None:
         validate_full_short_logical_stage_plan_v1([invalid])
 
 
+def test_logical_stage_plan_accepts_fallback_first_dispatch_after_local_attempts() -> None:
+    base = dict(_logical_stage_plan()[0])
+    fallback_first = {
+        **base,
+        "contract_attempt_index": 3,
+        "contract_route": "configured_fallback",
+        "contract_route_attempt": 1,
+        "stage_role": "NORMAL",
+    }
+
+    validated = validate_full_short_logical_stage_plan_v1([fallback_first])
+
+    assert validated[0]["logical_stage_id"] == "planning"
+
+
 def _policy(
     store: FullShortDurableExecutionStoreV1 | None = None, *,
     expected_stage_calls: int = 1,
