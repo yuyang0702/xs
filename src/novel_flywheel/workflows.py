@@ -32809,8 +32809,16 @@ class WorkflowService:
         if self._exact_full_short_execution():
             return protocol_receipt_attempts(
                 same_route_attempts=min(same_route_attempts, 2),
-                configured_fallback_available=False,
-                fallback_attempts=0,
+                # The campaign has an explicitly configured, admitted
+                # fallback route. Keep the bounded receipt schedule intact,
+                # but do not suppress that authorized recovery path merely
+                # because exact-full execution is active.
+                configured_fallback_available=(
+                    self.gateway.has_configured_fallback(role)
+                    if callable(getattr(self.gateway, "has_configured_fallback", None))
+                    else False
+                ),
+                fallback_attempts=2,
             )
         return model_route_attempts(
             self.gateway,
