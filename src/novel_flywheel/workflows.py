@@ -32546,12 +32546,19 @@ class WorkflowService:
                 # is a semantic gate result, not a provider-route failure;
                 # preserve it for the draft repair controller instead of
                 # converting it into a protocol-route quarantine.
-                raise DraftSemanticValidationError(
-                    str(execution_spec.contract_name),
-                    [{
+                findings = getattr(exc, "domain_diagnostic_findings", ())
+                issue_items = [
+                    dict(item) for item in findings
+                    if isinstance(item, Mapping)
+                ]
+                if not issue_items:
+                    issue_items = [{
                         "code": "semantic_receipt_domain_validation",
                         "message": "semantic receipt did not satisfy the immutable prose contract",
-                    }],
+                    }]
+                raise DraftSemanticValidationError(
+                    str(execution_spec.contract_name),
+                    issue_items,
                 ) from exc
             if isinstance(
                 exc,

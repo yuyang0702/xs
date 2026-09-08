@@ -1299,6 +1299,10 @@ async def execute_contract_runtime(
     last_business_incomplete_reason: str | None = None
     last_domain_snapshot: PlanningRepairDomainValidationSnapshotV1 | None = None
     pending_domain_findings: tuple[Mapping[str, Any], ...] = ()
+    # Preserve the last authoritative domain findings on terminal domain
+    # errors so the owning workflow can render precise, bounded repair
+    # instructions instead of receiving only a generic contract failure.
+    last_domain_findings: tuple[Mapping[str, Any], ...] = ()
     pending_source_identity: str | None = None
     attempt_output_tokens = max_output_tokens
     contract_schema = structured_contract.json_schema
@@ -2024,6 +2028,11 @@ async def execute_contract_runtime(
                     if execution_spec.domain_retry_renderer is not None:
                         raise
                     diagnostic_findings = ()
+            if diagnostic_findings:
+                last_domain_findings = tuple(
+                    item for item in diagnostic_findings
+                    if isinstance(item, Mapping)
+                )
             if execution_spec.domain_retry_renderer is not None:
                 pending_domain_findings = diagnostic_findings
                 validator_source_identity = getattr(
@@ -2226,6 +2235,11 @@ async def execute_contract_runtime(
         )
     if last_error is None:  # pragma: no cover - attempt constructor is non-empty
         raise RuntimeError("structured contract runtime had no executable attempt")
+    if last_domain_findings:
+        try:
+            setattr(last_error, "domain_diagnostic_findings", last_domain_findings)
+        except Exception:
+            pass
     if ptr12_triggered_context is not None and not (
         final_artifact_failure_seen and not non_final_failure_seen
     ):
