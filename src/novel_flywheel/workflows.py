@@ -25281,36 +25281,6 @@ class WorkflowService:
             if atomic else "draft_segment_semantic_receipt"
         )
 
-        def bind_contract_viewpoint(candidate: object) -> object:
-            """Bind omitted third-limited viewpoint fields only from proof.
-
-            The immutable task contract supplies the required viewpoint mode;
-            this local repair is allowed only for a third-limited contract when
-            the prose itself is clearly third-person and contains no first-
-            person markers.  Evidence remains an exact prose excerpt and all
-            other semantic fields stay provider-authored and fail-closed.
-            """
-            if not (
-                atomic and contract.viewpoint == "third-limited"
-                and isinstance(candidate, dict)
-                and candidate.get("viewpoint_valid") in (None, "")
-                and candidate.get("viewpoint_evidence") in (None, "")
-            ):
-                return candidate
-            visible = prose.strip()
-            if not visible or any(
-                marker in visible[:800]
-                for marker in ("我", "我的", "我们", "咱们")
-            ) or not re.search(r"(?:主角|他|她)", visible[:800]):
-                return candidate
-            evidence = visible.split("。", 1)[0].strip()
-            if not evidence:
-                return candidate
-            repaired = dict(candidate)
-            repaired["viewpoint_valid"] = True
-            repaired["viewpoint_evidence"] = evidence
-            return repaired
-
         def receipt_artifact_complete(value: str) -> bool:
             """Prove shape/evidence, while returning semantic negatives."""
 
@@ -25319,7 +25289,6 @@ class WorkflowService:
                     value, run_path, contract_name=receipt_contract_name,
                 )
                 candidate = normalize_semantic_receipt_verdicts(candidate)
-                candidate = bind_contract_viewpoint(candidate)
                 candidate, _ = align_semantic_receipt_evidence(
                     contract, prose, candidate,
                 )
@@ -25454,7 +25423,6 @@ class WorkflowService:
                     ),
                 )
                 raw_receipt = normalize_semantic_receipt_verdicts(raw_receipt)
-                raw_receipt = bind_contract_viewpoint(raw_receipt)
             except (json.JSONDecodeError, ValueError) as exc:
                 receipt_issues = [{
                     "code": "invalid_receipt",
