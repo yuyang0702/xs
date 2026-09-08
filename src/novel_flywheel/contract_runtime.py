@@ -2083,7 +2083,7 @@ async def execute_contract_runtime(
                 and execution_spec.retry_domain_failures
                 and not attempt.is_last
             )
-            if not actionable_required_field_recovery:
+            if not actionable_required_field_recovery and attempt.is_last:
                 # Route qualification is a contract-level outcome.  Do not
                 # quarantine the exact route between two attempts in the same
                 # already-authorized typed recovery sequence; doing so would
