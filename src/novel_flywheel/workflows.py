@@ -25224,10 +25224,10 @@ class WorkflowService:
             "contract. Do not rewrite or score. Return one JSON object with authority_sha256, "
             "execution_manifest_sha256, task_id, prose_sha256, "
             + (
-                "beat_receipts (one per owned atomic beat in exact order, each with beat_id, "
+                "viewpoint_valid and viewpoint_evidence MUST appear first for this atomic "
+                "receipt, followed by beat_receipts (one per owned atomic beat in exact order, each with beat_id, "
                 "evidence, actor_action_valid, actor_action_evidence, state_valid, state_evidence, "
                 "scene_order_valid, and scene_order_evidence), outside_beat_ids, future_beat_ids, "
-                "viewpoint_valid, viewpoint_evidence, "
                 if atomic else
                 "event_receipts (one per owned event in exact order, each with event_id and an "
                 "exact prose evidence excerpt), outside_event_ids, "
