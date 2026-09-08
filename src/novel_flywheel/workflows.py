@@ -32533,6 +32533,26 @@ class WorkflowService:
                 # Checkpoint observability must never mask the actual workflow
                 # failure or alter the existing recovery path.
                 pass
+            if (
+                execution_spec is not None
+                and execution_spec.contract_name in {
+                    "draft_atomic_semantic_receipt",
+                    "draft_segment_semantic_receipt",
+                }
+                and isinstance(exc, ValueError)
+                and "failed its authoritative domain contract" in str(exc)
+            ):
+                # Contract Runtime exhausted its typed domain retries.  This
+                # is a semantic gate result, not a provider-route failure;
+                # preserve it for the draft repair controller instead of
+                # converting it into a protocol-route quarantine.
+                raise DraftSemanticValidationError(
+                    str(execution_spec.contract_name),
+                    [{
+                        "code": "semantic_receipt_domain_validation",
+                        "message": "semantic receipt did not satisfy the immutable prose contract",
+                    }],
+                ) from exc
             if isinstance(
                 exc,
                 (ContextCapacityPreflightError, CapacityAdmissionFailureV1),
