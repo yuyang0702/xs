@@ -16525,8 +16525,43 @@ class WorkflowService:
                 expected_output_characters=max(1800, 850 * len(event_contracts)),
                 compact_input=True,
                 route_capacity_guard=True,
-                bounded_protocol_output=True,
-                execution_spec=self._structured_stage_spec(
+                    bounded_protocol_output=True,
+                    schema=(
+                        {
+                            **registered_business_wire_schema(
+                                receipt_contract_name,
+                                {
+                                    "authority_sha256": contract.authority_sha256,
+                                    "execution_manifest_sha256": (
+                                        contract.execution_manifest_sha256
+                                    ),
+                                    "task_id": contract.task_id,
+                                    "prose_sha256": prose_sha256,
+                                },
+                            ),
+                            "required": list(
+                                dict.fromkeys(
+                                    list(
+                                        registered_business_wire_schema(
+                                            receipt_contract_name,
+                                            {
+                                                "authority_sha256": contract.authority_sha256,
+                                                "execution_manifest_sha256": (
+                                                    contract.execution_manifest_sha256
+                                                ),
+                                                "task_id": contract.task_id,
+                                                "prose_sha256": prose_sha256,
+                                            },
+                                        ).get("required", [])
+                                    )
+                                    + (["viewpoint_valid", "viewpoint_evidence"]
+                                       if atomic and contract.viewpoint else [])
+                                )
+                            ),
+                        }
+                        if atomic and contract.viewpoint else None
+                    ),
+                    execution_spec=self._structured_stage_spec(
                     "execution_manifest",
                     completion_check=fragment_complete,
                     runtime_authority={
