@@ -49,6 +49,7 @@ from novel_flywheel.execution_manifest import (
     execution_event_contract_prompt_payload,
     execution_manifest_issues,
     execution_manifest_receipt_issues,
+    normalize_execution_manifest_receipt_verdicts,
     execution_manifest_receipt_binding_issues,
     execution_manifest_receipt_issues_are_protocol_only,
     execution_manifest_payload,
@@ -16743,6 +16744,7 @@ class WorkflowService:
                     value, run_path,
                     contract_name="execution_manifest_receipt",
                 )
+                candidate = normalize_execution_manifest_receipt_verdicts(candidate)
                 for item in candidate.get("beat_receipts") or []:
                     if isinstance(item, dict):
                         item.setdefault("field_verdicts", {})
@@ -16826,6 +16828,9 @@ class WorkflowService:
                 receipt_payload = self._convert_generated_object(
                     raw, run_path,
                     contract_name="execution_manifest_receipt",
+                )
+                receipt_payload = normalize_execution_manifest_receipt_verdicts(
+                    receipt_payload,
                 )
             except (TypeError, ValueError, json.JSONDecodeError) as exc:
                 receipt_payload = {}

@@ -22,6 +22,7 @@ from novel_flywheel.execution_manifest import (
     execution_manifest_receipt_binding_issues,
     execution_manifest_receipt_issues_are_protocol_only,
     execution_manifest_sha256,
+    normalize_execution_manifest_receipt_verdicts,
     extend_future_beat_guard,
     future_beat_guards,
     legacy_execution_index_requires_rebuild,
@@ -777,6 +778,29 @@ def test_semantic_receipt_reports_hash_actor_boundary_and_plot_errors_together()
         "receipt_beat_actor_action", "receipt_segment_boundary",
         "receipt_formal_plot",
     } <= codes
+
+
+def test_textual_valid_verdicts_are_normalized_at_protocol_boundary() -> None:
+    payload = manifest_payload()
+    authority_text = manifest_authority_text(payload)
+    receipt = semantic_receipt(payload, authority_text)
+    for item in receipt["beat_receipts"]:
+        item["actor_action_valid"] = "valid"
+        item["field_verdicts"] = {
+            field: "valid"
+            for field in (
+                "actor", "action", "location", "preconditions",
+                "postconditions", "viewpoint", "story_time", "timeline",
+                "knowledge_delta", "relationship_delta",
+            )
+        }
+    receipt["segment_receipts"][0]["boundary_valid"] = "valid"
+    receipt["formal_plot_unchanged"] = "valid"
+
+    normalized = normalize_execution_manifest_receipt_verdicts(receipt)
+    assert not execution_manifest_receipt_issues(
+        parse_execution_manifest(payload), authority_text, normalized,
+    )
 
 
 def test_semantic_receipt_preserves_field_level_failure_diagnostics() -> None:
