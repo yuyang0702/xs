@@ -781,8 +781,11 @@ class ModelGateway:
                 and qualification.get("status") == "quarantined"
                 and qualification.get("last_failure_reason")
                 in {"output_limited", "underfilled", "semantic_invalid"}
-                and int(max_output_tokens or 0)
-                > int(qualification.get("observed_visible_characters") or 0)
+                and (
+                    qualification.get("last_failure_reason") == "semantic_invalid"
+                    or int(max_output_tokens or 0)
+                    > int(qualification.get("observed_visible_characters") or 0)
+                )
             )
             if (
                 qualification
@@ -804,10 +807,14 @@ class ModelGateway:
                     and plain_qualification.get("status") == "quarantined"
                     and plain_qualification.get("last_failure_reason")
                     in {"output_limited", "underfilled", "semantic_invalid"}
-                    and int(max_output_tokens or 0)
-                    > int(
-                        plain_qualification.get("observed_visible_characters")
-                        or 0
+                    and (
+                        plain_qualification.get("last_failure_reason")
+                        == "semantic_invalid"
+                        or int(max_output_tokens or 0)
+                        > int(
+                            plain_qualification.get("observed_visible_characters")
+                            or 0
+                        )
                     )
                 )
                 if (
