@@ -25264,6 +25264,34 @@ class WorkflowService:
                 item.get("code") in protocol_codes for item in issues
             )
 
+        def semantic_receipt_findings(
+            payload: Mapping[str, Any],
+        ) -> Sequence[Mapping[str, Any]]:
+            """Expose exact semantic findings to Runtime-owned retries.
+
+            Without this extractor the provider receives only a generic domain
+            failure and can repeat the same evidence mismatch until the route
+            is quarantined.  Findings remain protocol-local and never alter
+            the immutable prose or contract authority.
+            """
+
+            aligned, _ = align_semantic_receipt_evidence(
+                contract, prose, dict(payload),
+            )
+            return semantic_receipt_issues(contract, prose, aligned)
+
+        def render_semantic_receipt_retry(
+            findings: Sequence[Mapping[str, Any]],
+            _payload: Mapping[str, Any],
+            base_user: str,
+        ) -> str:
+            return base_user + (
+                "\n\nRECEIPT SEMANTIC FINDINGS. The prose and contract are immutable; "
+                "repair only the receipt verdict/evidence fields and return one "
+                "complete JSON object:\n"
+                + json.dumps(list(findings), ensure_ascii=False, indent=2)
+            )
+
         attempt_plan = self._protocol_receipt_attempt_plan(
             "review", same_route_attempts=2,
         )
@@ -25334,6 +25362,8 @@ class WorkflowService:
                             "task_id": contract.task_id,
                             "prose_sha256": prose_sha256,
                         },
+                        domain_diagnostic_extractor=semantic_receipt_findings,
+                        domain_retry_renderer=render_semantic_receipt_retry,
                     ),
                 ),
             )
