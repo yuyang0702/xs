@@ -25307,8 +25307,14 @@ class WorkflowService:
                     primary_only=not attempt.use_configured_fallback,
                     defer_route_failure_audit=True,
                     protocol_system_contract=IMMUTABLE_RECEIPT_SYSTEM,
+                    # Semantic receipts carry several exact prose evidence
+                    # bindings per owned beat/event (not just one verdict).
+                    # The old 320-character estimate routinely produced a
+                    # provider cap below the serialized receipt size, causing
+                    # every route retry to truncate before validation. Reserve
+                    # bounded protocol capacity from the full evidence shape.
                     expected_output_characters=max(
-                        800, len(contract.beat_ids or contract.event_ids) * 320,
+                        800, len(contract.beat_ids or contract.event_ids) * 640,
                     ),
                     route_capacity_guard=True,
                     story_skeleton_override=self._stage_story_skeleton(
