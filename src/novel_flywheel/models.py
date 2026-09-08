@@ -770,7 +770,25 @@ class ModelGateway:
                 contract_name=contract_name,
                 schema_sha256=schema_sha256,
             )
-            if qualification and qualification.get("status") == "quarantined":
+            # A route quarantined solely for output truncation is recoverable
+            # after the caller raises its bounded protocol budget.  The old
+            # qualification is evidence about the previous cap, not proof
+            # that the provider/route is semantically invalid.  Permit one
+            # normal Runtime validation pass; successful conversion below
+            # re-qualifies the exact same route and contract.
+            capacity_recovery_eligible = bool(
+                qualification
+                and qualification.get("status") == "quarantined"
+                and qualification.get("last_failure_reason")
+                in {"output_limited", "underfilled"}
+                and int(max_output_tokens or 0)
+                > int(qualification.get("observed_visible_characters") or 0)
+            )
+            if (
+                qualification
+                and qualification.get("status") == "quarantined"
+                and not capacity_recovery_eligible
+            ):
                 if configured_mode == "plain":
                     raise StructuredRouteQuarantinedError(configured_mode)
                 plain_qualification = self.db.get_structured_route_qualification(
@@ -781,9 +799,21 @@ class ModelGateway:
                     contract_name=contract_name,
                     schema_sha256=schema_sha256,
                 )
+                plain_capacity_recovery_eligible = bool(
+                    plain_qualification
+                    and plain_qualification.get("status") == "quarantined"
+                    and plain_qualification.get("last_failure_reason")
+                    in {"output_limited", "underfilled"}
+                    and int(max_output_tokens or 0)
+                    > int(
+                        plain_qualification.get("observed_visible_characters")
+                        or 0
+                    )
+                )
                 if (
                     plain_qualification
                     and plain_qualification.get("status") == "quarantined"
+                    and not plain_capacity_recovery_eligible
                 ):
                     raise StructuredRouteQuarantinedError("plain")
                 structured_mode_degraded = True
