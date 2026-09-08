@@ -418,6 +418,45 @@ def semantic_receipt_issues(
     return issues
 
 
+def normalize_semantic_receipt_verdicts(receipt: object) -> object:
+    """Normalize closed textual boolean spellings at the receipt boundary.
+
+    Some qualified production responses encode boolean verdicts as the exact
+    strings ``"valid"``/``"invalid"``.  Preserve fail-closed behavior by
+    translating only those closed spellings; unknown values remain unchanged
+    and are rejected by :func:`semantic_receipt_issues`.
+    """
+
+    if not isinstance(receipt, dict):
+        return receipt
+
+    def normalize(value: object) -> object:
+        if isinstance(value, str):
+            folded = value.strip().lower()
+            if folded in {"valid", "true"}:
+                return True
+            if folded in {"invalid", "false"}:
+                return False
+        return value
+
+    for item in receipt.get("beat_receipts") or ():
+        if not isinstance(item, dict):
+            continue
+        for field in (
+            "actor_action_valid", "state_valid", "scene_order_valid",
+        ):
+            if field in item:
+                item[field] = normalize(item[field])
+    for field in ("causal_order_valid", "viewpoint_valid"):
+        if field in receipt:
+            receipt[field] = normalize(receipt[field])
+    for field in ("entry", "exit"):
+        state = receipt.get(field)
+        if isinstance(state, dict) and "satisfied" in state:
+            state["satisfied"] = normalize(state["satisfied"])
+    return receipt
+
+
 def align_semantic_receipt_evidence(
     contract: DraftTaskContract, prose: str, receipt: object,
 ) -> tuple[object, list[str]]:

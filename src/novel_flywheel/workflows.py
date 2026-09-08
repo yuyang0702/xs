@@ -32,6 +32,7 @@ from novel_flywheel.draft_split import (
     render_draft_task_prompt,
     residual_target,
     semantic_receipt_issues,
+    normalize_semantic_receipt_verdicts,
     target_bounds,
     validate_semantic_receipt,
     whole_draft_receipt_issues,
@@ -25252,6 +25253,7 @@ class WorkflowService:
                 candidate = self._convert_generated_object(
                     value, run_path, contract_name=receipt_contract_name,
                 )
+                candidate = normalize_semantic_receipt_verdicts(candidate)
                 candidate, _ = align_semantic_receipt_evidence(
                     contract, prose, candidate,
                 )
@@ -25385,6 +25387,7 @@ class WorkflowService:
                         if atomic else "draft_segment_semantic_receipt"
                     ),
                 )
+                raw_receipt = normalize_semantic_receipt_verdicts(raw_receipt)
             except (json.JSONDecodeError, ValueError) as exc:
                 receipt_issues = [{
                     "code": "invalid_receipt",
