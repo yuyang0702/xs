@@ -363,11 +363,14 @@ class ModelGateway:
                 "operation_run_id": scope.run_id,
                 "candidate_sha256": scope.candidate_sha256,
             })
-            if (
-                metadata["stage"] != scope.stage
-                or metadata["contract_name"] not in scope.contract_names
-            ):
-                raise ModelDispatchScopeViolationError()
+            if metadata["stage"] != scope.stage:
+                raise ModelDispatchScopeViolationError(
+                    "model_dispatch_scope_stage_mismatch"
+                )
+            if metadata["contract_name"] not in scope.contract_names:
+                raise ModelDispatchScopeViolationError(
+                    "model_dispatch_scope_contract_mismatch"
+                )
             if bound.admitted_dispatches >= scope.max_dispatches:
                 raise ModelDispatchScopeViolationError(
                     "model_dispatch_scope_exhausted"
