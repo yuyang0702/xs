@@ -18136,27 +18136,34 @@ class WorkflowService:
             if accepted:
                 safe_state[raw_character] = value
 
-        # Some qualified maintenance providers emit the canonical state as a
-        # flat descriptive object (for example ``current_state`` and
-        # ``environment_state``) while still returning typed character
-        # transitions.  When the flat values contain every transition target,
-        # the transition evidence is already bound to the same candidate; do
-        # not misclassify those transitions as unused merely because the wire
-        # presentation is not nested.  This narrow adapter does not invent a
-        # value or bypass the exact-evidence check above, and nested state
-        # proposals continue through the strict path unchanged.
-        flat_state = bool(proposed_states) and all(
-            not isinstance(value, Mapping) for value in proposed_states.values()
-        )
-        if flat_state:
-            flat_values = {
-                canonical_sha256(value) for value in proposed_states.values()
-            }
-            for key, transition in transition_map.items():
-                if key not in used and canonical_sha256(
-                    transition["to"]
-                ) in flat_values:
-                    used.add(key)
+        # A fresh StoryState has no prior value to compare for a newly named
+        # entity. Providers may still emit a typed transition alongside either
+        # a flat descriptive state or a nested state object. If the transition
+        # target is present somewhere in that same candidate, its exact prose
+        # evidence is already bound to the proposed value; accept the unit as
+        # an initial projection instead of misclassifying it as unused. Existing
+        # entities continue through the strict baseline from/to comparison.
+        def collect_state_values(value: object) -> set[str]:
+            if isinstance(value, Mapping):
+                result: set[str] = set()
+                for nested in value.values():
+                    result.update(collect_state_values(nested))
+                return result
+            if isinstance(value, list):
+                result: set[str] = set()
+                for nested in value:
+                    result.update(collect_state_values(nested))
+                return result
+            return {canonical_sha256(value)}
+
+        proposed_value_hashes = collect_state_values(proposed_states)
+        for key, transition in transition_map.items():
+            if (
+                key not in used
+                and key[0] not in existing
+                and canonical_sha256(transition["to"]) in proposed_value_hashes
+            ):
+                used.add(key)
 
         for key, transition in transition_map.items():
             if key not in used:
