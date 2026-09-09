@@ -954,6 +954,11 @@ class ModelGateway:
                 and contract_name in {
                     "draft_atomic_semantic_receipt",
                     "draft_segment_semantic_receipt",
+                    # A prior plain qualification can be stale after the
+                    # typed Final Review prompt/schema binding is repaired.
+                    # Permit one bounded requalification; the unchanged
+                    # receipt validator remains authoritative.
+                    "full_short_final_review",
                 }
             )
             capacity_recovery_eligible = (
@@ -997,6 +1002,7 @@ class ModelGateway:
                     and contract_name in {
                         "draft_atomic_semantic_receipt",
                         "draft_segment_semantic_receipt",
+                        "full_short_final_review",
                     }
                 )
                 if (
