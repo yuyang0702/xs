@@ -936,6 +936,16 @@ class ModelGateway:
                 in {"output_limited", "underfilled", "semantic_invalid"}
                 and (
                     qualification.get("last_failure_reason") == "semantic_invalid"
+                    # Final Review compact recovery is a materially smaller
+                    # protocol request.  A historical verbose response must
+                    # not block its one bounded requalification solely because
+                    # its visible character count exceeded the old reserve.
+                    or (
+                        qualification.get("last_failure_reason")
+                        == "output_limited"
+                        and contract_name == "full_short_final_review"
+                        and int(max_output_tokens or 0) >= 768
+                    )
                     or int(max_output_tokens or 0)
                         > int(qualification.get("observed_visible_characters") or 0)
                 )
@@ -987,6 +997,12 @@ class ModelGateway:
                     and (
                         plain_qualification.get("last_failure_reason")
                         == "semantic_invalid"
+                        or (
+                            plain_qualification.get("last_failure_reason")
+                            == "output_limited"
+                            and contract_name == "full_short_final_review"
+                            and int(max_output_tokens or 0) >= 768
+                        )
                         or int(max_output_tokens or 0)
                         > int(
                             plain_qualification.get("observed_visible_characters")
