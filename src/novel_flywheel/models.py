@@ -798,8 +798,11 @@ class ModelGateway:
                 and qualification.get("status") == "quarantined"
                 and qualification.get("last_failure_reason")
                 == "required_fields_missing"
-                and int(max_output_tokens or 0)
-                > int(qualification.get("observed_visible_characters") or 0)
+                and diagnostic_context is not None
+                and contract_name in {
+                    "draft_atomic_semantic_receipt",
+                    "draft_segment_semantic_receipt",
+                }
             )
             capacity_recovery_eligible = (
                 capacity_recovery_eligible or required_fields_recovery_eligible
