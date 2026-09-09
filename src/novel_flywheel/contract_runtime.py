@@ -30,6 +30,7 @@ from novel_flywheel.model_diagnostics import (
 )
 from novel_flywheel.models import (
     FinalArtifactCapabilityError,
+    LocalModelDispatchRejectedError,
     ModelResult,
     ReasoningOnlyFinalArtifactUnavailableError,
     StructuredRouteQuarantinedError,
@@ -163,6 +164,8 @@ def _is_predispatch_capacity_boundary_failure(exc: BaseException) -> bool:
     """
 
     if isinstance(exc, CapacityAdmissionFailureV1):
+        return True
+    if isinstance(exc, LocalModelDispatchRejectedError):
         return True
     if not isinstance(exc, FullShortBoundaryFailureV1):
         return False

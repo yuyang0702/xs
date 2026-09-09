@@ -1,0 +1,15 @@
+{
+  "schema": "REAL_ZERO_TO_FINAL_V11_RECEIPT_RECOVERY_FORWARD_RISK_V2",
+  "scope": "same-run receipt-only recovery",
+  "provider_dispatches_added": 0,
+  "draft_requests_in_next_operation": 0,
+  "candidate_mutation_policy": "fail_closed_on_raw_or_prose_hash_drift",
+  "operation_scope": {
+    "kind": "semantic_receipt",
+    "stage": "review",
+    "contract": "draft_atomic_semantic_receipt"
+  },
+  "known_preexisting_full_suite_risk": "tests/canary/test_c0a_dry_run.py may retain its existing dynamic_code_forbidden fixture failure",
+  "remaining_real_execution_gate": "explicit future Provider authorization and native semantic receipt validation",
+  "hard_stop_not_claimed": true
+}

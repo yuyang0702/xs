@@ -2,7 +2,13 @@ import pytest
 
 from novel_flywheel.db import Database
 from novel_flywheel.domain.models import ModelResponse, ToolCall
-from novel_flywheel.models import ModelGateway, ModelRoutesExhaustedError
+from novel_flywheel.models import (
+    ModelDispatchBudgetExhaustedError,
+    ModelDispatchOperationScope,
+    ModelDispatchScopeViolationError,
+    ModelGateway,
+    ModelRoutesExhaustedError,
+)
 from novel_flywheel.providers.registry import ResolvedModel
 from novel_flywheel.providers.http import (
     SingleDispatchTransportPolicyV1,
@@ -1026,6 +1032,76 @@ async def test_dispatch_observer_runs_only_at_adapter_dispatch_boundary(tmp_path
         "execution_mode": "plain",
         "stage": "planning",
     }]
+
+
+@pytest.mark.asyncio
+async def test_dispatch_scope_blocks_draft_and_budget_before_adapter(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    db.save_role_binding("review", "provider", "model", None, None)
+    adapter = FakeAdapter()
+    gateway = ModelGateway(db, ToolRegistry(adapter))
+    observed = []
+    gateway.dispatch_observer = observed.append
+    scope = ModelDispatchOperationScope(
+        run_id="run-1", operation_kind="semantic_receipt",
+        candidate_sha256="a" * 64, stage="review",
+        contract_names=("draft_atomic_semantic_receipt",), max_dispatches=1,
+    )
+
+    contract = StructuredArtifactContract(
+        name="draft_atomic_semantic_receipt", version=1,
+        schema={"type": "object"},
+    )
+    with gateway.bind_dispatch_operation_scope(scope):
+        with pytest.raises(ModelDispatchScopeViolationError):
+            await gateway.complete_route(
+                "primary", "review", "system", "user", stage="draft",
+                contract=contract,
+            )
+
+        with pytest.raises(ModelDispatchScopeViolationError):
+            await gateway.complete_route(
+                "primary", "review", "system", "user", stage="review",
+                contract=StructuredArtifactContract(
+                    name="draft_segment_semantic_receipt", version=1,
+                    schema={"type": "object"},
+                ),
+            )
+
+        await gateway.complete_route(
+            "primary", "review", "system", "user", stage="review",
+            contract=contract,
+        )
+        with pytest.raises(ModelDispatchScopeViolationError):
+            await gateway.complete_route(
+                "primary", "review", "system", "user", stage="review",
+                contract=contract,
+            )
+
+    assert adapter is not None
+    assert len(observed) == 1
+    assert observed[0]["operation_kind"] == "semantic_receipt"
+    assert observed[0]["candidate_sha256"] == "a" * 64
+    assert observed[0]["contract_name"] == "draft_atomic_semantic_receipt"
+
+
+@pytest.mark.asyncio
+async def test_dispatch_admitter_rejects_budget_without_observer_or_adapter(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    db.save_role_binding("review", "provider", "model", None, None)
+    adapter = FakeAdapter()
+    gateway = ModelGateway(db, ToolRegistry(adapter))
+    observed = []
+    gateway.dispatch_observer = observed.append
+    gateway.dispatch_admitter = lambda _metadata: (_ for _ in ()).throw(
+        ModelDispatchBudgetExhaustedError()
+    )
+
+    with pytest.raises(ModelDispatchBudgetExhaustedError):
+        await gateway.complete("review", "system", "user")
+    assert observed == []
 
 
 @pytest.mark.asyncio

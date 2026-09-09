@@ -139,7 +139,13 @@ from novel_flywheel.failure_boundary import (
 )
 from novel_flywheel.provider_reasoning_policy import ReasoningPolicy
 from novel_flywheel.workflow_coordination import WorkflowCoordinator
+from novel_flywheel.short_receipt_resume import (
+    persist_validated_receipt,
+    prepare_short_receipt_resume,
+)
 from novel_flywheel.models import (
+    LocalModelDispatchRejectedError,
+    ModelDispatchOperationScope,
     ModelGateway,
     ModelRoutesExhaustedError,
     TransportInterruptedError,
@@ -1975,6 +1981,202 @@ class WorkflowService:
         return await self.coordinator.run_short(
             project_id, use_crewai=use_crewai, run_id=run_id,
         )
+
+    async def resume_short_receipt(
+        self, project_id: str, *, run_id: str,
+        candidate_relative_path: str, candidate_sha256: str,
+        task_id: str, execute: bool = False, max_dispatches: int = 0,
+    ) -> dict:
+        """Resume one immutable Draft candidate at the public coordinator boundary."""
+        return await self.coordinator.resume_short_receipt(
+            project_id,
+            run_id=run_id,
+            candidate_relative_path=candidate_relative_path,
+            candidate_sha256=candidate_sha256,
+            task_id=task_id,
+            execute=execute,
+            max_dispatches=max_dispatches,
+        )
+
+    async def _short_receipt_resume_pipeline(
+        self, project: Project, *, run_id: str,
+        candidate_relative_path: str, candidate_sha256: str,
+        task_id: str, execute: bool, max_dispatches: int,
+    ) -> dict:
+        """Select and optionally execute one native semantic-receipt operation.
+
+        Preparation persists only a pending-candidate binding. It is neither a
+        semantic receipt nor an accepted fragment checkpoint.
+        """
+
+        if execute is False and max_dispatches != 0:
+            raise ValueError("receipt preflight cannot reserve Provider dispatches")
+        if execute is True and max_dispatches <= 0:
+            raise ValueError("receipt execution requires an explicit positive dispatch bound")
+        prepared = prepare_short_receipt_resume(
+            self, project,
+            run_id=run_id,
+            candidate_relative_path=candidate_relative_path,
+            candidate_sha256=candidate_sha256,
+            task_id=task_id,
+            persist=True,
+        )
+        public = {
+            key: value for key, value in prepared.record.items()
+            if key != "contract"
+        }
+        public.update({
+            "state_relative_path": prepared.state_path.relative_to(
+                prepared.run_path
+            ).as_posix(),
+            "dispatch_scope": {
+                "operation_kind": "semantic_receipt",
+                "stage": "review",
+                "contract_names": ["draft_atomic_semantic_receipt"],
+                "candidate_sha256": candidate_sha256,
+                "max_dispatches": max_dispatches,
+            },
+            "provider_dispatch_executed": False,
+        })
+        if not execute:
+            return public
+
+        scope = ModelDispatchOperationScope(
+            run_id=run_id,
+            operation_kind="semantic_receipt",
+            candidate_sha256=candidate_sha256,
+            stage="review",
+            contract_names=("draft_atomic_semantic_receipt",),
+            max_dispatches=max_dispatches,
+        )
+        binder = getattr(self.gateway, "bind_dispatch_operation_scope", None)
+        if not callable(binder):
+            raise RuntimeError("model gateway lacks dispatch operation scope admission")
+        with binder(scope):
+            receipt = await self._verify_draft_semantic_node(
+                run_id, prepared.run_path, project,
+                prepared.constraints,
+                prepared.contract, prepared.prose,
+                list(prepared.outside_beat_ids),
+                suffix="-receipt-only-resume",
+            )
+        validated = persist_validated_receipt(prepared, receipt)
+        self.db.add_run_event(
+            run_id, "success", "draft_pending_semantic_receipt_validated",
+            "The immutable pending Draft candidate passed native semantic receipt validation.",
+            stage="draft", metadata={
+                "task_id": task_id,
+                "prose_sha256": candidate_sha256,
+                "semantic_receipt_sha256": validated["semantic_receipt_sha256"],
+                "draft_request_count": 0,
+            },
+        )
+        return {
+            **public,
+            "status": "semantic_receipt_validated",
+            "semantic_receipt_sha256": validated["semantic_receipt_sha256"],
+            "provider_dispatch_executed": True,
+        }
+
+    async def _resume_validated_pending_split(
+        self, run_id: str, run_path: Path, project: Project, constraints: str,
+        prompt: str, *, suffix: str, target: int, previous_parts: list[str],
+        root_contract: DraftTaskContract, semantic_all_event_ids: list[str],
+        semantic_receipt_nodes: list[tuple[DraftTaskContract, dict]],
+        location_catalog: dict[str, LocationRef],
+        beat_catalog: Mapping[str, AtomicBeat],
+        prose_authority_context: DraftProseAuthorityContextV1 | None,
+    ) -> str | None:
+        """Continue a validated first child without replaying its Draft call."""
+
+        pending_root = run_path / "outputs" / "draft-pending-candidates"
+        candidates = sorted(pending_root.glob("*.json")) if pending_root.is_dir() else []
+        pending = None
+        for path in candidates:
+            try:
+                value = json.loads(path.read_text(encoding="utf-8"))
+            except (OSError, UnicodeError, json.JSONDecodeError):
+                continue
+            if (
+                isinstance(value, dict)
+                and value.get("status") == "semantic_receipt_validated"
+                and value.get("task_id") == f"{root_contract.task_id}/sub-1"
+                and value.get("candidate_relative_path")
+            ):
+                pending = value
+                break
+        if pending is None:
+            return None
+        prepared = prepare_short_receipt_resume(
+            self, project, run_id=run_id,
+            candidate_relative_path=str(pending["candidate_relative_path"]),
+            candidate_sha256=str(pending["candidate_prose_sha256"]),
+            task_id=str(pending["task_id"]), persist=False,
+        )
+        if pending.get("semantic_receipt_sha256") != canonical_sha256(
+            pending.get("semantic_receipt") or {}
+        ):
+            raise ValueError("validated pending semantic receipt binding is invalid")
+        first = prepared.prose
+        semantic_receipt_nodes.append((prepared.contract, dict(pending["semantic_receipt"])))
+        parent_beat_ids = list(root_contract.beat_ids)
+        split_at = max(1, math.ceil(len(parent_beat_ids) / 2))
+        second_event_ids = parent_beat_ids[split_at:]
+        first_hash = hashlib.sha256(first.strip().encode("utf-8")).hexdigest()
+        second_target = residual_target(target, effective_han_characters(first))
+        second_contract = DraftTaskContract(
+            authority_sha256=root_contract.authority_sha256,
+            task_id=f"{root_contract.task_id}/sub-2",
+            parent_task_id=root_contract.task_id,
+            depth=1,
+            target_han=second_target,
+            event_ids=tuple(dict.fromkeys(
+                beat_catalog[beat_id].source_event_id for beat_id in second_event_ids
+            )),
+            scope="内部子任务 2/2：只完成以下节拍并抵达父段出口\n" + "\n".join(
+                f"{beat_id}：{beat_catalog[beat_id].action}"
+                for beat_id in second_event_ids
+            ),
+            entry_state=(
+                f"承接已验收前半，内容哈希 {first_hash}。前半结尾：\n{first[-1200:]}"
+            ),
+            exit_requirement=root_contract.exit_requirement,
+            previous_sibling_sha256=first_hash,
+            execution_manifest_sha256=root_contract.execution_manifest_sha256,
+            beat_ids=tuple(second_event_ids),
+            viewpoint=root_contract.viewpoint,
+            narrative_mode=root_contract.narrative_mode,
+            narrator_character_id=root_contract.narrator_character_id,
+            narrator_name=root_contract.narrator_name,
+            self_reference=root_contract.self_reference,
+            future_beat_guard=root_contract.future_beat_guard,
+        )
+        second = await self._draft_short_segment_task(
+            run_id, run_path, project, constraints, prompt,
+            suffix=f"{suffix}-sub-2", target=second_target,
+            previous_parts=[*previous_parts, first],
+            event_ids=list(second_event_ids), location_catalog=location_catalog,
+            depth=1, contract=second_contract,
+            semantic_all_event_ids=semantic_all_event_ids,
+            semantic_receipt_sink=semantic_receipt_nodes,
+            beat_catalog=beat_catalog,
+            prose_authority_context=prose_authority_context,
+        )
+        combined = f"{first.strip()}\n\n{second.strip()}"
+        if self._draft_segment_issues(
+            combined, target, previous_parts, location_catalog,
+            authority_context=prose_authority_context,
+        ):
+            raise ValueError("validated pending split cannot satisfy parent Draft scope")
+        root_receipt = await self._verify_draft_semantic_node(
+            run_id, run_path, project, constraints, root_contract, combined,
+            [
+                event_id for event_id in semantic_all_event_ids
+                if event_id not in set(root_contract.beat_ids)
+            ], suffix=f"{suffix}-parent-receipt",
+        )
+        semantic_receipt_nodes.append((root_contract, root_receipt))
+        return combined
 
     def bind_full_short_terminal_finalizer(
         self, run_id: str, project_id: str,
@@ -27096,7 +27298,16 @@ class WorkflowService:
                 )
                 continue
             semantic_receipt_nodes: list[tuple[DraftTaskContract, dict]] = []
-            part = await self._draft_short_segment_task(
+            resumed_part = await self._resume_validated_pending_split(
+                run_id, run_path, project, constraints, prompt,
+                suffix=f"-part-{index:02d}", target=target,
+                previous_parts=parts, root_contract=root_contract,
+                semantic_all_event_ids=all_expected_event_ids,
+                semantic_receipt_nodes=semantic_receipt_nodes,
+                location_catalog=location_catalog, beat_catalog=beat_by_id,
+                prose_authority_context=prose_authority_context,
+            )
+            part = resumed_part if resumed_part is not None else await self._draft_short_segment_task(
                 run_id, run_path, project, constraints, prompt,
                 suffix=f"-part-{index:02d}", target=target,
                 previous_parts=parts, event_ids=expected_event_ids,
@@ -32900,6 +33111,22 @@ class WorkflowService:
             # return a domain verdict.  Preserve that semantic/protocol type;
             # it is not a route execution failure and must not be retried as
             # generic invalid provider output.
+            raise
+        except LocalModelDispatchRejectedError as exc:
+            self.db.add_run_event(
+                run_id, "warning", "protocol_receipt_local_admission_rejected",
+                "Immutable-receipt work was rejected locally before Provider dispatch.",
+                stage=stage, metadata={
+                    "boundary": boundary,
+                    "route": attempt.route,
+                    "route_attempt": attempt.route_attempt,
+                    "attempt_index": attempt.attempt_index,
+                    "failure_class": "local_admission",
+                    "failure_code": exc.code,
+                    "provider_call_executed": False,
+                    **dict(unit_metadata),
+                },
+            )
             raise
         except Exception as exc:
             failure_kind = (
