@@ -20627,9 +20627,11 @@ class WorkflowService:
         return (
             "终审结果精简恢复。请只返回一个 JSON 对象，必须包含 dimensions（commercial、story、"
             "prose，0-100）、hard_fail、decision（pass、revise 或 rewrite）和 issues（最多4条，"
-            "每条只含 category、severity、evidence、action）。只能使用这四个顶层字段："
-            "dimensions、hard_fail、decision、issues；严禁返回 score、commercial、story、prose"
-            "顶层字段，也严禁返回 criteria、criterion_evidence、reconciliations 或其它字段。"
+            "每条只含 category、severity、evidence、action）。只能使用这五个顶层字段："
+            "dimensions、hard_fail、decision、issues、reconciliations；对 AUTHORITATIVE REVIEW "
+            "ISSUE LEDGER 中的每个 issue_id 必须返回一条 reconciliation，包含 issue_id、status、"
+            "severity 和基于当前稿的具体 evidence。严禁返回 score、commercial、story、prose"
+            "顶层字段，也严禁返回 criteria、criterion_evidence 或其它字段。"
             "不要解释，不要输出 Markdown 或多个 JSON。\n\n"
             + tail("AUTHORITATIVE REVIEW ISSUE LEDGER:\n")
         )
