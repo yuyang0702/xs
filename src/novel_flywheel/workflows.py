@@ -18136,6 +18136,28 @@ class WorkflowService:
             if accepted:
                 safe_state[raw_character] = value
 
+        # Some qualified maintenance providers emit the canonical state as a
+        # flat descriptive object (for example ``current_state`` and
+        # ``environment_state``) while still returning typed character
+        # transitions.  When the flat values contain every transition target,
+        # the transition evidence is already bound to the same candidate; do
+        # not misclassify those transitions as unused merely because the wire
+        # presentation is not nested.  This narrow adapter does not invent a
+        # value or bypass the exact-evidence check above, and nested state
+        # proposals continue through the strict path unchanged.
+        flat_state = bool(proposed_states) and all(
+            not isinstance(value, Mapping) for value in proposed_states.values()
+        )
+        if flat_state:
+            flat_values = {
+                canonical_sha256(value) for value in proposed_states.values()
+            }
+            for key, transition in transition_map.items():
+                if key not in used and canonical_sha256(
+                    transition["to"]
+                ) in flat_values:
+                    used.add(key)
+
         for key, transition in transition_map.items():
             if key not in used:
                 conflicts.append({

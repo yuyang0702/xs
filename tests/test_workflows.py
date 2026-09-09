@@ -19378,6 +19378,38 @@ def test_maintenance_authority_is_incremental_and_conflicts_fail_closed() -> Non
     }
 
 
+def test_flat_maintenance_state_binds_typed_transition_targets() -> None:
+    manuscript = "他把录音机放在调度台正中央，浓雾已经完全散了。"
+    state = {
+        "confirmed_facts": [], "locked_facts": [],
+        "character_states": {}, "world_rules": [], "timeline_events": [],
+    }
+    candidate = {
+        "facts": [],
+        "state": {
+            "current_state": "完成因果闭环",
+            "core_item_state": "录音机置于明处",
+        },
+        "state_transitions": [
+            {
+                "character": "夜班港口调度员", "field": "state",
+                "from": "值守中", "to": "完成因果闭环",
+                "evidence": manuscript,
+            },
+            {
+                "character": "旧磁式录音机", "field": "status",
+                "from": "废弃", "to": "录音机置于明处",
+                "evidence": manuscript,
+            },
+        ],
+    }
+    safe, conflicts = WorkflowService._partition_short_maintenance_proposal(
+        state, candidate, run_id="flat-state", manuscript_text=manuscript,
+    )
+    assert not conflicts
+    assert len(safe["state_transitions"]) == 2
+
+
 @pytest.mark.asyncio
 async def test_maintenance_authority_conflict_uses_one_bounded_repair(
     tmp_path, monkeypatch,
