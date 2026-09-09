@@ -2757,6 +2757,9 @@ child evidence excerpts are supplied as read-only reference material only;
 the Provider must still return a complete parent receipt and the native
 validator remains authoritative.
 
+The whole-story receipt prompt also pins its minimal wire shape: each evidence
+item is only `kind` plus a verbatim `excerpt`, with no nested segment payloads.
+
 Boundary evidence retries now also bind entry to the current candidate's
 opening state and exit to its closing state, avoiding cross-sibling or contract
 paraphrases without changing the receipt contract.
