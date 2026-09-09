@@ -865,7 +865,6 @@ class ModelGateway:
         execution_mode = "plain"
         structured_mode_degraded = False
         route_fingerprint = self._route_fingerprint(resolved, execution_mode)
-        contract_name = ""
         schema_sha256 = ""
         if response_schema is not None:
             contract_name = str(
@@ -985,12 +984,25 @@ class ModelGateway:
                             plain_qualification.get("observed_visible_characters")
                             or 0
                         )
-                    )
+                        )
+                )
+                plain_required_fields_recovery_eligible = bool(
+                    plain_qualification
+                    and plain_qualification.get("status") == "quarantined"
+                    and plain_qualification.get("last_failure_reason")
+                    == "required_fields_missing"
+                    and contract_name in {
+                        "draft_atomic_semantic_receipt",
+                        "draft_segment_semantic_receipt",
+                    }
                 )
                 if (
                     plain_qualification
                     and plain_qualification.get("status") == "quarantined"
-                    and not plain_capacity_recovery_eligible
+                    and not (
+                        plain_capacity_recovery_eligible
+                        or plain_required_fields_recovery_eligible
+                    )
                 ):
                     raise StructuredRouteQuarantinedError("plain")
                 structured_mode_degraded = True
