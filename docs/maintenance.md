@@ -2751,3 +2751,7 @@ existing child passes the local prose gate.
 Causal-order receipt retries also identify the required evidence shape as one
 contiguous current-candidate action-to-result sentence, preventing the model
 from quoting a prior sibling or the contract's event description.
+
+Boundary evidence retries now also bind entry to the current candidate's
+opening state and exit to its closing state, avoiding cross-sibling or contract
+paraphrases without changing the receipt contract.

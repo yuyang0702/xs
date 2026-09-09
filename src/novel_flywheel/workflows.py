@@ -25455,7 +25455,10 @@ class WorkflowService:
                 "exact prose evidence excerpt), outside_event_ids, "
             )
             + "entry and exit objects (satisfied=true and exact prose evidence), "
-            "causal_order_valid, causal_order_evidence, and summary. Every evidence field MUST be "
+            "causal_order_valid, causal_order_evidence, and summary. Entry evidence MUST be a "
+            "contiguous excerpt from the current candidate's opening state; exit evidence MUST be a "
+            "contiguous excerpt from its closing state. Do not use the contract, the previous sibling, "
+            "or a paraphrase for either boundary. Every evidence field MUST be "
             "a short contiguous excerpt copied verbatim from PROSE (at least 12 Chinese characters "
             "or 20 total characters, and preferably no more than 40 characters); never paraphrase, "
             "explain, cite beat/event IDs, or quote the contract text. For atomic receipts, "
