@@ -16525,43 +16525,8 @@ class WorkflowService:
                 expected_output_characters=max(1800, 850 * len(event_contracts)),
                 compact_input=True,
                 route_capacity_guard=True,
-                    bounded_protocol_output=True,
-                    schema=(
-                        {
-                            **registered_business_wire_schema(
-                                receipt_contract_name,
-                                {
-                                    "authority_sha256": contract.authority_sha256,
-                                    "execution_manifest_sha256": (
-                                        contract.execution_manifest_sha256
-                                    ),
-                                    "task_id": contract.task_id,
-                                    "prose_sha256": prose_sha256,
-                                },
-                            ),
-                            "required": list(
-                                dict.fromkeys(
-                                    list(
-                                        registered_business_wire_schema(
-                                            receipt_contract_name,
-                                            {
-                                                "authority_sha256": contract.authority_sha256,
-                                                "execution_manifest_sha256": (
-                                                    contract.execution_manifest_sha256
-                                                ),
-                                                "task_id": contract.task_id,
-                                                "prose_sha256": prose_sha256,
-                                            },
-                                        ).get("required", [])
-                                    )
-                                    + (["viewpoint_valid", "viewpoint_evidence"]
-                                       if atomic and contract.viewpoint else [])
-                                )
-                            ),
-                        }
-                        if atomic and contract.viewpoint else None
-                    ),
-                    execution_spec=self._structured_stage_spec(
+                bounded_protocol_output=True,
+                execution_spec=self._structured_stage_spec(
                     "execution_manifest",
                     completion_check=fragment_complete,
                     runtime_authority={
@@ -25280,6 +25245,29 @@ class WorkflowService:
             "draft_atomic_semantic_receipt"
             if atomic else "draft_segment_semantic_receipt"
         )
+        receipt_runtime_authority = {
+            "authority_sha256": contract.authority_sha256,
+            "execution_manifest_sha256": contract.execution_manifest_sha256,
+            "task_id": contract.task_id,
+            "prose_sha256": prose_sha256,
+        }
+        receipt_wire_schema = registered_business_wire_schema(
+            receipt_contract_name, receipt_runtime_authority,
+        )
+        if atomic and contract.viewpoint:
+            # The registry schema historically treated viewpoint fields as
+            # optional because event-owned receipts do not have them. For an
+            # atomic contract with an explicit viewpoint, bind ownership at
+            # the provider wire boundary as required fields. The native
+            # validator remains unchanged and still rejects missing/invalid
+            # values after conversion.
+            receipt_wire_schema = {
+                **receipt_wire_schema,
+                "required": list(dict.fromkeys(
+                    list(receipt_wire_schema.get("required", []))
+                    + ["viewpoint_valid", "viewpoint_evidence"]
+                )),
+            }
 
         def receipt_artifact_complete(value: str) -> bool:
             """Prove shape/evidence, while returning semantic negatives."""
@@ -25399,6 +25387,7 @@ class WorkflowService:
                             "task_id": contract.task_id,
                             "prose_sha256": prose_sha256,
                         },
+                        schema=receipt_wire_schema,
                         domain_diagnostic_extractor=semantic_receipt_findings,
                         domain_retry_renderer=render_semantic_receipt_retry,
                     ),
