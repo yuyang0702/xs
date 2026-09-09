@@ -2747,3 +2747,7 @@ failed before receipt acceptance, the resume boundary now reuses that immutable
 child for native semantic-receipt validation. It records the candidate hash and
 keeps Draft request count at zero; it falls back to generation only when no
 existing child passes the local prose gate.
+
+Causal-order receipt retries also identify the required evidence shape as one
+contiguous current-candidate action-to-result sentence, preventing the model
+from quoting a prior sibling or the contract's event description.
