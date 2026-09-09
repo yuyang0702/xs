@@ -2741,3 +2741,9 @@ a bounded summary. This is only a provider-output-capacity optimization: the
 semantic receipt schema, evidence ownership, native validator, and quality
 thresholds remain unchanged. It prevents a whole-parent receipt from consuming
 the route's output ceiling through duplicated prose before validation.
+
+When a same-run split has already produced a locally clean child Draft but
+failed before receipt acceptance, the resume boundary now reuses that immutable
+child for native semantic-receipt validation. It records the candidate hash and
+keeps Draft request count at zero; it falls back to generation only when no
+existing child passes the local prose gate.

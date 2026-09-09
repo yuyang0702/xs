@@ -2151,17 +2151,71 @@ class WorkflowService:
             self_reference=root_contract.self_reference,
             future_beat_guard=root_contract.future_beat_guard,
         )
-        second = await self._draft_short_segment_task(
-            run_id, run_path, project, constraints, prompt,
-            suffix=f"{suffix}-sub-2", target=second_target,
-            previous_parts=[*previous_parts, first],
-            event_ids=list(second_event_ids), location_catalog=location_catalog,
-            depth=1, contract=second_contract,
-            semantic_all_event_ids=semantic_all_event_ids,
-            semantic_receipt_sink=semantic_receipt_nodes,
-            beat_catalog=beat_catalog,
-            prose_authority_context=prose_authority_context,
+        # A failed run may already contain a provider-generated second child
+        # whose only missing artifact is its native semantic receipt. Reuse an
+        # immutable, locally clean candidate before asking the provider to
+        # generate the same prose again. Receipt validation remains native and
+        # authoritative; no checkpoint or receipt is synthesized here.
+        second = None
+        segment_number = root_contract.task_id.rsplit("-", 1)[-1]
+        candidate_root = run_path / "outputs"
+        reusable_candidates = sorted(
+            candidate_root.glob(f"draft-part-{segment_number}-sub-2*.md"),
+            key=lambda path: ("local-repair" in path.name, len(path.name), path.name),
         )
+        for candidate_path in reusable_candidates:
+            try:
+                candidate_text = candidate_path.read_text(encoding="utf-8")
+            except (OSError, UnicodeError):
+                continue
+            candidate_findings = [
+                finding for finding in self._draft_segment_findings(
+                    candidate_text, second_target, [*previous_parts, first],
+                    location_catalog,
+                    authority_context=prose_authority_context,
+                ) if finding.get("blocking")
+                and finding.get("code") != "underlength"
+            ]
+            if candidate_findings:
+                continue
+            candidate_sha256 = hashlib.sha256(
+                candidate_text.encode("utf-8")
+            ).hexdigest()
+            self.db.add_run_event(
+                run_id, "info", "draft_candidate_reused_for_semantic_receipt",
+                "Reusing an immutable same-scope Draft candidate for native receipt validation.",
+                stage="draft", metadata={
+                    "task_id": second_contract.task_id,
+                    "candidate_path": candidate_path.relative_to(run_path).as_posix(),
+                    "candidate_sha256": candidate_sha256,
+                    "draft_request_count": 0,
+                    "quality_gate": "native_semantic_receipt_pending",
+                },
+            )
+            second_receipt = await self._verify_draft_semantic_node(
+                run_id, run_path, project, constraints, second_contract,
+                candidate_text,
+                [
+                    event_id for event_id in semantic_all_event_ids
+                    if event_id not in set(second_contract.beat_ids)
+                ],
+                suffix=f"{suffix}-sub-2-reused-semantic-receipt",
+            )
+            semantic_receipt_nodes.append((second_contract, second_receipt))
+            second = candidate_text
+            break
+        if second is None:
+            second = await self._draft_short_segment_task(
+                run_id, run_path, project, constraints, prompt,
+                suffix=f"{suffix}-sub-2", target=second_target,
+                previous_parts=[*previous_parts, first],
+                event_ids=list(second_event_ids), location_catalog=location_catalog,
+                depth=1, contract=second_contract,
+                semantic_all_event_ids=semantic_all_event_ids,
+                semantic_receipt_sink=semantic_receipt_nodes,
+                beat_catalog=beat_catalog,
+                prose_authority_context=prose_authority_context,
+            )
         combined = f"{first.strip()}\n\n{second.strip()}"
         if self._draft_segment_issues(
             combined, target, previous_parts, location_catalog,
