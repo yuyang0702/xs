@@ -18095,6 +18095,20 @@ class WorkflowService:
         used: set[tuple[tuple[str, str], int]] = set()
         safe_state: dict = {}
 
+        def collect_state_values(value: object) -> set[str]:
+            """Return hashes for every typed value nested in a proposal."""
+            if isinstance(value, Mapping):
+                result: set[str] = set()
+                for nested in value.values():
+                    result.update(collect_state_values(nested))
+                return result
+            if isinstance(value, list):
+                result: set[str] = set()
+                for nested in value:
+                    result.update(collect_state_values(nested))
+                return result
+            return {canonical_sha256(value)}
+
         def project(
             character: str, path: tuple[str, ...], old: object, new: object,
         ) -> tuple[bool, object]:
@@ -18112,6 +18126,22 @@ class WorkflowService:
                         nested[raw_key] = value
                 return bool(nested), nested
             if canonical_sha256(old) == canonical_sha256(new):
+                # A resumed workflow may already hold the target value from a
+                # prior accepted proposal.  Such an idempotent replay is
+                # already authoritative; bind any exact, target-present chain
+                # instead of reporting it as an unused transition.
+                field = ".".join(path) or "$"
+                chain = transition_map.get((character, field), [])
+                if chain:
+                    value_hashes = collect_state_values(new)
+                    if all(
+                        canonical_sha256(transition["to"]) in value_hashes
+                        for transition in chain
+                    ):
+                        used.update(
+                            ((character, field), index)
+                            for index in range(len(chain))
+                        )
                 return True, new
             field = ".".join(path) or "$"
             chain = transition_map.get((character, field), [])
@@ -18176,19 +18206,6 @@ class WorkflowService:
         # evidence is already bound to the proposed value; accept the unit as
         # an initial projection instead of misclassifying it as unused. Existing
         # entities continue through the strict baseline from/to comparison.
-        def collect_state_values(value: object) -> set[str]:
-            if isinstance(value, Mapping):
-                result: set[str] = set()
-                for nested in value.values():
-                    result.update(collect_state_values(nested))
-                return result
-            if isinstance(value, list):
-                result: set[str] = set()
-                for nested in value:
-                    result.update(collect_state_values(nested))
-                return result
-            return {canonical_sha256(value)}
-
         proposed_value_hashes = collect_state_values(proposed_states)
         for key, chain in transition_map.items():
             if (
@@ -19232,7 +19249,10 @@ class WorkflowService:
             "short_maintenance_business_complete_v2 with facts, state, coverage, "
             "disposition, no_change_reason, and typed state_transitions when an "
             "existing state value changes. Never imply complete coverage "
-            "with an empty legacy facts object."
+            "with an empty legacy facts object. Every transition evidence value "
+            "must be copied as one contiguous substring of the manuscript; if "
+            "that exact evidence is unavailable, omit the transition and leave "
+            "the affected state value unchanged rather than paraphrasing it."
         )
         for attempt in range(2):
             stage_suffix = suffix if attempt == 0 else f"{suffix}-authority-repair"
@@ -19622,8 +19642,13 @@ class WorkflowService:
                         "Return only corrections or additional maintenance units. "
                         "Runtime has already preserved every non-conflicting unit; "
                         "omission cannot delete it. Do not contradict protected facts. "
-                        "Every state transition evidence value must be an exact quote "
-                        "from authoritative_manuscript.text."
+                        "For each listed conflict, either return a corrected unit "
+                        "with evidence copied as one contiguous, exact substring "
+                        "of authoritative_manuscript.text, or omit that unit if no "
+                        "such substring exists. Never paraphrase, abbreviate, or "
+                        "re-emit a rejected transition unchanged. Never return a "
+                        "state change without its matching exact-evidence "
+                        "transition; leaving unsupported state unchanged is valid."
                     ),
             }, ensure_ascii=False, sort_keys=True)
         raise ValueError("maintenance authority repair did not converge")
