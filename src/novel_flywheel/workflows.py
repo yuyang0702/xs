@@ -18060,7 +18060,7 @@ class WorkflowService:
         raw_transitions = candidate.get("state_transitions", [])
         if not isinstance(raw_transitions, list):
             raise ValueError("maintenance state_transitions must be an array")
-        transition_map: dict[tuple[str, str], dict] = {}
+        transition_map: dict[tuple[str, str], list[dict]] = {}
         conflicts: list[dict] = []
         for raw in raw_transitions:
             if not isinstance(raw, dict):
@@ -18074,21 +18074,25 @@ class WorkflowService:
             field = str(raw.get("field") or "").strip()
             evidence = str(raw.get("evidence") or "").strip()
             key = (character, field)
+            chain = transition_map.setdefault(key, [])
             if (
                 not character or not field or not evidence
                 or "from" not in raw or "to" not in raw
-                or key in transition_map
+                or (chain and canonical_sha256(chain[-1]["to"])
+                    != canonical_sha256(raw["from"]))
                 or (manuscript_text and evidence not in manuscript_text)
             ):
+                if not character or not field or not evidence or "from" not in raw or "to" not in raw:
+                    transition_map.pop(key, None)
                 conflicts.append({
                     "state_path": f"{character}.{field}".strip("."),
                     "reason": "state transition lacks unique exact authority evidence",
                     "proposal_sha256": canonical_sha256(raw),
                 })
                 continue
-            transition_map[key] = raw
+            chain.append(raw)
 
-        used: set[tuple[str, str]] = set()
+        used: set[tuple[tuple[str, str], int]] = set()
         safe_state: dict = {}
 
         def project(
@@ -18110,14 +18114,43 @@ class WorkflowService:
             if canonical_sha256(old) == canonical_sha256(new):
                 return True, new
             field = ".".join(path) or "$"
-            transition = transition_map.get((character, field))
-            if (
-                transition is not None
-                and canonical_sha256(transition["from"]) == canonical_sha256(old)
-                and canonical_sha256(transition["to"]) == canonical_sha256(new)
-            ):
-                used.add((character, field))
-                return True, new
+            chain = transition_map.get((character, field), [])
+            if chain:
+                if isinstance(old, list) and isinstance(new, list) and len(chain) > 1:
+                    old_values = [canonical_sha256(item) for item in old]
+                    new_values = [canonical_sha256(item) for item in new]
+                    cursor = -1
+                    valid_chain = True
+                    for index, transition in enumerate(chain):
+                        from_hash = canonical_sha256(transition["from"])
+                        to_hash = canonical_sha256(transition["to"])
+                        if index == 0:
+                            if from_hash not in old_values:
+                                valid_chain = False
+                                break
+                            cursor = old_values.index(from_hash)
+                        elif from_hash != canonical_sha256(chain[index - 1]["to"]):
+                            valid_chain = False
+                            break
+                        try:
+                            cursor = new_values.index(to_hash, cursor + 1)
+                        except ValueError:
+                            valid_chain = False
+                            break
+                    if valid_chain:
+                        used.update(
+                            ((character, field), index)
+                            for index in range(len(chain))
+                        )
+                        return True, new
+                else:
+                    for index, transition in enumerate(chain):
+                        if (
+                            canonical_sha256(transition["from"]) == canonical_sha256(old)
+                            and canonical_sha256(transition["to"]) == canonical_sha256(new)
+                        ):
+                            used.add(((character, field), index))
+                            return True, new
             conflicts.append({
                 "state_path": f"{character}.{field}",
                 "reason": "existing state value requires an exact typed transition",
@@ -18157,22 +18190,32 @@ class WorkflowService:
             return {canonical_sha256(value)}
 
         proposed_value_hashes = collect_state_values(proposed_states)
-        for key, transition in transition_map.items():
+        for key, chain in transition_map.items():
             if (
-                key not in used
-                and key[0] not in existing
-                and canonical_sha256(transition["to"]) in proposed_value_hashes
+                key[0] not in existing
+                and all(
+                    (key, index) not in used
+                    and canonical_sha256(transition["to"]) in proposed_value_hashes
+                    for index, transition in enumerate(chain)
+                )
             ):
-                used.add(key)
+                used.update((key, index) for index in range(len(chain)))
 
-        for key, transition in transition_map.items():
-            if key not in used:
-                conflicts.append({
-                    "state_path": f"{key[0]}.{key[1]}",
-                    "reason": "state transition does not bind a proposed value change",
-                    "proposal_sha256": canonical_sha256(transition),
-                })
-        return safe_state, [transition_map[key] for key in used], conflicts
+        safe_transitions = [
+            transition_map[key][index]
+            for key, chain in transition_map.items()
+            for index in range(len(chain))
+            if (key, index) in used
+        ]
+        for key, chain in transition_map.items():
+            for index, transition in enumerate(chain):
+                if (key, index) not in used:
+                    conflicts.append({
+                        "state_path": f"{key[0]}.{key[1]}",
+                        "reason": "state transition does not bind a proposed value change",
+                        "proposal_sha256": canonical_sha256(transition),
+                    })
+        return safe_state, safe_transitions, conflicts
 
     @classmethod
     def _merge_short_maintenance_authority(
