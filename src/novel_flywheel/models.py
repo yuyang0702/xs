@@ -784,8 +784,25 @@ class ModelGateway:
                 and (
                     qualification.get("last_failure_reason") == "semantic_invalid"
                     or int(max_output_tokens or 0)
-                    > int(qualification.get("observed_visible_characters") or 0)
+                        > int(qualification.get("observed_visible_characters") or 0)
                 )
+            )
+            # A prior required-field quarantine can be stale after the
+            # Runtime-owned schema/prompt contract is repaired. Permit one
+            # bounded requalification attempt only when the current output
+            # budget strictly exceeds the last observed response; the native
+            # converter and semantic validator remain authoritative and will
+            # quarantine the route again if the field is still absent.
+            required_fields_recovery_eligible = bool(
+                qualification
+                and qualification.get("status") == "quarantined"
+                and qualification.get("last_failure_reason")
+                == "required_fields_missing"
+                and int(max_output_tokens or 0)
+                > int(qualification.get("observed_visible_characters") or 0)
+            )
+            capacity_recovery_eligible = (
+                capacity_recovery_eligible or required_fields_recovery_eligible
             )
             if (
                 qualification
