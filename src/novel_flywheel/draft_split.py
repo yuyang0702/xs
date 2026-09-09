@@ -48,6 +48,11 @@ class _BeatReceipt(_StrictReceipt):
 
 class _EventSemanticReceipt(_StrictReceipt):
     authority_sha256: str
+    # Segment receipts may carry the manifest binding when the active task
+    # contract has one; keep it optional at wire shape so legacy segment
+    # validators remain compatible, while semantic validation still requires
+    # an exact match whenever the contract declares the digest.
+    execution_manifest_sha256: str = ""
     task_id: str
     prose_sha256: str
     event_receipts: list[_EventReceipt]
