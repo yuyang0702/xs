@@ -107,7 +107,7 @@ def prepare_short_receipt_resume(
         run is None
         or run.get("project_id") != project.id
         or run.get("workflow") != "short-story"
-        or run.get("status") not in {"failed", "running"}
+        or run.get("status") not in {"failed", "running", "interrupted"}
     ):
         raise ValueError("receipt recovery run identity or state is invalid")
 
