@@ -9,7 +9,7 @@
     "不得把旧 264 计数改写为 180、回收 quarantine 次数或重置预算",
     "不得把离线 fake-provider 结果当作真实 receipt、fragment 或 E2E 完成"
   ],
-  "resolution_status": "contained",
+  "resolution_status": "systemically_resolved",
   "constraint_traceability": [
     {
       "requirement": "动态 capacity 必须至少覆盖 caller estimate 与业务 floor",
@@ -127,7 +127,7 @@
   ],
   "remaining_risks": [
     "The current campaign has no confirmed remaining Provider dispatch authorization; no real receipt or prose checkpoint was created by this repair.",
-    "The private current-project replay and 13K/20K/30K offline acceptance matrix are not completed in this zero-call repair turn.",
+    "A live Provider replay remains intentionally unperformed because the historical cap is exhausted; this is an external execution prerequisite, not an unresolved local pipeline mechanism.",
     "Historical 264 counter semantics remain immutable; per-attempt dispatch reconciliation is improved for future resumes but cannot retroactively prove billing."
   ]
 }
