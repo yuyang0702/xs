@@ -1006,6 +1006,29 @@ async def test_controlled_runtime_continues_after_premature_text_response(tmp_pa
 
 
 @pytest.mark.asyncio
+async def test_dispatch_observer_runs_only_at_adapter_dispatch_boundary(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    db.save_role_binding("planning", "provider", "model", None, None)
+    gateway = ModelGateway(db, ToolRegistry(FakeAdapter()))
+    dispatches = []
+    gateway.dispatch_observer = dispatches.append
+
+    result = await gateway.complete(
+        "planning", "rules", "execute", max_output_tokens=64,
+    )
+
+    assert result.text == "result"
+    assert dispatches == [{
+        "role": "planning",
+        "provider_id": "provider",
+        "model_id": "model",
+        "execution_mode": "plain",
+        "stage": "planning",
+    }]
+
+
+@pytest.mark.asyncio
 async def test_controlled_runtime_retries_optional_tools_when_force_is_unsupported(tmp_path) -> None:
     db = Database(tmp_path / "app.db")
     db.migrate()

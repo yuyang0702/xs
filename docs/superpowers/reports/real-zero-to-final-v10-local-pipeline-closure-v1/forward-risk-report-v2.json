@@ -1,0 +1,134 @@
+{
+  "version": 2,
+  "original_requirement": "在零新增 Provider 调用下修复动态容量传播、quarantine 调度、真实 dispatch 记账和失败模式升级，并保留同一 campaign/run 的可恢复边界。",
+  "scope_classification": "open_world",
+  "operational_definition": "业务完整性下限不得覆盖 workload-shaped output capacity；本地 admission/quarantine 不得被记为 Provider dispatch；同一 immutable receipt 的 doomed route retry 必须被跳过并进入类型化本地诊断；真实 dispatch、model output、artifact acceptance 和 billing 保持独立事实。",
+  "forbidden_narrowing": [
+    "不得只兼容当前 segment-01/sub-1 或某个 provider/error literal",
+    "不得降低 strict schema、semantic evidence、READY、quality 或 checkpoint validator",
+    "不得把旧 264 计数改写为 180、回收 quarantine 次数或重置预算",
+    "不得把离线 fake-provider 结果当作真实 receipt、fragment 或 E2E 完成"
+  ],
+  "resolution_status": "contained",
+  "constraint_traceability": [
+    {
+      "requirement": "动态 capacity 必须至少覆盖 caller estimate 与业务 floor",
+      "implementation": "contract_runtime.execute_contract_runtime 的 effective capacity 计算；业务 underfill floor 与 dispatch capacity 分离",
+      "test_paths": [
+        "tests/test_contract_runtime.py::test_registered_business_floor_does_not_override_dynamic_capacity",
+        "tests/test_workflows.py::test_causal_chain_real_stage_recovers_repeated_output_limits_and_crosses_authority_boundary"
+      ],
+      "evidence": "新回归断言 qualification outcome 使用 3200 dynamic estimate，同时保留注册业务下限；生产形状 causal-chain split/merge 继续跨越 authority boundary。"
+    },
+    {
+      "requirement": "quarantine 不得占用同一路由的外部 retry 槽",
+      "implementation": "contract_runtime 对 StructuredRouteQuarantinedError 做 pre-dispatch typed admission rejection，跳过同 route 后续槽并只进入显式 fallback",
+      "test_paths": [
+        "tests/test_contract_runtime.py::test_quarantined_route_skips_same_route_retry_and_uses_fallback",
+        "tests/test_structured_output_business_qualification.py::test_output_limited_incomplete_native_mode_expands_and_recovers_plain"
+      ],
+      "evidence": "回归测试观察到 primary 仅一次调用、随后直接 configured_fallback，且 local rejection 标记 provider_call_executed=false。"
+    },
+    {
+      "requirement": "预算/transport/model/paid 记账必须锚定真实 dispatch 边界",
+      "implementation": "ModelGateway.dispatch_observer 在 adapter.complete 前触发；campaign resume harness 保留 legacy 264 并追加 reservation/local rejection/dispatch facts",
+      "test_paths": [
+        "tests/test_models.py::test_dispatch_observer_runs_only_at_adapter_dispatch_boundary",
+        "tests/test_full_short_probe_campaign.py::test_all_eight_cases_cover_exactly_111_shapes_and_dispatch_once"
+      ],
+      "evidence": "离线回归确认 observer 在本地 route resolution 之后、adapter dispatch 之前运行，未携带 prompt、response 或 credential。"
+    },
+    {
+      "requirement": "失败模式在确定性 local admission failure 首次发生时升级，不循环 retry",
+      "implementation": "contract runtime 的 route-local quarantine skip 与 hash-only local admission receipt；workflow 现有 protocol circuit 继续负责 route-scoped repeated execution failures",
+      "test_paths": [
+        "tests/test_contract_runtime.py::test_quarantined_route_skips_same_route_retry_and_uses_fallback",
+        "tests/test_workflows.py::test_causal_chain_real_stage_recovers_repeated_output_limits_and_crosses_authority_boundary"
+      ],
+      "evidence": "本地 quarantine 在第一次确定性 admission rejection 时记录 LOCAL_DIAGNOSIS，不伪造 Provider invalid-output event。"
+    }
+  ],
+  "historical_incident_families_checked": [
+    "model.output_truncated",
+    "provider.structured_output_business_incomplete",
+    "model.context_capacity_preflight",
+    "draft.semantic_receipt_unsatisfied",
+    "provider.routes_exhausted"
+  ],
+  "projected_failure_mechanisms": [
+    "output capacity estimate overwritten by business floor",
+    "pre-dispatch quarantine multiplied by inner and outer retries",
+    "dispatch/output/acceptance/billing counter conflation",
+    "fallback selected without preserving local failure ownership"
+  ],
+  "model_output_boundary_changed": true,
+  "model_output_variants_tested": [
+    "strict JSON Schema response with ordered receipt fields",
+    "forced tool-call response with canonical artifact arguments",
+    "plain JSON fallback after strict route capacity failure",
+    "provider envelope with reordered evidence arrays",
+    "verbose response containing additional non-authoritative wrapper metadata",
+    "terse response preserving the same required ownership and evidence invariants"
+  ],
+  "model_output_topology_classes_tested": [
+    "top-level JSON object",
+    "forced tool-call arguments container",
+    "plain-text JSON envelope",
+    "nested event/receipt array topology"
+  ],
+  "unseen_valid_variants_tested": [
+    "unseen result wrapper containing the canonical receipt object",
+    "unseen mapping keyed by stable event identity with the same ordered ownership"
+  ],
+  "unknown_variant_behavior": "Unknown, ambiguous, duplicate, truncated, or conflicting topology remains unconverted and enters typed protocol retry/fallback or local diagnosis; no narrative inference or receipt synthesis is permitted.",
+  "invalid_output_variants_tested": [
+    "truncated JSON with max_tokens finish reason",
+    "quarantined route with no provider response or fabricated receipt"
+  ],
+  "transport_capacity_variants_tested": [
+    "output-limit response followed by verified bounded expansion",
+    "pre-dispatch quarantine followed by zero-dispatch same-route skip"
+  ],
+  "invariant_test_paths": [
+    "tests/test_contract_runtime.py::test_registered_business_floor_does_not_override_dynamic_capacity",
+    "tests/test_contract_runtime.py::test_quarantined_route_skips_same_route_retry_and_uses_fallback",
+    "tests/test_models.py::test_dispatch_observer_runs_only_at_adapter_dispatch_boundary",
+    "tests/test_workflows.py::test_causal_chain_real_stage_recovers_repeated_output_limits_and_crosses_authority_boundary"
+  ],
+  "why_previous_tests_missed": "Prior tests asserted the registered business floor and route recovery independently, but did not assert that a workload-shaped estimate survives the registry boundary, nor that the campaign harness counts only after adapter dispatch. They also lacked a same-operation quarantine skip assertion.",
+  "sibling_boundaries": [
+    {
+      "boundary": "planning and causal-chain capacity",
+      "disposition": "fixed_and_tested",
+      "evidence": "shared contract runtime and production-shaped causal-chain recovery test"
+    },
+    {
+      "boundary": "draft semantic receipt and split/merge",
+      "disposition": "fixed_and_tested",
+      "evidence": "shared runtime path plus strict receipt qualification regressions; real provider receipt remains unproven"
+    },
+    {
+      "boundary": "polish, final review and formal promotion",
+      "disposition": "tested_not_susceptible",
+      "evidence": "same execute_contract_runtime capacity and dispatch boundaries are shared; no live downstream run was authorized"
+    },
+    {
+      "boundary": "StoryState/CAS/Canon/checkpoint writes",
+      "disposition": "not_applicable",
+      "evidence": "this patch adds no formal-write path and does not mutate live run state; native checkpoint authority remains unchanged"
+    }
+  ],
+  "production_shaped_tests": [
+    "tests/test_workflows.py::test_causal_chain_real_stage_recovers_repeated_output_limits_and_crosses_authority_boundary",
+    "tests/test_structured_output_business_qualification.py::test_output_limited_incomplete_native_mode_expands_and_recovers_plain"
+  ],
+  "next_authoritative_boundary_tests": [
+    "tests/test_contract_runtime.py::test_quarantined_route_skips_same_route_retry_and_uses_fallback",
+    "tests/test_workflows.py::test_causal_chain_real_stage_recovers_repeated_output_limits_and_crosses_authority_boundary"
+  ],
+  "remaining_risks": [
+    "The current campaign has no confirmed remaining Provider dispatch authorization; no real receipt or prose checkpoint was created by this repair.",
+    "The private current-project replay and 13K/20K/30K offline acceptance matrix are not completed in this zero-call repair turn.",
+    "Historical 264 counter semantics remain immutable; per-attempt dispatch reconciliation is improved for future resumes but cannot retroactively prove billing."
+  ]
+}

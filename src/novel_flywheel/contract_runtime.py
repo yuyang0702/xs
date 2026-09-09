@@ -32,6 +32,7 @@ from novel_flywheel.models import (
     FinalArtifactCapabilityError,
     ModelResult,
     ReasoningOnlyFinalArtifactUnavailableError,
+    StructuredRouteQuarantinedError,
 )
 from novel_flywheel.provider_reasoning_policy import (
     PLANNING_FINAL_ARTIFACT_RECOVERY,
@@ -1153,6 +1154,42 @@ def _emit_local_rejection(
     })
 
 
+def _emit_local_admission_rejection(
+    sink: LocalRejectionSink | None,
+    *,
+    contract: StructuredArtifactContract,
+    attempt: ProtocolReceiptAttempt,
+    failure_reason: str,
+) -> None:
+    """Record a pre-dispatch admission block without pretending a response existed.
+
+    A quarantined route is a local control-plane decision.  It must not be
+    represented as normal invalid provider output, and it must not carry a
+    fabricated response or conversion audit across the workflow boundary.
+    """
+
+    if sink is None:
+        return
+    sink({
+        "schema": "ContractLocalAdmissionRejectionReceiptV1",
+        "version": 1,
+        "contract_name": contract.name,
+        "contract_version": contract.version,
+        "contract_schema_sha256": contract.schema_sha256(),
+        "attempt_index": attempt.attempt_index,
+        "route": attempt.route,
+        "route_attempt": attempt.route_attempt,
+        "failure_kind": "route_admission",
+        "failure_reason_sha256": hashlib.sha256(
+            failure_reason.encode("utf-8"),
+        ).hexdigest(),
+        "provider_call_executed": False,
+        "raw_content_persisted": False,
+        "retryable": False,
+        "escalation_action": "LOCAL_DIAGNOSIS",
+    })
+
+
 def _emit_final_artifact_rejection(
     sink: LocalRejectionSink | None,
     *,
@@ -1278,15 +1315,24 @@ async def execute_contract_runtime(
     contract_name = execution_spec.contract_name
     structured_contract = execution_spec.structured_contract
     registration = ARTIFACT_CONTRACT_REGISTRY[contract_name]
-    # A calibrated contract baseline outranks source-scaled caller estimates.
-    # Uncalibrated dynamic contracts (for example wizard/interview schemas)
-    # retain their task-local estimate instead of silently disabling the size
-    # guard.  Every fixed workflow contract is calibrated in the registry.
-    expected_output_characters = max(0, (
-        expected_output_characters
-        if registration.minimum_business_characters is None
-        else registration.minimum_business_characters
-    ))
+    # The registry value is a business-completeness floor, not a replacement
+    # for the caller's workload-shaped capacity estimate.  The semantic
+    # validator still owns completeness; this value only flows through
+    # qualification and output-capacity planning.
+    requested_output_characters = max(0, int(expected_output_characters or 0))
+    business_floor = max(
+        0,
+        int(registration.minimum_business_characters or 0),
+    )
+    business_output_characters = (
+        business_floor
+        if registration.minimum_business_characters is not None
+        else requested_output_characters
+    )
+    expected_output_characters = max(
+        requested_output_characters,
+        business_floor,
+    )
     policy = _contract_recovery_policy(contract_name)
     converter = GeneratedArtifactGateway()
     last_error: Exception | None = None
@@ -1307,6 +1353,7 @@ async def execute_contract_runtime(
     attempt_output_tokens = max_output_tokens
     contract_schema = structured_contract.json_schema
     blocked_route_fingerprints: dict[str, str] = {}
+    quarantined_routes: set[ModelRoute] = set()
     final_artifact_failure_seen = False
     non_final_failure_seen = False
     ptr12_triggered_context: tuple[
@@ -1466,6 +1513,32 @@ async def execute_contract_runtime(
         is_finalization_recovery = (
             recovery_attempt_index == attempt.attempt_index
         )
+        if attempt.route in quarantined_routes and not is_finalization_recovery:
+            # A local quarantine is an admission decision, not a new provider
+            # result.  Skip doomed same-route slots and let the explicit
+            # configured fallback, if present, own the next dispatch.
+            _observe_attempt(
+                attempt_observer,
+                attempt_id=str(attempt.attempt_index),
+                parent_attempt_id=(
+                    str(attempt.attempt_index - 1)
+                    if attempt.attempt_index > 1 else None
+                ),
+                route=attempt.route,
+                route_attempt=attempt.route_attempt,
+                action="skip_quarantined_route",
+                outcome="local_admission_rejected",
+                failure_class="route_quarantined",
+                error_class="StructuredRouteQuarantinedError",
+                model_call_delta=0,
+            )
+            _emit_local_admission_rejection(
+                local_rejection_sink,
+                contract=structured_contract,
+                attempt=attempt,
+                failure_reason="route_quarantined",
+            )
+            continue
         if (
             attempt.route in blocked_route_fingerprints
             and not is_finalization_recovery
@@ -1662,6 +1735,39 @@ async def execute_contract_runtime(
             # not a provider failure. It cannot consume the shared retry slot
             # or be aggregated into route exhaustion.
             raise
+        except StructuredRouteQuarantinedError as exc:
+            # The route was rejected before provider dispatch.  Mark the
+            # route once for this immutable operation, preserve the typed
+            # local failure, and advance directly to the next configured
+            # route instead of multiplying inner and outer retries.
+            quarantined_routes.add(attempt.route)
+            last_error = exc
+            if attempt.route == "configured_fallback":
+                fallback_error = exc
+            else:
+                primary_error = exc
+            _observe_attempt(
+                attempt_observer,
+                attempt_id=str(attempt.attempt_index),
+                parent_attempt_id=(
+                    str(attempt.attempt_index - 1)
+                    if attempt.attempt_index > 1 else None
+                ),
+                route=attempt.route,
+                route_attempt=attempt.route_attempt,
+                action="local_admission_rejected",
+                outcome="local_admission_rejected",
+                failure_class="route_quarantined",
+                error_class=type(exc).__name__,
+                model_call_delta=0,
+            )
+            _emit_local_admission_rejection(
+                local_rejection_sink,
+                contract=structured_contract,
+                attempt=attempt,
+                failure_reason="route_quarantined",
+            )
+            continue
         except Exception as exc:
             if _is_predispatch_capacity_boundary_failure(exc):
                 raise
@@ -1795,7 +1901,7 @@ async def execute_contract_runtime(
             incomplete_reason = _business_incomplete_reason(
                 str(getattr(response, "text", response)),
                 structured_contract,
-                expected_output_characters=expected_output_characters,
+                expected_output_characters=business_output_characters,
             )
             if incomplete_reason is not None:
                 last_business_incomplete_reason = incomplete_reason
@@ -1901,7 +2007,7 @@ async def execute_contract_runtime(
             str(getattr(response, "text", response)),
             structured_contract,
             payload=conversion.payload,
-            expected_output_characters=expected_output_characters,
+            expected_output_characters=business_output_characters,
         )
         authoritative_domain_diagnostics = bool(
             incomplete_reason == "required_fields_missing"
@@ -2081,7 +2187,7 @@ async def execute_contract_runtime(
                 str(getattr(response, "text", response)),
                 structured_contract,
                 payload=conversion.payload,
-                expected_output_characters=expected_output_characters,
+                expected_output_characters=business_output_characters,
             )
             if incomplete_reason is not None:
                 last_business_incomplete_reason = incomplete_reason

@@ -17,7 +17,10 @@ from novel_flywheel.generated_artifacts import (
     ARTIFACT_CONTRACT_REGISTRY,
     ArtifactContractRegistration,
 )
-from novel_flywheel.models import ModelRoutesExhaustedError
+from novel_flywheel.models import (
+    ModelRoutesExhaustedError,
+    StructuredRouteQuarantinedError,
+)
 from novel_flywheel.structured_artifacts import StructuredArtifactContract
 
 
@@ -698,6 +701,89 @@ async def test_structured_runtime_cannot_exceed_registered_route_ladder(
         )
 
     assert gateway.routes == ["primary", "primary"]
+
+
+@pytest.mark.asyncio
+async def test_registered_business_floor_does_not_override_dynamic_capacity(
+    monkeypatch,
+) -> None:
+    contract_name = "test_dynamic_capacity_floor"
+    monkeypatch.setitem(
+        ARTIFACT_CONTRACT_REGISTRY,
+        contract_name,
+        ArtifactContractRegistration(
+            name=contract_name,
+            phase="runtime",
+            semantic_authority="test-only capacity authority",
+            minimum_business_characters=240,
+            recovery_ladder=(
+                "exact_json", "local_syntax_repair",
+                "semantic_protocol_retry", "minimal_regeneration",
+            ),
+        ),
+    )
+
+    observed = []
+
+    class Gateway:
+        async def complete_route(self, route, role, system, user, **kwargs):
+            return SimpleNamespace(
+                text='{"message":"' + ('x' * 999) + '"}',
+                receipt={"execution_mode": "plain"},
+            )
+
+        def record_structured_contract_outcome(self, receipt, contract, **kwargs):
+            observed.append(kwargs["expected_visible_characters"])
+
+    result = await execute_contract_runtime(
+        Gateway(),
+        role="planning", system="system", user="input",
+        execution_spec=execution_spec(contract_name=contract_name),
+        expected_output_characters=3200,
+        attempt_routes=("primary",),
+    )
+
+    assert result.payload["message"] == "x" * 999
+    assert observed == [3200]
+
+
+@pytest.mark.asyncio
+async def test_quarantined_route_skips_same_route_retry_and_uses_fallback() -> None:
+    calls = []
+    observations = []
+    rejections = []
+
+    class Gateway:
+        def has_configured_fallback(self, role):
+            return True
+
+        async def complete_route(self, route, role, system, user, **kwargs):
+            calls.append(route)
+            if route == "primary":
+                raise StructuredRouteQuarantinedError("strict_json_schema")
+            return SimpleNamespace(
+                text='{"message":"fallback success"}',
+                receipt={"execution_mode": "plain"},
+            )
+
+    result = await execute_contract_runtime(
+        Gateway(),
+        role="planning", system="system", user="input",
+        execution_spec=execution_spec(),
+        same_route_attempts=2,
+        fallback_attempts=2,
+        attempt_observer=observations.append,
+        local_rejection_sink=rejections.append,
+    )
+
+    assert result.payload == {"message": "fallback success"}
+    assert calls == ["primary", "configured_fallback"]
+    assert sum(item.get("model_call_delta", 0) for item in observations) == 1
+    assert any(
+        item.get("failure_kind") == "route_admission"
+        and item.get("provider_call_executed") is False
+        for item in rejections
+    )
 
 
 @pytest.mark.asyncio

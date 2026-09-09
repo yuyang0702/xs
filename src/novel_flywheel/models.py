@@ -4,7 +4,7 @@ import hashlib
 import inspect
 import json
 import time
-from typing import Literal
+from typing import Any, Callable, Literal, Mapping
 
 import httpx
 
@@ -220,6 +220,10 @@ class ModelGateway:
     def __init__(self, db: Database, registry: ProviderRegistry) -> None:
         self.db = db
         self.registry = registry
+        # Optional application-owned hook at the actual adapter dispatch
+        # boundary.  It is deliberately absent from the provider payload and
+        # never receives prompts, response bodies, or credentials.
+        self.dispatch_observer: Callable[[Mapping[str, Any]], None] | None = None
         # Negative final-artifact evidence blocks an exact fingerprint only
         # inside one explicitly identified run.  A gateway is application
         # scoped, so gateway lifetime is not a safe proxy for authorization
@@ -227,6 +231,26 @@ class ModelGateway:
         self._final_artifact_route_blocks: set[
             tuple[str, str, str, str, str, str, str, str]
         ] = set()
+
+    def _observe_transport_dispatch(
+        self, *, role: str, resolved: Any, execution_mode: str,
+        stage: str | None = None,
+    ) -> None:
+        observer = self.dispatch_observer
+        if not callable(observer):
+            return
+        try:
+            observer({
+                "role": role,
+                "provider_id": str(getattr(resolved, "provider_id", "")),
+                "model_id": str(getattr(resolved, "model_id", "")),
+                "execution_mode": execution_mode,
+                "stage": str(stage or role),
+            })
+        except Exception:
+            # Accounting is observational and must never change provider
+            # routing or hide the actual adapter outcome.
+            return
 
     def _resolve_bound_route(
         self, provider_id: str, model_id: str, *, role: str, lane: str,
@@ -873,6 +897,10 @@ class ModelGateway:
         ptr12_capture_token = open_ptr12_raw_shape_capture()
         ptr12_snapshot = None
         try:
+            self._observe_transport_dispatch(
+                role=role, resolved=resolved,
+                execution_mode=execution_mode, stage=stage,
+            )
             response = await resolved.adapter.complete(request)
             ptr12_snapshot = current_ptr12_raw_shape()
         except Exception as exc:
@@ -1380,6 +1408,10 @@ class ModelGateway:
                     max_output_tokens=max_output_tokens,
                 )
                 try:
+                    self._observe_transport_dispatch(
+                        role=role, resolved=resolved,
+                        execution_mode="native_tool_round", stage="tools",
+                    )
                     response = await resolved.adapter.complete(request)
                 except ToolCapabilityError:
                     if not request.required_tool:
@@ -1387,6 +1419,10 @@ class ModelGateway:
                     # Some providers support tools but reject tool_choice. Retry
                     # the same round with ordinary optional tool calling.
                     forced_tool = None
+                    self._observe_transport_dispatch(
+                        role=role, resolved=resolved,
+                        execution_mode="native_tool_round", stage="tools",
+                    )
                     response = await resolved.adapter.complete(
                         request.model_copy(update={"required_tool": None}),
                     )
@@ -1530,6 +1566,10 @@ class ModelGateway:
 
     async def _fallback(self, role, system, user, evidence, resolved, run_id, reason,
                         max_output_tokens) -> ModelResult:
+        self._observe_transport_dispatch(
+            role=role, resolved=resolved,
+            execution_mode="degraded_prompt_mode", stage="tools_fallback",
+        )
         response = await resolved.adapter.complete(ModelRequest(
             model=resolved.model_name,
             messages=[Message(role="system", content=system),

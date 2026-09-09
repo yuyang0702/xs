@@ -1,5 +1,26 @@
 # Novel Flywheel Maintenance
 
+## Structured receipt capacity, quarantine and dispatch accounting
+
+`minimum_business_characters` is a business-completeness floor. It must not
+replace a workflow's workload-shaped `expected_output_characters` estimate;
+the effective estimate is the maximum of the two and continues through
+qualification, request construction and output-limit diagnostics. A provider
+response that is genuinely truncated or semantically incomplete remains
+rejected by the existing parser and domain validator.
+
+Quarantine is a pre-dispatch admission decision. The contract runtime records
+it as a typed local admission rejection, skips later attempts for the same
+route in the current immutable operation, and advances only to the explicitly
+configured fallback. It is not normal provider invalid output and does not
+consume a model-call or transport slot.
+
+Application budget accounting observes the actual adapter dispatch boundary.
+Local resolution, capability, quarantine and other pre-dispatch failures are
+kept as local rejection evidence; dispatches with no response remain counted,
+and usage/billing facts remain separate from artifact acceptance. Historical
+campaign counters are immutable and are reconciled rather than rewritten.
+
 ## Fallback-first logical-stage discovery
 
 Logical-stage discovery records provider dispatches, not local contract
