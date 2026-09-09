@@ -798,7 +798,6 @@ class ModelGateway:
                 and qualification.get("status") == "quarantined"
                 and qualification.get("last_failure_reason")
                 == "required_fields_missing"
-                and diagnostic_context is not None
                 and contract_name in {
                     "draft_atomic_semantic_receipt",
                     "draft_segment_semantic_receipt",
