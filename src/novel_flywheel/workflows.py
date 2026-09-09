@@ -5639,7 +5639,10 @@ class WorkflowService:
             if review is None:
                 review_input = (
                     "SHORT_INITIAL_REVIEW_FULL_MANUSCRIPT_V1. Review the complete "
-                    "immutable manuscript below. Do not sample or rewrite.\n\n"
+                    "immutable manuscript below. Do not sample or rewrite. Return one JSON "
+                    "object whose dimensions object contains all three numeric keys exactly: "
+                    "commercial, story, and prose. Do not substitute style, dialogue, pacing, "
+                    "or partial dimensions; include issues as an array and no explanatory text.\n\n"
                     f"MANUSCRIPT SHA256: {hashlib.sha256(draft.encode('utf-8')).hexdigest()}\n"
                     f"MANUSCRIPT LENGTH: {len(draft)} characters.\n\n"
                     f"FULL MANUSCRIPT:\n{draft}\n\n"

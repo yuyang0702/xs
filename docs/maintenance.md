@@ -2760,6 +2760,11 @@ validator remains authoritative.
 The whole-story receipt prompt also pins its minimal wire shape: each evidence
 item is only `kind` plus a verbatim `excerpt`, with no nested segment payloads.
 
+Short initial Review prompts now explicitly require the complete canonical
+`commercial`/`story`/`prose` dimension set. Missing dimensions remain a strict
+validation failure; no default score or locally synthesized quality value is
+introduced.
+
 Boundary evidence retries now also bind entry to the current candidate's
 opening state and exit to its closing state, avoiding cross-sibling or contract
 paraphrases without changing the receipt contract.
