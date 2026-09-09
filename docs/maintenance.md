@@ -2733,3 +2733,11 @@ The bounded ping-recovery successor separates eight capacity obligations from th
 The response path now uses an incremental SSE framer and one checkpoint owner. Full Short persists signed generations under its existing external execution authority, with an explicit typed ACK and read-only rehydration. Partial tails preserve accepted semantic terminals; pre-terminal timeout and cancellation preserve their own cause. The final raw capture remains single-use. Requests and narrative authority are unchanged. See docs/superpowers/specs/shared-anthropic-durable-stream-v4.md; closure gates remain pending in the V4 report directory.
 
 The Full Short probe observer now projects the canonical durable owner through its semantic snapshot when producing `stream_outcome_v1`; persistence-only owner fields remain in the signed checkpoint and are not copied into the strict public probe schema. Provider error evidence and capture-failure precedence are taken from that same owner after client close, so terminal causes and transport-tail diagnostics survive the observer boundary without a second dispatch. The current production-shaped evidence matrix passes 44/44 cases, and the isolated related stream/provider/checkpoint selection passes 1469/1469 with zero original-repository mutation or outbound network activity.
+### V12 parent semantic receipt capacity closure
+
+The atomic Draft semantic-receipt prompt now explicitly requests the shortest
+contract-valid evidence excerpts (12–22 Chinese characters where possible) and
+a bounded summary. This is only a provider-output-capacity optimization: the
+semantic receipt schema, evidence ownership, native validator, and quality
+thresholds remain unchanged. It prevents a whole-parent receipt from consuming
+the route's output ceiling through duplicated prose before validation.
