@@ -2752,6 +2752,11 @@ Causal-order receipt retries also identify the required evidence shape as one
 contiguous current-candidate action-to-result sentence, preventing the model
 from quoting a prior sibling or the contract's event description.
 
+When the parent receipt is assembled after validated child receipts, those
+child evidence excerpts are supplied as read-only reference material only;
+the Provider must still return a complete parent receipt and the native
+validator remains authoritative.
+
 Boundary evidence retries now also bind entry to the current candidate's
 opening state and exit to its closing state, avoiding cross-sibling or contract
 paraphrases without changing the receipt contract.

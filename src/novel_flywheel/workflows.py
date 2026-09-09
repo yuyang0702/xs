@@ -2228,6 +2228,7 @@ class WorkflowService:
                 event_id for event_id in semantic_all_event_ids
                 if event_id not in set(root_contract.beat_ids)
             ], suffix=f"{suffix}-parent-receipt",
+            reference_receipts=semantic_receipt_nodes,
         )
         semantic_receipt_nodes.append((root_contract, root_receipt))
         return combined
@@ -25436,6 +25437,7 @@ class WorkflowService:
         *,
         suffix: str,
         failure_stage: str = "draft",
+        reference_receipts: Sequence[tuple[DraftTaskContract, Mapping[str, Any]]] | None = None,
     ) -> dict:
         prose_sha256 = hashlib.sha256(prose.encode("utf-8")).hexdigest()
         atomic = bool(contract.beat_ids)
@@ -25481,6 +25483,32 @@ class WorkflowService:
             f"PROSE SHA256: {prose_sha256}\n"
             f"PROSE:\n{prose}"
         )
+        if reference_receipts:
+            reference_evidence: list[dict[str, str]] = []
+            for _reference_contract, reference_receipt in reference_receipts:
+                for beat_receipt in reference_receipt.get("beat_receipts", []):
+                    if not isinstance(beat_receipt, Mapping):
+                        continue
+                    reference_evidence.append({
+                        "beat_id": str(beat_receipt.get("beat_id") or ""),
+                        "evidence": str(beat_receipt.get("evidence") or ""),
+                        "actor_action_evidence": str(
+                            beat_receipt.get("actor_action_evidence") or ""
+                        ),
+                        "state_evidence": str(
+                            beat_receipt.get("state_evidence") or ""
+                        ),
+                        "scene_order_evidence": str(
+                            beat_receipt.get("scene_order_evidence") or ""
+                        ),
+                    })
+            if reference_evidence:
+                prompt += (
+                    "\n\nVALIDATED CHILD RECEIPT EVIDENCE (read-only reference only; "
+                    "copy a fragment only when it is verbatim in the current PROSE; "
+                    "the native validator remains authoritative):\n"
+                    + json.dumps(reference_evidence, ensure_ascii=False, separators=(",", ":"))
+                )
         protocol_codes = {
             "invalid_receipt", "receipt_shape", "authority_hash", "task_identity", "manifest_hash",
             "prose_hash", "beat_receipt_schema", "event_receipt_schema",
