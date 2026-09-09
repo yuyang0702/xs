@@ -20420,9 +20420,55 @@ class WorkflowService:
         }
 
         def review_spec(source_prompt: str) -> ExecutableContractSpec:
+            review_schema = None
+            if contract_name == "full_short_final_review":
+                # Bind the active profile's single typed score topology at the
+                # transport boundary.  The unchanged receipt union remains
+                # the semantic authority; this only prevents a provider from
+                # mixing dimensions and criteria representations in one wire
+                # object before that validator runs.
+                if profile_for_project(project) == "zhihu-short-v2":
+                    review_schema = {
+                        "type": "object",
+                        "properties": {
+                            "issues": {"type": "array"},
+                            "criteria": {"type": "object"},
+                            "criterion_evidence": {"type": "object"},
+                            "hard_fail": {"type": "boolean"},
+                            "decision": {"enum": ["pass", "revise", "rewrite"]},
+                            "reconciliations": {"type": "array"},
+                            "request_full_review": {"type": "boolean"},
+                        },
+                        "required": ["issues", "criteria", "criterion_evidence"],
+                        "additionalProperties": False,
+                    }
+                else:
+                    review_schema = {
+                        "type": "object",
+                        "properties": {
+                            "issues": {"type": "array"},
+                            "dimensions": {
+                                "type": "object",
+                                "properties": {
+                                    "commercial": {"type": "number"},
+                                    "story": {"type": "number"},
+                                    "prose": {"type": "number"},
+                                },
+                                "required": ["commercial", "story", "prose"],
+                                "additionalProperties": False,
+                            },
+                            "hard_fail": {"type": "boolean"},
+                            "decision": {"enum": ["pass", "revise", "rewrite"]},
+                            "reconciliations": {"type": "array"},
+                            "request_full_review": {"type": "boolean"},
+                        },
+                        "required": ["issues", "dimensions"],
+                        "additionalProperties": False,
+                    }
             return self._structured_stage_spec(
                 contract_name,
                 completion_check=lambda value: bool(convert(value)),
+                schema=review_schema,
                 runtime_authority={
                     **review_authority,
                     "request_sha256": hashlib.sha256(
