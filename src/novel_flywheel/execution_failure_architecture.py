@@ -19,6 +19,7 @@ from typing import Any, Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 from novel_flywheel.failure_boundary import contains_potential_secret
+from novel_flywheel.provider_stream_error import StreamProviderErrorEvidenceV1, stream_error_evidence_v1
 from novel_flywheel.full_short_reason_catalog import (
     FULL_SHORT_LITERAL_REASON_CATEGORY_V1,
 )
@@ -395,6 +396,7 @@ class SafeFailureNodeV1(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     version: Literal[1] = 1
+    provider_stream_error: StreamProviderErrorEvidenceV1 | None = Field(default=None, exclude_if=lambda value: value is None)
     code: str = Field(min_length=3, max_length=160)
     family: str = Field(min_length=3, max_length=160)
     layer: FailureLayer
@@ -795,6 +797,7 @@ def _node(
         )
     return SafeFailureNodeV1(
         code=code, family=family, layer=layer, boundary=node_boundary or "unknown",
+        provider_stream_error=stream_error_evidence_v1(exc),
         source_exception_class=source_exception_class, failure_class=failure_class,
         retryable=retryable,
         dispatch_state=dispatch_state, authority_effect=authority_effect,

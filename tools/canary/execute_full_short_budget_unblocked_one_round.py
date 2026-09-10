@@ -9,6 +9,18 @@ uncertain process exit therefore consumes the phase instead of redispatching.
 
 from __future__ import annotations
 
+from novel_flywheel.ping_successor import (
+    PING_RECOVERY_SCHEMA, PING_RECOVERY_SOURCE_IDENTITY, PING_RECOVERY_SOURCE_SHA256,
+    selected_ordinals, selected_budget, historical_by_case, capacity_authorized_cases,
+    expected_evidence, SUCCESSOR_SCHEMAS, ERROR_HARDENING_SCHEMA,
+    ERROR_HARDENING_SOURCE_IDENTITY, ERROR_HARDENING_SOURCE_SHA256,
+)
+from novel_flywheel.full_short_probe_campaign import SelectedSuccessorProbePlan
+from novel_flywheel.external_workload_evidence import seal_historical_workload_admission_v1
+from tools.canary.ping_successor_binding import (
+    build_ping_recovery_binding, build_error_hardening_binding, PingSuccessorBindingError,
+)
+
 import argparse
 import ast
 import asyncio
@@ -2274,6 +2286,15 @@ class CampaignJournalV1:
     def _paths(self) -> list[Path]:
         return sorted(self.root.glob("campaign-state-*.json"))
 
+    def _bound_authorization(self) -> dict[str, Any] | None:
+        path = self.root / "campaign-authorization-v1.json"
+        if not path.exists():
+            return None  # Legacy isolated journal fixtures have no outer file.
+        raw = path.read_bytes()
+        if hashlib.sha256(raw).hexdigest() != self.authorization_sha256:
+            raise OneRoundCampaignError("CAMPAIGN_AUTHORIZATION_FILE_DRIFT")
+        return json.loads(raw)
+
     def load(self) -> dict[str, Any]:
         previous = None
         latest = None
@@ -2316,6 +2337,7 @@ class CampaignJournalV1:
                 or path.read_bytes() != canonical_json_bytes(body)
             ):
                 raise OneRoundCampaignError("CAMPAIGN_JOURNAL_INVALID")
+            _validate_usage(body["usage"], authorization=self._bound_authorization())
             previous = claimed
             previous_recorded = body["state_recorded_unix_seconds"]
             latest = body
@@ -2349,7 +2371,7 @@ class CampaignJournalV1:
             "campaign_started_unix_seconds": started,
             "state_recorded_unix_seconds": recorded,
             "phase": phase,
-            "usage": _validate_usage(materialized_usage),
+            "usage": _validate_usage(materialized_usage, authorization=self._bound_authorization()),
             "evidence": dict(evidence),
         }
         body["state_sha256"] = _json_sha256(body)
@@ -2392,7 +2414,7 @@ def _zero_usage() -> dict[str, int]:
     }
 
 
-def _validate_usage(value: Mapping[str, int]) -> dict[str, int]:
+def _validate_usage(value: Mapping[str, int], *, authorization: Mapping[str, Any] | None = None) -> dict[str, int]:
     usage = dict(value)
     if set(usage) != set(_zero_usage()) or any(
         type(item) is not int or item < 0 for item in usage.values()
@@ -2409,6 +2431,10 @@ def _validate_usage(value: Mapping[str, int]) -> dict[str, int]:
         "metered_usd_micros": 60_000_000,
         "metered_cny_micros": 120_000_000,
     }
+    if authorization is not None and authorization.get("schema") in SUCCESSOR_SCHEMAS:
+        for name in ("provider_requests", "http_post_attempts", "network_requests"):
+            caps[name] = authorization["budgets"]["plan_derived_max_provider_requests"]
+        caps["input_tokens"] = authorization["budgets"]["plan_derived_max_input_tokens"]
     if any(usage[name] > cap for name, cap in caps.items()):
         raise OneRoundCampaignError("CAMPAIGN_HARD_CAP_EXCEEDED")
     if (
@@ -2715,6 +2741,15 @@ def _shared_usage_recovery_binding_v1(repo: Path) -> dict[str, Any]:
 
 
 def _require_shared_usage_recovery_binding_v1(repo: Path, authorization: Mapping[str, Any]) -> None:
+    if authorization.get("schema") in SUCCESSOR_SCHEMAS:
+        try:
+            builder = (build_error_hardening_binding if authorization.get("schema") == ERROR_HARDENING_SCHEMA
+                else build_ping_recovery_binding)
+            rebuilt = builder(repo, authorization["probe_campaign"]["cases"])
+        except PingSuccessorBindingError as exc:
+            raise OneRoundCampaignError(str(exc)) from None
+        if authorization.get("post_message_stop_ping_recovery") != rebuilt:
+            raise OneRoundCampaignError("PING_PROTOCOL_PROOF_DRIFT")
     if authorization.get("schema") == SHARED_USAGE_RECOVERY_SCHEMA:
         if authorization.get("shared_protocol_usage_recovery") != _shared_usage_recovery_binding_v1(repo):
             raise OneRoundCampaignError("SHARED_USAGE_PROTOCOL_PROOF_DRIFT")
@@ -2731,6 +2766,8 @@ def build_outer_authorization_v1(
     verification_key_id: str,
     verification_key: bytes,
     shared_protocol_usage_recovery: bool = False,
+    post_message_stop_ping_recovery: bool = False,
+    anthropic_error_hardening: bool = False,
 ) -> dict[str, Any]:
     """Derive the outer document solely from frozen, credential-free truth."""
 
@@ -2977,6 +3014,24 @@ def build_outer_authorization_v1(
                                   "sha256": SHARED_USAGE_RECOVERY_SOURCE_SHA256},
             shared_protocol_usage_recovery=_shared_usage_recovery_binding_v1(repo),
         )
+    if post_message_stop_ping_recovery or anthropic_error_hardening:
+        if sum((shared_protocol_usage_recovery, post_message_stop_ping_recovery, anthropic_error_hardening)) != 1:
+            raise OneRoundCampaignError("RECOVERY_AUTHORIZATION_MODE_CONFLICT")
+        try:
+            builder = build_error_hardening_binding if anthropic_error_hardening else build_ping_recovery_binding
+            recovery = builder(repo, probe_cases)
+        except PingSuccessorBindingError as exc:
+            raise OneRoundCampaignError(str(exc)) from None
+        old_authorization = json.loads((repo.resolve().parent / "full-short-shared-usage-successor-20260905-v1"
+            / "campaign/campaign-authorization-v1.json").read_bytes())
+        old_key = old_authorization["external_workload_evidence"]["verification_key"]
+        if old_key["key_id"] == verification_key_id or old_key["key_sha256"] == hashlib.sha256(verification_key).hexdigest():
+            raise OneRoundCampaignError("HISTORICAL_SIGNING_KEY_REUSE_FORBIDDEN")
+        authorization.update(schema=ERROR_HARDENING_SCHEMA if anthropic_error_hardening else PING_RECOVERY_SCHEMA,
+            authorization_source={"identity": ERROR_HARDENING_SOURCE_IDENTITY if anthropic_error_hardening else PING_RECOVERY_SOURCE_IDENTITY,
+                "sha256": ERROR_HARDENING_SOURCE_SHA256 if anthropic_error_hardening else PING_RECOVERY_SOURCE_SHA256},
+            post_message_stop_ping_recovery=recovery)
+        authorization["budgets"].update(selected_budget(authorization))
     return authorization
 
 
@@ -2990,6 +3045,8 @@ def materialize_campaign_authorization_v1(
     verification_key_id: str,
     verification_key: bytes,
     shared_protocol_usage_recovery: bool = False,
+    post_message_stop_ping_recovery: bool = False,
+    anthropic_error_hardening: bool = False,
 ) -> MaterializedCampaignV1:
     repo = repo.resolve(strict=True)
     head = _git(repo, "rev-parse", "HEAD")
@@ -3003,6 +3060,8 @@ def materialize_campaign_authorization_v1(
         verification_key_id=verification_key_id,
         verification_key=verification_key,
         shared_protocol_usage_recovery=shared_protocol_usage_recovery,
+        post_message_stop_ping_recovery=post_message_stop_ping_recovery,
+        anthropic_error_hardening=anthropic_error_hardening,
     )
     raw = render_full_short_one_round_budget_unblocked_execution_authorization_v1(
         authorization,
@@ -3019,6 +3078,12 @@ def materialize_campaign_authorization_v1(
     )
     digest = validated["authorization_sha256"]
     _exclusive_write(root / "campaign-authorization-v1.json", raw)
+    for case in authorization["probe_campaign"]["cases"]:
+        history = historical_by_case(authorization)
+        if case["case_id"] in history:
+            package = seal_historical_workload_admission_v1(proof=history[case["case_id"]],
+                expected=expected_evidence(authorization, digest, case, verification_key_id), signing_key=verification_key)
+            _exclusive_write(root / f"historical-admission-{case['ordinal']:02d}.json", package)
     _exclusive_write(
         root / "preprobe-full-short-policy-v1.json",
         canonical_json_bytes(dict(full_short_policy)),
@@ -3092,9 +3157,29 @@ def load_materialized_campaign_v1(
     # Loading the HMAC chain binds these bytes to the originally materialized
     # campaign and rejects replacement bundles or a partially created root.
     CampaignJournalV1(root, digest, verification_key).load()
+    _require_shared_usage_recovery_binding_v1(repo, authorization)
     return MaterializedCampaignV1(
         authorization, raw, digest, root, policy, public,
     )
+
+
+def _verify_historical_admission_files(materialized: MaterializedCampaignV1, *,
+    key_id: str, key: bytes) -> None:
+    history = historical_by_case(materialized.authorization)
+    if not history:
+        return
+    cases = [c for c in materialized.authorization["probe_campaign"]["cases"] if c["case_id"] in history]
+    if {p.name for p in materialized.evidence_root.glob("historical-admission-*.json")} != {
+        f"historical-admission-{c['ordinal']:02d}.json" for c in cases}:
+        raise OneRoundCampaignError("HISTORICAL_ADMISSION_FILE_SET_INVALID")
+    for c in cases:
+        try:
+            validate_external_workload_evidence_v1((materialized.evidence_root /
+                f"historical-admission-{c['ordinal']:02d}.json").read_bytes(),
+                expected=expected_evidence(materialized.authorization, materialized.authorization_sha256, c, key_id),
+                verification_keys={key_id: key})
+        except (OSError, ExternalWorkloadEvidenceError):
+            raise OneRoundCampaignError("HISTORICAL_ADMISSION_FILE_INVALID") from None
 
 
 def load_verified_probe_evidence_v1(
@@ -3102,6 +3187,30 @@ def load_verified_probe_evidence_v1(
     verification_key_id: str, verification_key: bytes,
 ) -> tuple[VerifiedWorkloadEvidenceV1, ...]:
     """Reload exactly eight signed packages using only outer expectations."""
+
+    if materialized.authorization.get("schema") in SUCCESSOR_SCHEMAS:
+        history = historical_by_case(materialized.authorization)
+        expected_names = {f"historical-admission-{case['ordinal']:02d}.json" if case["case_id"] in history
+            else f"probe-evidence-{case['ordinal']:02d}.json" for case in materialized.authorization["probe_campaign"]["cases"]}
+        observed_names = {p.name for pattern in ("probe-evidence-*.json", "historical-admission-*.json")
+            for p in materialized.evidence_root.glob(pattern)}
+        if expected_names != observed_names:
+            raise OneRoundCampaignError("PROBE_EVIDENCE_MANIFEST_INVALID")
+        verified = []
+        for case in materialized.authorization["probe_campaign"]["cases"]:
+            prefix = "historical-admission" if case["case_id"] in history else "probe-evidence"
+            path = materialized.evidence_root / f"{prefix}-{case['ordinal']:02d}.json"
+            try:
+                verified.append(validate_external_workload_evidence_v1(path.read_bytes(),
+                    expected=expected_evidence(materialized.authorization, materialized.authorization_sha256,
+                        case, verification_key_id), verification_keys={verification_key_id: verification_key}))
+            except (OSError, ExternalWorkloadEvidenceError):
+                raise OneRoundCampaignError("PROBE_EVIDENCE_MANIFEST_INVALID") from None
+        result = tuple(verified)
+        validate_external_evidence_against_outer_v1(outer=materialized.authorization,
+            outer_authorization_sha256=materialized.authorization_sha256, verified_evidence=result,
+            verification_keys={verification_key_id: verification_key})
+        return result
 
     cases = materialized.authorization["probe_campaign"]["cases"]
     paths = sorted(materialized.evidence_root.glob("probe-evidence-??.json"))
@@ -3189,6 +3298,8 @@ def prepare_campaign_from_live_source_v1(
     verification_key: bytes,
     expected_final_head: str,
     shared_protocol_usage_recovery: bool = False,
+    post_message_stop_ping_recovery: bool = False,
+    anthropic_error_hardening: bool = False,
 ) -> MaterializedCampaignV1:
     """Credential-free single entry for frozen-head outer materialization.
 
@@ -3294,6 +3405,8 @@ def prepare_campaign_from_live_source_v1(
         verification_key_id=verification_key_id,
         verification_key=verification_key,
         shared_protocol_usage_recovery=shared_protocol_usage_recovery,
+        post_message_stop_ping_recovery=post_message_stop_ping_recovery,
+        anthropic_error_hardening=anthropic_error_hardening,
     )
 
 
@@ -3306,6 +3419,10 @@ def preflight_campaign_v1(
     verification_key_id: str,
     verification_key: bytes,
 ) -> dict[str, Any]:
+    _verify_historical_admission_files(materialized, key_id=verification_key_id, key=verification_key)
+    if materialized.authorization.get("schema") in SUCCESSOR_SCHEMAS:
+        if any(materialized.evidence_root.glob("probe-*")):
+            raise OneRoundCampaignError("SUCCESSOR_PROBE_NONCE_OR_EVIDENCE_ALREADY_PRESENT")
     state = CampaignJournalV1(
         materialized.evidence_root, materialized.authorization_sha256,
         verification_key,
@@ -3335,6 +3452,8 @@ def preflight_campaign_v1(
         verification_key_id=verification_key_id,
         verification_key=verification_key,
         shared_protocol_usage_recovery=materialized.authorization.get("schema") == SHARED_USAGE_RECOVERY_SCHEMA,
+        post_message_stop_ping_recovery=materialized.authorization.get("schema") == PING_RECOVERY_SCHEMA,
+        anthropic_error_hardening=materialized.authorization.get("schema") == ERROR_HARDENING_SCHEMA,
     )
     if canonical_json_bytes(rebuilt) != canonical_json_bytes(
         {key: value for key, value in validated.items()
@@ -3376,6 +3495,7 @@ def run_probe_phase_v1(
     runner: Callable[..., GuardedRealCampaignResult] | None = None,
 ) -> GuardedRealCampaignResult:
     _require_shared_usage_recovery_binding_v1(repo, materialized.authorization)
+    _verify_historical_admission_files(materialized, key_id=verification_key_id, key=verification_key)
     journal = CampaignJournalV1(
         materialized.evidence_root, materialized.authorization_sha256,
         verification_key,
@@ -3400,6 +3520,8 @@ def run_probe_phase_v1(
     ):
         raise OneRoundCampaignError("PROBE_VERIFICATION_KEY_DRIFT")
     _require_probe_fixture_manifest(materialized, fixtures)
+    if materialized.authorization.get("schema") in SUCCESSOR_SCHEMAS:
+        fixtures = tuple(f for f in fixtures if f.case.ordinal in selected_ordinals(materialized.authorization))
     _collision_receipt, collision_sha256 = (
         _require_bound_run_collision_absence_v1(
             materialized, repo=repo, data_dir=db.path.parent,
@@ -3427,6 +3549,21 @@ def run_probe_phase_v1(
         snapshots += 1
         latest_probe_state.clear()
         latest_probe_state.update(snapshot)
+
+    def raw_capture_persist(data: bytes, metadata: Mapping[str, Any]) -> bool:
+        active = [record for record in latest_probe_state.get("records", [])
+                  if record.get("case_sha256") == metadata.get("case_sha256")
+                  and record.get("state") == "DISPATCH_ATTEMPTED"]
+        if len(active) != 1:
+            raise OneRoundCampaignError("RAW_CAPTURE_NONCE_BINDING_MISSING")
+        if (metadata.get("provider_entity_sha256") != hashlib.sha256(data).hexdigest()
+                or metadata.get("provider_entity_bytes") != len(data)):
+            raise OneRoundCampaignError("RAW_CAPTURE_METADATA_HASH_MISMATCH")
+        path = materialized.evidence_root / f"probe-protocol-input-{active[0]['ordinal']:02d}.raw"
+        _exclusive_write(path, data)
+        if hashlib.sha256(path.read_bytes()).digest() != hashlib.sha256(data).digest():
+            raise OneRoundCampaignError("RAW_CAPTURE_DURABLE_HASH_MISMATCH")
+        return True
 
     def capture_metadata_persist(metadata: Mapping[str, Any]) -> None:
         active = [record for record in latest_probe_state.get("records", [])
@@ -3468,6 +3605,16 @@ def run_probe_phase_v1(
         ),
         "wall_clock": time.time,
     }
+    if materialized.authorization.get("schema") in SUCCESSOR_SCHEMAS:
+        from novel_flywheel.full_short_probe_campaign import CampaignLimits
+        count = len(fixtures)
+        runner_kwargs["selected_successor_plan"] = SelectedSuccessorProbePlan(
+            cases=tuple(f.case for f in fixtures),
+            source_blocked_shape_ordinals=tuple(sorted(n for f in fixtures for n in f.case.blocked_shape_ordinals)),
+            limits=CampaignLimits(provider_requests=count, http_post_attempts=count, network_requests=count,
+                input_tokens=materialized.authorization["budgets"]["plan_derived_max_input_tokens"] - 2_373_076,
+                generated_output_tokens=sum(f.case.wire_requested_output_cap for f in fixtures)),
+            forbidden_nonce_sha256s=tuple(materialized.authorization["post_message_stop_ping_recovery"]["excluded_prior_nonce_sha256s"]))
     if runner is None:
         # This is the only keyring-backed probe construction site.  It is
         # reached only after the HMAC journal reservation, frozen-repository
@@ -3480,6 +3627,7 @@ def run_probe_phase_v1(
         result = _run_guarded_campaign_with_registry_v1(
             fixtures, registry=registry, **runner_kwargs,
             capture_metadata_persist=capture_metadata_persist,
+            raw_capture_persist=raw_capture_persist,
         )
     else:
         result = runner(fixtures, db=db, **runner_kwargs)
@@ -3500,8 +3648,10 @@ def run_probe_phase_v1(
         "metered_usd_micros": 0,
         "metered_cny_micros": 0,
     }
-    _validate_usage(usage)
+    _validate_usage(usage, authorization=materialized.authorization)
     for index, package in enumerate(result.sealed_evidence, 1):
+        if materialized.authorization.get("schema") in SUCCESSOR_SCHEMAS:
+            index = fixtures[index - 1].case.ordinal
         _exclusive_write(
             materialized.evidence_root / f"probe-evidence-{index:02d}.json",
             package,
@@ -3511,7 +3661,7 @@ def run_probe_phase_v1(
         canonical_json_bytes(dict(result.campaign_state)),
     )
     all_passed = (
-        len(result.verified_evidence) == 8
+        len(result.verified_evidence) == len(selected_ordinals(materialized.authorization))
         and result.campaign_state.get("halt_code") is None
         and all(
             record.get("state") == "PASS_CONSUMED"
@@ -3586,6 +3736,7 @@ def derive_post_probe_authorization_v1(
     verified_evidence: tuple[VerifiedWorkloadEvidenceV1, ...],
     verification_key_id: str, verification_key: bytes,
 ) -> PostProbeAuthorizationV1:
+    _require_shared_usage_recovery_binding_v1(repo, materialized.authorization)
     journal = CampaignJournalV1(
         materialized.evidence_root, materialized.authorization_sha256,
         verification_key,
@@ -3617,9 +3768,7 @@ def derive_post_probe_authorization_v1(
             repo, store_root, "FULL_SHORT_STORE_ROOT_INSIDE_GIT"
         ),
         verified_external_workload_evidence=verified_evidence,
-        external_workload_authorized_cases=tuple(
-            materialized.authorization["probe_campaign"]["cases"]
-        ),
+        external_workload_authorized_cases=capacity_authorized_cases(materialized.authorization),
         external_workload_authorization_sha256=materialized.authorization_sha256,
         external_workload_verification_keys={verification_key_id: verification_key},
     )
@@ -3653,6 +3802,7 @@ def derive_post_probe_authorization_v1(
         - sum(
             int(case["estimated_input_tokens"])
             for case in materialized.authorization["probe_campaign"]["cases"]
+            if case["ordinal"] in selected_ordinals(materialized.authorization)
         )
     )
     if full_short_input_bound <= 0:
@@ -3663,7 +3813,7 @@ def derive_post_probe_authorization_v1(
     projected["elapsed_seconds"] += policy["maximum_elapsed_seconds"]
     if policy["per_call_output_token_hard_cap"] > MAX_OUTPUT_TOKENS_PER_REQUEST:
         raise OneRoundCampaignError("FULL_SHORT_PER_REQUEST_OUTPUT_CAP_EXCEEDED")
-    _validate_usage(projected)
+    _validate_usage(projected, authorization=materialized.authorization)
     raw = render_full_short_canonical_authorization_v1(
         policy=policy, public_bindings=public,
     )
@@ -4053,7 +4203,7 @@ async def execute_one_full_short_v1(
     projected = predecessor["evidence"].get("projected_campaign_usage")
     if not isinstance(projected, Mapping):
         raise OneRoundCampaignError("PROJECTED_CAMPAIGN_USAGE_MISSING")
-    _validate_usage(projected)
+    _validate_usage(projected, authorization=materialized.authorization)
     run_id = str(nested.policy.get("run_id") or "")
     if (
         run_id != materialized.preprobe_full_short_policy.get("run_id")
@@ -4072,7 +4222,7 @@ async def execute_one_full_short_v1(
     # advanced at the terminal transition.
     reserved_usage = dict(projected)
     reserved_usage["elapsed_seconds"] = int(state["usage"]["elapsed_seconds"])
-    _validate_usage(reserved_usage)
+    _validate_usage(reserved_usage, authorization=materialized.authorization)
     reserved_state = journal.append(
         "FULL_SHORT_RESERVED_NO_RESTART", usage=reserved_usage, evidence={
             "nested_authorization_sha256": nested.authorization_sha256,
@@ -4088,9 +4238,7 @@ async def execute_one_full_short_v1(
         authorization_raw=nested.authorization_raw,
         activated_sha256=nested.authorization_sha256,
         verified_external_workload_evidence=verified_evidence,
-        external_workload_authorized_cases=tuple(
-            materialized.authorization["probe_campaign"]["cases"]
-        ),
+        external_workload_authorized_cases=capacity_authorized_cases(materialized.authorization),
         external_workload_authorization_sha256=materialized.authorization_sha256,
         external_workload_verification_keys={verification_key_id: verification_key},
     )
@@ -4101,10 +4249,11 @@ async def execute_one_full_short_v1(
         prior_input_tokens=int(state["usage"]["input_tokens"]),
         prior_output_tokens=int(state["usage"]["generated_output_tokens"]),
         remaining_provider_requests=(
-            MAX_PROVIDER_REQUESTS - int(state["usage"]["provider_requests"])
+            materialized.authorization["budgets"].get("plan_derived_max_provider_requests", MAX_PROVIDER_REQUESTS)
+            - int(state["usage"]["provider_requests"])
         ),
         remaining_input_tokens=(
-            PLAN_DERIVED_MAX_INPUT_TOKENS - int(state["usage"]["input_tokens"])
+            materialized.authorization["budgets"]["plan_derived_max_input_tokens"] - int(state["usage"]["input_tokens"])
         ),
         remaining_output_tokens=(
             MAX_GENERATED_OUTPUT_TOKENS
@@ -4141,7 +4290,7 @@ async def execute_one_full_short_v1(
         elapsed = math.ceil(time.monotonic() - started)
         terminal_usage = dict(reserved_state["usage"])
         terminal_usage["elapsed_seconds"] += elapsed
-        _validate_usage(terminal_usage)
+        _validate_usage(terminal_usage, authorization=materialized.authorization)
         completion = result.get("completion") if isinstance(result, Mapping) else None
         if not isinstance(completion, Mapping):
             raise OneRoundCampaignError("FULL_SHORT_COMPLETION_RECEIPT_MISSING")
@@ -4328,6 +4477,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     prepare_parser.add_argument("--run-id", required=True)
     prepare_parser.add_argument("--expected-final-head", required=True)
     prepare_parser.add_argument("--shared-protocol-usage-recovery", action="store_true")
+    prepare_parser.add_argument("--post-message-stop-ping-recovery", action="store_true")
+    prepare_parser.add_argument("--anthropic-error-hardening", action="store_true")
 
     preflight_parser = subparsers.add_parser(
         "preflight", help="offline exact authorization/source revalidation",
@@ -4344,7 +4495,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     probe_parser.add_argument("--store-root", required=True, type=Path)
     probe_parser.add_argument(
         "--confirm-authorized-paid-network", required=True,
-        choices=["EXACT_8_SEQUENTIAL_PROBES_NO_RETRY"],
+        choices=["EXACT_8_SEQUENTIAL_PROBES_NO_RETRY", "EXACT_SELECTED_SUCCESSOR_PROBES_NO_RETRY"],
     )
 
     derive_parser = subparsers.add_parser(
@@ -4419,6 +4570,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             verification_key=verification_key,
             expected_final_head=args.expected_final_head,
             shared_protocol_usage_recovery=args.shared_protocol_usage_recovery,
+            post_message_stop_ping_recovery=args.post_message_stop_ping_recovery,
+            anthropic_error_hardening=args.anthropic_error_hardening,
         )
         _print_phase_result(materialized, phase="MATERIALIZED_UNUSED")
         return 0
@@ -4428,6 +4581,11 @@ def main(argv: Sequence[str] | None = None) -> int:
         verification_key_id=args.verification_key_id,
         verification_key=verification_key,
     )
+    if args.command == "probes":
+        wanted = ("EXACT_SELECTED_SUCCESSOR_PROBES_NO_RETRY" if materialized.authorization.get("schema") in SUCCESSOR_SCHEMAS
+            else "EXACT_8_SEQUENTIAL_PROBES_NO_RETRY")
+        if args.confirm_authorized_paid_network != wanted:
+            raise OneRoundCampaignError("PROBE_DISPATCH_SELECTION_CONFIRMATION_DRIFT")
     if args.command == "status":
         state = CampaignJournalV1(
             materialized.evidence_root, materialized.authorization_sha256,

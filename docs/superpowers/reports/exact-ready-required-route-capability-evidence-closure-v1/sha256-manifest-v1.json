@@ -6,8 +6,8 @@
       "sha256": "2acfa44d39447fefe117c23ccd4acf0fd30906cbadbfe2e28d5bfdbd497aaaac"
     },
     "baseline-binding-v1.json": {
-      "bytes": 880,
-      "sha256": "80c843c9757ea18d30db8c3f2fbdf8b34d33ce3ad7470d31cbce73ad39385bc6"
+      "bytes": 1096,
+      "sha256": "4319ddfef62b403154963521b498fd0de9a53e0e4d5be73677b6dbf6511ced85"
     },
     "capacity-attempt-identity-revalidation-v1.json": {
       "bytes": 924,
@@ -27,7 +27,7 @@
     },
     "child-integrator-v1.json": {
       "bytes": 5033,
-      "sha256": "4f3d2c9fa08e7dca534d339ddc54880ded3c5e49ce3c6a07fa4cfc2d97db8db3"
+      "sha256": "f20513d2e5c4620e59cc530667e9bb701dbd06251cd7202c8afdd7bb002e4db1"
     },
     "child-lingsuan-v1.json": {
       "bytes": 3676,
@@ -43,7 +43,7 @@
     },
     "exact-ready-required-route-set-v1.json": {
       "bytes": 5312,
-      "sha256": "7019d83316d86ad13efb47c9b38fd98fba634b2cf801842d54682df27ca60fab"
+      "sha256": "314c5a00de86b858c50317dcb753ff34416d85b33be7564a8097979665d1a132"
     },
     "exact-ready-target-full-short-rerun-v1.json": {
       "bytes": 624,
@@ -99,7 +99,7 @@
     },
     "route-capability-registry-delta-v1.json": {
       "bytes": 899,
-      "sha256": "c075512c4939210338c1d425a81f98a2688dfaece1d162149e9e72038612a912"
+      "sha256": "ad8b377f2177d8737fa791fa55718a2c817f09e70b02536e6a230388ab427041"
     },
     "size-matrix-rerun-v1.json": {
       "bytes": 641,

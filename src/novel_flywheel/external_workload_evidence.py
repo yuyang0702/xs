@@ -44,6 +44,7 @@ class ExpectedWorkloadEvidenceV1:
     input_tokens: int
     requested_output_tokens: int
     key_id: str
+    historical_admission_sha256: str | None = None
 
 
 @dataclass(frozen=True)
@@ -70,6 +71,17 @@ class VerifiedWorkloadEvidenceV1:
     requested_output_tokens: int
     actual_output_tokens: int
     response_sha256: str
+    historical_admission_sha256: str | None = None
+    admission_authorization_sha256: str | None = None
+    admission_execution_head: str | None = None
+
+    @property
+    def capacity_authorization_sha256(self) -> str:
+        return self.admission_authorization_sha256 or self.authorization_sha256
+
+    @property
+    def capacity_execution_head(self) -> str:
+        return self.admission_execution_head or self.final_execution_head
 
     @property
     def route_key(self) -> str:
@@ -137,8 +149,12 @@ def validate_external_workload_evidence_v1(
     if canonical_envelope != package_bytes:
         raise ExternalWorkloadEvidenceError("NONCANONICAL_PACKAGE")
     _exact_keys(envelope, {"schema", "payload", "payload_sha256", "signature"}, "ENVELOPE")
-    if envelope["schema"] != SCHEMA:
+    from novel_flywheel.ping_successor import HISTORICAL_ADMISSION_SCHEMA
+    historical = envelope["schema"] == HISTORICAL_ADMISSION_SCHEMA
+    if envelope["schema"] != SCHEMA and not historical:
         raise ExternalWorkloadEvidenceError("WRONG_SCHEMA")
+    if historical != (expected.historical_admission_sha256 is not None):
+        raise ExternalWorkloadEvidenceError("HISTORICAL_ADMISSION_NOT_AUTHORIZED")
     signature = envelope["signature"]
     _exact_keys(signature, {"algorithm", "key_id", "value"}, "SIGNATURE")
     if signature["algorithm"] != SIGNATURE_ALGORITHM:
@@ -157,11 +173,72 @@ def validate_external_workload_evidence_v1(
         raise ExternalWorkloadEvidenceError("PAYLOAD_SEAL_MISMATCH")
     if not _is_hash(signature["value"]):
         raise ExternalWorkloadEvidenceError("INVALID_SIGNATURE")
-    wanted = hmac.new(key, _SIGNING_DOMAIN + payload_bytes, hashlib.sha256).hexdigest()
+    domain = _HISTORICAL_SIGNING_DOMAIN if historical else _SIGNING_DOMAIN
+    wanted = hmac.new(key, domain + payload_bytes, hashlib.sha256).hexdigest()
     if not hmac.compare_digest(signature["value"], wanted):
         raise ExternalWorkloadEvidenceError("INVALID_SIGNATURE")
     _validate_expected(expected)
+    if historical:
+        return _validate_historical_admission(payload, expected, package_bytes, payload_hash)
     return _validate_payload(payload, expected, package_bytes, payload_hash)
+
+
+_HISTORICAL_SIGNING_DOMAIN = b"novel-flywheel.historical-workload-admission.v1\x00"
+
+
+def seal_historical_workload_admission_v1(*, proof: Mapping[str, Any],
+    expected: ExpectedWorkloadEvidenceV1, signing_key: bytes) -> bytes:
+    """Sign a capacity admission, never a dispatch receipt or a new nonce."""
+    from dataclasses import asdict
+    from novel_flywheel.ping_successor import HISTORICAL_ADMISSION_SCHEMA
+    _validate_expected(expected)
+    if len(signing_key) < 32 or not expected.historical_admission_sha256:
+        raise ExternalWorkloadEvidenceError("HISTORICAL_ADMISSION_NOT_AUTHORIZED")
+    payload = {"admission": asdict(expected), "historical_proof": dict(proof),
+        "fresh_dispatch_count": 0}
+    raw = canonical_json_bytes(payload)
+    package = canonical_json_bytes({"schema": HISTORICAL_ADMISSION_SCHEMA,
+        "payload": payload, "payload_sha256": hashlib.sha256(raw).hexdigest(),
+        "signature": {"algorithm": SIGNATURE_ALGORITHM, "key_id": expected.key_id,
+            "value": hmac.new(signing_key, _HISTORICAL_SIGNING_DOMAIN + raw, hashlib.sha256).hexdigest()}})
+    validate_external_workload_evidence_v1(package, expected=expected,
+        verification_keys={expected.key_id: signing_key})
+    return package
+
+
+def _validate_historical_admission(payload: Any, expected: ExpectedWorkloadEvidenceV1,
+    raw: bytes, payload_hash: str) -> VerifiedWorkloadEvidenceV1:
+    from dataclasses import asdict
+    from novel_flywheel.ping_successor import HistoricalAdmissionProof, compact_sha
+    _exact_keys(payload, {"admission", "historical_proof", "fresh_dispatch_count"}, "HISTORICAL_ADMISSION")
+    if (payload["admission"] != asdict(expected) or type(payload["fresh_dispatch_count"]) is not int
+        or payload["fresh_dispatch_count"] != 0):
+        raise ExternalWorkloadEvidenceError("HISTORICAL_ADMISSION_BINDING_DRIFT")
+    try:
+        proof = HistoricalAdmissionProof.model_validate(payload["historical_proof"])
+    except ValueError:
+        raise ExternalWorkloadEvidenceError("HISTORICAL_PROOF_INVALID") from None
+    if (compact_sha(payload["historical_proof"]) != expected.historical_admission_sha256
+        or proof.case_id != expected.case_id or proof.source_request_sha256 != expected.request_sha256
+        or proof.source_authorization_sha256 == expected.authorization_sha256
+        or proof.source_execution_head == expected.final_execution_head
+        or proof.canonical_output_tokens > expected.requested_output_tokens):
+        raise ExternalWorkloadEvidenceError("HISTORICAL_PROVENANCE_DRIFT")
+    return VerifiedWorkloadEvidenceV1(package_bytes=raw, key_id=expected.key_id,
+        evidence_sha256=hashlib.sha256(raw).hexdigest(), payload_sha256=payload_hash,
+        authorization_sha256=proof.source_authorization_sha256,
+        final_execution_head=proof.source_execution_head,
+        provider=expected.provider, operator=expected.operator, destination=expected.destination,
+        protocol=expected.protocol, model=expected.model,
+        route_fingerprint_sha256=expected.route_fingerprint_sha256,
+        case_id=expected.case_id, fixture_sha256=expected.fixture_sha256,
+        request_family_sha256=expected.request_family_sha256, request_sha256=expected.request_sha256,
+        nonce_sha256=proof.source_nonce_sha256, input_tokens=expected.input_tokens,
+        actual_input_tokens=proof.canonical_input_tokens, requested_output_tokens=expected.requested_output_tokens,
+        actual_output_tokens=proof.canonical_output_tokens, response_sha256=proof.source_capture_sha256,
+        historical_admission_sha256=expected.historical_admission_sha256,
+        admission_authorization_sha256=expected.authorization_sha256,
+        admission_execution_head=expected.final_execution_head)
 
 
 def deterministic_promotion_mapping_v1(

@@ -20,6 +20,10 @@ PRIOR = Path(
     "full-short-execution-runtime-architecture-redesign-v3-evidence-migration-v1"
 )
 REGISTRY = Path("config/full_short_route_capability_registry_v1.json")
+DOUBAO_LOCAL_ASSERTION = Path(
+    "docs/superpowers/reports/full-short-capacity-final-one-round-confirmation-v1/"
+    "doubao-route-exact-capability-assertion-v1.json"
+)
 ZERO = {
     "real_credential_lookup_count": 0,
     "real_secret_read_count": 0,
@@ -112,8 +116,12 @@ def git(repo: Path, *args: str) -> str:
     ).strip()
 
 
-def promote_doubao(registry: dict[str, Any]) -> dict[str, Any]:
-    """Promote only the exact official Ark route supported by DOUBAO_PROOF."""
+def promote_doubao(registry: dict[str, Any], *, repo: Path) -> dict[str, Any]:
+    """Keep route-exact local evidence usable by the production verifier.
+
+    Public URLs describe provenance; they cannot replace the local assertion
+    whose exact bytes and route fields the runtime verifies before dispatch.
+    """
 
     promoted = json.loads(json.dumps(registry))
     matched = 0
@@ -121,10 +129,26 @@ def promote_doubao(registry: dict[str, Any]) -> dict[str, Any]:
         if record["route_fingerprint"] != DOUBAO_FINGERPRINT:
             continue
         matched += 1
+        assertion_path = (repo / DOUBAO_LOCAL_ASSERTION).resolve(strict=True)
+        assertion_path.relative_to(repo.resolve(strict=True))
+        assertion = json.loads(assertion_path.read_text(encoding="utf-8"))
+        identity_fields = (
+            "route_fingerprint", "provider", "provider_id_sha256", "operator",
+            "destination", "protocol", "model", "model_id_sha256",
+        )
+        expected_capability = {
+            "context_window_tokens": 128_000, "max_output_tokens": 32_000,
+            "reasoning_token_accounting": "INCLUDED_IN_COMPLETION_CAP",
+            "reasoning_output_reservation": "WITHIN_COMPLETION_CAP",
+        }
+        if (assertion.get("schema") != "RouteExactPublicCapabilityAssertionV1"
+                or any(assertion.get(key) != record[key] for key in identity_fields)
+                or any(assertion.get(key) != value for key, value in expected_capability.items())):
+            raise ValueError("exact_doubao_local_assertion_not_proven")
         evidence = {
             "source_kind": "official_direct_provider_documentation_composite",
-            "source_locator": DOUBAO_PROOF["model_list"]["url"],
-            "source_evidence_sha256": sha_json(DOUBAO_PROOF),
+            "source_locator": DOUBAO_LOCAL_ASSERTION.as_posix(),
+            "source_evidence_sha256": sha_bytes(assertion_path.read_bytes()),
             "evidence_version": 1,
             "evidence_date": "2026-09-04",
             "route_fingerprint": DOUBAO_FINGERPRINT,
@@ -166,6 +190,7 @@ def promote_doubao(registry: dict[str, Any]) -> dict[str, Any]:
 
 def materialize(repo: Path) -> None:
     head = git(repo, "rev-parse", "HEAD")
+    initial_status = git(repo, "status", "--porcelain=v1", "--untracked-files=all")
     if git(repo, "branch", "--show-current") != BRANCH:
         raise ValueError("branch_mismatch")
     if subprocess.run(
@@ -181,7 +206,7 @@ def materialize(repo: Path) -> None:
         ["git", "show", f"{START_HEAD}:{REGISTRY.as_posix()}"], cwd=repo,
     )
     registry = promote_doubao(
-        json.loads(registry_path.read_text(encoding="utf-8"))
+        json.loads(registry_path.read_text(encoding="utf-8")), repo=repo
     )
     write_json(registry_path, registry)
     prior_set = json.loads(
@@ -225,7 +250,10 @@ def materialize(repo: Path) -> None:
         authorized_start_head=START_HEAD,
         materialization_head=head,
         start_head_is_ancestor=True,
-        initial_worktree_clean=True,
+        initial_worktree_clean=not bool(initial_status),
+        initial_worktree_status_sha256=sha_bytes(initial_status.encode("utf-8")),
+        worktree_state_measured=True,
+        materialization_kind="OFFLINE_DIAGNOSTIC_NOT_EXECUTION_AUTHORIZATION",
         baseline_receipt_outside_git=(
             "C:/小说/.codex-task-baselines/"
             "exact-ready-route-capability-closure-897ed45.json"

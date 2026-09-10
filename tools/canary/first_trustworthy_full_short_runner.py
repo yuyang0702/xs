@@ -621,7 +621,8 @@ def _validate_authorized_external_workload_evidence_v1(
     for ordinal, case in enumerate(authorized_cases, 1):
         if (
             not isinstance(case, Mapping)
-            or set(case) != _EXTERNAL_AUTHORIZED_CASE_KEYS_V1
+            or set(case) not in (_EXTERNAL_AUTHORIZED_CASE_KEYS_V1,
+                _EXTERNAL_AUTHORIZED_CASE_KEYS_V1 | {"historical_admission_sha256"})
             or case.get("ordinal") != ordinal
             or not isinstance(case.get("route"), Mapping)
             or set(case["route"]) != _EXTERNAL_AUTHORIZED_ROUTE_KEYS_V1
@@ -718,6 +719,7 @@ def _validate_authorized_external_workload_evidence_v1(
             input_tokens=input_tokens,
             requested_output_tokens=requested_output_tokens,
             key_id=key_id,
+            historical_admission_sha256=case.get("historical_admission_sha256"),
         )
 
     observed_case_ids: set[str] = set()
@@ -965,9 +967,9 @@ def collect_live_bindings(
                         candidates = [
                             item for item in verified_external_workload_evidence
                             if item.request_family_sha256 == family_sha256
-                            and item.authorization_sha256
+                            and item.capacity_authorization_sha256
                             == external_workload_authorization_sha256
-                            and item.final_execution_head == execution_head
+                            and item.capacity_execution_head == execution_head
                             and item.provider == str(provider.get("name") or "")
                             and item.operator == operator
                             and item.destination == destination
@@ -997,8 +999,8 @@ def collect_live_bindings(
                             "request_family_sha256": family_sha256,
                             "request_sha256": evidence.request_sha256,
                             "evidence_sha256": evidence.evidence_sha256,
-                            "authorization_sha256": evidence.authorization_sha256,
-                            "final_execution_head": evidence.final_execution_head,
+                            "authorization_sha256": evidence.capacity_authorization_sha256,
+                            "final_execution_head": evidence.capacity_execution_head,
                             "case_id": evidence.case_id,
                             "input_tokens": evidence.input_tokens,
                             "requested_output_tokens": evidence.requested_output_tokens,
@@ -1008,6 +1010,12 @@ def collect_live_bindings(
                                 + evidence.requested_output_tokens
                             ),
                         }
+                        if evidence.historical_admission_sha256 is not None:
+                            family.update(schema="HistoricalVerifiedExternalWorkloadFamilyV1",
+                                source_authorization_sha256=evidence.authorization_sha256,
+                                source_execution_head=evidence.final_execution_head,
+                                source_nonce_sha256=evidence.nonce_sha256,
+                                historical_admission_sha256=evidence.historical_admission_sha256)
                         if family not in external_families:
                             external_families.append(family)
                     external_families.sort(
