@@ -76,7 +76,14 @@ def _write_exclusive(path: Path, data: bytes) -> None:
 def _require_discovery_routes_verified_v1(repo: Path) -> str:
     """Stop before synthetic plan discovery when any initial route is unknown."""
 
-    registry = _load_route_capability_registry_v1(repo)
+    try:
+        registry = _load_route_capability_registry_v1(repo)
+    except (ValueError, KeyError) as exc:
+        # Evidence integrity failures are authorization failures at this gate;
+        # retain the loader's typed error for callers that audit it directly.
+        raise RuntimeError(
+            "AUTHORIZATION_ROUTE_CAPABILITY_NOT_VERIFIED"
+        ) from exc
     if registry is None:
         raise RuntimeError("AUTHORIZATION_ROUTE_CAPABILITY_NOT_VERIFIED")
     try:
