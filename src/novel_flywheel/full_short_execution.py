@@ -363,6 +363,26 @@ _EXTERNAL_WORKLOAD_FAMILY_FIELDS_V1 = frozenset({
     "input_tokens", "requested_output_tokens", "actual_output_tokens",
     "proven_workload_context_lower_bound_tokens",
 })
+_HISTORICAL_WORKLOAD_FAMILY_FIELDS_V1 = _EXTERNAL_WORKLOAD_FAMILY_FIELDS_V1 | {
+    "source_authorization_sha256", "source_execution_head", "source_nonce_sha256",
+    "historical_admission_sha256",
+}
+
+
+def _external_workload_family_shape_valid_v1(value: Any) -> bool:
+    """The route's authenticated family schema owns its provenance fields."""
+    if not isinstance(value, Mapping):
+        return False
+    if value.get("schema") == "VerifiedExternalWorkloadFamilyV1":
+        return set(value) == _EXTERNAL_WORKLOAD_FAMILY_FIELDS_V1 and value.get("version") == 1
+    if value.get("schema") != "HistoricalVerifiedExternalWorkloadFamilyV1":
+        return False
+    return (set(value) == _HISTORICAL_WORKLOAD_FAMILY_FIELDS_V1 and value.get("version") == 1
+        and all(_HEX64.fullmatch(str(value.get(k) or "")) is not None for k in (
+            "source_authorization_sha256", "source_nonce_sha256", "historical_admission_sha256"))
+        and re.fullmatch(r"[0-9a-f]{40}", str(value.get("source_execution_head") or "")) is not None
+        and value["source_execution_head"] != value.get("final_execution_head")
+        and value["source_authorization_sha256"] != value.get("authorization_sha256"))
 _OUTER_CAMPAIGN_USAGE_GUARD_FIELDS_V1 = frozenset({
     "schema", "version", "campaign_authorization_sha256",
     "prior_provider_request_count", "prior_input_tokens",
@@ -1376,6 +1396,7 @@ _MUTABLE_ATTEMPT_FIELDS_V1 = frozenset({
     "contract_name", "contract_version", "contract_schema_sha256",
     "provider_reported_actual_usage", "campaign_accounted_usage",
     "attempt_usage_receipt_sha256",
+    "stream_checkpoint_sha256", "stream_checkpoint_generation",
 })
 
 
@@ -1386,7 +1407,7 @@ def _validate_ledger_mutation_v1(
     """Reject every unregistered durable transition before resealing."""
 
     _require(
-        mutation_kind in {"ORDINARY", "CAPTURE_RECEIPT_RECONCILIATION"},
+        mutation_kind in {"ORDINARY", "CAPTURE_RECEIPT_RECONCILIATION", "STREAM_CHECKPOINT"},
         "LEDGER_MUTATION_KIND_INVALID",
     )
 
@@ -1445,6 +1466,24 @@ def _validate_ledger_mutation_v1(
                 closed_attempt_rewritten
                 or dict(previous) != dict(current)
             )
+    checkpoint_fields = {"stream_checkpoint_sha256", "stream_checkpoint_generation"}
+    if mutation_kind != "STREAM_CHECKPOINT":
+        _require(all(all(old.get(key) == new.get(key) for key in checkpoint_fields)
+                     for old, new in zip(before_attempts, after_attempts, strict=True)),
+                 "STREAM_CHECKPOINT_REQUIRES_OWNED_TRANSACTION")
+    else:
+        _require(len(changed_attempts) == 1 and before_state == after_state
+                 and before.get("completed_stage_receipts") == after.get("completed_stage_receipts"),
+                 "STREAM_CHECKPOINT_MUTATION_NOT_NARROW")
+        old, new = changed_attempts[0]
+        _require(old == before_attempts[-1] and old.get("state") not in _CLOSED_ATTEMPT_STATES_V1
+                 and old.get("state") == new.get("state")
+                 and {key for key in set(old) | set(new) if old.get(key) != new.get(key)} == checkpoint_fields
+                 and type(new.get("stream_checkpoint_generation")) is int
+                 and new["stream_checkpoint_generation"] == old.get("stream_checkpoint_generation", 0) + 1
+                 and isinstance(new.get("stream_checkpoint_sha256"), str)
+                 and _HEX64.fullmatch(new["stream_checkpoint_sha256"]) is not None,
+                 "STREAM_CHECKPOINT_PROGRESS_INVALID")
     before_receipts = list(before.get("completed_stage_receipts") or [])
     after_receipts = list(after.get("completed_stage_receipts") or [])
     _require(
@@ -4397,8 +4436,7 @@ class FullShortDispatchLedgerObserverV1:
             _require(
                 isinstance(families, list)
                 and all(
-                    isinstance(item, Mapping)
-                    and set(item) == _EXTERNAL_WORKLOAD_FAMILY_FIELDS_V1
+                    _external_workload_family_shape_valid_v1(item)
                     for item in families
                 ),
                 "EXTERNAL_WORKLOAD_EVIDENCE_FAMILY_INVALID",
@@ -6133,6 +6171,11 @@ class FullShortDispatchLedgerObserverV1:
             return body
 
         self.store.update_ledger(self.execution_id, mutate)
+
+    def create_anthropic_stream_owner_v1(self, *, encoding: str):
+        from novel_flywheel.full_short_stream_checkpoint import create_stream_owner_v1
+        return create_stream_owner_v1(store=self.store, policy=self.policy,
+            execution_id=self.execution_id, ordinal=self.pending_ordinal, encoding=encoding)
 
     def capture_provider_protocol_input(
         self, *, data: bytes, status_code: int, content_type: str,

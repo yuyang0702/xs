@@ -2,10 +2,17 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+import shutil
+
+import pytest
 
 from tools.diagnostics.materialize_exact_ready_route_capability_closure import (
     ROOT,
+    PRIOR,
+    REGISTRY,
+    DOUBAO_LOCAL_ASSERTION,
     materialize,
+    promote_doubao,
 )
 
 
@@ -43,8 +50,21 @@ REQUIRED_FILES = {
 }
 
 
-def test_materializer_seals_blocked_required_routes_without_guessing() -> None:
-    repo = Path(__file__).resolve().parents[2]
+@pytest.fixture
+def materializer_repo(tmp_path: Path) -> Path:
+    source = Path(__file__).resolve().parents[2]
+    repo = tmp_path / 'materializer'
+    repo.mkdir()
+    shutil.copytree(source / '.git', repo / '.git')
+    shutil.copytree(source / PRIOR, repo / PRIOR)
+    for relative in (REGISTRY, DOUBAO_LOCAL_ASSERTION):
+        (repo / relative).parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(source / relative, repo / relative)
+    return repo
+
+
+def test_materializer_seals_blocked_required_routes_without_guessing(materializer_repo: Path) -> None:
+    repo = materializer_repo
     materialize(repo)
     root = repo / ROOT
     assert REQUIRED_FILES <= {path.name for path in root.iterdir()}
@@ -88,8 +108,8 @@ def test_materializer_seals_blocked_required_routes_without_guessing() -> None:
     assert all(value == 0 for value in readiness["external_boundary"].values())
 
 
-def test_public_evidence_rejects_unbound_third_party_capacity_claims() -> None:
-    repo = Path(__file__).resolve().parents[2]
+def test_public_evidence_rejects_unbound_third_party_capacity_claims(materializer_repo: Path) -> None:
+    repo = materializer_repo
     materialize(repo)
     evidence = json.loads(
         (repo / ROOT / "required-route-public-evidence-v1.json").read_text(
@@ -101,3 +121,30 @@ def test_public_evidence_rejects_unbound_third_party_capacity_claims() -> None:
     assert sum(
         bool(item["accepted_for_verification"]) for item in evidence["sources"]
     ) == 1
+
+
+def test_rematerialization_preserves_route_exact_local_proof_and_measures_dirty_state(materializer_repo: Path) -> None:
+    repo=materializer_repo
+    registry=json.loads((repo/REGISTRY).read_text(encoding='utf-8'))
+    promoted=promote_doubao(registry,repo=repo)
+    assert promote_doubao(promoted,repo=repo)==promoted
+    record=next(r for r in promoted['records'] if r['route_fingerprint']==
+        '026d0b3206ad50c89b4eca81b4730ebfa3370815cac98078149c6438e705bfe1')
+    evidence=next(e for e in record['source_evidence'] if e['source_kind']=='official_direct_provider_documentation_composite')
+    import hashlib
+    assert evidence['source_locator']==DOUBAO_LOCAL_ASSERTION.as_posix()
+    assert evidence['source_evidence_sha256']==hashlib.sha256((repo/DOUBAO_LOCAL_ASSERTION).read_bytes()).hexdigest()
+    materialize(repo)
+    baseline=json.loads((repo/ROOT/'baseline-binding-v1.json').read_text(encoding='utf-8'))
+    assert baseline['initial_worktree_clean'] is False
+    assert baseline['worktree_state_measured'] is True
+    assert baseline['materialization_kind']=='OFFLINE_DIAGNOSTIC_NOT_EXECUTION_AUTHORIZATION'
+
+
+def test_unproven_local_assertion_does_not_mutate_registry(materializer_repo: Path) -> None:
+    repo=materializer_repo;path=repo/DOUBAO_LOCAL_ASSERTION
+    assertion=json.loads(path.read_text(encoding='utf-8'));assertion['model']='unrelated'
+    path.write_text(json.dumps(assertion),encoding='utf-8')
+    original=(repo/REGISTRY).read_bytes()
+    with pytest.raises(ValueError,match='local_assertion_not_proven'):materialize(repo)
+    assert (repo/REGISTRY).read_bytes()==original

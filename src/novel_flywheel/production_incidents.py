@@ -22,6 +22,15 @@ class IncidentDefinition:
 # not one novel's names, file paths, segment numbers, or provider wording.
 INCIDENT_DEFINITIONS = (
     IncidentDefinition(
+        "provider.semantic_transport_terminal_boundary",
+        "Semantic Message completion was conflated with the last transport event",
+        "Preserve the immutable capture and completed Message authority. At the shared Anthropic response boundary, ignore only trailing ping keepalives and count them diagnostically; retain typed Provider errors and reject post-stop semantic events, duplicate stops and unknown events. Keep usage restricted to pre-stop protocol locations. Verify the exact capture through the adapter, usage receipt and original request/route acceptance boundary without retry, fallback or route change; historical consumed authorization remains consumed.",
+        (
+            r"anthropic_sse_event_after_message_stop",
+            r"provider_reported_usage_event_after_message_stop",
+        ),
+    ),
+    IncidentDefinition(
         "provider.cumulative_usage_accounting",
         "Protocol cumulative usage was treated as conflicting samples",
         "Apply the protocol-owned cumulative snapshot reducer before cache summation; preserve omitted fields and precise capture causes. Keep deterministic request estimates, realized Provider usage and budget reserves separate. Replay immutable captured bytes before considering any newly authorized request.",
@@ -523,6 +532,11 @@ def classify_production_failure(
 ) -> dict[str, str]:
     normalized = normalize_failure_text(message)
     typed_family = (
+        "provider.semantic_transport_terminal_boundary"
+        if failure is not None
+        and failure.code == "anthropic_sse_protocol_invalid"
+        and failure.message == "ANTHROPIC_SSE_EVENT_AFTER_MESSAGE_STOP"
+        else
         "provider.reasoning_only_final_artifact_unavailable"
         if failure is not None and failure.code in {
             "reasoning_only_final_artifact_unavailable",

@@ -20,6 +20,11 @@ import re
 from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
+from novel_flywheel.ping_successor import (
+    PING_RECOVERY_SCHEMA, PING_RECOVERY_SOURCE_IDENTITY, PING_RECOVERY_SOURCE_SHA256,
+    PingRecoveryProofs, compact_sha, historical_by_case, selected_ordinals,
+    ERROR_HARDENING_SCHEMA, ErrorHardeningRecoveryProofs,
+)
 
 from novel_flywheel.external_workload_evidence import (
     ExpectedWorkloadEvidenceV1,
@@ -478,6 +483,8 @@ class FullShortOneRoundBudgetUnblockedExecutionAuthorizationV1(_ClosedModel):
             raise ValueError("plan identity aliases case identity")
         probe_input = sum(
             case.estimated_input_tokens for case in self.probe_campaign.cases
+            if not hasattr(self, "post_message_stop_ping_recovery")
+            or case.ordinal in self.post_message_stop_ping_recovery.selected_probe_ordinals
         )
         if probe_input != self.budgets.exact_probe_fixture_input_tokens:
             raise ValueError("probe input budget drift")
@@ -512,6 +519,62 @@ class FullShortSharedProtocolSafeUsageRecoveryAndSuccessorExecutionAuthorization
     shared_protocol_usage_recovery: SharedProtocolUsageRecoveryV1
 
 
+class PingRecoveryAuthorizationSourceV1(_ClosedModel):
+    identity: Literal["PROBE02_POST_MESSAGE_STOP_PING_ROOT_CAUSE_FIX_REPLAY_AND_END_TO_END_CONTINUE_MASTER"]
+    sha256: Literal["1a15d628ea81e3938cc4dbe99574f02b50c7a9d6f7eb59a1734e5d9328bc1cc2"]
+
+
+class PingRecoveryBudgetsV1(CampaignBudgetsV1):
+    exact_probe_fixture_input_tokens: Literal[123895, 156275]
+    exact_pre_dispatch_estimated_input_tokens: Literal[2496971, 2529351]
+    plan_derived_max_input_tokens: Literal[2996366, 3035222]
+    plan_derived_max_provider_requests: Literal[102, 103]
+
+
+class FullShortPostMessageStopPingRecoveryAndSuccessorExecutionAuthorizationV1(
+    FullShortOneRoundBudgetUnblockedExecutionAuthorizationV1
+):
+    schema_name: Literal["FullShortPostMessageStopPingRecoveryAndSuccessorExecutionAuthorizationV1"] = Field(alias="schema")
+    authorization_source: PingRecoveryAuthorizationSourceV1
+    post_message_stop_ping_recovery: PingRecoveryProofs
+    budgets: PingRecoveryBudgetsV1
+
+    @model_validator(mode="after")
+    def _bind_successor_partition(self):
+        recovery = self.post_message_stop_ping_recovery
+        if self.budgets.plan_derived_max_provider_requests != 96 + len(recovery.selected_probe_ordinals):
+            raise ValueError("successor call cap drift")
+        by_id = {case.case_id: case for case in self.probe_campaign.cases}
+        for proof in recovery.historical_cases:
+            case = by_id[proof.case_id]
+            if (proof.source_request_sha256 != case.request_sha256
+                or proof.canonical_output_tokens > case.wire_requested_output_cap
+                or proof.source_execution_head == self.frozen_execution.final_execution_head):
+                raise ValueError("historical provenance/request drift")
+        return self
+
+
+class ErrorHardeningAuthorizationSourceV1(_ClosedModel):
+    identity: Literal["PROBE02_SHARED_ANTHROPIC_COMPATIBLE_ERROR_EVENT_HARDENING_MASTER"]
+    sha256: Literal["d4314e0695ec95f80662015f0a6591a735405d881cd486e8770f4a584b8d0674"]
+
+
+class ErrorHardeningBudgetsV1(PingRecoveryBudgetsV1):
+    exact_probe_fixture_input_tokens: Literal[123895]
+    exact_pre_dispatch_estimated_input_tokens: Literal[2496971]
+    plan_derived_max_input_tokens: Literal[2996366]
+    plan_derived_max_provider_requests: Literal[102]
+
+
+class FullShortAnthropicErrorHardeningAndSuccessorExecutionAuthorizationV1(
+    FullShortPostMessageStopPingRecoveryAndSuccessorExecutionAuthorizationV1
+):
+    schema_name: Literal["FullShortAnthropicErrorHardeningAndSuccessorExecutionAuthorizationV1"] = Field(alias="schema")
+    authorization_source: ErrorHardeningAuthorizationSourceV1
+    post_message_stop_ping_recovery: ErrorHardeningRecoveryProofs
+    budgets: ErrorHardeningBudgetsV1
+
+
 def canonical_json_bytes(value: Any) -> bytes:
     """Return the sole accepted byte representation (UTF-8 JSON plus LF)."""
 
@@ -542,6 +605,12 @@ def _coerce(
         return value
     try:
         model = (
+            FullShortAnthropicErrorHardeningAndSuccessorExecutionAuthorizationV1
+            if isinstance(value, Mapping) and value.get("schema") == ERROR_HARDENING_SCHEMA
+            else
+            FullShortPostMessageStopPingRecoveryAndSuccessorExecutionAuthorizationV1
+            if isinstance(value, Mapping) and value.get("schema") == PING_RECOVERY_SCHEMA
+            else
             FullShortSharedProtocolSafeUsageRecoveryAndSuccessorExecutionAuthorizationV1
             if isinstance(value, Mapping)
             and value.get("schema") == SHARED_USAGE_RECOVERY_SCHEMA
@@ -736,6 +805,9 @@ def validate_full_short_one_round_budget_unblocked_execution_authorization_v1(
             "generated_output_tokens": 2_000_000,
             "real_full_short_executions": 1,
         }
+        if isinstance(actual, FullShortPostMessageStopPingRecoveryAndSuccessorExecutionAuthorizationV1):
+            for name in ("provider_requests", "http_post_attempts", "network_requests"):
+                caps[name] = actual.budgets.plan_derived_max_provider_requests
         for name, cap in caps.items():
             if actual_usage[name] > cap:
                 raise FullShortCampaignAuthorizationError(f"CAMPAIGN_{name.upper()}_CAP_EXCEEDED")
@@ -917,6 +989,7 @@ def validate_external_evidence_against_outer_v1(
             "POST_PROBE_EXTERNAL_EVIDENCE_SET_INVALID"
         )
     key_id = outer["external_workload_evidence"]["verification_key"]["key_id"]
+    history = historical_by_case(outer)
     expected_by_case = {
         item["case_id"]: item for item in outer["probe_campaign"]["cases"]
     }
@@ -949,6 +1022,8 @@ def validate_external_evidence_against_outer_v1(
             input_tokens=case["estimated_input_tokens"],
             requested_output_tokens=case["wire_requested_output_cap"],
             key_id=key_id,
+            historical_admission_sha256=(compact_sha(history[item.case_id])
+                if item.case_id in history else None),
         )
         try:
             reverified = validate_external_workload_evidence_v1(
