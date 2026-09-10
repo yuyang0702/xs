@@ -1083,6 +1083,48 @@ def execution_manifest_receipt_issues(
     return issues
 
 
+def normalize_execution_manifest_receipt_verdicts(receipt: object) -> object:
+    """Normalize the provider's textual verdict spelling at the protocol edge.
+
+    The execution-manifest contract is boolean internally, but some production
+    providers serialize an affirmative/negative field verdict as the exact
+    strings ``"valid"``/``"invalid"``.  These strings carry no additional
+    semantics, so normalize only those two closed values before the unchanged
+    validator runs.  Unknown values remain untouched and therefore still fail
+    closed instead of weakening semantic validation.
+    """
+    if not isinstance(receipt, dict):
+        return receipt
+
+    def normalize(value: object) -> object:
+        if isinstance(value, str):
+            folded = value.strip().lower()
+            if folded == "valid":
+                return True
+            if folded == "invalid":
+                return False
+        return value
+
+    for item in receipt.get("beat_receipts") or ():
+        if not isinstance(item, dict):
+            continue
+        for field in ("actor_action_valid",):
+            if field in item:
+                item[field] = normalize(item[field])
+        verdicts = item.get("field_verdicts")
+        if isinstance(verdicts, dict):
+            for field, value in list(verdicts.items()):
+                verdicts[field] = normalize(value)
+    for item in receipt.get("segment_receipts") or ():
+        if isinstance(item, dict) and "boundary_valid" in item:
+            item["boundary_valid"] = normalize(item["boundary_valid"])
+    if "formal_plot_unchanged" in receipt:
+        receipt["formal_plot_unchanged"] = normalize(
+            receipt["formal_plot_unchanged"],
+        )
+    return receipt
+
+
 def execution_manifest_receipt_binding_issues(
     manifest: ShortExecutionManifest,
 ) -> list[dict]:

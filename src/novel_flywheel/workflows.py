@@ -32,6 +32,7 @@ from novel_flywheel.draft_split import (
     render_draft_task_prompt,
     residual_target,
     semantic_receipt_issues,
+    normalize_semantic_receipt_verdicts,
     target_bounds,
     validate_semantic_receipt,
     whole_draft_receipt_issues,
@@ -49,6 +50,7 @@ from novel_flywheel.execution_manifest import (
     execution_event_contract_prompt_payload,
     execution_manifest_issues,
     execution_manifest_receipt_issues,
+    normalize_execution_manifest_receipt_verdicts,
     execution_manifest_receipt_binding_issues,
     execution_manifest_receipt_issues_are_protocol_only,
     execution_manifest_payload,
@@ -137,7 +139,13 @@ from novel_flywheel.failure_boundary import (
 )
 from novel_flywheel.provider_reasoning_policy import ReasoningPolicy
 from novel_flywheel.workflow_coordination import WorkflowCoordinator
+from novel_flywheel.short_receipt_resume import (
+    persist_validated_receipt,
+    prepare_short_receipt_resume,
+)
 from novel_flywheel.models import (
+    LocalModelDispatchRejectedError,
+    ModelDispatchOperationScope,
     ModelGateway,
     ModelRoutesExhaustedError,
     TransportInterruptedError,
@@ -1973,6 +1981,257 @@ class WorkflowService:
         return await self.coordinator.run_short(
             project_id, use_crewai=use_crewai, run_id=run_id,
         )
+
+    async def resume_short_receipt(
+        self, project_id: str, *, run_id: str,
+        candidate_relative_path: str, candidate_sha256: str,
+        task_id: str, execute: bool = False, max_dispatches: int = 0,
+    ) -> dict:
+        """Resume one immutable Draft candidate at the public coordinator boundary."""
+        return await self.coordinator.resume_short_receipt(
+            project_id,
+            run_id=run_id,
+            candidate_relative_path=candidate_relative_path,
+            candidate_sha256=candidate_sha256,
+            task_id=task_id,
+            execute=execute,
+            max_dispatches=max_dispatches,
+        )
+
+    async def _short_receipt_resume_pipeline(
+        self, project: Project, *, run_id: str,
+        candidate_relative_path: str, candidate_sha256: str,
+        task_id: str, execute: bool, max_dispatches: int,
+    ) -> dict:
+        """Select and optionally execute one native semantic-receipt operation.
+
+        Preparation persists only a pending-candidate binding. It is neither a
+        semantic receipt nor an accepted fragment checkpoint.
+        """
+
+        if execute is False and max_dispatches != 0:
+            raise ValueError("receipt preflight cannot reserve Provider dispatches")
+        if execute is True and max_dispatches <= 0:
+            raise ValueError("receipt execution requires an explicit positive dispatch bound")
+        prepared = prepare_short_receipt_resume(
+            self, project,
+            run_id=run_id,
+            candidate_relative_path=candidate_relative_path,
+            candidate_sha256=candidate_sha256,
+            task_id=task_id,
+            persist=True,
+        )
+        public = {
+            key: value for key, value in prepared.record.items()
+            if key != "contract"
+        }
+        public.update({
+            "state_relative_path": prepared.state_path.relative_to(
+                prepared.run_path
+            ).as_posix(),
+            "dispatch_scope": {
+                "operation_kind": "semantic_receipt",
+                "stage": "review",
+                "contract_names": ["draft_atomic_semantic_receipt"],
+                "candidate_sha256": candidate_sha256,
+                "max_dispatches": max_dispatches,
+            },
+            "provider_dispatch_executed": False,
+        })
+        if not execute:
+            return public
+
+        scope = ModelDispatchOperationScope(
+            run_id=run_id,
+            operation_kind="semantic_receipt",
+            candidate_sha256=candidate_sha256,
+            stage="review",
+            contract_names=("draft_atomic_semantic_receipt",),
+            max_dispatches=max_dispatches,
+        )
+        binder = getattr(self.gateway, "bind_dispatch_operation_scope", None)
+        if not callable(binder):
+            raise RuntimeError("model gateway lacks dispatch operation scope admission")
+        with binder(scope):
+            receipt = await self._verify_draft_semantic_node(
+                run_id, prepared.run_path, project,
+                prepared.constraints,
+                prepared.contract, prepared.prose,
+                list(prepared.outside_beat_ids),
+                suffix="-receipt-only-resume",
+            )
+        validated = persist_validated_receipt(prepared, receipt)
+        self.db.add_run_event(
+            run_id, "success", "draft_pending_semantic_receipt_validated",
+            "The immutable pending Draft candidate passed native semantic receipt validation.",
+            stage="draft", metadata={
+                "task_id": task_id,
+                "prose_sha256": candidate_sha256,
+                "semantic_receipt_sha256": validated["semantic_receipt_sha256"],
+                "draft_request_count": 0,
+            },
+        )
+        return {
+            **public,
+            "status": "semantic_receipt_validated",
+            "semantic_receipt_sha256": validated["semantic_receipt_sha256"],
+            "provider_dispatch_executed": True,
+        }
+
+    async def _resume_validated_pending_split(
+        self, run_id: str, run_path: Path, project: Project, constraints: str,
+        prompt: str, *, suffix: str, target: int, previous_parts: list[str],
+        root_contract: DraftTaskContract, semantic_all_event_ids: list[str],
+        semantic_receipt_nodes: list[tuple[DraftTaskContract, dict]],
+        location_catalog: dict[str, LocationRef],
+        beat_catalog: Mapping[str, AtomicBeat],
+        prose_authority_context: DraftProseAuthorityContextV1 | None,
+    ) -> str | None:
+        """Continue a validated first child without replaying its Draft call."""
+
+        pending_root = run_path / "outputs" / "draft-pending-candidates"
+        candidates = sorted(pending_root.glob("*.json")) if pending_root.is_dir() else []
+        pending = None
+        for path in candidates:
+            try:
+                value = json.loads(path.read_text(encoding="utf-8"))
+            except (OSError, UnicodeError, json.JSONDecodeError):
+                continue
+            if (
+                isinstance(value, dict)
+                and value.get("status") == "semantic_receipt_validated"
+                and value.get("task_id") == f"{root_contract.task_id}/sub-1"
+                and value.get("candidate_relative_path")
+            ):
+                pending = value
+                break
+        if pending is None:
+            return None
+        prepared = prepare_short_receipt_resume(
+            self, project, run_id=run_id,
+            candidate_relative_path=str(pending["candidate_relative_path"]),
+            candidate_sha256=str(pending["candidate_prose_sha256"]),
+            task_id=str(pending["task_id"]), persist=False,
+        )
+        if pending.get("semantic_receipt_sha256") != canonical_sha256(
+            pending.get("semantic_receipt") or {}
+        ):
+            raise ValueError("validated pending semantic receipt binding is invalid")
+        first = prepared.prose
+        semantic_receipt_nodes.append((prepared.contract, dict(pending["semantic_receipt"])))
+        parent_beat_ids = list(root_contract.beat_ids)
+        split_at = max(1, math.ceil(len(parent_beat_ids) / 2))
+        second_event_ids = parent_beat_ids[split_at:]
+        first_hash = hashlib.sha256(first.strip().encode("utf-8")).hexdigest()
+        second_target = residual_target(target, effective_han_characters(first))
+        second_contract = DraftTaskContract(
+            authority_sha256=root_contract.authority_sha256,
+            task_id=f"{root_contract.task_id}/sub-2",
+            parent_task_id=root_contract.task_id,
+            depth=1,
+            target_han=second_target,
+            event_ids=tuple(dict.fromkeys(
+                beat_catalog[beat_id].source_event_id for beat_id in second_event_ids
+            )),
+            scope="内部子任务 2/2：只完成以下节拍并抵达父段出口\n" + "\n".join(
+                f"{beat_id}：{beat_catalog[beat_id].action}"
+                for beat_id in second_event_ids
+            ),
+            entry_state=(
+                f"承接已验收前半，内容哈希 {first_hash}。前半结尾：\n{first[-1200:]}"
+            ),
+            exit_requirement=root_contract.exit_requirement,
+            previous_sibling_sha256=first_hash,
+            execution_manifest_sha256=root_contract.execution_manifest_sha256,
+            beat_ids=tuple(second_event_ids),
+            viewpoint=root_contract.viewpoint,
+            narrative_mode=root_contract.narrative_mode,
+            narrator_character_id=root_contract.narrator_character_id,
+            narrator_name=root_contract.narrator_name,
+            self_reference=root_contract.self_reference,
+            future_beat_guard=root_contract.future_beat_guard,
+        )
+        # A failed run may already contain a provider-generated second child
+        # whose only missing artifact is its native semantic receipt. Reuse an
+        # immutable, locally clean candidate before asking the provider to
+        # generate the same prose again. Receipt validation remains native and
+        # authoritative; no checkpoint or receipt is synthesized here.
+        second = None
+        segment_number = root_contract.task_id.rsplit("-", 1)[-1]
+        candidate_root = run_path / "outputs"
+        reusable_candidates = sorted(
+            candidate_root.glob(f"draft-part-{segment_number}-sub-2*.md"),
+            key=lambda path: ("local-repair" in path.name, len(path.name), path.name),
+        )
+        for candidate_path in reusable_candidates:
+            try:
+                candidate_text = candidate_path.read_text(encoding="utf-8")
+            except (OSError, UnicodeError):
+                continue
+            candidate_findings = [
+                finding for finding in self._draft_segment_findings(
+                    candidate_text, second_target, [*previous_parts, first],
+                    location_catalog,
+                    authority_context=prose_authority_context,
+                ) if finding.get("blocking")
+                and finding.get("code") != "underlength"
+            ]
+            if candidate_findings:
+                continue
+            candidate_sha256 = hashlib.sha256(
+                candidate_text.encode("utf-8")
+            ).hexdigest()
+            self.db.add_run_event(
+                run_id, "info", "draft_candidate_reused_for_semantic_receipt",
+                "Reusing an immutable same-scope Draft candidate for native receipt validation.",
+                stage="draft", metadata={
+                    "task_id": second_contract.task_id,
+                    "candidate_path": candidate_path.relative_to(run_path).as_posix(),
+                    "candidate_sha256": candidate_sha256,
+                    "draft_request_count": 0,
+                    "quality_gate": "native_semantic_receipt_pending",
+                },
+            )
+            second_receipt = await self._verify_draft_semantic_node(
+                run_id, run_path, project, constraints, second_contract,
+                candidate_text,
+                [
+                    event_id for event_id in semantic_all_event_ids
+                    if event_id not in set(second_contract.beat_ids)
+                ],
+                suffix=f"{suffix}-sub-2-reused-semantic-receipt",
+            )
+            semantic_receipt_nodes.append((second_contract, second_receipt))
+            second = candidate_text
+            break
+        if second is None:
+            second = await self._draft_short_segment_task(
+                run_id, run_path, project, constraints, prompt,
+                suffix=f"{suffix}-sub-2", target=second_target,
+                previous_parts=[*previous_parts, first],
+                event_ids=list(second_event_ids), location_catalog=location_catalog,
+                depth=1, contract=second_contract,
+                semantic_all_event_ids=semantic_all_event_ids,
+                semantic_receipt_sink=semantic_receipt_nodes,
+                beat_catalog=beat_catalog,
+                prose_authority_context=prose_authority_context,
+            )
+        combined = f"{first.strip()}\n\n{second.strip()}"
+        if self._draft_segment_issues(
+            combined, target, previous_parts, location_catalog,
+            authority_context=prose_authority_context,
+        ):
+            raise ValueError("validated pending split cannot satisfy parent Draft scope")
+        root_receipt = await self._verify_draft_semantic_node(
+            run_id, run_path, project, constraints, root_contract, combined,
+            [
+                event_id for event_id in semantic_all_event_ids
+                if event_id not in set(root_contract.beat_ids)
+            ], suffix=f"{suffix}-parent-receipt",
+            reference_receipts=semantic_receipt_nodes,
+        )
+        semantic_receipt_nodes.append((root_contract, root_receipt))
+        return combined
 
     def bind_full_short_terminal_finalizer(
         self, run_id: str, project_id: str,
@@ -5380,7 +5639,10 @@ class WorkflowService:
             if review is None:
                 review_input = (
                     "SHORT_INITIAL_REVIEW_FULL_MANUSCRIPT_V1. Review the complete "
-                    "immutable manuscript below. Do not sample or rewrite.\n\n"
+                    "immutable manuscript below. Do not sample or rewrite. Return one JSON "
+                    "object whose dimensions object contains all three numeric keys exactly: "
+                    "commercial, story, and prose. Do not substitute style, dialogue, pacing, "
+                    "or partial dimensions; include issues as an array and no explanatory text.\n\n"
                     f"MANUSCRIPT SHA256: {hashlib.sha256(draft.encode('utf-8')).hexdigest()}\n"
                     f"MANUSCRIPT LENGTH: {len(draft)} characters.\n\n"
                     f"FULL MANUSCRIPT:\n{draft}\n\n"
@@ -15815,7 +16077,25 @@ class WorkflowService:
 
         topology = planning_ownership_topology(planning_ir)
         planned_ids = list(topology.event_ids)
-        formal_events = narrative_outline_events(formal_outline_events)
+        # ``_short_formal_event_authority`` already returns canonical
+        # narrative contracts.  Re-running the hierarchy filter on those
+        # contracts can discard a valid event when its original outline
+        # nesting metadata is no longer present (for example a chapter-level
+        # event adjacent to a structural heading).  Keep canonical contracts
+        # lossless; only apply hierarchy selection to legacy/raw event rows.
+        canonical_contracts = all(
+            isinstance(item, dict)
+            and str(item.get("id") or "").strip()
+            and str(item.get("evidence") or "").strip()
+            and "source_order" in item
+            and "presentation_order" in item
+            for item in formal_outline_events
+        )
+        formal_events = (
+            [dict(item) for item in formal_outline_events]
+            if canonical_contracts else
+            narrative_outline_events(formal_outline_events)
+        )
         formal_ids = [
             str(item.get("id") or "").strip().upper()
             for item in formal_events
@@ -16115,7 +16395,19 @@ class WorkflowService:
                 )
                 if evidence not in values:
                     values.append(evidence)
-        events = narrative_outline_events(formal_outline_events)
+        canonical_contracts = all(
+            isinstance(item, dict)
+            and str(item.get("id") or "").strip()
+            and str(item.get("evidence") or "").strip()
+            and "source_order" in item
+            and "presentation_order" in item
+            for item in formal_outline_events
+        )
+        events = (
+            [dict(item) for item in formal_outline_events]
+            if canonical_contracts else
+            narrative_outline_events(formal_outline_events)
+        )
         if not events and outline_content.strip():
             events = narrative_outline_event_contracts(outline_content)
         normalized_events: list[dict] = []
@@ -16713,6 +17005,7 @@ class WorkflowService:
                     value, run_path,
                     contract_name="execution_manifest_receipt",
                 )
+                candidate = normalize_execution_manifest_receipt_verdicts(candidate)
                 for item in candidate.get("beat_receipts") or []:
                     if isinstance(item, dict):
                         item.setdefault("field_verdicts", {})
@@ -16796,6 +17089,9 @@ class WorkflowService:
                 receipt_payload = self._convert_generated_object(
                     raw, run_path,
                     contract_name="execution_manifest_receipt",
+                )
+                receipt_payload = normalize_execution_manifest_receipt_verdicts(
+                    receipt_payload,
                 )
             except (TypeError, ValueError, json.JSONDecodeError) as exc:
                 receipt_payload = {}
@@ -17764,7 +18060,7 @@ class WorkflowService:
         raw_transitions = candidate.get("state_transitions", [])
         if not isinstance(raw_transitions, list):
             raise ValueError("maintenance state_transitions must be an array")
-        transition_map: dict[tuple[str, str], dict] = {}
+        transition_map: dict[tuple[str, str], list[dict]] = {}
         conflicts: list[dict] = []
         for raw in raw_transitions:
             if not isinstance(raw, dict):
@@ -17778,22 +18074,40 @@ class WorkflowService:
             field = str(raw.get("field") or "").strip()
             evidence = str(raw.get("evidence") or "").strip()
             key = (character, field)
+            chain = transition_map.setdefault(key, [])
             if (
                 not character or not field or not evidence
                 or "from" not in raw or "to" not in raw
-                or key in transition_map
+                or (chain and canonical_sha256(chain[-1]["to"])
+                    != canonical_sha256(raw["from"]))
                 or (manuscript_text and evidence not in manuscript_text)
             ):
+                if not character or not field or not evidence or "from" not in raw or "to" not in raw:
+                    transition_map.pop(key, None)
                 conflicts.append({
                     "state_path": f"{character}.{field}".strip("."),
                     "reason": "state transition lacks unique exact authority evidence",
                     "proposal_sha256": canonical_sha256(raw),
                 })
                 continue
-            transition_map[key] = raw
+            chain.append(raw)
 
-        used: set[tuple[str, str]] = set()
+        used: set[tuple[tuple[str, str], int]] = set()
         safe_state: dict = {}
+
+        def collect_state_values(value: object) -> set[str]:
+            """Return hashes for every typed value nested in a proposal."""
+            if isinstance(value, Mapping):
+                result: set[str] = set()
+                for nested in value.values():
+                    result.update(collect_state_values(nested))
+                return result
+            if isinstance(value, list):
+                result: set[str] = set()
+                for nested in value:
+                    result.update(collect_state_values(nested))
+                return result
+            return {canonical_sha256(value)}
 
         def project(
             character: str, path: tuple[str, ...], old: object, new: object,
@@ -17812,16 +18126,61 @@ class WorkflowService:
                         nested[raw_key] = value
                 return bool(nested), nested
             if canonical_sha256(old) == canonical_sha256(new):
+                # A resumed workflow may already hold the target value from a
+                # prior accepted proposal.  Such an idempotent replay is
+                # already authoritative; bind any exact, target-present chain
+                # instead of reporting it as an unused transition.
+                field = ".".join(path) or "$"
+                chain = transition_map.get((character, field), [])
+                if chain:
+                    value_hashes = collect_state_values(new)
+                    if all(
+                        canonical_sha256(transition["to"]) in value_hashes
+                        for transition in chain
+                    ):
+                        used.update(
+                            ((character, field), index)
+                            for index in range(len(chain))
+                        )
                 return True, new
             field = ".".join(path) or "$"
-            transition = transition_map.get((character, field))
-            if (
-                transition is not None
-                and canonical_sha256(transition["from"]) == canonical_sha256(old)
-                and canonical_sha256(transition["to"]) == canonical_sha256(new)
-            ):
-                used.add((character, field))
-                return True, new
+            chain = transition_map.get((character, field), [])
+            if chain:
+                if isinstance(old, list) and isinstance(new, list) and len(chain) > 1:
+                    old_values = [canonical_sha256(item) for item in old]
+                    new_values = [canonical_sha256(item) for item in new]
+                    cursor = -1
+                    valid_chain = True
+                    for index, transition in enumerate(chain):
+                        from_hash = canonical_sha256(transition["from"])
+                        to_hash = canonical_sha256(transition["to"])
+                        if index == 0:
+                            if from_hash not in old_values:
+                                valid_chain = False
+                                break
+                            cursor = old_values.index(from_hash)
+                        elif from_hash != canonical_sha256(chain[index - 1]["to"]):
+                            valid_chain = False
+                            break
+                        try:
+                            cursor = new_values.index(to_hash, cursor + 1)
+                        except ValueError:
+                            valid_chain = False
+                            break
+                    if valid_chain:
+                        used.update(
+                            ((character, field), index)
+                            for index in range(len(chain))
+                        )
+                        return True, new
+                else:
+                    for index, transition in enumerate(chain):
+                        if (
+                            canonical_sha256(transition["from"]) == canonical_sha256(old)
+                            and canonical_sha256(transition["to"]) == canonical_sha256(new)
+                        ):
+                            used.add(((character, field), index))
+                            return True, new
             conflicts.append({
                 "state_path": f"{character}.{field}",
                 "reason": "existing state value requires an exact typed transition",
@@ -17840,14 +18199,40 @@ class WorkflowService:
             if accepted:
                 safe_state[raw_character] = value
 
-        for key, transition in transition_map.items():
-            if key not in used:
-                conflicts.append({
-                    "state_path": f"{key[0]}.{key[1]}",
-                    "reason": "state transition does not bind a proposed value change",
-                    "proposal_sha256": canonical_sha256(transition),
-                })
-        return safe_state, [transition_map[key] for key in used], conflicts
+        # A fresh StoryState has no prior value to compare for a newly named
+        # entity. Providers may still emit a typed transition alongside either
+        # a flat descriptive state or a nested state object. If the transition
+        # target is present somewhere in that same candidate, its exact prose
+        # evidence is already bound to the proposed value; accept the unit as
+        # an initial projection instead of misclassifying it as unused. Existing
+        # entities continue through the strict baseline from/to comparison.
+        proposed_value_hashes = collect_state_values(proposed_states)
+        for key, chain in transition_map.items():
+            if (
+                key[0] not in existing
+                and all(
+                    (key, index) not in used
+                    and canonical_sha256(transition["to"]) in proposed_value_hashes
+                    for index, transition in enumerate(chain)
+                )
+            ):
+                used.update((key, index) for index in range(len(chain)))
+
+        safe_transitions = [
+            transition_map[key][index]
+            for key, chain in transition_map.items()
+            for index in range(len(chain))
+            if (key, index) in used
+        ]
+        for key, chain in transition_map.items():
+            for index, transition in enumerate(chain):
+                if (key, index) not in used:
+                    conflicts.append({
+                        "state_path": f"{key[0]}.{key[1]}",
+                        "reason": "state transition does not bind a proposed value change",
+                        "proposal_sha256": canonical_sha256(transition),
+                    })
+        return safe_state, safe_transitions, conflicts
 
     @classmethod
     def _merge_short_maintenance_authority(
@@ -18864,7 +19249,10 @@ class WorkflowService:
             "short_maintenance_business_complete_v2 with facts, state, coverage, "
             "disposition, no_change_reason, and typed state_transitions when an "
             "existing state value changes. Never imply complete coverage "
-            "with an empty legacy facts object."
+            "with an empty legacy facts object. Every transition evidence value "
+            "must be copied as one contiguous substring of the manuscript; if "
+            "that exact evidence is unavailable, omit the transition and leave "
+            "the affected state value unchanged rather than paraphrasing it."
         )
         for attempt in range(2):
             stage_suffix = suffix if attempt == 0 else f"{suffix}-authority-repair"
@@ -19254,8 +19642,13 @@ class WorkflowService:
                         "Return only corrections or additional maintenance units. "
                         "Runtime has already preserved every non-conflicting unit; "
                         "omission cannot delete it. Do not contradict protected facts. "
-                        "Every state transition evidence value must be an exact quote "
-                        "from authoritative_manuscript.text."
+                        "For each listed conflict, either return a corrected unit "
+                        "with evidence copied as one contiguous, exact substring "
+                        "of authoritative_manuscript.text, or omit that unit if no "
+                        "such substring exists. Never paraphrase, abbreviate, or "
+                        "re-emit a rejected transition unchanged. Never return a "
+                        "state change without its matching exact-evidence "
+                        "transition; leaving unsupported state unchanged is valid."
                     ),
             }, ensure_ascii=False, sort_keys=True)
         raise ValueError("maintenance authority repair did not converge")
@@ -20124,9 +20517,55 @@ class WorkflowService:
         }
 
         def review_spec(source_prompt: str) -> ExecutableContractSpec:
+            review_schema = None
+            if contract_name == "full_short_final_review":
+                # Bind the active profile's single typed score topology at the
+                # transport boundary.  The unchanged receipt union remains
+                # the semantic authority; this only prevents a provider from
+                # mixing dimensions and criteria representations in one wire
+                # object before that validator runs.
+                if profile_for_project(project) == "zhihu-short-v2":
+                    review_schema = {
+                        "type": "object",
+                        "properties": {
+                            "issues": {"type": "array"},
+                            "criteria": {"type": "object"},
+                            "criterion_evidence": {"type": "object"},
+                            "hard_fail": {"type": "boolean"},
+                            "decision": {"enum": ["pass", "revise", "rewrite"]},
+                            "reconciliations": {"type": "array"},
+                            "request_full_review": {"type": "boolean"},
+                        },
+                        "required": ["issues", "criteria", "criterion_evidence"],
+                        "additionalProperties": False,
+                    }
+                else:
+                    review_schema = {
+                        "type": "object",
+                        "properties": {
+                            "issues": {"type": "array"},
+                            "dimensions": {
+                                "type": "object",
+                                "properties": {
+                                    "commercial": {"type": "number"},
+                                    "story": {"type": "number"},
+                                    "prose": {"type": "number"},
+                                },
+                                "required": ["commercial", "story", "prose"],
+                                "additionalProperties": False,
+                            },
+                            "hard_fail": {"type": "boolean"},
+                            "decision": {"enum": ["pass", "revise", "rewrite"]},
+                            "reconciliations": {"type": "array"},
+                            "request_full_review": {"type": "boolean"},
+                        },
+                        "required": ["issues", "dimensions"],
+                        "additionalProperties": False,
+                    }
             return self._structured_stage_spec(
                 contract_name,
                 completion_check=lambda value: bool(convert(value)),
+                schema=review_schema,
                 runtime_authority={
                     **review_authority,
                     "request_sha256": hashlib.sha256(
@@ -20331,7 +20770,12 @@ class WorkflowService:
         return (
             "终审结果精简恢复。请只返回一个 JSON 对象，必须包含 dimensions（commercial、story、"
             "prose，0-100）、hard_fail、decision（pass、revise 或 rewrite）和 issues（最多4条，"
-            "每条只含 category、severity、evidence、action），可以省略其它字段。不要解释。\n\n"
+            "每条只含 category、severity、evidence、action）。只能使用这五个顶层字段："
+            "dimensions、hard_fail、decision、issues、reconciliations；对 AUTHORITATIVE REVIEW "
+            "ISSUE LEDGER 中的每个 issue_id 必须返回一条 reconciliation，包含 issue_id、status、"
+            "severity 和基于当前稿的具体 evidence。严禁返回 score、commercial、story、prose"
+            "顶层字段，也严禁返回 criteria、criterion_evidence 或其它字段。"
+            "不要解释，不要输出 Markdown 或多个 JSON。\n\n"
             + tail("AUTHORITATIVE REVIEW ISSUE LEDGER:\n")
         )
 
@@ -25144,6 +25588,7 @@ class WorkflowService:
         *,
         suffix: str,
         failure_stage: str = "draft",
+        reference_receipts: Sequence[tuple[DraftTaskContract, Mapping[str, Any]]] | None = None,
     ) -> dict:
         prose_sha256 = hashlib.sha256(prose.encode("utf-8")).hexdigest()
         atomic = bool(contract.beat_ids)
@@ -25153,26 +25598,68 @@ class WorkflowService:
             "contract. Do not rewrite or score. Return one JSON object with authority_sha256, "
             "execution_manifest_sha256, task_id, prose_sha256, "
             + (
-                "beat_receipts (one per owned atomic beat in exact order, each with beat_id, "
+                "viewpoint_valid and viewpoint_evidence MUST appear first for this atomic "
+                "receipt, followed by beat_receipts (one per owned atomic beat in exact order, each with beat_id, "
                 "evidence, actor_action_valid, actor_action_evidence, state_valid, state_evidence, "
-                "scene_order_valid, and scene_order_evidence), outside_beat_ids, future_beat_ids, "
-                "viewpoint_valid, viewpoint_evidence, "
+                "scene_order_valid, and scene_order_evidence), outside_beat_ids MUST be [], "
+                "and future_beat_ids MUST be [], "
                 if atomic else
                 "event_receipts (one per owned event in exact order, each with event_id and an "
                 "exact prose evidence excerpt), outside_event_ids, "
             )
             + "entry and exit objects (satisfied=true and exact prose evidence), "
-            "causal_order_valid, causal_order_evidence, and summary. Every evidence field must be "
-            "copied exactly from PROSE. Actor/action identity must match the contract actor, not a "
+            "causal_order_valid, causal_order_evidence, and summary. Entry evidence MUST be a "
+            "contiguous excerpt from the current candidate's opening state; exit evidence MUST be a "
+            "contiguous excerpt from its closing state. Do not use the contract, the previous sibling, "
+            "or a paraphrase for either boundary. Every evidence field MUST be "
+            "a short contiguous excerpt copied verbatim from PROSE (at least 12 Chinese characters "
+            "or 20 total characters, and preferably no more than 40 characters); never paraphrase, "
+            "explain, cite beat/event IDs, or quote the contract text. For atomic receipts, "
+            "scene_order_evidence MUST be an actual prose transition excerpt, never '开篇' or a "
+            "statement such as '位于EV-...之后'; causal_order_evidence MUST be an actual prose "
+            "sequence excerpt from the current candidate containing one owned action and its immediate "
+            "result in the same contiguous sentence, never a list of beat IDs, the previous sibling, "
+            "or contract text; viewpoint_evidence MUST be an actual prose "
+            "excerpt demonstrating the requested viewpoint, never '叙述合同' or a contract label. "
+            "Keep every evidence excerpt between 12 and 22 Chinese characters when possible, "
+            "keep summary under 40 Chinese characters, and emit no explanatory text or duplicate "
+            "prose outside the required JSON fields; this is a bounded receipt, not a prose report. "
+            "Actor/action identity must match the contract actor, not a "
             "different character performing a similar action. State validation covers location, "
             "time, knowledge, and boundary state. If a "
             "requirement is absent, report it honestly; never infer success from the contract text.\n\n"
             f"AUTHORITY SHA256: {contract.authority_sha256}\n"
             f"TASK CONTRACT: {json.dumps(draft_task_contract_payload(contract), ensure_ascii=False)}\n"
-            f"OTHER TASK {owned_label.upper()} IDS: {json.dumps(outside_event_ids)}\n"
+            f"OTHER TASK {owned_label.upper()} IDS (reference only; do not place these in outside_beat_ids or future_beat_ids): {json.dumps(outside_event_ids)}\n"
             f"PROSE SHA256: {prose_sha256}\n"
             f"PROSE:\n{prose}"
         )
+        if reference_receipts:
+            reference_evidence: list[dict[str, str]] = []
+            for _reference_contract, reference_receipt in reference_receipts:
+                for beat_receipt in reference_receipt.get("beat_receipts", []):
+                    if not isinstance(beat_receipt, Mapping):
+                        continue
+                    reference_evidence.append({
+                        "beat_id": str(beat_receipt.get("beat_id") or ""),
+                        "evidence": str(beat_receipt.get("evidence") or ""),
+                        "actor_action_evidence": str(
+                            beat_receipt.get("actor_action_evidence") or ""
+                        ),
+                        "state_evidence": str(
+                            beat_receipt.get("state_evidence") or ""
+                        ),
+                        "scene_order_evidence": str(
+                            beat_receipt.get("scene_order_evidence") or ""
+                        ),
+                    })
+            if reference_evidence:
+                prompt += (
+                    "\n\nVALIDATED CHILD RECEIPT EVIDENCE (read-only reference only; "
+                    "copy a fragment only when it is verbatim in the current PROSE; "
+                    "the native validator remains authoritative):\n"
+                    + json.dumps(reference_evidence, ensure_ascii=False, separators=(",", ":"))
+                )
         protocol_codes = {
             "invalid_receipt", "receipt_shape", "authority_hash", "task_identity", "manifest_hash",
             "prose_hash", "beat_receipt_schema", "event_receipt_schema",
@@ -25209,6 +25696,29 @@ class WorkflowService:
             "draft_atomic_semantic_receipt"
             if atomic else "draft_segment_semantic_receipt"
         )
+        receipt_runtime_authority = {
+            "authority_sha256": contract.authority_sha256,
+            "execution_manifest_sha256": contract.execution_manifest_sha256,
+            "task_id": contract.task_id,
+            "prose_sha256": prose_sha256,
+        }
+        receipt_wire_schema = registered_business_wire_schema(
+            receipt_contract_name, receipt_runtime_authority,
+        )
+        if atomic and contract.viewpoint:
+            # The registry schema historically treated viewpoint fields as
+            # optional because event-owned receipts do not have them. For an
+            # atomic contract with an explicit viewpoint, bind ownership at
+            # the provider wire boundary as required fields. The native
+            # validator remains unchanged and still rejects missing/invalid
+            # values after conversion.
+            receipt_wire_schema = {
+                **receipt_wire_schema,
+                "required": list(dict.fromkeys(
+                    list(receipt_wire_schema.get("required", []))
+                    + ["viewpoint_valid", "viewpoint_evidence"]
+                )),
+            }
 
         def receipt_artifact_complete(value: str) -> bool:
             """Prove shape/evidence, while returning semantic negatives."""
@@ -25217,6 +25727,7 @@ class WorkflowService:
                 candidate = self._convert_generated_object(
                     value, run_path, contract_name=receipt_contract_name,
                 )
+                candidate = normalize_semantic_receipt_verdicts(candidate)
                 candidate, _ = align_semantic_receipt_evidence(
                     contract, prose, candidate,
                 )
@@ -25227,6 +25738,34 @@ class WorkflowService:
                 return False
             return not issues or not all(
                 item.get("code") in protocol_codes for item in issues
+            )
+
+        def semantic_receipt_findings(
+            payload: Mapping[str, Any],
+        ) -> Sequence[Mapping[str, Any]]:
+            """Expose exact semantic findings to Runtime-owned retries.
+
+            Without this extractor the provider receives only a generic domain
+            failure and can repeat the same evidence mismatch until the route
+            is quarantined.  Findings remain protocol-local and never alter
+            the immutable prose or contract authority.
+            """
+
+            aligned, _ = align_semantic_receipt_evidence(
+                contract, prose, dict(payload),
+            )
+            return semantic_receipt_issues(contract, prose, aligned)
+
+        def render_semantic_receipt_retry(
+            findings: Sequence[Mapping[str, Any]],
+            _payload: Mapping[str, Any],
+            base_user: str,
+        ) -> str:
+            return base_user + (
+                "\n\nRECEIPT SEMANTIC FINDINGS. The prose and contract are immutable; "
+                "repair only the receipt verdict/evidence fields and return one "
+                "complete JSON object:\n"
+                + json.dumps(list(findings), ensure_ascii=False, indent=2)
             )
 
         attempt_plan = self._protocol_receipt_attempt_plan(
@@ -25272,8 +25811,14 @@ class WorkflowService:
                     primary_only=not attempt.use_configured_fallback,
                     defer_route_failure_audit=True,
                     protocol_system_contract=IMMUTABLE_RECEIPT_SYSTEM,
+                    # Semantic receipts carry several exact prose evidence
+                    # bindings per owned beat/event (not just one verdict).
+                    # The old 320-character estimate routinely produced a
+                    # provider cap below the serialized receipt size, causing
+                    # every route retry to truncate before validation. Reserve
+                    # bounded protocol capacity from the full evidence shape.
                     expected_output_characters=max(
-                        800, len(contract.beat_ids or contract.event_ids) * 320,
+                        800, len(contract.beat_ids or contract.event_ids) * 640,
                     ),
                     route_capacity_guard=True,
                     story_skeleton_override=self._stage_story_skeleton(
@@ -25293,6 +25838,9 @@ class WorkflowService:
                             "task_id": contract.task_id,
                             "prose_sha256": prose_sha256,
                         },
+                        schema=receipt_wire_schema,
+                        domain_diagnostic_extractor=semantic_receipt_findings,
+                        domain_retry_renderer=render_semantic_receipt_retry,
                     ),
                 ),
             )
@@ -25314,6 +25862,7 @@ class WorkflowService:
                         if atomic else "draft_segment_semantic_receipt"
                     ),
                 )
+                raw_receipt = normalize_semantic_receipt_verdicts(raw_receipt)
             except (json.JSONDecodeError, ValueError) as exc:
                 receipt_issues = [{
                     "code": "invalid_receipt",
@@ -25732,7 +26281,10 @@ class WorkflowService:
             "segment evidence as one complete story. Do not rewrite or score. Return one JSON object "
             "with authority_sha256, draft_sha256, segment_sha256, event_ids, missing_event_ids, "
             "duplicate_event_ids, out_of_order_event_ids, causal_order_valid, continuity_valid, "
-            "ending_valid, commitments_valid, evidence (exact excerpts already present in the draft), "
+            "ending_valid, commitments_valid, evidence (an array of objects, each exactly "
+            "{kind:'evidence', excerpt:'...'} with a short verbatim excerpt from the draft), "
+            "and summary (under 40 Chinese characters). Do not add nested segment objects, "
+            "extra keys, or explanatory prose outside the JSON object. "
             "and summary. Do not claim success when any transition, causal step, promise, climax, or "
             "ending cannot be proven by the ordered evidence.\n\n"
             f"AUTHORITY SHA256: {authority_sha256}\n"
@@ -26990,7 +27542,16 @@ class WorkflowService:
                 )
                 continue
             semantic_receipt_nodes: list[tuple[DraftTaskContract, dict]] = []
-            part = await self._draft_short_segment_task(
+            resumed_part = await self._resume_validated_pending_split(
+                run_id, run_path, project, constraints, prompt,
+                suffix=f"-part-{index:02d}", target=target,
+                previous_parts=parts, root_contract=root_contract,
+                semantic_all_event_ids=all_expected_event_ids,
+                semantic_receipt_nodes=semantic_receipt_nodes,
+                location_catalog=location_catalog, beat_catalog=beat_by_id,
+                prose_authority_context=prose_authority_context,
+            )
+            part = resumed_part if resumed_part is not None else await self._draft_short_segment_task(
                 run_id, run_path, project, constraints, prompt,
                 suffix=f"-part-{index:02d}", target=target,
                 previous_parts=parts, event_ids=expected_event_ids,
@@ -32459,6 +33020,33 @@ class WorkflowService:
                 # Checkpoint observability must never mask the actual workflow
                 # failure or alter the existing recovery path.
                 pass
+            if (
+                execution_spec is not None
+                and execution_spec.contract_name in {
+                    "draft_atomic_semantic_receipt",
+                    "draft_segment_semantic_receipt",
+                }
+                and isinstance(exc, ValueError)
+                and "failed its authoritative domain contract" in str(exc)
+            ):
+                # Contract Runtime exhausted its typed domain retries.  This
+                # is a semantic gate result, not a provider-route failure;
+                # preserve it for the draft repair controller instead of
+                # converting it into a protocol-route quarantine.
+                findings = getattr(exc, "domain_diagnostic_findings", ())
+                issue_items = [
+                    dict(item) for item in findings
+                    if isinstance(item, Mapping)
+                ]
+                if not issue_items:
+                    issue_items = [{
+                        "code": "semantic_receipt_domain_validation",
+                        "message": "semantic receipt did not satisfy the immutable prose contract",
+                    }]
+                raise DraftSemanticValidationError(
+                    str(execution_spec.contract_name),
+                    issue_items,
+                ) from exc
             if isinstance(
                 exc,
                 (ContextCapacityPreflightError, CapacityAdmissionFailureV1),
@@ -32673,8 +33261,16 @@ class WorkflowService:
         if self._exact_full_short_execution():
             return protocol_receipt_attempts(
                 same_route_attempts=min(same_route_attempts, 2),
-                configured_fallback_available=False,
-                fallback_attempts=0,
+                # The campaign has an explicitly configured, admitted
+                # fallback route. Keep the bounded receipt schedule intact,
+                # but do not suppress that authorized recovery path merely
+                # because exact-full execution is active.
+                configured_fallback_available=(
+                    self.gateway.has_configured_fallback(role)
+                    if callable(getattr(self.gateway, "has_configured_fallback", None))
+                    else False
+                ),
+                fallback_attempts=2,
             )
         return model_route_attempts(
             self.gateway,
@@ -32759,6 +33355,22 @@ class WorkflowService:
             # return a domain verdict.  Preserve that semantic/protocol type;
             # it is not a route execution failure and must not be retried as
             # generic invalid provider output.
+            raise
+        except LocalModelDispatchRejectedError as exc:
+            self.db.add_run_event(
+                run_id, "warning", "protocol_receipt_local_admission_rejected",
+                "Immutable-receipt work was rejected locally before Provider dispatch.",
+                stage=stage, metadata={
+                    "boundary": boundary,
+                    "route": attempt.route,
+                    "route_attempt": attempt.route_attempt,
+                    "attempt_index": attempt.attempt_index,
+                    "failure_class": "local_admission",
+                    "failure_code": exc.code,
+                    "provider_call_executed": False,
+                    **dict(unit_metadata),
+                },
+            )
             raise
         except Exception as exc:
             failure_kind = (

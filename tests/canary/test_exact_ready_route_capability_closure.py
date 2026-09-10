@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 import shutil
+import subprocess
 
 import pytest
 
@@ -55,11 +56,36 @@ def materializer_repo(tmp_path: Path) -> Path:
     source = Path(__file__).resolve().parents[2]
     repo = tmp_path / 'materializer'
     repo.mkdir()
-    shutil.copytree(source / '.git', repo / '.git')
-    shutil.copytree(source / PRIOR, repo / PRIOR)
+    subprocess.run(['git', 'init', '-q', str(repo)], check=True)
+    subprocess.run(['git', '-C', str(repo), 'fetch', '-q', str(source), '897ed45473046f9c70054b31694eb76e9b416a0d'], check=True)
+    required_prior = {
+        "baseline-binding-v1.json",
+        "exact-ready-required-route-set-v1.json",
+        "required-route-missing-fields-v1.json",
+        "historical-capability-evidence-matrix-v1.json",
+        "historical-provider-screenshot-evidence-v1.json",
+        "historical-route-capability-evidence-v1.json",
+        "capacity-attempt-identity-contract-v1.json",
+        "v3-capacity-fault-injection-report-v1.json",
+    }
+    prior_target = repo / PRIOR
+    prior_target.mkdir(parents=True, exist_ok=True)
+    for name in required_prior:
+        shutil.copy2(source / PRIOR / name, prior_target / name)
     for relative in (REGISTRY, DOUBAO_LOCAL_ASSERTION):
         (repo / relative).parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(source / relative, repo / relative)
+    subprocess.run(['git', '-C', str(repo), 'add', '-A'], check=True)
+    env = {'GIT_AUTHOR_NAME': 'pytest', 'GIT_AUTHOR_EMAIL': 'pytest@example.invalid',
+           'GIT_COMMITTER_NAME': 'pytest', 'GIT_COMMITTER_EMAIL': 'pytest@example.invalid'}
+    tree = subprocess.check_output(['git', '-C', str(repo), 'write-tree'], text=True).strip()
+    commit = subprocess.check_output(
+        ['git', '-C', str(repo), 'commit-tree', tree, '-p', '897ed45473046f9c70054b31694eb76e9b416a0d'],
+        input='fixture\n', text=True, env={**__import__('os').environ, **env},
+    ).strip()
+    branch = 'r1-ptr3/planning-repair-finding-propagation-20260817'
+    subprocess.run(['git', '-C', str(repo), 'update-ref', f'refs/heads/{branch}', commit], check=True)
+    subprocess.run(['git', '-C', str(repo), 'symbolic-ref', 'HEAD', f'refs/heads/{branch}'], check=True)
     return repo
 
 
@@ -134,6 +160,7 @@ def test_rematerialization_preserves_route_exact_local_proof_and_measures_dirty_
     import hashlib
     assert evidence['source_locator']==DOUBAO_LOCAL_ASSERTION.as_posix()
     assert evidence['source_evidence_sha256']==hashlib.sha256((repo/DOUBAO_LOCAL_ASSERTION).read_bytes()).hexdigest()
+    (repo / REGISTRY).write_text(json.dumps(promoted, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
     materialize(repo)
     baseline=json.loads((repo/ROOT/'baseline-binding-v1.json').read_text(encoding='utf-8'))
     assert baseline['initial_worktree_clean'] is False

@@ -27,6 +27,7 @@ def test_revision_routes_are_registered(tmp_path) -> None:
 
     assert "/api/projects/{project_id}/revisions" in paths
     assert "/api/runs/{run_id}/revision" in paths
+    assert "/api/runs/{run_id}/short-receipt-resume" in paths
 
 
 def test_lifespan_owns_durable_recovery_once_per_app(tmp_path, monkeypatch) -> None:

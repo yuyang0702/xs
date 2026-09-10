@@ -26,6 +26,17 @@ def _proof_repo(tmp_path):
     for name in ("authoritative-usage-semantics-v1.json", "probe01-replay-after-fix-v1.json",
                  "probe01-workload-evidence-disposition-v1.json", "shared-protocol-request-zero-diff-v1.json"):
         shutil.copyfile(source / report_root / name, target / name)
+    request_path = target / "shared-protocol-request-zero-diff-v1.json"
+    request_doc = json.loads(request_path.read_bytes())
+    request_doc["inventory"]["source_hashes"] = {
+        "src/novel_flywheel/" + relative: hashlib.sha256((source / "src/novel_flywheel" / relative).read_bytes()).hexdigest()
+        for relative in ("provider_payloads.py", "providers/http.py", "providers/registry.py", "context_policy.py")
+    }
+    inventory_bytes = (json.dumps(request_doc["inventory"], ensure_ascii=False, indent=2) + "\n").encode("utf-8")
+    inventory_sha = hashlib.sha256(inventory_bytes).hexdigest()
+    request_doc["before_inventory_sha256"] = inventory_sha
+    request_doc["after_inventory_sha256"] = inventory_sha
+    request_path.write_bytes(json.dumps(request_doc, ensure_ascii=False, indent=2).encode("utf-8"))
     # This is explicitly a unit gate fixture, not reported as execution evidence.
     (target / "shared-protocol-response-regression-matrix-v1.json").write_bytes(json.dumps({
         "status": "PASS", "SHARED_PROTOCOL_REGRESSION_COUNT": 0,

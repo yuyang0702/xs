@@ -1,5 +1,59 @@
 # Novel Flywheel Maintenance
 
+## Structured receipt capacity, quarantine and dispatch accounting
+
+### Normal API entry for Short receipt-only recovery
+
+The immutable Draft recovery pipeline is available through the normal
+`POST /api/runs/{run_id}/short-receipt-resume` entry.  The request binds the
+existing Short run, candidate-relative path, candidate prose SHA-256, and the
+first split child task (`segment-NN/sub-1`).  `execute=false` is a zero-dispatch
+preflight; execution is opt-in and requires a positive bounded dispatch value.
+The endpoint delegates to `WorkflowService.resume_short_receipt`, so candidate
+hash checks, the native semantic-receipt contract, operation-scope admission,
+dispatch accounting, and checkpoint ownership remain in the existing Runtime
+boundary.  It never creates a run or invokes Draft generation.  Campaign
+launchers may still be used for historical evidence, but are not required by
+the regular API path and must not supply campaign IDs, evidence paths, or
+gateway monkeypatches to new projects.
+
+`minimum_business_characters` is a business-completeness floor. It must not
+replace a workflow's workload-shaped `expected_output_characters` estimate;
+the effective estimate is the maximum of the two and continues through
+qualification, request construction and output-limit diagnostics. A provider
+response that is genuinely truncated or semantically incomplete remains
+rejected by the existing parser and domain validator.
+
+Quarantine is a pre-dispatch admission decision. The contract runtime records
+it as a typed local admission rejection, skips later attempts for the same
+route in the current immutable operation, and advances only to the explicitly
+configured fallback. It is not normal provider invalid output and does not
+consume a model-call or transport slot.
+
+Application budget accounting observes the actual adapter dispatch boundary.
+Local resolution, capability, quarantine and other pre-dispatch failures are
+kept as local rejection evidence; dispatches with no response remain counted,
+and usage/billing facts remain separate from artifact acceptance. Historical
+campaign counters are immutable and are reconciled rather than rewritten.
+
+## Fallback-first logical-stage discovery
+
+Logical-stage discovery records provider dispatches, not local contract
+attempts that were rejected before dispatch. A first dispatched request on the
+configured fallback may therefore carry a higher runtime
+`contract_attempt_index` while having no earlier discovery entry. The shared
+plan validator accepts this shape only when `contract_route` is
+`configured_fallback` and `contract_route_attempt` is `1`; ordinary retries
+still require a contiguous prior attempt and shared logical-stage identity.
+
+## Durable stream storage on Windows
+
+Full Short stream checkpoints, ledger replacements, and provider-response
+captures publish through Win32 extended-length paths on Windows. This keeps
+atomic exact-once persistence valid when pytest or isolated evidence roots
+push temporary filenames beyond the legacy 260-character path limit; the
+stored JSON and hashes remain unchanged.
+
 ## Shared Anthropic stream closure candidate
 
 Anthropic SSE lifecycle, cumulative usage, terminal precedence and interruption
@@ -1011,7 +1065,7 @@ StoryState schema 3 adds a versioned `narrative_graph` and `narrative_rule_profi
 
 Core identity, knowledge, dependency, causality, timeline, viewpoint, promise, and relationship rules cannot be disabled by a genre. Composable packs add support requirements for romance relationship regression, mystery reveals, fantasy power changes, science-fiction capabilities, historical status changes, rebirth foreknowledge, and comedy misunderstandings. A genre rule requires hash-bound dependencies or exact evidence; it never treats a genre label as permission to weaken canon.
 
-`RecoveryController` is the shared policy boundary for transport, credentials, capabilities, context capacity, output truncation, syntax/protocol, ownership/evidence, semantic invariants, quality regression, stale authority, and unknown failures. The ladder always starts at the smallest safe action and ends by restoring the best complete candidate. Candidate comparison requires a strict hard-issue reduction, no new hard issue, byte-stable unowned scopes, and no quality-floor regression. Strict progress refreshes only the still-failing unit's budget. Protocol errors do not spend semantic-repair attempts, and provider failures do not authorize prose mutation.
+`RecoveryController` is the shared policy boundary for transport, credentials, capabilities, context capacity, output truncation, syntax/protocol, ownership/evidence, semantic invariants, quality regression, stale authority, and unknown failures. The ladder always starts at the smallest safe action and ends by restoring the best complete candidate. Candidate comparison requires a strict hard-issue reduction, no new hard issue, byte-stable unowned scopes, and no quality-floor regression. Strict progress refreshes only the still-failing unit’s budget. Protocol errors do not spend semantic-repair attempts, and provider failures do not authorize prose mutation. A stale plain-mode `required_fields_missing` quarantine for an atomic/segment semantic-receipt contract is a bounded requalification signal, not proof that the route is unusable: the native receipt schema, semantic validator, and evidence ownership remain authoritative after the retry. A run marked `interrupted` by startup recovery remains eligible for the exact same receipt-only resume when its candidate, authority, and run identity still bind. Scope admission reports stage and contract mismatches as distinct local codes, keeping a known wrong operation fail-closed without spending a Provider dispatch.
 
 Every model `_stage` now records a SQLite `workflow_node_checkpoints` envelope containing run/node identity, StoryState-bound authority hash, input/output hashes, attempt, route fingerprint, finish metadata, and status. A model return is recorded only as `generated_complete`; it is not resumable as validated narrative authority. Existing stage validators, candidate promotion, planning/draft checkpoints, and formal-write journals remain the sole promotion path. Failed observations have no output hash, and a conflicting validated envelope is rejected. This table is additive, idempotent, and removed automatically with its run.
 
@@ -2694,3 +2748,38 @@ The bounded ping-recovery successor separates eight capacity obligations from th
 The response path now uses an incremental SSE framer and one checkpoint owner. Full Short persists signed generations under its existing external execution authority, with an explicit typed ACK and read-only rehydration. Partial tails preserve accepted semantic terminals; pre-terminal timeout and cancellation preserve their own cause. The final raw capture remains single-use. Requests and narrative authority are unchanged. See docs/superpowers/specs/shared-anthropic-durable-stream-v4.md; closure gates remain pending in the V4 report directory.
 
 The Full Short probe observer now projects the canonical durable owner through its semantic snapshot when producing `stream_outcome_v1`; persistence-only owner fields remain in the signed checkpoint and are not copied into the strict public probe schema. Provider error evidence and capture-failure precedence are taken from that same owner after client close, so terminal causes and transport-tail diagnostics survive the observer boundary without a second dispatch. The current production-shaped evidence matrix passes 44/44 cases, and the isolated related stream/provider/checkpoint selection passes 1469/1469 with zero original-repository mutation or outbound network activity.
+### V12 parent semantic receipt capacity closure
+
+The atomic Draft semantic-receipt prompt now explicitly requests the shortest
+contract-valid evidence excerpts (12–22 Chinese characters where possible) and
+a bounded summary. This is only a provider-output-capacity optimization: the
+semantic receipt schema, evidence ownership, native validator, and quality
+thresholds remain unchanged. It prevents a whole-parent receipt from consuming
+the route's output ceiling through duplicated prose before validation.
+
+When a same-run split has already produced a locally clean child Draft but
+failed before receipt acceptance, the resume boundary now reuses that immutable
+child for native semantic-receipt validation. It records the candidate hash and
+keeps Draft request count at zero; it falls back to generation only when no
+existing child passes the local prose gate.
+
+Causal-order receipt retries also identify the required evidence shape as one
+contiguous current-candidate action-to-result sentence, preventing the model
+from quoting a prior sibling or the contract's event description.
+
+When the parent receipt is assembled after validated child receipts, those
+child evidence excerpts are supplied as read-only reference material only;
+the Provider must still return a complete parent receipt and the native
+validator remains authoritative.
+
+The whole-story receipt prompt also pins its minimal wire shape: each evidence
+item is only `kind` plus a verbatim `excerpt`, with no nested segment payloads.
+
+Short initial Review prompts now explicitly require the complete canonical
+`commercial`/`story`/`prose` dimension set. Missing dimensions remain a strict
+validation failure; no default score or locally synthesized quality value is
+introduced.
+
+Boundary evidence retries now also bind entry to the current candidate's
+opening state and exit to its closing state, avoiding cross-sibling or contract
+paraphrases without changing the receipt contract.

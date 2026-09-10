@@ -2407,6 +2407,64 @@ def complete_plan_for_event_groups(event_groups: Sequence[Sequence[str]]) -> str
     )
 
 
+@pytest.mark.asyncio
+async def test_causal_chain_keeps_canonical_formal_contracts_lossless(
+    tmp_path, monkeypatch,
+) -> None:
+    """Canonical outline contracts must not be hierarchy-filtered twice."""
+
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Canonical causal authority", mode="short", genre="mystery",
+        premise="Canonical formal contracts retain every accepted event.",
+        target_words=3000,
+    ))
+    service = WorkflowService(db, store, SimpleNamespace(), SimpleNamespace())
+    run_id = "canonical-causal"
+    db.create_run(run_id, project.id, "short-story", status="running")
+    run_path = project.path / "runs" / run_id
+    (run_path / "outputs").mkdir(parents=True)
+    (run_path / "receipts").mkdir()
+    event_ids = ["EV-2FB7A8D3", "EV-33D4896A"]
+    plan = complete_plan_for_event_groups([event_ids])
+    formal_events = [{
+        "id": event_id,
+        "order": index,
+        "source_order": index,
+        "presentation_order": index,
+        "label": f"Formal event {index}",
+        "kind": "narrative",
+        "source": "formal_outline",
+        "evidence": f"The accepted outline assigns event {index}.",
+    } for index, event_id in enumerate(event_ids, 1)]
+    candidate = {
+        "core_goal": "Preserve the accepted event order.",
+        "cycles": [{
+            "obstacle": "Evidence is disputed.",
+            "effort": "The investigator verifies both events.",
+            "result": "The accepted sequence is confirmed.",
+            "state_change": "Knowledge advances in order.",
+        }],
+        "ending": {"surface_goal": "The sequence is confirmed."},
+        "covered_event_ids": event_ids,
+    }
+
+    def fail_if_filtered(_events):
+        raise AssertionError("canonical contracts must bypass hierarchy filtering")
+
+    monkeypatch.setattr(
+        "novel_flywheel.workflows.narrative_outline_events", fail_if_filtered,
+    )
+    chain = await service._ensure_short_causal_chain(
+        run_id, run_path, project, "constraints", plan,
+        formal_events, candidate,
+    )
+
+    assert chain == candidate
+
+
 def test_execution_authority_multi_event_evidence_scales_linearly(tmp_path) -> None:
     db = Database(tmp_path / "app.db")
     db.migrate()
@@ -19318,6 +19376,38 @@ def test_maintenance_authority_is_incremental_and_conflicts_fail_closed() -> Non
     assert transitioned["state"]["hero"] == {
         "knowledge": "identity-shared", "trust": "earned",
     }
+
+
+def test_flat_maintenance_state_binds_typed_transition_targets() -> None:
+    manuscript = "他把录音机放在调度台正中央，浓雾已经完全散了。"
+    state = {
+        "confirmed_facts": [], "locked_facts": [],
+        "character_states": {}, "world_rules": [], "timeline_events": [],
+    }
+    candidate = {
+        "facts": [],
+        "state": {
+            "current_state": "完成因果闭环",
+            "core_item_state": "录音机置于明处",
+        },
+        "state_transitions": [
+            {
+                "character": "夜班港口调度员", "field": "state",
+                "from": "值守中", "to": "完成因果闭环",
+                "evidence": manuscript,
+            },
+            {
+                "character": "旧磁式录音机", "field": "status",
+                "from": "废弃", "to": "录音机置于明处",
+                "evidence": manuscript,
+            },
+        ],
+    }
+    safe, conflicts = WorkflowService._partition_short_maintenance_proposal(
+        state, candidate, run_id="flat-state", manuscript_text=manuscript,
+    )
+    assert not conflicts
+    assert len(safe["state_transitions"]) == 2
 
 
 @pytest.mark.asyncio

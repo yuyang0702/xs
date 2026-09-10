@@ -315,9 +315,13 @@ class ProviderResponseCaptureStoreV1:
 
     @staticmethod
     def _write_exclusive_crash_safe(path: Path, payload: bytes) -> None:
+        from novel_flywheel.storage import _windows_extended_path
+
         temporary = path.with_name(f".{path.name}.{secrets.token_hex(8)}.tmp")
+        system_temporary = _windows_extended_path(temporary)
+        system_path = _windows_extended_path(path)
         flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_BINARY", 0)
-        descriptor = os.open(temporary, flags, 0o600)
+        descriptor = os.open(system_temporary, flags, 0o600)
         try:
             offset = 0
             while offset < len(payload):
@@ -333,14 +337,14 @@ class ProviderResponseCaptureStoreV1:
         try:
             # Hard-link publication is atomic and refuses to replace a prior
             # capture.  The temporary is fully flushed before it becomes live.
-            os.link(temporary, path)
+            os.link(system_temporary, system_path)
         except FileExistsError as exc:
             raise ProviderResponseCaptureError(
                 "PROVIDER_RESPONSE_CAPTURE_DUPLICATE"
             ) from exc
         finally:
             try:
-                temporary.unlink()
+                system_temporary.unlink()
             except FileNotFoundError:
                 pass
 
@@ -647,7 +651,9 @@ def parse_provider_protocol_input_bytes_v1(
         try:
             text = data.decode(encoding)
         except (LookupError, UnicodeError) as exc:
-            raise ProviderResponseCaptureError("PROVIDER_RESPONSE_REPLAY_ENCODING_INVALID") from exc
+            raise ProviderResponseCaptureError(
+                "PROVIDER_RESPONSE_REPLAY_ENCODING_INVALID"
+            ) from exc
         events, _done_seen = _parse_sse_events_v1(text)
         return events, None
     try:
@@ -659,9 +665,13 @@ def parse_provider_protocol_input_bytes_v1(
     try:
         value = json.loads(text)
     except ValueError as exc:
-        raise ProviderResponseCaptureError("PROVIDER_RESPONSE_REPLAY_JSON_INVALID") from exc
+        raise ProviderResponseCaptureError(
+            "PROVIDER_RESPONSE_REPLAY_JSON_INVALID"
+        ) from exc
     if not isinstance(value, dict):
-        raise ProviderResponseCaptureError("PROVIDER_RESPONSE_REPLAY_JSON_OBJECT_REQUIRED")
+        raise ProviderResponseCaptureError(
+            "PROVIDER_RESPONSE_REPLAY_JSON_OBJECT_REQUIRED"
+        )
     return [], value
 
 

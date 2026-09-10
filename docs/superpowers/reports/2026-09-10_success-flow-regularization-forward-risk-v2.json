@@ -1,0 +1,73 @@
+{
+  "version": 2,
+  "original_requirement": "把本次成功流程所需的正式修复和运行逻辑接入可复现的常规项目入口，不依赖 campaign 专用外置 launcher；保护既有 run、正文、证据和用户脏目录，不新增 Provider 调用。",
+  "scope_classification": "closed_world",
+  "operational_definition": "普通 API 可绑定一个既有 Short run 的不可变 Draft 候选，默认零 dispatch 预检，并把执行委托给现有 WorkflowService.resume_short_receipt；正常首次生成仍走现有 /projects/{project_id}/runs/short 入口。",
+  "closed_world_justification": "本次变更只增加一个既有公共 receipt-only 服务的常规 HTTP 适配，不改变模型输出或叙事语义；候选、run、task 和 dispatch 上限仍由原生服务校验。",
+  "forbidden_narrowing": [
+    "不得把 campaign/run/reference/project ID、历史证据路径、raw credential、ledger 或 gateway monkeypatch 写入正式代码。",
+    "不得以测试通过、receipt 通过或历史 launcher 成功替代新作品全流程证明。"
+  ],
+  "resolution_status": "case_fixed",
+  "constraint_traceability": [
+    {
+      "requirement": "同一公共恢复逻辑可由常规入口调用",
+      "implementation": "src/novel_flywheel/api/runs.py::resume_short_receipt",
+      "test_paths": ["tests/test_short_receipt_api.py"],
+      "evidence": "API delegates exact project/run/candidate/task binding to WorkflowService; draft_request_count remains zero in the offline proof."
+    },
+    {
+      "requirement": "operation-scope、semantic receipt、dispatch accounting 和 checkpoint 仍由原生边界拥有",
+      "implementation": "src/novel_flywheel/workflows.py::_short_receipt_resume_pipeline and src/novel_flywheel/short_receipt_resume.py",
+      "test_paths": ["tests/test_short_receipt_launcher.py", "tests/test_short_receipt_api.py"],
+      "evidence": "The API contains no parser, provider route, retry, checkpoint or promotion logic; it calls the existing public workflow method."
+    },
+    {
+      "requirement": "非 Short run fail closed",
+      "implementation": "src/novel_flywheel/api/runs.py::resume_short_receipt",
+      "test_paths": ["tests/test_short_receipt_api.py"],
+      "evidence": "The route rejects non-short workflow identity before the workflow call."
+    }
+  ],
+  "historical_incident_families_checked": [
+    "short receipt-only recovery boundary",
+    "interrupted same-run receipt recovery",
+    "dispatch scope mismatch",
+    "semantic receipt quarantine and bounded retry",
+    "split Draft candidate reuse",
+    "receipt evidence ownership and manifest binding",
+    "final review output capacity and maintenance transition re-entry"
+  ],
+  "projected_failure_mechanisms": [
+    "stale candidate hash remains owned by prepare_short_receipt_resume",
+    "wrong operation scope remains owned by ModelDispatchOperationScope",
+    "provider output/schema/semantic failures remain in the existing receipt recovery ladder",
+    "run identity and project writer lifecycle remain in the existing database/RunTaskManager boundaries"
+  ],
+  "why_previous_tests_missed": "The successful historical launcher exercised the public workflow method directly, while the regular API had no receipt-only route. Existing tests therefore covered the service and launcher but not normal API exposure or non-Short route admission.",
+  "sibling_boundaries": [
+    {"boundary": "normal first Short generation", "disposition": "tested_not_susceptible", "evidence": "Existing POST /api/projects/{project_id}/runs/short and WorkflowCoordinator.run_short remain unchanged; related workflow suite passed."},
+    {"boundary": "API run resume", "disposition": "tested_not_susceptible", "evidence": "Existing POST /api/runs/{run_id}/resume remains unchanged; tests/test_tasks.py and tests/test_app.py passed."},
+    {"boundary": "reference analysis storage", "disposition": "not_applicable", "evidence": "Campaign DB has reference_analyses=0, learning_nodes=10 and project_learning_artifacts=41; this integration does not change reference persistence."},
+    {"boundary": "Story Skills POV/slug metadata", "disposition": "not_applicable", "evidence": "Campaign project.json uses stable app UUID 700309f89aa7 and pov=third-limited; this integration does not mutate production identity or external checker schemas."}
+  ],
+  "model_output_boundary_changed": false,
+  "model_output_not_applicable_evidence": "No provider prompt, structured contract, parser, semantic validator, route selection, retry policy, or generated-output conversion changed in this integration slice. The API delegates to the already-tested native receipt boundary.",
+  "production_shaped_tests": [
+    "tests/test_short_receipt_launcher.py",
+    "tests/test_short_receipt_api.py",
+    "tests/test_short_trustworthy_full_flow.py",
+    "tests/test_workflows.py"
+  ],
+  "next_authoritative_boundary_tests": [
+    "tests/test_short_receipt_launcher.py",
+    "tests/test_short_receipt_api.py",
+    "tests/test_short_trustworthy_full_flow.py"
+  ],
+  "remaining_risks": [
+    "The campaign-specific resume_v6.py remains outside Git and is intentionally not copied into the product; historical replay still depends on that external evidence harness.",
+    "The original daily worktree has 23 pre-existing dirty/untracked items and was not modified or synchronized.",
+    "Remote origin could not be verified in this environment; no push or merge was attempted.",
+    "This task does not claim a new live campaign or a full 13K/20K/30K production-length run; no Provider call was made."
+  ]
+}

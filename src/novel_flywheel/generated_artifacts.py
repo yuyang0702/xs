@@ -390,6 +390,7 @@ _REGISTRATIONS = (
             "event_receipts", "entry", "exit", "outside_event_ids",
             "causal_order_valid", "causal_order_evidence", "summary",
         ),
+        wire_optional_fields=("execution_manifest_sha256",),
         wire_closed=True,
         minimum_business_characters=300,
     ),

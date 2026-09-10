@@ -1,10 +1,13 @@
 from dataclasses import dataclass
 import asyncio
+import contextvars
 import hashlib
 import inspect
 import json
+import re
 import time
-from typing import Literal
+from contextlib import contextmanager
+from typing import Any, Callable, Literal, Mapping
 
 import httpx
 
@@ -68,6 +71,63 @@ def _safe_model_error(exc: BaseException, *, boundary: str) -> str:
 class ModelResult:
     text: str
     receipt: dict
+
+
+class LocalModelDispatchRejectedError(RuntimeError):
+    """A local admission gate rejected work before adapter dispatch."""
+
+    def __init__(self, code: str) -> None:
+        super().__init__(code)
+        self.code = code
+        self.failure_family = "runtime.local_admission"
+        self.provider_call_executed = False
+
+
+class ModelDispatchBudgetExhaustedError(LocalModelDispatchRejectedError):
+    """The caller's bounded dispatch authorization has no remaining slots."""
+
+    def __init__(self) -> None:
+        super().__init__("model_dispatch_budget_exhausted")
+
+
+class ModelDispatchScopeViolationError(LocalModelDispatchRejectedError):
+    """The pending request does not match the bound operation scope."""
+
+    def __init__(self, code: str = "model_dispatch_scope_violation") -> None:
+        super().__init__(code)
+
+
+@dataclass(frozen=True)
+class ModelDispatchOperationScope:
+    """Content-free authority for a bounded model operation.
+
+    The candidate digest is never copied into a Provider request. It binds the
+    scheduler decision to the adapter-boundary admission record so a
+    receipt-only recovery cannot silently become a Draft generation request.
+    """
+
+    run_id: str
+    operation_kind: Literal["semantic_receipt"]
+    candidate_sha256: str
+    stage: str
+    contract_names: tuple[str, ...]
+    max_dispatches: int
+
+    def __post_init__(self) -> None:
+        if not self.run_id.strip():
+            raise ValueError("dispatch scope requires a run identity")
+        if re.fullmatch(r"[0-9a-f]{64}", self.candidate_sha256) is None:
+            raise ValueError("dispatch scope candidate SHA-256 is invalid")
+        if not self.stage.strip() or not self.contract_names:
+            raise ValueError("dispatch scope requires stage and contract authority")
+        if self.max_dispatches < 0:
+            raise ValueError("dispatch scope max_dispatches must be non-negative")
+
+
+@dataclass
+class _BoundModelDispatchOperation:
+    scope: ModelDispatchOperationScope
+    admitted_dispatches: int = 0
 
 
 class ModelRoutesExhaustedError(RuntimeError):
@@ -220,6 +280,17 @@ class ModelGateway:
     def __init__(self, db: Database, registry: ProviderRegistry) -> None:
         self.db = db
         self.registry = registry
+        # Optional application-owned hook at the actual adapter dispatch
+        # boundary.  It is deliberately absent from the provider payload and
+        # never receives prompts, response bodies, or credentials.
+        self.dispatch_observer: Callable[[Mapping[str, Any]], None] | None = None
+        # Unlike the observer, this callback is authoritative and runs before
+        # the adapter boundary. Raising a LocalModelDispatchRejectedError must
+        # leave transport/provider counters untouched.
+        self.dispatch_admitter: Callable[[Mapping[str, Any]], None] | None = None
+        self._dispatch_operation = contextvars.ContextVar(
+            f"model_dispatch_operation_{id(self)}", default=None,
+        )
         # Negative final-artifact evidence blocks an exact fingerprint only
         # inside one explicitly identified run.  A gateway is application
         # scoped, so gateway lifetime is not a safe proxy for authorization
@@ -227,6 +298,89 @@ class ModelGateway:
         self._final_artifact_route_blocks: set[
             tuple[str, str, str, str, str, str, str, str]
         ] = set()
+
+    def _observe_transport_dispatch(
+        self, *, role: str, resolved: Any, execution_mode: str,
+        stage: str | None = None, contract_name: str = "",
+    ) -> None:
+        observer = self.dispatch_observer
+        if not callable(observer):
+            return
+        try:
+            metadata = {
+                "role": role,
+                "provider_id": str(getattr(resolved, "provider_id", "")),
+                "model_id": str(getattr(resolved, "model_id", "")),
+                "execution_mode": execution_mode,
+                "stage": str(stage or role),
+            }
+            if contract_name:
+                metadata["contract_name"] = contract_name
+            bound = self._dispatch_operation.get()
+            if bound is not None:
+                metadata.update({
+                    "operation_kind": bound.scope.operation_kind,
+                    "operation_run_id": bound.scope.run_id,
+                    "candidate_sha256": bound.scope.candidate_sha256,
+                })
+            observer(metadata)
+        except Exception:
+            # Accounting is observational and must never change provider
+            # routing or hide the actual adapter outcome.
+            return
+
+    @contextmanager
+    def bind_dispatch_operation_scope(
+        self, scope: ModelDispatchOperationScope,
+    ):
+        if self._dispatch_operation.get() is not None:
+            raise ModelDispatchScopeViolationError(
+                "nested_model_dispatch_scope_forbidden"
+            )
+        token = self._dispatch_operation.set(_BoundModelDispatchOperation(scope))
+        try:
+            yield
+        finally:
+            self._dispatch_operation.reset(token)
+
+    def _admit_transport_dispatch(
+        self, *, role: str, resolved: Any, execution_mode: str,
+        stage: str | None = None, contract_name: str = "",
+    ) -> Mapping[str, Any]:
+        bound = self._dispatch_operation.get()
+        metadata: dict[str, Any] = {
+            "role": role,
+            "provider_id": str(getattr(resolved, "provider_id", "")),
+            "model_id": str(getattr(resolved, "model_id", "")),
+            "execution_mode": execution_mode,
+            "stage": str(stage or role),
+            "contract_name": str(contract_name or ""),
+        }
+        if bound is not None:
+            scope = bound.scope
+            metadata.update({
+                "operation_kind": scope.operation_kind,
+                "operation_run_id": scope.run_id,
+                "candidate_sha256": scope.candidate_sha256,
+            })
+            if metadata["stage"] != scope.stage:
+                raise ModelDispatchScopeViolationError(
+                    "model_dispatch_scope_stage_mismatch"
+                )
+            if metadata["contract_name"] not in scope.contract_names:
+                raise ModelDispatchScopeViolationError(
+                    "model_dispatch_scope_contract_mismatch"
+                )
+            if bound.admitted_dispatches >= scope.max_dispatches:
+                raise ModelDispatchScopeViolationError(
+                    "model_dispatch_scope_exhausted"
+                )
+        admitter = self.dispatch_admitter
+        if callable(admitter):
+            admitter(metadata)
+        if bound is not None:
+            bound.admitted_dispatches += 1
+        return metadata
 
     def _resolve_bound_route(
         self, provider_id: str, model_id: str, *, role: str, lane: str,
@@ -714,7 +868,6 @@ class ModelGateway:
         execution_mode = "plain"
         structured_mode_degraded = False
         route_fingerprint = self._route_fingerprint(resolved, execution_mode)
-        contract_name = ""
         schema_sha256 = ""
         if response_schema is not None:
             contract_name = str(
@@ -770,7 +923,62 @@ class ModelGateway:
                 contract_name=contract_name,
                 schema_sha256=schema_sha256,
             )
-            if qualification and qualification.get("status") == "quarantined":
+            # A route quarantined solely for output truncation is recoverable
+            # after the caller raises its bounded protocol budget.  The old
+            # qualification is evidence about the previous cap, not proof
+            # that the provider/route is semantically invalid.  Permit one
+            # normal Runtime validation pass; successful conversion below
+            # re-qualifies the exact same route and contract.
+            capacity_recovery_eligible = bool(
+                qualification
+                and qualification.get("status") == "quarantined"
+                and qualification.get("last_failure_reason")
+                in {"output_limited", "underfilled", "semantic_invalid"}
+                and (
+                    qualification.get("last_failure_reason") == "semantic_invalid"
+                    # Final Review compact recovery is a materially smaller
+                    # protocol request.  A historical verbose response must
+                    # not block its one bounded requalification solely because
+                    # its visible character count exceeded the old reserve.
+                    or (
+                        qualification.get("last_failure_reason")
+                        == "output_limited"
+                        and contract_name == "full_short_final_review"
+                        and int(max_output_tokens or 0) >= 768
+                    )
+                    or int(max_output_tokens or 0)
+                        > int(qualification.get("observed_visible_characters") or 0)
+                )
+            )
+            # A prior required-field quarantine can be stale after the
+            # Runtime-owned schema/prompt contract is repaired. Permit one
+            # bounded requalification attempt only when the current output
+            # budget strictly exceeds the last observed response; the native
+            # converter and semantic validator remain authoritative and will
+            # quarantine the route again if the field is still absent.
+            required_fields_recovery_eligible = bool(
+                qualification
+                and qualification.get("status") == "quarantined"
+                and qualification.get("last_failure_reason")
+                == "required_fields_missing"
+                and contract_name in {
+                    "draft_atomic_semantic_receipt",
+                    "draft_segment_semantic_receipt",
+                    # A prior plain qualification can be stale after the
+                    # typed Final Review prompt/schema binding is repaired.
+                    # Permit one bounded requalification; the unchanged
+                    # receipt validator remains authoritative.
+                    "full_short_final_review",
+                }
+            )
+            capacity_recovery_eligible = (
+                capacity_recovery_eligible or required_fields_recovery_eligible
+            )
+            if (
+                qualification
+                and qualification.get("status") == "quarantined"
+                and not capacity_recovery_eligible
+            ):
                 if configured_mode == "plain":
                     raise StructuredRouteQuarantinedError(configured_mode)
                 plain_qualification = self.db.get_structured_route_qualification(
@@ -781,9 +989,45 @@ class ModelGateway:
                     contract_name=contract_name,
                     schema_sha256=schema_sha256,
                 )
+                plain_capacity_recovery_eligible = bool(
+                    plain_qualification
+                    and plain_qualification.get("status") == "quarantined"
+                    and plain_qualification.get("last_failure_reason")
+                    in {"output_limited", "underfilled", "semantic_invalid"}
+                    and (
+                        plain_qualification.get("last_failure_reason")
+                        == "semantic_invalid"
+                        or (
+                            plain_qualification.get("last_failure_reason")
+                            == "output_limited"
+                            and contract_name == "full_short_final_review"
+                            and int(max_output_tokens or 0) >= 768
+                        )
+                        or int(max_output_tokens or 0)
+                        > int(
+                            plain_qualification.get("observed_visible_characters")
+                            or 0
+                        )
+                        )
+                )
+                plain_required_fields_recovery_eligible = bool(
+                    plain_qualification
+                    and plain_qualification.get("status") == "quarantined"
+                    and plain_qualification.get("last_failure_reason")
+                    == "required_fields_missing"
+                    and contract_name in {
+                        "draft_atomic_semantic_receipt",
+                        "draft_segment_semantic_receipt",
+                        "full_short_final_review",
+                    }
+                )
                 if (
                     plain_qualification
                     and plain_qualification.get("status") == "quarantined"
+                    and not (
+                        plain_capacity_recovery_eligible
+                        or plain_required_fields_recovery_eligible
+                    )
                 ):
                     raise StructuredRouteQuarantinedError("plain")
                 structured_mode_degraded = True
@@ -817,6 +1061,16 @@ class ModelGateway:
         ptr12_capture_token = open_ptr12_raw_shape_capture()
         ptr12_snapshot = None
         try:
+            self._admit_transport_dispatch(
+                role=role, resolved=resolved,
+                execution_mode=execution_mode, stage=stage,
+                contract_name=contract_name,
+            )
+            self._observe_transport_dispatch(
+                role=role, resolved=resolved,
+                execution_mode=execution_mode, stage=stage,
+                contract_name=contract_name,
+            )
             response = await resolved.adapter.complete(request)
             ptr12_snapshot = current_ptr12_raw_shape()
         except Exception as exc:
@@ -1324,6 +1578,14 @@ class ModelGateway:
                     max_output_tokens=max_output_tokens,
                 )
                 try:
+                    self._admit_transport_dispatch(
+                        role=role, resolved=resolved,
+                        execution_mode="native_tool_round", stage="tools",
+                    )
+                    self._observe_transport_dispatch(
+                        role=role, resolved=resolved,
+                        execution_mode="native_tool_round", stage="tools",
+                    )
                     response = await resolved.adapter.complete(request)
                 except ToolCapabilityError:
                     if not request.required_tool:
@@ -1331,6 +1593,14 @@ class ModelGateway:
                     # Some providers support tools but reject tool_choice. Retry
                     # the same round with ordinary optional tool calling.
                     forced_tool = None
+                    self._admit_transport_dispatch(
+                        role=role, resolved=resolved,
+                        execution_mode="native_tool_round", stage="tools",
+                    )
+                    self._observe_transport_dispatch(
+                        role=role, resolved=resolved,
+                        execution_mode="native_tool_round", stage="tools",
+                    )
                     response = await resolved.adapter.complete(
                         request.model_copy(update={"required_tool": None}),
                     )
@@ -1474,6 +1744,14 @@ class ModelGateway:
 
     async def _fallback(self, role, system, user, evidence, resolved, run_id, reason,
                         max_output_tokens) -> ModelResult:
+        self._admit_transport_dispatch(
+            role=role, resolved=resolved,
+            execution_mode="degraded_prompt_mode", stage="tools_fallback",
+        )
+        self._observe_transport_dispatch(
+            role=role, resolved=resolved,
+            execution_mode="degraded_prompt_mode", stage="tools_fallback",
+        )
         response = await resolved.adapter.complete(ModelRequest(
             model=resolved.model_name,
             messages=[Message(role="system", content=system),

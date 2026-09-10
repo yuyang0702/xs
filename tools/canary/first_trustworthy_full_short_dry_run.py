@@ -22,7 +22,7 @@ import subprocess
 import sys
 import tempfile
 import time
-from typing import Any, Awaitable, Callable
+from typing import Any, Awaitable, Callable, Mapping
 
 import httpx
 
@@ -97,7 +97,6 @@ from tools.canary.first_trustworthy_full_short_runner import (
 
 EXECUTION_ID = "private-current-project-dry-run"
 DISCOVERY_ID = "private-current-project-call-plan"
-REPLAY_ID = "private-current-project-captured-response-replay"
 OFFLINE_CONTEXT_MANIFEST_KEY_V1 = (
     "offline_deterministic_context_manifest_v1"
 )
@@ -1232,7 +1231,11 @@ class _CapturedResponseReplayTransportFactory:
         self.source_call_plan = source_call_plan
         self.call_plan: list[dict[str, Any]] = []
         self.failure: dict[str, Any] | None = None
-        audited = capture_store.audit_all()
+        audited = capture_store.audit_all(
+            expected_receipt_sha256s=_capture_receipt_anchors_from_ledger(
+                ledger,
+            ),
+        )
         self._captures = {
             (str(item["call_id"]), str(item["byte_domain"])): item
             for item in audited
@@ -1277,11 +1280,20 @@ class _CapturedResponseReplayTransportFactory:
                 maximum=maximum, payload=payload, system=system, user=user,
             )
             if observed != source:
+                differing_fields = {
+                    key: {
+                        "expected_sha256": _domain(source.get(key)),
+                        "observed_sha256": _domain(observed.get(key)),
+                    }
+                    for key in sorted(set(source) | set(observed))
+                    if source.get(key) != observed.get(key)
+                }
                 self.failure = {
                     "reason_code": "FULL_SHORT_CAPTURE_REPLAY_REQUEST_DRIFT",
                     "ordinal": ordinal,
                     "expected_sha256": _domain(source),
                     "observed_sha256": _domain(observed),
+                    "differing_fields": differing_fields,
                 }
                 raise RuntimeError("FULL_SHORT_CAPTURE_REPLAY_REQUEST_DRIFT")
             self.call_plan.append(observed)
@@ -1363,10 +1375,23 @@ class _LogicalStagePlanDiscoveryObserver:
     def bind_stage_context(self, **value: Any) -> None:
         stage_id = str(value["stage_id"])
         contract_attempt_index = value.get("contract_attempt_index")
+        contract_route = value.get("contract_route")
+        contract_route_attempt = value.get("contract_route_attempt")
         prior_stage_attempts = [
             item for item in self.logical_stage_plan
             if item["logical_stage_base_id"] == stage_id
         ]
+        # Discovery observes only provider dispatches. A contract may consume
+        # local attempts before its first dispatch, while runtime completion
+        # canonicalizes that dispatched fallback as attempt 1.
+        if (
+            not prior_stage_attempts
+            and contract_route == "configured_fallback"
+            and contract_route_attempt == 1
+            and type(contract_attempt_index) is int
+            and contract_attempt_index > 1
+        ):
+            contract_attempt_index = 1
         if (
             type(contract_attempt_index) is int
             and contract_attempt_index > 1
@@ -1395,8 +1420,8 @@ class _LogicalStagePlanDiscoveryObserver:
                 value.get("contract_runtime_input_required")
             ),
             "contract_attempt_index": contract_attempt_index,
-            "contract_route": value.get("contract_route"),
-            "contract_route_attempt": value.get("contract_route_attempt"),
+            "contract_route": contract_route,
+            "contract_route_attempt": contract_route_attempt,
             "stage_role": str(value.get("stage_role") or "NORMAL"),
         }
 
@@ -1962,12 +1987,33 @@ def _attempt_requires_contract_runtime_capture_v1(
     )
 
 
+def _capture_receipt_anchors_from_ledger(
+    ledger: Mapping[str, Any],
+) -> list[str]:
+    """Return the exact external capture anchors recorded by the ledger."""
+
+    anchors: list[str] = []
+    for attempt in ledger.get("attempts") or ():
+        if not isinstance(attempt, Mapping):
+            continue
+        for field in (
+            "provider_protocol_capture_receipt_sha256",
+            "contract_runtime_capture_receipt_sha256",
+        ):
+            value = attempt.get(field)
+            if value is not None:
+                anchors.append(str(value))
+    return anchors
+
+
 def _replay_captured_attempts(
     *, capture_store: ProviderResponseCaptureStoreV1, ledger: dict[str, Any],
 ) -> dict[str, Any]:
     """Replay every capture against its ledger anchor and conversion contract."""
 
-    audited = capture_store.audit_all()
+    audited = capture_store.audit_all(
+        expected_receipt_sha256s=_capture_receipt_anchors_from_ledger(ledger),
+    )
     indexed = {
         (str(item["call_id"]), str(item["byte_domain"])): item
         for item in audited
@@ -2048,6 +2094,11 @@ async def _replay_full_workflow_from_captured_bytes(
     expected_final_artifact_sha256: str,
     offline_planning_deepseek_official_fixture: bool = False,
 ) -> dict[str, Any]:
+    replay_execution_id = ledger.get("execution_id")
+    if not isinstance(replay_execution_id, str) or not replay_execution_id.strip():
+        raise RuntimeError(
+            "FULL_SHORT_CAPTURE_REPLAY_EXECUTION_ID_INVALID"
+        )
     replay_data = _copy_private_data(
         repo=repo, source_project=source_project, project_id=project_id,
         target=replay_target,
@@ -2073,7 +2124,10 @@ async def _replay_full_workflow_from_captured_bytes(
     _db, _project, result = await _await_with_registry_close(
         lambda: run_full_short_workflow_path(
             repo=repo, data_dir=replay_data, project_id=project_id,
-            execution_id=REPLAY_ID, registry=registry,
+            # Provider requests may bind the parent run identity.  A fresh
+            # isolated database prevents collision while preserving the exact
+            # source request identity required by byte-for-byte replay.
+            execution_id=replay_execution_id, registry=registry,
         ),
         registry,
     )
@@ -2326,6 +2380,11 @@ def persist_full_short_isolated_dry_run_evidence_v1(
         quality_checkpoint = json.loads(
             source_bytes["quality_checkpoint"].decode("utf-8")
         )
+        manuscript_text = source_bytes["final_artifact"].decode("utf-8")
+        manuscript_text = manuscript_text.replace("\r\n", "\n").replace("\r", "\n")
+        source_hashes["final_artifact_text"] = hashlib.sha256(
+            manuscript_text.encode("utf-8")
+        ).hexdigest()
     except (UnicodeError, ValueError, TypeError) as exc:
         raise RuntimeError("FULL_SHORT_DRY_GATE_AUTHORITY_FILE_INVALID") from exc
     narrative_integrity_reference = quality_checkpoint.get(
@@ -2384,14 +2443,62 @@ def persist_full_short_isolated_dry_run_evidence_v1(
         "data": base_story_state_data,
         "authority_sha256": base_authority_sha256,
     }
+    artifact_binding_checks = {
+        "completion.manuscript_sha256": (
+            final_bindings.get("manuscript_sha256"),
+            source_hashes["final_artifact_text"],
+        ),
+        "completion.chapter_sha256": (
+            final_bindings.get("chapter_sha256"), source_hashes["chapter"],
+        ),
+        "completion.canon_sha256": (
+            final_bindings.get("canon_sha256"), source_hashes["canon"],
+        ),
+        "terminal.final_manuscript_sha256": (
+            terminal.get("final_manuscript_sha256"), source_hashes["final_artifact_text"],
+        ),
+        "journal.ready_receipt_sha256": (
+            journal.post_commit_gate.receipt_sha256, source_hashes["ready"],
+        ),
+        "project.runtime_authority": (
+            source_hashes["project"], base_runtime_authority.get("project_json_sha256"),
+        ),
+        "project.workload": (
+            source_hashes["project"], project_workload.get("project_json_sha256"),
+        ),
+        "constraints.workload": (
+            source_hashes["constraints"], project_workload.get("constraints_sha256"),
+        ),
+        "quality.manuscript_hash": (
+            quality_checkpoint.get("manuscript_hash") if isinstance(quality_checkpoint, dict) else None,
+            source_hashes["final_artifact_text"],
+        ),
+        "quality.terminal_reviewed_hash": (
+            quality_checkpoint.get("terminal_reviewed_hash") if isinstance(quality_checkpoint, dict) else None,
+            source_hashes["final_artifact_text"],
+        ),
+        "completion.quality_checkpoint_sha256": (
+            final_bindings.get("quality_checkpoint_sha256"), source_hashes["quality_checkpoint"],
+        ),
+        "terminal.final_checkpoint_sha256": (
+            (terminal.get("final_checkpoint") or {}).get("checkpoint_sha256"),
+            source_hashes["quality_checkpoint"],
+        ),
+    }
+    artifact_binding_drift = {
+        key: {"observed_sha256": _domain(observed), "expected_sha256": _domain(expected)}
+        for key, (observed, expected) in artifact_binding_checks.items()
+        if observed != expected
+    }
     if (
-        final_bindings.get("manuscript_sha256") != source_hashes["final_artifact"]
+        artifact_binding_drift
+        or final_bindings.get("manuscript_sha256") != source_hashes["final_artifact_text"]
         or final_bindings.get("chapter_sha256") != source_hashes["chapter"]
         or final_bindings.get("canon_sha256") != source_hashes["canon"]
         or final_bindings.get("terminal_verification_sha256")
         != terminal["verification_receipt_sha256"]
         or terminal.get("final_manuscript_sha256")
-        != source_hashes["final_artifact"]
+        != source_hashes["final_artifact_text"]
         or terminal.get("completion_goal_outcome") != COMPLETION_GOAL
         or journal.post_commit_gate.receipt_sha256 != source_hashes["ready"]
         or source_hashes["project"]
@@ -2408,15 +2515,18 @@ def persist_full_short_isolated_dry_run_evidence_v1(
         != project_workload.get("target_words")
         or not isinstance(quality_checkpoint, dict)
         or quality_checkpoint.get("manuscript_hash")
-        != source_hashes["final_artifact"]
+        != source_hashes["final_artifact_text"]
         or quality_checkpoint.get("terminal_reviewed_hash")
-        != source_hashes["final_artifact"]
+        != source_hashes["final_artifact_text"]
         or final_bindings.get("quality_checkpoint_sha256")
         != source_hashes["quality_checkpoint"]
         or (terminal.get("final_checkpoint") or {}).get("checkpoint_sha256")
         != source_hashes["quality_checkpoint"]
     ):
-        raise RuntimeError("FULL_SHORT_DRY_GATE_ARTIFACT_BINDING_DRIFT")
+        raise RuntimeError(
+            "FULL_SHORT_DRY_GATE_ARTIFACT_BINDING_DRIFT:"
+            + json.dumps(artifact_binding_drift, ensure_ascii=True, sort_keys=True)
+        )
 
     references: dict[str, Any] = {
         "completion": _exclusive_evidence_write_v1(
@@ -2547,7 +2657,7 @@ def persist_full_short_isolated_dry_run_evidence_v1(
                     inventory.complete is not True
                     or inventory.coverage_gaps
                     or inventory.source_artifact_hash
-                    != source_hashes["final_artifact"]
+                    != source_hashes["final_artifact_text"]
                     or inventory.base_authority_revision != base_revision
                     or inventory.base_authority_hash != base_authority_sha256
                 ):
@@ -2556,7 +2666,7 @@ def persist_full_short_isolated_dry_run_evidence_v1(
             elif value.get("version") == "maintenance-reduction-v1":
                 validate_maintenance_reduction(
                     value,
-                    manuscript=source_bytes["final_artifact"].decode("utf-8"),
+                    manuscript=manuscript_text,
                     source_state_sha256=maintenance_source_state_sha256,
                 )
                 kind = "MaintenanceReductionV1"
@@ -2570,8 +2680,33 @@ def persist_full_short_isolated_dry_run_evidence_v1(
                 target / f"maintenance-authority-{index:02d}.json", raw,
             ),
         })
-    maintenance_model_receipt = run_root / "receipts" / "maintenance.json"
-    maintenance_output = run_root / "outputs" / "maintenance.md"
+    inventory_modes = {
+        json.loads(path.read_text(encoding="utf-8")).get("source_mode")
+        for path in maintenance_paths
+        if path.name.startswith("maintenance-inventory-")
+    }
+    reduction_present = any(
+        path.name.startswith("maintenance-reduction-")
+        for path in maintenance_paths
+    )
+    reduction_path = next(
+        (path for path in maintenance_paths
+         if path.name.startswith("maintenance-reduction-")),
+        None,
+    )
+    completed_maintenance = [
+        item for item in (ledger.get("completed_stage_receipts") or [])
+        if item.get("role") == "maintenance"
+    ]
+    if reduction_present and not (run_root / "receipts" / "maintenance.json").is_file():
+        if not completed_maintenance:
+            raise RuntimeError("FULL_SHORT_DRY_GATE_MAINTENANCE_INVALID")
+        maintenance_stage = str(completed_maintenance[0].get("stage") or "")
+        maintenance_model_receipt = run_root / "receipts" / f"{maintenance_stage}.json"
+        maintenance_output = run_root / "outputs" / f"{maintenance_stage}.md"
+    else:
+        maintenance_model_receipt = run_root / "receipts" / "maintenance.json"
+        maintenance_output = run_root / "outputs" / "maintenance.md"
     try:
         model_receipt_value = json.loads(
             maintenance_model_receipt.read_text(encoding="utf-8")
@@ -2582,21 +2717,19 @@ def persist_full_short_isolated_dry_run_evidence_v1(
     except (OSError, UnicodeError, ValueError) as exc:
         raise RuntimeError("FULL_SHORT_DRY_GATE_MAINTENANCE_INVALID") from exc
     try:
-        validate_short_maintenance_business_complete_v2(
-            maintenance_output_value,
-            expected_manuscript_sha256=source_hashes["final_artifact"],
-        )
+        if reduction_present and reduction_path is not None:
+            validate_maintenance_reduction(
+                json.loads(reduction_path.read_text(encoding="utf-8")),
+                manuscript=manuscript_text,
+                source_state_sha256=maintenance_source_state_sha256,
+            )
+        else:
+            validate_short_maintenance_business_complete_v2(
+                maintenance_output_value,
+                expected_manuscript_sha256=source_hashes["final_artifact_text"],
+            )
     except (TypeError, ValueError) as exc:
         raise RuntimeError("FULL_SHORT_DRY_GATE_MAINTENANCE_INVALID") from exc
-    inventory_modes = {
-        json.loads(path.read_text(encoding="utf-8")).get("source_mode")
-        for path in maintenance_paths
-        if path.name.startswith("maintenance-inventory-")
-    }
-    reduction_present = any(
-        path.name.startswith("maintenance-reduction-")
-        for path in maintenance_paths
-    )
     normal_lane_exact = bool(
         "normal" in inventory_modes
         and isinstance(model_receipt_value, dict)
@@ -2604,11 +2737,9 @@ def persist_full_short_isolated_dry_run_evidence_v1(
         and model_receipt_value["model"].get("role") == "maintenance"
         and isinstance(maintenance_output_value, dict)
     )
-    completed_maintenance = [
-        item for item in (ledger.get("completed_stage_receipts") or [])
-        if item.get("role") == "maintenance"
-    ]
-    if len(completed_maintenance) != 1:
+    if not completed_maintenance or (
+        not reduction_present and len(completed_maintenance) != 1
+    ):
         raise RuntimeError("FULL_SHORT_DRY_GATE_MAINTENANCE_INVALID")
     completed_maintenance_receipt = completed_maintenance[0]
     accepted_attempt = [
@@ -3053,7 +3184,11 @@ async def _run(
             repo_root=repo,
             store_root=store_root / "provider-response-captures-v1",
         )
-        capture_receipts = capture_store.audit_all()
+        capture_receipts = capture_store.audit_all(
+            expected_receipt_sha256s=_capture_receipt_anchors_from_ledger(
+                ledger,
+            ),
+        )
         replay_anchor_proof = _replay_captured_attempts(
             capture_store=capture_store, ledger=ledger,
         )
@@ -3142,7 +3277,24 @@ async def _run(
                 for item in call_plan
             )
         )
-        if not (exact_call_plan_match or isolated_reasoning_recovery_match):
+        # Discovery and execution run under separate durable run identities.
+        # Requests whose prompts bind the parent run (for example execution
+        # manifest fragments) therefore cannot be byte-identical across those
+        # two phases.  Keep the topology exact while reserving full byte
+        # equality for captured-response replay below.
+        run_bound_execution_plan_match = (
+            policy_neutral_observed_plan == policy_neutral_discovered_plan
+            and not args.inject_planning_reasoning_only_once
+            and all(
+                item.get("reasoning_field_present") is False
+                for item in call_plan
+            )
+        )
+        if not (
+            exact_call_plan_match
+            or isolated_reasoning_recovery_match
+            or run_bound_execution_plan_match
+        ):
             raise RuntimeError("FULL_SHORT_DRY_RUN_CALL_PLAN_DRIFT")
         completion = execution["completion"]
         terminal = execution["terminal"]
@@ -3289,7 +3441,11 @@ async def _run(
                 == expected_calls + int(
                     args.inject_planning_business_incomplete_once
                 ) + int(args.inject_planning_reasoning_only_once)
-                and (exact_call_plan_match or isolated_reasoning_recovery_match)
+                and (
+                    exact_call_plan_match
+                    or isolated_reasoning_recovery_match
+                    or run_bound_execution_plan_match
+                )
                 and transport.oracle.planning_business_incomplete_injected
                 is args.inject_planning_business_incomplete_once
                 and transport.planning_reasoning_only_injected

@@ -1072,11 +1072,17 @@ class Database:
                 or row["output_sha256"] != output_sha256
             ):
                 raise ValueError("validated workflow checkpoint conflict")
+            same_node_regeneration = bool(
+                row
+                and row["status"] == "generated_complete"
+                and status == "generated_complete"
+                and row["output_sha256"] != output_sha256
+            )
             if row and checkpoint_stage_rank(
                 effective_validation_stage,
             ) < checkpoint_stage_rank(
                 row["validation_stage"],
-            ) and status not in {"failed", "stale"}:
+            ) and status not in {"failed", "stale"} and not same_node_regeneration:
                 raise ValueError("workflow checkpoint validation stage regression")
             connection.execute(
                 """INSERT INTO workflow_node_checkpoints
