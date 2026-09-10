@@ -16,6 +16,34 @@ from novel_flywheel.skill_runtime import initialization_answers, initialization_
 router = APIRouter(prefix="/api", tags=["runs"])
 
 
+class ShortReceiptResume(BaseModel):
+    """Explicit binding for the immutable Draft receipt-only operation.
+
+    ``execute`` is deliberately opt-in.  A preflight never reserves a
+    Provider dispatch; execution is admitted only by the native workflow
+    operation-scope gate after the candidate and run identity are rechecked.
+    """
+
+    candidate_relative_path: str = Field(min_length=1, max_length=512)
+    candidate_sha256: str = Field(min_length=64, max_length=64, pattern=r"[0-9a-fA-F]{64}")
+    task_id: str = Field(min_length=1, max_length=128, pattern=r"segment-[0-9]{2}/sub-1")
+    execute: bool = False
+    max_dispatches: int = Field(default=0, ge=0, le=32)
+
+    @field_validator("candidate_relative_path", "task_id")
+    @classmethod
+    def _trim_required_text(cls, value: str) -> str:
+        normalized = value.strip()
+        if not normalized:
+            raise ValueError("value must contain non-whitespace text")
+        return normalized
+
+    @field_validator("candidate_sha256")
+    @classmethod
+    def _normalize_hash(cls, value: str) -> str:
+        return value.strip().lower()
+
+
 def _ensure_project(project_id: str, request: Request) -> None:
     try:
         request.app.state.projects.get(project_id)
@@ -169,6 +197,41 @@ def cancel_run(run_id: str, request: Request) -> dict:
         return request.app.state.run_tasks.cancel(run_id)
     except LookupError as exc:
         raise HTTPException(status_code=404, detail={"code": "run_not_found"}) from exc
+
+
+@router.post("/runs/{run_id}/short-receipt-resume")
+async def resume_short_receipt(
+    run_id: str, payload: ShortReceiptResume, request: Request,
+) -> dict:
+    """Use the normal API to resume one immutable Draft receipt boundary.
+
+    This endpoint does not create a run and never invokes Draft generation.
+    The service remains the sole owner of candidate binding, semantic receipt
+    validation, operation scope, dispatch accounting, and checkpoint writes.
+    """
+
+    run = request.app.state.registry.db.get_run(run_id)
+    if run is None:
+        raise HTTPException(status_code=404, detail={"code": "run_not_found"})
+    if run.get("workflow") != "short-story":
+        raise HTTPException(status_code=409, detail={"code": "run_not_short_story"})
+    try:
+        return await request.app.state.workflows.resume_short_receipt(
+            str(run["project_id"]),
+            run_id=run_id,
+            candidate_relative_path=payload.candidate_relative_path,
+            candidate_sha256=payload.candidate_sha256,
+            task_id=payload.task_id,
+            execute=payload.execute,
+            max_dispatches=payload.max_dispatches,
+        )
+    except ValueError as exc:
+        raise safe_http_exception(
+            exc, status_code=422, boundary="run.short_receipt_resume.preflight",
+            code="run.short_receipt_resume_invalid",
+            family="request.domain_validation",
+            message="候选稿或回执恢复边界未通过校验，未生成新的 Draft。",
+        ) from exc
 
 
 @router.post("/runs/{run_id}/resume", status_code=status.HTTP_202_ACCEPTED)

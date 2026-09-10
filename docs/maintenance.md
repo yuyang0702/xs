@@ -2,6 +2,21 @@
 
 ## Structured receipt capacity, quarantine and dispatch accounting
 
+### Normal API entry for Short receipt-only recovery
+
+The immutable Draft recovery pipeline is available through the normal
+`POST /api/runs/{run_id}/short-receipt-resume` entry.  The request binds the
+existing Short run, candidate-relative path, candidate prose SHA-256, and the
+first split child task (`segment-NN/sub-1`).  `execute=false` is a zero-dispatch
+preflight; execution is opt-in and requires a positive bounded dispatch value.
+The endpoint delegates to `WorkflowService.resume_short_receipt`, so candidate
+hash checks, the native semantic-receipt contract, operation-scope admission,
+dispatch accounting, and checkpoint ownership remain in the existing Runtime
+boundary.  It never creates a run or invokes Draft generation.  Campaign
+launchers may still be used for historical evidence, but are not required by
+the regular API path and must not supply campaign IDs, evidence paths, or
+gateway monkeypatches to new projects.
+
 `minimum_business_characters` is a business-completeness floor. It must not
 replace a workflow's workload-shaped `expected_output_characters` estimate;
 the effective estimate is the maximum of the two and continues through

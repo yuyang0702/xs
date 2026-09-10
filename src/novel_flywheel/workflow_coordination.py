@@ -46,24 +46,6 @@ class WorkflowCoordinator:
         candidate_sha256: str, task_id: str, execute: bool,
         max_dispatches: int,
     ) -> dict:
-        project = self.service.projects.get(project_id)
-        if project.mode != "short":
-            raise ValueError("Short receipt recovery requires a short project")
-        return await self.service._short_receipt_resume_pipeline(
-            project,
-            run_id=run_id,
-            candidate_relative_path=candidate_relative_path,
-            candidate_sha256=candidate_sha256,
-            task_id=task_id,
-            execute=execute,
-            max_dispatches=max_dispatches,
-        )
-
-    async def resume_short_receipt(
-        self, project_id: str, *, run_id: str, candidate_relative_path: str,
-        candidate_sha256: str, task_id: str, execute: bool,
-        max_dispatches: int,
-    ) -> dict:
         """Select the one receipt-only Short recovery pipeline."""
 
         project = self.service.projects.get(project_id)

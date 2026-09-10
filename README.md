@@ -225,3 +225,10 @@ provenance is absent. A visible price, parameter, unlabeled badge, or successful
 request size is never promoted into a missing capacity limit.
 
 Logical recovery schedule slots and physical dispatch attempts are separate identities. The durable dispatch observer alone allocates the next physical attempt ordinal from the ledger, so a rejected recovery slot cannot create attempt-number drift. Context, output, estimator, route-capability, and attempt-identity failures remain typed and fail closed without truncating story authority.
+
+Short Draft receipt-only recovery is also exposed by the regular API at
+`POST /api/runs/{run_id}/short-receipt-resume`.  It binds an existing run and
+immutable candidate, performs a zero-dispatch preflight by default, and
+delegates execution to the same native semantic-receipt and operation-scope
+pipeline.  This API path does not create a second run or require a
+campaign-specific launcher.
