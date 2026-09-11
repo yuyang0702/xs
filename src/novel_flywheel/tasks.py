@@ -212,6 +212,7 @@ class RunTaskManager:
     def resume(
         self, run_id: str, operation: RunOperation, *,
         allow_interrupted: bool = False,
+        allow_waiting_user_credential: bool = False,
         resume_payload: dict[str, Any] | None = None,
     ) -> dict:
         run = self.db.get_run(run_id)
@@ -230,6 +231,8 @@ class RunTaskManager:
             str(run["workflow"]), resume_payload,
         )
         allowed = {"failed", "cancelled", "waiting_provider"}
+        if allow_waiting_user_credential:
+            allowed.add("waiting_user")
         if allow_interrupted:
             allowed.add("interrupted")
         if run["status"] not in allowed:

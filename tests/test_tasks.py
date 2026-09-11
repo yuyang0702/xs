@@ -47,6 +47,43 @@ def test_task_manager_validates_resume_contract_before_creating_or_claiming_run(
 
 
 @pytest.mark.asyncio
+async def test_waiting_user_resume_is_only_allowed_for_explicit_credential_recovery():
+    class FakeDB:
+        def __init__(self):
+            self.run = {
+                "id": "credential-wait",
+                "project_id": "book",
+                "workflow": "short-story",
+                "status": "waiting_user",
+            }
+
+        def get_run(self, _run_id):
+            return self.run
+
+        def get_workflow_supervision(self, _run_id):
+            return {"restart_policy": "recoverable", "resume_payload": {}}
+
+        def validate_workflow_resume_payload(self, _workflow, payload):
+            return payload
+
+        def activate_supervised_run(self, **_kwargs):
+            return True
+
+    db = FakeDB()
+    manager = RunTaskManager(db)
+    manager._launch_activated_run = lambda _run_id, _operation: None
+
+    with pytest.raises(ValueError, match="Only a failed or cancelled run"):
+        manager.resume("credential-wait", lambda _run_id: None)
+
+    resumed = manager.resume(
+        "credential-wait", lambda _run_id: None,
+        allow_waiting_user_credential=True,
+    )
+    assert resumed["id"] == "credential-wait"
+
+
+@pytest.mark.asyncio
 async def test_task_manager_returns_immediately_and_records_completion(tmp_path) -> None:
     db, manager = make_manager(tmp_path)
     release = asyncio.Event()

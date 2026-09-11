@@ -273,9 +273,19 @@ async def resume_run(run_id: str, request: Request) -> dict:
         return await request.app.state.workflows.run_short(run["project_id"], run_id=existing_run_id)
 
     try:
+        allow_waiting_user_credential = False
+        if run["status"] == "waiting_user":
+            events = request.app.state.registry.db.list_run_events(run_id)
+            allow_waiting_user_credential = any(
+                isinstance(event.get("metadata"), dict)
+                and event["metadata"].get("incident_family")
+                == "provider.credentials_unavailable"
+                for event in reversed(events[-8:])
+            )
         return request.app.state.run_tasks.resume(
             run_id, operation,
             allow_interrupted=run["workflow"] == "short-revision",
+            allow_waiting_user_credential=allow_waiting_user_credential,
             resume_payload=(
                 {"issue_ids": list(revision_issue_ids or [])}
                 if run["workflow"] == "short-revision" else {}
