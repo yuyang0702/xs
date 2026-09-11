@@ -107,6 +107,11 @@ from novel_flywheel.stage_capacity import (
     build_stage_capacity_plan_v1,
     capacity_failure_recovery_disposition_v1,
 )
+from novel_flywheel.route_capabilities import (
+    RouteCapabilityRecordV1,
+    RouteCapabilityRegistryV1,
+    VERIFIED_CAPABILITY_STATUSES,
+)
 from novel_flywheel.contract_runtime import (
     ContractOutputLimitExhaustedError,
     ExecutableContractSpec,
@@ -1569,6 +1574,12 @@ class WorkflowService:
             maxlen=64,
         )
         self.generated_artifacts = GeneratedArtifactGateway()
+        # Capacity evidence is a versioned, route-exact registry.  It is read
+        # lazily and never copied into the model configuration table: a
+        # verified record may admit a route without mutating user bindings or
+        # pretending that an unknown route has a limit.
+        self._route_capability_registry: RouteCapabilityRegistryV1 | None = None
+        self._route_capability_registry_load_failed = False
         self.protocol_route_circuit = ProtocolRouteCircuitBreaker()
         self.coordinator = WorkflowCoordinator(self)
         # Process-local opt-in used only by the exact-once Full Short runner.
@@ -31414,13 +31425,26 @@ class WorkflowService:
                 contract_name, contract_version, schema_sha, schema_tokens = (
                     capacity_contract_identity(actual_contract)
                 )
-                selected_context_window = (
+                route_context_window = (
                     self._provider_context_window(
                         gateway_role, route == "configured_fallback"
                     )
                     if route in {"primary", "configured_fallback"}
                     else context_window
-                ) or context_window or 0
+                )
+                # Do not let a shared packet ceiling masquerade as a
+                # route-specific provider capability.  The shared ceiling is
+                # useful for preflight sizing only; an unknown route must be
+                # rejected before dispatch and may not inherit the fallback's
+                # verified limit.
+                if route in {"primary", "configured_fallback"}:
+                    selected_context_window = route_context_window or 0
+                    if selected_context_window <= 0:
+                        raise CapacityAdmissionFailureV1(
+                            CapacityFailureCode.CONTEXT_LIMIT_UNAVAILABLE
+                        )
+                else:
+                    selected_context_window = context_window or 0
                 output_cap = int(actual_budget or route_output_reserve or 0)
                 rendered_request_sha = hashlib.sha256(
                     (actual_system + "\n\0" + actual_user).encode("utf-8")
@@ -31477,6 +31501,13 @@ class WorkflowService:
                 route_context_capability_source: (
                     RouteContextCapabilitySourceV1 | str
                 ) = RouteContextCapabilitySourceV1.MODEL_CONFIGURATION
+                if route in {"primary", "configured_fallback"}:
+                    _resolved_window, route_context_capability_source = (
+                        self._route_context_window_and_source(
+                            gateway_role,
+                            route == "configured_fallback",
+                        )
+                    )
                 capacity_context = getattr(
                     execution_observer, "capacity_admission_context", None,
                 )
@@ -31523,6 +31554,58 @@ class WorkflowService:
                 # ``reader_review`` can route through ``review`` without
                 # inheriting those stages' capacity policy.
                 capacity_stage = capacity_policy_stage(contract_name)
+                registry_identity = (
+                    route_context_capability_source
+                    is RouteContextCapabilitySourceV1.ROUTE_CAPABILITY_REGISTRY
+                )
+                registry = (
+                    self._load_route_capability_registry()
+                    if registry_identity else None
+                )
+                stable_physical_id = (
+                    f"physical-daily-{canonical_sha256({
+                        'stage_id': node_key,
+                        'route': route,
+                        'attempt': physical_attempt,
+                        'request': rendered_request_sha,
+                    })[:48]}"
+                    if registry_identity and admission_context is None
+                    else (admission_context or {}).get("physical_attempt_id")
+                )
+                stable_global_ordinal = (
+                    int(physical_attempt)
+                    if registry_identity and admission_context is None
+                    else (admission_context or {}).get(
+                        "global_physical_attempt_ordinal"
+                    )
+                )
+                stable_envelope_sha = (
+                    canonical_sha256({
+                        "stage_id": node_key,
+                        "role": gateway_role,
+                        "route": route,
+                        "contract": contract_name,
+                        "request": base_rendered_request_sha,
+                    })
+                    if registry_identity and admission_context is None
+                    else (admission_context or {}).get(
+                        "logical_capacity_envelope_sha256"
+                    )
+                )
+                # Without the durable Full Short observer, each explicit
+                # route starts its own registry-backed admission sequence.
+                # The global schedule index is retained separately above;
+                # using it as this route-local attempt number would falsely
+                # require a recovery receipt on the fallback's first call.
+                stable_attempt_number = (
+                    1
+                    if registry_identity and admission_context is None
+                    else int(
+                        (admission_context or {}).get(
+                            "physical_attempt", physical_attempt,
+                        )
+                    )
+                )
                 kwargs = {
                     "stage_id": node_key,
                     "logical_stage_id": str(
@@ -31530,28 +31613,17 @@ class WorkflowService:
                             "logical_stage_id", node_key,
                         )
                     ),
-                    "physical_attempt": int(
-                        (admission_context or {}).get(
-                            "physical_attempt", physical_attempt,
-                        )
-                    ),
-                    "physical_attempt_id": (
-                        (admission_context or {}).get("physical_attempt_id")
-                    ),
+                    "physical_attempt": stable_attempt_number,
+                    "physical_attempt_id": stable_physical_id,
                     "global_physical_attempt_ordinal": (
-                        (admission_context or {}).get(
-                            "global_physical_attempt_ordinal"
-                        )
+                        stable_global_ordinal
                     ),
-                    "logical_capacity_envelope_sha256": (
-                        (admission_context or {}).get(
-                            "logical_capacity_envelope_sha256"
-                        )
-                    ),
+                    "logical_capacity_envelope_sha256": stable_envelope_sha,
                     "route_capability_snapshot_sha256": (
                         (admission_context or {}).get(
                             "route_capability_snapshot_sha256"
                         )
+                        or (registry.registry_sha256 if registry is not None else None)
                     ),
                     "stage": capacity_stage,
                     "contract_name": contract_name,
@@ -33899,17 +33971,123 @@ class WorkflowService:
         )
         model = self.db.get_model(binding.get(model_key, "")) or {}
         ceiling = model.get("max_output_tokens")
-        return ceiling if isinstance(ceiling, int) and ceiling > 0 else None
+        if isinstance(ceiling, int) and ceiling > 0:
+            return ceiling
+        record = self._route_capability_record(
+            gateway_role, prefer_configured_fallback,
+        )
+        if (
+            record is not None
+            and record.capability_status in VERIFIED_CAPABILITY_STATUSES
+            and isinstance(record.max_output_tokens, int)
+            and record.max_output_tokens > 0
+        ):
+            return record.max_output_tokens
+        return None
 
-    def _provider_context_window(self, gateway_role: str,
-                                 prefer_configured_fallback: bool) -> int | None:
+    def _load_route_capability_registry(self) -> RouteCapabilityRegistryV1 | None:
+        """Load the repository's signed, route-exact capacity evidence once."""
+        if self._route_capability_registry is not None:
+            return self._route_capability_registry
+        if self._route_capability_registry_load_failed:
+            return None
+        path = Path(__file__).resolve().parents[2] / "config" / (
+            "full_short_route_capability_registry_v1.json"
+        )
+        try:
+            document = json.loads(path.read_text(encoding="utf-8"))
+            registry = RouteCapabilityRegistryV1.from_document(document)
+        except (OSError, UnicodeError, json.JSONDecodeError, ValueError, TypeError):
+            # Missing/invalid evidence must remain unknown; never invent a
+            # conservative number and never make the whole app unavailable.
+            self._route_capability_registry_load_failed = True
+            return None
+        self._route_capability_registry = registry
+        return registry
+
+    def _route_capability_record(
+        self, gateway_role: str, prefer_configured_fallback: bool,
+    ) -> RouteCapabilityRecordV1 | None:
+        """Return evidence only when every public route identity matches."""
+        binding = self.db.get_role_binding(gateway_role) or {}
+        lane = "fallback" if prefer_configured_fallback else "primary"
+        provider_id = str(binding.get(
+            "fallback_provider_id" if prefer_configured_fallback
+            else "primary_provider_id"
+        ) or "")
+        model_id = str(binding.get(
+            "fallback_model_id" if prefer_configured_fallback
+            else "primary_model_id"
+        ) or "")
+        if not provider_id or not model_id:
+            return None
+        provider = self.db.get_provider(provider_id)
+        model = self.db.get_model(model_id)
+        if not isinstance(provider, dict) or not isinstance(model, dict):
+            return None
+        registry = self._load_route_capability_registry()
+        if registry is None:
+            return None
+        # The registry is deliberately matched to the same public identity
+        # used by ProviderRegistry, including destination and operator.  A
+        # same-name model at another endpoint is therefore not transferable.
+        route_registry = getattr(self.gateway, "registry", None)
+        inspect_public = getattr(route_registry, "inspect_public_route", None)
+        try:
+            public = inspect_public(provider_id, model_id) if callable(inspect_public) else None
+        except Exception:
+            return None
+        if public is None:
+            return None
+        expected_provider_sha = hashlib.sha256(provider_id.encode("utf-8")).hexdigest()
+        expected_model_sha = hashlib.sha256(model_id.encode("utf-8")).hexdigest()
+        for record in registry.records:
+            if (
+                record.role == gateway_role
+                and record.lane == lane
+                and record.provider.casefold() == str(provider.get("name") or "").strip().casefold()
+                and record.provider_id_sha256 == expected_provider_sha
+                and record.operator == str(public.provider_operator)
+                and record.destination == str(public.destination)
+                and record.protocol == str(public.protocol)
+                and record.model == str(model.get("model_name") or "")
+                and record.model_id_sha256 == expected_model_sha
+                and record.route_fingerprint == str(public.route_fingerprint)
+            ):
+                return record
+        return None
+
+    def _route_context_window_and_source(
+        self, gateway_role: str, prefer_configured_fallback: bool,
+    ) -> tuple[int | None, RouteContextCapabilitySourceV1]:
         binding = self.db.get_role_binding(gateway_role) or {}
         model_key = (
             "fallback_model_id" if prefer_configured_fallback else "primary_model_id"
         )
         model = self.db.get_model(binding.get(model_key, "")) or {}
         window = model.get("context_window")
-        return window if isinstance(window, int) and window > 0 else None
+        if isinstance(window, int) and window > 0:
+            return window, RouteContextCapabilitySourceV1.MODEL_CONFIGURATION
+        record = self._route_capability_record(
+            gateway_role, prefer_configured_fallback,
+        )
+        if (
+            record is not None
+            and record.capability_status in VERIFIED_CAPABILITY_STATUSES
+            and isinstance(record.context_window_tokens, int)
+            and record.context_window_tokens > 0
+        ):
+            return (
+                record.context_window_tokens,
+                RouteContextCapabilitySourceV1.ROUTE_CAPABILITY_REGISTRY,
+            )
+        return None, RouteContextCapabilitySourceV1.MODEL_CONFIGURATION
+
+    def _provider_context_window(self, gateway_role: str,
+                                 prefer_configured_fallback: bool) -> int | None:
+        return self._route_context_window_and_source(
+            gateway_role, prefer_configured_fallback,
+        )[0]
 
     def _route_safe_context_window(
         self, gateway_role: str, *, prefer_configured_fallback: bool = False,
@@ -33927,21 +34105,31 @@ class WorkflowService:
             gateway_role, prefer_configured_fallback,
         )
         if selected is None:
-            if require_declared or self._exact_full_short_execution():
+            # A missing primary declaration must not prevent an independently
+            # evidenced configured fallback from being considered.  The
+            # route-specific admission below still rejects the unknown
+            # primary before dispatch; this value only sizes the shared packet.
+            if include_configured_fallback and not prefer_configured_fallback:
+                fallback = self._provider_context_window(gateway_role, True)
+                if fallback is not None:
+                    selected = fallback
+                else:
+                    if require_declared or self._exact_full_short_execution():
+                        raise CapacityAdmissionFailureV1(
+                            CapacityFailureCode.CONTEXT_LIMIT_UNAVAILABLE
+                        )
+                    selected = 32_768
+            elif require_declared or self._exact_full_short_execution():
                 raise CapacityAdmissionFailureV1(
                     CapacityFailureCode.CONTEXT_LIMIT_UNAVAILABLE
                 )
-            # Preserve the pre-V3 ordinary workflow policy.  Exact Full Short
-            # never reaches this compatibility ceiling: its selected route is
-            # admitted only from a VERIFIED capability record.
-            selected = 32_768
+            else:
+                selected = 32_768
         windows = [selected]
         if include_configured_fallback:
             binding = self.db.get_role_binding(gateway_role) or {}
             if binding.get("fallback_provider_id") and binding.get("fallback_model_id"):
-                fallback_window = self._provider_context_window(
-                    gateway_role, True
-                )
+                fallback_window = self._provider_context_window(gateway_role, True)
                 if fallback_window is None:
                     if require_declared or self._exact_full_short_execution():
                         raise CapacityAdmissionFailureV1(

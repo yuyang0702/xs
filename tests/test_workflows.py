@@ -12921,6 +12921,63 @@ async def test_missing_context_metadata_stops_before_splitter_or_gateway(
     assert stopped["metadata"]["recovery_disposition"] == "STOP"
 
 
+def test_route_registry_evidence_admits_verified_fallback_without_rebinding(
+    tmp_path,
+) -> None:
+    """An unknown primary is isolated; exact verified fallback evidence remains usable."""
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    db.save_provider(
+        provider_id="247c0b35-b5ff-47a0-9793-9f9a6c663b08",
+        name="lingsuan_gpt", protocol="anthropic",
+        base_url="https://lingsuan.org", auth_type="bearer",
+        timeout_seconds=180, extra_headers={},
+    )
+    db.save_provider(
+        provider_id="0e6a5627-5882-40df-bca5-7d98b97fdd0b",
+        name="deepseek", protocol="anthropic",
+        base_url="https://api.deepseek.com/anthropic", auth_type="bearer",
+        timeout_seconds=180, extra_headers={},
+    )
+    db.save_model(
+        model_id="29ef9f64-11b7-4522-b421-510977fc7efc",
+        provider_id="247c0b35-b5ff-47a0-9793-9f9a6c663b08",
+        display_name="gpt-5.6-sol", model_name="gpt-5.6-sol",
+        context_window=None, max_output_tokens=None,
+    )
+    db.save_model(
+        model_id="e4b6f0b8-3c5e-412e-8d4e-8453c840a032",
+        provider_id="0e6a5627-5882-40df-bca5-7d98b97fdd0b",
+        display_name="deepseek-v4-pro", model_name="deepseek-v4-pro",
+        context_window=None, max_output_tokens=None,
+    )
+    db.save_role_binding(
+        "planning",
+        "247c0b35-b5ff-47a0-9793-9f9a6c663b08",
+        "29ef9f64-11b7-4522-b421-510977fc7efc",
+        "0e6a5627-5882-40df-bca5-7d98b97fdd0b",
+        "e4b6f0b8-3c5e-412e-8d4e-8453c840a032",
+    )
+    registry = ProviderRegistry(db, MemorySecretStore())
+    service = WorkflowService(
+        db, ProjectStore(db, tmp_path / "workspace"),
+        SimpleNamespace(registry=registry), SimpleNamespace(),
+    )
+
+    assert service._provider_context_window("planning", False) is None
+    assert service._provider_context_window("planning", True) == 1_000_000
+    assert service._provider_output_ceiling("planning", False) is None
+    assert service._provider_output_ceiling("planning", True) == 384_000
+    assert service._route_safe_context_window(
+        "planning", include_configured_fallback=True, require_declared=True,
+    ) == 1_000_000
+    # The binding itself is untouched; only the fallback's route-local
+    # evidence supplies a capacity value.
+    assert db.get_role_binding("planning")["primary_model_id"] == (
+        "29ef9f64-11b7-4522-b421-510977fc7efc"
+    )
+
+
 @pytest.mark.asyncio
 async def test_exact_capacity_observer_keeps_route_capability_separate_from_stage_limit(
     tmp_path,

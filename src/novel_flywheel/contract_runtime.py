@@ -1733,10 +1733,52 @@ async def execute_contract_runtime(
                     last_receipt,
                 )
             attempt_ptr12_decision = current_ptr12_guard_decision()
-        except CapacityAdmissionFailureV1:
-            # A finalized-attempt capacity denial is pre-dispatch evidence,
-            # not a provider failure. It cannot consume the shared retry slot
-            # or be aggregated into route exhaustion.
+        except CapacityAdmissionFailureV1 as exc:
+            # A route-local capacity denial is pre-dispatch evidence.  When
+            # the primary route is unknown but the same role has an explicit
+            # configured fallback, quarantine only that route and let the
+            # fallback be evaluated independently.  This preserves the
+            # user's binding and avoids treating ``dispatch_state=not_reached``
+            # as proof that the fallback is unsupported.
+            future_routes = {
+                item.route for item in attempts[attempt.attempt_index:]
+            }
+            if (
+                attempt.route == "primary"
+                and "configured_fallback" in future_routes
+                and getattr(exc, "failure_id", "")
+                in {
+                    "capacity.context_limit_unavailable",
+                    "capacity.route_capability_unknown",
+                }
+            ):
+                quarantined_routes.add("primary")
+                last_error = exc
+                primary_error = exc
+                _observe_attempt(
+                    attempt_observer,
+                    attempt_id=str(attempt.attempt_index),
+                    parent_attempt_id=(
+                        str(attempt.attempt_index - 1)
+                        if attempt.attempt_index > 1 else None
+                    ),
+                    route=attempt.route,
+                    route_attempt=attempt.route_attempt,
+                    action="local_admission_rejected",
+                    outcome="local_admission_rejected",
+                    failure_class="context_capacity_unknown",
+                    error_class=type(exc).__name__,
+                    model_call_delta=0,
+                )
+                _emit_local_admission_rejection(
+                    local_rejection_sink,
+                    contract=structured_contract,
+                    attempt=attempt,
+                    failure_reason=str(getattr(exc, "failure_id", "capacity_context_unknown")),
+                )
+                continue
+            # No independent configured route remains, so retain the original
+            # fail-closed behavior and do not consume a retry slot.
             raise
         except StructuredRouteQuarantinedError as exc:
             # The route was rejected before provider dispatch.  Mark the

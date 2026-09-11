@@ -1,0 +1,65 @@
+{
+  "version": 2,
+  "original_requirement": "Keep the restored ten role bindings, repair capacity.context_limit_unavailable from verified route evidence, and resume the same short-story run without rebinding or recreating narrative work.",
+  "scope_classification": "open_world",
+  "operational_definition": "For each bound role, consume only exact route-local capacity evidence; quarantine an unknown primary before dispatch and continue through its already-configured fallback only when that fallback has independently verified capacity. Preserve the same project, run, bindings, checkpoints, and formal artifacts.",
+  "forbidden_narrowing": [
+    "Do not replace the restored role bindings or create substitute models.",
+    "Do not treat dispatch_state=not_reached as proof that a model is unsupported.",
+    "Do not claim full-story completion from tests or capacity qualification alone."
+  ],
+  "projected_failure_mechanisms": [
+    "Unknown primary route capacity remains a typed pre-dispatch rejection.",
+    "Fallback is rejected if any route identity field or registry evidence hash differs.",
+    "Credential lookup remains a separate terminal boundary and cannot consume narrative progress."
+  ],
+  "why_previous_tests_missed": "Previous tests covered null-capacity fail-closed behavior and isolated registry records, but did not exercise a production-shaped workflow where an unknown primary is quarantined and an exact verified fallback sizes the same semantic packet.",
+  "resolution_status": "unresolved",
+  "historical_incident_families_checked": [
+    "model.context_capacity_preflight",
+    "provider.credentials_unavailable",
+    "primary-route pre-dispatch rejection with configured fallback",
+    "same-run resume after validated planning progress"
+  ],
+  "constraint_traceability": [
+    {
+      "requirement": "Use only exact route-local evidence; never infer capacity from model name or another route",
+      "implementation": "src/novel_flywheel/workflows.py::_route_capability_record and _route_context_window_and_source",
+      "test_paths": ["tests/test_workflows.py"],
+      "evidence": "Provider/model UUID hashes, protocol, destination, model name, and route fingerprint all match before registry limits are consumed."
+    },
+    {
+      "requirement": "Quarantine an unknown primary and continue only with an independently verified configured fallback",
+      "implementation": "src/novel_flywheel/contract_runtime.py::execute_contract_runtime",
+      "test_paths": ["tests/test_workflows.py", "tests/test_stage_capacity.py"],
+      "evidence": "Capacity admission failures remain typed and model_call_delta=0 for the primary; only a configured fallback with verified evidence can continue."
+    },
+    {
+      "requirement": "Preserve bindings and narrative artifacts",
+      "implementation": "No binding/database writer changes; same run id resumed",
+      "test_paths": ["tests/test_workflows.py"],
+      "evidence": "Daily DB fingerprint and project/run identity remained unchanged; production events show planning capacity split before the credential boundary."
+    }
+  ],
+  "sibling_boundaries": [
+    {"boundary": "planning preflight and semantic split", "disposition": "fixed_and_tested", "evidence": "Same run emitted stage_capacity_split_requested with context_window=1000000 and entered planning."},
+    {"boundary": "draft, polish, revision, review, promotion, final artifact", "disposition": "not_applicable", "evidence": "No provider credential was visible to the active Windows runtime; no semantic or narrative mutation was authorized."}
+  ],
+  "model_output_boundary_changed": false,
+  "model_output_not_applicable_evidence": "The patch changes only capacity evidence lookup and typed primary quarantine/fallback control; prompt contracts, parsers, validators, output ceilings, and model bindings are unchanged.",
+  "production_shaped_tests": [
+    "tests/test_stage_capacity.py",
+    "tests/test_route_capabilities.py",
+    "tests/test_workflows.py"
+  ],
+  "next_authoritative_boundary_tests": [
+    "tests/api/test_providers.py",
+    "tests/test_workflows.py",
+    "tests/test_tasks.py"
+  ],
+  "remaining_risks": [
+    "The required provider secrets are absent from Windows Credential Manager in this runtime; no safe local source exists to reconstruct them.",
+    "One pre-existing DeepSeek capability probe changed its capability metadata and must remain recorded as an incident side effect.",
+    "A complete live 20000-character manuscript cannot be claimed until the authorized credentials are visible and the same run crosses the provider boundary."
+  ]
+}

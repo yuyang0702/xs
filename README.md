@@ -216,6 +216,15 @@ The workbench can preview and run migration for an older project. Migration pres
 
 Exact Full Short preflight uses `config/full_short_route_capability_registry_v1.json` as the route-exact capacity source. Every live primary and fallback lane has a content-addressed record. A record without trustworthy context-window and maximum-output provenance remains `UNKNOWN_BLOCKED`; it does not block an unused lane, but it is rejected before credential lookup when the execution plan selects that lane. Runtime no longer treats a bare model configuration value as provider capacity evidence.
 
+The daily workflow now consumes the same registry at the shared route-capacity
+boundary. Matching is strict on role, lane, provider/model UUID hashes,
+protocol, destination, operator, and route fingerprint. A verified configured
+fallback can therefore be evaluated independently when the primary route's
+capacity is unknown: the primary is locally quarantined before dispatch and the
+fallback keeps its own evidence and output ceiling. No model row, endpoint, or
+role binding is rewritten, and an unknown route remains fail-closed when no
+independent verified route exists.
+
 Historical evidence is migrated field by field. The exact official DeepSeek
 route may use its content-addressed 1,000,000-context/384,000-output historical
 record. The supplied relay-console screenshots preserve visible model, pricing,
