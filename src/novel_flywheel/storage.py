@@ -39,12 +39,20 @@ def _atomic_replace(
 def atomic_write(path: Path, content: str,
                  replace: Callable[[Path, Path], None] = os.replace, *,
                  preserve_newlines: bool = False) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary_dir = (
+        _windows_extended_path(path.parent)
+        if os.name == "nt" else path.parent
+    )
+    temporary_dir.mkdir(parents=True, exist_ok=True)
     temporary: Path | None = None
     try:
+        # The destination replacement already uses the Win32 extended-length
+        # form, but creating the sibling temporary file must use it too.  On
+        # Windows a long canary/run root can otherwise fail in
+        # NamedTemporaryFile before the extended-path replace is reached.
         with tempfile.NamedTemporaryFile(
             mode="w", encoding="utf-8", newline="" if preserve_newlines else None,
-            dir=path.parent, suffix=".tmp", delete=False,
+            dir=temporary_dir, suffix=".tmp", delete=False,
         ) as handle:
             handle.write(content)
             handle.flush()
@@ -64,11 +72,15 @@ def atomic_write_bytes(
 ) -> None:
     """Atomically replace one file without newline or encoding translation."""
 
-    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary_dir = (
+        _windows_extended_path(path.parent)
+        if os.name == "nt" else path.parent
+    )
+    temporary_dir.mkdir(parents=True, exist_ok=True)
     temporary: Path | None = None
     try:
         with tempfile.NamedTemporaryFile(
-            mode="wb", dir=path.parent, suffix=".tmp", delete=False,
+            mode="wb", dir=temporary_dir, suffix=".tmp", delete=False,
         ) as handle:
             handle.write(content)
             handle.flush()

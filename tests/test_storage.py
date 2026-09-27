@@ -1,5 +1,7 @@
 import hashlib
 import os
+import shutil
+from pathlib import Path
 
 import pytest
 
@@ -63,6 +65,28 @@ def test_atomic_write_replaces_destination_beyond_legacy_windows_path_limit(
     assert _windows_extended_path(target).read_text(
         encoding="utf-8",
     ) == "long-path-safe"
+
+
+@pytest.mark.skipif(os.name != "nt", reason="Windows extended-path regression")
+def test_atomic_write_uses_extended_temp_directory_for_long_run_roots(
+) -> None:
+    """Conversion-audit writes must create their sibling temp file safely."""
+
+    root = Path(os.environ.get("TEMP", r"C:\\rtpytest")) / "atomic-long-root"
+    parent = root
+    try:
+        while len(str(parent.resolve(strict=False))) < 240:
+            parent /= "long-run-component"
+            os.makedirs(_windows_extended_path(parent), exist_ok=True)
+        target = parent / ("conversion-audit-" + ("b" * 60) + ".json")
+        assert len(str(target.resolve(strict=False))) > 260
+
+        atomic_write(target, "audit")
+        atomic_write_bytes(target, b"audit-bytes")
+
+        assert _windows_extended_path(target).read_bytes() == b"audit-bytes"
+    finally:
+        shutil.rmtree(_windows_extended_path(root), ignore_errors=True)
 
 
 def test_snapshot_restores_changed_and_deleted_files(tmp_path) -> None:
