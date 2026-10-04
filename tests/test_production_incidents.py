@@ -158,6 +158,10 @@ from novel_flywheel.recovery_engine import FailureClass, ReliabilityFailure
         "draft.split_merge_length_mismatch",
     ),
     (
+        "draft_semantic_rewrite_exhausted: receipt_shape was routed into prose rewrite",
+        "draft.semantic_receipt_protocol_misrouted",
+    ),
+    (
         "正文语义完整性检查未通过：semantic receipt exit state is not satisfied",
         "draft.semantic_receipt_unsatisfied",
     ),

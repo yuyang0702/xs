@@ -8,6 +8,7 @@ from typing import Awaitable, Callable
 from novel_flywheel.db import Database
 from novel_flywheel.production_incidents import classify_production_failure
 from novel_flywheel.failure_boundary import failure_evidence_sha256
+from novel_flywheel.reference_analysis_diagnostics import bind_task_id, reset_task_id
 
 
 ProgressCallback = Callable[[dict], None]
@@ -152,7 +153,11 @@ class ReferenceAnalysisTaskManager:
             )
 
         try:
-            result = await operation(progress)
+            task_context_token = bind_task_id(task_id)
+            try:
+                result = await operation(progress)
+            finally:
+                reset_task_id(task_context_token)
             if not isinstance(result, dict):
                 raise TypeError("reference analysis result must be an object")
             if not self.db.complete_resource_task(task_id, result):
@@ -172,6 +177,13 @@ class ReferenceAnalysisTaskManager:
                 workflow="reference-analysis", stage="model_analysis",
                 failure=reliability,
             )
+            safe_detail = _safe_reference_analysis_detail(exc)
+            safe_message = (
+                "Analysis did not complete; validated windows and regional "
+                "checkpoints were preserved for the next run."
+            )
+            if safe_detail:
+                safe_message += " semantic_boundary=" + safe_detail
             self.db.fail_resource_task(
                 task_id,
                 error_code=(
@@ -179,10 +191,7 @@ class ReferenceAnalysisTaskManager:
                     + str(classified.get("incident_family") or "unknown")
                 ),
                 failure_sha256=failure_sha256,
-                safe_message=(
-                    "Analysis did not complete; validated windows and regional "
-                    "checkpoints were preserved for the next run."
-                ),
+                safe_message=safe_message,
             )
 
     @staticmethod
@@ -203,3 +212,33 @@ class ReferenceAnalysisTaskManager:
             "started_at": state.get("created_at"),
             "finished_at": state.get("finished_at"),
         }
+
+
+def _safe_reference_analysis_detail(exc: BaseException) -> str:
+    """Extract only bounded validator rule names from nested route errors."""
+
+    seen: set[int] = set()
+    stack: list[BaseException] = [exc]
+    details: list[str] = []
+    while stack and len(details) < 4:
+        current = stack.pop()
+        if id(current) in seen:
+            continue
+        seen.add(id(current))
+        detail = getattr(current, "safe_detail", None)
+        if isinstance(detail, str) and detail:
+            details.append(detail[:500])
+        audit = getattr(current, "audit", None)
+        audit_code = getattr(audit, "failure_code", None)
+        if isinstance(audit_code, str) and audit_code:
+            details.append("protocol:" + audit_code[:160])
+        reason = getattr(current, "reason", None)
+        if isinstance(reason, str) and reason:
+            details.append("business:" + reason[:160])
+        for item in getattr(current, "route_errors", ()) or ():
+            if isinstance(item, tuple) and item and isinstance(item[-1], BaseException):
+                stack.append(item[-1])
+        cause = getattr(current, "__cause__", None)
+        if isinstance(cause, BaseException):
+            stack.append(cause)
+    return " | ".join(details)[:1200]

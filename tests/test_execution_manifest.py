@@ -16,6 +16,7 @@ from novel_flywheel.execution_manifest import (
     StateAssertion,
     bind_execution_manifest_receipt_evidence,
     execution_manifest_issues,
+    execution_manifest_fragment_issues,
     execution_event_contract_prompt_payload,
     execution_manifest_payload,
     execution_manifest_receipt_issues,
@@ -870,6 +871,73 @@ def test_fragment_merge_rebinds_global_ids_order_handoffs_and_future_bans() -> N
     assert merged.segments[1].previous_exit_sha256 == state_assertions_sha256(
         merged.segments[0].exit_state, version=5,
     )
+
+
+def test_fragment_gate_accepts_contiguous_formal_ordinal_slice() -> None:
+    """A packet may retain its formal/global ordinal start before merge."""
+    payload = manifest_payload()
+    payload["version"] = 3
+    payload["status"] = "fragment_ready"
+    payload["beats"] = [copy.deepcopy(payload["beats"][2])]
+    payload["beats"][0].update({
+        "beat_id": "EV-8E4BBA17/02",
+        "order": 12,
+        "presentation_order": 12,
+        "owner_segment": 2,
+        "source_evidence_ids": ["PLAN-E002"],
+    })
+    payload["segments"] = [copy.deepcopy(payload["segments"][1])]
+    payload["segments"][0].update({
+        "beat_ids": ["EV-8E4BBA17/02"],
+        "previous_exit_sha256": "",
+        "future_beat_order_floor": 0,
+        "future_beat_count": 0,
+        "future_beat_scope_sha256": "",
+    })
+    manifest = parse_execution_manifest(payload)
+    issues = execution_manifest_fragment_issues(
+        manifest,
+        owner_segment=2,
+        expected_event_ids=["EV-8E4BBA17"],
+        authority_hashes=AUTHORITY,
+        expected_events=[{
+            "id": "EV-8E4BBA17",
+            "evidence_catalog": [{"evidence_id": "PLAN-E002", "text": "沈家账房最近支出一笔银两，数目恰好是二十两"}],
+        }],
+    )
+    assert not any(item["code"] == "non_contiguous_beat_order" for item in issues)
+
+
+def test_fragment_gate_still_rejects_non_contiguous_ordinal_slice() -> None:
+    payload = manifest_payload()
+    payload["version"] = 3
+    payload["status"] = "fragment_ready"
+    payload["beats"] = [copy.deepcopy(payload["beats"][2])]
+    payload["beats"][0].update({"order": 12, "presentation_order": 12})
+    payload["segments"] = [copy.deepcopy(payload["segments"][1])]
+    payload["segments"][0].update({
+        "beat_ids": [payload["beats"][0]["beat_id"]],
+        "previous_exit_sha256": "",
+        "future_beat_order_floor": 0,
+        "future_beat_count": 0,
+        "future_beat_scope_sha256": "",
+    })
+    payload["beats"].append(copy.deepcopy(payload["beats"][0]))
+    payload["beats"][1].update({
+        "beat_id": "EV-8E4BBA17/03",
+        "order": 14,
+        "presentation_order": 14,
+    })
+    payload["segments"][0]["beat_ids"].append("EV-8E4BBA17/03")
+    manifest = parse_execution_manifest(payload)
+    issues = execution_manifest_fragment_issues(
+        manifest,
+        owner_segment=2,
+        expected_event_ids=["EV-8E4BBA17"],
+        authority_hashes=AUTHORITY,
+        expected_events=[{"id": "EV-8E4BBA17", "evidence_catalog": []}],
+    )
+    assert any(item["code"] == "non_contiguous_beat_order" for item in issues)
 
 
 def test_v5_manifest_and_draft_scope_stay_linear_without_future_id_enumeration() -> None:

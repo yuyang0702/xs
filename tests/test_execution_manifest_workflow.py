@@ -929,6 +929,144 @@ async def test_draft_semantic_evidence_retry_keeps_prose_immutable(tmp_path) -> 
 
 
 @pytest.mark.asyncio
+async def test_nonfinal_receipt_window_prompt_binds_exit_to_window_boundary(
+    tmp_path,
+) -> None:
+    service, project, run_path, _state = make_service(tmp_path)
+    prose = "沈砚记录现场并把钥匙收好。她转身走向下一道门。"
+    contract = DraftTaskContract(
+        authority_sha256="a" * 64,
+        task_id="segment-05-receipt-window-01",
+        parent_task_id="segment-05",
+        depth=1,
+        target_han=30,
+        event_ids=(EVENT_ID,),
+        scope="当前窗口",
+        entry_state="沈砚进入现场",
+        exit_requirement="完成当前语义窗口末尾节拍并形成自然交接",
+        execution_manifest_sha256="b" * 64,
+        beat_ids=(f"{EVENT_ID}/01",),
+        viewpoint="",
+    )
+    captured: list[str] = []
+
+    async def fake_stage(*args, **kwargs):
+        captured.append(str(args[5]))
+        evidence = "沈砚记录现场并把钥匙收好"
+        payload = {
+            "authority_sha256": contract.authority_sha256,
+            "execution_manifest_sha256": contract.execution_manifest_sha256,
+            "task_id": contract.task_id,
+            "prose_sha256": hashlib.sha256(prose.encode("utf-8")).hexdigest(),
+            "beat_receipts": [{
+                "beat_id": f"{EVENT_ID}/01",
+                "evidence": evidence,
+                "actor_action_valid": True,
+                "actor_action_evidence": evidence,
+                "state_valid": True,
+                "state_evidence": evidence,
+                "scene_order_valid": True,
+                "scene_order_evidence": evidence,
+            }],
+            "outside_beat_ids": [],
+            "future_beat_ids": [],
+            "entry": {"satisfied": True, "evidence": evidence},
+            "exit": {"satisfied": True, "evidence": evidence},
+            "causal_order_valid": True,
+            "causal_order_evidence": evidence,
+            "summary": "窗口完成。",
+        }
+        return json.dumps(payload, ensure_ascii=False)
+
+    service._stage = fake_stage
+    await service._verify_draft_semantic_node(
+        "manifest-run", run_path, project, "constraints", contract, prose, [],
+        suffix="-window-boundary", failure_stage="draft",
+    )
+
+    assert captured and "WINDOW BOUNDARY RULE" in captured[0]
+    assert "physical end of the complete PROSE" in captured[0]
+
+
+@pytest.mark.asyncio
+async def test_mixed_receipt_retries_protocol_fields_before_prose_repair(
+    tmp_path,
+) -> None:
+    service, project, run_path, _state = make_service(tmp_path)
+    prose = "沈老夫人派人外出核实花穗身份，核实身份的人已经出发。"
+    contract = DraftTaskContract(
+        authority_sha256="a" * 64,
+        task_id="segment-mixed-receipt",
+        parent_task_id="manifest-run",
+        depth=0,
+        target_han=30,
+        event_ids=(EVENT_ID,),
+        scope="核实身份",
+        entry_state="沈老夫人决定核实身份",
+        exit_requirement="核实身份的人已经出发",
+        execution_manifest_sha256="b" * 64,
+        beat_ids=(f"{EVENT_ID}/01",),
+        viewpoint="",
+    )
+    calls = 0
+    evidence = "沈老夫人派人外出核实花穗身份"
+    exit_evidence = "核实身份的人已经出发"
+
+    async def fake_stage(*args, **kwargs):
+        nonlocal calls
+        calls += 1
+        payload = {
+            "authority_sha256": contract.authority_sha256,
+            "execution_manifest_sha256": contract.execution_manifest_sha256,
+            "task_id": contract.task_id,
+            "prose_sha256": hashlib.sha256(prose.encode("utf-8")).hexdigest(),
+            "beat_receipts": [{
+                "beat_id": f"{EVENT_ID}/01",
+                "evidence": evidence,
+                # This is a legitimate business REJECT.  The first response
+                # also carries one malformed evidence field, which must be
+                # retried as protocol data without changing this verdict.
+                "actor_action_valid": False if calls == 1 else True,
+                "actor_action_evidence": (
+                    "不存在于正文的审核解释" if calls == 1 else evidence
+                ),
+                "state_valid": True,
+                "state_evidence": exit_evidence,
+                "scene_order_valid": True,
+                "scene_order_evidence": evidence,
+            }],
+            "outside_beat_ids": [],
+            "future_beat_ids": [],
+            "entry": {"satisfied": True, "evidence": evidence},
+            "exit": {"satisfied": True, "evidence": exit_evidence},
+            "causal_order_valid": True,
+            "causal_order_evidence": evidence,
+            "summary": "当前正文满足或不满足原子节拍合同。",
+        }
+        return json.dumps(payload, ensure_ascii=False)
+
+    service._stage = fake_stage
+    with pytest.raises(DraftSemanticValidationError) as caught:
+        await service._verify_draft_semantic_node(
+            "manifest-run", run_path, project, "constraints", contract, prose,
+            [], suffix="-mixed-receipt", failure_stage="draft",
+        )
+
+    assert calls == 2
+    assert [item["code"] for item in caught.value.issues] == ["actor_action"]
+    events = service.db.list_run_events("manifest-run")
+    assert any(
+        item["event_type"] == "semantic_receipt_protocol_retry"
+        and item["metadata"]["semantic_issue_count"] == 1
+        for item in events
+    )
+    assert any(
+        item["event_type"] == "receipt_semantic_drift_contained"
+        for item in events
+    )
+
+
+@pytest.mark.asyncio
 async def test_draft_receipt_protocol_exhaustion_never_becomes_prose_rewrite(
     tmp_path,
 ) -> None:
@@ -1962,6 +2100,7 @@ async def test_causal_chain_repair_reenters_json_and_semantic_validation(
     calls = 0
     valid_chain = {
         "core_goal": "查清误认",
+        "opening": {"pressure": "身份线索不足", "anomaly": "误认出现", "reader_question": "来历能否核实", "future_promise": "查清误认"},
         "cycles": [{
             "obstacle": "身份线索不足",
             "effort": "核实来历",

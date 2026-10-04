@@ -155,15 +155,34 @@ def semantic_receipt_shape_issues(
             "paths": [".".join(map(str, item["loc"])) for item in exc.errors()],
         }]
     if contract.beat_ids and contract.viewpoint and isinstance(receipt, dict):
-        missing = [
-            field for field in ("viewpoint_valid", "viewpoint_evidence")
-            if receipt.get(field) in (None, "")
-        ]
-        if missing:
+        required_viewpoint_fields = ("viewpoint_valid", "viewpoint_evidence")
+        field_states = {}
+        missing_paths = []
+        for field in required_viewpoint_fields:
+            if field not in receipt:
+                state = "missing"
+            elif receipt[field] is None:
+                state = "null"
+            elif receipt[field] == "":
+                state = "empty"
+            elif field == "viewpoint_valid" and not isinstance(receipt[field], bool):
+                state = "type"
+            elif field == "viewpoint_evidence" and not isinstance(receipt[field], str):
+                state = "type"
+            else:
+                state = "present"
+            field_states[f"/{field}"] = state
+            if state != "present":
+                missing_paths.append(f"/{field}")
+        if missing_paths:
             return [{
                 "code": "receipt_shape",
                 "message": "semantic receipt shape is invalid",
-                "paths": missing,
+                # Keep the legacy dotted paths for existing consumers while
+                # exposing precise JSON Pointer evidence to recovery.
+                "paths": [path[1:] for path in missing_paths],
+                "missing_paths": missing_paths,
+                "field_states": field_states,
             }]
     return []
 

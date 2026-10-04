@@ -144,21 +144,65 @@ class DistillationReceiptV2(BaseModel):
     semantic: dict[str, Any]
 
 
+class DistillationSemanticValidationError(ValueError):
+    """A bounded, machine-readable failure at the distillation boundary.
+
+    The public exception text remains short and safe, while callers can retain
+    the exact rule and (when one exists) the related JSON pointer/child IDs for
+    local repair and diagnostics.  Cross-object rules intentionally allow an
+    empty field path; inventing a pointer would misrepresent the validator.
+    """
+
+    def __init__(
+        self, rule_code: str, message: str, *, field_path: str | None = None,
+        child_ids: Iterable[str] = (),
+    ) -> None:
+        self.rule_code = str(rule_code)
+        self.field_path = str(field_path or "")
+        self.child_ids = tuple(str(item) for item in child_ids if str(item))
+        self.safe_detail = self.rule_code
+        if self.field_path:
+            self.safe_detail += "@" + self.field_path
+        if self.child_ids:
+            self.safe_detail += "#" + ",".join(self.child_ids[:8])
+        super().__init__(message)
+
+
+def _distillation_failure(
+    rule_code: str, message: str, *, field_path: str | None = None,
+    child_ids: Iterable[str] = (),
+) -> DistillationSemanticValidationError:
+    return DistillationSemanticValidationError(
+        rule_code, message, field_path=field_path, child_ids=child_ids,
+    )
+
+
 def validate_distillation_receipt(
     region: DistillationRegionV1, payload: object,
 ) -> dict[str, Any]:
     receipt = DistillationReceiptV2.model_validate(payload)
     if receipt.covered_child_ids != region.child_ids:
-        raise ValueError("distillation receipt child coverage mismatch")
+        raise _distillation_failure(
+            "child_coverage_mismatch", "distillation receipt child coverage mismatch",
+            field_path="/covered_child_ids", child_ids=region.child_ids,
+        )
     disposition_ids = [item.child_id for item in receipt.child_dispositions]
     if disposition_ids != region.child_ids or len(disposition_ids) != len(set(disposition_ids)):
-        raise ValueError("distillation receipt disposition coverage mismatch")
+        raise _distillation_failure(
+            "disposition_coverage_mismatch",
+            "distillation receipt disposition coverage mismatch",
+            field_path="/child_dispositions", child_ids=region.child_ids,
+        )
     promoted = [
         item.child_id for item in receipt.child_dispositions
         if item.disposition == "promoted"
     ]
     if promoted and not _has_semantic_value(receipt.semantic):
-        raise ValueError("promoted distillation children require non-empty semantics")
+        raise _distillation_failure(
+            "promoted_semantics_empty",
+            "promoted distillation children require non-empty semantics",
+            field_path="/semantic", child_ids=promoted,
+        )
     _validate_promoted_child_attribution(receipt, promoted)
     for child_payload, disposition in zip(
         region.payloads, receipt.child_dispositions, strict=True,
@@ -173,8 +217,10 @@ def validate_distillation_receipt(
             _has_semantic_value(inherited_semantic)
             and disposition.disposition != "promoted"
         ):
-            raise ValueError(
-                "previously promoted distillation semantics cannot be discarded"
+            raise _distillation_failure(
+                "promoted_semantics_discarded",
+                "previously promoted distillation semantics cannot be discarded",
+                child_ids=(disposition.child_id,),
             )
     return receipt.semantic
 
@@ -188,8 +234,10 @@ def _validate_promoted_child_attribution(
         len(attributed_ids) != len(promoted)
         or set(attributed_ids) != promoted_set
     ):
-        raise ValueError(
-            "promoted children require exact one-to-one semantic attribution"
+        raise _distillation_failure(
+            "attribution_coverage_mismatch",
+            "promoted children require exact one-to-one semantic attribution",
+            field_path="/child_attributions", child_ids=promoted,
         )
 
     anchors: set[str] = set()
@@ -202,29 +250,50 @@ def _validate_promoted_child_attribution(
                 receipt.semantic, attribution.semantic_path,
             )
             if not _has_semantic_value(semantic_value):
-                raise ValueError("distillation attribution semantic path is empty")
+                raise _distillation_failure(
+                    "attribution_path_empty",
+                    "distillation attribution semantic path is empty",
+                    field_path=attribution.semantic_path,
+                    child_ids=(attribution.child_id,),
+                )
             if (
                 attribution.relation == "uncertainty"
                 and "uncertaint" not in attribution.semantic_path.casefold()
             ):
-                raise ValueError("uncertainty attribution must target an uncertainty path")
+                raise _distillation_failure(
+                    "uncertainty_path_invalid",
+                    "uncertainty attribution must target an uncertainty path",
+                    field_path=attribution.semantic_path,
+                    child_ids=(attribution.child_id,),
+                )
             if attribution.semantic_path in anchor_paths:
-                raise ValueError(
-                    "direct distillation attributions require unique semantic paths"
+                raise _distillation_failure(
+                    "attribution_path_duplicate",
+                    "direct distillation attributions require unique semantic paths",
+                    field_path=attribution.semantic_path,
+                    child_ids=(attribution.child_id,),
                 )
             anchor_paths.add(attribution.semantic_path)
             anchors.add(attribution.child_id)
         else:
             related = set(attribution.related_child_ids)
             if not related.issubset(promoted_set):
-                raise ValueError("distillation attribution references an unpromoted child")
+                raise _distillation_failure(
+                    "attribution_child_unpromoted",
+                    "distillation attribution references an unpromoted child",
+                    child_ids=related,
+                )
             relationships[attribution.child_id].update(related)
 
     visited: set[str] = set()
 
     def reject_cycle(child_id: str, active: set[str]) -> None:
         if child_id in active:
-            raise ValueError("distillation attribution graph cannot contain a cycle")
+            raise _distillation_failure(
+                "attribution_graph_cycle",
+                "distillation attribution graph cannot contain a cycle",
+                child_ids=(child_id,),
+            )
         if child_id in visited:
             return
         for related_id in relationships.get(child_id, set()):
@@ -249,7 +318,11 @@ def _validate_promoted_child_attribution(
         if not reaches_anchor(child_id, set())
     ]
     if uncovered:
-        raise ValueError("promoted distillation child lacks typed semantic attribution")
+        raise _distillation_failure(
+            "attribution_anchor_missing",
+            "promoted distillation child lacks typed semantic attribution",
+            child_ids=uncovered,
+        )
 
 
 def _resolve_semantic_pointer(semantic: dict[str, Any], pointer: str) -> object:
@@ -261,7 +334,11 @@ def _resolve_semantic_pointer(semantic: dict[str, Any], pointer: str) -> object:
         elif isinstance(current, list) and part.isdecimal() and int(part) < len(current):
             current = current[int(part)]
         else:
-            raise ValueError("distillation attribution semantic path does not exist")
+            raise _distillation_failure(
+                "attribution_path_missing",
+                "distillation attribution semantic path does not exist",
+                field_path=pointer,
+            )
     return current
 
 

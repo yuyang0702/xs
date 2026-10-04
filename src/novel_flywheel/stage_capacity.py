@@ -15,6 +15,10 @@ from novel_flywheel.recovery_engine import FailureClass, ReliabilityFailure
 
 CAPACITY_BOUNDARY_ID_V1 = "FS.CAPACITY.ADMIT"
 MAX_CONTEXT_LIMIT_TOKENS_V1 = 2_000_000
+# Unknown-capacity packets are still bounded by the Full Short stage ceiling.
+# This is a local admission envelope, not a claim about any provider's limit.
+UNKNOWN_CAPACITY_CONTEXT_CEILING_TOKENS_V1 = 32_768
+UNKNOWN_CAPACITY_SAFETY_MARGIN_TOKENS_V1 = 512
 
 
 _EXTERNAL_WORKLOAD_CAPABILITY_SEAL_V1 = object()
@@ -493,6 +497,129 @@ class CapacityLayerProjectionV1:
             rendered_sha256=rendered_sha256,
             projection_sha256=_canonical_sha256(payload),
         )
+
+
+@dataclass(frozen=True)
+class CapacityEnvelopeV1:
+    """Single bounded admission identity for small unknown-capacity calls.
+
+    This is deliberately a receipt, not an invented provider limit. It binds
+    the logical operation inputs and route identity so child layers can consume
+    one decision without independently stopping on missing context metadata.
+    The bounded path is temporary/review-required until route capability is
+    verified; provider hard limits and all semantic gates remain authoritative.
+    """
+
+    role: str
+    lane: str
+    route_fingerprint: str
+    contract_name: str
+    contract_version: int
+    authority_input_sha256: str
+    packet_window_identity: str
+    requested_output_tokens: int
+    estimated_input_tokens: int
+    source: str = "LOCAL_SAFE_BOUND_TEMPORARY_OR_REVIEW_REQUIRED"
+
+    @property
+    def envelope_sha256(self) -> str:
+        payload = asdict(self)
+        return _canonical_sha256(payload)
+
+
+@dataclass(frozen=True)
+class CapacityDecisionViewV1:
+    """The only consumer-facing projection of a capacity decision.
+
+    An envelope is intentionally not a StageCapacityPlan.  Consumers that
+    only need admission/identity use this view; fields requiring a complete
+    stage plan remain unavailable and therefore cannot be fabricated.
+    """
+
+    decision_sha256: str
+    admission_status: AdmissionStatus
+    envelope_sha256: str
+    requested_output_tokens: int
+    estimated_input_tokens: int
+
+
+def capacity_decision_view_v1(
+    decision: CapacityEnvelopeV1 | StageCapacityPlanV1,
+) -> CapacityDecisionViewV1:
+    if isinstance(decision, CapacityEnvelopeV1):
+        return CapacityDecisionViewV1(
+            decision_sha256=decision.envelope_sha256,
+            admission_status=AdmissionStatus.PASS,
+            envelope_sha256=decision.envelope_sha256,
+            requested_output_tokens=decision.requested_output_tokens,
+            estimated_input_tokens=decision.estimated_input_tokens,
+        )
+    if isinstance(decision, StageCapacityPlanV1):
+        return CapacityDecisionViewV1(
+            decision_sha256=decision.plan_sha256,
+            admission_status=decision.admission_status,
+            envelope_sha256=(
+                decision.logical_capacity_envelope_sha256
+                or decision.plan_sha256
+            ),
+            requested_output_tokens=decision.requested_output_token_cap,
+            estimated_input_tokens=decision.rendered_message_tokens,
+        )
+    raise TypeError("capacity_decision_type_invalid")
+
+
+def enforce_capacity_decision_v1(
+    decision: CapacityEnvelopeV1 | StageCapacityPlanV1,
+    *,
+    policy_registry: StageCapacityPolicyRegistryV1 = (
+        DEFAULT_STAGE_CAPACITY_POLICY_REGISTRY_V1
+    ),
+) -> CapacityDecisionViewV1:
+    """Enforce or validate one decision without a second capacity decision."""
+    if isinstance(decision, StageCapacityPlanV1):
+        enforce_stage_capacity_plan_v1(decision, policy_registry=policy_registry)
+    elif isinstance(decision, CapacityEnvelopeV1):
+        if (
+            decision.requested_output_tokens <= 0
+            or decision.estimated_input_tokens < 0
+            or (
+                decision.estimated_input_tokens
+                + decision.requested_output_tokens
+                > UNKNOWN_CAPACITY_CONTEXT_CEILING_TOKENS_V1
+                - UNKNOWN_CAPACITY_SAFETY_MARGIN_TOKENS_V1
+            )
+            or not decision.source.endswith("TEMPORARY_OR_REVIEW_REQUIRED")
+        ):
+            raise CapacityAdmissionFailureV1(
+                CapacityFailureCode.POLICY_VIOLATION
+            )
+    else:
+        raise TypeError("capacity_decision_type_invalid")
+    return capacity_decision_view_v1(decision)
+
+
+def build_bounded_unknown_capacity_envelope_v1(
+    *, role: str, lane: str, route_fingerprint: str,
+    contract_name: str, contract_version: int,
+    authority_input_sha256: str, packet_window_identity: str,
+    requested_output_tokens: int, estimated_input_tokens: int,
+) -> CapacityEnvelopeV1:
+    """Create one hash-bound local admission for a safely bounded request.
+
+    No context-window number is fabricated. Callers must apply the shared
+    small-input policy before using this receipt and still let the Provider
+    enforce its actual wire limits.
+    """
+    if requested_output_tokens <= 0 or estimated_input_tokens < 0:
+        raise ValueError("capacity_envelope_values_invalid")
+    return CapacityEnvelopeV1(
+        role=str(role), lane=str(lane), route_fingerprint=str(route_fingerprint),
+        contract_name=str(contract_name), contract_version=int(contract_version),
+        authority_input_sha256=str(authority_input_sha256),
+        packet_window_identity=str(packet_window_identity),
+        requested_output_tokens=int(requested_output_tokens),
+        estimated_input_tokens=int(estimated_input_tokens),
+    )
 
 
 @dataclass(frozen=True)
@@ -1471,6 +1598,8 @@ def require_route_capability_v1(record: object) -> object:
 
 __all__ = [
     "AdmissionStatus",
+    "CapacityEnvelopeV1",
+    "CapacityDecisionViewV1",
     "CAPACITY_BOUNDARY_ID_V1",
     "CAPACITY_FAILURE_IDS_V1",
     "CAPACITY_FAILURE_IDS_V3",
@@ -1481,12 +1610,17 @@ __all__ = [
     "DEFAULT_STAGE_CAPACITY_POLICY_REGISTRY_V1",
     "CapacityRecoveryDisposition",
     "MAX_CONTEXT_LIMIT_TOKENS_V1",
+    "UNKNOWN_CAPACITY_CONTEXT_CEILING_TOKENS_V1",
+    "UNKNOWN_CAPACITY_SAFETY_MARGIN_TOKENS_V1",
     "RouteContextCapabilitySourceV1",
     "StageCapacityAdmissionEngineV1",
     "StageCapacityPlanV1",
     "StageCapacityPolicyRegistryV1",
     "StageCapacityPolicyV1",
     "build_stage_capacity_plan_v1",
+    "build_bounded_unknown_capacity_envelope_v1",
+    "capacity_decision_view_v1",
+    "enforce_capacity_decision_v1",
     "capacity_failure_recovery_disposition_v1",
     "enforce_stage_capacity_plan_v1",
     "verify_rendered_request_v1",

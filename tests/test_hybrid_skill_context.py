@@ -34,7 +34,10 @@ from novel_flywheel.runtime_skill_profiles import (
     render_skill_context,
 )
 from novel_flywheel.skills import SkillGate, SkillScanner
-from test_phase05_evidence_closure import _service
+from test_phase05_evidence_closure import (
+    _install_offline_capacity_metadata,
+    _service,
+)
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -539,6 +542,7 @@ class _Gateway:
 
 
 async def _run_planning(service, store, project, workflow: str) -> None:
+    _install_offline_capacity_metadata(service.db)
     constraints = store.load_constraints(project.id)
     run_id, run_path = service._begin_run(project, "short-story", workflow)
     await service._stage(

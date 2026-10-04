@@ -30,8 +30,11 @@ _PROBE_ONLY_ENTRYPOINTS = {
     ),
 }
 _SPECIALIZED_OFFLINE_ENTRYPOINTS = frozenset({
+    "execute_full_short_budget_unblocked_one_round.py",
+    "foundation_closure_offline.py",
     "first_trustworthy_full_short_dry_run.py",
     "first_trustworthy_full_short_runner.py",
+    "full_short_budget_unblocked_campaign.py",
     "full_short_transport_failure_dry_run.py",
     "materialize_first_trustworthy_full_short_authorization.py",
 })

@@ -15,7 +15,10 @@ from novel_flywheel.ping_successor import (
     expected_evidence, SUCCESSOR_SCHEMAS, ERROR_HARDENING_SCHEMA,
     ERROR_HARDENING_SOURCE_IDENTITY, ERROR_HARDENING_SOURCE_SHA256,
 )
-from novel_flywheel.full_short_probe_campaign import SelectedSuccessorProbePlan
+from novel_flywheel.full_short_probe_campaign import (
+    SelectedSuccessorProbePlan,
+    build_probe_campaign_plan,
+)
 from novel_flywheel.external_workload_evidence import seal_historical_workload_admission_v1
 from tools.canary.ping_successor_binding import (
     build_ping_recovery_binding, build_error_hardening_binding, PingSuccessorBindingError,
@@ -2848,11 +2851,7 @@ def build_outer_authorization_v1(
         },
         "probe_campaign": {
             "schema": "FullShortEightProbeCampaignV1",
-            "plan_sha256": __import__(
-                "novel_flywheel.full_short_probe_campaign", fromlist=[
-                    "build_probe_campaign_plan",
-                ],
-            ).build_probe_campaign_plan(
+            "plan_sha256": build_probe_campaign_plan(
                 [fixture.case for fixture in fixtures],
                 source_blocked_shape_ordinals=source_ordinals,
             ).plan_sha256,

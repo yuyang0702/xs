@@ -4,6 +4,7 @@ from __future__ import annotations
 import hashlib
 import hmac
 import json
+import ast
 from pathlib import Path
 import shutil
 
@@ -32,6 +33,23 @@ def _proof_repo(tmp_path):
         "src/novel_flywheel/" + relative: hashlib.sha256((source / "src/novel_flywheel" / relative).read_bytes()).hexdigest()
         for relative in ("provider_payloads.py", "providers/http.py", "providers/registry.py", "context_policy.py")
     }
+    adapter_ast = ast.parse(
+        (source / "src/novel_flywheel/providers/anthropic.py").read_text(
+            encoding="utf-8"
+        )
+    )
+    complete = next(
+        node for node in ast.walk(adapter_ast)
+        if isinstance(node, ast.AsyncFunctionDef) and node.name == "complete"
+    )
+    request_doc["inventory"]["complete_request_prefix_ast_sha256"] = (
+        hashlib.sha256(
+            ast.dump(
+                ast.Module(body=complete.body[:5], type_ignores=[]),
+                include_attributes=False,
+            ).encode()
+        ).hexdigest()
+    )
     inventory_bytes = (json.dumps(request_doc["inventory"], ensure_ascii=False, indent=2) + "\n").encode("utf-8")
     inventory_sha = hashlib.sha256(inventory_bytes).hexdigest()
     request_doc["before_inventory_sha256"] = inventory_sha

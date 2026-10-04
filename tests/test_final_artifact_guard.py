@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import replace
+from types import SimpleNamespace
 
 import pytest
 
@@ -487,6 +488,65 @@ async def test_existing_distinct_fallback_recovers_through_domain_boundary(
     assert result.domain_value["message"].startswith("独立合法路由")
     assert primary.calls == 1
     assert fallback.calls == 1
+
+
+@pytest.mark.asyncio
+async def test_final_artifact_failure_keeps_configured_fallback_reachable_after_capture(
+    tmp_path,
+) -> None:
+    """A captured reasoning-only response is a route failure, not a terminal run.
+
+    Production adapters durably capture the provider response before the model
+    gateway classifies a missing final artifact.  The configured fallback must
+    still be allowed to own the same contract when that typed failure is
+    recoverable; only ordinary post-capture adapter failures are terminally
+    closed by the durability observer.
+    """
+    class DurableObserver:
+        @staticmethod
+        def provider_protocol_capture_complete() -> bool:
+            return True
+
+        @staticmethod
+        def contract_runtime_capture_present() -> bool:
+            return False
+
+        def mark_post_capture_terminal_failure(self, **_kwargs) -> None:
+            raise AssertionError("final-artifact capability must remain recoverable")
+
+    observer = DurableObserver()
+    gateway = SimpleNamespace(
+        registry=SimpleNamespace(attempt_observer=observer),
+        db=None,
+    )
+    calls: list[str] = []
+
+    async def attempt_executor(attempt, *_args, **_kwargs):
+        calls.append(attempt.route)
+        if attempt.route == "primary":
+            raise ReasoningOnlyFinalArtifactUnavailableError(receipt={
+                "route_fingerprint": "p" * 64,
+                "provider_call_executed": True,
+                "finish_reason": "max_tokens",
+            })
+        return SimpleNamespace(
+            text='{"message":"独立备用路由返回完整最终产物"}',
+            receipt={},
+        )
+
+    result = await execute_contract_runtime(
+        gateway,
+        role="planning",
+        system="system",
+        user="user",
+        execution_spec=_spec(_contract()),
+        max_output_tokens=16000,
+        attempt_routes=("primary", "configured_fallback"),
+        attempt_executor=attempt_executor,
+    )
+
+    assert result.attempt.route == "configured_fallback"
+    assert calls == ["primary", "configured_fallback"]
 
 
 @pytest.mark.asyncio

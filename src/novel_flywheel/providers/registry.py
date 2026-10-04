@@ -64,11 +64,17 @@ class ProviderRegistry:
         *,
         transport_policy: SingleDispatchTransportPolicyV1 | None = None,
         attempt_observer: SingleDispatchAttemptObserver | None = None,
+        canonical_dispatch_required: bool = False,
+        canonical_runtime_path_id: str = "",
+        canonical_dispatch_failure_handler: Callable[[str], None] | None = None,
     ) -> None:
         self.db = db
         self.secrets = secrets
         self.transport_policy = transport_policy
         self.attempt_observer = attempt_observer
+        self.canonical_dispatch_required = bool(canonical_dispatch_required)
+        self.canonical_runtime_path_id = str(canonical_runtime_path_id or "")
+        self.canonical_dispatch_failure_handler = canonical_dispatch_failure_handler
 
     def add_provider(
         self,
@@ -170,6 +176,7 @@ class ProviderRegistry:
     def resolve(
         self, provider_id: str, model_id: str, *,
         role: str | None = None, lane: str | None = None,
+        transport_policy: SingleDispatchTransportPolicyV1 | None = None,
     ) -> ResolvedModel:
         public = self.inspect_public_route(provider_id, model_id)
         provider = public.provider
@@ -200,8 +207,11 @@ class ProviderRegistry:
             adapter = ADAPTERS[provider["protocol"]](
                 provider["base_url"], secret, provider["extra_headers"],
                 provider["timeout_seconds"], auth_type=provider["auth_type"],
-                transport_policy=self.transport_policy,
+                transport_policy=(transport_policy or self.transport_policy),
                 attempt_observer=self.attempt_observer,
+                canonical_dispatch_required=self.canonical_dispatch_required,
+                canonical_runtime_path_id=self.canonical_runtime_path_id,
+                canonical_dispatch_failure_handler=self.canonical_dispatch_failure_handler,
             )
         except Exception as exc:
             raise ProviderClientConstructionFailure() from exc

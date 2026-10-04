@@ -117,6 +117,16 @@ def test_nested_route_failure_does_not_turn_transport_into_output_limit() -> Non
     assert context_policy.classify_model_failure(RoutesFailed()) == "transport_interrupted"
 
 
+def test_empty_http_transport_exception_type_is_still_transport() -> None:
+    class ConnectError(RuntimeError):
+        def __str__(self) -> str:
+            return ""
+
+    assert context_policy.classify_model_failure(ConnectError()) == (
+        "transport_interrupted"
+    )
+
+
 def test_nested_fatal_route_failure_wins_over_transient_route() -> None:
     class RoutesFailed(RuntimeError):
         def __init__(self):

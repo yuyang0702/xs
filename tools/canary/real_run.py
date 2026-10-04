@@ -497,11 +497,29 @@ async def run_registered_real_run(
                 boundary_counters = RealBoundaryCounters()
 
                 def production_gateway() -> ModelGateway:
+                    spine = app.state.reliability_spine
+                    # Real canary is the only path that may enable the strict
+                    # Foundation-Gates fence.  Offline fixtures use the same
+                    # spine but never cross this boundary.
+                    if not all(
+                        value == "PASS"
+                        for value in spine.foundation_gates().values()
+                    ):
+                        raise RuntimeError("reliability_foundation_gates_incomplete")
                     registry = GuardedProviderRegistry(
-                        ProviderRegistry(db, guarded_secrets), latch=latch,
+                        ProviderRegistry(
+                            db, guarded_secrets,
+                            canonical_dispatch_required=True,
+                            canonical_runtime_path_id=spine.release.runtime_path_id,
+                            canonical_dispatch_failure_handler=(
+                                spine.record_old_path_invocation
+                            ),
+                        ), latch=latch,
                         counters=boundary_counters,
                     )
-                    return ModelGateway(db, registry)
+                    gateway = ModelGateway(db, registry)
+                    gateway.dispatch_admitter = spine.admit
+                    return gateway
 
                 production = GuardedProductionGateway(
                     production_gateway, latch=latch,

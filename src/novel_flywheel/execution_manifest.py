@@ -1434,11 +1434,23 @@ def execution_manifest_fragment_issues(
         ))
         return issues
     segment = segments[0]
+    # Fragment generation may receive either packet-local ordinals (1..N) or
+    # the formal/global ordinals carried by the owning planning packet (for
+    # example 12..17 for a segment that owns the latter range).  The merge
+    # boundary rebinds every accepted fragment to one global sequence, so the
+    # fragment gate must prove ordering and contiguity without incorrectly
+    # requiring a local reset to one.  This keeps the ownership/evidence gates
+    # authoritative while preventing a valid packet from being widened during
+    # repair merely to satisfy a presentation convention.
     local_orders = [beat.order for beat in manifest.beats]
-    if local_orders != list(range(1, len(local_orders) + 1)):
+    expected_orders = (
+        list(range(local_orders[0], local_orders[0] + len(local_orders)))
+        if local_orders else []
+    )
+    if local_orders != expected_orders:
         issues.append(_issue(
             "non_contiguous_beat_order",
-            "子任务原子节拍顺序必须从 1 连续递增",
+            "子任务原子节拍顺序必须连续递增（允许沿用正式分片序号起点）",
             segment=owner_segment,
         ))
     expected_ids = [str(item).upper() for item in expected_event_ids]

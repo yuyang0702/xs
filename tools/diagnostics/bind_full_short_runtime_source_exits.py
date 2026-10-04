@@ -37,7 +37,7 @@ FULL_SHORT_RUNTIME_PROOF_DOMAIN_V1 = {
     "kernel_activation_requirements": {
         "tools.canary.first_trustworthy_full_short_runner:_execute_full_short_control_plane_with_capability.<locals>.supervised_operation": "exact_ast_sha256:44c8090c7020466ddd15ddcdf4e14f2f96694d868c2a73483a95a7cfd4120e6c",
         "tools.canary.first_trustworthy_full_short_runner:_execute_full_short_control_plane_with_capability.<locals>.prepare_predispatch_with_kernel": "exact_ast_sha256:c9be4dc06dfb0c01aa9a03bd7b5023a5580e9fbcb5b5736ba52a9388cfc60d51",
-        "tools.canary.first_trustworthy_full_short_runner:_execute_full_short_control_plane_with_capability.<locals>.terminal_closure.<locals>.commit_after_saga_cleanup": "exact_ast_sha256:e1bf111f296f3138d29137287a3331034f9069c6b6bb9052a195eb5f8d1f9fb6",
+        "tools.canary.first_trustworthy_full_short_runner:_execute_full_short_control_plane_with_capability.<locals>.terminal_closure.<locals>.commit_after_saga_cleanup": "exact_ast_sha256:876a23fa925ff146b8eb3a2323dea1de56ffba01a311d811431b4d29d387a2d7",
     },
     "in_scope": [
         "kernel-active exact Full Short runtime after canonical activation, JIT approval, and durable journal construction",

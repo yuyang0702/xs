@@ -1,6 +1,7 @@
 import asyncio
 import json
 import httpx
+from urllib.parse import urlsplit
 
 from novel_flywheel.provider_stream_error import (
     ProviderErrorEventV1, StreamProviderErrorEvidenceV1, normalize_stream_error_v1,
@@ -98,6 +99,16 @@ class AnthropicAdapter(HttpProvider):
     async def complete(self, request: ModelRequest) -> ModelResponse:
         self._bind_model_request("anthropic", request)
         payload = anthropic_payload_v1(request)
+        # DeepSeek's official Anthropic-compatible endpoint documents the
+        # explicit thinking toggle as ``thinking.type``.  Keep the existing
+        # generic ``reasoning`` projection for other Anthropic routes, but add
+        # the provider-native toggle when the caller selected the scoped
+        # final-artifact policy.  This is not a global reasoning change.
+        if (
+            request.reasoning_directive == "disable_reasoning"
+            and urlsplit(self.base_url).hostname == "api.deepseek.com"
+        ):
+            payload["thinking"] = {"type": "disabled"}
         auth_headers = ({"Authorization": f"Bearer {self.api_key}"}
                         if self.auth_type == "bearer" else {"x-api-key": self.api_key})
         path = "messages" if self.base_url.endswith("/v1") else "v1/messages"

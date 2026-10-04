@@ -2,6 +2,7 @@ import asyncio
 from contextlib import aclosing
 from dataclasses import asdict, dataclass
 import hashlib
+import inspect
 import json
 from typing import Any, Protocol
 
@@ -151,6 +152,9 @@ class HttpProvider:
         transport_policy: SingleDispatchTransportPolicyV1 | None = None,
         attempt_observer: SingleDispatchAttemptObserver | None = None,
         injected_http_transport: httpx.AsyncBaseTransport | None = None,
+        canonical_dispatch_required: bool = False,
+        canonical_runtime_path_id: str = "",
+        canonical_dispatch_failure_handler: Any = None,
     ) -> None:
         self.base_url = base_url.rstrip("/")
         self.api_key = api_key
@@ -158,6 +162,10 @@ class HttpProvider:
         self.auth_type = auth_type
         self.transport_policy = transport_policy
         self.attempt_observer = attempt_observer
+        self.canonical_dispatch_required = bool(canonical_dispatch_required)
+        self.canonical_runtime_path_id = str(canonical_runtime_path_id or "")
+        self.canonical_dispatch_failure_handler = canonical_dispatch_failure_handler
+        self._canonical_dispatch_authorization = None
         self._model_logical_calls = 0
         self._http_post_attempts = 0
         self._last_protocol_input_v1: tuple[bytes, str, str] | None = None
@@ -174,6 +182,37 @@ class HttpProvider:
                 timeout=timeout,
                 transport=httpx.AsyncHTTPTransport(retries=0),
             )
+
+    def bind_canonical_dispatch(self, authorization: Any) -> None:
+        """Bind the coordinator claim used by the next physical request."""
+
+        self._canonical_dispatch_authorization = authorization
+        observer = self.attempt_observer
+        callback = getattr(observer, "bind_canonical_dispatch", None)
+        if callable(callback):
+            envelope = getattr(authorization, "envelope", None)
+            value = envelope.as_dict() if callable(getattr(envelope, "as_dict", None)) else {}
+            callback(**value)
+
+    def _require_canonical_dispatch(self) -> None:
+        if not self.canonical_dispatch_required:
+            return
+        authorization = self._canonical_dispatch_authorization
+        if authorization is None:
+            handler = self.canonical_dispatch_failure_handler
+            if callable(handler):
+                handler("legacy_direct_provider_dispatch")
+            raise SingleDispatchTransportGuardError("canonical_spine_required")
+        envelope = getattr(authorization, "envelope", None)
+        runtime_path_id = str(
+            getattr(getattr(envelope, "build", None), "runtime_path_id", "")
+        )
+        if self.canonical_runtime_path_id and runtime_path_id != self.canonical_runtime_path_id:
+            raise SingleDispatchTransportGuardError("mixed_release_worker_fenced")
+        before_network = getattr(authorization, "before_network", None)
+        if not callable(before_network):
+            raise SingleDispatchTransportGuardError("canonical_spine_authorization_invalid")
+        before_network()
 
     def _begin_logical_call(self) -> None:
         if self.transport_policy is None:
@@ -234,6 +273,10 @@ class HttpProvider:
     def _before_http_post_attempt(
         self, *, url: str, payload: dict[str, Any], request_bytes: bytes,
     ) -> None:
+        # Canonical dispatch is the only production Provider entry point.
+        # It is checked before the observer and before any network bytes leave
+        # the process, so legacy adapter calls fail closed.
+        self._require_canonical_dispatch()
         # The local one-call ceiling is knowable before the observer may
         # reserve dispatch authority or a durable nonce.
         self._begin_logical_call()
@@ -252,13 +295,31 @@ class HttpProvider:
             self.attempt_observer.before_network_request()
 
     def _after_http_response(self, status_code: int) -> None:
+        self._record_canonical_response(status_code)
         if self.attempt_observer is None:
             return
         callback = getattr(self.attempt_observer, "after_http_response", None)
         if callable(callback):
             callback(status_code=status_code)
 
+    def _record_canonical_response(self, status_code: int) -> None:
+        authorization = self._canonical_dispatch_authorization
+        if authorization is not None:
+            callback = getattr(authorization, "after_response", None)
+            if callable(callback):
+                callback(status_code)
+            self._canonical_dispatch_authorization = None
+
     def _after_http_failure(self, exc: BaseException) -> None:
+        authorization = self._canonical_dispatch_authorization
+        if authorization is not None:
+            callback = getattr(authorization, "after_failure", None)
+            if callable(callback):
+                callback(
+                    unknown=isinstance(exc, (httpx.TimeoutException, httpx.TransportError)),
+                    failure=type(exc).__name__,
+                )
+            self._canonical_dispatch_authorization = None
         if self.attempt_observer is None:
             return
         callback = getattr(self.attempt_observer, "after_http_failure", None)
@@ -269,8 +330,18 @@ class HttpProvider:
         self, data: bytes, *, status_code: int, content_type: str,
         encoding: str, transport_complete: bool,
     ) -> bool | None:
+        authorization = self._canonical_dispatch_authorization
+        if authorization is not None:
+            callback = getattr(authorization, "capture_response", None)
+            if callable(callback):
+                callback(
+                    data, status_code=status_code,
+                    content_type=content_type or "application/octet-stream",
+                    encoding=encoding or "utf-8",
+                    transport_complete=transport_complete,
+                )
         if self.attempt_observer is None:
-            return
+            return None
         callback = getattr(
             self.attempt_observer, "capture_provider_protocol_input", None,
         )
@@ -294,12 +365,26 @@ class HttpProvider:
             self.attempt_observer, "capture_contract_runtime_input", None,
         )
         if callable(callback):
-            callback(
-                data=text.encode("utf-8"), adapter_id=adapter_id,
-                adapter_version=adapter_version,
-                finish_reason=finish_reason,
-                transport_complete=transport_complete,
-            )
+            kwargs = {
+                "adapter_id": adapter_id,
+                "adapter_version": adapter_version,
+                "finish_reason": finish_reason,
+                "transport_complete": transport_complete,
+            }
+            # The normal diagnostic observer consumes text; the Full Short
+            # ledger's established capture seam consumes UTF-8 bytes.  Select
+            # the declared parameter without changing either observer's
+            # persistence contract.
+            try:
+                parameter_names = inspect.signature(callback).parameters
+            except (TypeError, ValueError):
+                parameter_names = {}
+            if "text" in parameter_names:
+                callback(text=text, **kwargs)
+            elif "data" in parameter_names:
+                callback(data=text.encode("utf-8"), **kwargs)
+            else:
+                callback(text=text, **kwargs)
 
     def _replay_last_protocol_input_v1(
         self,
@@ -384,6 +469,7 @@ class HttpProvider:
                 encoding=response.encoding or "utf-8",
                 transport_complete=True,
             )
+            self._record_canonical_response(response.status_code)
             if response.status_code in {400, 404, 422} and "tools" in payload:
                 detail = response.text.lower()
                 if any(term in detail for term in ("tool", "function calling", "function_call")):
@@ -440,6 +526,7 @@ class HttpProvider:
                             encoding=response.encoding or "utf-8",
                             transport_complete=True,
                         )
+                        self._record_canonical_response(response.status_code)
                         detail = response.text.lower()
                         if (self.transport_policy is None
                                 and response.status_code in {400, 404, 422}

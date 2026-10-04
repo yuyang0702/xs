@@ -55,6 +55,7 @@ ReliabilityTraceEventType = Literal[
     "diagnostic_provider_shape_delta_v1",
     "diagnostic_ptr9_guard_decision_v1",
     "diagnostic_contract_output_limit_classification_v1",
+    "diagnostic_reference_analysis_boundary_v1",
     "skill_v3_selective_compiler_shadow_failure",
 ]
 ReliabilitySemanticDomain = Literal[
@@ -139,6 +140,9 @@ class ReliabilityTraceEnvelopeV1(BaseModel):
         }),
         "diagnostic_contract_output_limit_classification_v1": frozenset({
             "schema", "classification_sha256", "correlation_id",
+        }),
+        "diagnostic_reference_analysis_boundary_v1": frozenset({
+            "schema", "candidate_sha256", "stage", "status",
         }),
         "skill_v3_selective_compiler_shadow_failure": frozenset({
             "schema", "run_or_task_id_sha256", "stage", "compiler_version",
@@ -377,6 +381,11 @@ _REGISTRATIONS = (
             "outside_beat_ids", "future_beat_ids", "causal_order_valid",
             "causal_order_evidence", "summary",
         ),
+        # Viewpoint is a task-local atomic receipt obligation.  Keep the
+        # fields in the registered wire properties so a dynamic contract can
+        # promote them to required without producing a schema whose required
+        # list names properties that do not exist.
+        wire_optional_fields=("viewpoint_valid", "viewpoint_evidence"),
         wire_closed=True,
         minimum_business_characters=240,
     ),
@@ -716,6 +725,35 @@ _INTEGER_FIELDS = {"authority_version", "segment", "version"}
 
 
 def _wire_property_schema(field: str) -> dict[str, Any]:
+    if field == "viewpoint_valid":
+        return {"type": "boolean"}
+    if field == "viewpoint_evidence":
+        return {"type": "string", "minLength": 1}
+    if field == "beat_receipts":
+        beat_fields = (
+            "beat_id", "evidence", "actor_action_valid",
+            "actor_action_evidence", "state_valid", "state_evidence",
+            "scene_order_valid", "scene_order_evidence",
+        )
+        return {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+                "type": "object",
+                "properties": {
+                    "beat_id": {"type": "string", "minLength": 1},
+                    "evidence": {"type": "string", "minLength": 1},
+                    "actor_action_valid": {"type": "boolean"},
+                    "actor_action_evidence": {"type": "string", "minLength": 1},
+                    "state_valid": {"type": "boolean"},
+                    "state_evidence": {"type": "string", "minLength": 1},
+                    "scene_order_valid": {"type": "boolean"},
+                    "scene_order_evidence": {"type": "string", "minLength": 1},
+                },
+                "required": list(beat_fields),
+                "additionalProperties": False,
+            },
+        }
     if field == "score":
         return {"type": "number", "minimum": 0, "maximum": 100}
     if field in _INTEGER_FIELDS:
@@ -866,6 +904,7 @@ class ArtifactConversionAudit(BaseModel):
     candidate_count: int = 0
     semantic_valid: bool = False
     failure_code: str = ""
+    failure_detail: str = ""
 
 
 class ArtifactConversionResult(BaseModel):
@@ -1145,6 +1184,22 @@ def _try_semantic_normalizer(
     except (TypeError, ValueError):
         return None
     return normalized if isinstance(normalized, dict) else None
+
+
+def _safe_normalizer_failure(exc: BaseException) -> str:
+    """Extract stable validation coordinates without retaining model values."""
+    errors = getattr(exc, "errors", None)
+    if callable(errors):
+        parts: list[str] = []
+        try:
+            for item in errors(include_url=False)[:12]:
+                loc = "/" + "/".join(str(part) for part in item.get("loc", ()))
+                parts.append(loc + ":" + str(item.get("type", "validation_error")))
+        except Exception:
+            parts = []
+        if parts:
+            return ";".join(parts)[:1000]
+    return type(exc).__name__[:160]
 
 
 def _unique_semantic_envelope(
@@ -2301,6 +2356,21 @@ class GeneratedArtifactGateway:
             registration.parser_strategy == "baml_sap"
             and "baml_sap" in registration.recovery_ladder
         ):
+            # The causal-chain contract historically emitted ``causal_chain``
+            # while the current schema names the same owned cycle array
+            # ``cycles``.  This is a lossless, contract-local alias migration:
+            # retain the original field and expose one canonical field before
+            # topology discovery, so segment_map is not mistaken for a second
+            # cycle candidate.  Domain validation still owns every cycle and
+            # ownership invariant after conversion.
+            if (
+                contract_name == "short_causal_chain"
+                and not isinstance(payload.get("cycles"), list)
+                and isinstance(payload.get("causal_chain"), list)
+            ):
+                payload = dict(payload)
+                payload["cycles"] = payload["causal_chain"]
+                transformations = (*transformations, "causal_chain_alias")
             canonical_fast_path = isinstance(payload.get("cycles"), list)
             candidates = (
                 [("$.cycles", payload["cycles"])]
@@ -2412,6 +2482,7 @@ class GeneratedArtifactGateway:
                     "ambiguous_semantic_candidates"
                     if ambiguous else "contract_adaptation_failed"
                 ),
+                failure_detail=_safe_normalizer_failure(exc),
             )
             raise ArtifactConversionError(str(exc), audit=audit) from exc
         if adaptation.audits:
@@ -2434,10 +2505,15 @@ class GeneratedArtifactGateway:
                 candidate_count = 1
             method = "baml_sap"
 
-        normalized = (
-            _try_semantic_normalizer(semantic_normalizer, payload)
-            if semantic_normalizer is not None else payload
-        )
+        normalizer_error: BaseException | None = None
+        if semantic_normalizer is not None:
+            try:
+                normalized = semantic_normalizer(payload)
+            except (TypeError, ValueError) as exc:
+                normalizer_error = exc
+                normalized = None
+        else:
+            normalized = payload
         if not isinstance(normalized, dict):
             audit = ArtifactConversionAudit(
                 contract_name=contract_name,
@@ -2448,6 +2524,10 @@ class GeneratedArtifactGateway:
                 quarantined_paths=tuple(sorted(set(quarantined))),
                 candidate_count=candidate_count,
                 failure_code="semantic_validation_failed",
+                failure_detail=(
+                    _safe_normalizer_failure(normalizer_error)
+                    if normalizer_error is not None else ""
+                ),
             )
             raise ArtifactConversionError(
                 "generated artifact failed its authoritative semantic contract",

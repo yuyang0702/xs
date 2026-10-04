@@ -178,7 +178,14 @@ def normalize_causal_packet_payload(
         has_value(packet.get("core_goal")) or has_value(packet.get("opening"))
     ):
         return None
+    if owns_opening and (
+        not has_value(packet.get("core_goal"))
+        or not has_value(packet.get("opening"))
+    ):
+        return None
     if not owns_ending and has_value(packet.get("ending")):
+        return None
+    if owns_ending and not has_value(packet.get("ending")):
         return None
     return packet
 

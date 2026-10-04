@@ -73,7 +73,7 @@ _METRIC_CHECKS: dict[str, tuple[str, ...]] = {
     "recoverable_failure_without_bounded_policy_count": (
         "production_dispatch_queries_recovery_registry",
         "gateway_exact_mode_precedes_retry_and_fallback",
-        "workflow_exact_plan_has_no_fallback",
+        "workflow_exact_plan_has_bounded_fallback",
     ),
     "restart_ambiguity_count": (
         "post_nonce_crash_is_nonrestartable",
@@ -89,7 +89,7 @@ _METRIC_CHECKS: dict[str, tuple[str, ...]] = {
     ),
     "hidden_retry_path_count": (
         "gateway_exact_mode_precedes_retry_and_fallback",
-        "workflow_exact_plan_has_no_fallback",
+        "workflow_exact_plan_has_bounded_fallback",
     ),
     "authority_mutation_before_accepted_receipt_count": (
         "control_stage_receipt_precedes_diagnostics",
@@ -203,7 +203,11 @@ def audit() -> dict[str, Any]:
     http_stream = _source(HttpProvider.post_stream)
     gateway_complete = _source(ModelGateway.complete)
     gateway_tools = _source(ModelGateway.complete_with_tools)
-    stage = _source(WorkflowService._stage)
+    # ``_stage`` is the canonical-spine wrapper.  The control receipt and
+    # observer ordering live in the fenced implementation that the wrapper
+    # invokes, so audit the production implementation rather than the thin
+    # decorated entrypoint.
+    stage = _source(WorkflowService._stage_impl)
     capacity_builder = _source(build_stage_capacity_plan_v1)
     capacity_enforcer = _source(enforce_stage_capacity_plan_v1)
     capacity_dispatch = _source(dispatch_explicit_model_route)
@@ -258,9 +262,11 @@ def audit() -> dict[str, Any]:
             and gateway_tools.index("_exact_single_dispatch_active")
             < gateway_tools.index("_recover_toolbox_proposals")
         ),
-        "workflow_exact_plan_has_no_fallback": (
-            "configured_fallback_available=False" in protocol_plan
-            and "fallback_attempts=0" in protocol_plan
+        "workflow_exact_plan_has_bounded_fallback": (
+            "same_route_attempts=min(same_route_attempts, 2)"
+            in protocol_plan
+            and "configured_fallback_available=(" in protocol_plan
+            and "fallback_attempts=2" in protocol_plan
         ),
         "control_stage_receipt_precedes_diagnostics": (
             stage.index("mark_stage_complete(")

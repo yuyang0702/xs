@@ -22,6 +22,7 @@ from novel_flywheel.stage_capacity import (
     DEFAULT_STAGE_CAPACITY_POLICY_REGISTRY_V1,
     AdmissionStatus,
     CapacityAdmissionFailureV1,
+    CapacityEnvelopeV1,
     CapacityFailureCode,
     CapacityLayerClass,
     CapacityLayerProjectionV1,
@@ -34,10 +35,41 @@ from novel_flywheel.stage_capacity import (
     _issue_verified_external_workload_capacity_issuer_v1,
     _mint_verified_external_workload_capacity_capability_v1,
     build_stage_capacity_plan_v1,
+    build_bounded_unknown_capacity_envelope_v1,
+    capacity_decision_view_v1,
+    enforce_capacity_decision_v1,
     capacity_failure_recovery_disposition_v1,
     validate_capacity_attempt_delta_v1,
     verify_rendered_request_v1,
 )
+
+
+def test_capacity_envelope_uses_explicit_consumer_view_not_plan_fields():
+    envelope = build_bounded_unknown_capacity_envelope_v1(
+        role="review", lane="configured_fallback", route_fingerprint="route",
+        contract_name="draft_atomic_semantic_receipt", contract_version=1,
+        authority_input_sha256="a" * 64, packet_window_identity="segment-05",
+        requested_output_tokens=1024, estimated_input_tokens=1200,
+    )
+    view = enforce_capacity_decision_v1(envelope)
+    assert view.admission_status is AdmissionStatus.PASS
+    assert view.decision_sha256 == envelope.envelope_sha256
+    assert view.envelope_sha256 == envelope.envelope_sha256
+    with pytest.raises(AttributeError):
+        _ = envelope.stage  # type: ignore[attr-defined]
+
+
+def test_capacity_envelope_accepts_scoped_creative_budget_inside_stage_window():
+    """A repair packet may exceed 8K output when its measured envelope fits."""
+    envelope = build_bounded_unknown_capacity_envelope_v1(
+        role="draft", lane="primary", route_fingerprint="route",
+        contract_name="draft_segment", contract_version=1,
+        authority_input_sha256="a" * 64, packet_window_identity="draft-part-05",
+        requested_output_tokens=8_281, estimated_input_tokens=18_601,
+    )
+    view = enforce_capacity_decision_v1(envelope)
+    assert view.admission_status is AdmissionStatus.PASS
+    assert view.requested_output_tokens == 8_281
 
 
 def _layer(

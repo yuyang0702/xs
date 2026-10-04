@@ -2283,6 +2283,19 @@ async def test_v3_receipts_reuse_unaffected_segments_and_leave_boundary_to_whole
     assert artifact and service._planning_adaptation_artifact_valid(
         artifact, state, original, [], 3, "context-v2",
     )
+    async def no_redispatch(*args, **kwargs):
+        raise AssertionError("accepted adaptation must not be redispatched")
+
+    service._stage = no_redispatch
+    reused_plan, reused_artifact, reused_changed = (
+        await service._ensure_short_plan_adaptations(
+            "adaptation-run", run_path, project, "constraints", state,
+            original, [], 3, generation_context_sha256="recovered-context",
+        )
+    )
+    assert reused_plan == original
+    assert reused_artifact == artifact
+    assert reused_changed is False
     stale_boundary = json.loads(json.dumps(artifact, ensure_ascii=False))
     stale_boundary["segments"][0]["boundary_sha256"] = "0" * 64
     assert not service._planning_adaptation_artifact_valid(

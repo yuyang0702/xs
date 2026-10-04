@@ -1,6 +1,40 @@
 # Novel Flywheel Maintenance
 
+## Short Runtime canonical dispatch spine
+
+Production Provider traffic is admitted by one canonical spine in
+`novel_flywheel.reliability_spine`: canonical episode identity, immutable
+execution envelope, physical request ledger, capture manifest and the HTTP
+transport. `create_app` enables the HTTP fence on its registry, so a legacy
+adapter call without a coordinator authorization fails before network bytes
+are sent. Each physical request receives a release-build, worker-fencing and
+runtime-path identity; the ledger records `RESERVED`, `DISPATCHING`, response
+or typed transport-failure transitions, while the manifest is created before
+the first network attempt. A stale envelope, mixed worker path, duplicate
+physical request or ambiguous cutover is rejected locally. Offline tests use
+explicit mock transports and can construct an unfenced registry for fixtures;
+they do not authorize production traffic.
+
+The real-canary runner uses this same spine instead of constructing a second
+`ProviderRegistry`/`ModelGateway` authority. It refuses the paid boundary until
+the persisted Foundation Gates record is complete. `DurableNodeStateStore`,
+`TypedFailureGraphStore`, `RecoveryCoordinator` and `CutoverRegistry` are part
+of that record; a stale route fingerprint, release identity, worker fence, or
+capture manifest fails before bytes are sent. Ordinary offline tests exercise
+the transport seam, while a real canary must prove the loaded release and the
+production-shaped matrix.
+
 ## Structured receipt capacity, quarantine and dispatch accounting
+
+### Supervised retry after workflow error persistence
+
+Short-story workflow cleanup records a safe `failed` status before the outer
+worker classifies an exception. When that exception is a retryable provider
+transport failure, the supervision row remains the live owner and the atomic
+provider-wait transition accepts this ordered `failed`/active-supervision pair.
+The run then enters `waiting_provider` with its existing bounded backoff and
+resume payload; terminal failures and cancellation keep their separate strict
+predicates.
 
 ### Normal API entry for Short receipt-only recovery
 
@@ -356,6 +390,7 @@ attempt or both accept conflicting validated authority.
 Active project artifacts are appended by `ProjectStore.load_constraints()` and therefore use the existing planning, draft, review, and polish routes. Stale artifacts are excluded. Candidate outlines and line edits stay below `<project>/learning/`; formal outlines and manuscripts are never direct targets.
 
 `reference_analysis`, `reference_synthesis`, and `line_edit` are normal role bindings with configured fallbacks. Only explicit UI actions call them. Regression examples in `src/novel_flywheel/quality_regression.json` and all automated tests remain provider-free.
+Reference synthesis permits one fresh fallback requalification after a stale protocol-invalid mark; a second malformed response re-quarantines the exact route.
 
 Optional LTP lifecycle endpoints are under `/api/settings/local-nlp`. Installation never runs during startup or migration. Enabled analysis launches `novel_flywheel.nlp_worker` as a bounded process, caches results by text/version hash, and returns rule-only fallback metadata on failure.
 
@@ -1077,6 +1112,22 @@ Core identity, knowledge, dependency, causality, timeline, viewpoint, promise, a
 
 `RecoveryController` is the shared policy boundary for transport, credentials, capabilities, context capacity, output truncation, syntax/protocol, ownership/evidence, semantic invariants, quality regression, stale authority, and unknown failures. The ladder always starts at the smallest safe action and ends by restoring the best complete candidate. Candidate comparison requires a strict hard-issue reduction, no new hard issue, byte-stable unowned scopes, and no quality-floor regression. Strict progress refreshes only the still-failing unit’s budget. Protocol errors do not spend semantic-repair attempts, and provider failures do not authorize prose mutation. A stale plain-mode `required_fields_missing` quarantine for an atomic/segment semantic-receipt contract is a bounded requalification signal, not proof that the route is unusable: the native receipt schema, semantic validator, and evidence ownership remain authoritative after the retry. A run marked `interrupted` by startup recovery remains eligible for the exact same receipt-only resume when its candidate, authority, and run identity still bind. Scope admission reports stage and contract mismatches as distinct local codes, keeping a known wrong operation fail-closed without spending a Provider dispatch.
 
+Generated-root semantic recovery is monotonic across its two bounded repair versions. New exhaustion events bind the final attempt, mode, candidate hash, artifact path, and source hash. A legacy exhaustion event that predates those fields may reuse only the final bounded repair checkpoint, and only when its independently saved first receipt-window stage checkpoint has reached `local_semantics`, its raw output hash still matches the artifact, and the same deterministic verdict normalization and unique-evidence alignment used by the original Review path validates the current task, authority, execution manifest, candidate hash, ordered ownership, and exact prose evidence. Recovery never scans backward to an earlier repair merely because that older hash appears in a prior protocol event. Ambiguous checkpoints, missing proof, a stale authority, an incorrect task, or a changed artifact fail closed without regenerating the root or adding another repair attempt.
+
+Receipt windows remain independently owned semantic recovery units. When an earlier
+window has passed and a later window rejects the current candidate, the existing
+two-mode repair ladder is scoped to that later window; its candidate-generated
+event binds the window task identity, source hash, output hash, artifact path and
+current Draft authority. This refreshes only the remaining failing unit's bounded
+ladder under the granular recovery policy; it never raises the global repair cap
+or permits a third attempt for the same window. A mixed receipt that combines
+semantic verdicts with unbound evidence is handled as two layers: Runtime freezes
+the semantic verdict and retries only the protocol/evidence fields, while a
+protocol exhaustion preserves the prose and cannot start a prose repair. A
+legitimate semantic REJECT is admitted to the scoped prose repair path only after
+the receipt protocol is valid or its persisted semantic findings are explicitly
+separated and the new prose is sent through the complete native Review closure.
+
 Every model `_stage` now records a SQLite `workflow_node_checkpoints` envelope containing run/node identity, StoryState-bound authority hash, input/output hashes, attempt, route fingerprint, finish metadata, and status. A model return is recorded only as `generated_complete`; it is not resumable as validated narrative authority. Existing stage validators, candidate promotion, planning/draft checkpoints, and formal-write journals remain the sole promotion path. Failed observations have no output hash, and a conflicting validated envelope is rejected. This table is additive, idempotent, and removed automatically with its run.
 
 Successful model probes are route-local observations with a seven-day expiry. Their fingerprint binds protocol, normalized base URL, authentication mode, non-secret extra headers, and actual model name. Changing a route marks the observation stale; an expired or mismatched observation degrades operational structured output to locally validated `plain_text` and tool support to `auto` until reprobed. Legacy manually stored capability data remains readable, but once a route has an observed probe, the observation owns runtime capability. A 404 is reported as `route_endpoint_not_found` with guidance to check the base URL `/v1` ownership and protocol adapter; it never declares that the model itself does not exist. Credential rejection, rate limiting, timeout, and connection failure have separate diagnostics.
@@ -1245,7 +1296,10 @@ credential-like values are never persisted.
 Worker outcomes use the same transaction boundary. Completion, provider wait,
 terminal failure, and cancellation each update the run row, supervision
 envelope, attempt ledger, public event, and applicable production-incident
-metadata under one `BEGIN IMMEDIATE`. Policy classification is calculated
+metadata under one `BEGIN IMMEDIATE`. SQLite connections use a bounded 30-second
+busy timeout so short-lived concurrent event writers do not turn lock
+arbitration into a lost worker-outcome commit; this changes no workflow or
+provider policy. Policy classification is calculated
 without persistence first, so a crash cannot leave `running/irrecoverable` or
 `completed/running` halves. A local outcome-commit fault is retried once, then
 uses a fixed hash-only degraded audit event while preserving the already-decided
@@ -1474,6 +1528,12 @@ eligibility. `learning_artifact` remains a read-only compatibility identity;
 new reference-window model calls use the specific version-2
 `reference_analysis_window` contract, while final and hierarchical distillation
 use `reference_distillation_region`.
+
+If a provider response is durably captured but yields no typed final artifact,
+Contract Runtime may continue through the role's configured fallback. Terminal
+post-capture closure is limited to the current attempt's ordinary adapter
+failure; an earlier route's stale capture is never closed against a later
+pre-dispatch rejection.
 
 ### Material-audit full authority and atomic issue-ledger commit
 
@@ -2758,6 +2818,40 @@ The bounded ping-recovery successor separates eight capacity obligations from th
 The response path now uses an incremental SSE framer and one checkpoint owner. Full Short persists signed generations under its existing external execution authority, with an explicit typed ACK and read-only rehydration. Partial tails preserve accepted semantic terminals; pre-terminal timeout and cancellation preserve their own cause. The final raw capture remains single-use. Requests and narrative authority are unchanged. See docs/superpowers/specs/shared-anthropic-durable-stream-v4.md; closure gates remain pending in the V4 report directory.
 
 The Full Short probe observer now projects the canonical durable owner through its semantic snapshot when producing `stream_outcome_v1`; persistence-only owner fields remain in the signed checkpoint and are not copied into the strict public probe schema. Provider error evidence and capture-failure precedence are taken from that same owner after client close, so terminal causes and transport-tail diagnostics survive the observer boundary without a second dispatch. The current production-shaped evidence matrix passes 44/44 cases, and the isolated related stream/provider/checkpoint selection passes 1469/1469 with zero original-repository mutation or outbound network activity.
+
+### Exact Review contract requalification
+
+When a generated Short-story root or its persisted semantic repair is current but the exact Review route/contract row is quarantined, an explicitly authorized native resume may bind one requalification scope around the existing semantic-receipt call. The scope includes the run, immutable candidate hash, current Review provider/model/route fingerprints, contract name/version/schema hash, reasoning policy, and stage role. The ordinary gateway path still fails closed on quarantine. The exception is active only for that exact scope, and the existing Contract Runtime conversion and domain validators remain the sole qualification authority.
+
+Every attempted provider dispatch is claimed atomically in `workflow_attempts` before the adapter boundary. Claims survive process restart and cap the operation at four total calls and two calls per route. The second call on one route requires either a typed transient transport failure or a changed rendered request condition; a claimed but interrupted request cannot be replayed as though unused. A complete contract-valid response marks only the exact qualification row as qualified and closes the exception. A contract-valid semantic `REJECT` proves protocol capability but still follows the existing prose repair path. Use `tools/canary/review_requalification_resume.py` with the current run and candidate hash to enter the supervised native Short workflow; the launcher verifies that the bound candidate file remains byte-identical.
+
+### Canonical Short execution identity
+
+`RunTaskManager` binds the supervised project ID, run ID, workflow kind and the
+current route configuration digest around the full asynchronous operation.
+`ModelGateway` carries that immutable snapshot to every canonical Provider
+admission. Planning requests that precede a manuscript candidate use a
+content-free digest of the exact system/user authority, and durable node IDs
+also include the contract, request-authority digest and route fingerprint.
+
+The production reliability spine rejects an incomplete identity or a config
+snapshot that differs from the worker's cutover snapshot before HTTP. Such a
+rejection is a local admission failure; it is never reported as malformed
+model output and cannot trigger receipt correction or fallback. A role-binding
+change therefore requires a fresh worker/cutover attestation before new Short
+dispatches, while an already running episode retains its original snapshot.
+
+Before any Provider entity enters adapter or Contract Runtime conversion, the
+same canonical authorization stores a privacy-safe response evidence document.
+The document binds the physical request, episode, build, worker fence,
+candidate, contract and route; it retains the raw byte hash and length, the
+complete/partial transport state and the parsed final content while removing
+hidden reasoning. The spine immediately reads the file back and records its
+hash and relative path in both the physical ledger and `CaptureManifestV1`.
+A post-response write failure therefore remains an already-consumed request
+with `RESPONSE_CAPTURE_FAILED`; it is not reclassified as a transport failure
+and cannot authorize a request made only to replace missing logs.
+
 ### V12 parent semantic receipt capacity closure
 
 The atomic Draft semantic-receipt prompt now explicitly requests the shortest
@@ -2772,6 +2866,27 @@ failed before receipt acceptance, the resume boundary now reuses that immutable
 child for native semantic-receipt validation. It records the candidate hash and
 keeps Draft request count at zero; it falls back to generation only when no
 existing child passes the local prose gate.
+
+The parent Short workflow also resumes an immutable root Draft when its exact
+`generated_complete` stage checkpoint is followed by a native root or owned
+receipt-window `semantic_receipt_protocol_exhausted` event. Recovery requires
+the current StoryState-bound stage authority and input hash, the unchanged root
+prose hash, the current execution-manifest task ownership, and the native window
+identity to agree before Review is dispatched. It never relabels a root as a
+split child and never calls initial Draft generation. A successful recovery
+persists the complete root receipt through the existing workflow-node
+checkpoint mechanism, revalidates that receipt against the full root contract,
+and only then enters the ordinary segment checkpoint and seal path. A partial
+window, stale authority, changed candidate, or wrong task binding remains
+non-authorizing. Repeating resume reuses the validated full-root receipt or the
+accepted segment checkpoint instead of accepting or dispatching it twice.
+If native Review returns substantive semantic findings, recovery preserves the
+generated root file and enters the existing bounded semantic-repair stage. Each
+repair is saved under its own stage artifact, checked against the same full root
+contract, local prose gates, locked facts, passage protections, and quality
+floor, then re-reviewed before it can become the Segment checkpoint. Recovery
+permits only the two targeted minimal-repair modes; it never falls through to a
+fresh initial root Draft call or treats the rejected root receipt as accepted.
 
 Causal-order receipt retries also identify the required evidence shape as one
 contiguous current-candidate action-to-result sentence, preventing the model
@@ -2793,3 +2908,139 @@ introduced.
 Boundary evidence retries now also bind entry to the current candidate's
 opening state and exit to its closing state, avoiding cross-sibling or contract
 paraphrases without changing the receipt contract.
+
+### Execution fragment ordinal convergence
+
+Execution-manifest fragments may retain the formal ordinal range supplied by
+their packet (for example 12–17) or use a packet-local range (1–6). The shared
+fragment gate now proves strict contiguous ordering without forcing every
+packet to reset at one; the merge boundary remains the sole owner that
+rebinds accepted fragments to the document-global sequence. Ownership,
+evidence, handoff, future-scope, and domain validators are unchanged. This
+prevents a valid packet from being widened during repair and is covered by
+formal-ordinal and non-contiguous regression fixtures.
+
+### Stabilization bridge register (V4.1)
+
+The following run-time bridges are not normative compatibility requirements;
+each is registered as `TEMPORARY_OR_REVIEW_REQUIRED` until the shared-boundary
+review closes it with production-shaped replay evidence:
+
+- accepted planning-adaptation ledger reuse when only a volatile generation
+  context changed;
+- accepted execution-manifest authority reuse across a recoverable runtime
+  revision;
+- packet-scoped execution-fragment diagnostic capture and local domain replay;
+- packet-local/global ordinal convergence in the fragment gate;
+- bounded unknown-capacity admission for small plain requests;
+- route-qualification unlocks and requalification exceptions for prior
+  output-limit, protocol, required-field, or reasoning-only evidence.
+
+These bridges retain the original authority, provider hard limits, schema and
+domain gates. Replay decisions must use business/contract invariants and
+hash-bound evidence, not the output of the patched implementation. Each bridge
+has an explicit removal gate: the corresponding shared capacity/recovery
+boundary must pass the deterministic replay fixtures and the current-project
+private snapshot before it may be promoted or deleted.
+
+Structured contracts now use a shared `FINALIZATION_FIRST_IF_SUPPORTED`
+reasoning policy. It disables hidden reasoning only on the already verified
+DeepSeek Official Anthropic route and otherwise preserves the provider default;
+it does not alter role bindings or claim a capability for an unverified route.
+On that exact route the resolver also restores the verified 8192-token
+structured envelope when the historical 4247-token observation would otherwise
+leave no visible artifact; the provider's actual hard limit and native gates
+still decide acceptance.
+
+The shared structured-output budget resolver also consumes a verified runtime
+route capability when the model metadata row has no declared context window.
+Bounded receipts reserve protocol/schema/provider margin against that capability
+instead of allowing an unbounded model-row estimate to trigger repeated review
+windowing. The route's wire hard limit and all semantic gates remain authoritative.
+
+### Provider-wait outcome commit boundary
+
+The existing owned semantic receipt window eligibility now uses its own
+eight-item window limit rather than a separate stale 24-item threshold.
+This corrects the uncovered 9--24-item range without adding another split
+layer or changing merge, evidence, schema or full-contract validation.
+Status: `TEMPORARY_OR_REVIEW_REQUIRED` pending the final convergence review;
+real production acceptance remains distinct from the local topology tests.
+
+Provider transport failures may occur while a worker is in a typed protocol,
+semantic, or quality-repair recovery state. The durable `waiting_provider`
+transition therefore accepts those active supervision states as well as
+`running` and an already waiting run. This is a shared state-machine
+invariant, not a stage-specific skip: the run keeps its validated checkpoint,
+failure classification, and retry authority, and no provider request is
+redispatched until the normal recovery scheduler activates it.
+
+### Bounded provider route-failure evidence (V4.1)
+
+Route-failure events now retain a bounded, redacted classification when the
+exception carries an HTTP response: status (401/403 credential or permission,
+404 route/configuration, 429 rate-limit/quota, 5xx upstream), the first safe
+top-level provider `code`/`type`, whether `Retry-After` was present plus its
+numeric value when parseable (capped at 24 hours), whether a response was
+received, and whether a usage object was present.
+Response bodies, request headers, credentials, and model text are never
+persisted. Transport failures without a response remain explicitly unknown;
+they must not be promoted to an external-availability hard stop without
+additional evidence. This capture is diagnostic-only and is registered as
+`TEMPORARY_OR_REVIEW_REQUIRED` until a production replay proves the complete
+primary/fallback classification path.
+
+### One-call Review diagnostic capture (2026-09-20)
+
+The formal Review requalification canary accepts an explicit, task-scoped
+capture directory for one authorized Provider request. The observer records
+the serialized wire request, route and contract context, a redacted Provider
+response projection, adapter output, and validator/conversion events before
+normalization or exception wrapping loses those boundaries. Credentials,
+headers, cookies, and hidden reasoning content are excluded; raw hashes and
+lengths remain available when the response cannot be safely projected.
+
+Capture is evidence-only: it does not alter acceptance, retry, qualification,
+or candidate files, and it rejects a second dispatch or a mismatched route.
+Synthetic fixtures must be replayed and re-readable before the single real
+request is allowed. Historical attempts remain unknown when their raw bodies
+were not retained; a new sample is never backfilled into an old attempt.
+
+The observer is bound before route resolution to the native semantic-receipt
+contract (`draft_atomic_semantic_receipt` or
+`draft_segment_semantic_receipt`). A non-target contract, missing stage
+context, route drift, or request/bytes mismatch is a local
+`ReviewDiagnosticCaptureScopeError` with a no-redispatch reliability boundary.
+It is not a Provider response parse failure and must not enter the generated
+artifact normalization retry path. `ProviderResponseCaptureError` remains
+reserved for actual captured response parsing, replay, and response-integrity
+failures.
+
+### Physical HTTP accounting and resumed Short capture
+
+Review requalification limits count durable physical Provider HTTP claims at the adapter admission boundary. A scheduler slot rejected by a typed local admission error before that claim remains in failure history but is not counted as Provider usage. When the persisted event chain proves every slot in one authorization failed before dispatch and no matching claim rows exist, the parent workflow writes one idempotent accounting correction event and re-enters the same authorization. It never creates a new budget group or releases a claimed or unknown request.
+
+The Short diagnostic observer exposes only its declared optional state and callbacks when no Full Short observer is present. Unknown attributes retain normal `AttributeError` behavior, so wiring errors cannot masquerade as a sealed route or capability. Local admission mismatches are typed and stop the protocol schedule before configured fallback; they are not Provider output failures.
+
+### Atomic semantic receipt wire contract
+
+Atomic receipt schemas define dynamic viewpoint fields in `properties` before promoting them to `required`, and describe each `beat_receipts` item with its closed beat-level shape. This prevents a malformed wire contract from silently accepting ownership arrays inside a beat object; the unchanged local validator remains authoritative for evidence and semantic acceptance.
+
+### Draft receipt protocol and prose-repair boundary
+
+Contract Runtime domain retries can end with exact Draft receipt findings even
+when the provider returned a normal HTTP response. The stage boundary now
+classifies those findings before handing control back to Draft recovery.
+Closed-schema, identity, coverage, and evidence-binding findings remain typed
+receipt-protocol failures: the candidate prose stays byte-identical, the exact
+finding set feeds the bounded immutable-receipt schedule and its configured
+fallback, and exhaustion stops without consuming a creative rewrite. The Draft
+leaf rewrite controller repeats the same invariant defensively, so a broader
+exception wrapper cannot turn `receipt_shape` or another pure protocol finding
+into a prose retry. A mixed receipt sends only its independent business-reject
+findings to content repair; protocol defects never authorize a manuscript
+change.
+
+## Review requalification dispatch claims
+
+Review contract requalification uses a durable, run-scoped dispatch claim in `Database.claim_review_requalification_dispatch`. The claim binds the authorization digest, route identity, and rendered request-condition digest, consumes one bounded slot before transport, and enforces both total and per-route limits. A repeated request with the same condition is rejected unless the prior claim is explicitly recorded as a typed transient failure. Claims remain in `workflow_attempts` so reopening or migrating the database cannot reset the budget. Finalization and physical-release transitions remain separate authority steps.

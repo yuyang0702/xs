@@ -82,6 +82,17 @@ INCIDENT_DEFINITIONS = (
         ),
     ),
     IncidentDefinition(
+        "runtime.canonical_episode_identity_unbound",
+        "Short Provider dispatch lost its supervised project/run identity",
+        "Bind the supervised project, run, workflow and route-configuration digest around the complete asynchronous operation. Derive a content-free request authority digest and a route-exact durable node before canonical admission. Production dispatch must fail locally before HTTP when any identity is missing or stale; it must not be relabelled as invalid model output or consume a protocol retry.",
+        (
+            r"canonical_episode_identity_incomplete",
+            r"project_id.?[=:].?unknown.*run_id.?[=:].?unbound",
+            r"workflow_execution_(?:run_)?identity_mismatch",
+            r"stale_cutover_config",
+        ),
+    ),
+    IncidentDefinition(
         "initialization.location_backlink_missing",
         "初始化地点与人物反向链接缺失",
         "由 Runtime 对人物 locations 与地点 notable-characters 做确定性双向闭合，随后原子执行 reindex、links 和 validate。",
@@ -446,6 +457,17 @@ INCIDENT_DEFINITIONS = (
             r"自动拆分后的正文段.*明显超过",
             r"自动拆分.*(?:超长|长度|篇幅).*(?:失败|超过)",
             r"split.*merge.*(?:overlength|length mismatch)",
+        ),
+    ),
+    IncidentDefinition(
+        "draft.semantic_receipt_protocol_misrouted",
+        "Draft receipt protocol failure was routed into prose regeneration",
+        "Classify closed-schema, binding, coverage and evidence-shape findings at the Contract Runtime boundary before they reach Draft recovery. Preserve the immutable prose, carry the exact findings through the bounded receipt schedule and configured fallback, and raise a typed receipt-protocol exhaustion when no route produces a valid receipt. Keep a second invariant at the leaf rewrite boundary so a broader wrapper cannot convert a pure receipt defect into prose regeneration. A mixed response may send only independently valid business-reject findings to content repair; protocol findings never authorize prose changes.",
+        (
+            r"draft_semantic_rewrite_exhausted.*(?:receipt_shape|required_fields_missing)",
+            r"(?:receipt_shape|required_fields_missing).*draft_semantic_rewrite_exhausted",
+            r"semantic receipt shape is invalid.*(?:rewrite|重写)",
+            r"回执(?:格式|协议).*误.*正文(?:重写|返修)",
         ),
     ),
     IncidentDefinition(

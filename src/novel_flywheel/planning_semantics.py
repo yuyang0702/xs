@@ -405,6 +405,15 @@ def render_actionable_planning_semantic_findings(
         + serialized
         + "\nUNTRUSTED_VALIDATOR_DATA_JSON_END"
     )
+    packet_event_count = metadata.get("packet_event_count")
+    if type(packet_event_count) is int and packet_event_count >= 1:
+        rendered += (
+            "\nPACKET-OWNED CARDINALITY CONSTRAINT\n"
+            f"This packet owns exactly {packet_event_count} event(s). "
+            "Return exactly that many event objects, with packet-local "
+            f"formal_event_ordinal values 1..{packet_event_count} exactly once "
+            "and in order. Do not return the full outline or any unowned event."
+        )
     if len(rendered.encode("utf-8")) > PLANNING_SEMANTIC_FINDING_MAX_BYTES:
         raise PlanningSemanticFindingContractError(
             "planning_semantic_retry_bytes_exceeded"
@@ -778,6 +787,9 @@ def semantic_planning_packet_prompt_v2(
     } for index, event in enumerate(events, 1)]
     return (
         "IR_FIRST_SHORT_PLANNING_PACKET_V2\n"
+        "HARD PACKET SHAPE: the top-level segments array MUST contain exactly "
+        "one object, and that object's integer segment MUST be 1. The Runtime "
+        "will inject the global segment number; never emit the global number.\n"
         + planning_semantic_model_visible_contract_v2()
         + "This is one Runtime-owned semantic packet of the complete short-story plan. "
         "Return one canonical PlanningSemanticDraftV2 JSON object with exactly one local "
@@ -787,11 +799,25 @@ def semantic_planning_packet_prompt_v2(
         "global segment identity, adjacent exit topology, and terminal authority, then "
         "revalidates the complete merged plan. Preserve actor agency, chronology, knowledge, "
         "relationships, promises, setup/payoff, genre voice, and confirmed ending logic.\n"
+        "This packet is executable planning IR, not manuscript prose. Keep each event "
+        "narrative between 200 and 900 Chinese characters and keep the complete JSON "
+        "object under 6000 visible characters. Use the available space for concrete "
+        "action, resistance, result, and state change; do not expand scenes, dialogue, "
+        "or atmosphere into draft chapters.\n"
+        "FINAL SHAPE CHECK: output exactly one terminal local segment (segment=1) "
+        "with only its packet-local event ordinals 1..N.\n"
         "PACKET CONTRACT:\n"
         + json.dumps(packet_contract, ensure_ascii=False, sort_keys=True)
         + "\n\nSTORY BRIEF PROJECTION:\n" + story_brief_projection
         + "\n\nPACKET FORMAL EVENT CATALOG:\n"
         + json.dumps(event_catalog, ensure_ascii=False, indent=2)
+        + "\n\nPACKET EVENT CARDINALITY (authoritative): exactly "
+        + str(len(ordinals))
+        + " event object(s) belong to this packet. Emit no event outside this "
+        + "catalog; do not reproduce, summarize, or copy the complete outline. "
+        + "For this packet the only legal local ordinals are "
+        + json.dumps(list(range(1, len(ordinals) + 1)), ensure_ascii=False)
+        + ".\n"
         + ("\n\nACCEPTED PREDECESSOR PROJECTION:\n" + predecessor_projection
            if predecessor_projection else "")
     )

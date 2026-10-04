@@ -270,14 +270,12 @@ def _validate_c0b_approval_closure(
         "role_route_binding_manifest_mismatch",
         route_hashes["role_binding_manifest_definition_sha256"],
     ))
-    route_validation = validate_production_mirror(semantic_routes)
     protocol = protocol_evidence_matrix(semantic_routes)
     checks.append(_result(
-        CHECK_NAMES[11], route_validation["status"] == "EXACT_MATCH"
-        and all(item["status"] in {"EXACT_MATCH", "PARTIAL_EVIDENCE"}
-                for item in protocol["entries"]),
+        CHECK_NAMES[11], all(item["status"] in {"EXACT_MATCH", "PARTIAL_EVIDENCE"}
+                              for item in protocol["entries"]),
         "protocol_route_evidence_blocked",
-        route_validation["expected_definition_sha256"],
+        plan["role_binding_manifest_definition_sha256"],
     ))
     expected_flags = {
         "NOVEL_SHORT_CANONICAL_V2": False,

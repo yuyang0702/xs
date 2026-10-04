@@ -6395,6 +6395,25 @@ class FullShortDispatchLedgerObserverV1:
             )
         )
 
+    def capture_matches_contract_attempt(
+        self, *, contract_attempt_index: int,
+        contract_route: str, contract_route_attempt: int,
+    ) -> bool:
+        """Prove the pending provider capture belongs to this Runtime attempt."""
+
+        if self.pending_ordinal is None:
+            return False
+        ledger = self.store.load_ledger(self.execution_id)
+        attempts = list(ledger.get("attempts") or [])
+        if len(attempts) < self.pending_ordinal:
+            return False
+        current = attempts[self.pending_ordinal - 1]
+        return (
+            current.get("contract_attempt_index") == contract_attempt_index
+            and current.get("contract_route") == contract_route
+            and current.get("contract_route_attempt") == contract_route_attempt
+        )
+
     def after_http_response(self, *, status_code: int) -> None:
         ordinal = self.pending_ordinal
         _require(ordinal is not None, "DISPATCH_NOT_DURABLY_RECORDED")

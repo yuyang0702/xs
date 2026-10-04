@@ -7,6 +7,7 @@ import re
 from types import SimpleNamespace
 
 import pytest
+import httpx
 
 from novel_flywheel.execution_failure_architecture import (
     ExactRecoveryViolation,
@@ -174,6 +175,31 @@ def test_route_exhaustion_preserves_nested_transport_layers_and_order() -> None:
     assert [child.source_exception_class for child in evidence.root.children] == [
         "ConnectionError", "TransportInterruptedError",
     ]
+
+
+def test_route_exhaustion_persists_bounded_http_child_facts() -> None:
+    request = httpx.Request("POST", "https://provider.invalid/v1/messages")
+    response = httpx.Response(
+        503,
+        headers={"retry-after": "9", "content-type": "application/json"},
+        json={"type": "overloaded_error", "usage": {}},
+        request=request,
+    )
+    error = httpx.HTTPStatusError("private provider body", request=request, response=response)
+    wrapped = ModelRoutesExhaustedError(
+        error, error, route_errors=[("primary", "one", error)],
+    )
+
+    child = build_durable_failure_evidence(wrapped, boundary="model_gateway").root.children[0]
+
+    assert child.http_status == 503
+    assert child.provider_error_code == "overloaded_error"
+    assert child.retry_after_present is True
+    assert child.retry_after_seconds == 9.0
+    assert child.request_sent is True
+    assert child.usage_observed is True
+    assert child.http_failure_class == "upstream_provider"
+    assert "private provider body" not in json.dumps(child.model_dump(mode="json"))
 
 
 def test_nonempty_untyped_route_graph_is_conservatively_network_ambiguous() -> None:

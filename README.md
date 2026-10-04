@@ -99,6 +99,10 @@ Reference metadata shows an explicit saved/dirty/saving/error state. A real chan
 
 **本地诊断** and **本地提炼** use deterministic Python rules only. **模型深度分析** uses the configured `reference_analysis` and `reference_synthesis` roles only after an explicit confirmation. Window and synthesis responses are schema-validated; malformed JSON structures use each role's configured fallback once, and a synthesis failure preserves completed window claims. A valid empty candidate list is shown as “未形成可逐条采纳的候选写法” instead of an ambiguous successful zero. Typed SQLite nodes, edges, evidence, and user revisions preserve provenance. Recommendations remain proposals until the user adopts them into one project.
 
+When a provider response has been durably captured but the typed final artifact is unavailable (for example, reasoning exhausted the output budget), Contract Runtime keeps the configured fallback route reachable. A post-capture terminal close is reserved for the current attempt's ordinary adapter failure; stale captures from an earlier route cannot be closed against a later pre-dispatch failure.
+Reference-learning tasks without a workflow run scope clear only their unbound in-memory negative-capability entries at task start, so a failed analysis cannot poison the next authorized analysis while explicit run-scoped short workflows retain their quarantine.
+Reference synthesis also permits one fresh fallback requalification after a stale protocol-invalid mark; a second malformed response re-quarantines the exact route.
+
 Confirmed adoptions create versioned creative blueprints. Project learning also includes executable prose baselines, character voice profiles, epistemic boundaries, and scene briefs; active versions enter the existing planning/drafting/review/polish context, while stale versions are excluded. Character or world edits mark derived artifacts for review without rewriting an outline or manuscript.
 
 Reference analysis also produces an evidence-backed narrative-attraction proposal. It separates opening pressure, anomalous action, surface and emotional goals, obstacle-effort-result cycles, accidents, evidence-supported reversals, question chains, relationship changes, and ending payoff/cost. Local extraction reports candidates rather than semantic certainty. After confirmation, only abstract transfer guidance enters the creative blueprint; source names, evidence excerpts, settings, and plot packaging remain outside generation context. Short projects turn that guidance into a target-length causal chain, where each cycle must change the available choices and repeated outcomes are reported before drafting.
@@ -235,9 +239,17 @@ request size is never promoted into a missing capacity limit.
 
 Logical recovery schedule slots and physical dispatch attempts are separate identities. The durable dispatch observer alone allocates the next physical attempt ordinal from the ledger, so a rejected recovery slot cannot create attempt-number drift. Context, output, estimator, route-capability, and attempt-identity failures remain typed and fail closed without truncating story authority.
 
+An explicitly authorized Review requalification can resume a generated Short-story candidate through the native parent workflow without regenerating that candidate. The authority is bound to the run, candidate hash, current Review routes, contract version and schema, reasoning policy, and stage role. Quarantine remains active for ordinary calls. Requalification claims are durable before provider dispatch, limited to four total calls and two per route, and an unchanged second request is allowed only after a typed transient transport failure. A validated business receipt qualifies only its exact route/contract scope; semantic `REJECT` remains a rejection of the prose and continues through the normal repair path.
+
 Short Draft receipt-only recovery is also exposed by the regular API at
 `POST /api/runs/{run_id}/short-receipt-resume`.  It binds an existing run and
 immutable candidate, performs a zero-dispatch preflight by default, and
 delegates execution to the same native semantic-receipt and operation-scope
 pipeline.  This API path does not create a second run or require a
 campaign-specific launcher.
+
+Short Review recovery keeps scheduler slots separate from physical Provider HTTP accounting. Local admission failures remain in the event history and do not consume a Provider claim; a proven all-local failure chain can be reconciled once and resumed through the same bounded authorization.
+
+### Atomic semantic receipt wire contract
+
+Atomic receipt schemas define dynamic viewpoint fields in `properties` before promoting them to `required`, and describe each `beat_receipts` item with its closed beat-level shape. This prevents a malformed wire contract from silently accepting ownership arrays inside a beat object; the unchanged local validator remains authoritative for evidence and semantic acceptance.

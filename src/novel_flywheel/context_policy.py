@@ -178,6 +178,20 @@ def classify_model_failure(value: object) -> ModelFailureKind:
             if isinstance(receipt, dict):
                 pending.append(receipt)
             text = str(current).lower()
+            # Some HTTP clients expose transport failures whose message is
+            # empty (or whose useful cause is hidden by an outer protocol
+            # wrapper).  Classify by the exception type as well as its text so
+            # ConnectError/ReadError/timeout failures cannot be laundered into
+            # normal_invalid_output and incorrectly exhaust recovery.
+            exception_type = (
+                f"{type(current).__module__}.{type(current).__name__}"
+            ).lower()
+            if any(marker in exception_type for marker in (
+                "connecterror", "readerror", "writeerror", "remoteprotocolerror",
+                "connecttimeout", "readtimeout", "writetimeout", "pooltimeout",
+                "timeoutexception", "transporterror",
+            )):
+                classifications.add("transport_interrupted")
             if isinstance(current, BaseException):
                 visible_context = (
                     None
@@ -270,7 +284,7 @@ def bounded_protocol_output_budget(
     desired = max(768, math.ceil(expected_tokens * 1.35) + 384)
     ceiling = declared_output_ceiling or AUTO_DISCOVERY_MAX_OUTPUT_TOKENS
     if context_window:
-        ceiling = min(ceiling, max(1, context_window - input_tokens - 1024))
+        ceiling = min(ceiling, max(1, context_window - input_tokens - 4096))
     return min(desired, ceiling)
 
 

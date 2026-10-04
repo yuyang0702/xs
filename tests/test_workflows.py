@@ -41,6 +41,7 @@ from novel_flywheel.material_audit_authority import (
 )
 from novel_flywheel.models import (
     ModelGateway,
+    ModelDispatchScopeViolationError,
     ModelResult,
     ModelRoutesExhaustedError,
     TransportInterruptedError,
@@ -129,6 +130,7 @@ from novel_flywheel.workflows import (
     StageText,
     TargetedGroupError,
     WorkflowService,
+    _safe_http_failure_metadata,
     _closed_recovery_overlay_kind,
 )
 from novel_flywheel.draft_split import DraftTaskContract
@@ -141,6 +143,54 @@ REQUIRED_SKILLS = {
     "chapter-writing", "novel-writing", "dialogue", "revision-continuity",
     "humanizer-zh", "story-maintenance",
 }
+
+
+@pytest.mark.parametrize(
+    ("status", "expected_class"),
+    [
+        (401, "credential_or_permission"),
+        (403, "credential_or_permission"),
+        (404, "route_or_configuration"),
+        (429, "rate_limit_or_quota"),
+        (502, "upstream_provider"),
+        (503, "upstream_provider"),
+    ],
+)
+def test_safe_http_failure_metadata_classifies_without_body(status, expected_class) -> None:
+    response = httpx.Response(
+        status,
+        headers={"retry-after": "12", "content-type": "application/json"},
+        json={"code": "provider_overloaded", "usage": {"input_tokens": 4}},
+        request=httpx.Request("POST", "https://provider.invalid/v1/messages"),
+    )
+    error = httpx.HTTPStatusError("provider response", request=response.request, response=response)
+
+    metadata = _safe_http_failure_metadata(error)
+
+    assert metadata == {
+        "http_status": status,
+        "provider_error_code": "provider_overloaded",
+        "retry_after_present": True,
+        "retry_after_seconds": 12.0,
+        "request_sent": True,
+        "usage_observed": True,
+        "http_failure_class": expected_class,
+    }
+    assert "provider response" not in json.dumps(metadata)
+
+
+def test_safe_http_failure_metadata_keeps_transport_unknown() -> None:
+    error = httpx.ConnectTimeout("connect failed", request=httpx.Request("POST", "https://provider.invalid"))
+
+    metadata = _safe_http_failure_metadata(error)
+
+    assert metadata["http_status"] is None
+    assert metadata["provider_error_code"] is None
+    assert metadata["retry_after_present"] is False
+    assert metadata["retry_after_seconds"] is None
+    assert metadata["request_sent"] is False
+    assert metadata["usage_observed"] is None
+    assert metadata["http_failure_class"] is None
 
 
 def test_closed_recovery_overlay_rejects_replaced_prefix() -> None:
@@ -3019,6 +3069,205 @@ async def test_route_failure_passthrough_persists_only_typed_hash_audit(tmp_path
     persisted = json.dumps(events, ensure_ascii=False)
     assert "403" not in persisted
     assert "secret-provider" not in persisted
+
+
+@pytest.mark.asyncio
+async def test_primary_inner_route_limit_relays_validator_findings_without_dispatch(
+    tmp_path,
+) -> None:
+    gateway = SimpleNamespace()
+    db, _project, service, _run_path = make_polish_recovery_service(
+        tmp_path, gateway, run_id="route-limit-finding-relay",
+    )
+    attempt = protocol_receipt_attempts(
+        same_route_attempts=1, configured_fallback_available=True,
+    )[0]
+    error = ModelDispatchScopeViolationError(
+        "review requalification route limit exhausted"
+    )
+    error.domain_diagnostic_findings = ({
+        "code": "receipt_shape",
+        "paths": ["/outside_beat_ids", "/future_beat_ids"],
+    },)
+
+    async def reject_before_dispatch():
+        raise error
+
+    result, failure = await service._execute_protocol_receipt_attempt(
+        "route-limit-finding-relay",
+        stage="review",
+        boundary="test_protocol_boundary",
+        attempt=attempt,
+        unit_metadata={"authority_sha256": "a" * 64},
+        operation=reject_before_dispatch,
+    )
+
+    assert result is None
+    assert failure is not None
+    assert failure.code == "protocol_receipt_inner_route_limit"
+    assert failure.retryable is True
+    relay = json.loads(failure.message)
+    assert relay == {
+        "schema": "DomainFindingRelayV1",
+        "findings": [{
+            "code": "receipt_shape",
+            "paths": ["/outside_beat_ids", "/future_beat_ids"],
+        }],
+    }
+    event = next(
+        event for event in db.list_run_events("route-limit-finding-relay")
+        if event["event_type"] == "protocol_receipt_local_admission_rejected"
+    )
+    assert event["metadata"]["provider_call_executed"] is False
+    assert event["metadata"]["domain_finding_count"] == 1
+
+
+@pytest.mark.asyncio
+async def test_typed_runtime_failure_relays_domain_findings_from_cause(
+    tmp_path,
+) -> None:
+    gateway = SimpleNamespace()
+    db, _project, service, _run_path = make_polish_recovery_service(
+        tmp_path, gateway, run_id="runtime-domain-finding-relay",
+    )
+    attempt = protocol_receipt_attempts(
+        same_route_attempts=1, configured_fallback_available=True,
+    )[0]
+    cause = RuntimeError("domain validator exhausted")
+    cause.domain_diagnostic_findings = ({
+        "code": "entry_evidence",
+        "field_path": "/entry/evidence",
+        "message": "entry evidence is not bound to the current prose",
+    },)
+
+    async def fail_after_runtime_exhaustion():
+        raise RuntimeError("typed runtime close") from cause
+
+    result, failure = await service._execute_protocol_receipt_attempt(
+        "runtime-domain-finding-relay",
+        stage="review",
+        boundary="test_protocol_boundary",
+        attempt=attempt,
+        unit_metadata={"authority_sha256": "a" * 64},
+        operation=fail_after_runtime_exhaustion,
+    )
+
+    assert result is None
+    assert failure is not None
+    assert failure.code == "protocol_receipt_domain_findings"
+    assert failure.retryable is True
+    assert json.loads(failure.message) == {
+        "schema": "DomainFindingRelayV1",
+        "findings": [{
+            "code": "entry_evidence",
+            "field_path": "/entry/evidence",
+            "message": "entry evidence is not bound to the current prose",
+        }],
+    }
+    event = next(
+        event for event in db.list_run_events("runtime-domain-finding-relay")
+        if event["event_type"] == "protocol_receipt_domain_finding_relayed"
+    )
+    assert event["metadata"]["finding_count"] == 1
+
+
+@pytest.mark.asyncio
+async def test_primary_route_limit_in_active_requalification_selects_fallback(
+    tmp_path,
+):
+    gateway = SimpleNamespace()
+    db, _project, service, _run_path = make_polish_recovery_service(
+        tmp_path, gateway, run_id="route-limit-fallback-transition",
+    )
+    attempt = protocol_receipt_attempts(
+        same_route_attempts=1, configured_fallback_available=True,
+    )[0]
+    token = service._review_requalification_authorization.set({
+        "run_id": "route-limit-fallback-transition",
+        "candidate_sha256": "b" * 64,
+    })
+    try:
+        async def reject_primary_before_dispatch():
+            raise ModelDispatchScopeViolationError(
+                "review requalification route limit exhausted"
+            )
+
+        result, failure = await service._execute_protocol_receipt_attempt(
+            "route-limit-fallback-transition",
+            stage="review",
+            boundary="test_protocol_boundary",
+            attempt=attempt,
+            unit_metadata={"authority_sha256": "a" * 64},
+            operation=reject_primary_before_dispatch,
+        )
+    finally:
+        service._review_requalification_authorization.reset(token)
+
+    assert result is None
+    assert failure is not None
+    assert failure.code == "protocol_receipt_primary_route_exhausted"
+    relay = json.loads(failure.message)
+    assert relay == {
+        "reason": "review requalification route limit exhausted",
+        "route": "primary",
+        "schema": "RouteExhaustionRelayV1",
+    }
+    event = next(
+        event for event in db.list_run_events("route-limit-fallback-transition")
+        if event["event_type"] == "protocol_receipt_local_admission_rejected"
+    )
+    assert event["metadata"]["provider_call_executed"] is False
+    assert event["metadata"]["recovery_transition"] == (
+        "configured_fallback_route_exhausted"
+    )
+
+
+@pytest.mark.asyncio
+async def test_route_failure_event_persists_bounded_http_facts(tmp_path) -> None:
+    class HttpRejectedGateway:
+        async def complete_primary(self, *_args, **_kwargs):
+            request = httpx.Request("POST", "https://provider.invalid/v1/messages")
+            response = httpx.Response(
+                503,
+                headers={"retry-after": "7", "content-type": "application/json"},
+                json={"type": "overloaded_error", "usage": {}},
+                request=request,
+            )
+            raise httpx.HTTPStatusError("opaque provider body", request=request, response=response)
+
+    gateway = HttpRejectedGateway()
+    db, project, service, run_path = make_polish_recovery_service(
+        tmp_path, gateway, run_id="route-http-facts",
+    )
+    db.save_role_binding("review", "primary", "primary-model", None, None)
+    attempt = protocol_receipt_attempts(
+        same_route_attempts=1, configured_fallback_available=False,
+    )[0]
+
+    await service._execute_protocol_receipt_attempt(
+        "route-http-facts", stage="review", boundary="test_protocol_boundary",
+        attempt=attempt,
+        unit_metadata={"authority_sha256": "a" * 64},
+        operation=lambda: service._stage(
+            "route-http-facts", run_path, project, "review", "constraints",
+            "Return one bounded receipt.", suffix="-http", allow_tools=False,
+            primary_only=True, defer_route_failure_audit=True,
+            expected_output_characters=200, bounded_protocol_output=True,
+        ),
+    )
+
+    event = next(
+        event for event in db.list_run_events("route-http-facts")
+        if event["event_type"] == "protocol_receipt_route_failed"
+    )
+    metadata = event["metadata"]
+    assert metadata["http_status"] == 503
+    assert metadata["provider_error_code"] == "overloaded_error"
+    assert metadata["retry_after_seconds"] == 7.0
+    assert metadata["request_sent"] is True
+    assert metadata["usage_observed"] is True
+    assert metadata["http_failure_class"] == "upstream_provider"
+    assert "opaque provider body" not in json.dumps(metadata)
 
 
 def test_exact_full_short_protocol_attempt_plan_uses_canonical_registry(
@@ -5997,6 +6246,8 @@ async def test_large_short_story_draft_is_generated_in_bounded_segments(tmp_path
     )
 
     assert WorkflowService._short_segment_count(20000) == 8
+    assert WorkflowService._short_segment_target(2500, 8) == 2500
+    assert WorkflowService._short_segment_target(2500, 43) == 6450
     assert gateway.roles.count("draft") == 8
     assert gateway.roles.count("review") == 9
     assert all(
@@ -6030,6 +6281,880 @@ async def test_large_short_story_draft_is_generated_in_bounded_segments(tmp_path
     assert all(item["text_sha256"] for item in integrity["segments"])
     assert len(integrity["semantic_segment_receipts"]) == 8
     assert integrity["whole_semantic_receipt"]["ending_valid"] is True
+
+
+async def _prepare_generated_root_receipt_failure(tmp_path):
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    bind_fake_gateway_capacity(db)
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Root recovery", mode="short", genre="suspense",
+        premise="A completed root Draft must survive a receipt interruption.",
+        target_words=2500,
+    ))
+    skill_root = tmp_path / "skills"
+    make_prompt_skills(skill_root)
+    gateway = SegmentGateway()
+    service = WorkflowService(
+        db, store, gateway, SkillGate(db, SkillScanner([skill_root])),
+    )
+    run_id = "root-receipt"
+    db.create_run(run_id, project.id, "short-story", status="running")
+    run_path = project.path / "runs" / run_id
+    (run_path / "outputs").mkdir(parents=True)
+    (run_path / "receipts").mkdir()
+    plan = complete_plan_for_event_groups([[
+        f"EV-{index:08X}" for index in range(1, 10)
+    ]])
+    constraints = "confirmed root-recovery constraints"
+    write_test_execution_manifest(
+        service, project, run_path, constraints, plan, 1,
+    )
+    captured = {}
+
+    async def fail_after_root_generation(
+        run_id_value, run_path_value, project_value, constraints_value,
+        contract, prose, outside_event_ids, **kwargs,
+    ):
+        captured.update({"contract": contract, "prose": prose})
+        prose_sha256 = hashlib.sha256(prose.encode("utf-8")).hexdigest()
+        db.add_run_event(
+            run_id_value, "error", "semantic_receipt_protocol_exhausted",
+            "immutable receipt interrupted after root generation", stage="draft",
+            metadata={
+                "task_id": f"{contract.task_id}-receipt-window-01",
+                "prose_sha256": prose_sha256,
+                "issues": [{"code": "protocol_route_transport_interrupted"}],
+            },
+        )
+        raise DraftReceiptProtocolError(
+            f"{contract.task_id}-receipt-window-01",
+            [{"code": "protocol_route_transport_interrupted"}],
+        )
+
+    service._verify_draft_semantic_node = fail_after_root_generation
+    with pytest.raises(DraftReceiptProtocolError):
+        await service._draft_short_in_segments(
+            run_id, run_path, project, constraints, plan,
+        )
+    candidate_path = run_path / "outputs" / "draft-part-01.md"
+    assert candidate_path.read_text(encoding="utf-8") == captured["prose"]
+    assert gateway.roles.count("draft") == 1
+    return {
+        "db": db, "service": service, "project": project,
+        "run_id": run_id, "run_path": run_path, "plan": plan,
+        "constraints": constraints, "gateway": gateway,
+        "candidate_path": candidate_path, **captured,
+    }
+
+
+@pytest.mark.asyncio
+async def test_resume_reuses_generated_root_for_full_receipt_without_redrafting(
+    tmp_path,
+) -> None:
+    state = await _prepare_generated_root_receipt_failure(tmp_path)
+    original = state["candidate_path"].read_text(encoding="utf-8")
+    first_hash = hashlib.sha256(original.encode("utf-8")).hexdigest()
+    receipt_calls = 0
+
+    async def accept_unchanged_root(
+        run_id, run_path, project, constraints, contract, prose,
+        outside_event_ids, **kwargs,
+    ):
+        nonlocal receipt_calls
+        receipt_calls += 1
+        assert prose == original
+        assert state["candidate_path"].read_text(encoding="utf-8") == original
+        assert hashlib.sha256(prose.encode("utf-8")).hexdigest() == first_hash
+        return draft_semantic_receipt(asdict(contract), prose)
+
+    state["service"]._verify_draft_semantic_node = accept_unchanged_root
+    draft = await state["service"]._draft_short_in_segments(
+        state["run_id"], state["run_path"], state["project"],
+        state["constraints"], state["plan"],
+    )
+
+    assert draft == original
+    assert state["gateway"].roles.count("draft") == 1
+
+    assert receipt_calls == 1
+    checkpoint = json.loads((
+        state["run_path"] / "outputs" / "draft-checkpoints" / "segment-01.json"
+    ).read_text(encoding="utf-8"))
+    assert checkpoint["text_sha256"] == first_hash
+    assert checkpoint["semantic_receipt"]["task_id"] == "segment-01"
+    assert sum(
+        item["event_type"] == "draft_generated_root_receipt_reused"
+        for item in state["db"].list_run_events(state["run_id"])
+    ) == 1
+
+    async def duplicate_acceptance_is_forbidden(*args, **kwargs):
+        raise AssertionError("accepted root receipt was dispatched twice")
+
+    state["service"]._verify_draft_semantic_node = duplicate_acceptance_is_forbidden
+    checkpoint_path = (
+        state["run_path"] / "outputs" / "draft-checkpoints" / "segment-01.json"
+    )
+    checkpoint_path.unlink()
+    resumed_from_receipt_checkpoint = await state["service"]._draft_short_in_segments(
+        state["run_id"], state["run_path"], state["project"],
+        state["constraints"], state["plan"],
+    )
+    assert resumed_from_receipt_checkpoint == original
+    assert state["gateway"].roles.count("draft") == 1
+    assert sum(
+        item["event_type"] == "draft_generated_root_receipt_checkpoint_reused"
+        for item in state["db"].list_run_events(state["run_id"])
+    ) == 1
+
+    resumed_again = await state["service"]._draft_short_in_segments(
+        state["run_id"], state["run_path"], state["project"],
+        state["constraints"], state["plan"],
+    )
+    assert resumed_again == original
+    assert state["gateway"].roles.count("draft") == 1
+
+
+@pytest.mark.asyncio
+async def test_generated_root_requalification_binds_exact_current_candidate(
+    tmp_path,
+) -> None:
+    state = await _prepare_generated_root_receipt_failure(tmp_path)
+    original = state["candidate_path"].read_text(encoding="utf-8")
+    candidate_sha256 = hashlib.sha256(original.encode("utf-8")).hexdigest()
+    captured = {}
+    active = False
+
+    def create_scope(**kwargs):
+        captured.update(kwargs)
+        return SimpleNamespace(candidate_sha256=kwargs["candidate_sha256"])
+
+    class Binder:
+        def __enter__(self):
+            nonlocal active
+            active = True
+
+        def __exit__(self, *_args):
+            nonlocal active
+            active = False
+
+    def bind_scope(scope, *, candidate_sha256):
+        assert scope.candidate_sha256 == candidate_sha256
+        return Binder()
+
+    state["gateway"].create_review_contract_requalification_scope = create_scope
+    state["gateway"].bind_review_contract_requalification = bind_scope
+
+    async def accept_under_scope(
+        run_id, run_path, project, constraints, contract, prose,
+        outside_event_ids, **kwargs,
+    ):
+        assert active is True
+        assert prose == original
+        assert state["candidate_path"].read_text(encoding="utf-8") == original
+        return draft_semantic_receipt(asdict(contract), prose)
+
+    state["service"]._verify_draft_semantic_node = accept_under_scope
+    with state["service"].authorize_review_contract_requalification(
+        run_id=state["run_id"], candidate_sha256=candidate_sha256,
+    ):
+        draft = await state["service"]._draft_short_in_segments(
+            state["run_id"], state["run_path"], state["project"],
+            state["constraints"], state["plan"],
+        )
+
+    assert draft == original
+    assert captured["run_id"] == state["run_id"]
+    assert captured["candidate_sha256"] == candidate_sha256
+    assert captured["contract"].name == "draft_atomic_semantic_receipt"
+    assert captured["contract"].runtime_authority["task_id"].endswith(
+        "-receipt-window-01"
+    )
+    assert state["gateway"].roles.count("draft") == 1
+
+
+@pytest.mark.asyncio
+async def test_generated_root_semantic_failure_creates_a_repair_version_and_rechecks(
+    tmp_path,
+) -> None:
+    state = await _prepare_generated_root_receipt_failure(tmp_path)
+    original = state["candidate_path"].read_text(encoding="utf-8")
+    repaired = original[:-1] + chr(ord(original[-1]) + 1)
+    original_complete = state["gateway"].complete
+
+    async def repair_gateway(role, system, user, max_output_tokens=None):
+        if "ATOMIC_SEMANTIC_PROSE_REPAIR" in user:
+            state["gateway"].roles.append(role)
+            state["gateway"].calls.append({"role": role, "user": user})
+            return ModelResult(repaired, {
+                "role": role, "model_name": "fake-targeted-draft-repair",
+                "finish_reason": "stop",
+            })
+        return await original_complete(
+            role, system, user, max_output_tokens=max_output_tokens,
+        )
+
+    state["gateway"].complete = repair_gateway
+    review_candidates = []
+
+    async def reject_then_accept_repair(
+        run_id, run_path, project, constraints, contract, prose,
+        outside_event_ids, **kwargs,
+    ):
+        review_candidates.append(prose)
+        if prose == original:
+            raise DraftSemanticValidationError(contract.task_id, [{
+                "code": "actor_action",
+                "message": "the current root requires one bounded semantic repair",
+            }])
+        assert prose == repaired
+        return draft_semantic_receipt(asdict(contract), prose)
+
+    state["service"]._verify_draft_semantic_node = reject_then_accept_repair
+    draft = await state["service"]._draft_short_in_segments(
+        state["run_id"], state["run_path"], state["project"],
+        state["constraints"], state["plan"],
+    )
+
+    assert draft == repaired
+    assert review_candidates == [original, repaired]
+    assert state["candidate_path"].read_text(encoding="utf-8") == original
+    repair_path = (
+        state["run_path"] / "outputs"
+        / "draft-part-01-segment-01-root-resume-semantic-repair-1.md"
+    )
+    assert repair_path.read_text(encoding="utf-8").strip() == repaired
+    checkpoint = json.loads((
+        state["run_path"] / "outputs" / "draft-checkpoints" / "segment-01.json"
+    ).read_text(encoding="utf-8"))
+    assert checkpoint["text_sha256"] == hashlib.sha256(
+        repaired.encode("utf-8")
+    ).hexdigest()
+    assert state["gateway"].roles.count("draft") == 2
+    assert sum(
+        item["event_type"] == "draft_generated_root_semantic_repair"
+        for item in state["db"].list_run_events(state["run_id"])
+    ) == 1
+
+    async def repaired_receipt_must_not_be_dispatched_again(*args, **kwargs):
+        raise AssertionError("validated repaired root was reviewed twice")
+
+    state["service"]._verify_draft_semantic_node = (
+        repaired_receipt_must_not_be_dispatched_again
+    )
+    (
+        state["run_path"] / "outputs" / "draft-checkpoints" / "segment-01.json"
+    ).unlink()
+    resumed = await state["service"]._draft_short_in_segments(
+        state["run_id"], state["run_path"], state["project"],
+        state["constraints"], state["plan"],
+    )
+    assert resumed == repaired
+    assert state["candidate_path"].read_text(encoding="utf-8") == original
+    assert state["gateway"].roles.count("draft") == 2
+
+
+@pytest.mark.asyncio
+async def test_resume_reuses_persisted_root_semantic_failure_before_repair(
+    tmp_path,
+) -> None:
+    state = await _prepare_generated_root_receipt_failure(tmp_path)
+    original = state["candidate_path"].read_text(encoding="utf-8")
+    original_hash = hashlib.sha256(original.encode("utf-8")).hexdigest()
+    repaired = original[:-1] + chr(ord(original[-1]) + 1)
+    state["db"].add_run_event(
+        state["run_id"], "error", "draft_semantic_gate_failed",
+        "the formally reviewed root requires a bounded repair", stage="draft",
+        metadata={
+            "task_id": "segment-01-receipt-window-01",
+            "prose_sha256": original_hash,
+            "issues": [{
+                "code": "actor_action",
+                "message": "the actor in the stored root does not match the beat",
+            }],
+        },
+    )
+    semantic_failure_id = next(
+        item["id"]
+        for item in reversed(state["db"].list_run_events(state["run_id"]))
+        if item["event_type"] == "draft_semantic_gate_failed"
+    )
+    original_complete = state["gateway"].complete
+
+    async def repair_gateway(role, system, user, max_output_tokens=None):
+        if "ATOMIC_SEMANTIC_PROSE_REPAIR" in user:
+            state["gateway"].roles.append(role)
+            state["gateway"].calls.append({"role": role, "user": user})
+            return ModelResult(repaired, {
+                "role": role, "model_name": "fake-targeted-draft-repair",
+                "finish_reason": "stop",
+            })
+        return await original_complete(
+            role, system, user, max_output_tokens=max_output_tokens,
+        )
+
+    state["gateway"].complete = repair_gateway
+    reviewed = []
+
+    async def only_repaired_root_may_be_reviewed(
+        run_id, run_path, project, constraints, contract, prose,
+        outside_event_ids, **kwargs,
+    ):
+        reviewed.append(prose)
+        assert prose != original, "unchanged rejected root was reviewed again"
+        assert prose == repaired
+        return draft_semantic_receipt(asdict(contract), prose)
+
+    state["service"]._verify_draft_semantic_node = only_repaired_root_may_be_reviewed
+    draft = await state["service"]._draft_short_in_segments(
+        state["run_id"], state["run_path"], state["project"],
+        state["constraints"], state["plan"],
+    )
+
+    assert draft == repaired
+    assert reviewed == [repaired]
+    assert state["candidate_path"].read_text(encoding="utf-8") == original
+    assert state["gateway"].roles.count("draft") == 2
+    reuse_events = [
+        item for item in state["db"].list_run_events(state["run_id"])
+        if item["event_type"] == "draft_generated_root_semantic_failure_reused"
+    ]
+    assert len(reuse_events) == 1
+    assert reuse_events[0]["metadata"]["semantic_failure_event_id"] == (
+        semantic_failure_id
+    )
+
+
+@pytest.mark.asyncio
+async def test_resume_reuses_generated_semantic_repair_after_review_interruption(
+    tmp_path,
+) -> None:
+    state = await _prepare_generated_root_receipt_failure(tmp_path)
+    original = state["candidate_path"].read_text(encoding="utf-8")
+    original_hash = hashlib.sha256(original.encode("utf-8")).hexdigest()
+    repaired = original[:-1] + chr(ord(original[-1]) + 1)
+    state["db"].add_run_event(
+        state["run_id"], "error", "draft_semantic_gate_failed",
+        "the formally reviewed root requires a bounded repair", stage="draft",
+        metadata={
+            "task_id": "segment-01-receipt-window-01",
+            "prose_sha256": original_hash,
+            "issues": [{
+                "code": "actor_action",
+                "message": "the stored root must be repaired before another review",
+            }],
+        },
+    )
+    original_complete = state["gateway"].complete
+
+    async def repair_gateway(role, system, user, max_output_tokens=None):
+        if "ATOMIC_SEMANTIC_PROSE_REPAIR" in user:
+            state["gateway"].roles.append(role)
+            state["gateway"].calls.append({"role": role, "user": user})
+            return ModelResult(repaired, {
+                "role": role, "model_name": "fake-targeted-draft-repair",
+                "finish_reason": "stop",
+            })
+        return await original_complete(
+            role, system, user, max_output_tokens=max_output_tokens,
+        )
+
+    state["gateway"].complete = repair_gateway
+    reviewed = []
+
+    async def interrupt_repaired_review(
+        run_id, run_path, project, constraints, contract, prose,
+        outside_event_ids, **kwargs,
+    ):
+        reviewed.append(prose)
+        assert prose == repaired
+        prose_hash = hashlib.sha256(prose.encode("utf-8")).hexdigest()
+        state["db"].add_run_event(
+            run_id, "error", "semantic_receipt_protocol_exhausted",
+            "review transport stopped after repair generation", stage="draft",
+            metadata={
+                "task_id": f"{contract.task_id}-receipt-window-01",
+                "prose_sha256": prose_hash,
+                "issues": [{"code": "protocol_route_transport_interrupted"}],
+            },
+        )
+        raise DraftReceiptProtocolError(contract.task_id, [{
+            "code": "protocol_route_transport_interrupted",
+        }])
+
+    state["service"]._verify_draft_semantic_node = interrupt_repaired_review
+    with pytest.raises(DraftReceiptProtocolError):
+        await state["service"]._draft_short_in_segments(
+            state["run_id"], state["run_path"], state["project"],
+            state["constraints"], state["plan"],
+        )
+    assert reviewed == [repaired]
+    assert state["gateway"].roles.count("draft") == 2
+    assert state["candidate_path"].read_text(encoding="utf-8") == original
+
+    async def no_second_repair_call(role, system, user, max_output_tokens=None):
+        if "ATOMIC_SEMANTIC_PROSE_REPAIR" in user:
+            raise AssertionError("persisted repair was generated twice")
+        return await original_complete(
+            role, system, user, max_output_tokens=max_output_tokens,
+        )
+
+    state["gateway"].complete = no_second_repair_call
+
+    async def accept_persisted_repair(
+        run_id, run_path, project, constraints, contract, prose,
+        outside_event_ids, **kwargs,
+    ):
+        reviewed.append(prose)
+        assert prose == repaired
+        return draft_semantic_receipt(asdict(contract), prose)
+
+    state["service"]._verify_draft_semantic_node = accept_persisted_repair
+    draft = await state["service"]._draft_short_in_segments(
+        state["run_id"], state["run_path"], state["project"],
+        state["constraints"], state["plan"],
+    )
+
+    assert draft == repaired
+    assert reviewed == [repaired, repaired]
+    assert state["gateway"].roles.count("draft") == 2
+    assert state["candidate_path"].read_text(encoding="utf-8") == original
+    assert sum(
+        item["event_type"]
+        == "draft_generated_root_semantic_repair_checkpoint_reused"
+        for item in state["db"].list_run_events(state["run_id"])
+    ) == 1
+
+
+@pytest.mark.asyncio
+async def test_resume_reuses_latest_exhausted_repair_with_bound_window_proof(
+    tmp_path,
+) -> None:
+    state = await _prepare_generated_root_receipt_failure(tmp_path)
+    original = state["candidate_path"].read_text(encoding="utf-8")
+    original_hash = hashlib.sha256(original.encode("utf-8")).hexdigest()
+    repair_one = original[:-1] + chr(ord(original[-1]) + 1)
+    repair_two = original[:-1] + chr(ord(original[-1]) + 2)
+    state["db"].add_run_event(
+        state["run_id"], "error", "draft_semantic_gate_failed",
+        "the generated root requires bounded semantic repair", stage="draft",
+        metadata={
+            "task_id": "segment-01-receipt-window-01",
+            "prose_sha256": original_hash,
+            "issues": [{
+                "code": "actor_action",
+                "message": "repair the generated root",
+            }],
+        },
+    )
+    original_complete = state["gateway"].complete
+    repairs = iter((repair_one, repair_two))
+
+    async def repair_gateway(role, system, user, max_output_tokens=None):
+        if "ATOMIC_SEMANTIC_PROSE_REPAIR" in user:
+            state["gateway"].roles.append(role)
+            state["gateway"].calls.append({"role": role, "user": user})
+            return ModelResult(next(repairs), {
+                "role": role, "model_name": "fake-bounded-repair",
+                "finish_reason": "stop",
+            })
+        return await original_complete(
+            role, system, user, max_output_tokens=max_output_tokens,
+        )
+
+    state["gateway"].complete = repair_gateway
+
+    async def exhaust_two_repairs(
+        run_id, run_path, project, constraints, contract, prose,
+        outside_event_ids, **kwargs,
+    ):
+        if prose == repair_one:
+            raise DraftSemanticValidationError(contract.task_id, [{
+                "code": "scene_order_evidence",
+                "message": "first repair still lacks bound evidence",
+            }])
+        assert prose == repair_two
+        receipt_ids = tuple(contract.beat_ids or contract.event_ids)
+        first_ids = receipt_ids[:8]
+        first_contract = replace(
+            contract,
+            task_id=f"{contract.task_id}-receipt-window-01",
+            beat_ids=(first_ids if contract.beat_ids else ()),
+            event_ids=(contract.event_ids if contract.beat_ids else first_ids),
+            exit_requirement="完成当前语义窗口末尾节拍并形成自然交接",
+        )
+        proof_path = (
+            run_path / "outputs"
+            / f"review{kwargs['suffix']}-receipt-window-01-semantic.md"
+        )
+        proof_text = json.dumps(
+            draft_semantic_receipt(asdict(first_contract), prose),
+            ensure_ascii=False,
+        )
+        proof_path.write_text(proof_text, encoding="utf-8")
+        review_authority, review_input = (
+            state["service"]._stage_checkpoint_identity(
+                state["project"], stage="review",
+                constraints=state["constraints"], user="saved first window",
+            )
+        )
+        state["db"].save_workflow_node_checkpoint(
+            run_id=state["run_id"], node_key=proof_path.stem,
+            authority_sha256=review_authority,
+            input_sha256=review_input,
+            output_sha256=hashlib.sha256(
+                proof_text.encode("utf-8")
+            ).hexdigest(),
+            status="generated_complete", validation_stage="local_semantics",
+        )
+        raise DraftSemanticValidationError(contract.task_id, [{
+            "code": "beat_evidence",
+            "message": "second window receipt evidence is not bound to prose",
+        }])
+
+    state["service"]._verify_draft_semantic_node = exhaust_two_repairs
+    with pytest.raises(DraftSemanticValidationError):
+        await state["service"]._draft_short_in_segments(
+            state["run_id"], state["run_path"], state["project"],
+            state["constraints"], state["plan"],
+        )
+    assert state["gateway"].roles.count("draft") == 3
+    repair_two_hash = hashlib.sha256(repair_two.encode("utf-8")).hexdigest()
+
+    # Simulate the production legacy event written before candidate identity
+    # was added to the exhaustion receipt. The validated first-window receipt
+    # remains the independent immutable binding to repair two.
+    events = state["db"].list_run_events(state["run_id"])
+    exhausted = next(
+        item for item in reversed(events)
+        if item["event_type"] == "draft_generated_root_semantic_repair_exhausted"
+    )
+    assert exhausted["metadata"]["attempt"] == 2
+    assert exhausted["metadata"]["candidate_prose_sha256"] == repair_two_hash
+    assert exhausted["metadata"]["candidate_relative_path"].endswith(
+        "semantic-repair-2.md"
+    )
+    with state["db"].connect() as connection:
+        connection.execute(
+            "UPDATE run_events SET metadata_json=? WHERE id=?",
+            (json.dumps({
+                "task_id": "segment-01",
+                "issues": exhausted["metadata"]["issues"],
+            }), exhausted["id"]),
+        )
+
+    async def no_third_repair(role, system, user, max_output_tokens=None):
+        if "ATOMIC_SEMANTIC_PROSE_REPAIR" in user:
+            raise AssertionError("bounded repair was regenerated")
+        return await original_complete(
+            role, system, user, max_output_tokens=max_output_tokens,
+        )
+
+    state["gateway"].complete = no_third_repair
+    active = False
+
+    def create_scope(**kwargs):
+        assert kwargs["candidate_sha256"] == repair_two_hash
+        return SimpleNamespace(candidate_sha256=repair_two_hash)
+
+    class Binder:
+        def __enter__(self):
+            nonlocal active
+            active = True
+
+        def __exit__(self, *_args):
+            nonlocal active
+            active = False
+
+    state["gateway"].create_review_contract_requalification_scope = create_scope
+    state["gateway"].bind_review_contract_requalification = (
+        lambda scope, *, candidate_sha256: Binder()
+    )
+
+    async def accept_only_latest_repair(
+        run_id, run_path, project, constraints, contract, prose,
+        outside_event_ids, **kwargs,
+    ):
+        assert active is True
+        assert prose == repair_two
+        return draft_semantic_receipt(asdict(contract), prose)
+
+    state["service"]._verify_draft_semantic_node = accept_only_latest_repair
+    with state["service"].authorize_review_contract_requalification(
+        run_id=state["run_id"], candidate_sha256=repair_two_hash,
+    ):
+        draft = await state["service"]._draft_short_in_segments(
+            state["run_id"], state["run_path"], state["project"],
+            state["constraints"], state["plan"],
+        )
+
+    assert draft == repair_two
+    assert state["gateway"].roles.count("draft") == 3
+
+
+@pytest.mark.asyncio
+async def test_remaining_receipt_window_gets_its_own_bounded_repair_ladder(
+    tmp_path,
+) -> None:
+    state = await _prepare_generated_root_receipt_failure(tmp_path)
+    original = state["candidate_path"].read_text(encoding="utf-8")
+    original_hash = hashlib.sha256(original.encode("utf-8")).hexdigest()
+    repair_one = original[:-1] + chr(ord(original[-1]) + 1)
+    repair_two = original[:-1] + chr(ord(original[-1]) + 2)
+    repair_three = original[:-1] + chr(ord(original[-1]) + 3)
+    state["db"].add_run_event(
+        state["run_id"], "error", "draft_semantic_gate_failed",
+        "the first receipt window needs a bounded semantic repair", stage="draft",
+        metadata={
+            "task_id": "segment-01-receipt-window-01",
+            "prose_sha256": original_hash,
+            "issues": [{"code": "actor_action", "message": "repair window 01"}],
+        },
+    )
+    original_complete = state["gateway"].complete
+    repairs = iter((repair_one, repair_two, repair_three))
+    repair_calls = 0
+
+    async def repair_gateway(role, system, user, max_output_tokens=None):
+        nonlocal repair_calls
+        if "ATOMIC_SEMANTIC_PROSE_REPAIR" in user:
+            repair_calls += 1
+            state["gateway"].roles.append(role)
+            state["gateway"].calls.append({"role": role, "user": user})
+            return ModelResult(next(repairs), {
+                "role": role, "model_name": "fake-window-scoped-repair",
+                "finish_reason": "stop",
+            })
+        return await original_complete(
+            role, system, user, max_output_tokens=max_output_tokens,
+        )
+
+    state["gateway"].complete = repair_gateway
+
+    async def review_window_progress(
+        run_id, run_path, project, constraints, contract, prose,
+        outside_event_ids, **kwargs,
+    ):
+        if prose == repair_one:
+            raise DraftSemanticValidationError(contract.task_id, [{
+                "code": "actor_action", "message": "window 01 still fails",
+            }])
+        if prose == repair_two:
+            # The first window has passed on this candidate.  The second
+            # window is now the independently failing unit.
+            state["db"].add_run_event(
+                run_id, "warning", "draft_semantic_gate_failed",
+                "window 02 requires its own bounded repair", stage="draft",
+                metadata={
+                    "task_id": "segment-01-receipt-window-02",
+                    "prose_sha256": hashlib.sha256(
+                        prose.encode("utf-8")
+                    ).hexdigest(),
+                    "issues": [{
+                        "code": "scene_order",
+                        "message": "window 02 still has one scene-order issue",
+                    }],
+                },
+            )
+            raise DraftSemanticValidationError(
+                "segment-01-receipt-window-02", [{
+                    "code": "scene_order",
+                    "message": "window 02 still has one scene-order issue",
+                }],
+            )
+        if prose == repair_three:
+            return draft_semantic_receipt(asdict(contract), prose)
+        raise AssertionError("unexpected candidate in scoped recovery")
+
+    state["service"]._verify_draft_semantic_node = review_window_progress
+    with pytest.raises(DraftSemanticValidationError):
+        await state["service"]._draft_short_in_segments(
+            state["run_id"], state["run_path"], state["project"],
+            state["constraints"], state["plan"],
+        )
+    assert repair_calls == 2
+
+    # The latest candidate is now a valid source for window 02, but no
+    # window-02 repair has been consumed yet.  Its first scoped repair must
+    # be dispatched under a distinct artifact lineage.
+    resumed = await state["service"]._draft_short_in_segments(
+        state["run_id"], state["run_path"], state["project"],
+        state["constraints"], state["plan"],
+    )
+    assert resumed == repair_three
+    assert repair_calls == 3
+    scoped_path = (
+        state["run_path"] / "outputs"
+        / "draft-part-01-segment-01-root-resume-receipt-window-02"
+        "-semantic-repair-1.md"
+    )
+    assert scoped_path.read_text(encoding="utf-8").strip() == repair_three
+    scoped_events = [
+        item for item in state["db"].list_run_events(state["run_id"])
+        if item["event_type"] == (
+            "draft_generated_root_semantic_repair_candidate_generated"
+        )
+    ]
+    assert scoped_events[-1]["metadata"]["repair_scope_task_id"] == (
+        "segment-01-receipt-window-02"
+    )
+
+
+@pytest.mark.asyncio
+async def test_protocol_exhaustion_reuses_persisted_semantic_subset_for_repair(
+    tmp_path,
+) -> None:
+    state = await _prepare_generated_root_receipt_failure(tmp_path)
+    original = state["candidate_path"].read_text(encoding="utf-8")
+    original_hash = hashlib.sha256(original.encode("utf-8")).hexdigest()
+    repaired = original[:-1] + "新"
+    state["db"].add_run_event(
+        state["run_id"], "error", "semantic_receipt_protocol_exhausted",
+        "mixed receipt retained semantic rejection after protocol retry",
+        stage="draft", metadata={
+            "task_id": "segment-01-receipt-window-01",
+            "prose_sha256": original_hash,
+            "issues": [{
+                "code": "actor_action_evidence",
+                "message": "receipt evidence is not bound",
+            }],
+            "semantic_issues": [{
+                "code": "actor_action",
+                "message": "actor/action identity is invalid",
+            }],
+        },
+    )
+    original_complete = state["gateway"].complete
+    repair_calls = 0
+
+    async def repair_gateway(role, system, user, max_output_tokens=None):
+        nonlocal repair_calls
+        if "ATOMIC_SEMANTIC_PROSE_REPAIR" in user:
+            repair_calls += 1
+            return ModelResult(repaired, {
+                "role": role, "model_name": "fake-repair", "finish_reason": "stop",
+            })
+        return await original_complete(
+            role, system, user, max_output_tokens=max_output_tokens,
+        )
+
+    state["gateway"].complete = repair_gateway
+
+    async def accept_repaired_receipt(
+        run_id, run_path, project, constraints, contract, prose,
+        outside_event_ids, **kwargs,
+    ):
+        assert prose == repaired
+        return draft_semantic_receipt(asdict(contract), prose)
+
+    state["service"]._verify_draft_semantic_node = accept_repaired_receipt
+    resumed = await state["service"]._draft_short_in_segments(
+        state["run_id"], state["run_path"], state["project"],
+        state["constraints"], state["plan"],
+    )
+
+    assert resumed == repaired
+    assert repair_calls == 1
+    assert any(
+        item["event_type"] == "draft_generated_root_semantic_repair"
+        and item["metadata"].get("repair_scope_task_id")
+        == "segment-01-receipt-window-01"
+        for item in state["db"].list_run_events(state["run_id"])
+    )
+
+
+@pytest.mark.asyncio
+async def test_mixed_receipt_routes_explicit_semantic_reject_to_repair(
+    tmp_path,
+) -> None:
+    state = await _prepare_generated_root_receipt_failure(tmp_path)
+    service = state["service"]
+    contract = state["contract"]
+    prose = state["prose"]
+    original_complete = state["gateway"].complete
+
+    async def mixed_receipt_gateway(
+        role, system, user, max_output_tokens=None,
+    ):
+        result = await original_complete(
+            role, system, user, max_output_tokens=max_output_tokens,
+        )
+        if "DRAFT_SEMANTIC_VALIDATION" in user:
+            payload = json.loads(result.text)
+            payload["beat_receipts"][0]["actor_action_valid"] = False
+            payload["beat_receipts"][0]["actor_action_evidence"] = (
+                "这段引文不在正文中"
+            )
+            return ModelResult(
+                json.dumps(payload, ensure_ascii=False), result.receipt,
+            )
+        return result
+
+    state["gateway"].complete = mixed_receipt_gateway
+    delattr(service, "_verify_draft_semantic_node")
+    verify = WorkflowService._verify_draft_semantic_node.__get__(service)
+    with pytest.raises(DraftSemanticValidationError) as raised:
+        await verify(
+            state["run_id"], state["run_path"], state["project"],
+            state["constraints"], contract, prose, [],
+            suffix="-mixed-receipt", failure_stage="draft",
+        )
+
+    assert any(
+        item.get("code") == "actor_action"
+        for item in raised.value.issues
+    )
+    events = state["db"].list_run_events(state["run_id"])
+    assert any(
+        item["event_type"] == "semantic_receipt_protocol_exhausted"
+        for item in events
+    )
+    assert any(
+        item["event_type"] == "semantic_receipt_mixed_business_reject"
+        for item in events
+    )
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("fault", ["wrong_hash", "stale_authority", "wrong_task"])
+async def test_generated_root_receipt_resume_rejects_invalid_binding(
+    tmp_path, fault,
+) -> None:
+    state = await _prepare_generated_root_receipt_failure(tmp_path)
+    if fault == "wrong_hash":
+        state["candidate_path"].write_text(
+            state["prose"] + "篡", encoding="utf-8",
+        )
+    elif fault == "stale_authority":
+        with state["db"].connect() as connection:
+            connection.execute(
+                "UPDATE workflow_node_checkpoints SET authority_sha256=? "
+                "WHERE run_id=? AND node_key=?",
+                ("f" * 64, state["run_id"], "draft-part-01"),
+            )
+    else:
+        state["db"].add_run_event(
+            state["run_id"], "error", "semantic_receipt_protocol_exhausted",
+            "wrong task binding", stage="draft", metadata={
+                "task_id": "segment-01/sub-1",
+                "prose_sha256": hashlib.sha256(
+                    state["prose"].encode("utf-8"),
+                ).hexdigest(),
+                "issues": [{"code": "protocol_route_transport_interrupted"}],
+            },
+        )
+
+    async def receipt_must_not_run(*args, **kwargs):
+        raise AssertionError("invalid generated root reached Review")
+
+    state["service"]._verify_draft_semantic_node = receipt_must_not_run
+    with pytest.raises(ValueError, match="generated root receipt recovery"):
+        await state["service"]._draft_short_in_segments(
+            state["run_id"], state["run_path"], state["project"],
+            state["constraints"], state["plan"],
+        )
+    assert state["gateway"].roles.count("draft") == 1
 
 
 @pytest.mark.asyncio
@@ -6153,6 +7278,93 @@ async def test_draft_semantic_failure_rewrites_same_scope_and_accepts_second_ver
     assert any(
         item["event_type"] == "draft_task_scope_retry"
         for item in db.list_run_events("semantic-rewrite")
+    )
+
+
+@pytest.mark.asyncio
+async def test_draft_receipt_shape_exhaustion_never_rewrites_prose_through_real_stage(
+    tmp_path,
+) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    bind_fake_gateway_capacity(db)
+    store = ProjectStore(db, tmp_path / "workspace")
+    project = store.create(ProjectCreate(
+        title="Receipt protocol boundary", mode="short", genre="suspense",
+        premise="A valid draft receives a malformed semantic receipt.",
+        target_words=2500,
+    ))
+    skill_root = tmp_path / "skills"
+    make_prompt_skills(skill_root)
+
+    class Gateway:
+        def __init__(self):
+            self.drafts = 0
+            self.reviews = 0
+
+        async def complete(self, role, system, user, max_output_tokens=None):
+            if role == "draft":
+                self.drafts += 1
+                return ModelResult(
+                    "稿" * 2500,
+                    {"model_name": "draft", "finish_reason": "stop"},
+                )
+            self.reviews += 1
+            contract = json.loads(re.search(
+                r"TASK CONTRACT: (\{[^\n]+\})", user,
+            ).group(1))
+            prose = user.split("PROSE:\n", 1)[1]
+            receipt = draft_semantic_receipt(contract, prose)
+            for beat_receipt in receipt["beat_receipts"]:
+                beat_receipt["causal_order_valid"] = True
+                beat_receipt["causal_order_evidence"] = prose[:24]
+            return ModelResult(
+                json.dumps(receipt, ensure_ascii=False),
+                {"model_name": "review", "finish_reason": "stop"},
+            )
+
+    gateway = expose_test_primary_route(Gateway())
+    service = WorkflowService(
+        db, store, gateway, SkillGate(db, SkillScanner([skill_root])),
+    )
+    db.create_run(
+        "receipt-protocol-boundary", project.id, "short-story",
+        status="running",
+    )
+    run_path = project.path / "runs" / "receipt-protocol-boundary"
+    (run_path / "outputs").mkdir(parents=True)
+    (run_path / "receipts").mkdir()
+    contract = DraftTaskContract(
+        authority_sha256="a" * 64,
+        task_id="segment-01", parent_task_id="", depth=0,
+        target_han=2500, event_ids=("EV-00000001",),
+        scope="只写核实身份", entry_state="花穗仍在前厅",
+        exit_requirement="核实身份的人已经出发",
+        execution_manifest_sha256="b" * 64,
+        beat_ids=("EV-00000001/01",), viewpoint="third-limited",
+    )
+
+    with pytest.raises(DraftReceiptProtocolError):
+        await service._draft_short_segment_task(
+            "receipt-protocol-boundary", run_path, project,
+            "必须保持第三人称限知视角。", "当前段正式资料",
+            suffix="-part-01", target=2500, previous_parts=[],
+            event_ids=["EV-00000001/01"], contract=contract,
+            semantic_all_event_ids=["EV-00000001/01"],
+        )
+
+    events = db.list_run_events("receipt-protocol-boundary")
+    assert gateway.drafts == 1
+    assert gateway.reviews >= 2
+    assert any(
+        item["event_type"] == "semantic_receipt_protocol_exhausted"
+        for item in events
+    )
+    assert not any(
+        item["event_type"] in {
+            "draft_task_scope_retry", "draft_semantic_rewrite_exhausted",
+        }
+        for item in events
     )
 
 
@@ -12440,6 +13652,46 @@ def test_output_budget_uses_each_selected_route_model_ceiling(tmp_path) -> None:
         expected_output_characters=1600,
         scoped_creative_output=True,
     ) == 3072
+
+
+def test_review_fallback_protocol_budget_reuses_exact_route_success_envelope(
+    tmp_path,
+) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    db.save_provider(
+        provider_id="provider", name="Provider", protocol="anthropic",
+        base_url="https://example.test", auth_type="bearer", timeout_seconds=180,
+        extra_headers={},
+    )
+    db.save_model(
+        model_id="review-primary", provider_id="provider",
+        display_name="Primary", model_name="primary",
+    )
+    db.save_model(
+        model_id="review-fallback", provider_id="provider",
+        display_name="Fallback", model_name="fallback",
+    )
+    db.save_role_binding(
+        "review", "provider", "review-primary", "provider", "review-fallback",
+    )
+    db.save_model_output_observation(
+        provider_id="provider", model_id="review-fallback",
+        route_fingerprint="route", execution_mode="plain",
+        requested_max_output_tokens=8464, actual_output_tokens=2800,
+        visible_characters=5100, finish_reason="end_turn", transport_complete=True,
+    )
+    service = WorkflowService.__new__(WorkflowService)
+    service.db = db
+    service.gateway = SimpleNamespace()
+
+    budget = service._output_budget_for_call(
+        "review", None, "review", True,
+        expected_output_characters=2728,
+        bounded_protocol_output=True,
+    )
+
+    assert budget == 8464
 
 
 @pytest.mark.asyncio

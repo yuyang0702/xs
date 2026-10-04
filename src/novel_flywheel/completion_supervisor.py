@@ -114,6 +114,19 @@ def classify_completion_failure(exc: BaseException) -> FailureClass:
         return FailureClass.CAPABILITY
     if isinstance(exc, ConnectionError):
         return FailureClass.TRANSPORT
+    # HTTP failures are raised by the provider client as HTTPStatusError and
+    # do not inherit ConnectionError.  Classify the status at this shared
+    # boundary so an aggregate of real 5xx/429 responses receives the bounded
+    # provider-wait policy instead of being mislabeled UNKNOWN and terminal.
+    response = getattr(exc, "response", None)
+    status_code = getattr(response, "status_code", None)
+    if isinstance(status_code, int):
+        if status_code in {401, 403}:
+            return FailureClass.CREDENTIAL
+        if status_code == 404:
+            return FailureClass.CAPABILITY
+        if status_code == 429 or 500 <= status_code <= 599:
+            return FailureClass.TRANSPORT
     model_failure = classify_model_failure(exc)
     model_failure_classes = {
         "input_context_overflow": FailureClass.CONTEXT_CAPACITY,

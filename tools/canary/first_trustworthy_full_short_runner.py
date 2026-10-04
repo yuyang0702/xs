@@ -2004,6 +2004,17 @@ async def _execute_full_short_control_plane_with_capability(
         ),
         "full_short.prelaunch.registry",
     )
+    # This historical runner is retained for offline/control-plane coverage,
+    # but it must never become a second paid production authority.  A real
+    # external run is allowed only when its registry has been explicitly bound
+    # to the canonical dispatch spine; mock-transport tests remain available.
+    if external_actions_enabled and http_transport_factory is None and not (
+        bool(getattr(registry, "canonical_dispatch_required", False))
+        and bool(getattr(registry, "canonical_runtime_path_id", ""))
+    ):
+        raise FullShortExecutionBoundaryError(
+            "FULL_SHORT_CANONICAL_SPINE_REGISTRY_REQUIRED"
+        )
     db, project, service, manager = prelaunch(
         lambda: _full_short_runtime_components(
             repo=args.repo, data_dir=settings.data_dir,

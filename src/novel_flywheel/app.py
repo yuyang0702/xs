@@ -1,4 +1,6 @@
 from contextlib import asynccontextmanager
+import hashlib
+import json
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -49,7 +51,11 @@ from novel_flywheel.market import MarketService
 from novel_flywheel.market_baseline import MarketBaselineService
 from novel_flywheel.analysis_tasks import ReferenceAnalysisTaskManager
 from novel_flywheel.outlines import OutlineService
-from novel_flywheel.runtime_fingerprint import RuntimeFingerprintRecorderV1
+from novel_flywheel.runtime_fingerprint import (
+    RuntimeFingerprintRecorderV1,
+    route_role_binding_definition,
+)
+from novel_flywheel.reliability_spine import CanonicalDispatchCoordinator
 
 
 @asynccontextmanager
@@ -122,7 +128,26 @@ def create_app(db: Database | None = None, secrets: SecretStore | None = None,
         # storage failures must not change application startup or recovery.
         app.state.runtime_fingerprint_recorder = None
         app.state.runtime_fingerprint_status = "unknown_runtime"
-    app.state.registry = ProviderRegistry(db, secrets or KeyringSecretStore())
+    # Every production Provider request is admitted by the canonical spine.
+    # Direct adapter/legacy entrypoints fail closed at the HTTP boundary.
+    app.state.reliability_spine = CanonicalDispatchCoordinator(
+        # Production app transport is fail-closed until the immutable
+        # Foundation Gates record is present. Offline fixtures construct their
+        # own coordinator and never inherit this authority.
+        db.path.parent, require_release=True, require_foundation_gates=True,
+        config_version=str(
+            route_role_binding_definition(db).get("definition_sha256") or ""
+        ),
+    )
+    app.state.registry = ProviderRegistry(
+        db, secrets or KeyringSecretStore(), canonical_dispatch_required=True,
+        canonical_runtime_path_id=(
+            app.state.reliability_spine.release.runtime_path_id
+        ),
+        canonical_dispatch_failure_handler=(
+            app.state.reliability_spine.record_old_path_invocation
+        ),
+    )
     settings = default_settings()
     app.state.references = reference_library or ReferenceLibrary(db, settings.data_dir / "references")
     app.state.local_nlp = LocalNLPManager(settings.data_dir / "local-nlp.json")
@@ -145,6 +170,7 @@ def create_app(db: Database | None = None, secrets: SecretStore | None = None,
         SkillFormCatalog(app.state.skill_gate, settings.data_dir / "skill-forms"),
     )
     gateway = ModelGateway(db, app.state.registry)
+    gateway.dispatch_admitter = app.state.reliability_spine.admit
     app.state.learning = LearningSystem(db, app.state.references, app.state.projects, gateway)
     app.state.outlines = OutlineService(
         db, app.state.projects, gateway, local_nlp=app.state.local_nlp,
@@ -221,8 +247,86 @@ def create_app(db: Database | None = None, secrets: SecretStore | None = None,
             return operation
         return None
 
+    def evaluate_recovery_reentry(run_id: str) -> dict[str, object] | None:
+        """Evaluate a blocked Short node without reopening the old run loop."""
+
+        run = db.get_run(run_id)
+        if not run or run.get("workflow") != "short-story":
+            return None
+        supervision = db.get_workflow_supervision(run_id)
+        if not supervision:
+            return None
+        attempts = db.list_workflow_attempts(run_id)
+        latest_metadata = {}
+        for item in reversed(attempts):
+            if isinstance(item.get("metadata"), dict) and item["metadata"]:
+                latest_metadata = dict(item["metadata"])
+                break
+        stage = str(run.get("current_stage") or latest_metadata.get("stage") or "unknown")
+        logical_node_id = str(
+            latest_metadata.get("logical_node_id")
+            or latest_metadata.get("durable_node_id")
+            or f"{run_id}:{stage}"
+        )
+        node = app.state.reliability_spine.nodes.load(logical_node_id)
+        if node is None:
+            # Legacy terminal attempts may omit logical_node_id even though
+            # the canonical physical ledger and durable node are complete.
+            # Resolve only the ledger tail; an invalid tail remains blocked.
+            node = app.state.reliability_spine.recovery_node_for_run(run_id)
+            if node is None:
+                return {
+                    "schema": "RecoveryReentryEvaluationV1",
+                    "action": "MIGRATION_REQUIRED",
+                    "reason": "legacy_checkpoint_migration_required",
+                    "condition_signature": str(supervision.get("last_failure_sha256") or ""),
+                    "provider_intent_created": False,
+                    "physical_dispatch_allowed": False,
+                }
+            logical_node_id = node.node_id
+        bindings = db.list_role_bindings()
+        config_version = hashlib.sha256(
+            json.dumps(bindings, ensure_ascii=False, sort_keys=True).encode("utf-8")
+        ).hexdigest()
+        capability_snapshot = dict(latest_metadata.get("capability_snapshot") or {})
+        # A valid checkpoint migration or prepared-work rebind is a real
+        # recovery condition change. Include the durable node identity in the
+        # re-entry signature so that an old signature cannot suppress the
+        # first evaluation after stale prepared work has been re-materialized
+        # under the current release. This keeps same-condition re-entry
+        # suppression intact while allowing the documented cutover/migration
+        # transition to proceed without a manual state edit.
+        capability_snapshot.update({
+            "durable_node_release_build_id": node.release_build_id,
+            "durable_node_version": node.version,
+        })
+        metadata = {
+            "project_id": run.get("project_id"), "run_id": run_id,
+            "operation_run_id": run_id, "workflow_kind": "short-story",
+            "stage": stage, "logical_node_id": logical_node_id,
+            "candidate_sha256": node.candidate_sha256,
+            "contract_name": latest_metadata.get("contract_name") or "short-runtime",
+            "contract_version": latest_metadata.get("contract_version") or 1,
+            # The durable node is the authoritative prepared-work identity.
+            # A historical attempt may carry the route that created an old
+            # prepared request; preferring that value would keep re-entry
+            # signatures stale even after migration re-materialized the node
+            # under the current user binding.
+            "route_fingerprint": node.route_fingerprint or latest_metadata.get("route_fingerprint"),
+            "capability_snapshot": capability_snapshot,
+            "config_version": config_version,
+            "failure_sha256": supervision.get("last_failure_sha256") or "",
+        }
+        return app.state.reliability_spine.evaluate_reentry(
+            metadata, node_state=node.state,
+            failure_class=str(supervision.get("last_failure_class") or ""),
+            blocker_signature=str(supervision.get("last_failure_sha256") or ""),
+        )
+
     app.state.run_tasks = RunTaskManager(
         db, operation_resolver=resolve_run_operation,
+        reentry_evaluator=evaluate_recovery_reentry,
+        execution_identity_binder=gateway.bind_workflow_execution_identity,
     )
 
     app.state.migrator = ProjectMigrator(

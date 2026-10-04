@@ -37,6 +37,20 @@ def test_bounded_protocol_budget_does_not_inherit_creative_stage_floor() -> None
     assert 768 <= bounded < stage_output_budget("review")
 
 
+def test_bounded_protocol_budget_reserves_schema_and_provider_margin() -> None:
+    # The live route registry can know the 32K hard context while the model
+    # metadata row remains intentionally unset.  The shared resolver must
+    # still leave protocol/schema/provider overhead before dispatch.
+    bounded = bounded_protocol_output_budget(
+        expected_output_characters=12_000,
+        input_tokens=24_042,
+        context_window=32_768,
+        declared_output_ceiling=None,
+    )
+
+    assert 768 <= bounded <= 32_768 - 24_042 - 4_096
+
+
 def test_targeted_repair_production_fixture_fits_after_scope_aware_reserve() -> None:
     fixture = json.loads(
         (Path(__file__).parent / "fixtures" / "context_capacity_d785dd5c.json")

@@ -45,6 +45,18 @@ async def test_supervised_worker_binds_execution_identity_around_operation(tmp_p
     assert active == []
 
 
+def initialization_resume_payload() -> dict:
+    return {
+        "version": 1,
+        "outline_sha256": "a" * 64,
+        "answers": {},
+        "learning_snapshot": {
+            "versions": {}, "summary": {}, "stages": {},
+            "skipped_conflicts": [],
+        },
+    }
+
+
 @pytest.mark.asyncio
 async def test_same_signature_resume_only_evaluates_blocked_state(tmp_path):
     db, manager = make_manager(tmp_path)
@@ -70,16 +82,72 @@ async def test_same_signature_resume_only_evaluates_blocked_state(tmp_path):
     assert len(db.list_workflow_attempts(run["id"])) == before
 
 
-def initialization_resume_payload() -> dict:
-    return {
-        "version": 1,
-        "outline_sha256": "a" * 64,
-        "answers": {},
-        "learning_snapshot": {
-            "versions": {}, "summary": {}, "stages": {},
-            "skipped_conflicts": [],
-        },
-    }
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "recovery_state",
+    ["recovering_protocol", "recovering_semantic", "quality_repair"],
+)
+async def test_provider_wait_commit_accepts_active_recovery_state(tmp_path, recovery_state):
+    """Transport failure keeps retry authority across typed recovery states."""
+    db, manager = make_manager(tmp_path)
+    started = asyncio.Event()
+    release = asyncio.Event()
+
+    async def operation(_run_id):
+        started.set()
+        await release.wait()
+
+    run = manager.start(
+        "book", "short-story", operation,
+        resume_payload={},
+    )
+    await started.wait()
+    with db.connect() as connection:
+        connection.execute(
+            "UPDATE workflow_supervision SET state=? WHERE run_id=?",
+            (recovery_state, run["id"]),
+        )
+    committed = db.commit_supervised_provider_wait(
+        run_id=run["id"], stage="review", error_summary="provider unavailable",
+        used_budgets={"provider_wait": 1},
+        next_retry_at="2099-01-01T00:00:00+00:00", failure_class="transport",
+        failure_sha256="a" * 64, attempt_action="provider_retry",
+        retry_metadata={}, event_metadata={},
+    )
+    assert committed is True
+    assert db.get_run(run["id"])["status"] == "waiting_provider"
+    assert db.get_workflow_supervision(run["id"])["state"] == "waiting_provider"
+    manager.cancel(run["id"])
+    release.set()
+    with pytest.raises(asyncio.CancelledError):
+        await manager.wait(run["id"])
+
+
+@pytest.mark.asyncio
+async def test_provider_wait_commit_accepts_workflow_failed_write_with_live_supervision(tmp_path):
+    """Workflow exception persistence must not erase automatic retry authority."""
+    db, manager = make_manager(tmp_path)
+    started = asyncio.Event()
+    release = asyncio.Event()
+
+    async def operation(run_id):
+        started.set()
+        await release.wait()
+        db.update_run(run_id, "failed", error="workflow.failed")
+        primary = RuntimeError("provider transport unavailable")
+        primary.reliability_failure = ReliabilityFailure(
+            code="provider_transport", failure_class=FailureClass.TRANSPORT,
+            boundary="test.provider", retryable=True,
+        )
+        raise ModelRoutesExhaustedError(primary, primary)
+
+    run = manager.start("book", "short-story", operation, resume_payload={})
+    await started.wait()
+    release.set()
+    result = await manager.wait(run["id"])
+    assert result["status"] == "waiting_provider"
+    assert db.get_workflow_supervision(run["id"])["state"] == "waiting_provider"
+    manager.cancel(run["id"])
 
 
 def test_task_manager_validates_resume_contract_before_creating_or_claiming_run(

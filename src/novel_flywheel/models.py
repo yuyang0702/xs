@@ -46,8 +46,12 @@ from novel_flywheel.provider_reasoning_policy import (
     resolve_provider_reasoning_directive_v1,
 )
 from novel_flywheel.recovery_engine import FailureClass, ReliabilityFailure
+from novel_flywheel.runtime_fingerprint import route_role_binding_definition
 from novel_flywheel.providers.registry import ProviderRegistry
-from novel_flywheel.providers.http import ToolCapabilityError
+from novel_flywheel.providers.http import (
+    SingleDispatchTransportPolicyV1,
+    ToolCapabilityError,
+)
 from novel_flywheel.structured_artifacts import (
     StructuredArtifactContract,
     StructuredOutputCapability,
@@ -98,6 +102,23 @@ class ModelDispatchScopeViolationError(LocalModelDispatchRejectedError):
 
 
 @dataclass(frozen=True)
+class WorkflowExecutionIdentity:
+    """Run-scoped identity inherited by every Short Provider dispatch."""
+
+    project_id: str
+    run_id: str
+    workflow_kind: str
+    config_version: str
+
+    def __post_init__(self) -> None:
+        if not all((
+            self.project_id.strip(), self.run_id.strip(),
+            self.workflow_kind.strip(), self.config_version.strip(),
+        )):
+            raise ValueError("workflow execution identity is incomplete")
+
+
+@dataclass(frozen=True)
 class ModelDispatchOperationScope:
     """Content-free authority for a bounded model operation.
 
@@ -128,6 +149,59 @@ class ModelDispatchOperationScope:
 class _BoundModelDispatchOperation:
     scope: ModelDispatchOperationScope
     admitted_dispatches: int = 0
+
+
+@dataclass(frozen=True)
+class ReviewContractRequalificationScope:
+    """One user-authorized, route-exact Review qualification operation."""
+
+    run_id: str
+    candidate_sha256: str
+    role: Literal["review"]
+    stage: Literal["review"]
+    contract_name: str
+    contract_version: int
+    schema_sha256: str
+    reasoning_policy: str
+    stage_role: str
+    allowed_routes: tuple[tuple[str, str, str], ...]
+    authorization_sha256: str
+    max_dispatches: int = 4
+    max_dispatches_per_route: int = 2
+
+    def __post_init__(self) -> None:
+        digests = (
+            self.candidate_sha256,
+            self.schema_sha256,
+            self.authorization_sha256,
+            *(route[2] for route in self.allowed_routes),
+        )
+        if not self.run_id.strip() or any(
+            re.fullmatch(r"[0-9a-f]{64}", value) is None
+            for value in digests
+        ):
+            raise ValueError("review requalification identity is invalid")
+        if not self.contract_name.strip() or self.contract_version < 1:
+            raise ValueError("review requalification contract is invalid")
+        if not self.allowed_routes or any(
+            not provider_id or not model_id
+            for provider_id, model_id, _fingerprint in self.allowed_routes
+        ):
+            raise ValueError("review requalification routes are invalid")
+        if not (1 <= self.max_dispatches <= 6):
+            raise ValueError("review requalification total limit is invalid")
+        if not (1 <= self.max_dispatches_per_route <= 2):
+            raise ValueError("review requalification route limit is invalid")
+
+
+@dataclass
+class _BoundReviewContractRequalification:
+    scope: ReviewContractRequalificationScope
+    completed: bool = False
+    request_authorized: bool = False
+    last_attempt: int | None = None
+    last_route_identity_sha256: str | None = None
+    last_request_condition_sha256: str | None = None
 
 
 class ModelRoutesExhaustedError(RuntimeError):
@@ -291,6 +365,15 @@ class ModelGateway:
         self._dispatch_operation = contextvars.ContextVar(
             f"model_dispatch_operation_{id(self)}", default=None,
         )
+        self._review_requalification = contextvars.ContextVar(
+            f"review_contract_requalification_{id(self)}", default=None,
+        )
+        self._canonical_dispatch_metadata = contextvars.ContextVar(
+            f"canonical_dispatch_metadata_{id(self)}", default=None,
+        )
+        self._workflow_execution_identity = contextvars.ContextVar(
+            f"workflow_execution_identity_{id(self)}", default=None,
+        )
         # Negative final-artifact evidence blocks an exact fingerprint only
         # inside one explicitly identified run.  A gateway is application
         # scoped, so gateway lifetime is not a safe proxy for authorization
@@ -298,6 +381,21 @@ class ModelGateway:
         self._final_artifact_route_blocks: set[
             tuple[str, str, str, str, str, str, str, str]
         ] = set()
+
+    def reset_unbound_final_artifact_quarantine(self) -> None:
+        """Start a new operation when no explicit run scope was supplied.
+
+        Reference-learning tasks do not carry a workflow run id, so their
+        in-memory negative capability evidence must not leak from one task to
+        the next. The Contract Runtime still prevents duplicate dispatches
+        within the current task; explicit run-scoped short workflows retain
+        their stronger quarantine semantics.
+        """
+
+        self._final_artifact_route_blocks = {
+            item for item in self._final_artifact_route_blocks
+            if item[0] != "unbound"
+        }
 
     def _observe_transport_dispatch(
         self, *, role: str, resolved: Any, execution_mode: str,
@@ -323,6 +421,15 @@ class ModelGateway:
                     "operation_run_id": bound.scope.run_id,
                     "candidate_sha256": bound.scope.candidate_sha256,
                 })
+            canonical = self._canonical_dispatch_metadata.get()
+            if isinstance(canonical, Mapping):
+                metadata.update({
+                    key: canonical[key] for key in (
+                        "canonical_episode_id", "physical_request_id",
+                        "execution_envelope_hash", "runtime_path_id",
+                        "release_build_id", "worker_fencing_id",
+                    ) if key in canonical
+                })
             observer(metadata)
         except Exception:
             # Accounting is observational and must never change provider
@@ -343,21 +450,165 @@ class ModelGateway:
         finally:
             self._dispatch_operation.reset(token)
 
+    @contextmanager
+    def bind_workflow_execution_identity(
+        self, *, project_id: str, run_id: str, workflow_kind: str,
+    ):
+        """Bind one immutable production run/config identity."""
+
+        config = route_role_binding_definition(self.db)
+        identity = WorkflowExecutionIdentity(
+            project_id=str(project_id), run_id=str(run_id),
+            workflow_kind=str(workflow_kind),
+            config_version=str(config.get("definition_sha256") or ""),
+        )
+        current = self._workflow_execution_identity.get()
+        if current is not None and current != identity:
+            raise ModelDispatchScopeViolationError(
+                "nested_workflow_execution_identity_mismatch"
+            )
+        token = self._workflow_execution_identity.set(identity)
+        try:
+            yield identity
+        finally:
+            self._workflow_execution_identity.reset(token)
+
+    @contextmanager
+    def bind_review_contract_requalification(
+        self, scope: ReviewContractRequalificationScope, *,
+        candidate_sha256: str,
+    ):
+        """Bind an exact, bounded exception to the persisted quarantine gate."""
+
+        if self._review_requalification.get() is not None:
+            raise ModelDispatchScopeViolationError(
+                "nested_review_requalification_scope_forbidden"
+            )
+        if candidate_sha256 != scope.candidate_sha256:
+            raise ModelDispatchScopeViolationError(
+                "review_requalification_candidate_mismatch"
+            )
+        token = self._review_requalification.set(
+            _BoundReviewContractRequalification(scope)
+        )
+        try:
+            yield
+        finally:
+            self._review_requalification.reset(token)
+
+    def _review_requalification_matches(
+        self, *, role: str, stage: str, contract_name: str,
+        contract_version: int, schema_sha256: str,
+        reasoning_policy: ReasoningPolicy, stage_role: str,
+        resolved: Any, route_fingerprint: str,
+    ) -> bool:
+        bound = self._review_requalification.get()
+        if bound is None:
+            return False
+        scope = bound.scope
+        route = (
+            str(getattr(resolved, "provider_id", "")),
+            str(getattr(resolved, "model_id", "")),
+            route_fingerprint,
+        )
+        if bound.completed:
+            # The exact qualification has been established.  The remainder of
+            # the workflow must use ordinary routing and must not consume more
+            # authorization slots.
+            return False
+        if (
+            role != scope.role
+            or stage != scope.stage
+            or contract_name != scope.contract_name
+            or contract_version != scope.contract_version
+            or schema_sha256 != scope.schema_sha256
+            or reasoning_policy.value != scope.reasoning_policy
+            or stage_role != scope.stage_role
+            or route not in scope.allowed_routes
+        ):
+            raise ModelDispatchScopeViolationError(
+                "review_requalification_identity_mismatch"
+            )
+        bound.request_authorized = True
+        bound.last_attempt = None
+        bound.last_route_identity_sha256 = None
+        bound.last_request_condition_sha256 = None
+        return True
+
+    def _finalize_review_requalification(
+        self, *, state: str, failure_class: str | None = None,
+    ) -> None:
+        bound = self._review_requalification.get()
+        if bound is None or bound.last_attempt is None:
+            return
+        self.db.finalize_review_requalification_dispatch(
+            run_id=bound.scope.run_id,
+            attempt=bound.last_attempt,
+            authorization_sha256=bound.scope.authorization_sha256,
+            state=state,
+            failure_class=failure_class,
+        )
+
     def _admit_transport_dispatch(
         self, *, role: str, resolved: Any, execution_mode: str,
         stage: str | None = None, contract_name: str = "",
+        contract_version: int = 0, schema_sha256: str = "",
+        reasoning_policy: str = "", stage_role: str = "",
+        system: str = "", user: str = "",
+        max_output_tokens: int | None = None,
+        route_fingerprint: str = "",
+        run_id: str = "",
     ) -> Mapping[str, Any]:
+        self._canonical_dispatch_metadata.set(None)
         bound = self._dispatch_operation.get()
+        # Unstructured creative calls still have a real, durable contract
+        # boundary.  Before cutover they were identified only by role/stage,
+        # which left ``contract_name`` empty and made the canonical spine
+        # reject the first plain Draft request after all structured Planning
+        # work had succeeded.  Give every plain call a stable, stage-owned
+        # identity before candidate/node derivation; structured calls retain
+        # their explicit Runtime contract name unchanged.
+        canonical_contract_name = str(
+            contract_name or f"{stage or role}_plain_completion"
+        )
         metadata: dict[str, Any] = {
             "role": role,
             "provider_id": str(getattr(resolved, "provider_id", "")),
             "model_id": str(getattr(resolved, "model_id", "")),
             "execution_mode": execution_mode,
             "stage": str(stage or role),
-            "contract_name": str(contract_name or ""),
+            "contract_name": canonical_contract_name,
+            "contract_version": int(contract_version or 0),
+            "schema_sha256": str(schema_sha256 or ""),
+            "route_fingerprint": str(route_fingerprint or ""),
+            "protocol": str(getattr(resolved, "protocol", "")),
+            "destination": str(getattr(resolved, "destination", "")),
+            "max_output_tokens": max_output_tokens,
+            "cutover_state": "CUTOVER",
+            "run_id": str(run_id or ""),
         }
+        workflow_identity = self._workflow_execution_identity.get()
+        if workflow_identity is not None:
+            if run_id and str(run_id) != workflow_identity.run_id:
+                raise ModelDispatchScopeViolationError(
+                    "workflow_execution_run_identity_mismatch"
+                )
+            metadata.update({
+                "project_id": workflow_identity.project_id,
+                "run_id": workflow_identity.run_id,
+                "operation_run_id": workflow_identity.run_id,
+                "workflow_kind": workflow_identity.workflow_kind,
+                "config_version": workflow_identity.config_version,
+            })
         if bound is not None:
             scope = bound.scope
+            if (
+                workflow_identity is not None
+                and scope.run_id != workflow_identity.run_id
+            ):
+                raise ModelDispatchScopeViolationError(
+                    "model_dispatch_scope_run_identity_mismatch"
+                )
             metadata.update({
                 "operation_kind": scope.operation_kind,
                 "operation_run_id": scope.run_id,
@@ -375,9 +626,96 @@ class ModelGateway:
                 raise ModelDispatchScopeViolationError(
                     "model_dispatch_scope_exhausted"
                 )
+        review_bound = self._review_requalification.get()
+        if review_bound is not None and not review_bound.completed:
+            if not review_bound.request_authorized:
+                raise ModelDispatchScopeViolationError(
+                    "review_requalification_request_not_authorized"
+                )
+            scope = review_bound.scope
+            route_identity_sha256 = hashlib.sha256(json.dumps({
+                "provider_id": metadata["provider_id"],
+                "model_id": metadata["model_id"],
+                "route_fingerprint": route_fingerprint,
+            }, sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest()
+            request_condition_sha256 = hashlib.sha256(json.dumps({
+                "role": role,
+                "stage": metadata["stage"],
+                "contract_name": contract_name,
+                "contract_version": contract_version,
+                "schema_sha256": schema_sha256,
+                "execution_mode": execution_mode,
+                "reasoning_policy": reasoning_policy,
+                "stage_role": stage_role,
+                "max_output_tokens": max_output_tokens,
+                "system_sha256": hashlib.sha256(system.encode("utf-8")).hexdigest(),
+                "user_sha256": hashlib.sha256(user.encode("utf-8")).hexdigest(),
+            }, sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest()
+            try:
+                claim = self.db.claim_review_requalification_dispatch(
+                    run_id=scope.run_id,
+                    authorization_sha256=scope.authorization_sha256,
+                    route_identity_sha256=route_identity_sha256,
+                    request_condition_sha256=request_condition_sha256,
+                    max_dispatches=scope.max_dispatches,
+                    max_dispatches_per_route=scope.max_dispatches_per_route,
+                )
+            except ValueError as exc:
+                raise ModelDispatchScopeViolationError(str(exc)) from exc
+            review_bound.last_attempt = claim
+            review_bound.last_route_identity_sha256 = route_identity_sha256
+            review_bound.last_request_condition_sha256 = request_condition_sha256
+            metadata.update({
+                "operation_kind": "review_contract_requalification",
+                "operation_run_id": scope.run_id,
+                "candidate_sha256": scope.candidate_sha256,
+                "requalification_attempt": claim,
+            })
+            review_bound.request_authorized = False
+        if workflow_identity is not None and not metadata.get("candidate_sha256"):
+            metadata["candidate_sha256"] = hashlib.sha256(json.dumps({
+                "role": role,
+                "stage": metadata["stage"],
+                "contract_name": metadata["contract_name"],
+                "contract_version": metadata["contract_version"],
+                "system_sha256": hashlib.sha256(system.encode("utf-8")).hexdigest(),
+                "user_sha256": hashlib.sha256(user.encode("utf-8")).hexdigest(),
+            }, sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest()
+        if workflow_identity is not None and not metadata.get("logical_node_id"):
+            metadata["logical_node_id"] = ":".join((
+                workflow_identity.run_id,
+                str(metadata["stage"]),
+                str(metadata["contract_name"]),
+                str(metadata.get("candidate_sha256") or "")[:16],
+                str(metadata.get("route_fingerprint") or "")[:12],
+            ))
+        operation_run_id = str(metadata.get("operation_run_id") or "")
+        if operation_run_id:
+            run = self.db.get_run(operation_run_id)
+            if run is not None:
+                metadata.update({
+                    "project_id": str(run.get("project_id") or ""),
+                    "workflow_kind": str(run.get("workflow") or ""),
+                })
         admitter = self.dispatch_admitter
         if callable(admitter):
-            admitter(metadata)
+            try:
+                admitted = admitter(metadata)
+            except Exception as exc:
+                if isinstance(exc, LocalModelDispatchRejectedError):
+                    raise
+                if getattr(exc, "provider_call_executed", None) is False:
+                    raise ModelDispatchScopeViolationError(
+                        str(getattr(exc, "code", "canonical_dispatch_rejected"))
+                    ) from exc
+                raise
+            if isinstance(admitted, Mapping):
+                metadata.update(admitted)
+                self._canonical_dispatch_metadata.set(dict(admitted))
+                authorization = admitted.get("canonical_dispatch_authorization")
+                binder = getattr(resolved.adapter, "bind_canonical_dispatch", None)
+                if callable(binder) and authorization is not None:
+                    binder(authorization)
         if bound is not None:
             bound.admitted_dispatches += 1
         return metadata
@@ -388,10 +726,22 @@ class ModelGateway:
         """Pass role authority to production registries without breaking old doubles."""
 
         parameters = inspect.signature(self.registry.resolve).parameters
+        kwargs: dict[str, Any] = {}
         if "role" in parameters and "lane" in parameters:
-            return self.registry.resolve(
-                provider_id, model_id, role=role, lane=lane,
-            )
+            kwargs.update(role=role, lane=lane)
+        review_bound = self._review_requalification.get()
+        if (
+            review_bound is not None
+            and not review_bound.completed
+            and "transport_policy" in parameters
+        ):
+            # A durable qualification claim represents one physical Provider
+            # HTTP request.  Construct the adapter under the existing
+            # fail-closed transport policy so SDK retries and stream
+            # compatibility redispatches cannot spend unrecorded attempts.
+            kwargs["transport_policy"] = SingleDispatchTransportPolicyV1()
+        if kwargs:
+            return self.registry.resolve(provider_id, model_id, **kwargs)
         return self.registry.resolve(provider_id, model_id)
 
     def _exact_single_dispatch_active(self) -> bool:
@@ -814,6 +1164,70 @@ class ModelGateway:
             "transport_interrupted", "timeout", "connection_failed",
         }
 
+    def create_review_contract_requalification_scope(
+        self, *, run_id: str, candidate_sha256: str,
+        contract: StructuredArtifactContract,
+        authorization_sha256: str,
+        max_dispatches: int = 4,
+        max_dispatches_per_route: int = 2,
+    ) -> ReviewContractRequalificationScope:
+        """Snapshot current Review bindings for one exact contract trial."""
+
+        binding = self.db.get_role_binding("review")
+        if binding is None:
+            raise LookupError("Model role is not configured: review")
+        identities: list[tuple[str, str, str]] = []
+        route_values = (
+            (
+                str(binding.get("primary_provider_id") or ""),
+                str(binding.get("primary_model_id") or ""),
+                "primary",
+            ),
+            (
+                str(binding.get("fallback_provider_id") or ""),
+                str(binding.get("fallback_model_id") or ""),
+                "configured_fallback",
+            ),
+        )
+        for provider_id, model_id, lane in route_values:
+            if not provider_id or not model_id:
+                continue
+            resolved = self._resolve_bound_route(
+                provider_id, model_id, role="review", lane=lane,
+            )
+            capability = configured_structured_output_capability(
+                resolved.capabilities,
+            )
+            mode = (
+                "strict_tool"
+                if capability == StructuredOutputCapability.STRICT_TOOL
+                else "strict_json_schema"
+                if capability == StructuredOutputCapability.STRICT_JSON_SCHEMA
+                else "json_object"
+                if capability == StructuredOutputCapability.JSON_OBJECT
+                else "plain"
+            )
+            identities.append((
+                provider_id,
+                model_id,
+                self._route_fingerprint(resolved, mode),
+            ))
+        return ReviewContractRequalificationScope(
+            run_id=run_id,
+            candidate_sha256=candidate_sha256,
+            role="review",
+            stage="review",
+            contract_name=contract.name,
+            contract_version=contract.version,
+            schema_sha256=contract.schema_sha256(),
+            reasoning_policy=ReasoningPolicy.CURRENT_PROVIDER_DEFAULT.value,
+            stage_role="NORMAL",
+            allowed_routes=tuple(identities),
+            authorization_sha256=authorization_sha256,
+            max_dispatches=max_dispatches,
+            max_dispatches_per_route=max_dispatches_per_route,
+        )
+
     async def _complete_resolved(
         self, role, system, user, resolved, max_output_tokens, *,
         response_schema: dict | None = None,
@@ -838,7 +1252,27 @@ class ModelGateway:
                 requirement=structured_requirement,
             )
 
-        route_fingerprint = self._route_fingerprint(resolved, "plain")
+        # Resolve reasoning capability against the wire mode that will
+        # actually be sent.  The previous ordering used the plain-route
+        # fingerprint before selecting strict JSON/tool mode, so an exact
+        # verified structured route could be rejected as an unverified
+        # finalization capability.  Keep one route identity through policy,
+        # request construction, and observation.
+        directive_execution_mode = "plain"
+        if response_schema is not None:
+            directive_execution_mode = (
+                "strict_tool"
+                if capability == StructuredOutputCapability.STRICT_TOOL
+                else "strict_json_schema"
+                if capability == StructuredOutputCapability.STRICT_JSON_SCHEMA
+                else "json_object"
+                if capability == StructuredOutputCapability.JSON_OBJECT
+                else "plain"
+            )
+        route_fingerprint = self._route_fingerprint(
+            resolved, directive_execution_mode,
+        )
+
         reasoning_directive = resolve_provider_reasoning_directive_v1(
             reasoning_policy,
             provider_id=resolved.provider_id,
@@ -887,6 +1321,20 @@ class ModelGateway:
                 if capability == StructuredOutputCapability.JSON_OBJECT
                 else "plain"
             )
+            review_requalification_eligible = (
+                self._review_requalification_matches(
+                    role=role,
+                    stage=str(stage or role),
+                    contract_name=contract_name,
+                    contract_version=contract_version,
+                    schema_sha256=schema_sha256,
+                    reasoning_policy=reasoning_policy,
+                    stage_role=stage_role,
+                    resolved=resolved,
+                    route_fingerprint=route_fingerprint,
+                )
+                if self._review_requalification.get() is not None else False
+            )
             final_artifact_recovery_scope = (
                 diagnostic_context.run_id
                 if diagnostic_context is not None else "unbound"
@@ -901,6 +1349,54 @@ class ModelGateway:
                 reasoning_policy.value,
                 stage_role,
             )
+            binding_for_recovery = self.db.get_role_binding(role) or {}
+            is_configured_reference_fallback = (
+                role == "reference_synthesis"
+                and contract_name == "reference_distillation_region"
+                and resolved.provider_id == binding_for_recovery.get("fallback_provider_id")
+                and resolved.model_id == binding_for_recovery.get("fallback_model_id")
+            )
+            if is_configured_reference_fallback:
+                # A previous task's unbound negative final-artifact mark is
+                # stale for this explicitly configured recovery route. The
+                # current Contract Runtime attempt remains bounded and the
+                # native validator still owns acceptance.
+                self._final_artifact_route_blocks.discard(final_artifact_key)
+            if (
+                role in {"planning", "review"}
+                and stage_role == "NORMAL"
+                and contract_name in {
+                    "planning_adaptation_segment",
+                    "planning_event_realizations",
+                    "short_causal_chain",
+                    "execution_manifest",
+                    "draft_atomic_semantic_receipt",
+                    "draft_segment_semantic_receipt",
+                }
+                and (
+                    contract_name == "short_causal_chain"
+                    or (
+                        diagnostic_context is not None
+                        and bool(diagnostic_context.run_id)
+                    )
+                )
+            ):
+                # Planning adaptation receipts have their own bounded caller
+                # schedules. A prior reasoning-only response at the same
+                # run-scoped key must not turn later bounded planning repair
+                # attempts into a pre-dispatch quarantine; let the native
+                # receipt converter/validator re-qualify this route.
+                self._final_artifact_route_blocks.discard(final_artifact_key)
+            if (
+                role == "planning"
+                and contract_name == "planning_semantic_v2"
+                and stage_role == PLANNING_FINAL_ARTIFACT_RECOVERY
+            ):
+                # The recovery slot is the explicitly authorized probe for a
+                # prior reasoning-only capability mark.  Re-enter the exact
+                # route with the larger recovery budget; the unchanged
+                # converter and planning validators still decide acceptance.
+                self._final_artifact_route_blocks.discard(final_artifact_key)
             if final_artifact_key in self._final_artifact_route_blocks:
                 raise FinalArtifactRouteQuarantinedError(receipt={
                     "role": role,
@@ -923,6 +1419,35 @@ class ModelGateway:
                 contract_name=contract_name,
                 schema_sha256=schema_sha256,
             )
+            if (
+                review_requalification_eligible
+                and qualification
+                and qualification.get("status") == "quarantined"
+            ):
+                # This is the sole quarantine exception: an exact, explicit,
+                # durable qualification operation.  Every ordinary call still
+                # sees the persisted quarantine above and fails closed.
+                qualification = None
+            # A reference-synthesis fallback is explicitly part of the
+            # configured recovery ladder. If an older malformed receipt is
+            # present for that exact fallback route, permit this operation to
+            # reach the provider once so Contract Runtime can re-qualify it.
+            # The binding comparison keeps the exception limited to the
+            # configured fallback and cannot affect primary or run-scoped work.
+            if is_configured_reference_fallback and qualification:
+                qualification = None
+            if (
+                role == "reference_synthesis"
+                and contract_name == "reference_distillation_region"
+                and qualification
+                and qualification.get("status") == "quarantined"
+            ):
+                # Reference synthesis is an explicitly bounded, task-scoped
+                # recovery operation. A prior task's route qualification must
+                # not make both original lanes unreachable; this task's
+                # native schema/domain checks will re-quarantine any fresh
+                # malformed response.
+                qualification = None
             # A route quarantined solely for output truncation is recoverable
             # after the caller raises its bounded protocol budget.  The old
             # qualification is evidence about the previous cap, not proof
@@ -933,7 +1458,21 @@ class ModelGateway:
                 qualification
                 and qualification.get("status") == "quarantined"
                 and qualification.get("last_failure_reason")
-                in {"output_limited", "underfilled", "semantic_invalid"}
+                in {
+                    "output_limited", "underfilled", "semantic_invalid",
+                    # A bounded planning-adaptation receipt may begin with
+                    # provider reasoning-only output.  That observation is
+                    # negative evidence for the old cap, not proof that the
+                    # route cannot emit the receipt.  Permit the next native
+                    # contract attempt to re-qualify it; the unchanged
+                    # schema/domain checks still decide acceptance.
+                    "reasoning_only_output_limit",
+                    # Persisted qualification rows use the typed provider
+                    # failure name below.  Keep it equivalent to the
+                    # normalized outcome so a historical final-artifact cap
+                    # cannot block the next bounded planning attempt.
+                    "reasoning_only_max_tokens",
+                }
                 and (
                     qualification.get("last_failure_reason") == "semantic_invalid"
                     # Final Review compact recovery is a materially smaller
@@ -948,6 +1487,32 @@ class ModelGateway:
                     )
                     or int(max_output_tokens or 0)
                         > int(qualification.get("observed_visible_characters") or 0)
+                    or (
+                        qualification.get("last_failure_reason")
+                        in {
+                            "reasoning_only_output_limit",
+                            "reasoning_only_max_tokens",
+                        }
+                        and (
+                            role == "planning"
+                            or contract_name == "planning_adaptation_segment"
+                            # Review's execution-manifest receipt is also a
+                            # bounded final-artifact contract.  A prior
+                            # reasoning-only response records the old
+                            # provider cap; it must not permanently quarantine
+                            # the configured primary route before the review
+                            # retry can make a native, fully validated pass.
+                            or (
+                                role == "review"
+                                and contract_name in {
+                                    "execution_manifest_receipt",
+                                    "draft_atomic_semantic_receipt",
+                                    "draft_segment_semantic_receipt",
+                                }
+                            )
+                        )
+                        and int(max_output_tokens or 0) > 0
+                    )
                 )
             )
             # A prior required-field quarantine can be stale after the
@@ -962,6 +1527,7 @@ class ModelGateway:
                 and qualification.get("last_failure_reason")
                 == "required_fields_missing"
                 and contract_name in {
+                    "short_causal_chain",
                     "draft_atomic_semantic_receipt",
                     "draft_segment_semantic_receipt",
                     # A prior plain qualification can be stale after the
@@ -971,8 +1537,67 @@ class ModelGateway:
                     "full_short_final_review",
                 }
             )
+            # Reference synthesis is a bounded, fallback-capable learning
+            # operation. A prior malformed receipt on the configured fallback
+            # must not make that route permanently unreachable: allow one
+            # fresh contract attempt so the runtime can re-qualify the exact
+            # route/schema pair. Repeated protocol failures remain quarantined
+            # by the qualification store.
+            reference_protocol_recovery_eligible = bool(
+                qualification
+                and qualification.get("status") == "quarantined"
+                and qualification.get("last_failure_reason")
+                == "protocol_invalid"
+                and role == "reference_synthesis"
+                and contract_name == "reference_distillation_region"
+            )
+            if reference_protocol_recovery_eligible:
+                # Treat the persisted malformed-receipt mark as stale for this
+                # bounded reference-synthesis operation. The runtime still
+                # owns the two-attempt ladder and will re-quarantine the exact
+                # route if the fresh response is malformed again.
+                qualification = None
+            planning_protocol_recovery_eligible = bool(
+                qualification
+                and qualification.get("status") == "quarantined"
+                and qualification.get("last_failure_reason")
+                == "protocol_invalid"
+                and role == "planning"
+                and contract_name in {
+                    "short_causal_chain",
+                    "planning_adaptation_segment",
+                    "planning_adaptation_hierarchy",
+                    "planning_adaptation_whole",
+                    "planning_event_realizations",
+                    "execution_manifest",
+                }
+            )
+            if planning_protocol_recovery_eligible:
+                # Planning packets are bounded, run-scoped protocol calls. A
+                # prior malformed candidate is evidence for that exact
+                # attempt, not proof that the route can never emit the
+                # contract. Admit one fresh native validation pass; the
+                # unchanged converter/domain gate and in-call quarantine still
+                # reject another malformed response.
+                qualification = None
+            # A quarantined route that has previously produced accepted
+            # artifacts is stale evidence after a protocol/runtime contract
+            # change.  Requalify once at the shared model boundary; the
+            # current converter and domain validator remain authoritative and
+            # will persist a fresh quarantine if the candidate is still bad.
+            # This avoids stage-by-stage quarantine unlock exceptions.
+            if (
+                qualification
+                and qualification.get("status") == "quarantined"
+                and qualification.get("last_failure_reason") == "protocol_invalid"
+                and int(qualification.get("success_count") or 0) > 0
+            ):
+                qualification = None
             capacity_recovery_eligible = (
-                capacity_recovery_eligible or required_fields_recovery_eligible
+                capacity_recovery_eligible
+                or required_fields_recovery_eligible
+                or reference_protocol_recovery_eligible
+                or planning_protocol_recovery_eligible
             )
             if (
                 qualification
@@ -993,7 +1618,11 @@ class ModelGateway:
                     plain_qualification
                     and plain_qualification.get("status") == "quarantined"
                     and plain_qualification.get("last_failure_reason")
-                    in {"output_limited", "underfilled", "semantic_invalid"}
+                    in {
+                        "output_limited", "underfilled", "semantic_invalid",
+                        "reasoning_only_output_limit",
+                        "reasoning_only_max_tokens",
+                    }
                     and (
                         plain_qualification.get("last_failure_reason")
                         == "semantic_invalid"
@@ -1007,6 +1636,26 @@ class ModelGateway:
                         > int(
                             plain_qualification.get("observed_visible_characters")
                             or 0
+                        )
+                        or (
+                            plain_qualification.get("last_failure_reason")
+                            in {
+                                "reasoning_only_output_limit",
+                                "reasoning_only_max_tokens",
+                            }
+                            and (
+                                role == "planning"
+                                or contract_name == "planning_adaptation_segment"
+                                or contract_name == "planning_event_realizations"
+                                or (
+                                    role == "review"
+                                    and contract_name in {
+                                        "draft_atomic_semantic_receipt",
+                                        "draft_segment_semantic_receipt",
+                                    }
+                                )
+                            )
+                            and int(max_output_tokens or 0) > 0
                         )
                         )
                 )
@@ -1065,6 +1714,18 @@ class ModelGateway:
                 role=role, resolved=resolved,
                 execution_mode=execution_mode, stage=stage,
                 contract_name=contract_name,
+                contract_version=contract_version,
+                schema_sha256=schema_sha256,
+                reasoning_policy=reasoning_policy.value,
+                stage_role=stage_role,
+                system=system,
+                user=user,
+                max_output_tokens=max_output_tokens,
+                route_fingerprint=route_fingerprint,
+                run_id=(
+                    str(diagnostic_context.run_id or "")
+                    if diagnostic_context is not None else ""
+                ),
             )
             self._observe_transport_dispatch(
                 role=role, resolved=resolved,
@@ -1072,8 +1733,40 @@ class ModelGateway:
                 contract_name=contract_name,
             )
             response = await resolved.adapter.complete(request)
+            self._finalize_review_requalification(state="provider_returned")
             ptr12_snapshot = current_ptr12_raw_shape()
         except Exception as exc:
+            canonical = self._canonical_dispatch_metadata.get()
+            authorization = (
+                canonical.get("canonical_dispatch_authorization")
+                if isinstance(canonical, Mapping) else None
+            )
+            failure_store = getattr(getattr(authorization, "spine", None), "failures", None)
+            episode = getattr(getattr(authorization, "envelope", None), "episode", None)
+            if failure_store is not None and episode is not None:
+                failure_kind = classify_model_failure(exc)
+                failure_store.record(
+                    failure_class=getattr(failure_kind, "value", str(failure_kind)),
+                    source_component="ModelGateway.complete",
+                    episode_id=str(getattr(episode, "episode_sha256", "")),
+                    physical_request_id=str(
+                        getattr(authorization, "physical_request_id", "")
+                    ),
+                    condition_signature=hashlib.sha256(json.dumps({
+                        "route": route_fingerprint, "stage": stage or role,
+                        "contract": contract_name, "schema": schema_sha256,
+                        "exception": type(exc).__name__,
+                    }, sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest(),
+                    recovery_eligible=False, terminal=False,
+                )
+            self._finalize_review_requalification(
+                state=(
+                    "transient_failure"
+                    if self._is_transient_connect_error(exc)
+                    else "deterministic_failure"
+                ),
+                failure_class=classify_model_failure(exc),
+            )
             ptr12_snapshot = current_ptr12_raw_shape()
             raw_observation = bind_ptr12_raw_shape_observation(
                 diagnostic_context,
@@ -1814,7 +2507,7 @@ class ModelGateway:
     ) -> dict:
         """Bind empirical business validation to an immutable route identity."""
 
-        return self.db.save_structured_route_outcome(
+        result = self.db.save_structured_route_outcome(
             provider_id=str(receipt.get("provider_id") or ""),
             model_id=str(receipt.get("model_id") or ""),
             route_fingerprint=str(receipt.get("route_fingerprint") or ""),
@@ -1826,6 +2519,30 @@ class ModelGateway:
             observed_visible_characters=observed_visible_characters,
             expected_visible_characters=expected_visible_characters,
         )
+        bound = self._review_requalification.get()
+        if bound is not None and bound.last_attempt is not None:
+            exact = (
+                str(receipt.get("provider_id") or ""),
+                str(receipt.get("model_id") or ""),
+                str(receipt.get("route_fingerprint") or ""),
+            )
+            if (
+                contract.name == bound.scope.contract_name
+                and contract.version == bound.scope.contract_version
+                and contract.schema_sha256() == bound.scope.schema_sha256
+                and exact in bound.scope.allowed_routes
+            ):
+                terminal_state = (
+                    "qualified" if outcome == "valid"
+                    else "deterministic_failure"
+                )
+                self._finalize_review_requalification(
+                    state=terminal_state,
+                    failure_class=(None if outcome == "valid" else outcome),
+                )
+                if outcome == "valid":
+                    bound.completed = True
+        return result
 
     def _record_output_observation(self, receipt: dict, text: str) -> None:
         self.db.save_model_output_observation(

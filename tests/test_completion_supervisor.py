@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 from threading import Event
 
 import pytest
+import httpx
 
 from novel_flywheel.completion_supervisor import (
     CompletionState,
@@ -52,6 +53,22 @@ def test_unknown_route_wrapper_does_not_default_to_transport() -> None:
     )
 
     assert classify_completion_failure(wrapped) == FailureClass.UNKNOWN
+
+
+@pytest.mark.parametrize(
+    ("status", "expected"),
+    [(401, FailureClass.CREDENTIAL), (403, FailureClass.CREDENTIAL),
+     (404, FailureClass.CAPABILITY), (429, FailureClass.TRANSPORT),
+     (500, FailureClass.TRANSPORT), (502, FailureClass.TRANSPORT),
+     (503, FailureClass.TRANSPORT)],
+)
+def test_http_status_route_failures_use_shared_status_classification(status, expected) -> None:
+    request = httpx.Request("POST", "https://provider.invalid/v1")
+    response = httpx.Response(status, request=request)
+    error = httpx.HTTPStatusError("redacted", request=request, response=response)
+    wrapped = ModelRoutesExhaustedError(error, error)
+
+    assert classify_completion_failure(wrapped) == expected
 
 
 def test_mixed_unknown_and_transport_route_children_fail_closed() -> None:

@@ -69,9 +69,11 @@ DomainDiagnosticExtractor = Callable[
 DomainRetryRenderer = Callable[
     [Sequence[Mapping[str, Any]], Mapping[str, Any], str], str
 ]
+ProtocolRetryRenderer = Callable[[str], str]
 TextValidator = Callable[[str], Any]
 AuditSink = Callable[[ArtifactConversionAudit], None]
 AttemptObserver = Callable[[dict[str, Any]], None]
+CandidateObserver = Callable[[str, ProtocolReceiptAttempt, Any, Mapping[str, Any], Mapping[str, Any] | None], None]
 AttemptAdmitter = Callable[
     [
         ProtocolReceiptAttempt,
@@ -91,6 +93,23 @@ ContractAttemptExecutor = Callable[
     ],
     Awaitable[Any],
 ]
+
+
+def _capture_review_diagnostic(
+    observer: Any, *, event: str, **payload: Any,
+) -> None:
+    """Best-effort task-scoped evidence hook; never changes runtime outcome."""
+
+    callback = getattr(observer, "capture_review_diagnostic", None)
+    if not callable(callback):
+        return
+    try:
+        callback(event=event, **payload)
+    except Exception:
+        # Evidence capture is intentionally non-authoritative.  The formal
+        # contract, validator and receipt ledger must keep their existing
+        # fail-closed behavior if a diagnostic sink cannot persist an event.
+        pass
 
 _FINAL_ARTIFACT_COMPLETION_SYSTEM_SUFFIX_V1 = (
     "\n\nThis is final-artifact completion for the same frozen "
@@ -253,6 +272,8 @@ class ExecutableContractSpec:
     domain_diagnostic_extractor: DomainDiagnosticExtractor | None = None
     domain_diagnostic_metadata: Mapping[str, Any] | None = None
     domain_retry_renderer: DomainRetryRenderer | None = None
+    protocol_retry_renderer: ProtocolRetryRenderer | None = None
+    candidate_observer: CandidateObserver | None = None
     retry_domain_failures: bool = False
     expected_event_ids: tuple[str, ...] = ()
     owns_opening: bool = True
@@ -618,6 +639,19 @@ async def dispatch_explicit_model_route(
     capacity_admission_token: str | None = None,
 ) -> Any:
     """Execute exactly one selected route without a hidden route fallback."""
+
+    # Recovery metadata may cross the persisted/API boundary as the enum's
+    # string value.  Normalize it before the capability check below so the
+    # ordinary provider-default policy is not mistaken for a non-default
+    # finalization directive when a route adapter exposes a narrower method
+    # signature.  Non-default policies still fail closed on such adapters.
+    if not isinstance(reasoning_policy, ReasoningPolicy):
+        try:
+            reasoning_policy = ReasoningPolicy(str(reasoning_policy))
+        except ValueError as exc:
+            raise ReasoningPolicyCapabilityError(
+                "unknown reasoning policy"
+            ) from exc
 
     execution_observer = getattr(
         getattr(gateway, "registry", None), "attempt_observer", None,
@@ -1009,6 +1043,22 @@ async def execute_text_runtime(
                 action=str(attempt.action or RecoveryAction.MINIMAL_REGENERATE),
                 outcome="domain_failure", failure_class="domain_validation",
                 error_class=type(exc).__name__, model_call_delta=1,
+                # Keep the earliest typed rule boundary available to the
+                # normal reliability trace without persisting candidate text.
+                # Pydantic details are reduced to safe type/loc fields; the
+                # planning compiler exposes its bounded reason code/path.
+                rule_code=(
+                    str(getattr(exc, "reason_code", "") or "")[:128]
+                    or None
+                ),
+                field_path=(
+                    str(getattr(exc, "field_path", "") or "")[:512]
+                    or None
+                ),
+                error_detail=(
+                    str(exc)[:512]
+                    if isinstance(exc, (TypeError, ValueError)) else None
+                ),
             )
             if not retry_domain_failures:
                 raise
@@ -1122,6 +1172,9 @@ def _emit_local_rejection(
         "artifact_conversion", "business_incomplete", "domain_validation",
     ],
     failure_reason: str,
+    failure_rule_code: str | None = None,
+    failure_field_path: str | None = None,
+    failure_error_type: str | None = None,
 ) -> None:
     """Close one successful dispatch with content-free local rejection proof.
 
@@ -1133,7 +1186,7 @@ def _emit_local_rejection(
 
     if sink is None:
         return
-    sink({
+    receipt = {
         "schema": "ContractLocalRejectionReceiptV1",
         "version": 1,
         "contract_name": contract.name,
@@ -1154,7 +1207,17 @@ def _emit_local_rejection(
             audit.model_dump(mode="json"),
         ),
         "raw_content_persisted": False,
-    })
+    }
+    # Preserve only bounded, content-free rule coordinates so a domain
+    # rejection remains diagnosable after outer failure wrapping.  Candidate
+    # text and model reasoning never cross this boundary.
+    if isinstance(failure_rule_code, str) and failure_rule_code:
+        receipt["failure_rule_code"] = failure_rule_code[:128]
+    if isinstance(failure_field_path, str) and failure_field_path:
+        receipt["failure_field_path"] = failure_field_path[:512]
+    if isinstance(failure_error_type, str) and failure_error_type:
+        receipt["failure_error_type"] = failure_error_type[:128]
+    sink(receipt)
 
 
 def _emit_local_admission_rejection(
@@ -1272,6 +1335,24 @@ def _close_durable_post_capture_exception(
         or not callable(close_terminal)
     ):
         return False
+    # A prior route may have left a complete provider capture pending while a
+    # later configured route is rejected before dispatch. Do not close that
+    # stale capture as if it belonged to the current attempt. The production
+    # durability observer exposes this identity check; legacy observers that
+    # do not implement it retain their historical behavior.
+    matches_attempt = getattr(
+        observer, "capture_matches_contract_attempt", None,
+    )
+    if callable(matches_attempt):
+        try:
+            if not matches_attempt(
+                contract_attempt_index=attempt.attempt_index,
+                contract_route=attempt.route,
+                contract_route_attempt=attempt.route_attempt,
+            ):
+                return False
+        except Exception:
+            return False
     if not capture_complete() or contract_input_present():
         return False
     close_terminal(
@@ -1304,6 +1385,7 @@ async def execute_contract_runtime(
     local_rejection_sink: LocalRejectionSink | None = None,
     diagnostic_context: ModelDiagnosticContextV1 | None = None,
     stage: str | None = None,
+    reasoning_policy: ReasoningPolicy = ReasoningPolicy.CURRENT_PROVIDER_DEFAULT,
     finalization_recovery_policy: (
         ReasoningOnlyFinalizationRecoveryPolicyV1 | None
     ) = None,
@@ -1316,6 +1398,9 @@ async def execute_contract_runtime(
     """
 
     contract_name = execution_spec.contract_name
+    diagnostic_observer = getattr(
+        getattr(gateway, "registry", None), "attempt_observer", None,
+    )
     structured_contract = execution_spec.structured_contract
     registration = ARTIFACT_CONTRACT_REGISTRY[contract_name]
     # The registry value is a business-completeness floor, not a replacement
@@ -1353,12 +1438,14 @@ async def execute_contract_runtime(
     # instructions instead of receiving only a generic contract failure.
     last_domain_findings: tuple[Mapping[str, Any], ...] = ()
     pending_source_identity: str | None = None
+    propagated_domain_findings: tuple[Mapping[str, Any], ...] = ()
     attempt_output_tokens = max_output_tokens
     contract_schema = structured_contract.json_schema
     blocked_route_fingerprints: dict[str, str] = {}
     quarantined_routes: set[ModelRoute] = set()
     final_artifact_failure_seen = False
     non_final_failure_seen = False
+    domain_repair_recovery_added = False
     ptr12_triggered_context: tuple[
         ModelDiagnosticContextV1, PTR9GuardDecisionObserverV1
     ] | None = None
@@ -1595,7 +1682,17 @@ async def execute_contract_runtime(
         )
         route_system = system
         route_user = user
-        attempt_reasoning_policy = ReasoningPolicy.CURRENT_PROVIDER_DEFAULT
+        # A planning finalization policy is a recovery-only directive.  Do
+        # not apply it to the ordinary primary/fallback attempts: doing so
+        # makes an unrelated route (for example the configured lingsuan
+        # primary) fail its closed capability check before the adapter is
+        # reached.  The policy is selected below only for the exact recovery
+        # slot created after a real reasoning-only final-artifact failure.
+        attempt_reasoning_policy = (
+            ReasoningPolicy.CURRENT_PROVIDER_DEFAULT
+            if finalization_recovery_policy is not None
+            else reasoning_policy
+        )
         attempt_stage_role = "NORMAL"
         if is_finalization_recovery:
             attempt_reasoning_policy = ReasoningPolicy.FINALIZATION_FIRST
@@ -1610,6 +1707,7 @@ async def execute_contract_runtime(
             route_system = _protocol_regeneration_system(system)
         propagated_findings: tuple[Mapping[str, Any], ...] = ()
         propagated_receipt: str | None = None
+        protocol_hint_applied = False
         if pending_domain_findings and execution_spec.domain_retry_renderer:
             if pending_source_identity is None:
                 raise PlanningRepairRetryFindingContractError(
@@ -1622,12 +1720,26 @@ async def execute_contract_runtime(
             )
             route_user = f"{route_user}\n\n{finding_block}"
             propagated_findings = pending_domain_findings
+            propagated_domain_findings = tuple(pending_domain_findings)
             propagated_receipt = (
                 last_domain_snapshot.receipt_sha256
                 if last_domain_snapshot is not None else None
             )
             pending_domain_findings = ()
             pending_source_identity = None
+        if (
+            isinstance(last_error, ArtifactConversionError)
+            and execution_spec.protocol_retry_renderer is not None
+        ):
+            try:
+                protocol_hint = execution_spec.protocol_retry_renderer(
+                    str(last_error.audit.failure_code or "protocol_invalid")
+                )
+            except Exception:
+                protocol_hint = ""
+            if protocol_hint:
+                route_user = f"{route_user}\n\n{protocol_hint}"
+                protocol_hint_applied = True
         overlay_kinds: list[str] = []
         if route_system != system:
             if route_system == _protocol_regeneration_system(system):
@@ -1641,11 +1753,14 @@ async def execute_contract_runtime(
                     "capacity.invalid_attempt_delta"
                 )
         if route_user != user:
-            if not propagated_findings:
+            if not propagated_findings and not protocol_hint_applied:
                 raise CapacityAdmissionFailureV1(
                     "capacity.invalid_attempt_delta"
                 )
-            overlay_kinds.append("DOMAIN_FINDINGS")
+            if propagated_findings:
+                overlay_kinds.append("DOMAIN_FINDINGS")
+            if protocol_hint_applied:
+                overlay_kinds.append("PROTOCOL_FINDING")
         recovery_prompt_proof = contract_recovery_prompt_proof_v1(
             base_system=system,
             base_user=user,
@@ -1726,6 +1841,14 @@ async def execute_contract_runtime(
                         else None
                     ),
                 )
+            if execution_spec.candidate_observer is not None:
+                try:
+                    execution_spec.candidate_observer(
+                        "candidate_arrived", attempt, response,
+                        dict(getattr(response, "receipt", {}) or {}), None,
+                    )
+                except Exception:
+                    pass
             receipt = getattr(response, "receipt", None)
             if isinstance(receipt, Mapping):
                 last_receipt = dict(receipt)
@@ -1898,19 +2021,26 @@ async def execute_contract_runtime(
                     exact_reasoning_only
                     and finalization_recovery_policy is not None
                     and recovery_attempt_index is None
-                    and attempt.attempt_index == 1
+                    # The ordinary primary route may be locally rejected
+                    # before any provider call.  In that valid topology the
+                    # first real reasoning-only response can be the
+                    # configured fallback (attempt 3 or 4), so key the
+                    # bounded recovery slot to the observed attempt rather
+                    # than assuming it is ordinal 1.
+                    and attempt.route == "configured_fallback"
                 ):
-                    recovery_attempt_index = 2
+                    recovery_attempt_index = attempt.attempt_index + 1
+                    recovery = ProtocolReceiptAttempt(
+                        attempt_index=recovery_attempt_index,
+                        route_attempt=attempt.route_attempt + 1,
+                        route=attempt.route,
+                        action=RecoveryAction.RECEIPT_ONLY_RETRY,
+                        is_last=True,
+                    )
                     attempts[:] = [
-                        attempt,
-                        ProtocolReceiptAttempt(
-                            attempt_index=2,
-                            route_attempt=attempt.route_attempt + 1,
-                            route=attempt.route,
-                            action=RecoveryAction.RECEIPT_ONLY_RETRY,
-                            is_last=True,
-                        ),
-                    ]
+                        existing for existing in attempts
+                        if existing.attempt_index < attempt.attempt_index
+                    ] + [attempt, recovery]
             else:
                 non_final_failure_seen = True
             if attempt.route == "configured_fallback":
@@ -1930,6 +2060,24 @@ async def execute_contract_runtime(
                 owns_ending=execution_spec.owns_ending,
             )
         except ArtifactConversionError as exc:
+            try:
+                setattr(response, "_conversion_audit", exc.audit)
+            except Exception:
+                pass
+            if execution_spec.candidate_observer is not None:
+                try:
+                    failure_receipt = dict(getattr(response, "receipt", {}) or {})
+                    failure_receipt.update({
+                        "conversion_failure_code": str(exc.audit.failure_code or "protocol_invalid"),
+                        "conversion_method": str(exc.audit.method or "rejected"),
+                        "conversion_failure_detail": str(getattr(exc.audit, "failure_detail", "") or "")[:1000],
+                    })
+                    execution_spec.candidate_observer(
+                        "conversion_failure", attempt, response,
+                        failure_receipt, None,
+                    )
+                except Exception:
+                    pass
             non_final_failure_seen = True
             _observe_attempt(
                 attempt_observer, attempt_id=str(attempt.attempt_index),
@@ -1943,6 +2091,26 @@ async def execute_contract_runtime(
                 audit_sink(exc.audit)
             last_error = exc
             receipt = getattr(response, "receipt", None)
+            audit_value = getattr(exc.audit, "model_dump", None)
+            audit_payload = (
+                audit_value(mode="json")
+                if callable(audit_value) else {
+                    "failure_code": str(getattr(exc.audit, "failure_code", "") or ""),
+                    "method": str(getattr(exc.audit, "method", "") or ""),
+                    "failure_detail": str(getattr(exc.audit, "failure_detail", "") or "")[:1000],
+                }
+            )
+            _capture_review_diagnostic(
+                diagnostic_observer,
+                event="conversion-failure",
+                attempt_index=attempt.attempt_index,
+                route=attempt.route,
+                receipt=dict(receipt) if isinstance(receipt, Mapping) else {},
+                error_type=type(exc).__name__,
+                error_message=str(exc)[:1000],
+                audit=audit_payload,
+                response_text=str(getattr(response, "text", response)),
+            )
             incomplete_reason = _business_incomplete_reason(
                 str(getattr(response, "text", response)),
                 structured_contract,
@@ -2046,6 +2214,28 @@ async def execute_contract_runtime(
                 )
                 attempt_output_tokens = target_budget
             continue
+        if execution_spec.candidate_observer is not None:
+            try:
+                execution_spec.candidate_observer(
+                    "parsed_object", attempt, response,
+                    dict(getattr(response, "receipt", {}) or {}),
+                    conversion.payload,
+                )
+            except Exception:
+                pass
+        _capture_review_diagnostic(
+            diagnostic_observer,
+            event="normalized-object",
+            attempt_index=attempt.attempt_index,
+            route=attempt.route,
+            receipt=dict(getattr(response, "receipt", {}) or {}),
+            normalized_payload=conversion.payload,
+            conversion_audit=(
+                conversion.audit.model_dump(mode="json")
+                if callable(getattr(conversion.audit, "model_dump", None))
+                else str(conversion.audit)
+            ),
+        )
         if audit_sink is not None:
             audit_sink(conversion.audit)
         incomplete_reason = _business_incomplete_reason(
@@ -2061,6 +2251,20 @@ async def execute_contract_runtime(
         )
         if incomplete_reason is not None and not authoritative_domain_diagnostics:
             non_final_failure_seen = True
+            _capture_review_diagnostic(
+                diagnostic_observer,
+                event="business-validation-failure",
+                attempt_index=attempt.attempt_index,
+                route=attempt.route,
+                receipt=dict(getattr(response, "receipt", {}) or {}),
+                normalized_payload=conversion.payload,
+                failure_reason=incomplete_reason,
+                conversion_audit=(
+                    conversion.audit.model_dump(mode="json")
+                    if callable(getattr(conversion.audit, "model_dump", None))
+                    else str(conversion.audit)
+                ),
+            )
             _observe_attempt(
                 attempt_observer, attempt_id=str(attempt.attempt_index),
                 parent_attempt_id=(str(attempt.attempt_index - 1) if attempt.attempt_index > 1 else None),
@@ -2153,6 +2357,25 @@ async def execute_contract_runtime(
         try:
             domain_value = execution_spec.domain_validator(conversion.payload)
         except (TypeError, ValueError) as exc:
+            safe_rule_code = str(getattr(exc, "reason_code", "") or "")
+            safe_field_path = str(getattr(exc, "field_path", "") or "")
+            if not safe_rule_code and hasattr(exc, "errors"):
+                try:
+                    first_error = next(iter(exc.errors(
+                        include_url=False,
+                        include_context=False,
+                        include_input=False,
+                    )), {})
+                    if isinstance(first_error, Mapping):
+                        safe_rule_code = str(first_error.get("type") or "")
+                        loc = first_error.get("loc") or ()
+                        safe_field_path = "/" + "/".join(
+                            str(part).replace("~", "~0").replace("/", "~1")
+                            for part in loc
+                        )
+                except Exception:
+                    safe_rule_code = ""
+                    safe_field_path = ""
             non_final_failure_seen = True
             _emit_local_rejection(
                 local_rejection_sink,
@@ -2161,7 +2384,13 @@ async def execute_contract_runtime(
                 attempt=attempt,
                 audit=conversion.audit,
                 failure_kind="domain_validation",
-                failure_reason=type(exc).__name__,
+                failure_reason=(
+                    str(getattr(exc, "reason_code", "") or "")
+                    or type(exc).__name__
+                ),
+                failure_rule_code=safe_rule_code or None,
+                failure_field_path=safe_field_path or None,
+                failure_error_type=type(exc).__name__,
             )
             diagnostic_findings: Sequence[Mapping[str, Any]] = ()
             if execution_spec.domain_diagnostic_extractor is not None:
@@ -2179,6 +2408,25 @@ async def execute_contract_runtime(
                     if execution_spec.domain_retry_renderer is not None:
                         raise
                     diagnostic_findings = ()
+            _capture_review_diagnostic(
+                diagnostic_observer,
+                event="validator-failure",
+                attempt_index=attempt.attempt_index,
+                route=attempt.route,
+                receipt=dict(getattr(response, "receipt", {}) or {}),
+                normalized_payload=conversion.payload,
+                error_type=type(exc).__name__,
+                error_message=str(exc)[:1000],
+                rule_code=safe_rule_code,
+                instance_path=safe_field_path,
+                schema_path=str(getattr(exc, "schema_path", "") or ""),
+                findings=list(diagnostic_findings),
+                conversion_audit=(
+                    conversion.audit.model_dump(mode="json")
+                    if callable(getattr(conversion.audit, "model_dump", None))
+                    else str(conversion.audit)
+                ),
+            )
             if diagnostic_findings:
                 last_domain_findings = tuple(
                     item for item in diagnostic_findings
@@ -2264,7 +2512,54 @@ async def execute_contract_runtime(
                     ),
                     failure_reason=incomplete_reason,
                     expected_output_characters=expected_output_characters,
+                    )
+            if (
+                attempt.is_last
+                and pending_domain_findings
+                and execution_spec.domain_retry_renderer is not None
+                and not domain_repair_recovery_added
+            ):
+                def _finding_fingerprint(
+                    findings: Sequence[Mapping[str, Any]],
+                ) -> str:
+                    return domain_sha256(
+                        "r1-domain-repair-finding-set-v1",
+                        [dict(item) for item in findings],
+                    )
+
+                no_progress = bool(
+                    propagated_domain_findings
+                    and _finding_fingerprint(pending_domain_findings)
+                    == _finding_fingerprint(propagated_domain_findings)
                 )
+                if no_progress:
+                    # The correction already received the same authoritative
+                    # findings and produced no new actionable condition.  A
+                    # larger budget is not evidence of a new repair action;
+                    # stop before appending another dynamic attempt.
+                    domain_repair_recovery_added = True
+                    _capture_review_diagnostic(
+                        diagnostic_observer,
+                        event="domain-repair-no-progress",
+                        attempt_index=attempt.attempt_index,
+                        route=attempt.route,
+                        finding_sha256=_finding_fingerprint(
+                            pending_domain_findings,
+                        ),
+                        reason="same_authoritative_findings_after_feedback",
+                    )
+                else:
+                    repair_index = attempt.attempt_index + 1
+                    attempts.append(ProtocolReceiptAttempt(
+                        attempt_index=repair_index,
+                        route_attempt=attempt.route_attempt + 1,
+                        route=attempt.route,
+                        action=RecoveryAction.MINIMAL_REGENERATE,
+                        is_last=True,
+                    ))
+                    domain_repair_recovery_added = True
+                    if is_finalization_recovery:
+                        recovery_attempt_index = repair_index
             if output_limited(receipt if isinstance(receipt, dict) else None):
                 previous_budget = attempt_output_tokens
                 target_budget = expanded_output_budget(previous_budget)
@@ -2297,6 +2592,20 @@ async def execute_contract_runtime(
             continue
         if incomplete_reason is not None:
             non_final_failure_seen = True
+            _capture_review_diagnostic(
+                diagnostic_observer,
+                event="business-validation-failure",
+                attempt_index=attempt.attempt_index,
+                route=attempt.route,
+                receipt=dict(getattr(response, "receipt", {}) or {}),
+                normalized_payload=conversion.payload,
+                failure_reason=incomplete_reason,
+                conversion_audit=(
+                    conversion.audit.model_dump(mode="json")
+                    if callable(getattr(conversion.audit, "model_dump", None))
+                    else str(conversion.audit)
+                ),
+            )
             # An authoritative domain validator is expected to reject a
             # required-field omission.  Keep the generic gate as a fail-closed
             # backstop if a future diagnostic validator is accidentally weak.
@@ -2330,6 +2639,20 @@ async def execute_contract_runtime(
                 receipt=(dict(receipt) if isinstance(receipt, Mapping) else {}),
             )
             continue
+        _capture_review_diagnostic(
+            diagnostic_observer,
+            event="validator-pass",
+            attempt_index=attempt.attempt_index,
+            route=attempt.route,
+            receipt=dict(getattr(response, "receipt", {}) or {}),
+            normalized_payload=conversion.payload,
+            findings=[],
+            conversion_audit=(
+                conversion.audit.model_dump(mode="json")
+                if callable(getattr(conversion.audit, "model_dump", None))
+                else str(conversion.audit)
+            ),
+        )
         observe_domain_validation_snapshot(
             attempt_context,
             payload=conversion.payload,

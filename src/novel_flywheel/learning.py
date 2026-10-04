@@ -4,10 +4,12 @@ import hashlib
 import json
 import re
 import uuid
-from dataclasses import dataclass
+import copy
+from dataclasses import dataclass, replace
 from difflib import SequenceMatcher
 from pathlib import Path
 from typing import Any, Literal, Mapping
+from pydantic import ValidationError
 
 from novel_flywheel.db import Database, WIZARD_MUTATION_LOCK
 from novel_flywheel.causal_chain import analyze_short_causal_chain
@@ -18,6 +20,12 @@ from novel_flywheel.contract_runtime import (
     contract_route_capacity_plan,
     execute_contract_runtime,
     execute_text_runtime,
+)
+from novel_flywheel.provider_reasoning_policy import ReasoningPolicy
+from novel_flywheel.models import ModelRoutesExhaustedError
+from novel_flywheel.reference_analysis_diagnostics import (
+    active_task_id, capture_candidate, observe_stage,
+    ReferenceAnalysisDiagnosticContextV1,
 )
 from novel_flywheel.generated_artifacts import (
     ArtifactConversionError,
@@ -62,6 +70,33 @@ WINDOW_RESULT_FIELDS = (
     "relationship_changes", "style_evidence",
 )
 WINDOW_MODEL_OUTPUT_TOKENS = 4096
+# Final regional synthesis is a larger structured artifact than one window.
+# Keep the window budget unchanged while giving the finalizer enough legal
+# headroom for the complete receipt on both bound routes.
+REFERENCE_SYNTHESIS_OUTPUT_TOKENS = 8192
+
+
+class ReferenceSynthesisSemanticValidationError(ValueError):
+    """Safe, structured summary of one rejected synthesis candidate."""
+
+    def __init__(self, exc: BaseException) -> None:
+        self.rule_code = getattr(exc, "rule_code", None)
+        self.field_path = getattr(exc, "field_path", None)
+        self.child_ids = tuple(getattr(exc, "child_ids", ()) or ())
+        if isinstance(exc, ValidationError):
+            parts = []
+            for item in exc.errors(include_url=False):
+                loc = "/" + "/".join(str(part) for part in item.get("loc", ()))
+                parts.append(f"{loc}:{item.get('type', 'validation_error')}")
+            detail = ";".join(parts[:8]) or "validation_error"
+        elif isinstance(getattr(exc, "safe_detail", None), str):
+            detail = str(getattr(exc, "safe_detail"))
+        else:
+            detail = str(exc).strip() or type(exc).__name__
+        # Domain validators only emit bounded rule names; never retain the
+        # rejected candidate, prompt, source text, or provider reasoning.
+        self.safe_detail = detail[:500]
+        super().__init__(self.safe_detail)
 REFERENCE_DISTILLATION_CONTRACT = "reference-distillation-v2-attribution-v1"
 REFERENCE_DISTILLATION_MAX_INPUT_CHARACTERS = 48_000
 REFERENCE_SYNTHESIS_UNKNOWN_CONTEXT_TOKENS = 16_384
@@ -627,6 +662,11 @@ class LearningSystem:
     async def model_analyze_reference(self, source_id: str, progress=None) -> dict:
         if self.gateway is None:
             raise ValueError("Reference analysis model gateway is unavailable")
+        reset_quarantine = getattr(
+            self.gateway, "reset_unbound_final_artifact_quarantine", None,
+        )
+        if callable(reset_quarantine):
+            reset_quarantine()
         source = self.references.get(source_id)
         version = source["latest_version"]
         text = self.references.read_text(source_id, version["id"])
@@ -891,36 +931,217 @@ class LearningSystem:
             "\n\nINDEPENDENT WINDOW CLAIMS:\n" +
             json.dumps(synthesis_claims, ensure_ascii=False)
         )
-        def validate_synthesis(payload: Mapping[str, Any]) -> dict:
-            receipt = DistillationReceiptV2.model_validate(payload)
-            semantic = validate_distillation_receipt(
-                final_region, receipt.model_dump(mode="json"),
-            )
-            result = self._synthesis_result(semantic)
-            self._require_chinese_synthesis(result)
-            validate_distillation_receipt(
-                final_region,
-                receipt.model_copy(update={"semantic": result}).model_dump(mode="json"),
-            )
-            return result
-
-        synthesis_runtime = await execute_contract_runtime(
-            self.gateway,
-            role="reference_synthesis",
-            system=synthesis_system,
-            user=synthesis_prompt,
-            execution_spec=ExecutableContractSpec(
-                contract_name="reference_distillation_region",
-                structured_contract=REFERENCE_DISTILLATION_STRUCTURED_CONTRACT,
-                semantic_normalizer=lambda value: (
-                    DistillationReceiptV2.model_validate(value).model_dump(mode="json")
-                ),
-                domain_validator=validate_synthesis,
-                retry_domain_failures=True,
-            ),
-            max_output_tokens=WINDOW_MODEL_OUTPUT_TOKENS,
-            attempt_routes=self._reference_synthesis_attempt_routes(route_plan),
+        # Bind one immutable identity for the formal final-candidate boundary.
+        # The task manager supplies the durable task id through a contextvar;
+        # unbound direct callers remain explicitly marked as such.
+        task_id = active_task_id() or "unbound-reference-analysis"
+        binding = self.db.get_role_binding("reference_synthesis") or {}
+        primary_provider = self.db.get_provider(str(binding.get("primary_provider_id") or "")) or {}
+        primary_model = self.db.get_model(str(binding.get("primary_model_id") or "")) or {}
+        provider_url = str(primary_provider.get("base_url") or "")
+        endpoint = (
+            provider_url.rstrip("/") + "/v1/messages"
+            if provider_url and not provider_url.rstrip("/").endswith("/v1/messages")
+            else provider_url.rstrip("/")
+        ) or None
+        source_content_sha256 = str(
+            version.get("content_hash") or version.get("content_sha256")
+            or version.get("sha256") or ""
         )
+        diagnostic_base = ReferenceAnalysisDiagnosticContextV1(
+            project_root=self.db.path.parent,
+            source_id=source_id,
+            source_version_id=str(version["id"]),
+            source_content_sha256=source_content_sha256,
+            task_id=task_id,
+            run_id=task_id,
+            provider_id=str(binding.get("primary_provider_id") or "") or None,
+            model_id=str(binding.get("primary_model_id") or "") or None,
+            model_name=str(primary_model.get("model_name") or "") or None,
+            endpoint=endpoint,
+            contract_name="reference_distillation_region",
+            contract_version=2,
+            schema_sha256=REFERENCE_DISTILLATION_STRUCTURED_CONTRACT.schema_sha256(),
+            source_code_version=hashlib.sha256(
+                (Path(__file__).read_bytes() + Path(__file__).with_name("reference_distillation.py").read_bytes())
+            ).hexdigest(),
+        )
+        _diagnostic_state: dict[str, Any] = {"context": diagnostic_base, "candidate_sha256": None, "normalized_sha256": None}
+
+        def observe_synthesis_candidate(
+            phase: str, attempt, response: Any, receipt: Mapping[str, Any], parsed: Mapping[str, Any] | None,
+        ) -> None:
+            current_receipt = dict(receipt or {})
+            provider_id = str(current_receipt.get("provider_id") or diagnostic_base.provider_id or "") or None
+            model_id = str(current_receipt.get("model_id") or diagnostic_base.model_id or "") or None
+            model_name = str(current_receipt.get("model_name") or diagnostic_base.model_name or "") or None
+            provider = self.db.get_provider(provider_id) if provider_id else None
+            base_url = str((provider or {}).get("base_url") or "")
+            current = replace(
+                diagnostic_base,
+                lane=str(getattr(attempt, "route", "primary")),
+                attempt=int(getattr(attempt, "attempt_index", 1)),
+                request_id_sha256=(
+                    hashlib.sha256(str(current_receipt.get("request_id")).encode("utf-8")).hexdigest()
+                    if current_receipt.get("request_id") else None
+                ),
+                provider_id=provider_id, model_id=model_id, model_name=model_name,
+                endpoint=(base_url.rstrip("/") + "/v1/messages" if base_url and not base_url.rstrip("/").endswith("/v1/messages") else base_url.rstrip("/")) or None,
+                route_fingerprint=str(current_receipt.get("route_fingerprint") or "") or None,
+            )
+            visible = str(getattr(response, "text", "") or "")
+            if not visible and getattr(response, "tool_calls", None):
+                visible = json.dumps(
+                    [getattr(item, "arguments", {}) for item in response.tool_calls],
+                    ensure_ascii=False, sort_keys=True,
+                )
+            candidate_sha, normalized_sha = capture_candidate(
+                current, phase=phase, visible_text=visible,
+                receipt=current_receipt, parsed_object=parsed,
+            )
+            _diagnostic_state.update({
+                "context": current, "candidate_sha256": candidate_sha,
+                "normalized_sha256": normalized_sha,
+            })
+            stage_name = {
+                "candidate_arrived": "candidate_arrived",
+                "parsed_object": "parsed_object",
+                "conversion_failure": "conversion_failure",
+            }.get(phase, phase)
+            observe_stage(
+                current, stage=stage_name,
+                status=("failed" if phase == "conversion_failure" else "observed"), candidate_sha256=candidate_sha,
+                normalized_sha256=normalized_sha,
+                details={
+                    "visible_text_present": bool(visible),
+                    "tool_input_present": bool(getattr(response, "tool_calls", None)),
+                    "finish_reason": current_receipt.get("finish_reason"),
+                    "transport_complete": current_receipt.get("transport_complete"),
+                    "requested_max_output_tokens": current_receipt.get("requested_max_output_tokens"),
+                    "actual_output_tokens": current_receipt.get("output_tokens"),
+                    "conversion_failure_code": current_receipt.get("conversion_failure_code"),
+                    "conversion_method": current_receipt.get("conversion_method"),
+                    "conversion_failure_detail": current_receipt.get("conversion_failure_detail"),
+                },
+            )
+
+        def validate_synthesis(payload: Mapping[str, Any]) -> dict:
+            context = _diagnostic_state.get("context")
+            observe_stage(context, stage="schema_validation", status="started", candidate_sha256=_diagnostic_state.get("candidate_sha256"))
+            try:
+                receipt = DistillationReceiptV2.model_validate(payload)
+                observe_stage(context, stage="schema_validation", status="passed", candidate_sha256=_diagnostic_state.get("candidate_sha256"))
+                observe_stage(context, stage="evidence_validation", status="started", candidate_sha256=_diagnostic_state.get("candidate_sha256"))
+                semantic = validate_distillation_receipt(
+                    final_region, receipt.model_dump(mode="json"),
+                )
+                observe_stage(context, stage="evidence_validation", status="passed", candidate_sha256=_diagnostic_state.get("candidate_sha256"))
+                observe_stage(context, stage="normalization", status="started", candidate_sha256=_diagnostic_state.get("candidate_sha256"))
+                result = self._synthesis_result(semantic)
+                _diagnostic_state["normalized_sha256"] = hashlib.sha256(json.dumps(result, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest()
+                observe_stage(context, stage="normalization", status="passed", candidate_sha256=_diagnostic_state.get("candidate_sha256"), normalized_sha256=_diagnostic_state.get("normalized_sha256"))
+                observe_stage(context, stage="chinese_validation", status="started", candidate_sha256=_diagnostic_state.get("candidate_sha256"), normalized_sha256=_diagnostic_state.get("normalized_sha256"))
+                self._require_chinese_synthesis(result)
+                observe_stage(context, stage="chinese_validation", status="passed", candidate_sha256=_diagnostic_state.get("candidate_sha256"), normalized_sha256=_diagnostic_state.get("normalized_sha256"))
+                observe_stage(context, stage="normalized_evidence_validation", status="started", candidate_sha256=_diagnostic_state.get("candidate_sha256"), normalized_sha256=_diagnostic_state.get("normalized_sha256"))
+                validate_distillation_receipt(
+                    final_region,
+                    receipt.model_copy(update={"semantic": result}).model_dump(mode="json"),
+                )
+                observe_stage(context, stage="normalized_evidence_validation", status="passed", candidate_sha256=_diagnostic_state.get("candidate_sha256"), normalized_sha256=_diagnostic_state.get("normalized_sha256"))
+                return result
+            except (TypeError, ValueError, ValidationError) as exc:
+                observe_stage(
+                    context, stage="validation_failure", status="failed",
+                    rule_code=getattr(exc, "rule_code", None),
+                    field_path=getattr(exc, "field_path", None),
+                    child_ids=tuple(getattr(exc, "child_ids", ()) or ()),
+                    candidate_sha256=_diagnostic_state.get("candidate_sha256"),
+                    normalized_sha256=_diagnostic_state.get("normalized_sha256"),
+                    details={"error_type": type(exc).__name__},
+                )
+                raise ReferenceSynthesisSemanticValidationError(exc) from exc
+
+        def synthesis_protocol_retry_hint(code: str) -> str:
+            return (
+                "上一次候选未通过结构化协议校验（规则码：" + str(code) + "）。"
+                "请只返回一个完整、可解析的 DistillationReceiptV2 JSON 对象；"
+                "不要使用 Markdown 围栏，不要截断；covered_child_ids、child_dispositions、"
+                "child_attributions 必须按要求返回对象数组，不能把 disposition 写成字符串；"
+                "每个 disposition 对象必须含 child_id、disposition、reason，禁止 coverage 等额外键；"
+                "claim attribution 必须含 child_id、relation=claim、合法 semantic_path 且不要 related_child_ids；"
+                "merged attribution 必须含 child_id、relation=merged、related_child_ids 非空且不要 semantic_path；"
+                "不要把 related_child_ids 塞进 reason 文本，也不要用 type/evidence 代替字段；"
+                "merged 关系必须构成无环、单向图，只能指向 promoted child，禁止互相合并或指向另一个 merged child。"
+            )
+        synthesis_routes = self._reference_synthesis_attempt_routes(route_plan)
+        async def execute_synthesis_route(
+            attempt_routes: tuple[str, ...],
+            *,
+            reasoning_policy: ReasoningPolicy = (
+                ReasoningPolicy.CURRENT_PROVIDER_DEFAULT
+            ),
+        ):
+            """Execute one bounded route with the indivisible formal contract."""
+
+            return await execute_contract_runtime(
+                self.gateway, role="reference_synthesis", system=synthesis_system,
+                user=synthesis_prompt,
+                execution_spec=ExecutableContractSpec(
+                    contract_name="reference_distillation_region",
+                    structured_contract=REFERENCE_DISTILLATION_STRUCTURED_CONTRACT,
+                    semantic_normalizer=lambda value: DistillationReceiptV2.model_validate(value).model_dump(mode="json"),
+                    domain_validator=validate_synthesis,
+                    candidate_observer=observe_synthesis_candidate,
+                    protocol_retry_renderer=synthesis_protocol_retry_hint,
+                    retry_domain_failures=True,
+                ),
+                max_output_tokens=REFERENCE_SYNTHESIS_OUTPUT_TOKENS,
+                attempt_routes=attempt_routes,
+                reasoning_policy=reasoning_policy,
+            )
+        # DeepSeek's official Anthropic route counts hidden reasoning against
+        # max_tokens.  Use its exact, verified finalization binding for the
+        # primary structured artifact so the 4096-token budget remains
+        # available for JSON.  The configured fallback keeps its provider
+        # default reasoning policy; policy is therefore selected per route,
+        # never globally disabled.
+        primary_synthesis_error: Exception | None = None
+        try:
+            if "primary" in synthesis_routes:
+                synthesis_runtime = await execute_synthesis_route(
+                    attempt_routes=("primary", "primary"),
+                    reasoning_policy=ReasoningPolicy.FINALIZATION_FIRST,
+                )
+            else:
+                raise RuntimeError("reference synthesis primary route unavailable")
+        except Exception as exc:
+            primary_synthesis_error = exc
+            # If the primary route is exhausted (including a semantic or
+            # protocol rejection), make the already-bound fallback the next
+            # explicit recovery owner. This remains bounded and keeps the
+            # original role binding intact.
+            binding = self.db.get_role_binding("reference_synthesis") or {}
+            if not (
+                (
+                    binding.get("fallback_provider_id")
+                    and binding.get("fallback_model_id")
+                )
+                and callable(getattr(self.gateway, "complete_configured_fallback", None))
+            ):
+                if not callable(getattr(self.gateway, "complete_configured_fallback", None)):
+                    raise
+            try:
+                synthesis_runtime = await execute_synthesis_route(
+                    attempt_routes=("configured_fallback", "configured_fallback"),
+                )
+            except Exception as fallback_exc:
+                # Preserve both semantic/protocol classifications.  The prior
+                # implementation leaked only the fallback wrapper, losing the
+                # earliest primary validator rule.
+                raise ModelRoutesExhaustedError(
+                    primary_synthesis_error, fallback_exc,
+                ) from fallback_exc
         used_synthesis = synthesis_runtime.model_response
         result = synthesis_runtime.domain_value
         mechanisms = []
@@ -2651,7 +2872,11 @@ class LearningSystem:
 
     @classmethod
     def _synthesis_result(cls, source: Mapping[str, Any]) -> dict:
-        value = dict(source)
+        # Never mutate the validated receipt in place.  Attribution pointers
+        # are validated once against the provider candidate and once again
+        # after normalization; a shallow copy used to let list truncation or
+        # field canonicalization silently rewrite the first-stage object.
+        value = copy.deepcopy(dict(source))
         mechanism_fields = {"name", "supporting_windows", "transfer_guidance"}
         if not isinstance(value.get("mechanisms"), list) and mechanism_fields.issubset(value):
             value = {"mechanisms": [value], "attraction_map": {}, "style_profile": {}}

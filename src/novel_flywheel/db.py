@@ -695,7 +695,13 @@ class Database:
 
     @contextmanager
     def connect(self) -> Iterator[sqlite3.Connection]:
-        connection = sqlite3.connect(self.path)
+        # Workflow workers can commit bounded capacity/failure events in
+        # parallel with the supervised outcome transaction.  The previous
+        # sqlite default (five-second busy timeout) allowed a short-lived
+        # writer queue to surface as a lost outcome commit.  Waiting here is
+        # local lock arbitration only; it does not alter workflow authority,
+        # retry budgets, or provider behavior.
+        connection = sqlite3.connect(self.path, timeout=30.0)
         connection.row_factory = sqlite3.Row
         connection.execute("PRAGMA foreign_keys = ON")
         try:
@@ -2434,8 +2440,21 @@ class Database:
         }
         return self._commit_supervised_transition(
             run_id=run_id,
-            expected_run_statuses={"running", "waiting_provider"},
-            expected_supervision_states={"running", "waiting_provider"},
+            # A provider transport failure can be raised while the worker is
+            # inside a typed recovery/repair state.  Those states still own
+            # the same live run and must be able to durably publish the
+            # waiting-provider outcome.  Restricting this to only
+            # ``running`` caused a valid retry intent to fall through the
+            # degraded interrupted path, losing the retry schedule.
+            # The short-story workflow records its exception as ``failed``
+            # before the outer worker classifies a transport failure.  The
+            # supervision row is still the live owner, so preserve retry
+            # authority for this ordered hand-off as well.
+            expected_run_statuses={"running", "failed", "waiting_provider"},
+            expected_supervision_states={
+                "running", "waiting_provider", "recovering_protocol",
+                "recovering_semantic", "quality_repair",
+            },
             run_status="waiting_provider", run_stage=stage,
             run_error=error_summary, supervision_state="waiting_provider",
             used_budgets=used_budgets, next_retry_at=next_retry_at,
@@ -3223,6 +3242,17 @@ class Database:
             for row in rows
             if row["visible_characters"] > 0 and row["actual_output_tokens"] > 0
         )
+        successful_request_high_water = max(
+            (
+                int(row["requested_max_output_tokens"])
+                for row in rows
+                if row.get("transport_complete")
+                and row.get("finish_reason") not in {"max_tokens", "length"}
+                and int(row.get("visible_characters") or 0) > 0
+                and isinstance(row.get("requested_max_output_tokens"), int)
+            ),
+            default=0,
+        )
         return {
             "samples": len(rows),
             "observed_output_high_water": max(
@@ -3238,6 +3268,10 @@ class Database:
                 default=0,
             ),
             "suspected_stable_output_tokens": stable_limit,
+            # A route-local successful request envelope is stronger evidence
+            # for a bounded protocol retry than the initial character estimate.
+            # Keep it separate from failed hidden-reasoning caps.
+            "successful_request_high_water": successful_request_high_water,
             "conservative_visible_characters_per_token": (
                 ratios[max(0, len(ratios) // 10 - 1)] if ratios else None
             ),

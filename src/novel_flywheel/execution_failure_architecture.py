@@ -20,6 +20,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from novel_flywheel.failure_boundary import contains_potential_secret
 from novel_flywheel.provider_stream_error import StreamProviderErrorEvidenceV1, stream_error_evidence_v1
+from novel_flywheel.provider_failure_metadata import safe_http_failure_metadata
 from novel_flywheel.full_short_reason_catalog import (
     FULL_SHORT_LITERAL_REASON_CATEGORY_V1,
 )
@@ -415,6 +416,13 @@ class SafeFailureNodeV1(BaseModel):
     model_id_sha256: str | None = Field(
         default=None, pattern=r"^[0-9a-f]{64}$",
     )
+    http_status: int | None = Field(default=None, ge=100, le=599, exclude_if=lambda value: value is None)
+    provider_error_code: str | None = Field(default=None, max_length=120, exclude_if=lambda value: value is None)
+    retry_after_present: bool | None = Field(default=None, exclude_if=lambda value: value is None)
+    retry_after_seconds: float | None = Field(default=None, ge=0, le=86400, exclude_if=lambda value: value is None)
+    request_sent: bool | None = Field(default=None, exclude_if=lambda value: value is None)
+    usage_observed: bool | None = Field(default=None, exclude_if=lambda value: value is None)
+    http_failure_class: str | None = Field(default=None, max_length=80, exclude_if=lambda value: value is None)
     children: tuple["SafeFailureNodeV1", ...] = ()
 
 
@@ -795,6 +803,18 @@ def _node(
             envelope.source_exception_class,
             fallback=source_exception_class,
         )
+    http_metadata = safe_http_failure_metadata(exc)
+    # Persist HTTP facts only when a response was actually attached.  A
+    # response-less transport exception remains unknown rather than being
+    # silently promoted to a Provider availability classification.
+    if not http_metadata["request_sent"]:
+        http_metadata = {
+            key: None for key in (
+                "http_status", "provider_error_code", "retry_after_present",
+                "retry_after_seconds", "request_sent", "usage_observed",
+                "http_failure_class",
+            )
+        }
     return SafeFailureNodeV1(
         code=code, family=family, layer=layer, boundary=node_boundary or "unknown",
         provider_stream_error=stream_error_evidence_v1(exc),
@@ -805,6 +825,7 @@ def _node(
         route_ordinal=route_ordinal,
         provider_id_sha256=provider_id_sha256,
         model_id_sha256=model_id_sha256,
+        **http_metadata,
         children=children,
     )
 

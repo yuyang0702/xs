@@ -117,9 +117,21 @@ def prepare_c0b_smoke_packet(
                 scope_type="project", scope_id=project.id,
             )
             actual_routes = _actual_semantic_routes(db)
-            drift = validate_production_mirror(actual_routes)
-            if drift["status"] != "EXACT_MATCH":
-                raise ValueError("production_mirror_route_drift")
+            # Capture the current user-saved bindings as the immutable plan
+            # snapshot. Historical mirror evidence remains available for
+            # comparison, but it must not reject a newly materialized plan
+            # after the user has deliberately changed role bindings. The
+            # provider/model hashes below bind this exact snapshot and are
+            # rechecked by preflight before any dispatch.
+            if not actual_routes or any(
+                not {
+                    "role", "primary_provider", "primary_model",
+                    "fallback_provider", "fallback_model", "protocol",
+                    "relay_group",
+                }.issubset(route)
+                for route in actual_routes
+            ):
+                raise ValueError("current_route_snapshot_invalid")
             routes = approved_production_routes(db)
             route_hashes = production_route_manifest_hashes(db)
             runtime = collect_runtime_fingerprint_v2(db, project_id=project.id)

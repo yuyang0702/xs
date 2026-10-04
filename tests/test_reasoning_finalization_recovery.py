@@ -463,6 +463,139 @@ async def test_reasoning_only_recovery_is_same_route_fresh_attempt_and_validated
 
 
 @pytest.mark.asyncio
+async def test_domain_finding_retry_does_not_request_finalization_control(
+    tmp_path,
+) -> None:
+    calls = []
+    contract = _contract()
+
+    def validate(payload):
+        if payload.get("message") != "fixed domain receipt":
+            raise ValueError("domain evidence mismatch")
+        return dict(payload)
+
+    spec = ExecutableContractSpec(
+        contract_name=contract.name,
+        structured_contract=contract,
+        semantic_normalizer=lambda value: dict(value),
+        domain_validator=validate,
+        domain_diagnostic_extractor=lambda _payload: ({
+            "code": "domain_evidence",
+            "message": "repair the receipt evidence only",
+        },),
+        domain_diagnostic_metadata={"repair_target_identity_sha256": "a" * 64},
+        domain_retry_renderer=lambda findings, _metadata, base: (
+            base + "\n" + json.dumps(list(findings), ensure_ascii=False)
+        ),
+        retry_domain_failures=True,
+    )
+
+    async def execute(
+        attempt, role, system, user, budget, structured_contract,
+        *, reasoning_policy, stage_role, recovery_prompt_proof,
+    ):
+        calls.append((attempt.attempt_index, reasoning_policy, stage_role, user))
+        if reasoning_policy is ReasoningPolicy.FINALIZATION_FIRST:
+            raise ReasoningPolicyCapabilityError(
+                "ordinary domain retry requested unsupported reasoning control"
+            )
+        return ModelResult(
+            (
+                '{"message":"initial domain reject"}'
+                if len(calls) == 1
+                else '{"message":"fixed domain receipt"}'
+            ),
+            {"finish_reason": "stop", "transport_complete": True},
+        )
+
+    result = await execute_contract_runtime(
+        _Gateway(),
+        role="review",
+        system="SYSTEM",
+        user="USER",
+        execution_spec=spec,
+        max_output_tokens=3724,
+        attempt_routes=("configured_fallback",),
+        attempt_executor=execute,
+        diagnostic_context=_context(tmp_path),
+        finalization_recovery_policy=ReasoningOnlyFinalizationRecoveryPolicyV1(),
+    )
+
+    assert result.domain_value["message"] == "fixed domain receipt"
+    assert [(item[1], item[2]) for item in calls] == [
+        (ReasoningPolicy.CURRENT_PROVIDER_DEFAULT, "NORMAL"),
+        (ReasoningPolicy.CURRENT_PROVIDER_DEFAULT, "NORMAL"),
+    ]
+    assert "domain_evidence" in calls[1][3]
+
+
+@pytest.mark.asyncio
+async def test_domain_repair_after_real_finalization_recovery_keeps_policy(
+    tmp_path,
+) -> None:
+    calls = []
+    contract = _contract()
+
+    def validate(payload):
+        if payload.get("message") != "fixed finalization receipt":
+            raise ValueError("finalization evidence mismatch")
+        return dict(payload)
+
+    spec = ExecutableContractSpec(
+        contract_name=contract.name,
+        structured_contract=contract,
+        semantic_normalizer=lambda value: dict(value),
+        domain_validator=validate,
+        domain_diagnostic_extractor=lambda _payload: ({
+            "code": "finalization_evidence",
+            "message": "repair the finalized receipt evidence only",
+        },),
+        domain_diagnostic_metadata={"repair_target_identity_sha256": "b" * 64},
+        domain_retry_renderer=lambda findings, _metadata, base: (
+            base + "\n" + json.dumps(list(findings), ensure_ascii=False)
+        ),
+        retry_domain_failures=True,
+    )
+
+    async def execute(
+        attempt, role, system, user, budget, structured_contract,
+        *, reasoning_policy, stage_role, recovery_prompt_proof,
+    ):
+        calls.append((attempt.attempt_index, reasoning_policy, stage_role, user))
+        if len(calls) == 1:
+            raise _reasoning_error()
+        return ModelResult(
+            (
+                '{"message":"initial finalized domain reject"}'
+                if len(calls) == 2
+                else '{"message":"fixed finalization receipt"}'
+            ),
+            {"finish_reason": "stop", "transport_complete": True},
+        )
+
+    result = await execute_contract_runtime(
+        _Gateway(),
+        role="review",
+        system="SYSTEM",
+        user="USER",
+        execution_spec=spec,
+        max_output_tokens=3724,
+        attempt_routes=("configured_fallback",),
+        attempt_executor=execute,
+        diagnostic_context=_context(tmp_path),
+        finalization_recovery_policy=ReasoningOnlyFinalizationRecoveryPolicyV1(),
+    )
+
+    assert result.domain_value["message"] == "fixed finalization receipt"
+    assert [(item[1], item[2]) for item in calls] == [
+        (ReasoningPolicy.CURRENT_PROVIDER_DEFAULT, "NORMAL"),
+        (ReasoningPolicy.FINALIZATION_FIRST, PLANNING_FINAL_ARTIFACT_RECOVERY),
+        (ReasoningPolicy.FINALIZATION_FIRST, PLANNING_FINAL_ARTIFACT_RECOVERY),
+    ]
+    assert "finalization_evidence" in calls[2][3]
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize("second_outcome", ["reasoning_only", "business_incomplete"])
 async def test_attempt_two_failure_is_terminal_with_no_third_call(
     tmp_path, second_outcome,

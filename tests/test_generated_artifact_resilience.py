@@ -40,12 +40,26 @@ def test_p5_cross_genre_open_world_topologies_share_one_contract(
     genre, container, topology,
 ) -> None:
     cycle = _cycle(genre)
+    owned_globals = {
+        "core_goal": f"{genre} goal",
+        "opening": {"pressure": f"{genre} opening pressure"},
+        "ending": f"{genre} ending",
+    }
     if topology == "root":
-        payload = {container: [cycle], "covered_event_ids": ["EV-1"]}
+        payload = {
+            **owned_globals,
+            container: [cycle],
+            "covered_event_ids": ["EV-1"],
+        }
     elif topology == "nested":
-        payload = {"delivery": {container: [cycle]}, "ownership": ["EV-1"]}
+        payload = {
+            **owned_globals,
+            "delivery": {container: [cycle]},
+            "ownership": ["EV-1"],
+        }
     else:
         payload = {
+            **owned_globals,
             "provider": {"response": {container: [cycle]}},
             "authority_echo": {"ordered_ids": ["EV-1"]},
         }

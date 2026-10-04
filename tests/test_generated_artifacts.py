@@ -706,7 +706,7 @@ def test_p0_contract_runtime_calls_use_one_indivisible_execution_spec() -> None:
             if isinstance(spec, ast.Name) and spec.id == "execution_spec":
                 assert path.name == "workflows.py" and any(
                     isinstance(function, ast.AsyncFunctionDef)
-                    and function.name == "_stage"
+                    and function.name in {"_stage", "_stage_impl"}
                     and node in ast.walk(function)
                     for function in ast.walk(tree)
                 ), f"{path}:{node.lineno} has an unauthorized dynamic spec"
@@ -774,10 +774,9 @@ def test_p0_every_workflow_model_stage_is_explicitly_text_or_contract_owned() ->
     path = Path(__file__).parents[1] / "src" / "novel_flywheel" / "workflows.py"
     tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
     text_only_owners = {
-            "_ordinary_polish_segment",
+        "_ordinary_polish_segment", "_repair_semantic_segment",
         "_repair_polish_semantic_segment", "_draft_short_segment_task",
-        "_polish_short_segments", "_stage_with_role_fallback",
-        "request",
+        "_polish_short_segments", "_stage_with_role_fallback", "request",
     }
     missing = []
     for function in ast.walk(tree):
@@ -850,8 +849,11 @@ def test_baml_sap_aligns_real_provider_cycle_containers_without_alias_rules(cont
 
     result = GeneratedArtifactGateway().convert_object(
         raw, contract_name="short_causal_chain",
-        semantic_normalizer=_normalizer(owns_ending=False),
-        expected_event_ids=("EV-1",), owns_ending=False,
+        semantic_normalizer=_normalizer(
+            owns_opening=False, owns_ending=False,
+        ),
+        expected_event_ids=("EV-1",),
+        owns_opening=False, owns_ending=False,
     )
 
     assert result.payload["cycles"] == [_cycle()]
@@ -869,7 +871,11 @@ def test_baml_sap_aligns_unseen_nested_wrapper_by_topology() -> None:
 
     result = GeneratedArtifactGateway().convert_object(
         raw, contract_name="short_causal_chain",
-        semantic_normalizer=_normalizer(), expected_event_ids=("EV-1",),
+        semantic_normalizer=_normalizer(
+            owns_opening=False, owns_ending=False,
+        ),
+        expected_event_ids=("EV-1",),
+        owns_opening=False, owns_ending=False,
     )
 
     assert result.payload["covered_event_ids"] == ["EV-1"]
@@ -898,7 +904,11 @@ def test_local_syntax_repair_still_requires_semantic_validation() -> None:
 
     result = GeneratedArtifactGateway().convert_object(
         raw, contract_name="short_causal_chain",
-        semantic_normalizer=_normalizer(), expected_event_ids=("EV-1",),
+        semantic_normalizer=_normalizer(
+            owns_opening=False, owns_ending=False,
+        ),
+        expected_event_ids=("EV-1",),
+        owns_opening=False, owns_ending=False,
     )
 
     assert result.audit.method == "local_syntax_repair"
@@ -925,7 +935,11 @@ def test_conversion_audit_is_content_addressed_and_does_not_store_raw_text(tmp_p
     })
     result = GeneratedArtifactGateway().convert_object(
         raw, contract_name="short_causal_chain",
-        semantic_normalizer=_normalizer(), expected_event_ids=("EV-1",),
+        semantic_normalizer=_normalizer(
+            owns_opening=False, owns_ending=False,
+        ),
+        expected_event_ids=("EV-1",),
+        owns_opening=False, owns_ending=False,
     )
 
     path = write_conversion_audit(tmp_path, result.audit)

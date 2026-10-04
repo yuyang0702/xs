@@ -424,6 +424,50 @@ async def test_contract_input_capture_does_not_turn_business_exception_terminal(
 
 
 @pytest.mark.asyncio
+async def test_stale_capture_is_not_closed_for_a_later_pre_dispatch_failure() -> None:
+    class DurableObserver:
+        close_calls = 0
+
+        @staticmethod
+        def provider_protocol_capture_complete() -> bool:
+            return True
+
+        @staticmethod
+        def contract_runtime_capture_present() -> bool:
+            return False
+
+        @staticmethod
+        def capture_matches_contract_attempt(**_kwargs) -> bool:
+            return False
+
+        def mark_post_capture_terminal_failure(self, **_kwargs) -> None:
+            self.close_calls += 1
+
+    observer = DurableObserver()
+    gateway = SimpleNamespace(
+        registry=SimpleNamespace(attempt_observer=observer),
+    )
+    calls = 0
+
+    async def pre_dispatch_failure(*_args, **_kwargs):
+        nonlocal calls
+        calls += 1
+        raise ValueError("later route was rejected before dispatch")
+
+    with pytest.raises(ModelRoutesExhaustedError):
+        await execute_contract_runtime(
+            gateway,
+            role="planning", system="same", user="same",
+            execution_spec=execution_spec(),
+            attempt_routes=("primary", "configured_fallback"),
+            attempt_executor=pre_dispatch_failure,
+        )
+
+    assert calls == 2
+    assert observer.close_calls == 0
+
+
+@pytest.mark.asyncio
 async def test_contract_runtime_retries_original_task_when_no_semantics_exist() -> None:
     class Gateway:
         def __init__(self):
@@ -818,6 +862,42 @@ async def test_contract_runtime_can_validate_workflow_owned_route_attempts() -> 
         "primary", "planning", "system", "same immutable task", 700,
         "interview_planning",
     )]
+
+
+@pytest.mark.asyncio
+async def test_domain_repair_stops_when_feedback_produces_same_findings() -> None:
+    class Gateway:
+        def __init__(self):
+            self.calls = []
+
+        async def complete_primary(self, role, system, user, **kwargs):
+            self.calls.append((system, user))
+            return SimpleNamespace(text='{"message":"same"}', receipt={})
+
+    def reject(_payload):
+        raise ValueError("domain invariant")
+
+    spec = ExecutableContractSpec(
+        contract_name="interview_planning",
+        structured_contract=CONTRACT,
+        semantic_normalizer=normalize,
+        domain_validator=reject,
+        domain_diagnostic_extractor=lambda _payload: [
+            {"code": "same_finding", "path": "/message"},
+        ],
+        domain_retry_renderer=lambda findings, _metadata, base: (
+            base + "\nFEEDBACK=" + str(list(findings))
+        ),
+        retry_domain_failures=True,
+    )
+    gateway = Gateway()
+    with pytest.raises(ValueError, match="domain invariant"):
+        await execute_contract_runtime(
+            gateway, role="planning", system="system", user="input",
+            execution_spec=spec, same_route_attempts=2, fallback_attempts=0,
+        )
+    assert len(gateway.calls) == 2
+    assert "same_finding" in gateway.calls[1][1]
 
 
 @pytest.mark.asyncio
