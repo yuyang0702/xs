@@ -1191,6 +1191,34 @@ class Database:
         result["payload"] = json.loads(result.pop("payload_json"))
         return result
 
+    def list_workflow_node_checkpoints(
+        self, *, run_id: str, node_key: str, authority_sha256: str,
+        statuses: tuple[str, ...] = ("generated_complete", "validated", "transport", "failed", "stale"),
+        output_sha256: str | None = None,
+    ) -> list[dict[str, Any]]:
+        """List exact node identities so recovery can fail closed on duplicates."""
+
+        placeholders = ",".join("?" for _ in statuses)
+        output_clause = "" if output_sha256 is None else " AND output_sha256=?"
+        arguments: tuple[Any, ...] = (
+            run_id, node_key, authority_sha256, *statuses,
+            *((output_sha256,) if output_sha256 is not None else ()),
+        )
+        with self.connect() as connection:
+            rows = connection.execute(
+                "SELECT rowid AS _checkpoint_rowid, * FROM workflow_node_checkpoints "
+                "WHERE run_id=? AND node_key=? AND authority_sha256=? "
+                "AND status IN (" + placeholders + ")" + output_clause
+                + " ORDER BY updated_at DESC, rowid DESC",
+                arguments,
+            ).fetchall()
+        result: list[dict[str, Any]] = []
+        for row in rows:
+            item = dict(row)
+            item["payload"] = json.loads(item.pop("payload_json"))
+            result.append(item)
+        return result
+
     def save_workflow_supervision(
         self, *, run_id: str, state: str,
         resume_payload: dict[str, Any] | None = None,

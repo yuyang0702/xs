@@ -310,6 +310,7 @@ def reconcile_generated_root_authority(
     checkpoints: Iterable[Mapping[str, Any]],
     require_event_pair: bool = True,
     require_dispatch_identity: bool = True,
+    require_checkpoint: bool = True,
 ) -> AuthorityReconciliation:
     """Reconcile durable events/checkpoints before any dispatch or promotion."""
 
@@ -360,9 +361,9 @@ def reconcile_generated_root_authority(
         output_hash = str(checkpoint.get("output_sha256") or "")
         if output_hash == bound.candidate_prose_sha256:
             matching_checkpoints.append(checkpoint)
-    if not matching_checkpoints:
+    if not matching_checkpoints and require_checkpoint:
         issues.append("missing_candidate_checkpoint")
-    elif bound.checkpoint_input_sha256:
+    elif bound.checkpoint_input_sha256 and matching_checkpoints:
         matching_checkpoints = [
             row for row in matching_checkpoints
             if str(row.get("input_sha256") or "") == bound.checkpoint_input_sha256
