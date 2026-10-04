@@ -356,3 +356,86 @@ def test_review_claim_cross_authorization_history_is_preserved(tmp_path):
     assert len(attempts) == 2
     assert {row["metadata"]["authorization_sha256"] for row in attempts} == {"a"*64, "d"*64}
     assert all(row["state"] == "claimed" for row in attempts)
+
+def test_review_requalification_finalize_is_authorized_and_idempotent(tmp_path):
+    db = _claim_database(tmp_path)
+    authorization = "a" * 64
+    attempt = _claim_slot(db, authorization_sha256=authorization)
+
+    assert not db.finalize_review_requalification_dispatch(
+        run_id="run", attempt=attempt, authorization_sha256="b" * 64,
+        state="provider_returned",
+    )
+    with pytest.raises(ValueError, match="outcome is invalid"):
+        db.finalize_review_requalification_dispatch(
+            run_id="run", attempt=attempt, authorization_sha256=authorization,
+            state="not-a-state",
+        )
+
+    assert db.finalize_review_requalification_dispatch(
+        run_id="run", attempt=attempt, authorization_sha256=authorization,
+        state="provider_returned",
+    )
+    row = db.list_workflow_attempts("run")[0]
+    assert row["state"] == "provider_returned"
+    assert row["metadata"]["outcome"] == "provider_returned"
+
+    assert db.finalize_review_requalification_dispatch(
+        run_id="run", attempt=attempt, authorization_sha256=authorization,
+        state="qualified",
+    )
+    assert db.finalize_review_requalification_dispatch(
+        run_id="run", attempt=attempt, authorization_sha256=authorization,
+        state="qualified",
+    )
+    assert db.list_workflow_attempts("run")[0]["state"] == "qualified"
+
+
+def test_review_requalification_release_only_reopens_local_non_dispatch(tmp_path):
+    db = _claim_database(tmp_path)
+    authorization = "a" * 64
+    first = _claim_slot(db, authorization_sha256=authorization)
+    second = _claim_slot(
+        db, authorization_sha256=authorization,
+        request_condition_sha256="d" * 64,
+    )
+    with db.connect() as connection:
+        connection.execute(
+            "UPDATE workflow_attempts SET state='deterministic_failure' "
+            "WHERE run_id=? AND attempt=?", ("run", second),
+        )
+    skipped_provider = _claim_slot(
+        db, authorization_sha256=authorization,
+        route_identity_sha256="c" * 64,
+        request_condition_sha256="e" * 64,
+    )
+    assert db.finalize_review_requalification_dispatch(
+        run_id="run", attempt=skipped_provider,
+        authorization_sha256=authorization, state="provider_returned",
+    )
+    other_authorization = _claim_slot(
+        db, authorization_sha256="f" * 64,
+        route_identity_sha256="d" * 64,
+        request_condition_sha256="f" * 64,
+    )
+
+    released = db.release_unexecuted_review_requalification_claims(
+        run_id="run", authorization_sha256=authorization,
+    )
+    assert released == [first, second]
+    rows = {row["attempt"]: row for row in db.list_workflow_attempts("run")}
+    for attempt in (first, second):
+        assert rows[attempt]["state"] == "local_not_dispatched"
+        assert rows[attempt]["metadata"]["physical_dispatch_released"] is True
+        assert rows[attempt]["metadata"]["release_reason"] == (
+            "local_admission_provider_call_executed_false"
+        )
+    assert rows[skipped_provider]["state"] == "provider_returned"
+    assert rows[other_authorization]["state"] == "claimed"
+    assert db.release_unexecuted_review_requalification_claims(
+        run_id="run", authorization_sha256=authorization,
+    ) == []
+    with pytest.raises(ValueError, match="identity is invalid"):
+        db.release_unexecuted_review_requalification_claims(
+            run_id="run", authorization_sha256="invalid",
+        )

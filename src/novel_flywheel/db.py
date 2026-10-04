@@ -1424,6 +1424,96 @@ class Database:
             )
         return attempt
 
+    def finalize_review_requalification_dispatch(
+        self, *, run_id: str, attempt: int, authorization_sha256: str,
+        state: str, failure_class: str | None = None,
+    ) -> bool:
+        """Close one previously claimed Review qualification slot."""
+
+        if state not in {
+            "provider_returned", "transient_failure", "deterministic_failure",
+            "qualified",
+        }:
+            raise ValueError("review requalification outcome is invalid")
+        action = "review_contract_requalification_dispatch"
+        with self.connect() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            row = connection.execute(
+                "SELECT state,metadata_json FROM workflow_attempts "
+                "WHERE run_id=? AND attempt=? AND action=?",
+                (run_id, attempt, action),
+            ).fetchone()
+            if row is None:
+                return False
+            metadata = json.loads(row["metadata_json"] or "{}")
+            if metadata.get("authorization_sha256") != authorization_sha256:
+                return False
+            current = str(row["state"])
+            if current == "qualified":
+                return state == "qualified"
+            if current not in {"claimed", "provider_returned"}:
+                return current == state
+            metadata["outcome"] = state
+            if failure_class:
+                metadata["failure_class"] = str(failure_class)[:128]
+            connection.execute(
+                "UPDATE workflow_attempts SET state=?,failure_class=?,metadata_json=? "
+                "WHERE run_id=? AND attempt=? AND action=?",
+                (
+                    state, failure_class,
+                    json.dumps(metadata, ensure_ascii=False, sort_keys=True),
+                    run_id, attempt, action,
+                ),
+            )
+        return True
+
+    def release_unexecuted_review_requalification_claims(
+        self, *, run_id: str, authorization_sha256: str,
+        after_attempt: int = 0,
+    ) -> list[int]:
+        """Release only claims proven to stop before Provider transport.
+
+        A requalification claim is normally consumed atomically so a process
+        crash cannot create an unknown duplicate.  A later, explicit local
+        admission receipt with ``provider_call_executed=false`` is different:
+        it proves that this claim never reached transport.  Marking that
+        claim as released preserves its history while restoring physical HTTP
+        accounting.  The caller supplies the exact authorization and a
+        bounded episode prefix; no historical authorization can be reopened.
+        """
+        if not re.fullmatch(r"[0-9a-f]{64}", authorization_sha256):
+            raise ValueError("review requalification identity is invalid")
+        released: list[int] = []
+        with self.connect() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            rows = connection.execute(
+                "SELECT attempt,state,metadata_json FROM workflow_attempts "
+                "WHERE run_id=? AND action=? AND attempt>? ORDER BY attempt",
+                (run_id, "review_contract_requalification_dispatch", int(after_attempt)),
+            ).fetchall()
+            for row in rows:
+                try:
+                    metadata = json.loads(row["metadata_json"] or "{}")
+                except (TypeError, ValueError, json.JSONDecodeError):
+                    continue
+                if metadata.get("authorization_sha256") != authorization_sha256:
+                    continue
+                if metadata.get("physical_dispatch_released") is True:
+                    continue
+                if str(row["state"]) not in {"claimed", "deterministic_failure", "transient_failure"}:
+                    continue
+                metadata["physical_dispatch_released"] = True
+                metadata["release_reason"] = "local_admission_provider_call_executed_false"
+                connection.execute(
+                    "UPDATE workflow_attempts SET state='local_not_dispatched', "
+                    "metadata_json=? WHERE run_id=? AND attempt=? AND action=?",
+                    (json.dumps(metadata, ensure_ascii=False, sort_keys=True),
+                     run_id, int(row["attempt"]),
+                     "review_contract_requalification_dispatch"),
+                )
+                released.append(int(row["attempt"]))
+        return released
+
     def set_feature_flag(
         self, flag_name: str, enabled: bool, *, scope_type: str = "global",
         scope_id: str = "*", config: dict[str, Any] | None = None,
