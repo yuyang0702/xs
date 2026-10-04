@@ -1,3 +1,4 @@
+import pytest
 import sqlite3
 from concurrent.futures import ThreadPoolExecutor
 
@@ -253,3 +254,105 @@ def test_recoverable_skill_execution_reports_preserved_proposals(tmp_path) -> No
     recoverable = db.list_recoverable_skill_executions("book", "worldbuilding")
     assert [item["id"] for item in recoverable] == ["execution"]
     assert recoverable[0]["proposal_summary"]["recoverable_count"] == 2
+
+
+def test_review_requalification_claim_cap_is_durable(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    db.save_project("project-1", "Story", "short", tmp_path / "story")
+    db.create_run("run-1", "project-1", "short-story", status="failed")
+    authorization = "a" * 64
+    for index in range(4):
+        db.claim_review_requalification_dispatch(
+            run_id="run-1", authorization_sha256=authorization,
+            route_identity_sha256=("b" if index // 2 == 0 else "c") * 64,
+            request_condition_sha256=("d" if index % 2 == 0 else "e") * 64,
+            max_dispatches=4, max_dispatches_per_route=2,
+        )
+    with pytest.raises(ValueError, match="limit exhausted"):
+        db.claim_review_requalification_dispatch(
+            run_id="run-1", authorization_sha256=authorization,
+            route_identity_sha256="f" * 64, request_condition_sha256="e" * 64,
+            max_dispatches=4, max_dispatches_per_route=2,
+        )
+
+
+def _claim_database(tmp_path):
+    db = Database(tmp_path / "claims.db")
+    db.migrate()
+    db.save_project("book", "Book", "short", tmp_path / "book")
+    db.create_run("run", "book", "short-story", status="failed")
+    return db
+
+
+def _claim_slot(db, **overrides):
+    values = dict(run_id="run", authorization_sha256="a" * 64,
+                  route_identity_sha256="b" * 64,
+                  request_condition_sha256="c" * 64,
+                  max_dispatches=4, max_dispatches_per_route=2)
+    return db.claim_review_requalification_dispatch(**(values | overrides))
+
+
+def test_review_claim_survives_reopen_and_migration(tmp_path):
+    db = _claim_database(tmp_path)
+    first = _claim_slot(db)
+    reopened = Database(db.path)
+    reopened.migrate()
+    reopened.migrate()
+    assert reopened.list_workflow_attempts("run")[0]["attempt"] == first
+    with pytest.raises(ValueError, match="unchanged request"):
+        _claim_slot(reopened)
+    second = _claim_slot(reopened, request_condition_sha256="d" * 64)
+    assert second > first
+    with pytest.raises(ValueError, match="route limit"):
+        _claim_slot(Database(db.path), request_condition_sha256="e" * 64)
+    assert len(db.list_workflow_attempts("run")) == 2
+
+
+def test_review_claim_parallel_workers_cannot_double_claim(tmp_path):
+    db = _claim_database(tmp_path)
+    def worker(_):
+        try:
+            return _claim_slot(Database(db.path))
+        except ValueError as exc:
+            assert "unchanged request" in str(exc)
+            return None
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        results = list(pool.map(worker, range(8)))
+    assert sum(value is not None for value in results) == 1
+    assert len(db.list_workflow_attempts("run")) == 1
+
+
+@pytest.mark.parametrize("overrides", [
+    {"authorization_sha256": "invalid"}, {"route_identity_sha256": "invalid"},
+    {"request_condition_sha256": "invalid"}, {"max_dispatches": 0},
+    {"max_dispatches": 7}, {"max_dispatches_per_route": 3}, {"run_id": "missing"},
+])
+def test_review_claim_invalid_authority_leaves_no_attempt(tmp_path, overrides):
+    db = _claim_database(tmp_path)
+    with pytest.raises(ValueError):
+        _claim_slot(db, **overrides)
+    assert db.list_workflow_attempts("run") == []
+
+
+def test_review_claim_claimed_unknown_is_consumed_but_transient_can_continue(tmp_path):
+    db = _claim_database(tmp_path)
+    attempt = _claim_slot(db)
+    with pytest.raises(ValueError, match="unchanged request"):
+        _claim_slot(db)
+    # A synthetic terminal transport result authorizes one bounded identical retry.
+    with db.connect() as connection:
+        connection.execute("UPDATE workflow_attempts SET state='transient_failure' WHERE run_id=? AND attempt=?", ("run", attempt))
+    assert _claim_slot(Database(db.path)) > attempt
+    with pytest.raises(ValueError, match="route limit"):
+        _claim_slot(db)
+
+
+def test_review_claim_cross_authorization_history_is_preserved(tmp_path):
+    db = _claim_database(tmp_path)
+    _claim_slot(db, authorization_sha256="d" * 64)
+    _claim_slot(db)
+    attempts = db.list_workflow_attempts("run")
+    assert len(attempts) == 2
+    assert {row["metadata"]["authorization_sha256"] for row in attempts} == {"a"*64, "d"*64}
+    assert all(row["state"] == "claimed" for row in attempts)

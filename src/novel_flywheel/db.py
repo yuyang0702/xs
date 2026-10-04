@@ -1338,6 +1338,92 @@ class Database:
             result.append(item)
         return result
 
+    def claim_review_requalification_dispatch(
+        self, *, run_id: str, authorization_sha256: str,
+        route_identity_sha256: str, request_condition_sha256: str,
+        max_dispatches: int, max_dispatches_per_route: int,
+    ) -> int:
+        """Atomically consume one exact Review requalification dispatch slot.
+
+        A claimed slot is intentionally consumed even if the process dies before
+        an outcome is written.  A second request on the same route is admitted
+        only after a typed transient failure or when the exact rendered request
+        condition changed.
+        """
+
+        if not (
+            re.fullmatch(r"[0-9a-f]{64}", authorization_sha256)
+            and re.fullmatch(r"[0-9a-f]{64}", route_identity_sha256)
+            and re.fullmatch(r"[0-9a-f]{64}", request_condition_sha256)
+        ):
+            raise ValueError("review requalification identity is invalid")
+        if not (1 <= max_dispatches <= 6):
+            raise ValueError("review requalification total limit is invalid")
+        if not (1 <= max_dispatches_per_route <= 2):
+            raise ValueError("review requalification route limit is invalid")
+        action = "review_contract_requalification_dispatch"
+        with self.connect() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            run = connection.execute(
+                "SELECT workflow FROM runs WHERE id=?", (run_id,),
+            ).fetchone()
+            if run is None or str(run["workflow"]) != "short-story":
+                raise ValueError("review requalification run is invalid")
+            rows = connection.execute(
+                "SELECT state,metadata_json FROM workflow_attempts "
+                "WHERE run_id=? AND action=? ORDER BY attempt",
+                (run_id, action),
+            ).fetchall()
+            matching: list[tuple[str, dict[str, Any]]] = []
+            for row in rows:
+                try:
+                    metadata = json.loads(row["metadata_json"] or "{}")
+                except (TypeError, ValueError, json.JSONDecodeError):
+                    continue
+                if metadata.get("physical_dispatch_released") is True:
+                    continue
+                if metadata.get("authorization_sha256") == authorization_sha256:
+                    matching.append((str(row["state"]), metadata))
+            if len(matching) >= max_dispatches:
+                raise ValueError("review requalification dispatch limit exhausted")
+            route_attempts = [
+                (state, metadata) for state, metadata in matching
+                if metadata.get("route_identity_sha256") == route_identity_sha256
+            ]
+            if len(route_attempts) >= max_dispatches_per_route:
+                raise ValueError("review requalification route limit exhausted")
+            if route_attempts:
+                prior_state, prior = route_attempts[-1]
+                unchanged = (
+                    prior.get("request_condition_sha256")
+                    == request_condition_sha256
+                )
+                if unchanged and prior_state != "transient_failure":
+                    raise ValueError(
+                        "review requalification unchanged request is not retryable"
+                    )
+            attempt = int(connection.execute(
+                "SELECT COALESCE(MAX(attempt),0)+1 FROM workflow_attempts WHERE run_id=?",
+                (run_id,),
+            ).fetchone()[0])
+            metadata = {
+                "authorization_sha256": authorization_sha256,
+                "route_identity_sha256": route_identity_sha256,
+                "request_condition_sha256": request_condition_sha256,
+                "content_persisted": False,
+            }
+            connection.execute(
+                """INSERT INTO workflow_attempts
+                (run_id,attempt,state,action,failure_class,failure_sha256,
+                 authority_sha256,checkpoint_sha256,metadata_json,created_at)
+                VALUES (?,?,'claimed',?,NULL,NULL,?,NULL,?,datetime('now'))""",
+                (
+                    run_id, attempt, action, authorization_sha256,
+                    json.dumps(metadata, ensure_ascii=False, sort_keys=True),
+                ),
+            )
+        return attempt
+
     def set_feature_flag(
         self, flag_name: str, enabled: bool, *, scope_type: str = "global",
         scope_id: str = "*", config: dict[str, Any] | None = None,
