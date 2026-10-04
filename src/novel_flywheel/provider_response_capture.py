@@ -1231,9 +1231,14 @@ class ReviewDiagnosticCaptureObserverV1:
             same_review_role = (
                 self.bound_route.get("role") == route["role"] == "review"
             )
-            allowed_lane_transition = {
-                self.bound_route.get("lane"), route["lane"],
-            } <= {"primary", "configured_fallback"}
+            allowed_lane_transition = (
+                self.bound_route.get("lane") == "primary"
+                and route["lane"] in {"fallback", "configured_fallback"}
+                and self.stage_context is not None
+                and self.stage_context.get("contract_route") in {
+                    "fallback", "configured_fallback",
+                }
+            )
             if self.dispatch_count == 0 and same_review_role and allowed_lane_transition:
                 self._event(
                     "route-rebind",
@@ -1547,10 +1552,28 @@ class ShortAutoRecoveryCaptureObserverV1:
         elif self._route is not None:
             current_identity = tuple(self._route.get(k) for k in ("role", "lane", "provider_id", "model_id"))
             if route_identity != current_identity:
-                raise ReviewDiagnosticCaptureScopeError(
-                    "REVIEW_DIAGNOSTIC_ROUTE_DRIFT"
+                same_review_role = (
+                    self._route.get("role") == route.get("role") == "review"
                 )
-            if self._capture.dispatch_count:
+                allowed_lane_transition = (
+                    self._route.get("lane") == "primary"
+                    and route.get("lane") in {"fallback", "configured_fallback"}
+                    and self._stage_context is not None
+                    and self._stage_context.get("contract_route") in {
+                        "fallback", "configured_fallback",
+                    }
+                )
+                if (
+                    self._capture.dispatch_count == 0
+                    and same_review_role
+                    and allowed_lane_transition
+                ):
+                    self._new_capture(route)
+                else:
+                    raise ReviewDiagnosticCaptureScopeError(
+                        "REVIEW_DIAGNOSTIC_ROUTE_DRIFT"
+                    )
+            elif self._capture.dispatch_count:
                 self._new_capture(route)
             else:
                 self._capture.bind_route(**route)

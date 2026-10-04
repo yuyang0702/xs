@@ -542,8 +542,9 @@ async def test_target_review_scope_reaches_transport_and_captures_response(
     assert (tmp_path / "capture" / "10-request.json").is_file()
     assert (tmp_path / "capture" / "20-provider-response.json").is_file()
 
+@pytest.mark.parametrize("fallback_lane", ["fallback", "configured_fallback"])
 def test_pre_dispatch_primary_failure_allows_configured_fallback_capture(
-    tmp_path: Path,
+    tmp_path: Path, fallback_lane: str,
 ) -> None:
     observer = ReviewDiagnosticCaptureObserverV1(
         store_root=tmp_path / "capture",
@@ -562,8 +563,15 @@ def test_pre_dispatch_primary_failure_allows_configured_fallback_capture(
         role="review", lane="primary", provider_id=PROVIDER_ID,
         model_id=MODEL_ID, route_fingerprint="route-primary",
     )
+    observer.bind_stage_context(
+        stage_id="segment-05-receipt-window-01-fallback",
+        contract_name="draft_segment_semantic_receipt",
+        contract_version=1,
+        contract_schema_sha256="a" * 64,
+        contract_route="configured_fallback",
+    )
     observer.bind_route(
-        role="review", lane="configured_fallback", provider_id="fallback-provider",
+        role="review", lane=fallback_lane, provider_id="fallback-provider",
         model_id="fallback-model", route_fingerprint="route-fallback",
     )
     payload = {"model": "fallback-model", "input": []}
@@ -573,6 +581,65 @@ def test_pre_dispatch_primary_failure_allows_configured_fallback_capture(
         payload=payload,
         request_bytes=b'{"model":"fallback-model","input":[]}',
     )
-    assert observer.bound_route["lane"] == "configured_fallback"
+    assert observer.bound_route["lane"] == fallback_lane
     assert observer.dispatch_count == 1
     assert (tmp_path / "capture" / "10-request.json").is_file()
+
+@pytest.mark.parametrize("fallback_lane", ["fallback", "configured_fallback"])
+@pytest.mark.parametrize("with_base_observer", [False, True])
+def test_short_auto_recovery_capture_allows_pre_dispatch_fallback_child(
+    tmp_path: Path, fallback_lane: str, with_base_observer: bool,
+) -> None:
+    class Registry:
+        @staticmethod
+        def inspect_public_route(_provider_id, _model_id):
+            return type("Public", (), {
+                "destination": "https://api.deepseek.com/anthropic",
+            })()
+
+    base_observer = ReviewDiagnosticCaptureObserverV1(
+        store_root=tmp_path / "direct",
+        provider_id=PROVIDER_ID, model_id=MODEL_ID,
+        hostname="lingsuan.org,api.deepseek.com",
+    ) if with_base_observer else None
+    observer = ShortAutoRecoveryCaptureObserverV1(
+        base_observer=base_observer,
+        registry=Registry(),
+        store_root=tmp_path / "auto",
+        context={"run_id": "run", "authorization_revision": "v1"},
+    )
+    primary = {
+        "role": "review", "lane": "primary",
+        "provider_id": PROVIDER_ID, "model_id": MODEL_ID,
+        "route_fingerprint": "route-primary",
+    }
+    fallback = {
+        "role": "review", "lane": fallback_lane,
+        "provider_id": "fallback-provider", "model_id": "fallback-model",
+        "route_fingerprint": "route-fallback",
+    }
+    observer.bind_stage_context(
+        stage_id="segment-05",
+        contract_name="draft_segment_semantic_receipt",
+        contract_version=1,
+        contract_schema_sha256="b" * 64,
+        contract_runtime_input_required=True,
+        contract_attempt_index=1,
+        contract_route="primary",
+        contract_route_attempt=1,
+    )
+    observer.bind_route(**primary)
+    observer.bind_stage_context(
+        stage_id="segment-05-fallback",
+        contract_name="draft_segment_semantic_receipt",
+        contract_version=1,
+        contract_schema_sha256="b" * 64,
+        contract_runtime_input_required=True,
+        contract_attempt_index=1,
+        contract_route="configured_fallback",
+        contract_route_attempt=1,
+    )
+    observer.bind_route(**fallback)
+    assert (tmp_path / "auto" / "attempt-01").is_dir()
+    assert (tmp_path / "auto" / "attempt-02").is_dir()
+    assert not (tmp_path / "auto" / "attempt-02" / "10-request.json").exists()
