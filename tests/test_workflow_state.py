@@ -210,3 +210,62 @@ def test_generated_transport_output_is_not_resumable_as_validated_authority(tmp_
         run_id="run", node_key="review",
         authority_sha256=digest("authority"), input_sha256=digest("input"),
     ) is None
+
+
+def test_unambiguous_checkpoint_reuses_duplicate_identity_with_new_input_hash(
+    tmp_path,
+) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    make_run(db)
+    values = {
+        "run_id": "run", "node_key": "draft-root-repair-3",
+        "authority_sha256": digest("authority"),
+        "output_sha256": digest("candidate"),
+        "status": "generated_complete", "validation_stage": "transport",
+        "route_fingerprint": digest("route"),
+        "payload": {"provider_id": "p", "model_id": "m"},
+    }
+    db.save_workflow_node_checkpoint(
+        **values, input_sha256=digest("input-a"),
+    )
+    db.save_workflow_node_checkpoint(
+        **values, input_sha256=digest("input-b"),
+    )
+
+    loaded = db.load_unambiguous_workflow_node_checkpoint(
+        run_id="run", node_key=values["node_key"],
+        authority_sha256=values["authority_sha256"],
+        statuses=("generated_complete",), min_validation_stage="transport",
+        output_sha256=values["output_sha256"],
+    )
+
+    assert loaded is not None
+    assert loaded["output_sha256"] == values["output_sha256"]
+
+
+def test_unambiguous_checkpoint_rejects_conflicting_route_identity(tmp_path) -> None:
+    db = Database(tmp_path / "app.db")
+    db.migrate()
+    make_run(db)
+    base = {
+        "run_id": "run", "node_key": "draft-root-repair-3",
+        "authority_sha256": digest("authority"),
+        "status": "generated_complete", "validation_stage": "transport",
+        "payload": {"provider_id": "p", "model_id": "m"},
+    }
+    db.save_workflow_node_checkpoint(
+        **base, input_sha256=digest("input-a"), output_sha256=digest("candidate"),
+        route_fingerprint=digest("route-a"),
+    )
+    db.save_workflow_node_checkpoint(
+        **base, input_sha256=digest("input-b"), output_sha256=digest("candidate"),
+        route_fingerprint=digest("route-b"),
+    )
+
+    assert db.load_unambiguous_workflow_node_checkpoint(
+        run_id="run", node_key=base["node_key"],
+        authority_sha256=base["authority_sha256"],
+        statuses=("generated_complete",), min_validation_stage="transport",
+        output_sha256=digest("candidate"),
+    ) is None

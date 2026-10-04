@@ -5,6 +5,7 @@ import hashlib
 import inspect
 import uuid
 from collections.abc import Awaitable, Callable
+from contextlib import nullcontext
 from datetime import datetime, timezone
 from typing import Any
 
@@ -23,6 +24,8 @@ from novel_flywheel.production_incidents import classify_production_failure
 RunOperation = Callable[[str], Awaitable[object]]
 RunTerminalFinalizer = Callable[[str, object], object | Awaitable[object]]
 RunOperationResolver = Callable[[dict[str, Any], dict[str, Any]], RunOperation | None]
+RecoveryReentryEvaluator = Callable[[str], dict[str, Any] | None]
+ExecutionIdentityBinder = Callable[..., Any]
 
 
 def _nested_reliability_failure(
@@ -70,10 +73,14 @@ class RunTaskManager:
     def __init__(
         self, db: Database, *, supervisor: CompletionSupervisor | None = None,
         operation_resolver: RunOperationResolver | None = None,
+        reentry_evaluator: RecoveryReentryEvaluator | None = None,
+        execution_identity_binder: ExecutionIdentityBinder | None = None,
     ) -> None:
         self.db = db
         self.supervisor = supervisor or CompletionSupervisor(db)
         self.operation_resolver = operation_resolver
+        self.reentry_evaluator = reentry_evaluator
+        self.execution_identity_binder = execution_identity_binder
         self.tasks: dict[str, asyncio.Task] = {}
         self._operations: dict[str, RunOperation] = {}
         self._exact_once_reservations: set[str] = set()
@@ -213,6 +220,7 @@ class RunTaskManager:
         self, run_id: str, operation: RunOperation, *,
         allow_interrupted: bool = False,
         allow_waiting_user_credential: bool = False,
+        allow_waiting_user_recoverable: bool = False,
         resume_payload: dict[str, Any] | None = None,
     ) -> dict:
         run = self.db.get_run(run_id)
@@ -233,12 +241,26 @@ class RunTaskManager:
         allowed = {"failed", "cancelled", "waiting_provider"}
         if allow_waiting_user_credential:
             allowed.add("waiting_user")
+        if allow_waiting_user_recoverable:
+            allowed.add("waiting_user")
         if allow_interrupted:
             allowed.add("interrupted")
         if run["status"] not in allowed:
             raise ValueError("Only a failed or cancelled run can be resumed")
         if run_id in self.tasks:
             raise ValueError("Run is already active")
+        if self.reentry_evaluator is not None:
+            decision = self.reentry_evaluator(run_id)
+            if decision and decision.get("action") in {
+                "NO_ACTION", "MIGRATION_REQUIRED",
+            }:
+                # Re-entry is an evaluation of the existing blocked node.  It
+                # must not create a workflow attempt, recovery child, budget
+                # reservation or Provider intent just because the caller
+                # supplied a new resume request.
+                current = dict(run)
+                current["recovery_reentry"] = decision
+                return current
         asyncio.get_running_loop()
         if not self.db.activate_supervised_run(
             run_id=run_id, project_id=str(run["project_id"]),
@@ -376,13 +398,24 @@ class RunTaskManager:
         if not entered:
             return
         try:
-            operation_result = await operation(run_id)
-            if terminal_finalizer is not None:
-                finalizer_result = terminal_finalizer(
-                    run_id, operation_result,
+            run = self.db.get_run(run_id) or {}
+            identity_scope = (
+                self.execution_identity_binder(
+                    project_id=str(run.get("project_id") or ""),
+                    run_id=run_id,
+                    workflow_kind=str(run.get("workflow") or ""),
                 )
-                if inspect.isawaitable(finalizer_result):
-                    await finalizer_result
+                if callable(self.execution_identity_binder)
+                else nullcontext()
+            )
+            with identity_scope:
+                operation_result = await operation(run_id)
+                if terminal_finalizer is not None:
+                    finalizer_result = terminal_finalizer(
+                        run_id, operation_result,
+                    )
+                    if inspect.isawaitable(finalizer_result):
+                        await finalizer_result
         except asyncio.CancelledError:
             self._commit_worker_outcome(
                 run_id, "cancelled_by_user", "cancelled",

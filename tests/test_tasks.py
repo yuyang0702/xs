@@ -1,5 +1,6 @@
 import asyncio
 import json
+from contextlib import contextmanager
 from types import SimpleNamespace
 
 import pytest
@@ -15,6 +16,58 @@ def make_manager(tmp_path):
     db.migrate()
     db.save_project("book", "Book", "long", tmp_path / "book")
     return db, RunTaskManager(db)
+
+
+@pytest.mark.asyncio
+async def test_supervised_worker_binds_execution_identity_around_operation(tmp_path):
+    db, _manager = make_manager(tmp_path)
+    active = []
+
+    @contextmanager
+    def bind_identity(**identity):
+        active.append(identity)
+        try:
+            yield
+        finally:
+            active.pop()
+
+    manager = RunTaskManager(db, execution_identity_binder=bind_identity)
+
+    async def operation(run_id):
+        assert active == [{
+            "project_id": "book", "run_id": run_id,
+            "workflow_kind": "short-story",
+        }]
+        return None
+
+    run = manager.start("book", "short-story", operation, resume_payload={})
+    await manager.wait(run["id"])
+    assert active == []
+
+
+@pytest.mark.asyncio
+async def test_same_signature_resume_only_evaluates_blocked_state(tmp_path):
+    db, manager = make_manager(tmp_path)
+
+    async def operation(_run_id):
+        return None
+
+    run = manager.start("book", "short-story", operation, resume_payload={})
+    await manager.wait(run["id"])
+    db.update_run(run["id"], "failed", current_stage="review", error="blocked")
+    before = len(db.list_workflow_attempts(run["id"]))
+    manager.reentry_evaluator = lambda _run_id: {
+        "schema": "RecoveryReentryEvaluationV1",
+        "action": "NO_ACTION",
+        "reason": "same_condition_signature",
+        "provider_intent_created": False,
+        "physical_dispatch_allowed": False,
+    }
+
+    result = manager.resume(run["id"], operation)
+    assert result["recovery_reentry"]["action"] == "NO_ACTION"
+    assert result["recovery_reentry"]["provider_intent_created"] is False
+    assert len(db.list_workflow_attempts(run["id"])) == before
 
 
 def initialization_resume_payload() -> dict:

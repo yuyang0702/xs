@@ -1135,6 +1135,62 @@ class Database:
         result["payload"] = json.loads(result.pop("payload_json"))
         return result
 
+    def load_unambiguous_workflow_node_checkpoint(
+        self, *, run_id: str, node_key: str, authority_sha256: str,
+        statuses: tuple[str, ...] = ("validated",),
+        min_validation_stage: str = "promoted",
+        output_sha256: str | None = None,
+    ) -> dict[str, Any] | None:
+        """Load a node only when its persisted identity is unambiguous.
+
+        Recovery paths sometimes know the durable node and output identities
+        but cannot reconstruct an older input hash after a later bounded retry.
+        Never guess between multiple historical inputs for the same node.
+        """
+
+        placeholders = ",".join("?" for _ in statuses)
+        output_clause = "" if output_sha256 is None else " AND output_sha256=?"
+        arguments: tuple[Any, ...] = (
+            run_id, node_key, authority_sha256, *statuses,
+            *((output_sha256,) if output_sha256 is not None else ()),
+        )
+        with self.connect() as connection:
+            rows = connection.execute(
+                "SELECT rowid AS _checkpoint_rowid, * FROM workflow_node_checkpoints "
+                "WHERE run_id=? AND node_key=? AND authority_sha256=? "
+                "AND status IN (" + placeholders + ")" + output_clause
+                + " ORDER BY updated_at DESC, rowid DESC",
+                arguments,
+            ).fetchall()
+        if not rows:
+            return None
+        if len(rows) > 1:
+            # A bounded recovery can persist the same immutable candidate more
+            # than once when the reconstructed input hash changes between
+            # retries.  It is safe to reuse those rows only when every
+            # acceptance-relevant identity agrees; differing output, route,
+            # stage, or payload remains ambiguous and fails closed.
+            comparable_fields = (
+                "authority_sha256", "output_sha256", "status",
+                "checkpoint_version", "validation_stage", "route_fingerprint",
+                "next_node", "payload_json",
+            )
+            first = rows[0]
+            if any(
+                any(row[field] != first[field] for field in comparable_fields)
+                for row in rows[1:]
+            ):
+                return None
+        from novel_flywheel.workflow_state import checkpoint_stage_rank
+        row = rows[0]
+        if checkpoint_stage_rank(row["validation_stage"]) < checkpoint_stage_rank(
+            min_validation_stage,
+        ):
+            return None
+        result = dict(row)
+        result["payload"] = json.loads(result.pop("payload_json"))
+        return result
+
     def save_workflow_supervision(
         self, *, run_id: str, state: str,
         resume_payload: dict[str, Any] | None = None,
