@@ -245,10 +245,22 @@ def build_generated_root_authority(
 
 def _authority_from_mapping(value: Mapping[str, Any]) -> GeneratedRootRecoveryAuthority:
     payload = dict(value)
+    if payload.get("schema") != SCHEMA or payload.get("version") != 1:
+        raise ValueError("unsupported generated-root authority schema")
     authority_sha256 = _digest(payload.pop("authority_sha256", ""), "authority_sha256")
+    observed_task_id = str(payload.get("observed_task_id") or payload.get("root_task_id") or "")
+    expected_root_task_id = normalize_generated_root_task_id(observed_task_id)
+    if payload.get("root_task_id") != expected_root_task_id:
+        raise ValueError("root_task_id does not match observed_task_id")
+    expected_scope_kind = (
+        "root" if observed_task_id == expected_root_task_id
+        else "child" if "/sub-" in observed_task_id else "receipt_window"
+    )
+    if payload.get("task_scope_kind") != expected_scope_kind:
+        raise ValueError("task_scope_kind does not match observed_task_id")
     built = build_generated_root_authority(
         run_id=str(payload.get("run_id") or ""), project_id=str(payload.get("project_id") or ""),
-        task_id=str(payload.get("observed_task_id") or payload.get("root_task_id") or ""),
+        task_id=observed_task_id,
         candidate_relative_path=str(payload.get("candidate_relative_path") or ""),
         candidate_prose_sha256=str(payload.get("candidate_prose_sha256") or ""),
         candidate_raw_sha256=str(payload.get("candidate_raw_sha256") or ""),

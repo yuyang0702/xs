@@ -149,6 +149,28 @@ def test_reconciliation_requires_dispatch_identity_and_validates_tamper() -> Non
     assert result.ok is False
     assert "authority_sha256 does not match canonical payload" in result.issues
 
+    schema_tampered = prepared.to_dict()
+    schema_tampered["schema"] = "OtherSchema"
+    result = reconcile_generated_root_authority(
+        schema_tampered,
+        filesystem_candidate_prose_sha256=HASH,
+        events=_events(),
+        checkpoints=[{"output_sha256": HASH, "input_sha256": INPUT_HASH}],
+    )
+    assert result.ok is False
+    assert "unsupported generated-root authority schema" in result.issues
+
+    scope_tampered = prepared.to_dict()
+    scope_tampered["task_scope_kind"] = "root"
+    result = reconcile_generated_root_authority(
+        scope_tampered,
+        filesystem_candidate_prose_sha256=HASH,
+        events=_events(),
+        checkpoints=[{"output_sha256": HASH, "input_sha256": INPUT_HASH}],
+    )
+    assert result.ok is False
+    assert "task_scope_kind does not match observed_task_id" in result.issues
+
 
 def test_pending_receipt_record_persists_authority_binding() -> None:
     contract = DraftTaskContract(
