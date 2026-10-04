@@ -12,6 +12,7 @@ from typing import Any
 
 from novel_flywheel.causal_chain import compact_causal_chain
 from novel_flywheel.draft_split import DraftTaskContract
+from novel_flywheel.generated_root_authority import build_generated_root_authority
 from novel_flywheel.execution_manifest import (
     extend_future_beat_guard,
     execution_manifest_sha256,
@@ -41,6 +42,30 @@ class PreparedShortReceiptResume:
     candidate_path: Path
     state_path: Path
     constraints: str
+
+
+def build_pending_recovery_authority(
+    record: dict[str, Any], contract: DraftTaskContract,
+) -> dict[str, Any]:
+    """Bind a pending receipt record to its durable contract identities.
+
+    This is deliberately limited to the clean receipt-preparation boundary:
+    it records the identity that must be reconciled before a future root
+    recovery operation can dispatch.  It does not authorize dispatch itself.
+    """
+
+    return build_generated_root_authority(
+        run_id=str(record["run_id"]),
+        project_id=str(record["project_id"]),
+        task_id=str(record["task_id"]),
+        candidate_relative_path=str(record["candidate_relative_path"]),
+        candidate_prose_sha256=str(record["candidate_prose_sha256"]),
+        candidate_raw_sha256=str(record["candidate_raw_sha256"]),
+        source_prose_sha256=str(record.get("source_prose_sha256") or ""),
+        contract=asdict(contract),
+        repair_scope_task_id=str(record.get("operation_kind") or "semantic_receipt"),
+        state="prepared",
+    ).to_dict()
 
 
 def _narrative_fields(project: Any) -> dict[str, str]:
@@ -255,6 +280,9 @@ def prepare_short_receipt_resume(
         "source_event_id": int(source_event["id"]),
         "source_event_type": source_event["event_type"],
     }
+    record["recovery_authority"] = build_pending_recovery_authority(
+        record, child_contract,
+    )
     record["record_sha256"] = canonical_sha256(record)
     state_path = (
         run_path / "outputs" / "draft-pending-candidates"
